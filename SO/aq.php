@@ -193,7 +193,6 @@ $dataAtualBr  = date('d / m / Y');
         .ordem-logo-box {
             width: 180px;
             height: 78px;
-
             display: flex;
             align-items: center;
             justify-content: center;
@@ -547,8 +546,8 @@ $dataAtualBr  = date('d / m / Y');
     <div class="container">
 
         <div class="topbar no-print">
-            <button class="btn btn-success" onclick="window.print()">Imprimir / Salvar em PDF</button>
-            <button class="btn btn-secondary" onclick="limparFormulario()">Limpar tudo</button>
+            <button type="button" class="btn btn-success" onclick="window.print()">Imprimir / Salvar em PDF</button>
+            <button type="button" class="btn btn-secondary" onclick="limparFormulario()">Limpar tudo</button>
         </div>
 
         <div class="form-card no-print">
@@ -570,14 +569,10 @@ $dataAtualBr  = date('d / m / Y');
                     <input type="text" id="fornecedor" placeholder="Nome do fornecedor" oninput="atualizarPreview()">
                 </div>
 
-                
-
                 <div class="field span-2">
                     <label>Secretaria / Destino</label>
                     <input type="text" id="secretaria" placeholder="Ex: Secretaria Municipal de Saúde" oninput="atualizarPreview()">
                 </div>
-
-                
 
                 <div class="field span-4">
                     <label>Texto da observação da via do fornecedor</label>
@@ -586,14 +581,12 @@ $dataAtualBr  = date('d / m / Y');
             </div>
 
             <div class="items-box">
-
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
                     <h3 class="items-title" style="margin:0;">Itens da aquisição</h3>
-                    <button class="btn btn-primary" onclick="adicionarItem()">+ Adicionar item</button>
+                    <button type="button" class="btn btn-primary" onclick="adicionarItem()">+ Adicionar item</button>
                 </div>
 
                 <div id="itens-formulario"></div>
-
             </div>
         </div>
 
@@ -603,7 +596,9 @@ $dataAtualBr  = date('d / m / Y');
                 <div class="card-body">
                     <div class="ordem-header">
                         <div class="ordem-logo">
-                            <div class="ordem-logo-box"><img src="./assets/img/prefeitura.jpg" alt="LOGO / BRASÃO"></div>
+                            <div class="ordem-logo-box">
+                                <img src="./assets/img/prefeitura.jpg" alt="LOGO / BRASÃO">
+                            </div>
                         </div>
 
                         <div class="ordem-center">
@@ -629,7 +624,6 @@ $dataAtualBr  = date('d / m / Y');
                             <div id="pv_datahora_1" style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
                                 DATA: <?php echo $dataAtualBr; ?>
                             </div>
-                           
                         </div>
                     </div>
 
@@ -647,7 +641,6 @@ $dataAtualBr  = date('d / m / Y');
                                 <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
                                 <td id="pv_oficio_1" style="font-family: monospace; font-weight: 900; letter-spacing: 1px;">-</td>
                             </tr>
-                      
                         </table>
                     </div>
 
@@ -708,7 +701,9 @@ $dataAtualBr  = date('d / m / Y');
                 <div class="card-body">
                     <div class="ordem-header">
                         <div class="ordem-logo">
-                            <div class="ordem-logo-box"><img src="./assets/img/prefeitura.jpg" alt=""></div>
+                            <div class="ordem-logo-box">
+                                <img src="./assets/img/prefeitura.jpg" alt="LOGO / BRASÃO">
+                            </div>
                         </div>
 
                         <div class="ordem-center">
@@ -818,6 +813,7 @@ $dataAtualBr  = date('d / m / Y');
 
     <script>
         const DATA_ATUAL_BR = <?php echo json_encode($dataAtualBr); ?>;
+        const TEXTO_PADRAO_ENTREGA = 'No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.';
 
         let contadorItens = 0;
 
@@ -837,6 +833,13 @@ $dataAtualBr  = date('d / m / Y');
             return el ? el.value.trim() : '';
         }
 
+        function setText(id, texto) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = texto;
+            }
+        }
+
         function adicionarItem(item = {}) {
             contadorItens++;
 
@@ -846,30 +849,30 @@ $dataAtualBr  = date('d / m / Y');
             row.dataset.item = contadorItens;
 
             row.innerHTML = `
-            <div class="field">
-                <label>Unid.</label>
-                <input type="text" value="${item.unidade || 'UN'}" oninput="atualizarPreview()">
-            </div>
-            <div class="field">
-                <label>Qtd</label>
-                <input type="number" min="0" step="1" value="${item.quantidade || 1}" oninput="atualizarPreview()">
-            </div>
-            <div class="field">
-                <label>Descrição</label>
-                <input type="text" value="${item.produto || ''}" placeholder="Descrição do item" oninput="atualizarPreview()">
-            </div>
-            <div class="field">
-                <label>Vlr Unit.</label>
-                <input type="number" min="0" step="0.01" value="${item.valor_unitario || 0}" oninput="atualizarPreview()">
-            </div>
-            <div class="field">
-                <label>Total</label>
-                <input type="text" value="R$ 0,00" readonly>
-            </div>
-            <div class="field">
-                <button type="button" class="btn btn-danger" onclick="removerItem(this)">X</button>
-            </div>
-        `;
+                <div class="field">
+                    <label>Unid.</label>
+                    <input type="text" value="${item.unidade || 'UN'}" oninput="atualizarPreview()">
+                </div>
+                <div class="field">
+                    <label>Qtd</label>
+                    <input type="number" min="0" step="1" value="${item.quantidade || 1}" oninput="atualizarPreview()">
+                </div>
+                <div class="field">
+                    <label>Descrição</label>
+                    <input type="text" value="${item.produto || ''}" placeholder="Descrição do item" oninput="atualizarPreview()">
+                </div>
+                <div class="field">
+                    <label>Vlr Unit.</label>
+                    <input type="number" min="0" step="0.01" value="${item.valorUnitario || 0}" oninput="atualizarPreview()">
+                </div>
+                <div class="field">
+                    <label>Total</label>
+                    <input type="text" value="R$ 0,00" readonly>
+                </div>
+                <div class="field">
+                    <button type="button" class="btn btn-danger" onclick="removerItem(this)">X</button>
+                </div>
+            `;
 
             container.appendChild(row);
             atualizarPreview();
@@ -877,7 +880,9 @@ $dataAtualBr  = date('d / m / Y');
 
         function removerItem(botao) {
             const row = botao.closest('.item-row');
-            row.remove();
+            if (row) {
+                row.remove();
+            }
             atualizarPreview();
         }
 
@@ -887,6 +892,7 @@ $dataAtualBr  = date('d / m / Y');
 
             rows.forEach((row) => {
                 const inputs = row.querySelectorAll('input');
+
                 const unidade = (inputs[0].value || 'UN').trim();
                 const quantidade = parseFloat(inputs[1].value || 0);
                 const produto = (inputs[2].value || '').trim();
@@ -914,6 +920,10 @@ $dataAtualBr  = date('d / m / Y');
             const totalEl = document.getElementById(totalId);
             const itens = coletarItens();
 
+            if (!tbody || !totalEl) {
+                return;
+            }
+
             if (!itens.length) {
                 tbody.innerHTML = `<tr><td colspan="6" class="empty-note">Nenhum item adicionado.</td></tr>`;
                 totalEl.textContent = 'R$ 0,00';
@@ -925,16 +935,17 @@ $dataAtualBr  = date('d / m / Y');
 
             itens.forEach((item, index) => {
                 soma += item.total;
+
                 html += `
-                <tr>
-                    <td class="text-center" style="font-weight:700;">${String(index + 1).padStart(2, '0')}</td>
-                    <td class="text-center" style="font-weight:600;">${item.unidade || 'UN'}</td>
-                    <td class="text-center" style="font-weight:700;">${Number(item.quantidade).toLocaleString('pt-BR')}</td>
-                    <td style="font-weight:600;">${(item.produto || '-').toUpperCase()}</td>
-                    <td class="text-right">${moedaBR(item.valorUnitario)}</td>
-                    <td class="text-right" style="font-weight:700;">${moedaBR(item.total)}</td>
-                </tr>
-            `;
+                    <tr>
+                        <td class="text-center" style="font-weight:700;">${String(index + 1).padStart(2, '0')}</td>
+                        <td class="text-center" style="font-weight:600;">${item.unidade || 'UN'}</td>
+                        <td class="text-center" style="font-weight:700;">${Number(item.quantidade).toLocaleString('pt-BR')}</td>
+                        <td style="font-weight:600;">${(item.produto || '-').toUpperCase()}</td>
+                        <td class="text-right">${moedaBR(item.valorUnitario)}</td>
+                        <td class="text-right" style="font-weight:700;">${moedaBR(item.total)}</td>
+                    </tr>
+                `;
             });
 
             tbody.innerHTML = html;
@@ -943,35 +954,31 @@ $dataAtualBr  = date('d / m / Y');
 
         function atualizarPreview() {
             const numeroAq = valor('numero_aq') || '000';
-            const numeroCurto = numeroAq.replace('AQ-', '').replace('aq-', '');
+            const numeroCurto = numeroAq.replace(/^AQ-/i, '') || '000';
             const fornecedor = maiusculo(valor('fornecedor'));
             const secretaria = maiusculo(valor('secretaria'));
             const oficio = valor('oficio_num') || '-';
-            const textoEntrega = valor('texto_entrega') || '-';
+            const textoEntrega = valor('texto_entrega') || TEXTO_PADRAO_ENTREGA;
 
-            document.getElementById('pv_numero_1').textContent = numeroCurto;
-            document.getElementById('pv_numero_2').textContent = numeroCurto;
+            setText('pv_numero_1', numeroCurto);
+            setText('pv_numero_2', numeroCurto);
 
-            document.getElementById('pv_numero_full_1').textContent = numeroAq;
+            setText('pv_datahora_1', `DATA: ${DATA_ATUAL_BR}`);
+            setText('pv_datahora_2', `DATA: ${DATA_ATUAL_BR}`);
 
-            document.getElementById('pv_datahora_1').textContent = `DATA: ${DATA_ATUAL_BR}`;
-            document.getElementById('pv_datahora_2').textContent = `DATA: ${DATA_ATUAL_BR}`;
+            setText('pv_data_1', DATA_ATUAL_BR);
+            setText('pv_data_2', DATA_ATUAL_BR);
 
-            document.getElementById('pv_data_1').textContent = DATA_ATUAL_BR;
-            document.getElementById('pv_data_2').textContent = DATA_ATUAL_BR;
+            setText('pv_fornecedor_1', fornecedor);
+            setText('pv_fornecedor_2', fornecedor);
 
-            document.getElementById('pv_fornecedor_1').textContent = fornecedor;
-            document.getElementById('pv_fornecedor_2').textContent = fornecedor;
+            setText('pv_secretaria_1', secretaria);
+            setText('pv_secretaria_2', secretaria);
 
-            document.getElementById('pv_secretaria_1').textContent = secretaria;
-            document.getElementById('pv_secretaria_2').textContent = secretaria;
+            setText('pv_oficio_1', oficio);
+            setText('pv_oficio_2', oficio);
 
-            document.getElementById('pv_oficio_1').textContent = oficio;
-            document.getElementById('pv_oficio_2').textContent = oficio;
-
-
-
-            document.getElementById('pv_texto_entrega').textContent = textoEntrega;
+            setText('pv_texto_entrega', textoEntrega);
 
             renderItensPreview('preview_itens_1', 'preview_total_1');
             renderItensPreview('preview_itens_2', 'preview_total_2');
@@ -979,13 +986,22 @@ $dataAtualBr  = date('d / m / Y');
 
         function limparFormulario() {
             document.querySelectorAll('input, textarea').forEach((el) => {
-                if (el.type === 'button' || el.type === 'submit' || el.readOnly) return;
+                if (el.type === 'button' || el.type === 'submit' || el.readOnly) {
+                    return;
+                }
                 el.value = '';
             });
 
-            document.getElementById('texto_entrega').value = 'No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável. Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.';
+            const campoTextoEntrega = document.getElementById('texto_entrega');
+            if (campoTextoEntrega) {
+                campoTextoEntrega.value = TEXTO_PADRAO_ENTREGA;
+            }
 
-            document.getElementById('itens-formulario').innerHTML = '';
+            const itens = document.getElementById('itens-formulario');
+            if (itens) {
+                itens.innerHTML = '';
+            }
+
             contadorItens = 0;
             adicionarItem();
             atualizarPreview();

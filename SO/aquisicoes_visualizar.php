@@ -431,7 +431,7 @@ include 'views/layout/header.php';
                         <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
                         <td style="font-weight: 700;"><?php echo strtoupper($aq['fornecedor']); ?></td>
                         <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                        <td style="width: 20%; font-weight: 700;"><?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
+                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
                     </tr>
                     <tr>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
@@ -451,9 +451,9 @@ include 'views/layout/header.php';
                             <th style="text-align: center; width: 40px;">Item</th>
                             <th style="text-align: center; width: 50px;">Unid.</th>
                             <th style="text-align: center; width: 60px;">Qtd</th>
-                            <th style="text-align: left;">Especificação Completa</th>
-                            <th style="text-align: right; width: 110px;">Preço Unitário</th>
-                            <th style="text-align: right; width: 110px;">Valor Total</th>
+                            <th style="text-align: center;">Especificação Completa</th>
+                            <th style="text-align: center; width: 110px;">Preço Unitário</th>
+                            <th style="text-align: center; width: 110px;">Valor Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -464,8 +464,8 @@ include 'views/layout/header.php';
                                 <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
                                 <td style="text-align: center; font-weight: 700;"><?php echo number_format($item['quantidade'], 0, ',', '.'); ?></td>
                                 <td style="font-weight: 600;"><?php echo strtoupper($item['produto']); ?></td>
-                                <td style="text-align: right;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
-                                <td style="text-align: right; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
+                                <td style="text-align: center;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
+                                <td style="text-align: center; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -509,7 +509,7 @@ include 'views/layout/header.php';
                 <div class="ordem-center">
                     <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL DE COARI</h1>
                     <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Fornecimento</h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 00.000.000/0001-00</div>
+                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 04.262.432/0001-21</div>
                 </div>
 
                 <div class="ordem-right">
@@ -530,7 +530,7 @@ include 'views/layout/header.php';
                         <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
                         <td style="font-weight: 700;"><?php echo strtoupper($aq['fornecedor']); ?></td>
                         <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                        <td style="width: 20%; font-weight: 700;"><?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
+                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
                     </tr>
                     <tr>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
@@ -550,9 +550,9 @@ include 'views/layout/header.php';
                             <th style="text-align: center; width: 40px;">Item</th>
                             <th style="text-align: center; width: 50px;">Unid.</th>
                             <th style="text-align: center; width: 60px;">Qtd</th>
-                            <th style="text-align: left;">Especificação Completa</th>
-                            <th style="text-align: right; width: 110px;">Preço Unitário</th>
-                            <th style="text-align: right; width: 110px;">Valor Total</th>
+                            <th style="text-align: center;">Especificação Completa</th>
+                            <th style="text-align: center; width: 110px;">Preço Unitário</th>
+                            <th style="text-align: center; width: 110px;">Valor Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -563,8 +563,8 @@ include 'views/layout/header.php';
                                 <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
                                 <td style="text-align: center; font-weight: 700;"><?php echo number_format($item['quantidade'], 0, ',', '.'); ?></td>
                                 <td style="font-weight: 600;"><?php echo strtoupper($item['produto']); ?></td>
-                                <td style="text-align: right;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
-                                <td style="text-align: right; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
+                                <td style="text-align: center;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
+                                <td style="text-align: center; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
