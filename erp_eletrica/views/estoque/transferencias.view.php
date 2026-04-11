@@ -142,7 +142,7 @@
                                                     <?= number_format($itemReq['disp_matriz'], 2, ',', '.') ?>
                                                 </td>
                                                 <td>
-                                                    <input type="number" step="0.01" min="0" max="<?= $itemReq['disp_matriz'] ?>"
+                                                    <input type="number" step="1" min="0" max="<?= $itemReq['disp_matriz'] ?>"
                                                         name="qtd_enviada[<?= $itemReq['produto_id'] ?>]"
                                                         value="<?= $itemReq['quantidade_solicitada'] > $itemReq['disp_matriz'] ? $itemReq['disp_matriz'] : $itemReq['quantidade_solicitada'] ?>"
                                                         class="form-control form-control-sm text-center">
@@ -217,7 +217,7 @@
                                 </td>
                                 <td><span class="badge bg-secondary"><?= number_format($pm['qtd_matriz'], 2, ',', '.') ?> UN</span></td>
                                 <td>
-                                    <input type="number" step="0.01" min="0" max="<?= $pm['qtd_matriz'] ?>"
+                                    <input type="number" step="1" min="0" max="<?= $pm['qtd_matriz'] ?>"
                                         name="itens[<?= $pm['id'] ?>][quantidade]"
                                         class="qty-input form-control-sm" placeholder="0" disabled>
                                 </td>
@@ -372,7 +372,7 @@
                                     <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?></div>
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" min="0"
+                                    <input type="number" step="1" min="0"
                                         name="itens[<?= $pm['id'] ?>][quantidade]"
                                         class="qty-input form-control-sm" placeholder="0" disabled>
                                 </td>
@@ -646,7 +646,7 @@ function abrirModalRelato(id, codigo) {
                                 <div class="row g-2 align-items-center">
                                     <div class="col-4">
                                         <label class="extra-small text-muted">Qtd Defeito</label>
-                                        <input type="number" step="0.01" min="0" max="${item.quantidade_enviada}" name="ocorrencias[${item.produto_id}][quantidade]" class="form-control form-control-sm" placeholder="0.00">
+                                        <input type="number" step="1" min="0" max="${item.quantidade_enviada}" name="ocorrencias[${item.produto_id}][quantidade]" class="form-control form-control-sm" placeholder="0.00">
                                     </div>
                                     <div class="col-8">
                                         <label class="extra-small text-muted">Motivo</label>
