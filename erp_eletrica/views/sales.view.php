@@ -143,7 +143,7 @@
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_boleto">
-                                <i class="fas fa-barcode me-2 text-secondary"></i> Boleto
+                                <i class="fas fa-barcode me-2 text-secondary"></i> Boleto (F11)
                             </label>
                         </div>
                         <div class="col-6">
@@ -1348,6 +1348,10 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F8') {
         e.preventDefault();
         document.getElementById('pay_fiado').click();
+    }
+    if (e.key === 'F11') {
+        e.preventDefault();
+        document.getElementById('pay_boleto').click();
     }
     
     // Pix: Ctrl+F1
