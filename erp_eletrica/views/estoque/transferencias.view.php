@@ -415,40 +415,6 @@
                 <?php endif; ?>
             <?php endif; ?>
 
-            <!-- Modal Relatar Problema -->
-            <div class="modal fade" id="modalRelato" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <form action="transferencias.php?action=relatar_problema" method="POST">
-                            <div class="modal-header bg-danger text-white">
-                                <h6 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Relatar Problema na Entrega</h6>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                <input type="hidden" name="transferencia_id" id="relato_id">
-                                <p class="small text-muted mb-3">
-                                    Identificou falta de produtos ou avarias no pedido <strong id="relato_codigo"></strong>? 
-                                    Descreva os detalhes abaixo para que a Matriz seja notificada.
-                                </p>
-                                <textarea name="mensagem" class="form-control" rows="4" placeholder="Ex: Faltaram 2 unidades do produto X. A caixa chegou molhada..." required></textarea>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="submit" class="btn btn-danger btn-sm fw-bold px-3">Enviar Relato à Matriz</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <script>
-                function abrirModalRelato(id, codigo) {
-                    document.getElementById('relato_id').value = id;
-                    document.getElementById('relato_codigo').innerText = codigo;
-                    new bootstrap.Modal(document.getElementById('modalRelato')).show();
-                }
-            </script>
-
             <?php if ($aba == 'historico_recebimentos'): ?>
                 <?php if (empty($historico)): ?>
                     <div class="text-center text-muted py-5">
@@ -614,4 +580,44 @@ document.addEventListener('DOMContentLoaded', () => {
     initB2BTable('tbodyReq', 'searchReq', 'paginationReq', 'paginfoReq', 'noResultsReq', 6);
     initCart('formReq');
 });
+
+let reportModalInstance = null;
+function abrirModalRelato(id, codigo) {
+    document.getElementById('relato_id').value = id;
+    document.getElementById('relato_codigo').innerText = codigo;
+    
+    const modalEl = document.getElementById('modalRelato');
+    if (!reportModalInstance) {
+        reportModalInstance = new bootstrap.Modal(modalEl);
+    }
+    reportModalInstance.show();
+}
 </script>
+
+<?php if (!$isMatriz): ?>
+<!-- Modal Relatar Problema (Global para Filial) -->
+<div class="modal fade" id="modalRelato" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <form action="transferencias.php?action=relatar_problema" method="POST">
+                <div class="modal-header bg-danger text-white border-0">
+                    <h6 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Relatar Problema na Entrega</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" name="transferencia_id" id="relato_id">
+                    <p class="small text-muted mb-3">
+                        Identificou falta de produtos ou avarias no pedido <strong id="relato_codigo" class="text-dark"></strong>? 
+                        Descreva os detalhes abaixo para que a Matriz seja notificada.
+                    </p>
+                    <textarea name="mensagem" class="form-control border-light-subtle bg-light" rows="4" placeholder="Ex: Faltaram 2 unidades do produto X. A caixa chegou molhada..." required style="resize: none;"></textarea>
+                </div>
+                <div class="modal-footer border-0 p-3 pt-0">
+                    <button type="button" class="btn btn-light btn-sm fw-bold text-muted px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-4">Enviar Relato à Matriz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
