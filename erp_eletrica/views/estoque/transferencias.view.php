@@ -278,12 +278,10 @@
                                                 <strong class="text-danger"><i class="fas fa-comment-dots me-2"></i>Relatos do Recebimento:</strong>
                                             </div>
                                             <?php if (!$he['problema_resolvido']): ?>
-                                                <form action="transferencias.php?action=resolver_problema" method="POST" class="d-inline">
-                                                    <input type="hidden" name="transferencia_id" value="<?= $he['id'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-outline-success py-0" style="font-size: 0.7rem">
-                                                        <i class="fas fa-check me-1"></i>Marcar como Resolvido
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-sm btn-outline-success py-0" style="font-size: 0.7rem"
+                                                        onclick="abrirModalResolucao(<?= $he['id'] ?>, '<?= htmlspecialchars($he['codigo_transferencia']) ?>')">
+                                                    <i class="fas fa-check me-1"></i>Marcar como Resolvido
+                                                </button>
                                             <?php else: ?>
                                                 <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i>Resolvido</span>
                                             <?php endif; ?>
@@ -678,6 +676,23 @@ function abrirModalRelato(id, codigo) {
     reportModalInstance.show();
 }
 
+let resolucaoModalInstance = null;
+function abrirModalResolucao(id, codigo) {
+    document.getElementById('res_transf_id').value = id;
+    document.getElementById('res_codigo').innerText = codigo;
+    
+    const modalEl = document.getElementById('modalConfirmarResolucao');
+    if (!resolucaoModalInstance) {
+        resolucaoModalInstance = new bootstrap.Modal(modalEl);
+    }
+    resolucaoModalInstance.show();
+}
+
+function setFluxoResolucao(fluxo) {
+    document.getElementById('res_fluxo').value = fluxo;
+    document.getElementById('formResolucao').submit();
+}
+
 function toggleItemRelato(chk, id) {
     document.getElementById(`campos_oc_${id}`).classList.toggle('d-none', !chk.checked);
 }
@@ -797,6 +812,44 @@ function abrirResumoRecebimento(id, codigo, temProblema) {
                 <div class="modal-footer border-0 p-3 pt-0">
                     <button type="button" class="btn btn-light btn-sm fw-bold text-muted px-3" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-danger btn-sm fw-bold px-4">Enviar Relato à Matriz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($isMatriz): ?>
+<!-- Modal Decisão de Resolução (Apenas Matriz) -->
+<div class="modal fade" id="modalConfirmarResolucao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <form action="transferencias.php?action=resolver_problema" method="POST" id="formResolucao">
+                <div class="modal-header bg-success text-white border-0">
+                    <h6 class="modal-title fw-bold"><i class="fas fa-check-circle me-2"></i>Resolver Ocorrência</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <input type="hidden" name="transferencia_id" id="res_transf_id">
+                    <input type="hidden" name="fluxo" id="res_fluxo" value="resolver">
+                    
+                    <div class="mb-3">
+                        <i class="fas fa-hands-helping fa-3x text-success opacity-25"></i>
+                    </div>
+                    <h6 class="fw-bold">Como deseja resolver o pedido <span id="res_codigo" class="text-primary"></span>?</h6>
+                    <p class="small text-muted mb-4">Escolha se deseja enviar os itens faltantes/danificados novamente ou apenas encerrar o chamado.</p>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary fw-bold py-2" onclick="setFluxoResolucao('repor')">
+                            <i class="fas fa-truck-loading me-2"></i>Repor Produtos (Criar novo despacho REP)
+                        </button>
+                        <button type="button" class="btn btn-outline-success fw-bold py-2" onclick="setFluxoResolucao('resolver')">
+                            <i class="fas fa-check me-2"></i>Apenas Marcar como Resolvido
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-3 pt-0 justify-content-center">
+                    <button type="button" class="btn btn-link btn-sm text-muted text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
                 </div>
             </form>
         </div>

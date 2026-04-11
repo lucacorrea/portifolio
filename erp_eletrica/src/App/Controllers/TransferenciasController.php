@@ -477,16 +477,66 @@ class TransferenciasController extends BaseController {
         }
 
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
+        $fluxo     = $_POST['fluxo'] ?? 'resolver'; // 'resolver' ou 'repor'
 
         try {
+            $this->pdo->beginTransaction();
+
+            // 1. Marca como resolvido no mestre original
             $stmt = $this->pdo->prepare(
                 "UPDATE erp_transferencias SET problema_resolvido = 1 WHERE id = ? AND origem_filial_id = ?"
             );
             $stmt->execute([$transf_id, $this->matrizId]);
 
-            setFlash('success', 'Ocorrência marcada como resolvida.');
+            // 2. Se for para repor, cria uma nova transferência
+            if ($fluxo === 'repor') {
+                // Busca dados da transferência original para saber o destino
+                $orig = $this->pdo->prepare("SELECT destino_filial_id, observacoes FROM erp_transferencias WHERE id = ?");
+                $orig->execute([$transf_id]);
+                $dadosOrig = $orig->fetch(\PDO::FETCH_ASSOC);
+
+                // Busca as ocorrências registradas
+                $ocs = $this->pdo->prepare("SELECT * FROM erp_transferencias_ocorrencias WHERE transferencia_id = ?");
+                $ocs->execute([$transf_id]);
+                $itensComProblema = $ocs->fetchAll(\PDO::FETCH_ASSOC);
+
+                if (!empty($itensComProblema)) {
+                    $codigo = 'REP-' . date('YmdHis') . '-' . rand(100, 999);
+                    $mid = $this->matrizId;
+
+                    $stmtNew = $this->pdo->prepare(
+                        "INSERT INTO erp_transferencias (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio)
+                         VALUES (?, 'transferencia', ?, ?, 'em_transito', ?, ?, NOW())"
+                    );
+                    $obsNovo = "Reposição automática do pedido #" . $transf_id;
+                    $stmtNew->execute([$codigo, $mid, $dadosOrig['destino_filial_id'], $obsNovo, $_SESSION['usuario_id'] ?? 0]);
+                    $new_id = $this->pdo->lastInsertId();
+
+                    $stmtItem    = $this->pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
+                    $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
+                    $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
+
+                    foreach ($itensComProblema as $it) {
+                        $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
+                        $pd->execute([$it['produto_id']]);
+                        $custo = $pd->fetchColumn() ?: 0;
+
+                        $stmtItem->execute([$new_id, $it['produto_id'], $it['quantidade_problema'], $it['quantidade_problema'], $custo]);
+                        
+                        try {
+                            $stmtDec->execute([$it['quantidade_problema'], $it['produto_id']]);
+                        } catch (\Exception $ex) {
+                            $stmtDecGlob->execute([$it['quantidade_problema'], $it['produto_id']]);
+                        }
+                    }
+                }
+            }
+
+            $this->pdo->commit();
+            setFlash('success', ($fluxo === 'repor') ? 'Problema resolvido e nova reposição despacho com sucesso!' : 'Ocorrência marcada como resolvida.');
             $this->redirect('transferencias.php?aba=historico_envios');
         } catch (\Exception $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             $this->redirect('transferencias.php?aba=historico_envios&erro=' . urlencode($e->getMessage()));
         }
     }
