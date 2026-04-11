@@ -273,9 +273,7 @@
                                     <div class="p-2 small">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
-                                                <strong class="text-danger"><i class="fas fa-comment-dots me-2"></i>Relato da Filial:</strong>
-                                                <span class="text-dark">"<?= htmlspecialchars($he['relato_problema']) ?>"</span>
-                                                <span class="text-muted ms-2">(em <?= date('d/m/Y H:i', strtotime($he['data_relato'])) ?>)</span>
+                                                <strong class="text-danger"><i class="fas fa-comment-dots me-2"></i>Relatos do Recebimento:</strong>
                                             </div>
                                             <?php if (!$he['problema_resolvido']): ?>
                                                 <form action="transferencias.php?action=resolver_problema" method="POST" class="d-inline">
@@ -286,6 +284,32 @@
                                                 </form>
                                             <?php else: ?>
                                                 <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i>Resolvido</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="mt-2 ps-4">
+                                            <?php
+                                            $ocs = $pdo->prepare("SELECT oc.*, p.nome FROM erp_transferencias_ocorrencias oc JOIN produtos p ON oc.produto_id = p.id WHERE oc.transferencia_id = ?");
+                                            $ocs->execute([$he['id']]);
+                                            $listaOc = $ocs->fetchAll();
+                                            if ($listaOc):
+                                            ?>
+                                                <ul class="list-unstyled mb-2">
+                                                    <?php foreach ($listaOc as $o): ?>
+                                                        <li class="mb-1">
+                                                            <span class="badge bg-danger bg-opacity-75 me-1"><?= number_format($o['quantidade_problema'], 2, ',', '.') ?> UN</span>
+                                                            <strong><?= htmlspecialchars($o['nome']) ?></strong>: 
+                                                            <span class="text-muted italic"><?= strtoupper($o['motivo']) ?></span> - 
+                                                            <small>"<?= htmlspecialchars($o['descricao']) ?>"</small>
+                                                        </li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            <?php endif; ?>
+
+                                            <?php if ($he['relato_problema']): ?>
+                                                <div class="alert alert-light border p-2 mb-0 extra-small">
+                                                    <strong>Obs. Geral:</strong> "<?= htmlspecialchars($he['relato_problema']) ?>"
+                                                    <span class="text-muted ms-2">(em <?= date('d/m/Y H:i', strtotime($he['data_relato'])) ?>)</span>
+                                                </div>
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -586,11 +610,62 @@ function abrirModalRelato(id, codigo) {
     document.getElementById('relato_id').value = id;
     document.getElementById('relato_codigo').innerText = codigo;
     
+    const container = document.getElementById('itensRelatoContainer');
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-danger" role="status"></div><p class="small text-muted mt-2">Carregando itens...</p></div>';
+
+    fetch(`transferencias.php?action=get_items&id=${id}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                container.innerHTML = '';
+                data.items.forEach(item => {
+                    const html = `
+                        <div class="item-relato-row border-bottom py-2 mb-2">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" name="ocorrencias[${item.produto_id}][selecionado]" value="1" id="chk_${item.produto_id}" onchange="toggleItemRelato(this, ${item.produto_id})">
+                                    <label class="form-check-label fw-bold small" for="chk_${item.produto_id}">${item.nome}</label>
+                                    <div class="extra-small text-muted">SKU: ${item.codigo} | Enviado: ${parseFloat(item.quantidade_enviada).toFixed(2)} UN</div>
+                                </div>
+                            </div>
+                            <div id="campos_oc_${item.produto_id}" class="d-none ps-4">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-4">
+                                        <label class="extra-small text-muted">Qtd Defeito</label>
+                                        <input type="number" step="0.01" min="0" max="${item.quantidade_enviada}" name="ocorrencias[${item.produto_id}][quantidade]" class="form-control form-control-sm" placeholder="0.00">
+                                    </div>
+                                    <div class="col-8">
+                                        <label class="extra-small text-muted">Motivo</label>
+                                        <select name="ocorrencias[${item.produto_id}][motivo]" class="form-select form-select-sm">
+                                            <option value="faltante">Faltante / Não Entregue</option>
+                                            <option value="quebrado">Quebrado / Avariado</option>
+                                            <option value="errado">Produto Errado</option>
+                                            <option value="outro">Outro Imprevisto</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 mt-1">
+                                        <input type="text" name="ocorrencias[${item.produto_id}][descricao]" class="form-control form-control-sm" placeholder="Observação curta sobre este item...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+            } else {
+                container.innerHTML = '<div class="alert alert-warning small">Não foi possível carregar os itens. Tente digitar no campo abaixo.</div>';
+            }
+        });
+
     const modalEl = document.getElementById('modalRelato');
     if (!reportModalInstance) {
         reportModalInstance = new bootstrap.Modal(modalEl);
     }
     reportModalInstance.show();
+}
+
+function toggleItemRelato(chk, id) {
+    document.getElementById(`campos_oc_${id}`).classList.toggle('d-none', !chk.checked);
 }
 </script>
 
@@ -604,13 +679,19 @@ function abrirModalRelato(id, codigo) {
                     <h6 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Relatar Problema na Entrega</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-4">
+                <div class="modal-body p-3">
                     <input type="hidden" name="transferencia_id" id="relato_id">
-                    <p class="small text-muted mb-3">
-                        Identificou falta de produtos ou avarias no pedido <strong id="relato_codigo" class="text-dark"></strong>? 
-                        Descreva os detalhes abaixo para que a Matriz seja notificada.
+                    <p class="small text-muted mb-3 border-bottom pb-2">
+                        Relatando problemas para o pedido <strong id="relato_codigo" class="text-dark"></strong>.
                     </p>
-                    <textarea name="mensagem" class="form-control border-light-subtle bg-light" rows="4" placeholder="Ex: Faltaram 2 unidades do produto X. A caixa chegou molhada..." required style="resize: none;"></textarea>
+                    
+                    <label class="form-label fw-bold small text-danger"><i class="fas fa-list-check me-2"></i>Selecione os itens afetados:</label>
+                    <div id="itensRelatoContainer" style="max-height: 250px; overflow-y: auto; padding-right: 5px;" class="mb-3 border rounded p-2 bg-white">
+                        <!-- Itens via JS -->
+                    </div>
+
+                    <label class="form-label fw-bold small"><i class="fas fa-comment-dots me-2"></i>Informações Adicionais</label>
+                    <textarea name="mensagem" class="form-control border-light-subtle bg-light" rows="2" placeholder="Descreva outros detalhes... " style="resize: none;"></textarea>
                 </div>
                 <div class="modal-footer border-0 p-3 pt-0">
                     <button type="button" class="btn btn-light btn-sm fw-bold text-muted px-3" data-bs-dismiss="modal">Cancelar</button>
