@@ -12,9 +12,42 @@ class CaixaController extends BaseController {
         $cashierModel = new Cashier();
         $filialId = $_SESSION['filial_id'];
         
-        // Se for Master, pode ver todos. Se não, apenas da filial.
-        // O BaseModel já lida com o filtro de filial_id automaticamente se não for Master.
-        $caixas = $cashierModel->all("data_abertura DESC");
+        // Paginação e Query manual
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $isMaster = ($_SESSION['usuario_nivel'] ?? '') === 'master';
+        
+        $where = "1=1";
+        $params = [];
+        if (!$isMaster) {
+            $where .= " AND c.filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 15;
+        $offset = ($page - 1) * $perPage;
+
+        $sqlTotal = "SELECT COUNT(*) FROM caixas c WHERE $where";
+        $stmtTotal = $db->prepare($sqlTotal);
+        $stmtTotal->execute($params);
+        $totalItems = (int)$stmtTotal->fetchColumn();
+        $totalPages = ceil($totalItems / $perPage);
+
+        $sqlCaixas = "
+            SELECT c.*, 
+                   u.nome as operador_nome,
+                   f.nome as filial_nome,
+                   f.principal as filial_principal
+            FROM caixas c
+            LEFT JOIN usuarios u ON c.operador_id = u.id
+            LEFT JOIN filiais f ON c.filial_id = f.id
+            WHERE $where
+            ORDER BY c.data_abertura DESC
+            LIMIT $perPage OFFSET $offset
+        ";
+        $stmtCaixas = $db->prepare($sqlCaixas);
+        $stmtCaixas->execute($params);
+        $caixas = $stmtCaixas->fetchAll();
 
         $caixaAberto = $cashierModel->getOpenForFilial($filialId);
         
@@ -30,6 +63,12 @@ class CaixaController extends BaseController {
             'caixaAberto' => $caixaAberto,
             'summary' => $summary,
             'detailedSummary' => $detailedSummary,
+            'pagination' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'totalPages' => $totalPages,
+                'totalItems' => $totalItems
+            ],
             'title' => 'Controle de Caixa',
             'pageTitle' => 'Gestão de Caixa'
         ]);

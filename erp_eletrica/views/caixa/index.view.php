@@ -131,8 +131,11 @@
                         <?php foreach ($caixas as $c): ?>
                         <tr>
                             <td class="ps-4">
-                                <span class="fw-bold"><?= $c['operador_nome'] ?? 'Operador' ?></span>
-                                <div class="text-muted small">Filial #<?= $c['filial_id'] ?></div>
+                                <span class="fw-bold"><?= htmlspecialchars($c['operador_nome'] ?? 'Operador') ?></span>
+                                <div class="text-muted small">
+                                    <i class="fas fa-store-alt me-1 opacity-50"></i>
+                                    <?= $c['filial_principal'] ? 'MATRIZ' : htmlspecialchars($c['filial_nome'] ?? 'Filial #' . $c['filial_id']) ?>
+                                </div>
                             </td>
                             <td><?= date('d/m/Y H:i', strtotime($c['data_abertura'])) ?></td>
                             <td><?= $c['data_fechamento'] ? date('d/m/Y H:i', strtotime($c['data_fechamento'])) : '-' ?></td>
@@ -152,6 +155,36 @@
                 </table>
             </div>
         </div>
+        
+        <!-- Pagination UI -->
+        <?php if (isset($pagination) && $pagination['totalPages'] > 1): ?>
+        <div class="card-footer bg-white py-3 border-0 rounded-bottom d-flex align-items-center justify-content-between">
+            <span class="text-muted small">
+                Mostrando <strong><?= count($caixas) ?></strong> de <strong><?= $pagination['totalItems'] ?></strong> registros
+            </span>
+            <nav aria-label="Navegação da listagem">
+                <ul class="pagination pagination-sm mb-0 shadow-sm">
+                    <li class="page-item <?= ($pagination['page'] <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=1"><i class="fas fa-angle-double-left"></i></a>
+                    </li>
+                    <li class="page-item <?= ($pagination['page'] <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=<?= max(1, $pagination['page'] - 1) ?>"><i class="fas fa-angle-left"></i></a>
+                    </li>
+                    
+                    <li class="page-item active">
+                        <span class="page-link px-3 fw-bold bg-primary border-primary text-white"><?= $pagination['page'] ?> / <?= $pagination['totalPages'] ?></span>
+                    </li>
+
+                    <li class="page-item <?= ($pagination['page'] >= $pagination['totalPages']) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=<?= min($pagination['totalPages'], $pagination['page'] + 1) ?>"><i class="fas fa-angle-right"></i></a>
+                    </li>
+                    <li class="page-item <?= ($pagination['page'] >= $pagination['totalPages']) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=<?= $pagination['totalPages'] ?>"><i class="fas fa-angle-double-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
