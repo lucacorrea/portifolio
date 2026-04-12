@@ -190,26 +190,26 @@ class Product extends BaseModel {
 
         if (!empty($filters['status'])) {
             if ($filters['status'] === 'CRITICO') {
-                $where .= " AND COALESCE(ef.quantidade, 0) <= COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
+                $where .= " AND ef.quantidade <= COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
             } elseif ($filters['status'] === 'BAIXO') {
-                $where .= " AND COALESCE(ef.quantidade, 0) > COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.quantidade, 0) <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
+                $where .= " AND ef.quantidade > COALESCE(ef.estoque_minimo, p.estoque_minimo) AND ef.quantidade <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
             } elseif ($filters['status'] === 'OK') {
-                $where .= " AND (COALESCE(ef.quantidade, 0) > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)";
+                $where .= " AND (ef.quantidade > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)";
             }
         }
 
-        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? $where");
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p INNER JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? $where");
         $totalStmt->execute($params);
         $total = $totalStmt->fetchColumn();
 
         $pages = ceil($total / $perPage);
         $offset = ($page - 1) * $perPage;
 
-        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual 
+        $sql = "SELECT p.*, ef.quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual 
                 FROM {$this->table} p 
-                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? 
+                INNER JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? 
                 $where 
-                ORDER BY (COALESCE(ef.quantidade, 0) - COALESCE(ef.estoque_minimo, p.estoque_minimo)) ASC 
+                ORDER BY (ef.quantidade - COALESCE(ef.estoque_minimo, p.estoque_minimo)) ASC 
                 LIMIT $perPage OFFSET $offset";
         
         $stmt = $this->db->prepare($sql);
