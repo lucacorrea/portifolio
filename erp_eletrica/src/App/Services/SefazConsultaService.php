@@ -292,10 +292,12 @@ class SefazConsultaService extends BaseService {
     }
 
     public function salvarNotasCache($filialId, $documentos) {
+        $saved = 0;
+        $skipped = 0;
         foreach ($documentos as $doc) {
             try {
                 $stmt = $this->db->prepare("
-                    INSERT INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
+                    INSERT IGNORE INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
                 ");
                 $stmt->execute([
@@ -311,15 +313,17 @@ class SefazConsultaService extends BaseService {
                 $lastId = $this->db->lastInsertId();
                 if ($lastId) {
                     $this->logAction('Nota SEFAZ Listada', 'nfe_importadas', $lastId, null, $doc['chave']);
+                    $saved++;
+                } else {
+                    $skipped++; // Duplicate
                 }
             } catch (\Exception $e) {
-                // Se o erro não for de duplicidade (SQLSTATE 23000), logamos para debug
-                if ($e->getCode() != '23000') {
-                    error_log("Erro ao salvar nota cache SEFAZ: " . $e->getMessage());
-                }
+                error_log("SEFAZ SAVE ERROR for chave {$doc['chave']}: " . $e->getMessage());
+                $skipped++;
                 continue;
             }
         }
+        error_log("SEFAZ salvarNotasCache: filial=$filialId, total=" . count($documentos) . ", saved=$saved, skipped=$skipped");
     }
 
 }

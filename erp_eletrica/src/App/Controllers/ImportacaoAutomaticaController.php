@@ -87,10 +87,15 @@ class ImportacaoAutomaticaController extends BaseController {
             
             $count = count($resultado['documentos'] ?? []);
             
+            // Contar registros efetivamente no banco
+            $stmtCount = $db->prepare("SELECT COUNT(*) FROM nfe_importadas WHERE filial_id = ?");
+            $stmtCount->execute([$filialId]);
+            $totalNoBanco = $stmtCount->fetchColumn();
+            
             $hasMore = ($resultado['ultNSU'] < $resultado['maxNSU']);
             $message = $count > 0 
-                ? "Sincronização concluída. $count novos registros foram processados." 
-                : "Nenhuma nota nova encontrada na SEFAZ para este período.";
+                ? "Sincronização concluída. $count novos registros processados. Total no banco: $totalNoBanco notas." 
+                : "Nenhuma nota nova encontrada na SEFAZ para este período. Total no banco: $totalNoBanco notas.";
 
             if ($hasMore) {
                 $message .= " Atenção: Ainda existem mais notas disponíveis. Clique em 'Atualizar' novamente.";
@@ -103,6 +108,7 @@ class ImportacaoAutomaticaController extends BaseController {
             echo json_encode([
                 'success' => true, 
                 'count' => $count, 
+                'totalBanco' => (int)$totalNoBanco,
                 'hasMore' => $hasMore,
                 'message' => $message
             ]);
