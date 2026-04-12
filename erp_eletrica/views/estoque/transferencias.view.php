@@ -627,6 +627,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let reportModalInstance = null;
 function abrirModalRelato(id, codigo) {
+    // Esconde o modal de processamento se estiver aberto
+    const procModalEl = document.getElementById('modalProcessarRecebimento');
+    if (procModalEl) {
+        const procInstance = bootstrap.Modal.getInstance(procModalEl);
+        if (procInstance) procInstance.hide();
+    }
+
     document.getElementById('relato_id').value = id;
     document.getElementById('relato_codigo').innerText = codigo;
     
@@ -707,6 +714,13 @@ function toggleItemRelato(chk, id) {
 
 let resumoModalInstance = null;
 function abrirResumoRecebimento(id, codigo, temProblema) {
+    // Esconde o modal de processamento se estiver aberto
+    const procModalEl = document.getElementById('modalProcessarRecebimento');
+    if (procModalEl) {
+        const procInstance = bootstrap.Modal.getInstance(procModalEl);
+        if (procInstance) procInstance.hide();
+    }
+
     document.getElementById('resumo_transf_id').value = id;
     document.getElementById('resumo_codigo').innerText = codigo;
     
