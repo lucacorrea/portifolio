@@ -67,6 +67,7 @@ function mapTPag($t)
 /* =========================== Carrega XML procNFe ========================== */
 $base = __DIR__ . DIRECTORY_SEPARATOR;
 $chave = null;
+$error = null;
 
 if (!empty($_GET['arq'])) {
   $file = $base . basename((string)$_GET['arq']);
@@ -82,15 +83,51 @@ if (!empty($_GET['arq'])) {
     if ($chave) {
       $file = $base . 'procNFCe_' . $chave . '.xml';
     } else {
-      die("Não foi encontrada nenhuma nota fiscal autorizada para a venda #{$vendaIdUrl}.");
+      $error = "Nenhuma nota fiscal autorizada foi encontrada para a venda #{$vendaIdUrl}.";
     }
   } catch (Throwable $e) {
-    die("Erro ao buscar dados da nota: " . $e->getMessage());
+    $error = "Erro ao buscar dados da nota: " . $e->getMessage();
   }
 } else {
-  die('Informe ?chave=... ou ?venda_id=... ou ?arq=procNFCe_....xml');
+  $error = "Parâmetros de visualização ausentes.";
 }
-if (!is_file($file)) die('Arquivo não encontrado: ' . htmlspecialchars($file));
+
+if ($error || !isset($file) || !is_file($file)) {
+    if (!$error) $error = "O arquivo XML da nota não foi localizado no servidor.";
+    ?>
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8"><title>Nota não encontrada</title>
+        <style>
+            body { font-family: sans-serif; background: #f4f7f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+            .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; max-width: 450px; }
+            h2 { color: #d32f2f; margin-top: 0; }
+            p { color: #555; line-height: 1.5; }
+            .actions { margin-top: 30px; display: flex; gap: 10px; justify-content: center; }
+            .btn { text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+            .btn-primary { background: #2b4c7d; color: white; border: none; }
+            .btn-secondary { background: #e0e0e0; color: #333; border: none; }
+            .btn:hover { filter: brightness(1.1); }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>⚠️ Nota não localizada</h2>
+            <p><?php echo htmlspecialchars($error); ?></p>
+            <p>Apesar da venda ser fiscal, o documento oficial não pôde ser gerado ou encontrado. Você deseja imprimir o recibo comum em vez disso?</p>
+            <div class="actions">
+                <a href="javascript:window.close()" class="btn btn-secondary">Fechar</a>
+                <?php if ($vendaIdUrl > 0): ?>
+                    <a href="../recibo_venda.php?id=<?php echo $vendaIdUrl; ?>" class="btn btn-primary">Imprimir Recibo</a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 
 $xml = file_get_contents($file);
 $dom = new DOMDocument();
