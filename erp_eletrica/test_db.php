@@ -3,51 +3,26 @@ require 'config.php';
 $db = \App\Config\Database::getInstance()->getConnection();
 
 echo "<pre>";
-echo "<strong>--- TESTE DE INSERÇÃO FINAL ---</strong>\n\n";
+echo "<strong>--- DIAGNÓSTICO DE VENDAS (312 a 318) ---</strong>\n\n";
 
-try {
-    // Tenta criar index único caso não exista
-    try {
-        $db->exec("ALTER TABLE nfe_importadas ADD UNIQUE INDEX uk_chave_acesso (chave_acesso)");
-    } catch (\Exception $e) {}
+$ids = [312, 313, 314, 315, 316, 317, 318];
 
-    $stmt = $db->prepare("
-        INSERT INTO nfe_importadas (filial_id, chave_acesso, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
-        ON DUPLICATE KEY UPDATE 
-            xml = IF(LENGTH(xml) < ?, ?, xml),
-            data_emissao = ?,
-            valor_total = ?
-    ");
-    $xmlVal = "<nfe>NovaTentativaCorrigida</nfe>";
-    $dataEmissao = date('Y-m-d H:i:s');
-    $stmt->execute([
-        $_SESSION['filial_id'] ?? 1,
-        '22222222222222222222222222222222222222222222', 
-        '12345678901234',
-        'Fornecedor Corrigido',
-        '99999',
-        $dataEmissao,
-        500.00,
-        $xmlVal,
-        strlen($xmlVal),
-        $xmlVal,
-        $dataEmissao,
-        500.00
-    ]);
-    
-    echo "INSERÇÃO BÁSICA COM COLUNAS CORRIGIDAS EXECUTOU CORRETAMENTE!\n";
-    echo "Linhas afetadas: " . $stmt->rowCount() . "\n\n";
-    
-    $q = $db->query("SELECT id, chave_acesso, xml FROM nfe_importadas WHERE chave_acesso = '22222222222222222222222222222222222222222222'");
-    print_r($q->fetch(\PDO::FETCH_ASSOC));
-    
-    // Cleanup
-    $db->exec("DELETE FROM nfe_importadas WHERE chave_acesso = '22222222222222222222222222222222222222222222'");
+foreach ($ids as $id) {
+    echo "VENDA #$id:\n";
+    $stmtV = $db->prepare("SELECT id, tipo_nota, status, valor_total FROM vendas WHERE id = ?");
+    $stmtV->execute([$id]);
+    print_r($stmtV->fetch(PDO::FETCH_ASSOC));
 
-} catch (\Exception $e) {
-    echo "Erro persistente: " . $e->getMessage() . "\n";
+    echo "NFC-E EMITIDAS:\n";
+    $stmtN = $db->prepare("SELECT id, status_sefaz, chave, mensagem FROM nfce_emitidas WHERE venda_id = ?");
+    $stmtN->execute([$id]);
+    $results = $stmtN->fetchAll(PDO::FETCH_ASSOC);
+    if (empty($results)) {
+        echo "Nenhum registro em nfce_emitidas.\n";
+    } else {
+        print_r($results);
+    }
+    echo "------------------------------------------\n";
 }
-
 echo "</pre>";
 
