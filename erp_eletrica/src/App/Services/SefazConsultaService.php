@@ -71,30 +71,30 @@ class SefazConsultaService extends BaseService {
         $envEvento->setAttribute('versao', '1.00');
         $dom->appendChild($envEvento);
         
-        $envEvento->appendChild($dom->createElement('idLote', '1'));
+        $envEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'idLote', '1'));
         
-        $evento = $dom->createElement('evento');
+        $evento = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'evento');
         $evento->setAttribute('versao', '1.00');
         $envEvento->appendChild($evento);
         
-        $infEvento = $dom->createElement('infEvento');
+        $infEvento = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'infEvento');
         $id = 'ID' . $tpEvento . $chave . '01';
         $infEvento->setAttribute('Id', $id);
         $evento->appendChild($infEvento);
         
-        $infEvento->appendChild($dom->createElement('cOrgao', '91')); // Ambiente Nacional
-        $infEvento->appendChild($dom->createElement('tpAmb', ($this->config['ambiente'] == 'producao' ? '1' : '2')));
-        $infEvento->appendChild($dom->createElement('CNPJ', preg_replace('/[^0-9]/', '', $cnpj)));
-        $infEvento->appendChild($dom->createElement('chNFe', $chave));
-        $infEvento->appendChild($dom->createElement('dhEvento', date('Y-m-d\TH:i:sO')));
-        $infEvento->appendChild($dom->createElement('tpEvento', $tpEvento));
-        $infEvento->appendChild($dom->createElement('nSeqEvento', '1'));
-        $infEvento->appendChild($dom->createElement('verEvento', '1.00'));
+        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'cOrgao', '91')); // Ambiente Nacional
+        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'tpAmb', ($this->config['ambiente'] == 'producao' ? '1' : '2')));
+        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'CNPJ', preg_replace('/[^0-9]/', '', $cnpj)));
+        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'chNFe', $chave));
+        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'dhEvento', date('Y-m-d\TH:i:sP')));
+        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'tpEvento', $tpEvento));
+        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'nSeqEvento', '1'));
+        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'verEvento', '1.00'));
         
-        $detEvento = $dom->createElement('detEvento');
+        $detEvento = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'detEvento');
         $detEvento->setAttribute('versao', '1.00');
         $infEvento->appendChild($detEvento);
-        $detEvento->appendChild($dom->createElement('descEvento', $descEvento));
+        $detEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'descEvento', $descEvento));
         
         return $dom->saveXML();
     }
