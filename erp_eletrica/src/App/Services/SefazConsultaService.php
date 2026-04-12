@@ -94,66 +94,7 @@ class SefazConsultaService extends BaseService {
         return $dom->saveXML();
     }
 
-    /**
-     * Consulta as NF-e destinadas via NFeDistribuicaoDFe
-     */
-    public function consultarNotas($cnpjDestinario, $ultNSU = null) {
-        $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
-        if (empty($cnpj) || strlen($cnpj) !== 14) {
-            throw new Exception("CNPJ inválido ou não configurado (" . htmlspecialchars($cnpjDestinario) . "). Verifique os dados da sua filial.");
-        }
-        
-        $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2; 
-        
-        // Se ultNSU não for fornecido, buscar das configurações
-        if ($ultNSU === null) {
-            $key = $ambiente == 1 ? 'nfe_last_nsu' : 'nfe_last_nsu_homologacao';
-            $stmt = $this->db->prepare("SELECT valor FROM configuracoes WHERE chave = ?");
-            $stmt->execute([$key]);
-            $ultNSU = $stmt->fetchColumn() ?: '0';
-        }
-
-        $allDocs = [];
-        $currentNSU = $ultNSU;
-        $maxIterations = 10; // Evitar loop infinito se houver erro
-        
-        do {
-            $xml_soap = $this->gerarXmlDistDfe($cnpj, $currentNSU, $ambiente);
-            $responseXml = $this->comunicarSefaz($xml_soap);
-            $resultado = $this->processarRetorno($responseXml);
-            
-            if (!empty($resultado['documentos'])) {
-                $allDocs = array_merge($allDocs, $resultado['documentos']);
-                
-                // Salvar imediatamente no banco para não perder dados se a próxima iteração falhar
-                $this->salvarNotasCache($_SESSION['filial_id'] ?? 1, $resultado['documentos']);
-                
-                // Auto-manifestar notas que vieram apenas como resumo para permitir download futuro do XML completo
-                foreach ($resultado['documentos'] as $doc) {
-                    if (strpos($doc['xml'], '<resNFe') !== false) {
-                        try {
-                            $this->manifestarNota($cnpj, $doc['chave']);
-                        } catch (Exception $me) {
-                            error_log("Erro ao auto-manifestar nota " . $doc['chave'] . ": " . $me->getMessage());
-                        }
-                    }
-                }
-            }
-            
-            $currentNSU = $resultado['ultNSU'];
-            $maxNSU = $resultado['maxNSU'];
-            
-            // Atualizar o último NSU nas configurações
-            $key = $ambiente == 1 ? 'nfe_last_nsu' : 'nfe_last_nsu_homologacao';
-            $stmt = $this->db->prepare("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
-            $stmt->execute([$key, $currentNSU, $currentNSU]);
-            
-            $maxIterations--;
-        } while ($currentNSU < $maxNSU && $maxIterations > 0);
-
-        return ['documentos' => $allDocs, 'ultNSU' => $currentNSU, 'maxNSU' => $maxNSU];
-    }
-
+    
     private function gerarXmlDistDfe($cnpj, $ultNSU, $ambiente) {
         // Encontrar UF da filial baseada no CNPJ
         $stmt = $this->db->prepare("SELECT uf FROM filiais WHERE cnpj LIKE ? OR cnpj = ? LIMIT 1");
