@@ -291,15 +291,37 @@ class TransferenciasController extends BaseController {
             $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
             $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
 
+            // Query para verificar estoque atual
+            $stmtCheck = $this->pdo->prepare("
+                SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
+                FROM produtos p
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                WHERE p.id = ?
+            ");
+
             foreach ($itensValidos as $item) {
+                $pid = $item['produto_id'];
+                $qtd = $item['quantidade'];
+
+                // 1. Validação de Estoque (Servidor)
+                $stmtCheck->execute([$mid, $pid]);
+                $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
+                
+                if (!$estoque || $estoque['estoque_atual'] < $qtd) {
+                    $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $pid";
+                    $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
+                    throw new \Exception("Estoque insuficiente para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
+                }
+
                 $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
-                $pd->execute([$item['produto_id']]);
+                $pd->execute([$pid]);
                 $custo = $pd->fetchColumn() ?: 0;
-                $stmtItem->execute([$transf_id, $item['produto_id'], $item['quantidade'], $item['quantidade'], $custo]);
+                
+                $stmtItem->execute([$transf_id, $pid, $qtd, $qtd, $custo]);
                 try {
-                    $stmtDec->execute([$item['quantidade'], $item['produto_id']]);
+                    $stmtDec->execute([$qtd, $pid]);
                 } catch (\Exception $ex) {
-                    $stmtDecGlob->execute([$item['quantidade'], $item['produto_id']]);
+                    $stmtDecGlob->execute([$qtd, $pid]);
                 }
             }
 
@@ -340,8 +362,27 @@ class TransferenciasController extends BaseController {
             $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
             $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
 
+            // Query para verificar estoque atual
+            $stmtCheck = $this->pdo->prepare("
+                SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
+                FROM produtos p
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                WHERE p.id = ?
+            ");
+
             foreach ($itens_enviados as $produto_id => $qtd) {
                 if ($qtd > 0) {
+                    // 1. Validação de Estoque (Servidor)
+                    $stmtCheck->execute([$mid, $produto_id]);
+                    $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
+                    
+                    if (!$estoque || $estoque['estoque_atual'] < $qtd) {
+                        $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $produto_id";
+                        $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
+                        throw new \Exception("Estoque insuficiente para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
+                    }
+
+                    // 2. Processamento
                     $stmtItem->execute([$qtd, $transf_id, $produto_id]);
                     try {
                         $stmtDec->execute([$qtd, $produto_id]);
