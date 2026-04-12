@@ -83,14 +83,14 @@ if (!$empresaId) {
 // Debug (opcional, logar no servidor)
 error_log("[NFC-e] Resolvido empresaId=$empresaId para vendaId=$vendaId");
 
-// 1. Busca Global (sefaz_config) - Certificado e CSC Central
+// 1. Busca Global (sefaz_config)
 $global = [];
 try {
     $stG = $pdo->query("SELECT * FROM sefaz_config LIMIT 1");
     $global = $stG->fetch() ?: [];
 } catch (Throwable $e) { $errorLog[] = "Tabela 'sefaz_config' inacessível: " . $e->getMessage(); }
 
-// 2. Busca Filial (Unidade atual)
+// 2. Busca Filial (filiais)
 $filial = [];
 try {
     $stF = $pdo->prepare("SELECT * FROM filiais WHERE id = ?");
@@ -98,67 +98,38 @@ try {
     $filial = $stF->fetch() ?: [];
 } catch (Throwable $e) { $errorLog[] = "Tabela 'filiais' inacessível: " . $e->getMessage(); }
 
-// 3. Busca Matriz (Identidade corporativa base)
-$matriz = [];
-try {
-    $stM = $pdo->query("SELECT * FROM filiais WHERE principal = 1 LIMIT 1");
-    $matriz = $stM->fetch() ?: [];
-} catch (Throwable $e) {}
-
-if (empty($global) && empty($filial) && empty($matriz)) {
+if (empty($global) && empty($filial)) {
     echo "<h2>Erro de Configuração NFC-e</h2>";
-    echo "<p>Não foi possível localizar os dados fiscais no banco.</p>";
+    echo "<p>Não foi possível encontrar os dados da empresa no banco de dados <b>u784961086_pdv</b>.</p>";
+    echo "<ul>";
+    foreach (($errorLog ?? []) as $err) echo "<li>$err</li>";
+    echo "</ul>";
+    echo "<p>Certifique-se de que as tabelas <code>sefaz_config</code> ou <code>filiais</code> estão preenchidas no seu banco de dados.</p>";
     die();
 }
 
-// Consolidação com Herança (Lógica idêntica ao NfceService.php)
-$fiscal = [];
-$globalFields = ['certificado_path', 'certificado_senha', 'ambiente', 'csc', 'csc_id', 'cnpj', 'razao_social', 'inscricao_estadual'];
-
-// Lista de campos para mapeamento (conforme NfceService)
-$fields = [
-    'cnpj', 'razao_social', 'nome_fantasia', 'inscricao_estadual', 'ambiente', 
-    'csc', 'csc_id', 'certificado_path', 'certificado_senha',
-    'logradouro', 'numero', 'bairro', 'municipio', 'uf', 'cep', 'codigo_municipio',
-    'serie_nfce', 'regime_tributario', 'crt', 'telefone'
-];
-
-foreach ($fields as $field) {
-    $filialKey = $field;
-    if ($field === 'certificado_path') $filialKey = 'certificado_pfx';
-    if ($field === 'csc')              $filialKey = 'csc_token';
-    if ($field === 'razao_social')     $filialKey = 'razao_social'; // consistente
-    
-    if (in_array($field, $globalFields)) {
-        // Obrigatório vir do Global ou Matriz
-        $val = (!empty($global[$field])) ? $global[$field] : ($matriz[$filialKey] ?? null);
-    } else {
-        // Preferência Filial -> Fallback Matriz
-        $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : ($matriz[$filialKey] ?? null);
-    }
-    $fiscal[$field] = $val;
-}
+// Mescla as configurações (Prioridade para Filial)
+$fiscal = array_merge($global, $filial);
 
 // ========== Mapeamento de Campos (27 campos) ==========
-// ========== Mapeamento de Campos (Tratamento de Vazios) ==========
-define('TP_AMB',     (!empty($fiscal['ambiente']) ? (string)$fiscal['ambiente'] : '2'));
+define('TP_AMB',     (string)($fiscal['ambiente'] ?? '2'));
 define('ID_TOKEN',   (string)($fiscal['csc_id'] ?? ''));
 define('CSC',        (string)($fiscal['csc'] ?? $fiscal['csc_token'] ?? ''));
 define('NFC_SERIE',  (string)($fiscal['serie_nfce'] ?? '1'));
 
 define('EMIT_CNPJ',  so_digitos($fiscal['cnpj']));
-define('EMIT_XNOME', trim((string)($fiscal['razao_social'] ?? $fiscal['nome'] ?? 'EMPRESA SEM RAZAO SOCIAL')));
-define('EMIT_XFANT', trim((string)($fiscal['nome'] ?? $fiscal['nome_fantasia'] ?? EMIT_XNOME)));
+define('EMIT_XNOME', trim((string)($fiscal['razao_social'] ?? $fiscal['nome'] ?? '')));
+define('EMIT_XFANT', trim((string)($fiscal['nome'] ?? $fiscal['nome_fantasia'] ?? '')));
 define('EMIT_IE',    so_digitos($fiscal['inscricao_estadual']));
 define('EMIT_CRT',   (string)($fiscal['regime_tributario'] ?? $fiscal['crt'] ?? '1'));
 
-define('EMIT_XLGR',    trim((string)($fiscal['logradouro'] ?? 'Logradouro não informado')));
-define('EMIT_NRO',     trim((string)($fiscal['numero_endereco'] ?? $fiscal['numero'] ?? 'S/N')));
-define('EMIT_XBAIRRO', trim((string)($fiscal['bairro'] ?? 'Bairro')));
-define('EMIT_XMUN',    trim((string)($fiscal['cidade'] ?? $fiscal['municipio'] ?? 'SAO PAULO')));
-define('EMIT_UF',      (!empty($fiscal['uf']) ? trim((string)$fiscal['uf']) : 'SP'));
-define('EMIT_CEP',     so_digitos($fiscal['cep'] ?? '01001000'));
-define('EMIT_CMUN',    (!empty($fiscal['codigo_municipio']) ? (string)$fiscal['codigo_municipio'] : '3550308'));
+define('EMIT_XLGR',    trim((string)($fiscal['logradouro'] ?? '')));
+define('EMIT_NRO',     trim((string)($fiscal['numero_endereco'] ?? $fiscal['numero'] ?? '')));
+define('EMIT_XBAIRRO', trim((string)($fiscal['bairro'] ?? '')));
+define('EMIT_XMUN',    trim((string)($fiscal['cidade'] ?? $fiscal['municipio'] ?? '')));
+define('EMIT_UF',      trim((string)($fiscal['uf'] ?? '')));
+define('EMIT_CEP',     so_digitos($fiscal['cep']));
+define('EMIT_CMUN',    (string)($fiscal['codigo_municipio'] ?? ''));
 define('EMIT_FONE',    so_digitos($fiscal['fone'] ?? $fiscal['telefone'] ?? ''));
 define('COD_MUN',      EMIT_CMUN);
 define('COD_UF',       substr(EMIT_CMUN, 0, 2));
