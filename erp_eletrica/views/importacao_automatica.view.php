@@ -227,9 +227,9 @@
 <div class="modal fade" id="modalItens" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg overflow-hidden rounded-3">
-            <div class="modal-header bg-dark text-white border-0 py-3">
+            <div class="modal-header bg-erp-primary text-white border-0 py-3 shadow-sm">
                 <h5 class="modal-title fw-bold d-flex align-items-center small">
-                    <i class="fas fa-boxes me-3 p-2 bg-white bg-opacity-10 rounded-2"></i>Produtos da Nota Fiscal
+                    <i class="fas fa-boxes me-3 p-2 bg-white bg-opacity-20 rounded-2 text-white"></i>Produtos da Nota Fiscal
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -345,33 +345,43 @@ async function visualizarItens(id) {
 
     try {
         const response = await fetch(`importar_automatico.php?action=visualizar_produtos&id=${id}`);
+        
+        if (!response.ok) {
+            throw new Error(`Servidor retornou erro ${response.status}`);
+        }
+
         const result = await response.json();
 
         if (result.success) {
             activeItems = result.produtos;
-            result.produtos.forEach(p => {
-                const row = `
-                    <tr>
-                        <td class="ps-4 extra-small font-monospace">${p.codigo}</td>
-                        <td class="fw-bold small">${p.nome}</td>
-                        <td class="extra-small">${p.ncm}</td>
-                        <td class="text-primary fw-bold small">${p.qCom}</td>
-                        <td class="small">R$ ${p.vUnComFormatted}</td>
-                        <td class="text-end pe-4">
-                            <span class="badge bg-light text-muted extra-small">Pendente</span>
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
-            table.classList.remove('d-none');
-            btnTudo.classList.remove('d-none');
+            if (activeItems.length === 0) {
+                error.innerText = 'Esta nota não possui itens de produto.';
+                error.classList.remove('d-none');
+            } else {
+                result.produtos.forEach(p => {
+                    const row = `
+                        <tr>
+                            <td class="ps-4 extra-small font-monospace">${p.codigo}</td>
+                            <td class="fw-bold small">${p.nome}</td>
+                            <td class="extra-small">${p.ncm}</td>
+                            <td class="text-primary fw-bold small">${p.qCom}</td>
+                            <td class="small">R$ ${p.vUnComFormatted}</td>
+                            <td class="text-end pe-4">
+                                <span class="badge bg-light text-muted extra-small">Pendente</span>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+                table.classList.remove('d-none');
+                btnTudo.classList.remove('d-none');
+            }
         } else {
             error.innerText = result.error;
             error.classList.remove('d-none');
         }
     } catch (e) {
-        error.innerText = 'Erro ao carregar itens: ' + e.message;
+        error.innerText = 'Falha ao processar resposta: ' + e.message;
         error.classList.remove('d-none');
     } finally {
         loader.classList.add('d-none');
