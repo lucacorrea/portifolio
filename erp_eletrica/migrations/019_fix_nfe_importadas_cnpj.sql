@@ -1,8 +1,7 @@
--- Migration 019: Fix nfe_importadas table
--- Increase fornecedor_cnpj to accommodate formatted CNPJs
--- Add unique index on chave_nfe + filial_id to properly handle duplicates
-ALTER TABLE nfe_importadas MODIFY fornecedor_cnpj VARCHAR(20) NOT NULL;
+-- Migration 019: Fix nfe_importadas table structure
+-- 1. Expand fornecedor_cnpj to allow larger values (CNPJ can come formatted from SEFAZ)
+-- 2. Add UNIQUE constraint on chave_nfe (required for INSERT IGNORE to work properly)
 
--- Add unique index if not exists (prevents silent duplicate issues)
--- Using ALTER IGNORE to skip if already exists
-ALTER TABLE nfe_importadas ADD UNIQUE INDEX idx_unique_chave_filial (chave_nfe, filial_id);
+ALTER TABLE nfe_importadas MODIFY COLUMN fornecedor_cnpj VARCHAR(20) NOT NULL DEFAULT '';
+
+ALTER TABLE nfe_importadas ADD UNIQUE INDEX uk_chave_nfe (chave_nfe);
