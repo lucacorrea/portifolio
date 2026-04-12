@@ -119,11 +119,17 @@ class ImportacaoAutomaticaController extends BaseController {
             $totalNoBanco = $stmt->fetchColumn();
 
             $message = $count > 0 
-                ? "Sincronização concluída ({$loops} lotes). $count novos registros processados. Total no banco: $totalNoBanco notas."
-                : "Nenhuma nota nova encontrada. Total no banco: $totalNoBanco notas.";
+                ? "Sincronização concluída ({$loops} lotes). $count novos registros processados."
+                : "Nenhuma nota nova encontrada.";
+
+            if (!empty($resultado['db_error'])) {
+                $message .= "\nERRO (BD): " . $resultado['db_error'];
+            }
+            
+            $message .= "\nTotal no banco: $totalNoBanco notas.";
 
             if (($resultado['ultNSU'] ?? 0) < ($resultado['maxNSU'] ?? 0)) {
-                $message .= " Ainda existem mais notas pendentes na SEFAZ (Limite de loop atingido).";
+                $message .= "\nAinda existem mais notas pendentes na SEFAZ (Limite de loop atingido).";
             }
 
             echo json_encode([

@@ -122,6 +122,8 @@ class SefazConsultaService extends BaseService {
         $currentNSU = $ultNSU;
         $globalMaxNSU = '000000000000000';
 
+        $this->lastSaveError = null;
+
         do {
             $loops++;
             $xml_soap = $this->gerarXmlDistDfe($cnpj, $currentNSU, $ambiente);
@@ -175,7 +177,8 @@ class SefazConsultaService extends BaseService {
             'count' => count($allDocumentos),
             'ultNSU' => $currentNSU,
             'maxNSU' => $globalMaxNSU,
-            'loops' => $loops
+            'loops' => $loops,
+            'db_error' => $this->lastSaveError
         ];
     }
     
@@ -337,10 +340,11 @@ class SefazConsultaService extends BaseService {
                     INSERT INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
                     ON DUPLICATE KEY UPDATE 
-                        xml_conteudo = IF(LENGTH(xml_conteudo) < LENGTH(VALUES(xml_conteudo)), VALUES(xml_conteudo), xml_conteudo),
-                        data_emissao = VALUES(data_emissao),
-                        valor_total = VALUES(valor_total)
+                        xml_conteudo = IF(LENGTH(xml_conteudo) < ?, ?, xml_conteudo),
+                        data_emissao = ?,
+                        valor_total = ?
                 ");
+                $xmlVal = $doc['xml'] ?? '';
                 $stmt->execute([
                     $filialId,
                     $doc['chave'] ?? '',
@@ -349,7 +353,12 @@ class SefazConsultaService extends BaseService {
                     $doc['numero'] ?? '0',
                     $dataEmissao,
                     $doc['valor'] ?? 0,
-                    $doc['xml'] ?? ''
+                    $xmlVal,
+                    // Parâmetros do UPDATE
+                    strlen($xmlVal),
+                    $xmlVal,
+                    $dataEmissao,
+                    $doc['valor'] ?? 0
                 ]);
 
                 if ($stmt->rowCount() > 0) {
@@ -358,6 +367,9 @@ class SefazConsultaService extends BaseService {
                     $skipped++;
                 }
             } catch (\Exception $e) {
+                if (!$this->lastSaveError) {
+                    $this->lastSaveError = "DB ERROR: " . $e->getMessage() . " / SQLSTATE: " . (is_callable([$e, 'getCode']) ? $e->getCode() : '');
+                }
                 error_log("SEFAZ SAVE ERROR for chave " . ($doc['chave'] ?? 'unknown') . ": " . $e->getMessage());
                 $skipped++;
                 continue;
