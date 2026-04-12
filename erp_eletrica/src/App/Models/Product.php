@@ -5,11 +5,15 @@ class Product extends BaseModel {
     protected $table = 'produtos';
 
     public function all($order = "nome ASC") {
-        $filialId = $this->getFilialContext();
-        if ($filialId) {
-            return $this->query("SELECT * FROM {$this->table} WHERE filial_id = ? ORDER BY $order", [$filialId])->fetchAll();
-        }
-        return $this->query("SELECT * FROM {$this->table} ORDER BY $order")->fetchAll();
+        $filialId = $_SESSION['filial_id'] ?? 1;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+
+        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
+                FROM {$this->table} p
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                ORDER BY p.$order";
+        
+        return $this->query($sql, [$filialId])->fetchAll();
     }
 
     public function getCategories() {
@@ -17,46 +21,50 @@ class Product extends BaseModel {
     }
 
     public function getCriticalStock($filialId = null) {
-        $sql = "SELECT * FROM {$this->table} WHERE quantidade <= estoque_minimo AND estoque_minimo > 0";
-        $params = [];
-        if ($filialId) {
-            $sql .= " AND filial_id = ?";
-            $params[] = $filialId;
-        }
-        return $this->query($sql, $params)->fetchAll();
+        if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
+        
+        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
+                FROM {$this->table} p
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                WHERE COALESCE(ef.quantidade, 0) <= COALESCE(ef.estoque_minimo, p.estoque_minimo) 
+                AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
+        
+        return $this->query($sql, [$filialId])->fetchAll();
     }
 
     public function getLowStock($filialId = null) {
-        $sql = "SELECT * FROM {$this->table} WHERE quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0";
-        $params = [];
-        if ($filialId) {
-            $sql .= " AND filial_id = ?";
-            $params[] = $filialId;
-        }
-        return $this->query($sql, $params)->fetchAll();
+        if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
+
+        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
+                FROM {$this->table} p
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                WHERE COALESCE(ef.quantidade, 0) > COALESCE(ef.estoque_minimo, p.estoque_minimo) 
+                AND COALESCE(ef.quantidade, 0) <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) 
+                AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
+        
+        return $this->query($sql, [$filialId])->fetchAll();
     }
 
     public function getOkStock($filialId = null) {
-        $sql = "SELECT * FROM {$this->table} WHERE (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)";
-        $params = [];
-        if ($filialId) {
-            $sql .= " AND filial_id = ?";
-            $params[] = $filialId;
-        }
-        return $this->query($sql, $params)->fetchAll();
+        if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
+
+        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
+                FROM {$this->table} p
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                WHERE (COALESCE(ef.quantidade, 0) > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) 
+                OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)";
+        
+        return $this->query($sql, [$filialId])->fetchAll();
     }
 
     public function getStockStats($filialId = null) {
-        $where = " WHERE 1=1";
-        $params = [];
-        if ($filialId) {
-            $where .= " AND filial_id = ?";
-            $params[] = $filialId;
-        }
+        if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
 
-        $critical = $this->query("SELECT COUNT(*) FROM {$this->table} $where AND quantidade <= estoque_minimo AND estoque_minimo > 0", $params)->fetchColumn();
-        $low      = $this->query("SELECT COUNT(*) FROM {$this->table} $where AND quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0", $params)->fetchColumn();
-        $ok       = $this->query("SELECT COUNT(*) FROM {$this->table} $where AND (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)", $params)->fetchColumn();
+        $sqlBase = "FROM {$this->table} p LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?";
+        
+        $critical = $this->query("SELECT COUNT(*) $sqlBase WHERE COALESCE(ef.quantidade, 0) <= COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0", [$filialId])->fetchColumn();
+        $low      = $this->query("SELECT COUNT(*) $sqlBase WHERE COALESCE(ef.quantidade, 0) > COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.quantidade, 0) <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0", [$filialId])->fetchColumn();
+        $ok       = $this->query("SELECT COUNT(*) $sqlBase WHERE (COALESCE(ef.quantidade, 0) > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)", [$filialId])->fetchColumn();
 
         return [
             'critical' => (int)$critical,
@@ -67,36 +75,36 @@ class Product extends BaseModel {
     }
 
     public function searchStockAlarms($filters, $filialId = null) {
-        $sql = "SELECT * FROM {$this->table} WHERE 1=1";
-        $params = [];
+        if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
 
-        if ($filialId) {
-            $sql .= " AND filial_id = ?";
-            $params[] = $filialId;
-        }
+        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
+                FROM {$this->table} p
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                WHERE 1=1";
+        $params = [$filialId];
 
         if (!empty($filters['q'])) {
-            $sql .= " AND (nome LIKE ? OR codigo LIKE ?)";
+            $sql .= " AND (p.nome LIKE ? OR p.codigo LIKE ?)";
             $params[] = "%{$filters['q']}%";
             $params[] = "%{$filters['q']}%";
         }
 
         if (!empty($filters['categoria'])) {
-            $sql .= " AND categoria = ?";
+            $sql .= " AND p.categoria = ?";
             $params[] = $filters['categoria'];
         }
 
         if (!empty($filters['status'])) {
             if ($filters['status'] === 'CRITICO') {
-                $sql .= " AND quantidade <= estoque_minimo AND estoque_minimo > 0";
+                $sql .= " AND COALESCE(ef.quantidade, 0) <= COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
             } elseif ($filters['status'] === 'BAIXO') {
-                $sql .= " AND quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0";
+                $sql .= " AND COALESCE(ef.quantidade, 0) > COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.quantidade, 0) <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
             } elseif ($filters['status'] === 'OK') {
-                $sql .= " AND (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)";
+                $sql .= " AND (COALESCE(ef.quantidade, 0) > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)";
             }
         }
 
-        $sql .= " ORDER BY (quantidade - estoque_minimo) ASC";
+        $sql .= " ORDER BY (COALESCE(ef.quantidade, 0) - COALESCE(ef.estoque_minimo, p.estoque_minimo)) ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -104,43 +112,46 @@ class Product extends BaseModel {
     }
 
     public function paginateStockAlarms($filters, $page = 1, $perPage = 15, $filialId = null) {
+        if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
+        
         $where = " WHERE 1=1";
-        $params = [];
-
-        if ($filialId) {
-            $where .= " AND filial_id = ?";
-            $params[] = $filialId;
-        }
+        $params = [$filialId];
 
         if (!empty($filters['q'])) {
-            $where .= " AND (nome LIKE ? OR codigo LIKE ?)";
+            $where .= " AND (p.nome LIKE ? OR p.codigo LIKE ?)";
             $params[] = "%{$filters['q']}%";
             $params[] = "%{$filters['q']}%";
         }
 
         if (!empty($filters['categoria'])) {
-            $where .= " AND categoria = ?";
+            $where .= " AND p.categoria = ?";
             $params[] = $filters['categoria'];
         }
 
         if (!empty($filters['status'])) {
             if ($filters['status'] === 'CRITICO') {
-                $where .= " AND quantidade <= estoque_minimo AND estoque_minimo > 0";
+                $where .= " AND COALESCE(ef.quantidade, 0) <= COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
             } elseif ($filters['status'] === 'BAIXO') {
-                $where .= " AND quantidade > estoque_minimo AND quantidade <= (estoque_minimo * 1.5) AND estoque_minimo > 0";
+                $where .= " AND COALESCE(ef.quantidade, 0) > COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.quantidade, 0) <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
             } elseif ($filters['status'] === 'OK') {
-                $where .= " AND (quantidade > (estoque_minimo * 1.5) OR estoque_minimo = 0)";
+                $where .= " AND (COALESCE(ef.quantidade, 0) > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)";
             }
         }
 
-        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} $where");
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? $where");
         $totalStmt->execute($params);
         $total = $totalStmt->fetchColumn();
 
         $pages = ceil($total / $perPage);
         $offset = ($page - 1) * $perPage;
 
-        $sql = "SELECT * FROM {$this->table} $where ORDER BY (quantidade - estoque_minimo) ASC LIMIT $perPage OFFSET $offset";
+        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual 
+                FROM {$this->table} p 
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? 
+                $where 
+                ORDER BY (COALESCE(ef.quantidade, 0) - COALESCE(ef.estoque_minimo, p.estoque_minimo)) ASC 
+                LIMIT $perPage OFFSET $offset";
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $data = $stmt->fetchAll();
@@ -154,15 +165,39 @@ class Product extends BaseModel {
         ];
     }
 
-    public function updateStock($id, $qty, $type = 'entrada') {
+    public function updateStock($id, $qty, $type = 'entrada', $filialId = null) {
+        if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
         $operator = ($type == 'entrada') ? '+' : '-';
-        return $this->query("UPDATE {$this->table} SET quantidade = quantidade $operator ? WHERE id = ?", [$qty, $id]);
+        
+        // Atualiza estoque específico da filial
+        $sql = "INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) 
+                VALUES (?, ?, ?) 
+                ON DUPLICATE KEY UPDATE quantidade = quantidade $operator ?";
+        
+        $value = ($type == 'entrada') ? (float)$qty : 0; // Se for entrada e novo, começa com qty. Se for saída e novo, vai dar erro ou negativo? 
+        // Na verdade, o ON DUPLICATE deve lidar com isso.
+        
+        if ($type == 'saida') {
+             return $this->query("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = ?", [$qty, $id, $filialId]);
+        } else {
+             return $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantidade = quantidade + ?", [$id, $filialId, $qty, $qty]);
+        }
     }
 
-    public function hasEnoughStock($id, $requiredQty) {
-        $stmt = $this->db->prepare("SELECT quantidade FROM {$this->table} WHERE id = ?");
-        $stmt->execute([$id]);
+    public function hasEnoughStock($id, $requiredQty, $filialId = null) {
+        if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
+        
+        $stmt = $this->db->prepare("SELECT quantidade FROM estoque_filiais WHERE produto_id = ? AND filial_id = ?");
+        $stmt->execute([$id, $filialId]);
         $currentQty = $stmt->fetchColumn();
+        
+        if ($currentQty === false) {
+            // Se não existe na tabela de filiais, tenta ver se existe na produtos (fallback legado ou matriz)
+            $stmtM = $this->db->prepare("SELECT quantidade FROM produtos WHERE id = ?");
+            $stmtM->execute([$id]);
+            $currentQty = $stmtM->fetchColumn();
+        }
+
         return ($currentQty !== false && $currentQty >= $requiredQty);
     }
 
