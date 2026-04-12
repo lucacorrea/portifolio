@@ -1,12 +1,14 @@
 <div class="mb-4">
     <ul class="nav nav-tabs border-0" id="settingsTabs" role="tablist">
+        <?php if ($_SESSION['is_matriz'] ?? false): ?>
         <li class="nav-item shadow-sm me-2 rounded-top bg-white">
             <button class="nav-link active fw-bold border-0 px-4 py-3" id="matriz-tab" data-bs-toggle="tab" data-bs-target="#matriz" type="button" role="tab">
                 <i class="fas fa-building me-2 text-primary"></i>Matriz & Central Fiscal
             </button>
         </li>
+        <?php endif; ?>
         <li class="nav-item shadow-sm rounded-top bg-white">
-            <button class="nav-link fw-bold border-0 px-4 py-3" id="unidades-tab" data-bs-toggle="tab" data-bs-target="#unidades" type="button" role="tab">
+            <button class="nav-link <?= !($_SESSION['is_matriz'] ?? false) ? 'active' : '' ?> fw-bold border-0 px-4 py-3" id="unidades-tab" data-bs-toggle="tab" data-bs-target="#unidades" type="button" role="tab">
                 <i class="fas fa-network-wired me-2 text-secondary"></i>Gestão de Unidades
             </button>
         </li>
@@ -15,8 +17,10 @@
 
 <div class="tab-content" id="settingsTabsContent">
     <!-- ABA 1: MATRIZ & CERTIFICADO -->
+    <?php if ($_SESSION['is_matriz'] ?? false): ?>
     <div class="tab-pane fade show active" id="matriz" role="tabpanel">
         <form action="configuracoes.php?action=saveMatriz" method="POST" enctype="multipart/form-data">
+            <!-- ... existing content ... -->
             <div class="row g-4">
                 <div class="col-lg-7">
                     <!-- Identidade -->
@@ -111,14 +115,17 @@
             </div>
         </form>
     </div>
+    <?php endif; ?>
 
     <!-- ABA 2: GESTÃO DE UNIDADES (FILIAIS) -->
-    <div class="tab-pane fade" id="unidades" role="tabpanel">
+    <div class="tab-pane fade <?= !($_SESSION['is_matriz'] ?? false) ? 'show active' : '' ?>" id="unidades" role="tabpanel">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="mb-0 fw-bold text-dark">Unidades Registradas</h5>
-            <button class="btn btn-primary btn-sm px-4 fw-bold" onclick="abrirModalFilial()">
-                <i class="fas fa-plus me-2"></i>Nova Unidade
-            </button>
+            <?php if ($_SESSION['is_matriz'] ?? false): ?>
+                <button class="btn btn-primary btn-sm px-4 fw-bold" onclick="abrirModalFilial()">
+                    <i class="fas fa-plus me-2"></i>Nova Unidade
+                </button>
+            <?php endif; ?>
         </div>
 
         <div class="row g-3">
@@ -141,11 +148,13 @@
                                 <i class="fas fa-map-marker-alt me-1"></i> <?= $branch['municipio'] ?> - <?= $branch['uf'] ?>
                             </div>
 
+                            <?php if ($_SESSION['is_matriz'] ?? false): ?>
                             <div class="d-grid">
                                 <button class="btn btn-outline-primary btn-sm fw-bold" onclick='abrirModalFilial(<?= json_encode($branch, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                     <i class="fas fa-edit me-2"></i>Gerenciar Dados
                                 </button>
                             </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
