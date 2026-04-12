@@ -4,10 +4,10 @@
 ?>
 
 <style>
-    .tabs-header { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; flex-wrap: wrap; }
-    .tab-btn { background: none; border: none; padding: 10px 20px; cursor: pointer; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .2s; font-size: .875rem; }
-    .tab-btn.active { color: var(--primary-color, #0d6efd); border-bottom-color: var(--primary-color, #0d6efd); }
-    .tab-btn:hover:not(.active) { color: #334155; }
+    .tab-btn { background: #f1f5f9; border: 1px solid #e2e8f0; padding: 6px 16px; cursor: pointer; font-weight: 600; color: #64748b; border-radius: 8px; transition: all .2s; font-size: .75rem; display: flex; align-items: center; }
+    .tab-btn.active { background: var(--primary-color, #0d6efd); color: white; border-color: var(--primary-color, #0d6efd); }
+    .tab-btn:hover:not(.active) { background: #e2e8f0; color: #334155; }
+    .tab-btn .badge { font-size: 0.65rem; padding: 0.25em 0.6em; }
 
     .b2b-cart-summary { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; margin-top: 15px; position: sticky; bottom: 10px; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,.07); }
     .qty-input { width: 90px; text-align: center; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 8px; font-size: .875rem; }
@@ -35,8 +35,8 @@
 <?php endif; ?>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-bottom py-3">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="card-header bg-white border-bottom py-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
                 <h6 class="fw-bold mb-0 text-dark">
                     <?php if ($isMatriz): ?>
@@ -49,39 +49,39 @@
                     <?= $isMatriz ? 'Gerencie solicitações das filiais e despache transferências.' : 'Solicite materiais à Matriz e acompanhe seus pedidos.' ?>
                 </small>
             </div>
-        </div>
 
-        <div class="tabs-header mb-0">
-            <?php if ($isMatriz): ?>
-                <button class="tab-btn <?= $aba == 'recebidas' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=recebidas'">
-                    <i class="fas fa-inbox me-2"></i>Solicitações Pendentes
-                    <?php if (!empty($recebidas)): ?>
-                        <span class="badge bg-danger ms-1"><?= count($recebidas) ?></span>
-                    <?php endif; ?>
-                </button>
-                <button class="tab-btn <?= $aba == 'nova_transferencia' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_transferencia'">
-                    <i class="fas fa-truck-loading me-2"></i>Novo Despacho
-                </button>
-                <button class="tab-btn <?= $aba == 'historico_envios' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=historico_envios'">
-                    <i class="fas fa-history me-2"></i>Histórico de Envios
-                    <?php if (($problemas_pendentes ?? 0) > 0): ?>
-                        <span class="badge bg-danger ms-1" title="Ocorrências não resolvidas"><?= $problemas_pendentes ?></span>
-                    <?php endif; ?>
-                </button>
-            <?php else: ?>
-                <button class="tab-btn <?= $aba == 'nova_solicitacao' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_solicitacao'">
-                    <i class="fas fa-plus-circle me-2"></i>Pedir ao CD (Matriz)
-                </button>
-                <button class="tab-btn <?= $aba == 'em_transito' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=em_transito'">
-                    <i class="fas fa-truck me-2"></i>Em Trânsito
-                    <?php if (!empty($em_transito)): ?>
-                        <span class="badge bg-warning text-dark ms-1"><?= count($em_transito) ?></span>
-                    <?php endif; ?>
-                </button>
-                <button class="tab-btn <?= $aba == 'historico_recebimentos' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=historico_recebimentos'">
-                    <i class="fas fa-history me-2"></i>Histórico
-                </button>
-            <?php endif; ?>
+            <div class="d-flex gap-2">
+                <?php if ($isMatriz): ?>
+                    <button class="tab-btn <?= $aba == 'recebidas' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=recebidas'">
+                        <i class="fas fa-inbox me-1"></i>Solicitações <span class="d-none d-md-inline">Pendentes</span>
+                        <?php if (!empty($recebidas)): ?>
+                            <span class="badge bg-danger ms-1"><?= count($recebidas) ?></span>
+                        <?php endif; ?>
+                    </button>
+                    <button class="tab-btn <?= $aba == 'nova_transferencia' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_transferencia'">
+                        <i class="fas fa-truck-loading me-1"></i>Novo Despacho
+                    </button>
+                    <button class="tab-btn <?= $aba == 'historico_envios' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=historico_envios'">
+                        <i class="fas fa-history me-1"></i>Histórico <span class="d-none d-md-inline">de Envios</span>
+                        <?php if (($problemas_pendentes ?? 0) > 0): ?>
+                            <span class="badge bg-danger ms-1" title="Ocorrências não resolvidas"><?= $problemas_pendentes ?></span>
+                        <?php endif; ?>
+                    </button>
+                <?php else: ?>
+                    <button class="tab-btn <?= $aba == 'nova_solicitacao' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_solicitacao'">
+                        <i class="fas fa-plus-circle me-1"></i><span class="d-none d-md-inline">Pedir ao </span>CD (Matriz)
+                    </button>
+                    <button class="tab-btn <?= $aba == 'em_transito' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=em_transito'">
+                        <i class="fas fa-truck me-1"></i>Em Trânsito
+                        <?php if (!empty($em_transito)): ?>
+                            <span class="badge bg-warning text-dark ms-1"><?= count($em_transito) ?></span>
+                        <?php endif; ?>
+                    </button>
+                    <button class="tab-btn <?= $aba == 'historico_recebimentos' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=historico_recebimentos'">
+                        <i class="fas fa-history me-1"></i>Histórico
+                    </button>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
