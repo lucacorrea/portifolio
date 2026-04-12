@@ -446,7 +446,7 @@ class TransferenciasController extends BaseController {
             $stmtInc = $this->pdo->prepare(
                 "INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
                  SELECT p.id, ?, ?, p.estoque_minimo FROM produtos p WHERE p.id = ?
-                 ON DUPLICATE KEY UPDATE quantidade = quantidade + ?"
+                 ON DUPLICATE KEY UPDATE estoque_filiais.quantidade = estoque_filiais.quantidade + ?"
             );
             $stmtUpdItem = $this->pdo->prepare(
                 "UPDATE erp_transferencias_itens SET quantidade_recebida = ? WHERE transferencia_id = ? AND produto_id = ?"
