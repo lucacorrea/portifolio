@@ -547,10 +547,13 @@ class TransferenciasController extends BaseController {
         }
 
         // 2. Itens
+        $mid = $this->matrizId;
         $sqlItems = "SELECT ti.*, p.nome, p.codigo, 
+                COALESCE(ef.quantidade, p.quantidade) as disp_matriz,
                 (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
                 FROM erp_transferencias_itens ti 
                 JOIN produtos p ON ti.produto_id = p.id 
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = $mid
                 WHERE ti.transferencia_id = ?";
         
         $stmtI = $this->pdo->prepare($sqlItems);
