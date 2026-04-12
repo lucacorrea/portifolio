@@ -7,7 +7,7 @@ class Product extends BaseModel {
     public function all($order = "nome ASC") {
         $filialId = $_SESSION['filial_id'] ?? 1;
 
-        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
+        $sql = "SELECT p.*, p.id as id, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
                 FROM {$this->table} p
                 LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 ORDER BY p.$order";
@@ -20,7 +20,7 @@ class Product extends BaseModel {
         $offset = ($currentPage - 1) * $perPage;
         
         $where = " WHERE 1=1";
-        $paramsCount = [];
+        $paramsCount = [$filialId];
         $paramsQuery = [$filialId];
         
         if (!empty($filters['q'])) {
@@ -37,17 +37,28 @@ class Product extends BaseModel {
             $paramsQuery[] = $filters['categoria'];
         }
         
-        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p $where");
+        // Ensure count uses the same JOIN context if we ever add stock-based filters
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? $where");
         $totalStmt->execute($paramsCount);
         $total = $totalStmt->fetchColumn();
         
         $pages = ceil($total / $perPage);
         
-        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
+        // Handle $order carefully - it might contain multiple columns
+        $orderParts = explode(',', $order);
+        foreach ($orderParts as &$part) {
+            $part = trim($part);
+            if (!str_contains($part, '.')) {
+                $part = "p." . $part;
+            }
+        }
+        $finalOrder = implode(', ', $orderParts);
+
+        $sql = "SELECT p.*, p.id as id, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
                 FROM {$this->table} p
                 LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 $where 
-                ORDER BY $order LIMIT $perPage OFFSET $offset";
+                ORDER BY $finalOrder LIMIT $perPage OFFSET $offset";
                 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($paramsQuery);
@@ -69,7 +80,7 @@ class Product extends BaseModel {
     public function getCriticalStock($filialId = null) {
         if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
         
-        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
+        $sql = "SELECT p.*, p.id as id, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
                 FROM {$this->table} p
                 LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 WHERE COALESCE(ef.quantidade, 0) <= COALESCE(ef.estoque_minimo, p.estoque_minimo) 
