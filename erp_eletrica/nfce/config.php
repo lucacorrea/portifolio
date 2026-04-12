@@ -108,8 +108,15 @@ if (empty($global) && empty($filial)) {
     die();
 }
 
-// Mescla as configurações (Prioridade para Filial)
-$fiscal = array_merge($global, $filial);
+// Mescla as configurações (Herança Inteligente: Filial só sobrescreve se tiver valor)
+$fiscal = $global ?: [];
+if (!empty($filial)) {
+    foreach ($filial as $key => $value) {
+        if ($value !== null && trim((string)$value) !== '') {
+            $fiscal[$key] = $value;
+        }
+    }
+}
 
 // ========== Mapeamento de Campos (27 campos) ==========
 define('TP_AMB',     (string)($fiscal['ambiente'] ?? '2'));
