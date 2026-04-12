@@ -17,17 +17,20 @@ class NfceService extends BaseService {
      * Gets NFC-e configuration for a specific filial, with global fallback.
      */
     public function getConfig($filialId) {
-        // Individual config
+        // 1. Individual config
         $stmt = $this->db->prepare("SELECT * FROM filiais WHERE id = ?");
         $stmt->execute([$filialId]);
         $filial = $stmt->fetch();
 
-        // Global config
+        // 2. Global Sefaz Config (Certificate/CSC)
         $stmtGlobal = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
         $global = $stmtGlobal->fetch();
 
-        // Merge logic: prefer filial-specific, fallback to global
-        // The 27 fields from Açaí system
+        // 3. Matriz Info Fallback (CNPJ/Razao Social/Address)
+        $stmtMatriz = $this->db->query("SELECT * FROM filiais WHERE principal = 1 LIMIT 1");
+        $matriz = $stmtMatriz->fetch();
+
+        // Merge logic: prefer filial-specific, then Global/Matriz
         $fields = [
             'cnpj', 'razao_social', 'nome_fantasia', 'inscricao_estadual', 'inscricao_municipal',
             'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'municipio', 'uf',
@@ -38,14 +41,24 @@ class NfceService extends BaseService {
 
         $config = [];
         foreach ($fields as $field) {
-            // Special handling for certificate path and CSC column names in filiais table
             $filialKey = $field;
             if ($field === 'certificado_path') $filialKey = 'certificado_pfx';
             if ($field === 'csc') $filialKey = 'csc_token';
             if ($field === 'nome_fantasia') $filialKey = 'nome';
             
-            // Priority: Filial (if it has the field populated differently from default/null)
-            $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : ($global[$field] ?? null);
+            // Priority 1: Specific Branch
+            $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : null;
+
+            // Priority 2: Global Table (sefaz_config)
+            if (empty($val)) {
+                $val = ($global[$field] ?? null);
+            }
+
+            // Priority 3: Matriz Branch (filiais where principal=1)
+            if (empty($val)) {
+                $val = (!empty($matriz[$filialKey])) ? $matriz[$filialKey] : null;
+            }
+
             $config[$field] = $val;
         }
 

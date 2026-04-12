@@ -135,7 +135,7 @@
                                 </span>
                             </div>
                             <h6 class="fw-bold mb-1"><?= $branch['nome'] ?></h6>
-                            <p class="extra-small text-muted mb-3"><?= $branch['cnpj'] ?></p>
+                            <p class="extra-small text-muted mb-3"><?= !empty($branch['cnpj']) ? $branch['cnpj'] : $matrizConfig['cnpj'] ?></p>
                             
                             <div class="extra-small text-muted border-top pt-2 mb-3">
                                 <i class="fas fa-map-marker-alt me-1"></i> <?= $branch['municipio'] ?> - <?= $branch['uf'] ?>
@@ -379,16 +379,19 @@ function abrirModalFilial(data = null) {
             csc_id: <?= json_encode($matrizConfig['csc_id'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
             csc_token: <?= json_encode($matrizConfig['csc'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
             ambiente: <?= json_encode(($matrizConfig['ambiente'] ?? '') == '1' || ($matrizConfig['ambiente'] ?? '') == 'producao' ? '1' : '2') ?>,
-            senha: <?= json_encode($matrizConfig['certificado_senha'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+            senha: <?= json_encode($matrizConfig['certificado_senha'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+            cnpj: <?= json_encode($matrizConfig['cnpj'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+            razao_social: <?= json_encode($matrizConfig['razao_social'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+            ie: <?= json_encode($matrizConfig['inscricao_estadual'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
         };
 
         // Reset inputs
         document.getElementById('f_id').value = data ? (data.id || '') : '';
         document.getElementById('f_nome').value = data ? (data.nome || '') : '';
-        document.getElementById('f_cnpj').value = data ? (data.cnpj || '') : '';
-        document.getElementById('f_razao').value = data ? (data.razao_social || '') : '';
+        document.getElementById('f_cnpj').value = data ? (data.cnpj || '') : defaultSefaz.cnpj;
+        document.getElementById('f_razao').value = data ? (data.razao_social || '') : defaultSefaz.razao_social;
         document.getElementById('f_crt').value = data ? (data.crt || '1') : '1';
-        document.getElementById('f_ie').value = data ? (data.inscricao_estadual || '') : '';
+        document.getElementById('f_ie').value = data ? (data.inscricao_estadual || '') : defaultSefaz.ie;
         document.getElementById('f_cep').value = data ? (data.cep || '') : '';
         document.getElementById('f_municipio').value = data ? (data.municipio || '') : '';
         document.getElementById('f_ibge_mun').value = data ? (data.codigo_municipio || '') : '';

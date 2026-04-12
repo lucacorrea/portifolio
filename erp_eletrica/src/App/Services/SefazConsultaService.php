@@ -20,14 +20,19 @@ class SefazConsultaService extends BaseService {
     }
 
     private function loadConfig() {
-        // Unificação Centralizada: Sempre usa a configuração Global da Matriz
-        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
-        $this->config = $stmt->fetch();
+        // Encontra os dados fiscais via NfceService (que já possui a lógica de fallback Matriz)
+        $nfceService = new \App\Services\NfceService();
         
-        if (!$this->config) throw new Exception("Configuração SEFAZ Global não encontrada.");
-        if (empty($this->config['certificado_path'])) throw new Exception("Certificado A1 (Global) não configurado.");
+        // Busca a configuração da Matriz (principal) para ser a base global
+        $stmtMatriz = $this->db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1");
+        $matriz = $stmtMatriz->fetch();
+        $matrizId = $matriz['id'] ?? 1;
+
+        $this->config = $nfceService->getConfig($matrizId);
         
-        // Garantimos que a senha bruta esteja disponível
+        if (!$this->config['certificado_path']) throw new Exception("Certificado A1 (Global) não configurado ou não encontrado na Matriz.");
+        
+        // Password handling
         $this->config['certificado_senha_raw'] = $this->config['certificado_senha'] ?? '';
     }
 
