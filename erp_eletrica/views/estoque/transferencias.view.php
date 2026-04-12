@@ -907,7 +907,8 @@ function abrirProcessarSolicitacao(id) {
 
 function abrirProcessarRecebimento(id) {
     const modalEl = document.getElementById('modalProcessarRecebimento');
-    const instance = new bootstrap.Modal(modalEl);
+    let instance = bootstrap.Modal.getInstance(modalEl);
+    if (!instance) instance = new bootstrap.Modal(modalEl);
     
     // Reset modal
     document.getElementById('receb_loading').classList.remove('d-none');
@@ -931,7 +932,7 @@ function abrirProcessarRecebimento(id) {
             const tbody = document.getElementById('receb_tbody_items');
             tbody.innerHTML = res.items.filter(it => it.quantidade_enviada > 0).map(it => `
                 <li class="list-group-item d-flex justify-content-between align-items-center small py-2">
-                    <div class="fw-bold">${it.nome}</div>
+                    <div class="fw-bold text-dark">${it.nome}</div>
                     <span class="badge bg-primary rounded-pill px-3">${parseFloat(it.quantidade_enviada)} UN</span>
                 </li>
             `).join('');
@@ -940,11 +941,11 @@ function abrirProcessarRecebimento(id) {
             const footer = document.getElementById('receb_footer_acoes');
             footer.innerHTML = `
                 <button type="button" class="btn btn-outline-danger btn-sm fw-bold px-3" 
-                        onclick="abrirModalRelato(${t.id}, '${t.codigo_transferencia}')">
+                        onclick="bootstrap.Modal.getInstance(document.getElementById('modalProcessarRecebimento')).hide(); abrirModalRelato(${t.id}, '${t.codigo_transferencia}')">
                     <i class="fas fa-exclamation-triangle me-2"></i>Relatar Problema
                 </button>
                 <button type="button" class="btn btn-${t.tem_problema == 1 ? 'warning' : 'success'} btn-sm fw-bold px-4 flex-grow-1" 
-                        onclick="abrirResumoRecebimento(${t.id}, '${t.codigo_transferencia}', ${t.tem_problema == 1})">
+                        onclick="bootstrap.Modal.getInstance(document.getElementById('modalProcessarRecebimento')).hide(); abrirResumoRecebimento(${t.id}, '${t.codigo_transferencia}', ${t.tem_problema == 1})">
                     <i class="fas fa-box-open me-2"></i>
                     ${t.tem_problema == 1 ? 'Internalizar com Ressalvas' : 'Internalizar Estoque'}
                 </button>
