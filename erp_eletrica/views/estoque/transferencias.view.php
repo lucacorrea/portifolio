@@ -98,71 +98,39 @@
                         <p class="small">As filiais estão abastecidas!</p>
                     </div>
                 <?php else: ?>
+                    <div class="row g-3">
                     <?php foreach ($recebidas as $req): ?>
-                        <div class="transfer-card">
-                            <div class="transfer-header">
-                                <div>
-                                    <span class="badge bg-warning text-dark me-2">Requer Aprovação</span>
-                                    <strong><?= htmlspecialchars($req['codigo_transferencia']) ?></strong>
-                                    <span class="text-muted ms-2 small">Solicitado por: <strong><?= htmlspecialchars($req['nome_filial']) ?></strong></span>
-                                </div>
-                                <div class="text-muted small">
-                                    <i class="far fa-clock me-1"></i><?= date('d/m/Y H:i', strtotime($req['data_solicitacao'])) ?>
-                                </div>
-                            </div>
-                            <div class="transfer-body">
-                                <?php if ($req['observacoes']): ?>
-                                    <p class="text-muted small mb-3"><i class="fas fa-comment me-2"></i><em>"<?= htmlspecialchars($req['observacoes']) ?>"</em></p>
-                                <?php endif; ?>
-
-                                <form action="transferencias.php?action=aprovar_solicitacao" method="POST">
-                                    <input type="hidden" name="transferencia_id" value="<?= $req['id'] ?>">
-                                    
-                                    <div class="table-responsive border rounded mb-3" style="max-height: 350px; overflow-y: auto;">
-                                        <table class="table table-sm table-hover align-middle mb-0">
-                                            <thead class="table-light sticky-top shadow-sm" style="z-index: 5;">
-                                                <tr>
-                                                    <th>Produto</th>
-                                                    <th class="text-center" style="width:130px">Qtd Solicitada</th>
-                                                    <th class="text-center" style="width:130px">Disp. Matriz</th>
-                                                    <th class="text-center" style="width:150px text-nowrap">Qtd p/ Enviar</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php
-                                                $itensReq = $pdo->prepare("SELECT ti.*, p.nome, p.codigo, COALESCE((SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = 1), p.quantidade) as disp_matriz FROM erp_transferencias_itens ti JOIN produtos p ON ti.produto_id = p.id WHERE ti.transferencia_id = ?");
-                                                $itensReq->execute([$req['id']]);
-                                                foreach ($itensReq->fetchAll() as $itemReq):
-                                                ?>
-                                                <tr>
-                                                    <td>
-                                                        <div class="fw-bold small"><?= htmlspecialchars($itemReq['nome']) ?></div>
-                                                        <div class="extra-small text-muted">SKU: <?= htmlspecialchars($itemReq['codigo']) ?></div>
-                                                    </td>
-                                                    <td class="text-center"><?= number_format($itemReq['quantidade_solicitada'], 2, ',', '.') ?></td>
-                                                    <td class="text-center fw-bold <?= $itemReq['disp_matriz'] < $itemReq['quantidade_solicitada'] ? 'text-danger' : 'text-success' ?>">
-                                                        <?= number_format($itemReq['disp_matriz'], 2, ',', '.') ?>
-                                                    </td>
-                                                    <td class="p-2">
-                                                        <input type="number" step="1" min="0" max="<?= $itemReq['disp_matriz'] ?>"
-                                                            name="qtd_enviada[<?= $itemReq['produto_id'] ?>]"
-                                                            value="<?= $itemReq['quantidade_solicitada'] > $itemReq['disp_matriz'] ? $itemReq['disp_matriz'] : $itemReq['quantidade_solicitada'] ?>"
-                                                            class="form-control form-control-sm text-center fw-bold border-primary-subtle">
-                                                    </td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm rounded-3">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <span class="badge bg-warning text-dark extra-small mb-1">REQUER APROVAÇÃO</span>
+                                            <h6 class="fw-bold mb-0"><?= htmlspecialchars($req['codigo_transferencia']) ?></h6>
+                                        </div>
+                                        <div class="text-end text-muted extra-small">
+                                            <i class="far fa-clock me-1"></i><?= date('d/m/Y H:i', strtotime($req['data_solicitacao'])) ?>
+                                        </div>
                                     </div>
-                                    <div class="text-end">
-                                        <button type="submit" class="btn btn-primary fw-bold px-4">
-                                            <i class="fas fa-check me-2"></i>Aprovar e Despachar
+                                    <div class="mb-3">
+                                        <span class="text-muted small">Origem:</span>
+                                        <span class="fw-bold small ms-1 text-primary"><?= htmlspecialchars($req['nome_filial']) ?></span>
+                                    </div>
+                                    <?php if ($req['observacoes']): ?>
+                                        <div class="bg-light p-2 rounded small mb-3 border-start border-3 border-warning">
+                                            <i class="fas fa-comment me-2 opacity-50"></i>"<?= htmlspecialchars($req['observacoes']) ?>"
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="d-grid">
+                                        <button type="button" class="btn btn-primary btn-sm fw-bold py-2" onclick="abrirProcessarSolicitacao(<?= $req['id'] ?>)">
+                                            <i class="fas fa-tasks me-2"></i>Processar Solicitação
                                         </button>
                                     </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             <?php endif; ?>
 
@@ -876,6 +844,71 @@ function abrirDetalhesTransferencia(id) {
             document.getElementById('det_content').classList.remove('d-none');
         });
 }
+
+let processarModalInstance = null;
+function abrirProcessarSolicitacao(id) {
+    const modalEl = document.getElementById('modalProcessarSolicitacao');
+    if (!processarModalInstance) processarModalInstance = new bootstrap.Modal(modalEl);
+    
+    // Reset modal
+    document.getElementById('proc_loading').classList.remove('d-none');
+    document.getElementById('proc_content').classList.add('d-none');
+    processarModalInstance.show();
+
+    fetch(`transferencias.php?action=get_items&id=${id}`)
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) {
+                alert(res.message);
+                return;
+            }
+
+            const t = res.transfer;
+            document.getElementById('proc_codigo').innerText = t.codigo_transferencia;
+            document.getElementById('proc_subtitulo').innerText = `Solicitante: ${t.nome_destino}`;
+            document.getElementById('proc_transf_id').value = t.id;
+            
+            // Obs
+            const obsEl = document.getElementById('proc_observacao');
+            if (t.observacoes) {
+                obsEl.parentElement.classList.remove('d-none');
+                obsEl.innerText = t.observacoes;
+            } else {
+                obsEl.parentElement.classList.add('d-none');
+            }
+
+            // Itens com Inputs
+            const tbody = document.getElementById('proc_tbody_items');
+            tbody.innerHTML = res.items.map(it => {
+                const disp = parseFloat(it.disp_matriz || 0);
+                const solicitada = parseFloat(it.quantidade_solicitada);
+                const padrao = solicitada > disp ? disp : solicitada;
+                const corDisp = disp < solicitada ? 'text-danger' : 'text-success';
+
+                return `
+                    <tr>
+                        <td>
+                            <div class="fw-bold small">${it.nome}</div>
+                            <div class="extra-small text-muted">SKU: ${it.codigo}</div>
+                        </td>
+                        <td class="text-center small">${solicitada}</td>
+                        <td class="text-center fw-bold ${corDisp} small">${disp}</td>
+                        <td class="p-2">
+                            <input type="number" step="1" min="0" max="${disp}"
+                                name="qtd_enviada[${it.produto_id}]"
+                                value="${padrao}"
+                                class="form-control form-control-sm text-center fw-bold border-primary-subtle"
+                                onchange="if(this.value < 0) this.value = 0; if(parseFloat(this.value) > ${disp}) this.value = ${disp};"
+                            >
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('proc_loading').classList.add('d-none');
+            document.getElementById('proc_content').classList.remove('d-none');
+        });
+}
 </script>
 
 <?php if (!$isMatriz): ?>
@@ -1049,6 +1082,66 @@ function abrirDetalhesTransferencia(id) {
                 <button type="button" class="btn btn-light btn-sm fw-bold px-4" data-bs-dismiss="modal">Fechar</button>
                 <div id="det_footer_acoes" class="d-inline-block"></div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Processar Solicitação (Nova) -->
+<div class="modal fade" id="modalProcessarSolicitacao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <form action="transferencias.php?action=aprovar_solicitacao" method="POST">
+                <input type="hidden" name="transferencia_id" id="proc_transf_id">
+                
+                <div class="modal-header bg-primary text-white border-0">
+                    <div>
+                        <h6 class="modal-title fw-bold text-white" id="proc_codigo">---</h6>
+                        <small class="opacity-75" id="proc_subtitulo">---</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div id="proc_loading" class="text-center py-5">
+                        <div class="spinner-border text-primary opacity-50" role="status"></div>
+                        <p class="small text-muted mt-2">Carregando itens...</p>
+                    </div>
+                    
+                    <div id="proc_content" class="d-none">
+                        <!-- Observações -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-2 extra-small text-muted text-uppercase">Nota da Filial</h6>
+                            <div class="p-3 bg-light border-start border-3 border-warning rounded small" id="proc_observacao">---</div>
+                        </div>
+
+                        <!-- Lista de Itens com Inputs -->
+                        <h6 class="fw-bold mb-3 small"><i class="fas fa-edit me-2 text-primary"></i>Ajustar Quantidades para Envio</h6>
+                        <div class="table-responsive border rounded bg-white shadow-sm" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light sticky-top shadow-sm" style="z-index: 5;">
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th class="text-center" style="width:110px">Solicitado</th>
+                                        <th class="text-center" style="width:110px">Disp. Matriz</th>
+                                        <th class="text-center" style="width:140px">Qtd p/ Enviar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="proc_tbody_items"></tbody>
+                            </table>
+                        </div>
+                        <div class="mt-2 text-muted extra-small">
+                            <i class="fas fa-info-circle me-1"></i> A quantidade para enviar não pode exceder o estoque disponível na matriz.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 p-3 pt-0">
+                    <button type="button" class="btn btn-light btn-sm fw-bold px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm fw-bold px-5">
+                        <i class="fas fa-truck-dispatch me-2"></i>Aprovar e Despachar
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
