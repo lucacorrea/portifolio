@@ -243,34 +243,37 @@
                         <h6 class="fw-bold">Nenhum envio registrado</h6>
                     </div>
                 <?php else: ?>
+                <?php else: ?>
                     <!-- Filtros Matriz -->
-                    <div class="card border-0 bg-light mb-4 shadow-sm">
+                    <div class="card border-0 bg-white mb-4 shadow-sm rounded-3">
                         <div class="card-body p-3">
-                            <form method="GET" action="transferencias.php" class="row g-2 align-items-end">
+                            <form method="GET" action="transferencias.php" class="row g-3 align-items-end auto-submit-form">
                                 <input type="hidden" name="aba" value="historico_envios">
-                                <div class="col-md-3">
-                                    <label class="extra-small fw-bold text-muted">Código</label>
-                                    <input type="text" name="filtro_codigo" class="form-control form-control-sm" placeholder="Ex: ENV-..." value="<?= htmlspecialchars($_GET['filtro_codigo'] ?? '') ?>">
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                                        <input type="text" name="filtro_codigo" class="form-control border-start-0 ps-0" placeholder="Código do pedido..." value="<?= htmlspecialchars($_GET['filtro_codigo'] ?? '') ?>" onchange="this.form.submit()">
+                                    </div>
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="extra-small fw-bold text-muted">Status</label>
-                                    <select name="filtro_status" class="form-select form-select-sm">
-                                        <option value="">Todos</option>
+                                    <select name="filtro_status" class="form-select form-select-sm fw-bold shadow-none" onchange="this.form.submit()">
+                                        <option value="">Todos os Status</option>
                                         <option value="em_transito" <?= ($_GET['filtro_status'] ?? '') == 'em_transito' ? 'selected' : '' ?>>Em Trânsito</option>
                                         <option value="concluida" <?= ($_GET['filtro_status'] ?? '') == 'concluida' ? 'selected' : '' ?>>Concluída</option>
                                     </select>
                                 </div>
-                                <div class="col-md-2">
-                                    <label class="extra-small fw-bold text-muted">Início</label>
-                                    <input type="date" name="filtro_inicio" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['filtro_inicio'] ?? '') ?>">
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white text-muted small">Período:</span>
+                                        <input type="date" name="filtro_inicio" class="form-control shadow-none" value="<?= htmlspecialchars($_GET['filtro_inicio'] ?? '') ?>" onchange="this.form.submit()">
+                                        <span class="input-group-text bg-white text-muted">até</span>
+                                        <input type="date" name="filtro_fim" class="form-control shadow-none" value="<?= htmlspecialchars($_GET['filtro_fim'] ?? '') ?>" onchange="this.form.submit()">
+                                    </div>
                                 </div>
-                                <div class="col-md-2">
-                                    <label class="extra-small fw-bold text-muted">Fim</label>
-                                    <input type="date" name="filtro_fim" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['filtro_fim'] ?? '') ?>">
-                                </div>
-                                <div class="col-md-3 d-flex gap-1">
-                                    <button type="submit" class="btn btn-primary btn-sm fw-bold flex-grow-1"><i class="fas fa-filter me-1"></i>Filtrar</button>
-                                    <a href="transferencias.php?aba=historico_envios" class="btn btn-outline-secondary btn-sm fw-bold"><i class="fas fa-times"></i></a>
+                                <div class="col-md-2 d-flex justify-content-end">
+                                    <a href="transferencias.php?aba=historico_envios" class="btn btn-outline-danger btn-sm w-100 fw-bold border-0">
+                                        <i class="fas fa-eraser me-1"></i>Limpar
+                                    </a>
                                 </div>
                             </form>
                         </div>
@@ -475,34 +478,36 @@
 
             <?php if ($aba == 'historico_recebimentos'): ?>
                 <!-- Filtros Filial -->
-                <div class="card border-0 bg-light mb-4 shadow-sm">
+                <div class="card border-0 bg-white mb-4 shadow-sm rounded-3">
                     <div class="card-body p-3">
-                        <form method="GET" action="transferencias.php" class="row g-2 align-items-end">
+                        <form method="GET" action="transferencias.php" class="row g-3 align-items-end auto-submit-form">
                             <input type="hidden" name="aba" value="historico_recebimentos">
-                            <div class="col-md-3">
-                                <label class="extra-small fw-bold text-muted">Código</label>
-                                <input type="text" name="filtro_codigo" class="form-control form-control-sm" placeholder="Buscar código..." value="<?= htmlspecialchars($_GET['filtro_codigo'] ?? '') ?>">
+                            <div class="col-md-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                                    <input type="text" name="filtro_codigo" class="form-control border-start-0 ps-0" placeholder="Código do pedido..." value="<?= htmlspecialchars($_GET['filtro_codigo'] ?? '') ?>" onchange="this.form.submit()">
+                                </div>
                             </div>
                             <div class="col-md-2">
-                                <label class="extra-small fw-bold text-muted">Status</label>
-                                <select name="filtro_status" class="form-select form-select-sm">
-                                    <option value="">Todos</option>
+                                <select name="filtro_status" class="form-select form-select-sm fw-bold shadow-none" onchange="this.form.submit()">
+                                    <option value="">Todos os Status</option>
                                     <option value="pendente" <?= ($_GET['filtro_status'] ?? '') == 'pendente' ? 'selected' : '' ?>>Pendente</option>
                                     <option value="em_transito" <?= ($_GET['filtro_status'] ?? '') == 'em_transito' ? 'selected' : '' ?>>Em Trânsito</option>
                                     <option value="concluida" <?= ($_GET['filtro_status'] ?? '') == 'concluida' ? 'selected' : '' ?>>Concluída</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="extra-small fw-bold text-muted">Início</label>
-                                <input type="date" name="filtro_inicio" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['filtro_inicio'] ?? '') ?>">
+                            <div class="col-md-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white text-muted small">Período:</span>
+                                    <input type="date" name="filtro_inicio" class="form-control shadow-none" value="<?= htmlspecialchars($_GET['filtro_inicio'] ?? '') ?>" onchange="this.form.submit()">
+                                    <span class="input-group-text bg-white text-muted">até</span>
+                                    <input type="date" name="filtro_fim" class="form-control shadow-none" value="<?= htmlspecialchars($_GET['filtro_fim'] ?? '') ?>" onchange="this.form.submit()">
+                                </div>
                             </div>
-                            <div class="col-md-2">
-                                <label class="extra-small fw-bold text-muted">Fim</label>
-                                <input type="date" name="filtro_fim" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['filtro_fim'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-3 d-flex gap-1">
-                                <button type="submit" class="btn btn-primary btn-sm fw-bold flex-grow-1"><i class="fas fa-filter me-1"></i>Filtrar</button>
-                                <a href="transferencias.php?aba=historico_recebimentos" class="btn btn-outline-secondary btn-sm fw-bold"><i class="fas fa-times"></i></a>
+                            <div class="col-md-2 d-flex justify-content-end">
+                                <a href="transferencias.php?aba=historico_recebimentos" class="btn btn-outline-danger btn-sm w-100 fw-bold border-0">
+                                    <i class="fas fa-eraser me-1"></i>Limpar
+                                </a>
                             </div>
                         </form>
                     </div>
