@@ -125,8 +125,9 @@ class SefazSoapClient extends BaseService {
     private function wrapSoap($xml, $serviceName, $methodName) {
         $ns = 'http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName;
         
-        // For National Services (AN), the method tag is usually REQUIRED around nfeDadosMsg
-        if ($serviceName === 'NFeDistribuicaoDFe' || $serviceName === 'NFeRecepcaoEvento4') {
+        // For National Services (AN), NFeDistribuicaoDFe typically requires a method wrapper.
+        // However, NFeRecepcaoEvento4 usually expects nfeDadosMsg DIRECTLY in the Body.
+        if ($serviceName === 'NFeDistribuicaoDFe') {
              $content = "<{$methodName} xmlns=\"{$ns}\"><nfeDadosMsg>{$xml}</nfeDadosMsg></{$methodName}>";
         } else {
              $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";

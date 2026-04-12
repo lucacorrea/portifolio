@@ -86,7 +86,7 @@ class SefazConsultaService extends BaseService {
         $infEvento->appendChild($dom->createElement('tpAmb', ($this->config['ambiente'] == 'producao' ? '1' : '2')));
         $infEvento->appendChild($dom->createElement('CNPJ', preg_replace('/[^0-9]/', '', $cnpj)));
         $infEvento->appendChild($dom->createElement('chNFe', $chave));
-        $infEvento->appendChild($dom->createElement('dhEvento', date('Y-m-d\TH:i:sP')));
+        $infEvento->appendChild($dom->createElement('dhEvento', date('Y-m-d\TH:i:sO')));
         $infEvento->appendChild($dom->createElement('tpEvento', $tpEvento));
         $infEvento->appendChild($dom->createElement('nSeqEvento', '1'));
         $infEvento->appendChild($dom->createElement('verEvento', '1.00'));
