@@ -237,47 +237,48 @@
             <?php endif; ?>
 
             <?php if ($aba == 'historico_envios'): ?>
+                <!-- Filtros Matriz -->
+                <div class="card border-0 bg-white mb-4 shadow-sm rounded-3">
+                    <div class="card-body p-3">
+                        <form method="GET" action="transferencias.php" class="row g-3 align-items-end auto-submit-form">
+                            <input type="hidden" name="aba" value="historico_envios">
+                            <div class="col-md-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                                    <input type="text" name="filtro_codigo" class="form-control border-start-0 ps-0" placeholder="Código do pedido..." value="<?= htmlspecialchars($_GET['filtro_codigo'] ?? '') ?>" onchange="this.form.submit()">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <select name="filtro_status" class="form-select form-select-sm fw-bold shadow-none" onchange="this.form.submit()">
+                                    <option value="">Todos os Status</option>
+                                    <option value="em_transito" <?= ($_GET['filtro_status'] ?? '') == 'em_transito' ? 'selected' : '' ?>>Em Trânsito</option>
+                                    <option value="concluida" <?= ($_GET['filtro_status'] ?? '') == 'concluida' ? 'selected' : '' ?>>Concluída</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white text-muted small">Período:</span>
+                                    <input type="date" name="filtro_inicio" class="form-control shadow-none" value="<?= htmlspecialchars($_GET['filtro_inicio'] ?? '') ?>" onchange="this.form.submit()">
+                                    <span class="input-group-text bg-white text-muted">até</span>
+                                    <input type="date" name="filtro_fim" class="form-control shadow-none" value="<?= htmlspecialchars($_GET['filtro_fim'] ?? '') ?>" onchange="this.form.submit()">
+                                </div>
+                            </div>
+                            <div class="col-md-2 d-flex justify-content-end">
+                                <a href="transferencias.php?aba=historico_envios" class="btn btn-outline-danger btn-sm w-100 fw-bold border-0">
+                                    <i class="fas fa-eraser me-1"></i>Limpar
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <?php if (empty($historico_envios)): ?>
                     <div class="text-center text-muted py-5">
                         <i class="fas fa-history fa-3x mb-3 opacity-25"></i>
                         <h6 class="fw-bold">Nenhum envio registrado</h6>
+                        <p class="small">Tente ajustar os filtros acima.</p>
                     </div>
                 <?php else: ?>
-                    <!-- Filtros Matriz -->
-                    <div class="card border-0 bg-white mb-4 shadow-sm rounded-3">
-                        <div class="card-body p-3">
-                            <form method="GET" action="transferencias.php" class="row g-3 align-items-end auto-submit-form">
-                                <input type="hidden" name="aba" value="historico_envios">
-                                <div class="col-md-4">
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
-                                        <input type="text" name="filtro_codigo" class="form-control border-start-0 ps-0" placeholder="Código do pedido..." value="<?= htmlspecialchars($_GET['filtro_codigo'] ?? '') ?>" onchange="this.form.submit()">
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <select name="filtro_status" class="form-select form-select-sm fw-bold shadow-none" onchange="this.form.submit()">
-                                        <option value="">Todos os Status</option>
-                                        <option value="em_transito" <?= ($_GET['filtro_status'] ?? '') == 'em_transito' ? 'selected' : '' ?>>Em Trânsito</option>
-                                        <option value="concluida" <?= ($_GET['filtro_status'] ?? '') == 'concluida' ? 'selected' : '' ?>>Concluída</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-white text-muted small">Período:</span>
-                                        <input type="date" name="filtro_inicio" class="form-control shadow-none" value="<?= htmlspecialchars($_GET['filtro_inicio'] ?? '') ?>" onchange="this.form.submit()">
-                                        <span class="input-group-text bg-white text-muted">até</span>
-                                        <input type="date" name="filtro_fim" class="form-control shadow-none" value="<?= htmlspecialchars($_GET['filtro_fim'] ?? '') ?>" onchange="this.form.submit()">
-                                    </div>
-                                </div>
-                                <div class="col-md-2 d-flex justify-content-end">
-                                    <a href="transferencias.php?aba=historico_envios" class="btn btn-outline-danger btn-sm w-100 fw-bold border-0">
-                                        <i class="fas fa-eraser me-1"></i>Limpar
-                                    </a>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
