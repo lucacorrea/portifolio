@@ -1,20 +1,25 @@
 <style>
-    /* 🚀 Fix para que os dropdowns da tabela flutuem por cima de tudo */
+    /* 🚀 Solução Definitiva para Dropdowns em Tabelas */
     .table-responsive {
         overflow: visible !important;
+        min-height: 350px; /* Garante espaço para o menu mesmo com poucas linhas */
     }
     
-    /* Mantém o scroll apenas se a tela for realmente pequena, 
-       mas prioriza a visibilidade do menu no desktop */
-    @media (min-width: 992px) {
-        .table-responsive {
-            overflow: visible !important;
-        }
+    #mainNfeTable td {
+        position: static !important; /* Permite que o menu flutue baseado na tabela e não na linha */
     }
 
     #mainNfeTable .dropdown-menu {
-        z-index: 1060 !important;
-        box-shadow: 0 0.5rem 2rem rgba(0,0,0,0.15) !important;
+        z-index: 10000 !important;
+        box-shadow: 0 1rem 3rem rgba(0,0,0,0.2) !important;
+    }
+
+    /* Ajuste para mobile para não quebrar o layout */
+    @media (max-width: 991px) {
+        .table-responsive {
+            overflow-x: auto !important;
+            min-height: 250px;
+        }
     }
 </style>
 
