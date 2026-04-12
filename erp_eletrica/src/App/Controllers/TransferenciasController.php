@@ -620,22 +620,11 @@ class TransferenciasController extends BaseController {
                 $itensComProblema = $ocs->fetchAll(\PDO::FETCH_ASSOC);
 
                 if (!empty($itensComProblema)) {
-                    $codigo = 'REP-' . date('YmdHis') . '-' . rand(100, 999);
                     $mid = $this->matrizId;
+                    $totalRepor = 0;
+                    $itensValidos = [];
 
-                    $stmtNew = $this->pdo->prepare(
-                        "INSERT INTO erp_transferencias (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio)
-                         VALUES (?, 'transferencia', ?, ?, 'em_transito', ?, ?, NOW())"
-                    );
-                    $obsNovo = "Reposição automática do pedido #" . $transf_id;
-                    $stmtNew->execute([$codigo, $mid, $dadosOrig['destino_filial_id'], $obsNovo, $_SESSION['usuario_id'] ?? 0]);
-                    $new_id = $this->pdo->lastInsertId();
-
-                    $stmtItem    = $this->pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
-                    $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
-                    $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
-
-                    // Query para verificar estoque atual
+                    // 1. Validação Prévia (Servidor)
                     $stmtCheck = $this->pdo->prepare("
                         SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
                         FROM produtos p
@@ -645,9 +634,8 @@ class TransferenciasController extends BaseController {
 
                     foreach ($itensComProblema as $it) {
                         $pid = $it['produto_id'];
-                        $qtd = $it['quantidade_problema'];
+                        $qtd = (float)$it['quantidade_problema'];
 
-                        // 1. Validação de Estoque (Servidor)
                         $stmtCheck->execute([$mid, $pid]);
                         $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
                         
@@ -656,6 +644,35 @@ class TransferenciasController extends BaseController {
                             $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
                             throw new \Exception("Estoque insuficiente na Matriz para repor '{$nomeProd}'. Disponível: {$disponivel}, Necessário: {$qtd}");
                         }
+
+                        if ($qtd > 0) {
+                            $totalRepor += $qtd;
+                            $itensValidos[] = $it;
+                        }
+                    }
+
+                    if (empty($itensValidos)) {
+                        throw new \Exception("Nenhum item válido para reposição encontrado.");
+                    }
+
+                    // 2. Criação do Cabeçalho (Somente após validar estoque)
+                    $codigo = 'REP-' . date('YmdHis') . '-' . rand(100, 999);
+                    $stmtNew = $this->pdo->prepare(
+                        "INSERT INTO erp_transferencias (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio)
+                         VALUES (?, 'transferencia', ?, ?, 'em_transito', ?, ?, NOW())"
+                    );
+                    $obsNovo = "Reposição automática do pedido #" . $transf_id;
+                    $stmtNew->execute([$codigo, $mid, $dadosOrig['destino_filial_id'], $obsNovo, $_SESSION['usuario_id'] ?? 0]);
+                    $new_id = $this->pdo->lastInsertId();
+
+                    // 3. Processamento dos Itens
+                    $stmtItem    = $this->pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
+                    $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
+                    $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
+
+                    foreach ($itensValidos as $it) {
+                        $pid = $it['produto_id'];
+                        $qtd = (float)$it['quantidade_problema'];
 
                         $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
                         $pd->execute([$pid]);
