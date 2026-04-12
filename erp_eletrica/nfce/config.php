@@ -83,14 +83,14 @@ if (!$empresaId) {
 // Debug (opcional, logar no servidor)
 error_log("[NFC-e] Resolvido empresaId=$empresaId para vendaId=$vendaId");
 
-// 1. Busca Global (sefaz_config)
+// 1. Busca Global (sefaz_config) - Certificado e CSC Central
 $global = [];
 try {
     $stG = $pdo->query("SELECT * FROM sefaz_config LIMIT 1");
     $global = $stG->fetch() ?: [];
 } catch (Throwable $e) { $errorLog[] = "Tabela 'sefaz_config' inacessível: " . $e->getMessage(); }
 
-// 2. Busca Filial (filiais)
+// 2. Busca Filial (Unidade atual)
 $filial = [];
 try {
     $stF = $pdo->prepare("SELECT * FROM filiais WHERE id = ?");
@@ -98,18 +98,46 @@ try {
     $filial = $stF->fetch() ?: [];
 } catch (Throwable $e) { $errorLog[] = "Tabela 'filiais' inacessível: " . $e->getMessage(); }
 
-if (empty($global) && empty($filial)) {
+// 3. Busca Matriz (Identidade corporativa base)
+$matriz = [];
+try {
+    $stM = $pdo->query("SELECT * FROM filiais WHERE principal = 1 LIMIT 1");
+    $matriz = $stM->fetch() ?: [];
+} catch (Throwable $e) {}
+
+if (empty($global) && empty($filial) && empty($matriz)) {
     echo "<h2>Erro de Configuração NFC-e</h2>";
-    echo "<p>Não foi possível encontrar os dados da empresa no banco de dados <b>u784961086_pdv</b>.</p>";
-    echo "<ul>";
-    foreach (($errorLog ?? []) as $err) echo "<li>$err</li>";
-    echo "</ul>";
-    echo "<p>Certifique-se de que as tabelas <code>sefaz_config</code> ou <code>filiais</code> estão preenchidas no seu banco de dados.</p>";
+    echo "<p>Não foi possível localizar os dados fiscais no banco.</p>";
     die();
 }
 
-// Mescla as configurações (Prioridade para Filial)
-$fiscal = array_merge($global, $filial);
+// Consolidação com Herança (Lógica idêntica ao NfceService.php)
+$fiscal = [];
+$globalFields = ['certificado_path', 'certificado_senha', 'ambiente', 'csc', 'csc_id', 'cnpj', 'razao_social', 'inscricao_estadual'];
+
+// Lista de campos para mapeamento (conforme NfceService)
+$fields = [
+    'cnpj', 'razao_social', 'nome_fantasia', 'inscricao_estadual', 'ambiente', 
+    'csc', 'csc_id', 'certificado_path', 'certificado_senha',
+    'logradouro', 'numero', 'bairro', 'municipio', 'uf', 'cep', 'codigo_municipio',
+    'serie_nfce', 'regime_tributario', 'crt', 'telefone'
+];
+
+foreach ($fields as $field) {
+    $filialKey = $field;
+    if ($field === 'certificado_path') $filialKey = 'certificado_pfx';
+    if ($field === 'csc')              $filialKey = 'csc_token';
+    if ($field === 'razao_social')     $filialKey = 'razao_social'; // consistente
+    
+    if (in_array($field, $globalFields)) {
+        // Obrigatório vir do Global ou Matriz
+        $val = (!empty($global[$field])) ? $global[$field] : ($matriz[$filialKey] ?? null);
+    } else {
+        // Preferência Filial -> Fallback Matriz
+        $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : ($matriz[$filialKey] ?? null);
+    }
+    $fiscal[$field] = $val;
+}
 
 // ========== Mapeamento de Campos (27 campos) ==========
 define('TP_AMB',     (string)($fiscal['ambiente'] ?? '2'));
