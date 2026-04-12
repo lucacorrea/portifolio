@@ -51,16 +51,16 @@ class NfceService extends BaseService {
             if ($field === 'csc') $filialKey = 'csc_token';
             if ($field === 'nome_fantasia') $filialKey = 'nome';
             
-            // IF field is in the "Always Global" list, we prioritize Global/Matriz
+            // Hard Override for Global Fields: Only Global or Matriz, NEVER Filial
             if (in_array($field, $globalFields)) {
-                // Priority: sefaz_config -> matriz record -> filial (last resort)
+                // Priority: sefaz_config (Global Card) -> Matriz Record (Corporate Identity)
                 $val = ($global[$field] ?? null);
                 if (empty($val)) {
-                    $val = (!empty($matriz[$filialKey])) ? $matriz[$filialKey] : $filial[$filialKey];
+                    $val = ($matriz[$filialKey] ?? null);
                 }
             } else {
-                // Regular field: Filial -> Matriz fallback
-                $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : (!empty($matriz[$filialKey]) ? $matriz[$filialKey] : null);
+                // Shared fields: Filial has priority (Address/Phones), fallback to Matriz
+                $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : ($matriz[$filialKey] ?? null);
             }
 
             $config[$field] = $val;
