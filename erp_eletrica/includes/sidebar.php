@@ -39,6 +39,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php endif; ?>
         
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão de Materiais</div>
+        <?php 
+            $productModel = new \App\Models\Product();
+            $s_filialId = $_SESSION['filial_id'] ?? null;
+            $s_isMatriz = $_SESSION['is_matriz'] ?? false;
+        ?>
         
         <a href="estoque.php" class="nav-link <?= $current_page == 'estoque.php' ? 'active' : '' ?>">
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
@@ -47,10 +52,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="transferencias.php" class="nav-link <?= $current_page == 'transferencias.php' ? 'active' : '' ?>">
             <i class="fas fa-truck-fast"></i> <span>Transferências (B2B)</span>
             <?php 
-                $b2bCount = 0;
-                $s_filialId = $_SESSION['filial_id'] ?? null;
-                $s_isMatriz = $_SESSION['is_matriz'] ?? false;
-                
                 if ($s_isMatriz) {
                     // Matriz vê: Solicitações Pendentes + Ocorrências não resolvidas
                     $b2bCount = $productModel->query("SELECT COUNT(*) FROM erp_transferencias WHERE status = 'pendente' OR (origem_filial_id = 1 AND tem_problema = 1 AND problema_resolvido = 0)")->fetchColumn();
@@ -69,9 +70,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="estoque_baixo.php" class="nav-link <?= $current_page == 'estoque_baixo.php' ? 'active' : '' ?>">
             <i class="fas fa-triangle-exclamation"></i> <span>Estoque Baixo</span>
             <?php 
-                $productModel = new \App\Models\Product();
-                $s_filialId = $_SESSION['filial_id'] ?? null;
-                $s_isMatriz = $_SESSION['is_matriz'] ?? false;
                 $stats = $productModel->getStockStats(!$s_isMatriz ? $s_filialId : null);
                 if ($stats['critical'] > 0): 
             ?>
