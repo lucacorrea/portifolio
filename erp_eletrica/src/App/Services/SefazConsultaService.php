@@ -309,20 +309,55 @@ class SefazConsultaService extends BaseService {
     }
 
     private function processarRetornoEvento($xmlStr) {
+        if (empty($xmlStr)) throw new Exception("SEFAZ retornou uma resposta vazia no evento.");
+
+        // Limpeza agressiva de namespaces para facilitar XPath
         $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $xmlStr);
-        $xml = simplexml_load_string($cleanXml);
+        $xml = @simplexml_load_string($cleanXml);
         
-        $ret = $xml->xpath('//retEnvEvento');
-        if (empty($ret)) throw new Exception("Resposta de evento inválida da SEFAZ.");
-        
-        $cStat = (string)$ret[0]->retEvento->infEvento->cStat;
-        $xMotivo = (string)$ret[0]->retEvento->infEvento->xMotivo;
-        
-        if ($cStat != '135' && $cStat != '136') {
+        if (!$xml) throw new Exception("Falha ao ler XML de retorno da SEFAZ.");
+
+        // 1. Tentar encontrar o lote (retEnvEvento)
+        $lote = $xml->xpath('//retEnvEvento');
+        if (!empty($lote)) {
+            $root = $lote[0];
+            $cStatLote = (string)$root->cStat;
+            $xMotivoLote = (string)$root->xMotivo;
+
+            // Se o lote foi rejeitado (cStat != 128)
+            if ($cStatLote != '128') {
+                throw new Exception("Lote rejeitado pela SEFAZ: [$cStatLote] $xMotivoLote");
+            }
+
+            // Se o lote está OK, buscar o retorno do evento dentro dele
+            if (isset($root->retEvento)) {
+                $cStatEv = (string)$root->retEvento->infEvento->cStat;
+                $xMotivoEv = (string)$root->retEvento->infEvento->xMotivo;
+                
+                if ($cStatEv == '135' || $cStatEv == '136') return true;
+                throw new Exception("Evento rejeitado: [$cStatEv] $xMotivoEv");
+            }
+        }
+
+        // 2. Fallback: Tentar encontrar retEvento diretamente (algumas SEFAZ respondem assim)
+        $eventoDirect = $xml->xpath('//retEvento');
+        if (!empty($eventoDirect)) {
+            $cStat = (string)$eventoDirect[0]->infEvento->cStat;
+            $xMotivo = (string)$eventoDirect[0]->infEvento->xMotivo;
+            if ($cStat == '135' || $cStat == '136') return true;
             throw new Exception("Falha na manifestação: [$cStat] $xMotivo");
         }
-        
-        return true;
+
+        // 3. Fallback Final: Procurar qualquer cStat e xMotivo se nada acima funcionou
+        $anyStat = $xml->xpath('//cStat');
+        $anyMotivo = $xml->xpath('//xMotivo');
+        if (!empty($anyStat)) {
+            $stat = (string)$anyStat[0];
+            $motivo = !empty($anyMotivo) ? (string)$anyMotivo[0] : "Erro desconhecido";
+            throw new Exception("SEFAZ retornou status inesperado: [$stat] $motivo");
+        }
+
+        throw new Exception("Resposta de evento da SEFAZ não contém dados de processamento (cStat).");
     }
 
     public function salvarNotasCache($filialId, $documentos) {
