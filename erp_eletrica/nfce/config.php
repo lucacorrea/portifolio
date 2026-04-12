@@ -126,11 +126,11 @@ foreach ($allKeys as $key) {
     if ($key === 'razao_social')     $filialKey = 'nome'; // No banco filiais o campo é 'nome'
     
     if (in_array($key, $globalFields)) {
-        // Prioridade: Global -> Matriz -> Filial
-        $val = $global[$key] ?? $matriz[$filialKey] ?? $filial[$filialKey] ?? null;
+        // Prioridade: Global -> Matriz -> Filial (Usando !empty para garantir o fallback de strings vazias)
+        $val = !empty($global[$key]) ? $global[$key] : (!empty($matriz[$filialKey]) ? $matriz[$filialKey] : ($filial[$filialKey] ?? null));
     } else {
         // Prioridade: Filial -> Matriz -> Global
-        $val = $filial[$filialKey] ?? $matriz[$filialKey] ?? $global[$key] ?? null;
+        $val = !empty($filial[$filialKey]) ? $filial[$filialKey] : (!empty($matriz[$filialKey]) ? $matriz[$filialKey] : ($global[$key] ?? null));
     }
     $fiscal[$key] = $val;
 }
