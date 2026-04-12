@@ -90,56 +90,93 @@ try {
     $global = $stG->fetch() ?: [];
 } catch (Throwable $e) { $errorLog[] = "Tabela 'sefaz_config' inacessível: " . $e->getMessage(); }
 
-// 2. Busca Filial (filiais)
-$filial = [];
+// 2. Busca Matriz (principal = 1)
+$matriz = [];
 try {
-    $stF = $pdo->prepare("SELECT * FROM filiais WHERE id = ?");
-    $stF->execute([$empresaId]);
-    $filial = $stF->fetch() ?: [];
-} catch (Throwable $e) { $errorLog[] = "Tabela 'filiais' inacessível: " . $e->getMessage(); }
+    $stM = $pdo->query("SELECT * FROM filiais WHERE principal = 1 LIMIT 1");
+    $matriz = $stM->fetch() ?: [];
+} catch (Throwable $e) { $errorLog[] = "Busca por Matriz falhou: " . $e->getMessage(); }
 
-if (empty($global) && empty($filial)) {
+// 3. Busca Filial Atual
+$filial = [];
+if ($empresaId) {
+    try {
+        $stF = $pdo->prepare("SELECT * FROM filiais WHERE id = ?");
+        $stF->execute([$empresaId]);
+        $filial = $stF->fetch() ?: [];
+    } catch (Throwable $e) { $errorLog[] = "Tabela 'filiais' inacessível: " . $e->getMessage(); }
+}
+
+if (empty($global) && empty($filial) && empty($matriz)) {
     echo "<h2>Erro de Configuração NFC-e</h2>";
     echo "<p>Não foi possível encontrar os dados da empresa no banco de dados <b>u784961086_pdv</b>.</p>";
     echo "<ul>";
     foreach (($errorLog ?? []) as $err) echo "<li>$err</li>";
     echo "</ul>";
-    echo "<p>Certifique-se de que as tabelas <code>sefaz_config</code> ou <code>filiais</code> estão preenchidas no seu banco de dados.</p>";
     die();
 }
 
-// Mescla as configurações (Prioridade para Filial)
-$fiscal = array_merge($global, $filial);
+/**
+ * LÓGICA DE HERANÇA CENTRALIZADA:
+ * Para campos fiscais CRÍTICOS (CNPJ, Certificado, CSC, etc.), priorizamos a Matriz/Global.
+ * Para campos de IDENTIDADE (Nome, Endereço), tentamos usar da filial, mas se estiver vazio, usamos Matriz.
+ * Como o usuário pediu para usar "TUDO DA MATRIZ", daremos preferência total à Matriz para consistência fiscal.
+ */
 
-// ========== Mapeamento de Campos (27 campos) ==========
+$fiscal = [];
+
+// Campos que DEVEM ser da Matriz (Identidade Fiscal)
+$fiscal_strict = [
+    'cnpj', 'razao_social', 'inscricao_estadual', 'crt', 'regime_tributario',
+    'ambiente', 'csc_id', 'csc_token', 'csc', 'certificado_pfx', 'certificado_senha',
+    'logradouro', 'numero', 'bairro', 'cep', 'municipio', 'cidade', 'uf', 'codigo_municipio'
+];
+
+foreach ($fiscal_strict as $field) {
+    // Prioridade 1: sefaz_config (Configuração Global/Manual)
+    // Prioridade 2: registro da Matriz (filiais onde principal=1)
+    // Prioridade 3: filial atual (se nada acima estiver preenchido)
+    $val = !empty($global[$field]) ? $global[$field] : (!empty($matriz[$field]) ? $matriz[$field] : ($filial[$field] ?? ''));
+    
+    // Tratamento especial para mapeamento de campos divergentes entre tabelas
+    if ($field === 'csc' && empty($val)) $val = $global['csc_token'] ?? $matriz['csc_token'] ?? $filial['csc_token'] ?? '';
+    if ($field === 'cidade' && empty($val)) $val = $matriz['municipio'] ?? $filial['municipio'] ?? '';
+
+    $fiscal[$field] = $val;
+}
+
+// Outros campos podem vir da filial (ex: telefone, email, serie)
+$fiscal['fone'] = !empty($filial['telefone']) ? $filial['telefone'] : ($matriz['telefone'] ?? '');
+$fiscal['serie_nfce'] = !empty($filial['serie_nfce']) ? $filial['serie_nfce'] : ($matriz['serie_nfce'] ?? '1');
+
+// ========== Mapeamento de Campos (Constants) ==========
 define('TP_AMB',     (string)($fiscal['ambiente'] ?? '2'));
 define('ID_TOKEN',   (string)($fiscal['csc_id'] ?? ''));
-define('CSC',        (string)($fiscal['csc'] ?? $fiscal['csc_token'] ?? ''));
+define('CSC',        (string)($fiscal['csc_token'] ?? $fiscal['csc'] ?? ''));
 define('NFC_SERIE',  (string)($fiscal['serie_nfce'] ?? '1'));
 
 define('EMIT_CNPJ',  so_digitos($fiscal['cnpj']));
 define('EMIT_XNOME', trim((string)($fiscal['razao_social'] ?? $fiscal['nome'] ?? '')));
-define('EMIT_XFANT', trim((string)($fiscal['nome'] ?? $fiscal['nome_fantasia'] ?? '')));
+define('EMIT_XFANT', trim((string)($fiscal['nome'] ?? $matriz['nome'] ?? $fiscal['razao_social'] ?? '')));
 define('EMIT_IE',    so_digitos($fiscal['inscricao_estadual']));
 define('EMIT_CRT',   (string)($fiscal['regime_tributario'] ?? $fiscal['crt'] ?? '1'));
 
 define('EMIT_XLGR',    trim((string)($fiscal['logradouro'] ?? '')));
 define('EMIT_NRO',     trim((string)($fiscal['numero_endereco'] ?? $fiscal['numero'] ?? '')));
 define('EMIT_XBAIRRO', trim((string)($fiscal['bairro'] ?? '')));
-define('EMIT_XMUN',    trim((string)($fiscal['cidade'] ?? $fiscal['municipio'] ?? '')));
+define('EMIT_XMUN',    trim((string)($fiscal['municipio'] ?? $fiscal['cidade'] ?? '')));
 define('EMIT_UF',      trim((string)($fiscal['uf'] ?? '')));
 define('EMIT_CEP',     so_digitos($fiscal['cep']));
 define('EMIT_CMUN',    (string)($fiscal['codigo_municipio'] ?? ''));
 define('EMIT_FONE',    so_digitos($fiscal['fone'] ?? $fiscal['telefone'] ?? ''));
 define('COD_MUN',      EMIT_CMUN);
-define('COD_UF',       substr(EMIT_CMUN, 0, 2));
+define('COD_UF',       substr((string)EMIT_CMUN, 0, 2));
 
 $PFX_PASSWORD = (string)($fiscal['certificado_senha'] ?? '');
 $PFX_PATH     = resolve_cert_path($fiscal['certificado_pfx'] ?? $fiscal['certificado_path'] ?? null);
 
 if (!$PFX_PATH) {
-    // Se não achou arquivo, mas tem nome no banco, avisa onde procurou
-    die("Certificado NFC-e não encontrado. Verifique se o arquivo .pfx existe na pasta /storage/certificados/ ou /assets/img/certificado/");
+    die("Certificado NFC-e não encontrado na Matriz. Verifique o arquivo .pfx em /storage/certificados/ ou /assets/img/certificado/");
 }
 
 define('PFX_PATH',     $PFX_PATH);
