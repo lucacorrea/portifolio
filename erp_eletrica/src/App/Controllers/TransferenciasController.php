@@ -444,8 +444,8 @@ class TransferenciasController extends BaseController {
             $itens->execute([$transf_id]);
 
             $stmtInc = $this->pdo->prepare(
-                "INSERT INTO estoque_filiais (produto_id, filial_id, quantidade)
-                 VALUES (?, ?, ?)
+                "INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                 SELECT p.id, ?, ?, p.estoque_minimo FROM produtos p WHERE p.id = ?
                  ON DUPLICATE KEY UPDATE quantidade = quantidade + ?"
             );
             $stmtUpdItem = $this->pdo->prepare(
@@ -456,18 +456,22 @@ class TransferenciasController extends BaseController {
             $stmtOc = $this->pdo->prepare("SELECT SUM(quantidade_problema) as total FROM erp_transferencias_ocorrencias WHERE transferencia_id = ? AND produto_id = ?");
 
             foreach ($itens->fetchAll() as $item) {
-                $stmtOc->execute([$transf_id, $item['produto_id']]);
+                $pid = $item['produto_id'];
+                $stmtOc->execute([$transf_id, $pid]);
                 $qtdProblema = (float)($stmtOc->fetchColumn() ?: 0);
                 
                 $qtdFinal = $item['quantidade_enviada'] - $qtdProblema;
                 if ($qtdFinal < 0) $qtdFinal = 0;
 
                 if ($item['quantidade_enviada'] > 0) {
-                    $stmtUpdItem->execute([$qtdFinal, $transf_id, $item['produto_id']]);
+                    $stmtUpdItem->execute([$qtdFinal, $transf_id, $pid]);
                     if ($qtdFinal > 0) {
                         try {
-                            $stmtInc->execute([$item['produto_id'], $this->filialLogada, $qtdFinal, $qtdFinal]);
-                        } catch (\Exception $ex) { /* silent */ }
+                            $stmtInc->execute([$this->filialLogada, $qtdFinal, $pid, $qtdFinal]);
+                        } catch (\Exception $ex) {
+                            error_log("Erro ao atualizar estoque_filiais: " . $ex->getMessage());
+                            throw new \Exception("Erro ao internalizar produto ID $pid: " . $ex->getMessage());
+                        }
                     }
                 }
             }
@@ -476,8 +480,8 @@ class TransferenciasController extends BaseController {
             setFlash('success', 'Estoque internalizado com sucesso!');
             $this->redirect('transferencias.php?aba=historico_recebimentos');
         } catch (\Exception $e) {
-            $this->pdo->rollBack();
-            $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode($e->getMessage()));
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode('Falha na Internalização: ' . $e->getMessage()));
         }
     }
 

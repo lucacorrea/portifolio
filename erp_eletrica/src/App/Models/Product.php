@@ -94,9 +94,9 @@ class Product extends BaseModel {
 
         $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
                 FROM {$this->table} p
-                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
-                WHERE COALESCE(ef.quantidade, 0) > COALESCE(ef.estoque_minimo, p.estoque_minimo) 
-                AND COALESCE(ef.quantidade, 0) <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) 
+                INNER JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                WHERE ef.quantidade > COALESCE(ef.estoque_minimo, p.estoque_minimo) 
+                AND ef.quantidade <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) 
                 AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
         
         return $this->query($sql, [$filialId])->fetchAll();
@@ -107,8 +107,8 @@ class Product extends BaseModel {
 
         $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
                 FROM {$this->table} p
-                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
-                WHERE (COALESCE(ef.quantidade, 0) > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) 
+                INNER JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                WHERE (ef.quantidade > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) 
                 OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)";
         
         return $this->query($sql, [$filialId])->fetchAll();
@@ -136,7 +136,7 @@ class Product extends BaseModel {
 
         $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
                 FROM {$this->table} p
-                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                INNER JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 WHERE 1=1";
         $params = [$filialId];
 
@@ -153,15 +153,15 @@ class Product extends BaseModel {
 
         if (!empty($filters['status'])) {
             if ($filters['status'] === 'CRITICO') {
-                $sql .= " AND COALESCE(ef.quantidade, 0) <= COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
+                $sql .= " AND ef.quantidade <= COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
             } elseif ($filters['status'] === 'BAIXO') {
-                $sql .= " AND COALESCE(ef.quantidade, 0) > COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.quantidade, 0) <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
+                $sql .= " AND ef.quantidade > COALESCE(ef.estoque_minimo, p.estoque_minimo) AND ef.quantidade <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
             } elseif ($filters['status'] === 'OK') {
-                $sql .= " AND (COALESCE(ef.quantidade, 0) > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)";
+                $sql .= " AND (ef.quantidade > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)";
             }
         }
 
-        $sql .= " ORDER BY (COALESCE(ef.quantidade, 0) - COALESCE(ef.estoque_minimo, p.estoque_minimo)) ASC";
+        $sql .= " ORDER BY (ef.quantidade - COALESCE(ef.estoque_minimo, p.estoque_minimo)) ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
