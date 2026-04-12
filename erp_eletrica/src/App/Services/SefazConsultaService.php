@@ -95,73 +95,89 @@ class SefazConsultaService extends BaseService {
     }
 
     /**
-     * Consulta as NF-e destinadas via NFeDistribuicaoDFe
+     * Consulta as NF-e destinadas via NFeDistribuicaoDFe em loop até esgotar notas
      */
     public function consultarNotas($cnpjDestinario, $ultNSU = null) {
-    $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
+        $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
+        if (empty($cnpj) || strlen($cnpj) !== 14) {
+            throw new Exception("CNPJ inválido ou não configurado (" . htmlspecialchars($cnpjDestinario) . ").");
+        }
 
-    if (empty($cnpj) || strlen($cnpj) !== 14) {
-        throw new Exception("CNPJ inválido ou não configurado (" . htmlspecialchars($cnpjDestinario) . ").");
-    }
-
-    $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2;
-
-    // ✅ NSU correto (NUNCA usar '0')
-    if ($ultNSU === null || $ultNSU === '0') {
+        $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2;
         $key = $ambiente == 1 ? 'nfe_last_nsu' : 'nfe_last_nsu_homologacao';
 
-        $stmt = $this->db->prepare("SELECT valor FROM configuracoes WHERE chave = ?");
-        $stmt->execute([$key]);
-
-        $ultNSU = $stmt->fetchColumn();
-
-        if (!$ultNSU || $ultNSU === '0') {
-            $ultNSU = '000000000000000';
-        }
-    }
-
-    // 🚀 CONSULTA ÚNICA (SEM LOOP → evita erro 656)
-    $xml_soap = $this->gerarXmlDistDfe($cnpj, $ultNSU, $ambiente);
-    $responseXml = $this->comunicarSefaz($xml_soap);
-    $resultado = $this->processarRetorno($responseXml);
-
-    $documentos = $resultado['documentos'] ?? [];
-
-    // 💾 Salvar notas no banco
-    if (!empty($documentos)) {
-        $this->salvarNotasCache($_SESSION['filial_id'] ?? 1, $documentos);
-
-        // 🔄 Auto-manifestação (opcional, mantive o seu comportamento)
-        foreach ($documentos as $doc) {
-            if (strpos($doc['xml'], '<resNFe') !== false) {
-                try {
-                    $this->manifestarNota($cnpj, $doc['chave']);
-                } catch (Exception $e) {
-                    error_log("Erro ao manifestar nota " . $doc['chave'] . ": " . $e->getMessage());
-                }
+        // ✅ NSU correto se não fornecido
+        if ($ultNSU === null || $ultNSU === '0') {
+            $stmt = $this->db->prepare("SELECT valor FROM configuracoes WHERE chave = ?");
+            $stmt->execute([$key]);
+            $ultNSU = $stmt->fetchColumn();
+            if (!$ultNSU || $ultNSU === '0') {
+                $ultNSU = '000000000000000';
             }
         }
+
+        $allDocumentos = [];
+        $loops = 0;
+        $maxLoops = 20; // Limite de segurança para evitar timeout excessivo
+        $currentNSU = $ultNSU;
+        $globalMaxNSU = '000000000000000';
+
+        do {
+            $loops++;
+            $xml_soap = $this->gerarXmlDistDfe($cnpj, $currentNSU, $ambiente);
+            $responseXml = $this->comunicarSefaz($xml_soap);
+            $resultado = $this->processarRetorno($responseXml);
+
+            $documentos = $resultado['documentos'] ?? [];
+            $novoUltNSU = $resultado['ultNSU'] ?? $currentNSU;
+            $maxNSU     = $resultado['maxNSU'] ?? $currentNSU;
+            
+            if ($maxNSU > $globalMaxNSU) $globalMaxNSU = $maxNSU;
+
+            if (!empty($documentos)) {
+                $filialId = $_SESSION['filial_id'] ?? 1;
+                $this->salvarNotasCache($filialId, $documentos);
+                $allDocumentos = array_merge($allDocumentos, $documentos);
+
+                // Auto-manifestação
+                foreach ($documentos as $doc) {
+                    if (strpos($doc['xml'], '<resNFe') !== false) {
+                        try {
+                            $this->manifestarNota($cnpj, $doc['chave']);
+                        } catch (Exception $e) {
+                            error_log("Erro ao manifestar nota " . $doc['chave'] . ": " . $e->getMessage());
+                        }
+                    }
+                }
+            }
+
+            // 🔄 Atualizar NSU no banco imediatamente após cada lote de 50
+            if ($novoUltNSU > $currentNSU) {
+                $stmt = $this->db->prepare("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
+                $stmt->execute([$key, $novoUltNSU, $novoUltNSU]);
+                $currentNSU = $novoUltNSU;
+            } else {
+                // Se o NSU não avançou, paramos o loop para evitar loop infinito
+                break;
+            }
+
+            // Se for cStat 137 (nenhum documento), o status vem no retorno. 
+            // processarRetorno já lança exceção se for erro, mas se for 137 ele deve parar.
+            // Aqui assumimos que se documentos vier vazio ou status for 137, paramos.
+            if (empty($documentos) || $resultado['status'] == '137') {
+                break;
+            }
+
+        } while ($currentNSU < $maxNSU && $loops < $maxLoops);
+
+        return [
+            'documentos' => $allDocumentos,
+            'count' => count($allDocumentos),
+            'ultNSU' => $currentNSU,
+            'maxNSU' => $globalMaxNSU,
+            'loops' => $loops
+        ];
     }
-
-    // 🔁 Atualizar NSU corretamente
-    $novoUltNSU = $resultado['ultNSU'] ?? $ultNSU;
-    $maxNSU     = $resultado['maxNSU'] ?? $ultNSU;
-
-    $key = $ambiente == 1 ? 'nfe_last_nsu' : 'nfe_last_nsu_homologacao';
-
-    $stmt = $this->db->prepare("
-        INSERT INTO configuracoes (chave, valor) 
-        VALUES (?, ?) 
-        ON DUPLICATE KEY UPDATE valor = ?
-    ");
-    $stmt->execute([$key, $novoUltNSU, $novoUltNSU]);
-
-    return [
-        'documentos' => $documentos,
-        'ultNSU' => $novoUltNSU,
-        'maxNSU' => $maxNSU
-    ];
-}
     
 
     private function gerarXmlDistDfe($cnpj, $ultNSU, $ambiente) {
@@ -304,24 +320,26 @@ class SefazConsultaService extends BaseService {
     public function salvarNotasCache($filialId, $documentos) {
         $saved = 0;
         $skipped = 0;
-        $errors = [];
         
-        // Garantir que a tabela tem a estrutura correta (UNIQUE e tamanho do CNPJ)
         $this->ensureTableSchema();
         
         foreach ($documentos as $doc) {
             try {
-                // Sanitizar CNPJ — remover formatação e garantir que não ultrapasse o campo
                 $cnpjLimpo = preg_replace('/\D/', '', $doc['cnpj'] ?? '');
                 if (empty($cnpjLimpo)) $cnpjLimpo = '00000000000000';
                 
-                // Sanitizar data — se inválida, usar data atual
                 $dataEmissao = !empty($doc['data']) ? date('Y-m-d H:i:s', strtotime($doc['data'])) : date('Y-m-d H:i:s');
                 if ($dataEmissao === '1970-01-01 00:00:00') $dataEmissao = date('Y-m-d H:i:s');
                 
+                // Usar INSERT ... ON DUPLICATE KEY UPDATE para garantir que não estamos falhando por duplicidade de forma invisível
+                // E também para atualizar o conteúdo se necessário (ex: pegar XML completo após resumo)
                 $stmt = $this->db->prepare("
-                    INSERT IGNORE INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
+                    INSERT INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
+                    ON DUPLICATE KEY UPDATE 
+                        xml_conteudo = IF(LENGTH(xml_conteudo) < LENGTH(VALUES(xml_conteudo)), VALUES(xml_conteudo), xml_conteudo),
+                        data_emissao = VALUES(data_emissao),
+                        valor_total = VALUES(valor_total)
                 ");
                 $stmt->execute([
                     $filialId,
@@ -333,22 +351,20 @@ class SefazConsultaService extends BaseService {
                     $doc['valor'] ?? 0,
                     $doc['xml'] ?? ''
                 ]);
-                $lastId = $this->db->lastInsertId();
-                if ($lastId) {
-                    $this->logAction('Nota SEFAZ Listada', 'nfe_importadas', $lastId, null, $doc['chave']);
+
+                if ($stmt->rowCount() > 0) {
                     $saved++;
                 } else {
-                    $skipped++; // Duplicate (chave_nfe já existe)
+                    $skipped++;
                 }
             } catch (\Exception $e) {
-                $errorMsg = "SEFAZ SAVE ERROR for chave {$doc['chave']}: " . $e->getMessage();
-                error_log($errorMsg);
-                $errors[] = $errorMsg;
+                error_log("SEFAZ SAVE ERROR for chave " . ($doc['chave'] ?? 'unknown') . ": " . $e->getMessage());
                 $skipped++;
                 continue;
             }
         }
-        error_log("SEFAZ salvarNotasCache: filial=$filialId, total=" . count($documentos) . ", saved=$saved, skipped=$skipped" . (!empty($errors) ? ", first_error=" . $errors[0] : ''));
+        error_log("SEFAZ salvarNotasCache: filial=$filialId, total=" . count($documentos) . ", saved=$saved, skipped=$skipped");
+        return $saved;
     }
     
     /**
