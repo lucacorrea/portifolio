@@ -89,9 +89,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="fornecedores.php" class="nav-link <?= $current_page == 'fornecedores.php' ? 'active' : '' ?>">
             <i class="fas fa-truck-fast"></i> <span>Fornecedores</span>
         </a>
+        <?php if ($s_isMatriz): ?>
         <a href="importar_automatico.php" class="nav-link <?= $current_page == 'importar_automatico.php' ? 'active' : '' ?>">
             <i class="fas fa-cloud-download-alt"></i> <span>Importação Automática</span>
         </a>
+        <?php endif; ?>
         
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Financeiro</div>
         
