@@ -543,22 +543,35 @@ function initB2BTable(tbodyId, searchId, paginationId, paginfoId, noResultsId, p
         noResults.classList.toggle('d-none', total > 0);
         tbody.closest('table').classList.toggle('d-none', total === 0);
 
-        // Botões de página
+        // Botões de página (Com lógica de janela deslizante para evitar "explosão" de botões)
         pagination.innerHTML = '';
         if (totalPages <= 1) return;
 
-        const addBtn = (label, page, disabled = false) => {
+        const addBtn = (label, page, disabled = false, dataPage = null) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'page-btn' + (page === currentPage ? ' active' : '');
+            btn.className = 'page-btn' + (page === currentPage && label !== '...' ? ' active' : '');
             btn.textContent = label;
-            btn.disabled = disabled;
-            btn.addEventListener('click', () => { currentPage = page; render(); });
+            btn.disabled = disabled || label === '...';
+            if (dataPage) btn.addEventListener('click', () => { currentPage = dataPage; render(); });
+            else if (!disabled && label !== '...') btn.addEventListener('click', () => { currentPage = page; render(); });
             pagination.appendChild(btn);
         };
 
+        // Anterior
         addBtn('‹', currentPage - 1, currentPage === 1);
-        for (let p = 1; p <= totalPages; p++) addBtn(p, p);
+
+        // Lógica de Janela (Mostra Primeira, Última e as próximas à atual)
+        const range = 2; // Páginas para cada lado
+        for (let p = 1; p <= totalPages; p++) {
+            if (p === 1 || p === totalPages || (p >= currentPage - range && p <= currentPage + range)) {
+                addBtn(p, p);
+            } else if (p === currentPage - range - 1 || p === currentPage + range + 1) {
+                addBtn('...', 0, true);
+            }
+        }
+
+        // Próxima
         addBtn('›', currentPage + 1, currentPage === totalPages);
     }
 
