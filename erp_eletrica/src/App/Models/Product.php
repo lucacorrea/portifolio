@@ -6,7 +6,6 @@ class Product extends BaseModel {
 
     public function all($order = "nome ASC") {
         $filialId = $_SESSION['filial_id'] ?? 1;
-        $isMatriz = $_SESSION['is_matriz'] ?? false;
 
         $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
                 FROM {$this->table} p
@@ -14,6 +13,53 @@ class Product extends BaseModel {
                 ORDER BY p.$order";
         
         return $this->query($sql, [$filialId])->fetchAll();
+    }
+
+    public function paginate($perPage = 15, $currentPage = 1, $order = "id DESC", $filters = []) {
+        $filialId = $_SESSION['filial_id'] ?? 1;
+        $offset = ($currentPage - 1) * $perPage;
+        
+        $where = " WHERE 1=1";
+        $paramsCount = [];
+        $paramsQuery = [$filialId];
+        
+        if (!empty($filters['q'])) {
+            $where .= " AND (p.nome LIKE ? OR p.codigo LIKE ?)";
+            $paramsCount[] = "%{$filters['q']}%";
+            $paramsCount[] = "%{$filters['q']}%";
+            $paramsQuery[] = "%{$filters['q']}%";
+            $paramsQuery[] = "%{$filters['q']}%";
+        }
+
+        if (!empty($filters['categoria'])) {
+            $where .= " AND p.categoria = ?";
+            $paramsCount[] = $filters['categoria'];
+            $paramsQuery[] = $filters['categoria'];
+        }
+        
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p $where");
+        $totalStmt->execute($paramsCount);
+        $total = $totalStmt->fetchColumn();
+        
+        $pages = ceil($total / $perPage);
+        
+        $sql = "SELECT p.*, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
+                FROM {$this->table} p
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                $where 
+                ORDER BY $order LIMIT $perPage OFFSET $offset";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($paramsQuery);
+        $data = $stmt->fetchAll();
+        
+        return [
+            'data' => $data,
+            'total' => $total,
+            'pages' => $pages,
+            'current' => $currentPage,
+            'per_page' => $perPage
+        ];
     }
 
     public function getCategories() {
