@@ -522,7 +522,7 @@ class SalesController extends BaseController {
             if ($sale['status'] === 'cancelado') throw new \Exception("Esta venda já está cancelada.");
 
             // --- NOVO: Lógica de Cancelamento Fiscal (SEFAZ) ---
-            $isFiscal = ($data['tipo'] ?? '') === 'fiscal';
+            $isFiscal = ($sale['tipo_nota'] === 'fiscal');
             if ($isFiscal) {
                 // Prepara ambiente para carregar as bibliotecas de NF-e
                 $nfceDir = dirname(__DIR__, 3) . '/nfce';
