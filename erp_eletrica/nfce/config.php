@@ -140,24 +140,25 @@ foreach ($fields as $field) {
 }
 
 // ========== Mapeamento de Campos (27 campos) ==========
-define('TP_AMB',     (string)($fiscal['ambiente'] ?? '2'));
+// ========== Mapeamento de Campos (Tratamento de Vazios) ==========
+define('TP_AMB',     (!empty($fiscal['ambiente']) ? (string)$fiscal['ambiente'] : '2'));
 define('ID_TOKEN',   (string)($fiscal['csc_id'] ?? ''));
 define('CSC',        (string)($fiscal['csc'] ?? $fiscal['csc_token'] ?? ''));
 define('NFC_SERIE',  (string)($fiscal['serie_nfce'] ?? '1'));
 
 define('EMIT_CNPJ',  so_digitos($fiscal['cnpj']));
-define('EMIT_XNOME', trim((string)($fiscal['razao_social'] ?? $fiscal['nome'] ?? '')));
-define('EMIT_XFANT', trim((string)($fiscal['nome'] ?? $fiscal['nome_fantasia'] ?? '')));
+define('EMIT_XNOME', trim((string)($fiscal['razao_social'] ?? $fiscal['nome'] ?? 'EMPRESA SEM RAZAO SOCIAL')));
+define('EMIT_XFANT', trim((string)($fiscal['nome'] ?? $fiscal['nome_fantasia'] ?? EMIT_XNOME)));
 define('EMIT_IE',    so_digitos($fiscal['inscricao_estadual']));
 define('EMIT_CRT',   (string)($fiscal['regime_tributario'] ?? $fiscal['crt'] ?? '1'));
 
-define('EMIT_XLGR',    trim((string)($fiscal['logradouro'] ?? '')));
-define('EMIT_NRO',     trim((string)($fiscal['numero_endereco'] ?? $fiscal['numero'] ?? '')));
-define('EMIT_XBAIRRO', trim((string)($fiscal['bairro'] ?? '')));
-define('EMIT_XMUN',    trim((string)($fiscal['cidade'] ?? $fiscal['municipio'] ?? '')));
-define('EMIT_UF',      trim((string)($fiscal['uf'] ?? '')));
-define('EMIT_CEP',     so_digitos($fiscal['cep']));
-define('EMIT_CMUN',    (string)($fiscal['codigo_municipio'] ?? ''));
+define('EMIT_XLGR',    trim((string)($fiscal['logradouro'] ?? 'Logradouro não informado')));
+define('EMIT_NRO',     trim((string)($fiscal['numero_endereco'] ?? $fiscal['numero'] ?? 'S/N')));
+define('EMIT_XBAIRRO', trim((string)($fiscal['bairro'] ?? 'Bairro')));
+define('EMIT_XMUN',    trim((string)($fiscal['cidade'] ?? $fiscal['municipio'] ?? 'SAO PAULO')));
+define('EMIT_UF',      (!empty($fiscal['uf']) ? trim((string)$fiscal['uf']) : 'SP'));
+define('EMIT_CEP',     so_digitos($fiscal['cep'] ?? '01001000'));
+define('EMIT_CMUN',    (!empty($fiscal['codigo_municipio']) ? (string)$fiscal['codigo_municipio'] : '3550308'));
 define('EMIT_FONE',    so_digitos($fiscal['fone'] ?? $fiscal['telefone'] ?? ''));
 define('COD_MUN',      EMIT_CMUN);
 define('COD_UF',       substr(EMIT_CMUN, 0, 2));
