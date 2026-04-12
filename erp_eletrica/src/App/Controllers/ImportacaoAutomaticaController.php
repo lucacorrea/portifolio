@@ -67,57 +67,105 @@ class ImportacaoAutomaticaController extends BaseController {
             'pageTitle' => 'Notas Fiscais Destinadas (Certificado A1)'
         ]);
     }
+public function sincronizar() {
+    try {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $filialId = $_SESSION['filial_id'] ?? 1;
+        $forceReset = ($_GET['reset'] ?? '0') === '1';
 
-    public function sincronizar() {
-        try {
-            $db = \App\Config\Database::getInstance()->getConnection();
-            $filialId = $_SESSION['filial_id'] ?? 1;
-            $forceReset = ($_GET['reset'] ?? '0') === '1';
-            
-            // Buscar CNPJ da filial
-            $stmt = $db->prepare("SELECT cnpj FROM filiais WHERE id = ?");
-            $stmt->execute([$filialId]);
-            $cnpj = $stmt->fetchColumn();
+        // 🔍 Buscar CNPJ
+        $stmt = $db->prepare("SELECT cnpj FROM filiais WHERE id = ?");
+        $stmt->execute([$filialId]);
+        $cnpj = $stmt->fetchColumn();
 
-            $service = new SefazConsultaService();
-            
-            // Se reset for 1, passamos 0 como NSU inicial para buscar os últimos 90 dias
-            $ultNSU = $forceReset ? '0' : null;
-            $resultado = $service->consultarNotas($cnpj, $ultNSU);
-            
-            $count = count($resultado['documentos'] ?? []);
-            
-            // Contar registros efetivamente no banco
-            $stmtCount = $db->prepare("SELECT COUNT(*) FROM nfe_importadas WHERE filial_id = ?");
-            $stmtCount->execute([$filialId]);
-            $totalNoBanco = $stmtCount->fetchColumn();
-            
-            $hasMore = ($resultado['ultNSU'] < $resultado['maxNSU']);
-            $message = $count > 0 
-                ? "Sincronização concluída. $count novos registros processados. Total no banco: $totalNoBanco notas." 
-                : "Nenhuma nota nova encontrada na SEFAZ para este período. Total no banco: $totalNoBanco notas.";
+        // 🔒 Buscar ultNSU salvo
+        $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_ult_nsu'");
+        $stmt->execute();
+        $ultNSU = $stmt->fetchColumn();
 
-            if ($hasMore) {
-                $message .= " Atenção: Ainda existem mais notas disponíveis. Clique em 'Atualizar' novamente.";
-            }
-
-            // Save last sync timestamp
-            $stmt = $db->prepare("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
-            $stmt->execute(['nfe_last_sync_timestamp', date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]);
-
-            echo json_encode([
-                'success' => true, 
-                'count' => $count, 
-                'totalBanco' => (int)$totalNoBanco,
-                'hasMore' => $hasMore,
-                'message' => $message
-            ]);
-        } catch (\Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        if (!$ultNSU) {
+            $ultNSU = '000000000000000';
         }
-        exit;
-    }
 
+        // 🔄 Se for busca profunda (reset)
+        if ($forceReset) {
+            $ultNSU = '000000000000000';
+        }
+
+        // ⛔ CONTROLE DE TEMPO (evita erro 656)
+        $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_last_sync_timestamp'");
+        $stmt->execute();
+        $lastSync = $stmt->fetchColumn();
+
+        if ($lastSync && !$forceReset) {
+            $diff = time() - strtotime($lastSync);
+            if ($diff < 3600) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Aguarde pelo menos 1 hora para nova consulta na SEFAZ.'
+                ]);
+                return;
+            }
+        }
+
+        // 🔌 CONSULTA SEFAZ
+        $service = new SefazConsultaService();
+        $resultado = $service->consultarNotas($cnpj, $ultNSU);
+
+        $documentos = $resultado['documentos'] ?? [];
+        $count = count($documentos);
+
+        // 🔁 NOVO NSU
+        $novoUltNSU = $resultado['ultNSU'] ?? $ultNSU;
+        $maxNSU     = $resultado['maxNSU'] ?? $ultNSU;
+
+        // 💾 SALVAR NOVO NSU
+        $stmt = $db->prepare("
+            INSERT INTO configuracoes (chave, valor) 
+            VALUES ('nfe_ult_nsu', ?) 
+            ON DUPLICATE KEY UPDATE valor = ?
+        ");
+        $stmt->execute([$novoUltNSU, $novoUltNSU]);
+
+        // 💾 SALVAR DATA
+        $stmt = $db->prepare("
+            INSERT INTO configuracoes (chave, valor) 
+            VALUES ('nfe_last_sync_timestamp', ?) 
+            ON DUPLICATE KEY UPDATE valor = ?
+        ");
+        $stmt->execute([date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]);
+
+        // 📊 CONTAR TOTAL
+        $stmt = $db->prepare("SELECT COUNT(*) FROM nfe_importadas WHERE filial_id = ?");
+        $stmt->execute([$filialId]);
+        $totalNoBanco = $stmt->fetchColumn();
+
+        $hasMore = ($novoUltNSU < $maxNSU);
+
+        $message = $count > 0 
+            ? "Sincronização concluída. $count novos registros processados. Total no banco: $totalNoBanco notas."
+            : "Nenhuma nota nova encontrada.";
+
+        if ($hasMore) {
+            $message .= " Ainda existem mais notas disponíveis.";
+        }
+
+        echo json_encode([
+            'success' => true,
+            'count' => $count,
+            'totalBanco' => (int)$totalNoBanco,
+            'hasMore' => $hasMore,
+            'message' => $message
+        ]);
+
+    } catch (\Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
+    }
+    exit;
+}
     public function manifestar() {
         try {
             $id = $_GET['id'] ?? null;
