@@ -314,7 +314,7 @@ $nfe = '<?xml version="1.0" encoding="UTF-8"?>'
      .     $transpXML
      .     $pagXML
      .     $infAd
-     .     '<infRespTec><CNPJ>65975879000132</CNPJ><xContato>Luiz Breno da frota</xContato><email>luizfrota2@gmail.com</email><fone>97991434585</fone></infRespTec>'
+     .     '<infRespTec><CNPJ>65975879000132</CNPJ><xContato>L&J SOLUCOES TECNOLOGICAS</xContato><email>LUCAASSCORREA0@GMAIL.COM</email><fone>9291515710</fone></infRespTec>'
      .   '</infNFe>'
      . '</NFe>';
 
