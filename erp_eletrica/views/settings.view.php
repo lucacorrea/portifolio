@@ -78,26 +78,26 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label extra-small text-white-50 mb-1">Senha do Certificado</label>
-                                <input type="password" name="certificado_senha" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $activeConfig['certificado_senha'] ?? '' ?>">
+                                <input type="password" name="certificado_senha" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['certificado_senha'] ?? '' ?>">
                             </div>
                             
                             <!-- CSC Global Fields -->
                             <div class="row g-2 mb-3">
                                 <div class="col-4">
                                     <label class="form-label extra-small text-white-50 mb-1">ID Token CSC</label>
-                                    <input type="text" name="csc_id_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $activeConfig['csc_id'] ?? '' ?>" placeholder="000001">
+                                    <input type="text" name="csc_id_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['csc_id'] ?? '' ?>" placeholder="000001">
                                 </div>
                                 <div class="col-8">
                                     <label class="form-label extra-small text-white-50 mb-1">Token CSC</label>
-                                    <input type="text" name="csc_token_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $activeConfig['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
+                                    <input type="text" name="csc_token_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
                                 </div>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label extra-small text-white-50 mb-1">Ambiente Sefaz</label>
                                 <select name="ambiente" class="form-select form-select-sm bg-secondary border-0 text-white">
-                                    <option value="homologacao" <?= (($activeConfig['ambiente'] ?? '') == 'homologacao' || ($activeConfig['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>Homologação (Testes)</option>
-                                    <option value="producao" <?= (($activeConfig['ambiente'] ?? '') == 'producao' || ($activeConfig['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>Produção (Real)</option>
+                                    <option value="homologacao" <?= (($sefaz['ambiente'] ?? '') == 'homologacao' || ($sefaz['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>Homologação (Testes)</option>
+                                    <option value="producao" <?= (($sefaz['ambiente'] ?? '') == 'producao' || ($sefaz['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>Produção (Real)</option>
                                 </select>
                             </div>
 
