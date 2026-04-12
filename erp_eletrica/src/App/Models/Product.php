@@ -282,6 +282,8 @@ class Product extends BaseModel {
         }
         $hasFornecedor    = true;
 
+        $filialId = $_SESSION['filial_id'] ?? 1;
+
         if (!empty($data['id'])) {
             // --- UPDATE ---
             $sets   = ['codigo = ?', 'ncm = ?', 'nome = ?', 'unidade = ?', 'categoria = ?',
@@ -309,7 +311,15 @@ class Product extends BaseModel {
             if ($this->columnExists('descricao')) { $sets[] = 'descricao = ?'; $params[] = $data['descricao'] ?? null; }
 
             $params[] = $data['id'];
-            return $this->query("UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = ?", $params);
+            $res = $this->query("UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = ?", $params);
+
+            // ATUALIZA ESTOQUE MÍNIMO NA FILIAL
+            $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, estoque_minimo) 
+                          VALUES (?, ?, ?) 
+                          ON DUPLICATE KEY UPDATE estoque_minimo = ?", 
+                          [$data['id'], $filialId, $data['estoque_minimo'], $data['estoque_minimo']]);
+
+            return $res;
 
         } else {
             // --- INSERT ---
@@ -318,7 +328,7 @@ class Product extends BaseModel {
             $params = [
                 $data['codigo'], $data['ncm'] ?? null, $data['nome'], $data['unidade'],
                 $data['categoria'], $data['preco_custo'], $data['preco_venda'],
-                $data['quantidade'] ?? 0, $data['estoque_minimo'], $data['filial_id'] ?? 1,
+                $data['quantidade'] ?? 0, $data['estoque_minimo'], $data['filial_id'] ?? $filialId,
             ];
 
             if ($hasCean)        { $cols[] = 'cean';          $params[] = $data['cean'] ?? 'SEM GTIN'; }
@@ -341,7 +351,15 @@ class Product extends BaseModel {
             $placeholders = implode(', ', array_fill(0, count($cols), '?'));
             $colList      = implode(', ', $cols);
 
-            return $this->query("INSERT INTO {$this->table} ($colList) VALUES ($placeholders)", $params);
+            $this->query("INSERT INTO {$this->table} ($colList) VALUES ($placeholders)", $params);
+            $newId = $this->db->lastInsertId();
+
+            // TAMBÉM INICIALIZA NA TABELA DE FILIAIS
+            $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo) 
+                          VALUES (?, ?, ?, ?)", 
+                          [$newId, $filialId, $data['quantidade'] ?? 0, $data['estoque_minimo']]);
+
+            return $newId;
         }
     }
 }
