@@ -286,6 +286,7 @@
                                 <th>Destino</th>
                                 <th>Data Envio</th>
                                 <th>Status</th>
+                                <th class="text-end">Ação</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -304,57 +305,12 @@
                                         <?= strtoupper(str_replace('_', ' ', $he['status'])) ?>
                                     </span>
                                 </td>
-                            </tr>
-                            <?php if ($he['tem_problema']): ?>
-                            <tr class="<?= $he['problema_resolvido'] ? 'table-light' : 'table-danger bg-opacity-10' ?>">
-                                <td colspan="4">
-                                    <div class="p-2 small">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong class="<?= $he['problema_resolvido'] ? 'text-success' : 'text-danger' ?>">
-                                                    <i class="fas <?= $he['problema_resolvido'] ? 'fa-check-double' : 'fa-comment-dots' ?> me-2"></i>
-                                                    <?= $he['problema_resolvido'] ? 'Ocorrência Resolvida:' : 'Relatos do Recebimento:' ?>
-                                                </strong>
-                                            </div>
-                                            <?php if (!$he['problema_resolvido']): ?>
-                                                <button type="button" class="btn btn-sm btn-outline-success py-0" style="font-size: 0.7rem"
-                                                        onclick="abrirModalResolucao(<?= $he['id'] ?>, '<?= htmlspecialchars($he['codigo_transferencia']) ?>')">
-                                                    <i class="fas fa-check me-1"></i>Marcar como Resolvido
-                                                </button>
-                                            <?php else: ?>
-                                                <span class="badge bg-success small"><i class="fas fa-check-circle me-1"></i>Resolvido</span>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="mt-2 ps-4">
-                                            <?php
-                                            $ocs = $pdo->prepare("SELECT oc.*, p.nome FROM erp_transferencias_ocorrencias oc JOIN produtos p ON oc.produto_id = p.id WHERE oc.transferencia_id = ?");
-                                            $ocs->execute([$he['id']]);
-                                            $listaOc = $ocs->fetchAll();
-                                            if ($listaOc):
-                                            ?>
-                                                <ul class="list-unstyled mb-2">
-                                                    <?php foreach ($listaOc as $o): ?>
-                                                        <li class="mb-1">
-                                                            <span class="badge bg-danger bg-opacity-75 me-1"><?= number_format($o['quantidade_problema'], 2, ',', '.') ?> UN</span>
-                                                            <strong><?= htmlspecialchars($o['nome']) ?></strong>: 
-                                                            <span class="text-muted italic"><?= strtoupper($o['motivo']) ?></span> - 
-                                                            <small>"<?= htmlspecialchars($o['descricao']) ?>"</small>
-                                                        </li>
-                                                    <?php endforeach; ?>
-                                                </ul>
-                                            <?php endif; ?>
-
-                                            <?php if ($he['relato_problema']): ?>
-                                                <div class="alert alert-light border p-2 mb-0 extra-small">
-                                                    <strong>Obs. Geral:</strong> "<?= htmlspecialchars($he['relato_problema']) ?>"
-                                                    <span class="text-muted ms-2">(em <?= date('d/m/Y H:i', strtotime($he['data_relato'])) ?>)</span>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-0" onclick="abrirDetalhesTransferencia(<?= $he['id'] ?>)">
+                                        <i class="fas fa-eye me-1"></i>Ver
+                                    </button>
                                 </td>
                             </tr>
-                            <?php endif; ?>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -526,6 +482,7 @@
                                 <th>Status</th>
                                 <th>Data Pedido</th>
                                 <th>Data Conclusão</th>
+                                <th class="text-end">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -536,10 +493,20 @@
                                 if ($h['status'] == 'pendente')    $badge = 'primary';
                             ?>
                             <tr>
-                                <td><strong class="text-primary"><?= htmlspecialchars($h['codigo_transferencia']) ?></strong></td>
+                                <td>
+                                    <strong class="text-primary"><?= htmlspecialchars($h['codigo_transferencia']) ?></strong>
+                                    <?php if ($h['tem_problema']): ?>
+                                        <i class="fas fa-exclamation-triangle text-danger ms-1" title="Problema no recebimento"></i>
+                                    <?php endif; ?>
+                                </td>
                                 <td><span class="badge bg-<?= $badge ?>"><?= strtoupper(str_replace('_', ' ', $h['status'])) ?></span></td>
                                 <td><?= date('d/m/Y H:i', strtotime($h['data_solicitacao'])) ?></td>
                                 <td><?= $h['data_recebimento'] ? date('d/m/Y H:i', strtotime($h['data_recebimento'])) : '---' ?></td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-0" onclick="abrirDetalhesTransferencia(<?= $h['id'] ?>)">
+                                        <i class="fas fa-eye me-1"></i>Ver
+                                    </button>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -823,6 +790,89 @@ function abrirResumoRecebimento(id, codigo, temProblema) {
     }
     resumoModalInstance.show();
 }
+
+let detalhesModalInstance = null;
+function abrirDetalhesTransferencia(id) {
+    const modalEl = document.getElementById('modalDetalhesPedido');
+    if (!detalhesModalInstance) detalhesModalInstance = new bootstrap.Modal(modalEl);
+    
+    // Reset modal
+    document.getElementById('det_loading').classList.remove('d-none');
+    document.getElementById('det_content').classList.add('d-none');
+    document.getElementById('det_footer_acoes').innerHTML = '';
+    detalhesModalInstance.show();
+
+    fetch(`transferencias.php?action=get_items&id=${id}`)
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) {
+                alert(res.message);
+                return;
+            }
+
+            const t = res.transfer;
+            document.getElementById('det_codigo').innerText = t.codigo_transferencia;
+            document.getElementById('det_subtitulo').innerText = `${t.nome_origem} → ${t.nome_destino}`;
+            document.getElementById('det_data').innerText = new Date(t.data_solicitacao).toLocaleString();
+            
+            const badge = document.getElementById('det_status_badge');
+            badge.innerText = t.status.toUpperCase().replace('_', ' ');
+            badge.className = 'badge bg-' + (t.status === 'concluida' ? 'success' : (t.status === 'em_transito' ? 'warning text-dark' : 'primary'));
+
+            // Itens
+            const tbody = document.getElementById('det_tbody_items');
+            tbody.innerHTML = res.items.map(it => `
+                <tr>
+                    <td>
+                        <div class="fw-bold">${it.nome}</div>
+                        <div class="extra-small text-muted">SKU: ${it.codigo}</div>
+                    </td>
+                    <td class="text-center">${parseFloat(it.quantidade_solicitada)}</td>
+                    <td class="text-center">${parseFloat(it.quantidade_enviada || 0)}</td>
+                    <td class="text-center">${parseFloat(it.quantidade_recebida || 0)}</td>
+                    <td class="text-center">
+                        ${it.quantidade_problema > 0 ? `<span class="badge bg-danger">${parseFloat(it.quantidade_problema)}</span>` : '<span class="text-muted opacity-25">---</span>'}
+                    </td>
+                </tr>
+            `).join('');
+
+            // Ocorrências
+            const secaoOc = document.getElementById('det_secao_ocorrencias');
+            if (res.ocorrencias && res.ocorrencias.length > 0) {
+                secaoOc.classList.remove('d-none');
+                document.getElementById('det_lista_ocorrencias').innerHTML = res.ocorrencias.map(oc => `
+                    <div class="alert alert-danger bg-opacity-10 border-danger border-opacity-25 p-2 mb-2 small">
+                        <div class="d-flex justify-content-between">
+                            <strong>${oc.nome}</strong>
+                            <span class="badge bg-danger">${parseFloat(oc.quantidade_problema)} UN</span>
+                        </div>
+                        <div class="extra-small mt-1 text-uppercase fw-bold opacity-75">${oc.motivo}</div>
+                        <div class="mt-1">"${oc.descricao}"</div>
+                    </div>
+                `).join('');
+            } else {
+                secaoOc.classList.add('d-none');
+            }
+
+            // Obs
+            document.getElementById('det_observacao').innerText = t.observacoes || 'Nenhuma observação registrada.';
+
+            // Ações Matriz
+            if (res.isMatriz && t.tem_problema == 1 && t.problema_resolvido == 0) {
+                document.getElementById('det_footer_acoes').innerHTML = `
+                    <button type="button" class="btn btn-success btn-sm fw-bold px-4" 
+                            onclick="detalhesModalInstance.hide(); abrirModalResolucao(${t.id}, '${t.codigo_transferencia}')">
+                        <i class="fas fa-check-circle me-1"></i>Resolver Ocorrência
+                    </button>
+                `;
+            } else if (t.problema_resolvido == 1) {
+                document.getElementById('det_footer_acoes').innerHTML = '<span class="badge bg-success py-2 px-3 fw-bold"><i class="fas fa-check-double me-2"></i>Ocorrência Resolvida</span>';
+            }
+
+            document.getElementById('det_loading').classList.add('d-none');
+            document.getElementById('det_content').classList.remove('d-none');
+        });
+}
 </script>
 
 <?php if (!$isMatriz): ?>
@@ -931,3 +981,71 @@ function abrirResumoRecebimento(id, codigo, temProblema) {
     </div>
 </div>
 <?php endif; ?>
+
+<!-- Modal Detalhes do Pedido (Novo) -->
+<div class="modal fade" id="modalDetalhesPedido" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h6 class="modal-title fw-bold" id="det_codigo">---</h6>
+                    <small class="text-muted" id="det_subtitulo">---</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="det_loading" class="text-center py-5">
+                    <div class="spinner-border text-primary opacity-50" role="status"></div>
+                    <p class="small text-muted mt-2">Carregando detalhes...</p>
+                </div>
+                
+                <div id="det_content" class="d-none">
+                    <!-- Resumo Status -->
+                    <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded shadow-sm border">
+                        <div>
+                            <span class="extra-small text-muted d-block text-uppercase fw-bold">Status Atual</span>
+                            <span id="det_status_badge" class="badge">---</span>
+                        </div>
+                        <div class="text-end">
+                            <span class="extra-small text-muted d-block text-uppercase fw-bold">Data da Solicitação</span>
+                            <span id="det_data" class="small fw-bold">---</span>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Itens -->
+                    <h6 class="fw-bold mb-3 small"><i class="fas fa-list me-2"></i>Itens da Solicitação</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover border small align-middle">
+                            <thead class="table-light extra-small text-uppercase">
+                                <tr>
+                                    <th>Produto</th>
+                                    <th class="text-center">Pedido</th>
+                                    <th class="text-center">Enviado</th>
+                                    <th class="text-center">Recebido</th>
+                                    <th class="text-center">Problema</th>
+                                </tr>
+                            </thead>
+                            <tbody id="det_tbody_items" class="bg-white"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Bloco de Ocorrências -->
+                    <div id="det_secao_ocorrencias" class="mt-4 d-none">
+                        <h6 class="fw-bold mb-3 small text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Ocorrências Reportadas</h6>
+                        <div id="det_lista_ocorrencias"></div>
+                    </div>
+
+                    <!-- Observações -->
+                    <div class="mt-4" id="det_secao_obs">
+                        <h6 class="fw-bold mb-2 extra-small text-muted text-uppercase">Observações do Pedido</h6>
+                        <div class="p-3 bg-light border-0 rounded small" id="det_observacao">---</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-3 pt-0">
+                <button type="button" class="btn btn-light btn-sm fw-bold px-4" data-bs-dismiss="modal">Fechar</button>
+                <div id="det_footer_acoes" class="d-inline-block"></div>
+            </div>
+        </div>
+    </div>
+</div>
