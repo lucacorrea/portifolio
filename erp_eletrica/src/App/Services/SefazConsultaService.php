@@ -294,36 +294,63 @@ class SefazConsultaService extends BaseService {
     public function salvarNotasCache($filialId, $documentos) {
         $saved = 0;
         $skipped = 0;
+        $errors = 0;
+        
+        // Ensure the unique index exists (safe to run multiple times)
+        try {
+            $this->db->exec("ALTER TABLE nfe_importadas ADD UNIQUE INDEX idx_unique_chave_filial (chave_nfe, filial_id)");
+        } catch (\Exception $e) {
+            // Index already exists, ignore
+        }
+        
         foreach ($documentos as $doc) {
             try {
+                // Sanitizar CNPJ - remover formatação para caber no VARCHAR(14)
+                $cnpjLimpo = preg_replace('/\D/', '', $doc['cnpj'] ?? '');
+                $nomeFornecedor = !empty($doc['nome']) ? $doc['nome'] : 'Não identificado';
+                $numero = !empty($doc['numero']) ? $doc['numero'] : '0';
+                $dataEmissao = !empty($doc['data']) ? date('Y-m-d H:i:s', strtotime($doc['data'])) : date('Y-m-d H:i:s');
+                $valor = isset($doc['valor']) ? (float)$doc['valor'] : 0;
+                
                 $stmt = $this->db->prepare("
-                    INSERT IGNORE INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
+                    INSERT INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
+                    ON DUPLICATE KEY UPDATE 
+                        xml_conteudo = IF(LENGTH(VALUES(xml_conteudo)) > LENGTH(xml_conteudo), VALUES(xml_conteudo), xml_conteudo),
+                        fornecedor_nome = IF(fornecedor_nome = 'Não identificado', VALUES(fornecedor_nome), fornecedor_nome),
+                        valor_total = IF(VALUES(valor_total) > 0, VALUES(valor_total), valor_total)
                 ");
                 $stmt->execute([
                     $filialId,
                     $doc['chave'],
-                    $doc['cnpj'],
-                    $doc['nome'],
-                    $doc['numero'],
-                    date('Y-m-d H:i:s', strtotime($doc['data'])),
-                    $doc['valor'],
+                    $cnpjLimpo,
+                    $nomeFornecedor,
+                    $numero,
+                    $dataEmissao,
+                    $valor,
                     $doc['xml']
                 ]);
-                $lastId = $this->db->lastInsertId();
-                if ($lastId) {
+                
+                $rowCount = $stmt->rowCount();
+                if ($rowCount === 1) {
+                    // New insert
+                    $lastId = $this->db->lastInsertId();
                     $this->logAction('Nota SEFAZ Listada', 'nfe_importadas', $lastId, null, $doc['chave']);
                     $saved++;
+                } elseif ($rowCount === 2) {
+                    // Updated existing (ON DUPLICATE KEY UPDATE counts as 2)
+                    $skipped++;
                 } else {
-                    $skipped++; // Duplicate
+                    $skipped++;
                 }
             } catch (\Exception $e) {
                 error_log("SEFAZ SAVE ERROR for chave {$doc['chave']}: " . $e->getMessage());
-                $skipped++;
+                error_log("  Data: cnpj={$cnpjLimpo}, nome={$nomeFornecedor}, numero={$numero}, data={$dataEmissao}, valor={$valor}");
+                $errors++;
                 continue;
             }
         }
-        error_log("SEFAZ salvarNotasCache: filial=$filialId, total=" . count($documentos) . ", saved=$saved, skipped=$skipped");
+        error_log("SEFAZ salvarNotasCache: filial=$filialId, total=" . count($documentos) . ", saved=$saved, skipped=$skipped, errors=$errors");
     }
 
 }
