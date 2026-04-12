@@ -469,18 +469,52 @@ class TransferenciasController extends BaseController {
     public function getTransferItems() {
         $transf_id = (int)($_GET['id'] ?? 0);
         
-        $sql = "SELECT ti.*, p.nome, p.codigo, 
+        // 1. Dados básicos da transferência
+        $stmtT = $this->pdo->prepare("
+            SELECT t.*, f_origem.nome as nome_origem, f_destino.nome as nome_destino
+            FROM erp_transferencias t
+            LEFT JOIN filiais f_origem ON t.origem_filial_id = f_origem.id
+            LEFT JOIN filiais f_destino ON t.destino_filial_id = f_destino.id
+            WHERE t.id = ?
+        ");
+        $stmtT->execute([$transf_id]);
+        $transfer = $stmtT->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$transfer) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Transferência não encontrada.']);
+            exit;
+        }
+
+        // 2. Itens
+        $sqlItems = "SELECT ti.*, p.nome, p.codigo, 
                 (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
                 FROM erp_transferencias_itens ti 
                 JOIN produtos p ON ti.produto_id = p.id 
                 WHERE ti.transferencia_id = ?";
         
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$transf_id]);
-        $items = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $stmtI = $this->pdo->prepare($sqlItems);
+        $stmtI->execute([$transf_id]);
+        $items = $stmtI->fetchAll(\PDO::FETCH_ASSOC);
+
+        // 3. Ocorrências detalhadas
+        $stmtO = $this->pdo->prepare("
+            SELECT oc.*, p.nome, p.codigo
+            FROM erp_transferencias_ocorrencias oc
+            JOIN produtos p ON oc.produto_id = p.id
+            WHERE oc.transferencia_id = ?
+        ");
+        $stmtO->execute([$transf_id]);
+        $ocorrencias = $stmtO->fetchAll(\PDO::FETCH_ASSOC);
         
         header('Content-Type: application/json');
-        echo json_encode(['success' => true, 'items' => $items]);
+        echo json_encode([
+            'success' => true, 
+            'transfer' => $transfer,
+            'items' => $items,
+            'ocorrencias' => $ocorrencias,
+            'isMatriz' => $this->isMatriz
+        ]);
         exit;
     }
 
