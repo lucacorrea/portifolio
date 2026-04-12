@@ -93,6 +93,28 @@ class InventoryController extends BaseController {
         }
     }
 
+    public function movimentacoes() {
+        $movementModel = new \App\Models\StockMovement();
+        $productModel = new \App\Models\Product();
+
+        $filters = [
+            'desde' => $_GET['desde'] ?? date('Y-m-01'),
+            'ate' => $_GET['ate'] ?? date('Y-m-d'),
+            'produto_id' => $_GET['produto_id'] ?? ''
+        ];
+
+        $movements = $movementModel->getHistory($filters, 100);
+        $products = $productModel->all("nome ASC");
+
+        $this->render('inventory_movements', [
+            'movements' => $movements,
+            'products' => $products,
+            'filters' => $filters,
+            'title' => 'Histórico de Movimentações',
+            'pageTitle' => 'Movimentações de Estoque'
+        ]);
+    }
+
     private function sum($table, $expression, $filialCol = 'filial_id') {
         $db = \App\Config\Database::getInstance()->getConnection();
         $filialId = $_SESSION['filial_id'] ?? null;
