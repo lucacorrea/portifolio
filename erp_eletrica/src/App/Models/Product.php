@@ -6,8 +6,8 @@ class Product extends BaseModel {
 
     public function all($order = "nome ASC") {
         $filialId = $_SESSION['filial_id'] ?? 1;
-        $isMatriz = $_SESSION['is_matriz'] ?? false;
-        $join = $isMatriz ? "LEFT JOIN" : "INNER JOIN";
+        // Só a Matriz (ID 1) vê o catálogo global completo. Filiais veem apenas seu estoque local.
+        $join = ((int)$filialId === 1) ? "LEFT JOIN" : "INNER JOIN";
 
         $sql = "SELECT p.*, p.id as id, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
                 FROM {$this->table} p
@@ -19,8 +19,7 @@ class Product extends BaseModel {
 
     public function paginate($perPage = 15, $currentPage = 1, $order = "id DESC", $filters = []) {
         $filialId = $_SESSION['filial_id'] ?? 1;
-        $isMatriz = $_SESSION['is_matriz'] ?? false;
-        $join = $isMatriz ? "LEFT JOIN" : "INNER JOIN";
+        $join = ((int)$filialId === 1) ? "LEFT JOIN" : "INNER JOIN";
         $offset = ($currentPage - 1) * $perPage;
         
         $where = " WHERE 1=1";
