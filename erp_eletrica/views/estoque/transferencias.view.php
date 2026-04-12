@@ -98,38 +98,40 @@
                         <p class="small">As filiais estão abastecidas!</p>
                     </div>
                 <?php else: ?>
-                    <div class="row g-3">
-                    <?php foreach ($recebidas as $req): ?>
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm rounded-3">
-                                <div class="card-body p-3">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <div>
-                                            <span class="badge bg-warning text-dark extra-small mb-1">REQUER APROVAÇÃO</span>
-                                            <h6 class="fw-bold mb-0"><?= htmlspecialchars($req['codigo_transferencia']) ?></h6>
-                                        </div>
-                                        <div class="text-end text-muted extra-small">
-                                            <i class="far fa-clock me-1"></i><?= date('d/m/Y H:i', strtotime($req['data_solicitacao'])) ?>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <span class="text-muted small">Origem:</span>
-                                        <span class="fw-bold small ms-1 text-primary"><?= htmlspecialchars($req['nome_filial']) ?></span>
-                                    </div>
-                                    <?php if ($req['observacoes']): ?>
-                                        <div class="bg-light p-2 rounded small mb-3 border-start border-3 border-warning">
-                                            <i class="fas fa-comment me-2 opacity-50"></i>"<?= htmlspecialchars($req['observacoes']) ?>"
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="d-grid">
-                                        <button type="button" class="btn btn-primary btn-sm fw-bold py-2" onclick="abrirProcessarSolicitacao(<?= $req['id'] ?>)">
-                                            <i class="fas fa-tasks me-2"></i>Processar Solicitação
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Código</th>
+                                        <th>Filial</th>
+                                        <th>Solicitado em</th>
+                                        <th>Observação</th>
+                                        <th class="text-end pe-3">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($recebidas as $req): ?>
+                                    <tr>
+                                        <td class="ps-3">
+                                            <span class="badge bg-warning text-dark extra-small mb-1 d-block" style="width: fit-content;">REQUER APROVAÇÃO</span>
+                                            <strong class="text-primary"><?= htmlspecialchars($req['codigo_transferencia']) ?></strong>
+                                        </td>
+                                        <td><span class="fw-bold small"><?= htmlspecialchars($req['nome_filial']) ?></span></td>
+                                        <td><span class="extra-small text-muted"><?= date('d/m/Y H:i', strtotime($req['data_solicitacao'])) ?></span></td>
+                                        <td class="small text-muted">
+                                            <?= $req['observacoes'] ? '"' . mb_strimwidth(htmlspecialchars($req['observacoes']), 0, 40, "...") . '"' : '<span class="opacity-25">-</span>' ?>
+                                        </td>
+                                        <td class="text-end pe-3">
+                                            <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="abrirProcessarSolicitacao(<?= $req['id'] ?>)">
+                                                <i class="fas fa-tasks me-2"></i>Processar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
-                    <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
             <?php endif; ?>
@@ -363,31 +365,35 @@
                         <p class="small">Quando a Matriz despachar um pedido, ele aparecerá aqui.</p>
                     </div>
                 <?php else: ?>
-                    <div class="row g-3">
-                    <?php foreach ($em_transito as $et): ?>
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm rounded-3">
-                                <div class="card-body p-3">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <div>
-                                            <span class="badge bg-warning text-dark extra-small mb-1">CHEGANDO</span>
-                                            <h6 class="fw-bold mb-0 text-primary"><?= htmlspecialchars($et['codigo_transferencia']) ?></h6>
-                                        </div>
-                                        <div class="text-end text-muted extra-small">
-                                            <i class="far fa-clock me-1"></i><?= date('d/m/Y H:i', strtotime($et['data_envio'])) ?>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3 small text-muted">Aguardando conferência física dos produtos.</div>
-                                    <div class="d-grid">
-                                        <button type="button" class="btn btn-primary btn-sm fw-bold py-2" 
-                                                onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
-                                            <i class="fas fa-clipboard-check me-2"></i>Conferir e Receber
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Código</th>
+                                        <th>Despachado em</th>
+                                        <th>Status</th>
+                                        <th class="text-end pe-3">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($em_transito as $et): ?>
+                                    <tr>
+                                        <td class="ps-3">
+                                            <strong class="text-primary"><?= htmlspecialchars($et['codigo_transferencia']) ?></strong>
+                                        </td>
+                                        <td><span class="extra-small text-muted"><?= date('d/m/Y H:i', strtotime($et['data_envio'])) ?></span></td>
+                                        <td><span class="badge bg-warning text-dark extra-small">EM TRÂNSITO</span></td>
+                                        <td class="text-end pe-3">
+                                            <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
+                                                <i class="fas fa-clipboard-check me-2"></i>Receber
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
-                    <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
             <?php endif; ?>
