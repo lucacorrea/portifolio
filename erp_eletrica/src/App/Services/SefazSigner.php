@@ -45,7 +45,10 @@ class SefazSigner extends BaseService {
 
         // Create Signature Node
         $signature = $dom->createElementNS('http://www.w3.org/2000/09/xmldsig#', 'Signature');
-        $dom->documentElement->appendChild($signature);
+        
+        // CORREÇÃO: Anexar no nó pai do elemento assinado (Ex: nó 'evento' ou 'NFe')
+        // no caso de lote de eventos, o Signature deve estar dentro do nó 'evento'
+        $node->parentNode->appendChild($signature);
 
         $signedInfo = $dom->createElement('SignedInfo');
         $signature->appendChild($signedInfo);
