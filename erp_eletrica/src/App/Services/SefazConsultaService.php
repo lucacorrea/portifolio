@@ -98,7 +98,6 @@ class SefazConsultaService extends BaseService {
      * Consulta as NF-e destinadas via NFeDistribuicaoDFe
      */
     public function consultarNotas($cnpjDestinario, $ultNSU = null) {
-       public function consultarNotas($cnpjDestinario, $ultNSU = null) {
     $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
 
     if (empty($cnpj) || strlen($cnpj) !== 14) {
@@ -163,7 +162,7 @@ class SefazConsultaService extends BaseService {
         'maxNSU' => $maxNSU
     ];
 }
-    }
+    
 
     private function gerarXmlDistDfe($cnpj, $ultNSU, $ambiente) {
         // Encontrar UF da filial baseada no CNPJ
