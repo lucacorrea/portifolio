@@ -229,7 +229,7 @@
         <div class="modal-content border-0 shadow-lg overflow-hidden rounded-3">
             <div class="modal-header bg-erp-primary text-white border-0 py-3 shadow-sm">
                 <h5 class="modal-title fw-bold d-flex align-items-center small">
-                    <i class="fas fa-boxes me-3 p-2 bg-white bg-opacity-20 rounded-2 text-white"></i>Produtos da Nota Fiscal
+                    <i class="fas fa-boxes me-3 p-2 bg-white bg-opacity-20 rounded-2 text-warning"></i>Produtos da Nota Fiscal
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -343,19 +343,29 @@ async function visualizarItens(id) {
     tbody.innerHTML = '';
     activeItems = [];
 
-    try {
-        const response = await fetch(`importar_automatico.php?action=visualizar_produtos&id=${id}`);
-        
-        if (!response.ok) {
-            throw new Error(`Servidor retornou erro ${response.status}`);
-        }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
-        const result = await response.json();
+    try {
+        const response = await fetch(`importar_automatico.php?action=visualizar_produtos&id=${id}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        const rawText = await response.text();
+        let result;
+        
+        try {
+            result = JSON.parse(rawText);
+        } catch (jsonErr) {
+            console.error('Raw response:', rawText);
+            throw new Error('O servidor enviou uma resposta inválida. Verifique o console para detalhes.');
+        }
 
         if (result.success) {
             activeItems = result.produtos;
             if (activeItems.length === 0) {
-                error.innerText = 'Esta nota não possui itens de produto.';
+                error.innerText = 'Esta nota não possui itens de produto ou o XML está incompleto.';
                 error.classList.remove('d-none');
             } else {
                 result.produtos.forEach(p => {
@@ -381,7 +391,12 @@ async function visualizarItens(id) {
             error.classList.remove('d-none');
         }
     } catch (e) {
-        error.innerText = 'Falha ao processar resposta: ' + e.message;
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') {
+            error.innerText = 'O tempo limite da requisição foi atingido (15s). O servidor está demorando muito para responder.';
+        } else {
+            error.innerText = 'Falha ao processar: ' + e.message;
+        }
         error.classList.remove('d-none');
     } finally {
         loader.classList.add('d-none');

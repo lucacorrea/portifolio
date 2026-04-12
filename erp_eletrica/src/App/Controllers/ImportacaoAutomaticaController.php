@@ -212,49 +212,55 @@ class ImportacaoAutomaticaController extends BaseController {
         $id = $_GET['id'] ?? null;
         if (!$id) exit;
 
-        $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT xml FROM nfe_importadas WHERE id = ? AND filial_id = ?");
-        $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
-        $nota = $stmt->fetch();
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT xml FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+            $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
+            $nota = $stmt->fetch();
 
-        if (!$nota || empty($nota['xml'])) {
-            echo json_encode(['success' => false, 'error' => 'XML não encontrado.']);
-            exit;
+            if (!$nota || empty($nota['xml'])) {
+                echo json_encode(['success' => false, 'error' => 'XML não encontrado.']);
+                exit;
+            }
+
+            // Tentar ler o XML de forma robusta
+            libxml_use_internal_errors(true);
+            $xml = simplexml_load_string($nota['xml'], 'SimpleXMLElement', LIBXML_PARSEHUGE);
+            
+            if ($xml === false) {
+                echo json_encode(['success' => false, 'error' => 'O XML da nota está malformado ou corrompido.']);
+                exit;
+            }
+
+            if ($xml->getName() == 'resNFe') {
+                 echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota. É necessário manifestar a nota para baixar o XML completo.']);
+                 exit;
+            }
+
+            // Se for procNFe completo (mockado ou real)
+            $xml->registerXPathNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+            $detalhes = $xml->xpath('//nfe:det');
+            $produtos = [];
+
+            if ($detalhes) {
+                foreach ($detalhes as $det) {
+                    $prod = $det->prod;
+                    $produtos[] = [
+                        'codigo' => (string)$prod->cProd,
+                        'nome' => (string)$prod->xProd,
+                        'ncm' => (string)$prod->NCM,
+                        'cfop' => (string)$prod->CFOP,
+                        'qCom' => (float)$prod->qCom,
+                        'vUnCom' => (float)$prod->vUnCom,
+                        'vUnComFormatted' => number_format((float)$prod->vUnCom, 2, ',', '.')
+                    ];
+                }
+            }
+
+            echo json_encode(['success' => true, 'produtos' => $produtos]);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Erro interno ao processar: ' . $e->getMessage()]);
         }
-
-        // Tentar ler o XML de forma robusta
-        libxml_use_internal_errors(true);
-        $xml = simplexml_load_string($nota['xml']);
-        
-        if ($xml === false) {
-            echo json_encode(['success' => false, 'error' => 'O XML da nota está malformado ou corrompido.']);
-            exit;
-        }
-
-        if ($xml->getName() == 'resNFe') {
-             echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota. É necessário manifestar a nota para baixar o XML completo.']);
-             exit;
-        }
-
-        // Se for procNFe completo (mockado ou real)
-        $xml->registerXPathNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
-        $detalhes = $xml->xpath('//nfe:det');
-        $produtos = [];
-
-        foreach ($detalhes as $det) {
-            $prod = $det->prod;
-            $produtos[] = [
-                'codigo' => (string)$prod->cProd,
-                'nome' => (string)$prod->xProd,
-                'ncm' => (string)$prod->NCM,
-                'cfop' => (string)$prod->CFOP,
-                'qCom' => (float)$prod->qCom,
-                'vUnCom' => (float)$prod->vUnCom,
-                'vUnComFormatted' => number_format((float)$prod->vUnCom, 2, ',', '.')
-            ];
-        }
-
-        echo json_encode(['success' => true, 'produtos' => $produtos]);
         exit;
     }
 
