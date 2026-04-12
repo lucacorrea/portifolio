@@ -34,17 +34,15 @@ class SalesController extends BaseController {
         
         $results = [];
 
-        // 1. Search Products
-        $sqlProd = "SELECT id, nome, preco_venda, unidade, imagens, codigo, 'product' as type 
-                    FROM produtos 
-                    WHERE (nome LIKE ? OR codigo LIKE ? OR codigo = ?) ";
-        $paramsProd = ["%$term%", "%$term%", $term];
-        
-        if (!$isMatriz) {
-            $sqlProd .= " AND filial_id = ?";
-            $paramsProd[] = $filialId;
-        }
-        $sqlProd .= " ORDER BY (CASE WHEN codigo = ? THEN 1 WHEN codigo LIKE ? THEN 2 ELSE 3 END), nome ASC LIMIT 10";
+        // 1. Search Products (Global catalog + Branch stock)
+        $sqlProd = "SELECT p.id, p.nome, p.preco_venda, p.unidade, p.imagens, p.codigo, 'product' as type,
+                    COALESCE(ef.quantidade, 0) as stock_qty
+                    FROM produtos p
+                    LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                    WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ?) ";
+        $paramsProd = [$filialId, "%$term%", "%$term%", $term];
+
+        $sqlProd .= " ORDER BY (CASE WHEN p.codigo = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
         $paramsProd[] = $term;
         $paramsProd[] = "$term%";
 
@@ -367,7 +365,7 @@ class SalesController extends BaseController {
                            ->execute([$saleId, $item['id'], $item['qty'], $item['price']]);
                     }
 
-                    $productModel->updateStock($item['id'], $item['qty'], 'saida');
+                    $productModel->updateStock($item['id'], $item['qty'], 'saida', $_SESSION['filial_id'] ?? 1);
                 }
 
                 $db->commit();
