@@ -12,14 +12,14 @@ class SefazSoapClient extends BaseService {
             'nfce_retorno' => 'https://homologacao.nfce.fazenda.sp.gov.br/ws/nfceretautorizacao4.asmx',
             'sefaz_status' => 'https://homologacao.nfce.fazenda.sp.gov.br/ws/nfestatusservico4.asmx',
             'nfe_distribuicao' => 'https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx',
-            'nfe_evento' => 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeerecepcaoevento4.asmx'
+            'nfe_evento' => 'https://hom.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx'
         ],
         'producao' => [
             'nfce_autorizacao' => 'https://nfce.fazenda.sp.gov.br/ws/nfceautorizacao4.asmx',
             'nfce_retorno' => 'https://nfce.fazenda.sp.gov.br/ws/nfceretautorizacao4.asmx',
             'sefaz_status' => 'https://nfce.fazenda.sp.gov.br/ws/nfestatusservico4.asmx',
             'nfe_distribuicao' => 'https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx',
-            'nfe_evento' => 'https://nfe.fazenda.sp.gov.br/ws/nfeerecepcaoevento4.asmx'
+            'nfe_evento' => 'https://www.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx'
         ]
     ];
 
@@ -125,9 +125,8 @@ class SefazSoapClient extends BaseService {
     private function wrapSoap($xml, $serviceName, $methodName) {
         $ns = 'http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName;
         
-        // For NFeDistribuicaoDFe, the method tag is REQUIRED around nfeDadosMsg
-        // SEFAZ 4.00 core services usually expect Body -> nfeDadosMsg directly
-        if ($serviceName === 'NFeDistribuicaoDFe') {
+        // For National Services (AN), the method tag is usually REQUIRED around nfeDadosMsg
+        if ($serviceName === 'NFeDistribuicaoDFe' || $serviceName === 'NFeRecepcaoEvento4') {
              $content = "<{$methodName} xmlns=\"{$ns}\"><nfeDadosMsg>{$xml}</nfeDadosMsg></{$methodName}>";
         } else {
              $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
