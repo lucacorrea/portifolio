@@ -263,8 +263,10 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($historico_envios as $he): ?>
-                            <tr>
+                            <?php foreach ($historico_envios as $he): 
+                                $isRelatoPendente = ($he['tem_problema'] == 1 && $he['problema_resolvido'] == 0);
+                            ?>
+                            <tr class="<?= $isRelatoPendente ? 'table-danger' : '' ?>">
                                 <td>
                                     <strong class="text-primary"><?= htmlspecialchars($he['codigo_transferencia']) ?></strong>
                                     <?php if ($he['tem_problema']): ?>
@@ -457,8 +459,10 @@
                                 if ($h['status'] == 'concluida')   $badge = 'success';
                                 if ($h['status'] == 'em_transito') $badge = 'warning text-dark';
                                 if ($h['status'] == 'pendente')    $badge = 'primary';
+
+                                $isRelatoPendente = ($h['tem_problema'] == 1 && $h['problema_resolvido'] == 0);
                             ?>
-                            <tr>
+                            <tr class="<?= $isRelatoPendente ? 'table-danger' : '' ?>">
                                 <td>
                                     <strong class="text-primary"><?= htmlspecialchars($h['codigo_transferencia']) ?></strong>
                                     <?php if ($h['tem_problema']): ?>
