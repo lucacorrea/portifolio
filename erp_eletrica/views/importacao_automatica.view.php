@@ -367,14 +367,21 @@ document.getElementById('btnImportarTudo').onclick = async () => {
 document.addEventListener('DOMContentLoaded', () => {
     const lastSyncStr = '<?= $lastSync ?? "" ?>';
     if (!lastSyncStr) {
-        sincronizarSefaz();
+        // Primeira vez: não sincroniza automaticamente, deixa o usuário clicar
+        console.log('Nenhuma sincronização anterior. Aguardando ação manual.');
         return;
     }
     const lastSync = new Date(lastSyncStr.replace(' ', 'T'));
     const now = new Date();
     const diffMinutes = Math.floor((now - lastSync) / 1000 / 60);
-    if (diffMinutes >= 30) {
-        sincronizarSefaz();
+    // Apenas se a última sync foi há mais de 2 horas (SEFAZ exige intervalo mínimo de 1h)
+    if (diffMinutes >= 120) {
+        console.log(`Auto-sync: última há ${diffMinutes} min. Sincronizando em background...`);
+        // Sync silenciosa em background (sem alert, sem reload)
+        fetch('importar_automatico.php?action=sincronizar')
+            .then(r => r.json())
+            .then(res => { if (res.count > 0) location.reload(); })
+            .catch(() => {});
     }
 });
 </script>
