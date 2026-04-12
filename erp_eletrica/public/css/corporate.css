@@ -72,20 +72,19 @@ body {
     width: 260px;
     background: var(--erp-secondary);
     border-right: 1px solid #e2e8f0;
-    transition: all 0.3s ease-in-out;
+    transition: transform 0.3s ease-in-out;
     z-index: 1040;
     position: fixed;
     left: 0;
+    top: 0;
     height: 100vh;
     transform: translateX(0);
-    visibility: visible;
-    opacity: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .sidebar-collapsed .sidebar {
-    transform: translateX(-100%);
-    visibility: hidden;
-    opacity: 0;
+    transform: translateX(-260px);
 }
 
 .sidebar-header {
@@ -133,7 +132,6 @@ body {
 
 .sidebar-collapsed .main-wrapper {
     margin-left: 0;
-    width: 100%;
 }
 
 .top-navbar {
