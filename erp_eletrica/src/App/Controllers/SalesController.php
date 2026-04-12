@@ -547,47 +547,45 @@ class SalesController extends BaseController {
                 $stP->execute([$id]);
                 $nfceEmitida = $stP->fetch(\PDO::FETCH_ASSOC);
 
-                if (!$nfceEmitida) {
-                    throw new \Exception("Não foi possível encontrar uma nota fiscal AUTORIZADA para esta venda no banco de dados.");
-                }
+                if ($nfceEmitida) {
+                    $chave = trim((string)$nfceEmitida['chave']);
+                    $protocolo = trim((string)$nfceEmitida['protocolo']);
+                    $xJust = trim($motivo ?: 'Cancelamento de venda por solicitacao do cliente');
 
-                $chave = trim((string)$nfceEmitida['chave']);
-                $protocolo = trim((string)$nfceEmitida['protocolo']);
-                $xJust = trim($motivo ?: 'Cancelamento de venda por solicitacao do cliente');
-
-                // Validações antes de enviar para SEFAZ
-                if (empty($chave) || strlen($chave) !== 44) {
-                    throw new \Exception("Chave de acesso inválida ou ausente ({$chave}).");
-                }
-                if (empty($protocolo)) {
-                    throw new \Exception("Número de protocolo de autorização ausente.");
-                }
-                if (strlen($xJust) < 15) {
-                    $xJust = str_pad($xJust, 15, '.');
-                }
-
-                // Envia evento de cancelamento para a SEFAZ
-                try {
-                    $response = $tools->sefazCancela($chave, $xJust, $protocolo);
-                    $std = new \NFePHP\NFe\Common\Standardize();
-                    $res = $std->toStd($response);
-                    
-                    $cStat = (string)($res->retEvento->infEvento->cStat ?? $res->cStat ?? '');
-                    
-                    // 135: Evento registrado e vinculado a NF-e, 136: Evento registrado mas não vinculado, 155: Cancelamento homologado fora de prazo
-                    $approved = in_array($cStat, ['135', '136', '155']);
-                    
-                    if (!$approved) {
-                        $errorMsg = $res->retEvento->infEvento->xMotivo ?? $res->xMotivo ?? 'Erro desconhecido na SEFAZ';
-                        throw new \Exception("SEFAZ Rejeitou o cancelamento: " . $errorMsg);
+                    // Validações antes de enviar para SEFAZ
+                    if (empty($chave) || strlen($chave) !== 44) {
+                        throw new \Exception("Chave de acesso inválida ou ausente ({$chave}).");
                     }
-                } catch (\Exception $sefazError) {
-                    throw new \Exception("Erro na comunicação SEFAZ: " . $sefazError->getMessage());
-                }
+                    if (empty($protocolo)) {
+                        throw new \Exception("Número de protocolo de autorização ausente.");
+                    }
+                    if (strlen($xJust) < 15) {
+                        $xJust = str_pad($xJust, 15, '.');
+                    }
 
-                // Atualiza status da NFC-e na nossa tabela
-                $stN = $db->prepare("UPDATE nfce_emitidas SET status_sefaz = '101', mensagem = 'Cancelamento homologado (Evento 135)' WHERE venda_id = ?");
-                $stN->execute([$id]);
+                    // Envia evento de cancelamento para a SEFAZ
+                    try {
+                        $response = $tools->sefazCancela($chave, $xJust, $protocolo);
+                        $std = new \NFePHP\NFe\Common\Standardize();
+                        $res = $std->toStd($response);
+                        
+                        $cStat = (string)($res->retEvento->infEvento->cStat ?? $res->cStat ?? '');
+                        
+                        // 135: Evento registrado e vinculado a NF-e, 136: Evento registrado mas não vinculado, 155: Cancelamento homologado fora de prazo
+                        $approved = in_array($cStat, ['135', '136', '155']);
+                        
+                        if (!$approved) {
+                            $errorMsg = $res->retEvento->infEvento->xMotivo ?? $res->xMotivo ?? 'Erro desconhecido na SEFAZ';
+                            throw new \Exception("SEFAZ Rejeitou o cancelamento: " . $errorMsg);
+                        }
+                    } catch (\Exception $sefazError) {
+                        throw new \Exception("Erro na comunicação SEFAZ: " . $sefazError->getMessage());
+                    }
+
+                    // Atualiza status da NFC-e na nossa tabela
+                    $stN = $db->prepare("UPDATE nfce_emitidas SET status_sefaz = '101', mensagem = 'Cancelamento homologado (Evento 135)' WHERE venda_id = ?");
+                    $stN->execute([$id]);
+                }
             }
 
             // 1. Reverter Estoque
