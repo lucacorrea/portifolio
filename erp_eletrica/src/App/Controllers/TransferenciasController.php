@@ -604,17 +604,38 @@ class TransferenciasController extends BaseController {
                     $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
                     $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
 
+                    // Query para verificar estoque atual
+                    $stmtCheck = $this->pdo->prepare("
+                        SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
+                        FROM produtos p
+                        LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                        WHERE p.id = ?
+                    ");
+
                     foreach ($itensComProblema as $it) {
+                        $pid = $it['produto_id'];
+                        $qtd = $it['quantidade_problema'];
+
+                        // 1. Validação de Estoque (Servidor)
+                        $stmtCheck->execute([$mid, $pid]);
+                        $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
+                        
+                        if (!$estoque || $estoque['estoque_atual'] < $qtd) {
+                            $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $pid";
+                            $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
+                            throw new \Exception("Estoque insuficiente na Matriz para repor '{$nomeProd}'. Disponível: {$disponivel}, Necessário: {$qtd}");
+                        }
+
                         $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
-                        $pd->execute([$it['produto_id']]);
+                        $pd->execute([$pid]);
                         $custo = $pd->fetchColumn() ?: 0;
 
-                        $stmtItem->execute([$new_id, $it['produto_id'], $it['quantidade_problema'], $it['quantidade_problema'], $custo]);
+                        $stmtItem->execute([$new_id, $pid, $qtd, $qtd, $custo]);
                         
                         try {
-                            $stmtDec->execute([$it['quantidade_problema'], $it['produto_id']]);
+                            $stmtDec->execute([$qtd, $pid]);
                         } catch (\Exception $ex) {
-                            $stmtDecGlob->execute([$it['quantidade_problema'], $it['produto_id']]);
+                            $stmtDecGlob->execute([$qtd, $pid]);
                         }
                     }
                 }
