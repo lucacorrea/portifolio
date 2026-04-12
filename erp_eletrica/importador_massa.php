@@ -25,79 +25,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['arquivo_csv'])) {
             $skipped = 0;
             $rowIndex = 0;
             
-            // Pular o cabeçalho (assumindo a primeira linha como cabeçalho)
-            $header = fgetcsv($handle, 10000, ";");
-            // Tenta detectar delimitador
-            if (count($header) <= 1) {
-                rewind($handle);
-                $header = fgetcsv($handle, 10000, ",");
-            }
-            
-            if (count($header) < 5) {
-                $error = "Formato de CSV inválido ou não reconhecido. Certifique-se usar ; ou , como separador.";
-            } else {
-                $db->beginTransaction();
-                try {
-                    $stmtCheck = $db->prepare("SELECT id FROM produtos WHERE codigo = ?");
+            $db->beginTransaction();
+            try {
+                $stmtCheck = $db->prepare("SELECT id FROM produtos WHERE codigo = ?");
+                
+                $stmtInsert = $db->prepare("
+                    INSERT INTO produtos (codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, cean, cfop_interno, cfop_externo, csosn, origem) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'simples', ?, '5102', '6102', '102', 0)
+                ");
+                
+                $stmtUpdate = $db->prepare("
+                    UPDATE produtos SET nome = ?, categoria = ?, preco_custo = ?, preco_venda = ?, quantidade = quantidade + ?, unidade = ? WHERE codigo = ?
+                ");
+
+                while (($lineStr = fgets($handle)) !== false) {
+                    $rowIndex++;
+                    if (trim($lineStr) === '') continue;
                     
-                    $stmtInsert = $db->prepare("
-                        INSERT INTO produtos (codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, cean, cfop_interno, cfop_externo, csosn, origem) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'simples', ?, '5102', '6102', '102', 0)
-                    ");
+                    // Auto-detect delimiter based on occurrences in the line
+                    $delimiter = (substr_count($lineStr, ';') > substr_count($lineStr, ',')) ? ';' : ',';
+                    $data = str_getcsv(trim($lineStr), $delimiter);
                     
-                    $stmtUpdate = $db->prepare("
-                        UPDATE produtos SET nome = ?, categoria = ?, preco_custo = ?, preco_venda = ?, quantidade = quantidade + ?, unidade = ? WHERE codigo = ?
-                    ");
-
-                    while (($data = fgetcsv($handle, 10000, count($header) == count(fgetcsv(fopen($file['tmp_name'], 'r'), 0, ';')) ? ';' : ',')) !== FALSE) {
-                        $rowIndex++;
-                        // Estrutura esperada do Hiper (baseada no PDF)
-                        // 0: #, 1: Produto, 2: Código barras, 3: Categoria, 4: Marca, 5: Estoque, 6: Preço form, 7: Preço custo, 8: Preço venda, 9: Unidade
-                        
-                        // Fallbacks e limpeza de variáveis
-                        $nome = isset($data[1]) ? trim($data[1]) : '';
-                        $codigo = isset($data[2]) ? trim($data[2]) : '';
-                        $categoria = isset($data[3]) ? trim($data[3]) : 'Diversos';
-                        
-                        // Parse numbers (pt-br format to float)
-                        $parseNumber = function($val) {
-                            $val = str_replace('.', '', preg_replace('/[^0-9.,-]/', '', $val));
-                            $val = str_replace(',', '.', $val);
-                            return (float)$val;
-                        };
-                        
-                        $estoque = isset($data[5]) ? $parseNumber($data[5]) : 0;
-                        $precoCusto = isset($data[7]) ? $parseNumber($data[7]) : 0;
-                        $precoVenda = isset($data[8]) ? $parseNumber($data[8]) : 0;
-                        $unidade = !empty($data[9]) ? trim($data[9]) : 'UN';
-                        
-                        if (empty($nome)) {
-                            $skipped++;
-                            continue;
-                        }
-                        if (empty($codigo)) {
-                            // Gerar código único temporário se não houver código de barras
-                            $codigo = 'IMP' . time() . rand(1000, 9999);
-                        }
-
-                        // Verifica se existe
-                        $stmtCheck->execute([$codigo]);
-                        $exists = $stmtCheck->fetchColumn();
-
-                        if ($exists) {
-                            $stmtUpdate->execute([$nome, $categoria, $precoCusto, $precoVenda, $estoque, $unidade, $codigo]);
-                            $updated++;
-                        } else {
-                            $stmtInsert->execute([$codigo, $nome, substr($unidade, 0, 3), $categoria, $precoCusto, $precoVenda, $estoque, $codigo]);
-                            $inserted++;
-                        }
+                    // Ignore titles or empty rows from Excel export
+                    if (count($data) < 5) {
+                        continue;
                     }
-                    $db->commit();
-                    $message = "Importação concluída! $inserted inseridos, $updated atualizados e $skipped ignorados (linhas vazias).";
-                } catch (\Exception $e) {
-                    $db->rollBack();
-                    $error = "Erro no banco na linha $rowIndex: " . $e->getMessage();
+                    
+                    // Ignore header row
+                    if (stripos($data[1] ?? '', 'produto') !== false || stripos($data[2] ?? '', 'código') !== false) {
+                        continue;
+                    }
+                    
+                    // Fallbacks and parsing
+                    $nome = isset($data[1]) ? trim($data[1]) : '';
+                    $codigo = isset($data[2]) ? trim($data[2]) : '';
+                    $categoria = isset($data[3]) ? trim($data[3]) : 'Diversos';
+                    
+                    $parseNumber = function($val) {
+                        $val = str_replace('.', '', preg_replace('/[^0-9.,-]/', '', $val));
+                        $val = str_replace(',', '.', $val);
+                        return (float)$val;
+                    };
+                    
+                    $estoque = isset($data[5]) ? $parseNumber($data[5]) : 0;
+                    $precoCusto = isset($data[7]) ? $parseNumber($data[7]) : 0;
+                    $precoVenda = isset($data[8]) ? $parseNumber($data[8]) : 0;
+                    $unidade = !empty($data[9]) ? trim($data[9]) : 'UN';
+                    
+                    if (empty($nome)) {
+                        continue;
+                    }
+                    
+                    if (empty($codigo)) {
+                        $codigo = 'IMP' . time() . rand(1000, 9999);
+                    }
+
+                    $stmtCheck->execute([$codigo]);
+                    $exists = $stmtCheck->fetchColumn();
+
+                    if ($exists) {
+                        $stmtUpdate->execute([$nome, $categoria, $precoCusto, $precoVenda, $estoque, substr($unidade, 0, 3), $codigo]);
+                        $updated++;
+                    } else {
+                        $stmtInsert->execute([$codigo, $nome, substr($unidade, 0, 3), $categoria, $precoCusto, $precoVenda, $estoque, $codigo]);
+                        $inserted++;
+                    }
                 }
+                
+                if ($inserted == 0 && $updated == 0) {
+                    $error = "Nenhum produto válido encontrado. Verifique se o arquivo segue as colunas corretas.";
+                    $db->rollBack();
+                } else {
+                    $db->commit();
+                    $message = "Importação concluída! $inserted inseridos e $updated atualizados.";
+                }
+            } catch (\Exception $e) {
+                $db->rollBack();
+                $error = "Erro no banco na linha $rowIndex: " . $e->getMessage();
             }
             fclose($handle);
         } else {
