@@ -43,9 +43,11 @@ class PurchaseController extends BaseController {
                     $db->prepare("INSERT INTO compra_itens (compra_id, produto_id, quantidade, preco_custo) VALUES (?, ?, ?, ?)")
                        ->execute([$cId, $item['id'], $item['qty'], $item['cost']]);
 
-                    // Atualiza estoque e preco de custo
-                    $db->prepare("UPDATE produtos SET quantidade = quantidade + ?, preco_custo = ? WHERE id = ?")
-                       ->execute([$item['qty'], $item['cost'], $item['id']]);
+                    // Atualiza estoque (usando o modelo unificado) e preço de custo
+                    $productModel->updateStock($item['id'], $item['qty'], 'entrada');
+                    
+                    $db->prepare("UPDATE produtos SET preco_custo = ? WHERE id = ?")
+                       ->execute([$item['cost'], $item['id']]);
 
                     $moveModel->record($item['id'], 1, $item['qty'], 'entrada', "Compra #$cId", $_SESSION['usuario_id']);
                 }
