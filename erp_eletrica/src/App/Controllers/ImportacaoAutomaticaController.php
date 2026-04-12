@@ -339,4 +339,46 @@ class ImportacaoAutomaticaController extends BaseController {
         }
         exit;
     }
+
+    public function baixar_danfe() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) exit;
+
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT xml, chave_acesso FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+        $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
+        $nota = $stmt->fetch();
+
+        if (!$nota || empty($nota['xml'])) {
+            die("Erro: XML não encontrado no banco de dados.");
+        }
+
+        $xml = $nota['xml'];
+        
+        // Verificar se é apenas resumo
+        if (strpos($xml, '<resNFe') !== false) {
+            die("Erro: Não é possível gerar o DANFE a partir de um resumo da nota. É necessário manifestar a nota primeiro para que o XML completo seja liberado pela SEFAZ.");
+        }
+
+        try {
+            // Incluir autoloader do vendor que contém o sped-da
+            require_once dirname(__DIR__) . '/Services/vendor/autoload.php';
+
+            // Tentar localizar um logo
+            $logoPath = dirname(__DIR__, 3) . '/logo_sistema_erp_eletrica.png';
+            $logo = file_exists($logoPath) ? $logoPath : '';
+
+            $danfe = new \NFePHP\DA\NFe\Danfe($xml);
+            $danfe->setDefaultFont('times');
+            
+            $pdf = $danfe->render($logo);
+
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="DANFE_' . $nota['chave_acesso'] . '.pdf"');
+            echo $pdf;
+        } catch (\Exception $e) {
+            die("Erro ao gerar DANFE: " . $e->getMessage());
+        }
+        exit;
+    }
 }
