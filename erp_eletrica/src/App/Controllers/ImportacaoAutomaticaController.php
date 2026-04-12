@@ -115,6 +115,8 @@ class ImportacaoAutomaticaController extends BaseController {
     public function manifestar() {
         try {
             $id = $_GET['id'] ?? null;
+            $type = $_GET['type'] ?? '210210'; // Default Ciência
+            
             if (!$id) throw new \Exception("ID da nota não fornecido.");
 
             $db = \App\Config\Database::getInstance()->getConnection();
@@ -130,11 +132,20 @@ class ImportacaoAutomaticaController extends BaseController {
             $stmt->execute([$_SESSION['filial_id'] ?? 1]);
             $cnpjFilial = $stmt->fetchColumn();
 
-            $service->manifestarNota($cnpjFilial, $nota['chave_nfe']);
+            $service->manifestarNota($cnpjFilial, $nota['chave_nfe'], $type);
 
-            // Após manifestar, precisamos sincronizar novamente para baixar o XML completo (procNFe)
-            // A SEFAZ pode demorar alguns segundos, mas geralmente o próximo 'sincronizar' resolve.
-            echo json_encode(['success' => true, 'message' => 'Manifestação (Ciência da Operação) realizada com sucesso. Sincronize novamente em instantes para baixar os produtos.']);
+            // Atualizar o banco com a manifestação realizada
+            $stmtUp = $db->prepare("UPDATE nfe_importadas SET manifestacao_tipo = ?, manifestacao_data = NOW() WHERE id = ?");
+            $stmtUp->execute([$type, $id]);
+
+            $msg = [
+                '210200' => 'Confirmação da Operação realizada.',
+                '210210' => 'Ciência da Operação realizada.',
+                '210220' => 'Desconhecimento da Operação realizado.',
+                '210240' => 'Operação Não Realizada registrada.'
+            ][$type] ?? 'Manifestação realizada.';
+
+            echo json_encode(['success' => true, 'message' => $msg . ' Sincronize novamente em instantes para baixar os produtos.']);
         } catch (\Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
