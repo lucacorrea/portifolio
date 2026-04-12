@@ -1,3 +1,23 @@
+<style>
+    /* 🚀 Fix para que os dropdowns da tabela flutuem por cima de tudo */
+    .table-responsive {
+        overflow: visible !important;
+    }
+    
+    /* Mantém o scroll apenas se a tela for realmente pequena, 
+       mas prioriza a visibilidade do menu no desktop */
+    @media (min-width: 992px) {
+        .table-responsive {
+            overflow: visible !important;
+        }
+    }
+
+    #mainNfeTable .dropdown-menu {
+        z-index: 1060 !important;
+        box-shadow: 0 0.5rem 2rem rgba(0,0,0,0.15) !important;
+    }
+</style>
+
 <div class="container-fluid py-4">
     <div class="row mb-4 align-items-center">
         <div class="col-md-6">
