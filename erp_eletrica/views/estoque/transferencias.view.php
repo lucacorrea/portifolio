@@ -117,40 +117,43 @@
 
                                 <form action="transferencias.php?action=aprovar_solicitacao" method="POST">
                                     <input type="hidden" name="transferencia_id" value="<?= $req['id'] ?>">
-                                    <table class="table table-sm table-bordered align-middle mb-3">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Produto</th>
-                                                <th class="text-center" style="width:130px">Qtd Solicitada</th>
-                                                <th class="text-center" style="width:130px">Disp. Matriz</th>
-                                                <th class="text-center" style="width:150px">Qtd p/ Enviar</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php
-                                            $itensReq = $pdo->prepare("SELECT ti.*, p.nome, p.codigo, COALESCE((SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = 1), p.quantidade) as disp_matriz FROM erp_transferencias_itens ti JOIN produtos p ON ti.produto_id = p.id WHERE ti.transferencia_id = ?");
-                                            $itensReq->execute([$req['id']]);
-                                            foreach ($itensReq->fetchAll() as $itemReq):
-                                            ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="fw-bold small"><?= htmlspecialchars($itemReq['nome']) ?></div>
-                                                    <div class="extra-small text-muted">SKU: <?= htmlspecialchars($itemReq['codigo']) ?></div>
-                                                </td>
-                                                <td class="text-center"><?= number_format($itemReq['quantidade_solicitada'], 2, ',', '.') ?></td>
-                                                <td class="text-center fw-bold <?= $itemReq['disp_matriz'] < $itemReq['quantidade_solicitada'] ? 'text-danger' : 'text-success' ?>">
-                                                    <?= number_format($itemReq['disp_matriz'], 2, ',', '.') ?>
-                                                </td>
-                                                <td>
-                                                    <input type="number" step="1" min="0" max="<?= $itemReq['disp_matriz'] ?>"
-                                                        name="qtd_enviada[<?= $itemReq['produto_id'] ?>]"
-                                                        value="<?= $itemReq['quantidade_solicitada'] > $itemReq['disp_matriz'] ? $itemReq['disp_matriz'] : $itemReq['quantidade_solicitada'] ?>"
-                                                        class="form-control form-control-sm text-center">
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
+                                    
+                                    <div class="table-responsive border rounded mb-3" style="max-height: 350px; overflow-y: auto;">
+                                        <table class="table table-sm table-hover align-middle mb-0">
+                                            <thead class="table-light sticky-top shadow-sm" style="z-index: 5;">
+                                                <tr>
+                                                    <th>Produto</th>
+                                                    <th class="text-center" style="width:130px">Qtd Solicitada</th>
+                                                    <th class="text-center" style="width:130px">Disp. Matriz</th>
+                                                    <th class="text-center" style="width:150px text-nowrap">Qtd p/ Enviar</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php
+                                                $itensReq = $pdo->prepare("SELECT ti.*, p.nome, p.codigo, COALESCE((SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = 1), p.quantidade) as disp_matriz FROM erp_transferencias_itens ti JOIN produtos p ON ti.produto_id = p.id WHERE ti.transferencia_id = ?");
+                                                $itensReq->execute([$req['id']]);
+                                                foreach ($itensReq->fetchAll() as $itemReq):
+                                                ?>
+                                                <tr>
+                                                    <td>
+                                                        <div class="fw-bold small"><?= htmlspecialchars($itemReq['nome']) ?></div>
+                                                        <div class="extra-small text-muted">SKU: <?= htmlspecialchars($itemReq['codigo']) ?></div>
+                                                    </td>
+                                                    <td class="text-center"><?= number_format($itemReq['quantidade_solicitada'], 2, ',', '.') ?></td>
+                                                    <td class="text-center fw-bold <?= $itemReq['disp_matriz'] < $itemReq['quantidade_solicitada'] ? 'text-danger' : 'text-success' ?>">
+                                                        <?= number_format($itemReq['disp_matriz'], 2, ',', '.') ?>
+                                                    </td>
+                                                    <td class="p-2">
+                                                        <input type="number" step="1" min="0" max="<?= $itemReq['disp_matriz'] ?>"
+                                                            name="qtd_enviada[<?= $itemReq['produto_id'] ?>]"
+                                                            value="<?= $itemReq['quantidade_solicitada'] > $itemReq['disp_matriz'] ? $itemReq['disp_matriz'] : $itemReq['quantidade_solicitada'] ?>"
+                                                            class="form-control form-control-sm text-center fw-bold border-primary-subtle">
+                                                    </td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                     <div class="text-end">
                                         <button type="submit" class="btn btn-primary fw-bold px-4">
                                             <i class="fas fa-check me-2"></i>Aprovar e Despachar
