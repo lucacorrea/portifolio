@@ -222,10 +222,17 @@ class ImportacaoAutomaticaController extends BaseController {
             exit;
         }
 
-        // Tentar ler o XML
+        // Tentar ler o XML de forma robusta
+        libxml_use_internal_errors(true);
         $xml = simplexml_load_string($nota['xml']);
+        
+        if ($xml === false) {
+            echo json_encode(['success' => false, 'error' => 'O XML da nota está malformado ou corrompido.']);
+            exit;
+        }
+
         if ($xml->getName() == 'resNFe') {
-             echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota. É necessário manifestar a nota para baixar o XML completo. (Funcionalidade de Manifestação Pendente)']);
+             echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota. É necessário manifestar a nota para baixar o XML completo.']);
              exit;
         }
 
