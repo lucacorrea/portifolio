@@ -90,7 +90,14 @@ try {
     $global = $stG->fetch() ?: [];
 } catch (Throwable $e) { $errorLog[] = "Tabela 'sefaz_config' inacessível: " . $e->getMessage(); }
 
-// 2. Busca Filial (filiais)
+// 2. Busca Matriz (principal = 1)
+$matriz = [];
+try {
+    $stM = $pdo->query("SELECT * FROM filiais WHERE principal = 1 LIMIT 1");
+    $matriz = $stM->fetch() ?: [];
+} catch (Throwable $e) {}
+
+// 3. Busca Filial Atual
 $filial = [];
 try {
     $stF = $pdo->prepare("SELECT * FROM filiais WHERE id = ?");
@@ -98,18 +105,35 @@ try {
     $filial = $stF->fetch() ?: [];
 } catch (Throwable $e) { $errorLog[] = "Tabela 'filiais' inacessível: " . $e->getMessage(); }
 
-if (empty($global) && empty($filial)) {
+if (empty($global) && empty($filial) && empty($matriz)) {
     echo "<h2>Erro de Configuração NFC-e</h2>";
     echo "<p>Não foi possível encontrar os dados da empresa no banco de dados <b>u784961086_pdv</b>.</p>";
-    echo "<ul>";
-    foreach (($errorLog ?? []) as $err) echo "<li>$err</li>";
-    echo "</ul>";
-    echo "<p>Certifique-se de que as tabelas <code>sefaz_config</code> ou <code>filiais</code> estão preenchidas no seu banco de dados.</p>";
     die();
 }
 
-// Mescla as configurações (Prioridade para Filial)
-$fiscal = array_merge($global, $filial);
+// ========== Lógica de Hierarquia (Centralização Fiscal) ==========
+// Campos que DEVEM ser globais/matriz
+$globalFields = ['ambiente', 'certificado_path', 'certificado_senha', 'csc', 'csc_id', 'cnpj', 'razao_social'];
+
+$fiscal = [];
+$allKeys = array_unique(array_merge(array_keys($global), array_keys($matriz), array_keys($filial)));
+
+foreach ($allKeys as $key) {
+    // Mapeamento de nomes de colunas (filiais usa nomes diferentes em alguns campos)
+    $filialKey = $key;
+    if ($key === 'certificado_path') $filialKey = 'certificado_pfx';
+    if ($key === 'csc')              $filialKey = 'csc_token';
+    if ($key === 'razao_social')     $filialKey = 'nome'; // No banco filiais o campo é 'nome'
+    
+    if (in_array($key, $globalFields)) {
+        // Prioridade: Global -> Matriz -> Filial
+        $val = $global[$key] ?? $matriz[$filialKey] ?? $filial[$filialKey] ?? null;
+    } else {
+        // Prioridade: Filial -> Matriz -> Global
+        $val = $filial[$filialKey] ?? $matriz[$filialKey] ?? $global[$key] ?? null;
+    }
+    $fiscal[$key] = $val;
+}
 
 // ========== Mapeamento de Campos (27 campos) ==========
 define('TP_AMB',     (string)($fiscal['ambiente'] ?? '2'));
