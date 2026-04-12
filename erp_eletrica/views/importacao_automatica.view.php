@@ -153,7 +153,7 @@
                                             <ul class="dropdown-menu dropdown-menu-end shadow border-0 extra-small">
                                                 <li><a class="dropdown-item py-2" href="importar_automatico.php?action=baixar_xml&id=<?= $nota['id'] ?>"><i class="fas fa-file-code me-2 text-muted"></i>Baixar XML</a></li>
                                                 <li><a class="dropdown-item py-2" href="#" onclick="alert('Funcionalidade em desenvolvimento: DANFE')"><i class="fas fa-file-pdf me-2 text-muted"></i>Baixar DANFE</a></li>
-                                                <li><a class="dropdown-item py-2" href="#" onclick="navigator.clipboard.writeText('<?= $nota['chave_nfe'] ?>'); alert('Chave copiada!')"><i class="fas fa-copy me-2 text-muted"></i>Copiar chave</a></li>
+                                                <li><a class="dropdown-item py-2" href="#" onclick="navigator.clipboard.writeText('<?= $nota['chave_acesso'] ?>'); alert('Chave copiada!')"><i class="fas fa-copy me-2 text-muted"></i>Copiar chave</a></li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li><a class="dropdown-item py-2 text-primary fw-bold" href="#" onclick="alert('Manifestação manual requerida na SEFAZ')">Manifestação Manual</a></li>
                                             </ul>

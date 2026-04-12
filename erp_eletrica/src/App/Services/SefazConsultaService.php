@@ -337,10 +337,10 @@ class SefazConsultaService extends BaseService {
                 // Usar INSERT ... ON DUPLICATE KEY UPDATE para garantir que não estamos falhando por duplicidade de forma invisível
                 // E também para atualizar o conteúdo se necessário (ex: pegar XML completo após resumo)
                 $stmt = $this->db->prepare("
-                    INSERT INTO nfe_importadas (filial_id, chave_nfe, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml_conteudo, status)
+                    INSERT INTO nfe_importadas (filial_id, chave_acesso, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
                     ON DUPLICATE KEY UPDATE 
-                        xml_conteudo = IF(LENGTH(xml_conteudo) < ?, ?, xml_conteudo),
+                        xml = IF(LENGTH(xml) < ?, ?, xml),
                         data_emissao = ?,
                         valor_total = ?
                 ");
@@ -395,8 +395,8 @@ class SefazConsultaService extends BaseService {
         } catch (\Exception $e) { /* já está OK */ }
         
         try {
-            // Adicionar UNIQUE na chave_nfe se não existir
-            $this->db->exec("ALTER TABLE nfe_importadas ADD UNIQUE INDEX uk_chave_nfe (chave_nfe)");
+            // Adicionar UNIQUE na chave_acesso se não existir
+            $this->db->exec("ALTER TABLE nfe_importadas ADD UNIQUE INDEX uk_chave_acesso (chave_acesso)");
         } catch (\Exception $e) { /* já existe */ }
     }
 

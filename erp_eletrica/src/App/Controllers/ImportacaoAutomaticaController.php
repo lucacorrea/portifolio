@@ -168,7 +168,7 @@ class ImportacaoAutomaticaController extends BaseController {
             $stmt->execute([$_SESSION['filial_id'] ?? 1]);
             $cnpjFilial = $stmt->fetchColumn();
 
-            $service->manifestarNota($cnpjFilial, $nota['chave_nfe'], $type);
+            $service->manifestarNota($cnpjFilial, $nota['chave_acesso'], $type);
 
             // Atualizar o banco com a manifestação realizada
             $stmtUp = $db->prepare("UPDATE nfe_importadas SET manifestacao_tipo = ?, manifestacao_data = NOW() WHERE id = ?");
@@ -193,17 +193,17 @@ class ImportacaoAutomaticaController extends BaseController {
         if (!$id) exit;
 
         $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT xml_conteudo FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+        $stmt = $db->prepare("SELECT xml FROM nfe_importadas WHERE id = ? AND filial_id = ?");
         $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
         $nota = $stmt->fetch();
 
-        if (!$nota || empty($nota['xml_conteudo'])) {
+        if (!$nota || empty($nota['xml'])) {
             echo json_encode(['success' => false, 'error' => 'XML não encontrado.']);
             exit;
         }
 
         // Tentar ler o XML
-        $xml = simplexml_load_string($nota['xml_conteudo']);
+        $xml = simplexml_load_string($nota['xml']);
         if ($xml->getName() == 'resNFe') {
              echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota. É necessário manifestar a nota para baixar o XML completo. (Funcionalidade de Manifestação Pendente)']);
              exit;
@@ -308,14 +308,14 @@ class ImportacaoAutomaticaController extends BaseController {
         if (!$id) exit;
 
         $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT xml_conteudo, chave_nfe FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+        $stmt = $db->prepare("SELECT xml, chave_acesso FROM nfe_importadas WHERE id = ? AND filial_id = ?");
         $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
         $nota = $stmt->fetch();
 
-        if ($nota && !empty($nota['xml_conteudo'])) {
+        if ($nota && !empty($nota['xml'])) {
             header('Content-Type: text/xml');
-            header('Content-Disposition: attachment; filename="NFe_' . $nota['chave_nfe'] . '.xml"');
-            echo $nota['xml_conteudo'];
+            header('Content-Disposition: attachment; filename="NFe_' . $nota['chave_acesso'] . '.xml"');
+            echo $nota['xml'];
         }
         exit;
     }
