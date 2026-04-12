@@ -299,12 +299,14 @@ class TransferenciasController extends BaseController {
                 WHERE p.id = ?
             ");
 
-            $totalEnviado = 0;
-            $itensValidados = [];
-
+            $totalItensValidos = 0;
             foreach ($itensValidos as $item) {
                 $pid = $item['produto_id'];
                 $qtd = (float)$item['quantidade'];
+
+                if ($qtd <= 0) {
+                    throw new \Exception("Erro: Não é permitido despachar itens com quantidade zero ou negativa na transferência manual.");
+                }
 
                 // 1. Validação de Estoque (Servidor)
                 $stmtCheck->execute([$mid, $pid]);
@@ -316,19 +318,6 @@ class TransferenciasController extends BaseController {
                     throw new \Exception("Estoque insuficiente na Matriz para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
                 }
 
-                $totalEnviado += $qtd;
-                $itensValidados[] = $item;
-            }
-
-            if ($totalEnviado <= 0) {
-                throw new \Exception("Não é possível realizar um despacho sem itens ou com quantidades zeradas.");
-            }
-
-            // 2. Processamento (Somente após validar TUDO)
-            foreach ($itensValidados as $item) {
-                $pid = $item['produto_id'];
-                $qtd = (float)$item['quantidade'];
-
                 $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
                 $pd->execute([$pid]);
                 $custo = $pd->fetchColumn() ?: 0;
@@ -339,6 +328,11 @@ class TransferenciasController extends BaseController {
                 } catch (\Exception $ex) {
                     $stmtDecGlob->execute([$qtd, $pid]);
                 }
+                $totalItensValidos++;
+            }
+
+            if ($totalItensValidos === 0) {
+                throw new \Exception("Nenhum item com quantidade válida para despacho.");
             }
 
             $this->pdo->commit();
@@ -386,9 +380,7 @@ class TransferenciasController extends BaseController {
                 WHERE p.id = ?
             ");
 
-            $totalEnviado = 0;
-            $itensValidados = [];
-            
+            $totalQtdFinal = 0;
             foreach ($itens_enviados as $produto_id => $qtd) {
                 $qtd = (float)$qtd;
                 if ($qtd > 0) {
@@ -401,24 +393,22 @@ class TransferenciasController extends BaseController {
                         $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
                         throw new \Exception("Estoque insuficiente na Matriz para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
                     }
-                    
-                    $totalEnviado += $qtd;
-                    $itensValidados[$produto_id] = $qtd;
+
+                    // 2. Processamento
+                    $stmtItem->execute([$qtd, $transf_id, $produto_id]);
+                    try {
+                        $stmtDec->execute([$qtd, $produto_id]);
+                    } catch (\Exception $ex) {
+                        $stmtDecGlob->execute([$qtd, $produto_id]);
+                    }
+                    $totalQtdFinal += $qtd;
+                } elseif ($qtd < 0) {
+                    throw new \Exception("Quantidade negativa não é permitida.");
                 }
             }
 
-            if ($totalEnviado <= 0) {
-                throw new \Exception("Não é possível aprovar um despacho sem enviar nenhuma unidade. Verifique o estoque da Matriz.");
-            }
-
-            // 2. Processamento (Somente após validar TUDO)
-            foreach ($itensValidados as $produto_id => $qtd) {
-                $stmtItem->execute([$qtd, $transf_id, $produto_id]);
-                try {
-                    $stmtDec->execute([$qtd, $produto_id]);
-                } catch (\Exception $ex) {
-                    $stmtDecGlob->execute([$qtd, $produto_id]);
-                }
+            if ($totalQtdFinal <= 0) {
+                throw new \Exception("Erro: Não é possível despachar uma solicitação com quantidade total zero. Verifique o estoque da Matriz.");
             }
 
             $this->pdo->commit();
@@ -556,10 +546,8 @@ class TransferenciasController extends BaseController {
             exit;
         }
 
-        // 2. Itens (com estoque da Matriz para validação)
-        $mid = $this->matrizId;
+        // 2. Itens
         $sqlItems = "SELECT ti.*, p.nome, p.codigo, 
-                COALESCE((SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = $mid), p.quantidade) as disp_matriz,
                 (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
                 FROM erp_transferencias_itens ti 
                 JOIN produtos p ON ti.produto_id = p.id 
@@ -620,43 +608,9 @@ class TransferenciasController extends BaseController {
                 $itensComProblema = $ocs->fetchAll(\PDO::FETCH_ASSOC);
 
                 if (!empty($itensComProblema)) {
-                    $mid = $this->matrizId;
-                    $totalRepor = 0;
-                    $itensValidos = [];
-
-                    // 1. Validação Prévia (Servidor)
-                    $stmtCheck = $this->pdo->prepare("
-                        SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
-                        FROM produtos p
-                        LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
-                        WHERE p.id = ?
-                    ");
-
-                    foreach ($itensComProblema as $it) {
-                        $pid = $it['produto_id'];
-                        $qtd = (float)$it['quantidade_problema'];
-
-                        $stmtCheck->execute([$mid, $pid]);
-                        $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
-                        
-                        if (!$estoque || $estoque['estoque_atual'] < $qtd) {
-                            $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $pid";
-                            $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
-                            throw new \Exception("Estoque insuficiente na Matriz para repor '{$nomeProd}'. Disponível: {$disponivel}, Necessário: {$qtd}");
-                        }
-
-                        if ($qtd > 0) {
-                            $totalRepor += $qtd;
-                            $itensValidos[] = $it;
-                        }
-                    }
-
-                    if (empty($itensValidos)) {
-                        throw new \Exception("Nenhum item válido para reposição encontrado.");
-                    }
-
-                    // 2. Criação do Cabeçalho (Somente após validar estoque)
                     $codigo = 'REP-' . date('YmdHis') . '-' . rand(100, 999);
+                    $mid = $this->matrizId;
+
                     $stmtNew = $this->pdo->prepare(
                         "INSERT INTO erp_transferencias (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio)
                          VALUES (?, 'transferencia', ?, ?, 'em_transito', ?, ?, NOW())"
@@ -665,14 +619,34 @@ class TransferenciasController extends BaseController {
                     $stmtNew->execute([$codigo, $mid, $dadosOrig['destino_filial_id'], $obsNovo, $_SESSION['usuario_id'] ?? 0]);
                     $new_id = $this->pdo->lastInsertId();
 
-                    // 3. Processamento dos Itens
                     $stmtItem    = $this->pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
                     $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
                     $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
 
-                    foreach ($itensValidos as $it) {
+                    // Query para verificar estoque atual
+                    $stmtCheck = $this->pdo->prepare("
+                        SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
+                        FROM produtos p
+                        LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                        WHERE p.id = ?
+                    ");
+
+                    $countReposto = 0;
+                    foreach ($itensComProblema as $it) {
                         $pid = $it['produto_id'];
                         $qtd = (float)$it['quantidade_problema'];
+
+                        if ($qtd <= 0) continue;
+
+                        // 1. Validação de Estoque (Servidor)
+                        $stmtCheck->execute([$mid, $pid]);
+                        $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
+                        
+                        if (!$estoque || $estoque['estoque_atual'] < $qtd) {
+                            $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $pid";
+                            $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
+                            throw new \Exception("Estoque insuficiente na Matriz para repor '{$nomeProd}'. Disponível: {$disponivel}, Necessário: {$qtd}");
+                        }
 
                         $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
                         $pd->execute([$pid]);
@@ -685,6 +659,11 @@ class TransferenciasController extends BaseController {
                         } catch (\Exception $ex) {
                             $stmtDecGlob->execute([$qtd, $pid]);
                         }
+                        $countReposto++;
+                    }
+
+                    if ($countReposto === 0) {
+                        throw new \Exception("Nenhum item válido para reposição foi encontrado.");
                     }
                 }
             }
