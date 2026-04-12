@@ -31,8 +31,8 @@ class SefazSoapClient extends BaseService {
         ],
         'nfe_evento' => [
             'service' => 'NFeRecepcaoEvento4', 
-            'method' => 'nfeRecepcaoEvento',
-            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento'
+            'method' => 'nfeRecepcaoEventoNF',
+            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEventoNF'
         ],
         'nfce_autorizacao' => [
             'service' => 'NFeAutorizacao4', 
