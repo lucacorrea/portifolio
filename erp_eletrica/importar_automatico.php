@@ -31,6 +31,9 @@ switch($action) {
     case 'baixar_xml':
         $controller->baixar_xml();
         break;
+    case 'baixar_danfe':
+        $controller->baixar_danfe();
+        break;
     default:
         $controller->index();
         break;
