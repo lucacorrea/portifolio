@@ -108,7 +108,8 @@ class SefazSoapClient extends BaseService {
         }
         
         // DEBUG OVERRIDE: Forçar log de todos os retornos para identificar malformação XML
-        $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_response.xml';
+        // 📸 CÂMERA DE SEGURANÇA: Salva na raiz para facilitar leitura
+        $logPath = dirname(__DIR__, 3) . '/last_sefaz_debug.txt';
         @file_put_contents($logPath, "HTTP CODE: $httpCode\n\n=== RESPONSE ===\n$response");
 
         if ($httpCode >= 400 || empty($response)) {

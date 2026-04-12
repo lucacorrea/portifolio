@@ -357,7 +357,8 @@ class SefazConsultaService extends BaseService {
             throw new Exception("SEFAZ retornou status inesperado: [$stat] $motivo");
         }
 
-        throw new Exception("Resposta de evento da SEFAZ não contém dados de processamento (cStat).");
+        $debugRaw = substr(strip_tags($xmlStr), 0, 50);
+        throw new Exception("Resposta de evento da SEFAZ não contém dados de processamento. Início da resposta: " . $debugRaw);
     }
 
     public function salvarNotasCache($filialId, $documentos) {
