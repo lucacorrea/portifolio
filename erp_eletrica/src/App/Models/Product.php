@@ -6,10 +6,12 @@ class Product extends BaseModel {
 
     public function all($order = "nome ASC") {
         $filialId = $_SESSION['filial_id'] ?? 1;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        $join = $isMatriz ? "LEFT JOIN" : "INNER JOIN";
 
         $sql = "SELECT p.*, p.id as id, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
                 FROM {$this->table} p
-                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 ORDER BY p.$order";
         
         return $this->query($sql, [$filialId])->fetchAll();
@@ -17,6 +19,8 @@ class Product extends BaseModel {
 
     public function paginate($perPage = 15, $currentPage = 1, $order = "id DESC", $filters = []) {
         $filialId = $_SESSION['filial_id'] ?? 1;
+        $isMatriz = $_SESSION['is_matriz'] ?? false;
+        $join = $isMatriz ? "LEFT JOIN" : "INNER JOIN";
         $offset = ($currentPage - 1) * $perPage;
         
         $where = " WHERE 1=1";
@@ -37,8 +41,8 @@ class Product extends BaseModel {
             $paramsQuery[] = $filters['categoria'];
         }
         
-        // Ensure count uses the same JOIN context if we ever add stock-based filters
-        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? $where");
+        // Ensure count uses the same JOIN context
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? $where");
         $totalStmt->execute($paramsCount);
         $total = $totalStmt->fetchColumn();
         
@@ -56,7 +60,7 @@ class Product extends BaseModel {
 
         $sql = "SELECT p.*, p.id as id, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
                 FROM {$this->table} p
-                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 $where 
                 ORDER BY $finalOrder LIMIT $perPage OFFSET $offset";
                 
