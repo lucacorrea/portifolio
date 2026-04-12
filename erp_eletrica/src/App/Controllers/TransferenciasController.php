@@ -299,9 +299,12 @@ class TransferenciasController extends BaseController {
                 WHERE p.id = ?
             ");
 
+            $totalEnviado = 0;
+            $itensValidados = [];
+
             foreach ($itensValidos as $item) {
                 $pid = $item['produto_id'];
-                $qtd = $item['quantidade'];
+                $qtd = (float)$item['quantidade'];
 
                 // 1. Validação de Estoque (Servidor)
                 $stmtCheck->execute([$mid, $pid]);
@@ -310,8 +313,21 @@ class TransferenciasController extends BaseController {
                 if (!$estoque || $estoque['estoque_atual'] < $qtd) {
                     $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $pid";
                     $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
-                    throw new \Exception("Estoque insuficiente para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
+                    throw new \Exception("Estoque insuficiente na Matriz para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
                 }
+
+                $totalEnviado += $qtd;
+                $itensValidados[] = $item;
+            }
+
+            if ($totalEnviado <= 0) {
+                throw new \Exception("Não é possível realizar um despacho sem itens ou com quantidades zeradas.");
+            }
+
+            // 2. Processamento (Somente após validar TUDO)
+            foreach ($itensValidados as $item) {
+                $pid = $item['produto_id'];
+                $qtd = (float)$item['quantidade'];
 
                 $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
                 $pd->execute([$pid]);
@@ -370,7 +386,11 @@ class TransferenciasController extends BaseController {
                 WHERE p.id = ?
             ");
 
+            $totalEnviado = 0;
+            $itensValidados = [];
+            
             foreach ($itens_enviados as $produto_id => $qtd) {
+                $qtd = (float)$qtd;
                 if ($qtd > 0) {
                     // 1. Validação de Estoque (Servidor)
                     $stmtCheck->execute([$mid, $produto_id]);
@@ -379,16 +399,25 @@ class TransferenciasController extends BaseController {
                     if (!$estoque || $estoque['estoque_atual'] < $qtd) {
                         $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $produto_id";
                         $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
-                        throw new \Exception("Estoque insuficiente para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
+                        throw new \Exception("Estoque insuficiente na Matriz para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
                     }
+                    
+                    $totalEnviado += $qtd;
+                    $itensValidados[$produto_id] = $qtd;
+                }
+            }
 
-                    // 2. Processamento
-                    $stmtItem->execute([$qtd, $transf_id, $produto_id]);
-                    try {
-                        $stmtDec->execute([$qtd, $produto_id]);
-                    } catch (\Exception $ex) {
-                        $stmtDecGlob->execute([$qtd, $produto_id]);
-                    }
+            if ($totalEnviado <= 0) {
+                throw new \Exception("Não é possível aprovar um despacho sem enviar nenhuma unidade. Verifique o estoque da Matriz.");
+            }
+
+            // 2. Processamento (Somente após validar TUDO)
+            foreach ($itensValidados as $produto_id => $qtd) {
+                $stmtItem->execute([$qtd, $transf_id, $produto_id]);
+                try {
+                    $stmtDec->execute([$qtd, $produto_id]);
+                } catch (\Exception $ex) {
+                    $stmtDecGlob->execute([$qtd, $produto_id]);
                 }
             }
 
@@ -527,8 +556,10 @@ class TransferenciasController extends BaseController {
             exit;
         }
 
-        // 2. Itens
+        // 2. Itens (com estoque da Matriz para validação)
+        $mid = $this->matrizId;
         $sqlItems = "SELECT ti.*, p.nome, p.codigo, 
+                COALESCE((SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = $mid), p.quantidade) as disp_matriz,
                 (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
                 FROM erp_transferencias_itens ti 
                 JOIN produtos p ON ti.produto_id = p.id 
