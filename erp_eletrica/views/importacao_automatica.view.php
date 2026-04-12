@@ -165,6 +165,50 @@
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Pagination UI -->
+            <?php if (isset($pagination) && $pagination['totalPages'] > 1): ?>
+                <div class="card-footer bg-white border-top border-light p-3">
+                    <nav>
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
+                            <?php 
+                                $p = $pagination['page'];
+                                $tp = $pagination['totalPages'];
+                                $params = $_GET;
+                                
+                                $buildUrl = function($pageNum) use ($params) {
+                                    $params['page'] = $pageNum;
+                                    return '?' . http_build_query($params);
+                                };
+                            ?>
+                            
+                            <li class="page-item <?= ($p <= 1) ? 'disabled' : '' ?>">
+                                <a class="page-link shadow-none" href="<?= $buildUrl(1) ?>" title="Primeira"><i class="fas fa-angle-double-left"></i></a>
+                            </li>
+                            <li class="page-item <?= ($p <= 1) ? 'disabled' : '' ?>">
+                                <a class="page-link shadow-none" href="<?= $buildUrl($p - 1) ?>" title="Anterior"><i class="fas fa-angle-left"></i></a>
+                            </li>
+                            
+                            <?php 
+                                $start = max(1, $p - 2);
+                                $end = min($tp, $p + 2);
+                                for ($i = $start; $i <= $end; $i++): 
+                            ?>
+                                <li class="page-item <?= ($i == $p) ? 'active' : '' ?>">
+                                    <a class="page-link shadow-none" href="<?= $buildUrl($i) ?>"><?= $i ?></a>
+                                </li>
+                            <?php endfor; ?>
+                            
+                            <li class="page-item <?= ($p >= $tp) ? 'disabled' : '' ?>">
+                                <a class="page-link shadow-none" href="<?= $buildUrl($p + 1) ?>" title="Próxima"><i class="fas fa-angle-right"></i></a>
+                            </li>
+                            <li class="page-item <?= ($p >= $tp) ? 'disabled' : '' ?>">
+                                <a class="page-link shadow-none" href="<?= $buildUrl($tp) ?>" title="Última"><i class="fas fa-angle-double-right"></i></a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 

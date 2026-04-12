@@ -41,9 +41,23 @@ class ImportacaoAutomaticaController extends BaseController {
             $params[] = $ate . " 23:59:59";
         }
 
+        // Paginação
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 20;
+        $offset = ($page - 1) * $perPage;
+
+        // Calcular total
+        $sqlTotal = "SELECT COUNT(*) FROM nfe_importadas WHERE " . implode(" AND ", $where);
+        $stmtTotal = $db->prepare($sqlTotal);
+        $stmtTotal->execute($params);
+        $totalItems = (int)$stmtTotal->fetchColumn();
+        $totalPages = ceil($totalItems / $perPage);
+
+        // Buscar itens paginados
         $sql = "SELECT * FROM nfe_importadas 
                 WHERE " . implode(" AND ", $where) . "
-                ORDER BY data_emissao DESC";
+                ORDER BY data_emissao DESC
+                LIMIT $perPage OFFSET $offset";
         
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
@@ -62,6 +76,12 @@ class ImportacaoAutomaticaController extends BaseController {
                 'status' => $status,
                 'desde' => $desde,
                 'ate' => $ate
+            ],
+            'pagination' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'totalPages' => $totalPages,
+                'totalItems' => $totalItems
             ],
             'title' => 'Importação Automática SEFAZ',
             'pageTitle' => 'Notas Fiscais Destinadas (Certificado A1)'
