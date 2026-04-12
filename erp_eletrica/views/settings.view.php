@@ -57,51 +57,52 @@
 
                 <div class="col-lg-5">
                     <!-- Certificado Digital Global -->
-                    <div class="card border-0 shadow-sm h-100 bg-dark text-white border-top border-4 border-warning">
-                        <div class="card-body p-4">
-                            <h6 class="fw-bold mb-3"><i class="fas fa-certificate me-2 text-warning"></i>Certificado Digital A1 (Concentrado)</h6>
-                            <p class="extra-small text-white-50 mb-4">Emita notas em todas as filiais com uma única assinatura. Configure o CSC global abaixo.</p>
-                            
+                    <div class="card border-0 shadow-lg h-100 rounded-4 overflow-hidden">
+                        <div class="bg-primary bg-gradient p-4 text-white">
+                            <h6 class="fw-bold mb-1"><i class="fas fa-certificate text-warning me-2"></i>Certificado Digital A1</h6>
+                            <p class="small text-white-50 mb-0">Emissão centralizada (Concentrador)</p>
+                        </div>
+                        <div class="card-body p-4 bg-white d-flex flex-column">
                             <?php if (!empty($sefaz['certificado_path'])): ?>
-                                <div class="alert bg-primary text-white border-0 small d-flex align-items-center mb-4 py-2">
-                                    <i class="fas fa-check-circle me-3 fa-lg"></i>
+                                <div class="alert alert-success border-0 small d-flex align-items-center mb-4 py-3 rounded-3 shadow-sm">
+                                    <i class="fas fa-check-circle fa-2x me-3 text-success"></i>
                                     <div class="overflow-hidden">
-                                        <strong class="d-block small">Certificado Ativo</strong>
-                                        <span class="extra-small opacity-75 text-truncate d-block"><?= $sefaz['certificado_path'] ?></span>
+                                        <strong class="d-block text-dark">Certificado Ativo</strong>
+                                        <span class="text-muted d-block text-truncate extra-small"><?= $sefaz['certificado_path'] ?></span>
                                     </div>
                                 </div>
                             <?php endif; ?>
 
-                             <div class="mb-3">
-                                <label class="form-label extra-small text-white-50 mb-1">Arquivo do Certificado (.pfx)</label>
-                                <input type="file" name="certificado_pfx" class="form-control form-control-sm bg-secondary border-0 text-white">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-secondary mb-1">Arquivo do Certificado (.pfx)</label>
+                                <input type="file" name="certificado_pfx" class="form-control bg-light border-0 shadow-sm text-dark">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label extra-small text-white-50 mb-1">Senha do Certificado</label>
-                                <input type="password" name="certificado_senha" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['certificado_senha'] ?? '' ?>">
+                                <label class="form-label small fw-bold text-secondary mb-1">Senha do Certificado</label>
+                                <input type="password" name="certificado_senha" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['certificado_senha'] ?? '' ?>">
                             </div>
                             
                             <!-- CSC Global Fields -->
                             <div class="row g-2 mb-3">
                                 <div class="col-4">
-                                    <label class="form-label extra-small text-white-50 mb-1">ID Token CSC</label>
-                                    <input type="text" name="csc_id_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['csc_id'] ?? '' ?>" placeholder="000001">
+                                    <label class="form-label small fw-bold text-secondary mb-1">ID Token CSC</label>
+                                    <input type="text" name="csc_id_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['csc_id'] ?? '' ?>" placeholder="000001">
                                 </div>
                                 <div class="col-8">
-                                    <label class="form-label extra-small text-white-50 mb-1">Token CSC</label>
-                                    <input type="text" name="csc_token_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $sefaz['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
+                                    <label class="form-label small fw-bold text-secondary mb-1">Token CSC</label>
+                                    <input type="text" name="csc_token_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
                                 </div>
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label extra-small text-white-50 mb-1">Ambiente Sefaz</label>
-                                <select name="ambiente" class="form-select form-select-sm bg-secondary border-0 text-white">
-                                    <option value="homologacao" <?= (($sefaz['ambiente'] ?? '') == 'homologacao' || ($sefaz['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>Homologação (Testes)</option>
-                                    <option value="producao" <?= (($sefaz['ambiente'] ?? '') == 'producao' || ($sefaz['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>Produção (Real)</option>
+                                <label class="form-label small fw-bold text-secondary mb-1">Ambiente Sefaz</label>
+                                <select name="ambiente" class="form-select bg-light border-0 shadow-sm text-dark fw-bold">
+                                    <option value="homologacao" <?= (($sefaz['ambiente'] ?? '') == 'homologacao' || ($sefaz['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>🟡 Homolog. (Testes)</option>
+                                    <option value="producao" <?= (($sefaz['ambiente'] ?? '') == 'producao' || ($sefaz['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>🟢 Produção (Real)</option>
                                 </select>
                             </div>
 
-                            <button type="submit" class="btn btn-warning text-white w-100 fw-bold py-2 mt-auto shadow">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold py-3 mt-auto shadow rounded-3">
                                 <i class="fas fa-save me-2"></i>Salvar Tudo
                             </button>
                         </div>
