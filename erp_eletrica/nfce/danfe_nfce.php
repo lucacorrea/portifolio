@@ -66,12 +66,29 @@ function mapTPag($t)
 
 /* =========================== Carrega XML procNFe ========================== */
 $base = __DIR__ . DIRECTORY_SEPARATOR;
+$chave = null;
+
 if (!empty($_GET['arq'])) {
   $file = $base . basename((string)$_GET['arq']);
 } elseif (!empty($_GET['chave'])) {
-  $file = $base . 'procNFCe_' . preg_replace('/\D+/', '', (string)$_GET['chave']) . '.xml';
+  $chave = preg_replace('/\D+/', '', (string)$_GET['chave']);
+  $file = $base . 'procNFCe_' . $chave . '.xml';
+} elseif ($vendaIdUrl > 0) {
+  // Busca a chave no banco se não veio na URL
+  try {
+    $stNF = $pdo->prepare("SELECT chave FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') ORDER BY id DESC LIMIT 1");
+    $stNF->execute([$vendaIdUrl]);
+    $chave = $stNF->fetchColumn();
+    if ($chave) {
+      $file = $base . 'procNFCe_' . $chave . '.xml';
+    } else {
+      die("Não foi encontrada nenhuma nota fiscal autorizada para a venda #{$vendaIdUrl}.");
+    }
+  } catch (Throwable $e) {
+    die("Erro ao buscar dados da nota: " . $e->getMessage());
+  }
 } else {
-  die('Informe ?chave=... ou ?arq=procNFCe_....xml');
+  die('Informe ?chave=... ou ?venda_id=... ou ?arq=procNFCe_....xml');
 }
 if (!is_file($file)) die('Arquivo não encontrado: ' . htmlspecialchars($file));
 
