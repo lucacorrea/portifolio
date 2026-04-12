@@ -363,43 +363,32 @@
                         <p class="small">Quando a Matriz despachar um pedido, ele aparecerá aqui.</p>
                     </div>
                 <?php else: ?>
+                    <div class="row g-3">
                     <?php foreach ($em_transito as $et): ?>
-                        <div class="transfer-card border-warning">
-                            <div class="transfer-header bg-warning bg-opacity-10">
-                                <div>
-                                    <span class="badge bg-warning text-dark me-2">CHEGANDO</span>
-                                    <strong><?= htmlspecialchars($et['codigo_transferencia']) ?></strong>
-                                    <span class="text-muted ms-2 small">Despachado em: <strong><?= date('d/m/Y H:i', strtotime($et['data_envio'])) ?></strong></span>
-                                </div>
-                            </div>
-                            <div class="transfer-body">
-                                <p class="small text-muted mb-3">Estes itens estão em rota. Confira as quantidades físicas ao receber e confirme abaixo para dar entrada no estoque.</p>
-                                <ul class="list-group list-group-flush mb-3 border rounded">
-                                    <?php
-                                    $itensEnv = $pdo->prepare("SELECT ti.*, p.nome FROM erp_transferencias_itens ti JOIN produtos p ON ti.produto_id = p.id WHERE ti.transferencia_id = ?");
-                                    $itensEnv->execute([$et['id']]);
-                                    foreach ($itensEnv->fetchAll() as $ie):
-                                        if ($ie['quantidade_enviada'] > 0):
-                                    ?>
-                                        <li class="list-group-item d-flex justify-content-between align-items-center small">
-                                            <?= htmlspecialchars($ie['nome']) ?>
-                                            <span class="badge bg-primary rounded-pill"><?= number_format($ie['quantidade_enviada'], 2, ',', '.') ?> UN</span>
-                                        </li>
-                                    <?php endif; endforeach; ?>
-                                </ul>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-<?= $et['tem_problema'] ? 'warning' : 'success' ?> fw-bold flex-grow-1 py-2" 
-                                            onclick="abrirResumoRecebimento(<?= $et['id'] ?>, '<?= htmlspecialchars($et['codigo_transferencia']) ?>', <?= $et['tem_problema'] ? 'true' : 'false' ?>)">
-                                        <i class="fas fa-box-open me-2"></i>
-                                        <?= $et['tem_problema'] ? 'Confirmar Recebimento com Ressalvas' : 'Confirmar Chegada e Internalizar Estoque' ?>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-danger py-2 px-3" onclick="abrirModalRelato(<?= $et['id'] ?>, '<?= htmlspecialchars($et['codigo_transferencia']) ?>')">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                    </button>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm rounded-3">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <span class="badge bg-warning text-dark extra-small mb-1">CHEGANDO</span>
+                                            <h6 class="fw-bold mb-0 text-primary"><?= htmlspecialchars($et['codigo_transferencia']) ?></h6>
+                                        </div>
+                                        <div class="text-end text-muted extra-small">
+                                            <i class="far fa-clock me-1"></i><?= date('d/m/Y H:i', strtotime($et['data_envio'])) ?>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 small text-muted">Aguardando conferência física dos produtos.</div>
+                                    <div class="d-grid">
+                                        <button type="button" class="btn btn-primary btn-sm fw-bold py-2" 
+                                                onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
+                                            <i class="fas fa-clipboard-check me-2"></i>Conferir e Receber
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             <?php endif; ?>
 
@@ -909,6 +898,56 @@ function abrirProcessarSolicitacao(id) {
             document.getElementById('proc_content').classList.remove('d-none');
         });
 }
+
+function abrirProcessarRecebimento(id) {
+    const modalEl = document.getElementById('modalProcessarRecebimento');
+    const instance = new bootstrap.Modal(modalEl);
+    
+    // Reset modal
+    document.getElementById('receb_loading').classList.remove('d-none');
+    document.getElementById('receb_content').classList.add('d-none');
+    document.getElementById('receb_footer_acoes').innerHTML = '';
+    instance.show();
+
+    fetch(`transferencias.php?action=get_items&id=${id}`)
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) {
+                alert(res.message);
+                return;
+            }
+
+            const t = res.transfer;
+            document.getElementById('receb_codigo').innerText = t.codigo_transferencia;
+            document.getElementById('receb_subtitulo').innerText = `Despachado em: ${new Date(t.data_envio).toLocaleString()}`;
+            
+            // Itens Enviados
+            const tbody = document.getElementById('receb_tbody_items');
+            tbody.innerHTML = res.items.filter(it => it.quantidade_enviada > 0).map(it => `
+                <li class="list-group-item d-flex justify-content-between align-items-center small py-2">
+                    <div class="fw-bold">${it.nome}</div>
+                    <span class="badge bg-primary rounded-pill px-3">${parseFloat(it.quantidade_enviada)} UN</span>
+                </li>
+            `).join('');
+
+            // Ações
+            const footer = document.getElementById('receb_footer_acoes');
+            footer.innerHTML = `
+                <button type="button" class="btn btn-outline-danger btn-sm fw-bold px-3" 
+                        onclick="abrirModalRelato(${t.id}, '${t.codigo_transferencia}')">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Relatar Problema
+                </button>
+                <button type="button" class="btn btn-${t.tem_problema == 1 ? 'warning' : 'success'} btn-sm fw-bold px-4 flex-grow-1" 
+                        onclick="abrirResumoRecebimento(${t.id}, '${t.codigo_transferencia}', ${t.tem_problema == 1})">
+                    <i class="fas fa-box-open me-2"></i>
+                    ${t.tem_problema == 1 ? 'Internalizar com Ressalvas' : 'Internalizar Estoque'}
+                </button>
+            `;
+
+            document.getElementById('receb_loading').classList.add('d-none');
+            document.getElementById('receb_content').classList.remove('d-none');
+        });
+}
 </script>
 
 <?php if (!$isMatriz): ?>
@@ -1142,6 +1181,43 @@ function abrirProcessarSolicitacao(id) {
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Processar Recebimento (Filial - Novo) -->
+<div class="modal fade" id="modalProcessarRecebimento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h6 class="modal-title fw-bold" id="receb_codigo">---</h6>
+                    <small class="text-muted" id="receb_subtitulo">---</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="receb_loading" class="text-center py-5">
+                    <div class="spinner-border text-primary opacity-50" role="status"></div>
+                    <p class="small text-muted mt-2">Carregando itens...</p>
+                </div>
+                
+                <div id="receb_content" class="d-none">
+                    <p class="small text-muted mb-3 border-bottom pb-2">Confira se as quantidades abaixo chegaram corretamente à sua filial.</p>
+                    
+                    <h6 class="fw-bold mb-2 extra-small text-muted text-uppercase">Itens no Romaneio</h6>
+                    <ul class="list-group list-group-flush border rounded bg-light mb-3" id="receb_tbody_items">
+                        <!-- Itens via JS -->
+                    </ul>
+
+                    <div class="alert alert-info extra-small mb-0 shadow-sm border-0">
+                        <i class="fas fa-info-circle me-1 text-primary"></i> Se faltar algo ou estiver quebrado, use o botão de <strong>Relatar Problema</strong> primeiro.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-3 pt-0 d-flex gap-2" id="receb_footer_acoes">
+                <!-- Botões via JS -->
+            </div>
         </div>
     </div>
 </div>
