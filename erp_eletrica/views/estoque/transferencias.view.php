@@ -243,7 +243,6 @@
                         <h6 class="fw-bold">Nenhum envio registrado</h6>
                     </div>
                 <?php else: ?>
-                <?php else: ?>
                     <!-- Filtros Matriz -->
                     <div class="card border-0 bg-white mb-4 shadow-sm rounded-3">
                         <div class="card-body p-3">
