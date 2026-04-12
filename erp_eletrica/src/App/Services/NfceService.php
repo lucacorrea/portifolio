@@ -33,7 +33,7 @@ class NfceService extends BaseService {
         // Define which fields MUST be global (Centralized Fiscal)
         $globalFields = [
             'certificado_path', 'certificado_senha', 'ambiente', 
-            'csc', 'csc_id', 'cnpj', 'razao_social'
+            'csc', 'csc_id', 'cnpj', 'razao_social', 'inscricao_estadual'
         ];
 
         $fields = [
