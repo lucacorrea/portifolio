@@ -157,29 +157,43 @@
         </div>
         
         <!-- Pagination UI -->
-        <?php if (isset($pagination) && $pagination['totalPages'] > 1): ?>
+        <?php if (isset($pagination) && $pagination['totalPages'] > 1): 
+            $p = $pagination['page'];
+            $tp = $pagination['totalPages'];
+            $buildUrl = function($pageNum) {
+                $params = $_GET;
+                $params['page'] = $pageNum;
+                return '?' . http_build_query($params);
+            };
+        ?>
         <div class="card-footer bg-white py-3 border-0 rounded-bottom d-flex align-items-center justify-content-between">
             <span class="text-muted small">
                 Mostrando <strong><?= count($caixas) ?></strong> de <strong><?= $pagination['totalItems'] ?></strong> registros
             </span>
             <nav aria-label="Navegação da listagem">
                 <ul class="pagination pagination-sm mb-0 shadow-sm">
-                    <li class="page-item <?= ($pagination['page'] <= 1) ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?page=1"><i class="fas fa-angle-double-left"></i></a>
+                    <li class="page-item <?= ($p <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl(1) ?>"><i class="fas fa-angle-double-left"></i></a>
                     </li>
-                    <li class="page-item <?= ($pagination['page'] <= 1) ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?page=<?= max(1, $pagination['page'] - 1) ?>"><i class="fas fa-angle-left"></i></a>
+                    <li class="page-item <?= ($p <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl(max(1, $p - 1)) ?>"><i class="fas fa-angle-left"></i></a>
                     </li>
                     
-                    <li class="page-item active">
-                        <span class="page-link px-3 fw-bold bg-primary border-primary text-white"><?= $pagination['page'] ?> / <?= $pagination['totalPages'] ?></span>
-                    </li>
+                    <?php 
+                        $start = max(1, $p - 2);
+                        $end = min($tp, $p + 2);
+                        for ($i = $start; $i <= $end; $i++): 
+                    ?>
+                        <li class="page-item <?= ($i == $p) ? 'active' : '' ?>">
+                            <a class="page-link px-3 <?= ($i == $p) ? 'fw-bold' : '' ?>" href="<?= $buildUrl($i) ?>"><?= $i ?></a>
+                        </li>
+                    <?php endfor; ?>
 
-                    <li class="page-item <?= ($pagination['page'] >= $pagination['totalPages']) ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?page=<?= min($pagination['totalPages'], $pagination['page'] + 1) ?>"><i class="fas fa-angle-right"></i></a>
+                    <li class="page-item <?= ($p >= $tp) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl(min($tp, $p + 1)) ?>"><i class="fas fa-angle-right"></i></a>
                     </li>
-                    <li class="page-item <?= ($pagination['page'] >= $pagination['totalPages']) ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?page=<?= $pagination['totalPages'] ?>"><i class="fas fa-angle-double-right"></i></a>
+                    <li class="page-item <?= ($p >= $tp) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl($tp) ?>"><i class="fas fa-angle-double-right"></i></a>
                     </li>
                 </ul>
             </nav>
