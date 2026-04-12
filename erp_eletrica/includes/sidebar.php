@@ -46,6 +46,23 @@ $current_page = basename($_SERVER['PHP_SELF']);
         
         <a href="transferencias.php" class="nav-link <?= $current_page == 'transferencias.php' ? 'active' : '' ?>">
             <i class="fas fa-truck-fast"></i> <span>Transferências (B2B)</span>
+            <?php 
+                $b2bCount = 0;
+                $s_filialId = $_SESSION['filial_id'] ?? null;
+                $s_isMatriz = $_SESSION['is_matriz'] ?? false;
+                
+                if ($s_isMatriz) {
+                    // Matriz vê: Solicitações Pendentes + Ocorrências não resolvidas
+                    $b2bCount = $productModel->query("SELECT COUNT(*) FROM erp_transferencias WHERE status = 'pendente' OR (origem_filial_id = 1 AND tem_problema = 1 AND problema_resolvido = 0)")->fetchColumn();
+                } else {
+                    // Filial vê: Pedidos que estão em trânsito para ela
+                    $b2bCount = $productModel->query("SELECT COUNT(*) FROM erp_transferencias WHERE destino_filial_id = ? AND status = 'em_transito'", [$s_filialId])->fetchColumn();
+                }
+
+                if ($b2bCount > 0): 
+            ?>
+                <span class="badge bg-danger ms-auto rounded-pill" style="font-size: 0.6rem;"><?= $b2bCount ?></span>
+            <?php endif; ?>
         </a>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
