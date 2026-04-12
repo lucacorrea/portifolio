@@ -33,10 +33,11 @@ class SefazConsultaService extends BaseService {
 
 
     /**
-     * Realiza a manifestação do destinatário (Ciência da Operação)
+     * Realiza a manifestação do destinatário
+     * tpEvento: 210200 (Confirmacao), 210210 (Ciencia), 210220 (Desconhecimento), 210240 (Operacao nao Realizada)
      */
-    public function manifestarNota($cnpj, $chave) {
-        $xml = $this->gerarXmlEventoManifesto($cnpj, $chave);
+    public function manifestarNota($cnpj, $chave, $tpEvento = '210210') {
+        $xml = $this->gerarXmlEventoManifesto($cnpj, $chave, $tpEvento);
         
         $signer = new \App\Services\SefazSigner();
         $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $this->config['certificado_path'];
@@ -52,7 +53,14 @@ class SefazConsultaService extends BaseService {
         return $this->processarRetornoEvento($responseXml);
     }
 
-    private function gerarXmlEventoManifesto($cnpj, $chave) {
+    private function gerarXmlEventoManifesto($cnpj, $chave, $tpEvento) {
+        $descEvento = [
+            '210200' => 'Confirmacao da Operacao',
+            '210210' => 'Ciencia da Operacao',
+            '210220' => 'Desconhecimento da Operacao',
+            '210240' => 'Operacao nao Realizada'
+        ][$tpEvento] ?? 'Ciencia da Operacao';
+
         $dom = new DOMDocument('1.0', 'UTF-8');
         $envEvento = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'envEvento');
         $envEvento->setAttribute('versao', '1.00');
@@ -65,7 +73,7 @@ class SefazConsultaService extends BaseService {
         $envEvento->appendChild($evento);
         
         $infEvento = $dom->createElement('infEvento');
-        $id = 'ID210210' . $chave . '01';
+        $id = 'ID' . $tpEvento . $chave . '01';
         $infEvento->setAttribute('Id', $id);
         $evento->appendChild($infEvento);
         
@@ -74,14 +82,14 @@ class SefazConsultaService extends BaseService {
         $infEvento->appendChild($dom->createElement('CNPJ', preg_replace('/[^0-9]/', '', $cnpj)));
         $infEvento->appendChild($dom->createElement('chNFe', $chave));
         $infEvento->appendChild($dom->createElement('dhEvento', date('Y-m-d\TH:i:sP')));
-        $infEvento->appendChild($dom->createElement('tpEvento', '210210')); // Ciência da Operação
+        $infEvento->appendChild($dom->createElement('tpEvento', $tpEvento));
         $infEvento->appendChild($dom->createElement('nSeqEvento', '1'));
         $infEvento->appendChild($dom->createElement('verEvento', '1.00'));
         
         $detEvento = $dom->createElement('detEvento');
         $detEvento->setAttribute('versao', '1.00');
         $infEvento->appendChild($detEvento);
-        $detEvento->appendChild($dom->createElement('descEvento', 'Ciencia da Operacao'));
+        $detEvento->appendChild($dom->createElement('descEvento', $descEvento));
         
         return $dom->saveXML();
     }
