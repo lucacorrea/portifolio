@@ -71,7 +71,7 @@
     </div>
 
     <!-- Tabela Principal -->
-    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    <div class="card border-0 shadow-sm rounded-3">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" id="mainNfeTable">
@@ -127,7 +127,7 @@
                                         ?>
                                         <div class="dropdown">
                                             <button class="btn btn-sm <?= $m_class ?> fw-bold px-3 py-1 w-100 rounded-1 extra-small dropdown-toggle" 
-                                                    type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="viewport">
                                                 <?= $m_label ?>
                                             </button>
                                             <ul class="dropdown-menu shadow-lg border-0 extra-small">
@@ -147,7 +147,7 @@
                                     </td>
                                     <td class="pe-4 text-center">
                                         <div class="dropdown">
-                                            <button class="btn btn-link text-muted p-0 border-0" type="button" data-bs-toggle="dropdown">
+                                            <button class="btn btn-link text-muted p-0 border-0" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport">
                                                 <i class="fas fa-ellipsis-v"></i>
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end shadow border-0 extra-small">
