@@ -11,26 +11,43 @@ class ImportacaoAutomaticaController extends BaseController {
         $db = \App\Config\Database::getInstance()->getConnection();
         $filialId = $_SESSION['filial_id'] ?? 1;
 
-        // Buscar notas do cache agrupadas por fornecedor
-        $sql = "SELECT fornecedor_cnpj, fornecedor_nome, COUNT(*) as total_notas, SUM(valor_total) as valor_acumulado 
-                FROM nfe_importadas 
-                WHERE filial_id = ? AND status = 'pendente'
-                GROUP BY fornecedor_cnpj, fornecedor_nome
-                ORDER BY fornecedor_nome ASC";
+        // Filtros
+        $search = $_GET['search'] ?? '';
+        $status = $_GET['status'] ?? 'todas';
+        $desde  = $_GET['desde'] ?? '';
+        $ate    = $_GET['ate'] ?? '';
+
+        $params = [$filialId];
+        $where  = ["filial_id = ?"];
+
+        if ($search) {
+            $where[] = "(fornecedor_nome LIKE ? OR fornecedor_cnpj LIKE ? OR numero_nota LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        if ($status === 'pendente' || $status === 'importada') {
+            $where[] = "status = ?";
+            $params[] = $status;
+        }
+
+        if ($desde) {
+            $where[] = "data_emissao >= ?";
+            $params[] = $desde . " 00:00:00";
+        }
+        if ($ate) {
+            $where[] = "data_emissao <= ?";
+            $params[] = $ate . " 23:59:59";
+        }
+
+        $sql = "SELECT * FROM nfe_importadas 
+                WHERE " . implode(" AND ", $where) . "
+                ORDER BY data_emissao DESC";
         
         $stmt = $db->prepare($sql);
-        $stmt->execute([$filialId]);
-        $fornecedores = $stmt->fetchAll();
-
-        // Popular as notas individuais para cada fornecedor (Ajuste para a View)
-        foreach ($fornecedores as &$f) {
-            $sqlNotas = "SELECT * FROM nfe_importadas 
-                         WHERE filial_id = ? AND fornecedor_cnpj = ? AND status = 'pendente'
-                         ORDER BY data_emissao DESC";
-            $stmtNotas = $db->prepare($sqlNotas);
-            $stmtNotas->execute([$filialId, $f['fornecedor_cnpj']]);
-            $f['notas'] = $stmtNotas->fetchAll();
-        }
+        $stmt->execute($params);
+        $notas = $stmt->fetchAll();
 
         // Buscar última sincronização geral
         $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_last_sync_timestamp'");
@@ -38,8 +55,14 @@ class ImportacaoAutomaticaController extends BaseController {
         $lastSync = $stmt->fetchColumn();
         
         $this->render('importacao_automatica', [
-            'fornecedores' => $fornecedores,
+            'notas' => $notas,
             'lastSync' => $lastSync,
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'desde' => $desde,
+                'ate' => $ate
+            ],
             'title' => 'Importação Automática SEFAZ',
             'pageTitle' => 'Notas Fiscais Destinadas (Certificado A1)'
         ]);
