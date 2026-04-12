@@ -89,11 +89,11 @@ class SettingController extends BaseController {
             }
 
             if ($isMatriz) {
-                // Save to Global Config
+                // Save to Global Config (only certificate + environment - CSC fields are per-filial)
                 $existing = $db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch();
                 if ($existing) {
-                    $sql = "UPDATE sefaz_config SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc = ?";
-                    $params = [$dataSefaz['ambiente'], $dataSefaz['certificado_senha'], $dataSefaz['csc_id'], $dataSefaz['csc']];
+                    $sql = "UPDATE sefaz_config SET ambiente = ?, certificado_senha = ?";
+                    $params = [$dataSefaz['ambiente'], $dataSefaz['certificado_senha']];
                     if (isset($dataSefaz['certificado_path'])) {
                         $sql .= ", certificado_path = ?";
                         $params[] = $dataSefaz['certificado_path'];
@@ -102,9 +102,19 @@ class SettingController extends BaseController {
                     $params[] = $existing['id'];
                     $db->prepare($sql)->execute($params);
                 } else {
-                    $db->prepare("INSERT INTO sefaz_config (certificado_path, certificado_senha, ambiente, csc_id, csc) VALUES (?, ?, ?, ?, ?)")
-                       ->execute([$dataSefaz['certificado_path'] ?? null, $dataSefaz['certificado_senha'], $dataSefaz['ambiente'], $dataSefaz['csc_id'], $dataSefaz['csc']]);
+                    $db->prepare("INSERT INTO sefaz_config (certificado_path, certificado_senha, ambiente) VALUES (?, ?, ?)")
+                       ->execute([$dataSefaz['certificado_path'] ?? null, $dataSefaz['certificado_senha'], $dataSefaz['ambiente']]);
                 }
+                
+                // Save CSC to Matriz filial (if provided)
+                if (!empty($csc_id) || !empty($csc_token)) {
+                    $matrizBranch = $db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1")->fetch();
+                    if ($matrizBranch) {
+                        $db->prepare("UPDATE filiais SET csc_id = ?, csc_token = ? WHERE id = ?")
+                           ->execute([$csc_id, $csc_token, $matrizBranch['id']]);
+                    }
+                }
+                
                 $audit->record('Configurações Globais de Certificado Atualizadas', 'configuracoes');
             } else {
                 // Save to Branch Config
