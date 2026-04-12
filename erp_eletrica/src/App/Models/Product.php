@@ -82,8 +82,8 @@ class Product extends BaseModel {
         
         $sql = "SELECT p.*, p.id as id, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo_atual
                 FROM {$this->table} p
-                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
-                WHERE COALESCE(ef.quantidade, 0) <= COALESCE(ef.estoque_minimo, p.estoque_minimo) 
+                INNER JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                WHERE ef.quantidade <= COALESCE(ef.estoque_minimo, p.estoque_minimo) 
                 AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0";
         
         return $this->query($sql, [$filialId])->fetchAll();
@@ -117,11 +117,11 @@ class Product extends BaseModel {
     public function getStockStats($filialId = null) {
         if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
 
-        $sqlBase = "FROM {$this->table} p LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?";
+        $sqlBase = "FROM {$this->table} p INNER JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?";
         
-        $critical = $this->query("SELECT COUNT(*) $sqlBase WHERE COALESCE(ef.quantidade, 0) <= COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0", [$filialId])->fetchColumn();
-        $low      = $this->query("SELECT COUNT(*) $sqlBase WHERE COALESCE(ef.quantidade, 0) > COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.quantidade, 0) <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0", [$filialId])->fetchColumn();
-        $ok       = $this->query("SELECT COUNT(*) $sqlBase WHERE (COALESCE(ef.quantidade, 0) > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)", [$filialId])->fetchColumn();
+        $critical = $this->query("SELECT COUNT(*) $sqlBase WHERE ef.quantidade <= COALESCE(ef.estoque_minimo, p.estoque_minimo) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0", [$filialId])->fetchColumn();
+        $low      = $this->query("SELECT COUNT(*) $sqlBase WHERE ef.quantidade > COALESCE(ef.estoque_minimo, p.estoque_minimo) AND ef.quantidade <= (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) AND COALESCE(ef.estoque_minimo, p.estoque_minimo) > 0", [$filialId])->fetchColumn();
+        $ok       = $this->query("SELECT COUNT(*) $sqlBase WHERE (ef.quantidade > (COALESCE(ef.estoque_minimo, p.estoque_minimo) * 1.5) OR COALESCE(ef.estoque_minimo, p.estoque_minimo) = 0)", [$filialId])->fetchColumn();
 
         return [
             'critical' => (int)$critical,
