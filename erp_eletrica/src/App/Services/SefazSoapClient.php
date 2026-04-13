@@ -124,29 +124,29 @@ class SefazSoapClient extends BaseService {
     }
 
     private function wrapSoap($xml, $serviceName, $methodName, $method) {
-        $ns = "http://www.portalfiscal.inf.br/nfe";
-        $wrapWithMethod = false;
+        // Determinar namespace correto baseado no serviço
+        $nsMap = [
+            'NFeRecepcaoEvento4'  => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4',
+            'NFeDistribuicaoDFe'  => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe',
+            'NFeAutorizacao4'     => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4',
+            'NFeStatusServico4'   => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4',
+        ];
+        $ns = $nsMap[$serviceName] ?? "http://www.portalfiscal.inf.br/nfe";
 
-        if ($method == 'nfe_evento') {
-            $ns = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4";
-            $wrapWithMethod = true;
-        } elseif ($serviceName == 'NFeDistribuicaoDFe') {
-            $ns = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe";
-            $wrapWithMethod = true;
-        }
-
-        if ($wrapWithMethod) {
+        // NFeDistribuicaoDFe é o ÚNICO que precisa de wrapper de método
+        if ($serviceName === 'NFeDistribuicaoDFe') {
             $content = "<{$methodName} xmlns=\"{$ns}\"><nfeDadosMsg>{$xml}</nfeDadosMsg></{$methodName}>";
         } else {
+            // Todos os outros serviços (evento, autorização, status): nfeDadosMsg direto
             $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
         }
         
         return "<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\">
-    <soap:Body>
+<soap12:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\">
+    <soap12:Body>
         {$content}
-    </soap:Body>
-</soap:Envelope>";
+    </soap12:Body>
+</soap12:Envelope>";
     }
 
     private function extractSoapFault($response) {
