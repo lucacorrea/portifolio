@@ -32,22 +32,38 @@ class MigrationService extends BaseService {
             $name = basename($file);
             if (!in_array($name, $executed)) {
                 $sql = file_get_contents($file);
+                
+                // Divide por ponto e vírgula se houver múltiplos comandos num arquivo
+                $queries = array_filter(array_map('trim', explode(';', $sql)));
+                
                 try {
-                    $this->db->exec($sql);
+                    $this->db->beginTransaction();
+                    foreach ($queries as $query) {
+                        if (empty($query)) continue;
+                        
+                        try {
+                            $this->db->exec($query);
+                        } catch (Exception $e) {
+                            $msg = $e->getMessage();
+                            // Ignora erros de duplicidade que ocorrem se rodar o SQL sem IF NOT EXISTS
+                            // 1060: Duplicate column, 1061: Duplicate key, 1022: Duplicate key, 1050: Table already exists
+                            if (strpos($msg, '1060') !== false || strpos($msg, '1061') !== false || 
+                                strpos($msg, '1022') !== false || strpos($msg, '1050') !== false ||
+                                strpos($msg, 'already exists') !== false) {
+                                continue;
+                            }
+                            throw $e;
+                        }
+                    }
+                    
                     $stmt = $this->db->prepare("INSERT INTO migrations (migration) VALUES (?)");
                     $stmt->execute([$name]);
+                    $this->db->commit();
+                    
                     $this->logAction('migration_run', 'migrations', null, null, ['file' => $name]);
                 } catch (Exception $e) {
-                    $msg = $e->getMessage();
-                    // Ignora erros de duplicidade (coluna, chave, constraint)
-                    // 1060: Duplicate column, 1061: Duplicate key, 1022: Can't write (duplicate key), 121: Duplicate FK
-                    if (strpos($msg, '1060') !== false || strpos($msg, '1061') !== false || strpos($msg, '1022') !== false || strpos($msg, '121') !== false) {
-                        error_log("Migration {$name} skipped (duplicate/existing): " . $msg);
-                        $stmt = $this->db->prepare("INSERT INTO migrations (migration) VALUES (?)");
-                        $stmt->execute([$name]);
-                        continue;
-                    }
-                    error_log("Error running migration {$name}: " . $msg);
+                    $this->db->rollBack();
+                    error_log("Error running migration {$name}: " . $e->getMessage());
                     throw $e;
                 }
             }
