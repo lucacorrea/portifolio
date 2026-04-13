@@ -527,15 +527,6 @@ body {
     border-color: var(--primary-color) !important;
     color: #ffffff !important;
 }
-.btn-danger {
-    background-color: var(--danger) !important;
-    border-color: var(--danger) !important;
-    color: #ffffff !important;
-}
-.btn-danger:hover {
-    background-color: #b91c1c !important;
-    border-color: #b91c1c !important;
-}
 .btn-warning i, .btn-primary i, .btn-erp-primary i, .btn-success i {
     color: #ffffff !important;
 }
@@ -622,6 +613,23 @@ body {
 }
 
 /* Fix text and icons inside selected radio buttons (Payment Methods, etc) */
+
 .btn-check:checked + .btn, .btn-check:checked + .btn i {
+    color: #ffffff !important;
+}
+
+/* Final override to ensure Red buttons stay Red */
+body .btn.btn-danger, 
+body .btn-danger,
+.btn-danger {
+    background-color: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: #ffffff !important;
+}
+
+body .btn.btn-danger:hover,
+body .btn-danger:hover {
+    background-color: #b91c1c !important;
+    border-color: #b91c1c !important;
     color: #ffffff !important;
 }
