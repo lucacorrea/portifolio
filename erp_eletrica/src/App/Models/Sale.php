@@ -11,7 +11,6 @@ class Sale extends BaseModel {
         $hasCpfCliente  = $this->columnExists('cpf_cliente');
         $hasClienteNome = $this->columnExists('cliente_nome');
         $hasTaxaCartao  = $this->columnExists('taxa_cartao');
-        $hasObs         = $this->columnExists('observacoes');
 
         $cols   = ['cliente_id', 'usuario_id', 'filial_id', 'valor_total', 'desconto_total', 'autorizado_por', 'forma_pagamento', 'status'];
         $params = [
@@ -55,11 +54,6 @@ class Sale extends BaseModel {
         if ($hasTaxaCartao) {
             $cols[]   = 'taxa_cartao';
             $params[] = isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0.00;
-        }
-
-        if ($hasObs) {
-            $cols[]   = 'observacoes';
-            $params[] = $data['observacoes'] ?? null;
         }
 
         $placeholders = implode(', ', array_fill(0, count($cols), '?'));
