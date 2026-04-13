@@ -67,7 +67,7 @@ class SefazSoapClient extends BaseService {
         // SEFAZ 4.00: O conteúdo de nfeDadosMsg NÃO deve ter a declaração XML
         $xmlBody = preg_replace('/^<\?xml[^>]*\?>/i', '', trim($xml));
         
-        $soapRequest = $this->wrapSoap($xml, $serviceName, $methodName, $method);
+        $soapRequest = $this->wrapSoap($xmlBody, $serviceName, $methodName, $method);
 
         // DEBUG: Gravar último XML enviado para inspeção
         if (defined('DEBUG') && DEBUG) {
