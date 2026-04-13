@@ -16,7 +16,7 @@
     --status-em-elaboracao: #f97316;
     --status-protocolado: #22c55e;
     --status-analisado: #3b82f6;
-    --status-finalizado: #1e293b;
+    --status-finalizado: #2E6C80;
     
     /* Cores de Tipos de Ato */
     --ato-despacho: #ec4899;
@@ -62,6 +62,7 @@
 .bg-purple { background-color: #d8b4fe; color: #581c87; border: 1px solid #c084fc; }
 .bg-magenta { background-color: #d946ef; color: white; border: 1px solid #d946ef; }
 .bg-orange { background-color: #f97316; color: white; border: 1px solid #f97316; }
+.bg-indigo { background-color: #e0e7ff; color: #4338ca; border: 1px solid #a5b4fc; }
 
 /* Modal Header Status Colors */
 .modal-header-status {
