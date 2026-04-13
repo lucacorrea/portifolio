@@ -1,5 +1,6 @@
 {
     "require": {
-        "nfephp-org/sped-nfe": "5.1"
+        "nfephp-org/sped-nfe": "5.1",
+        "nfephp-org/sped-da": "5.0"
     }
 }
