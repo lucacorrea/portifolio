@@ -124,7 +124,10 @@ class SefazSoapClient extends BaseService {
              if ($motivo) {
                  throw new Exception("Rejeição SEFAZ: $motivo");
              }
-             throw new Exception("Erro HTTP $httpCode ou Rejeição de Schema. O servidor da SEFAZ rejeitou a requisição. O XML enviado foi salvo em storage/last_sefaz_schema_error.xml.");
+             
+             // Extrair um trecho do retorno para mostrar no alerta se não houver motivo claro
+             $snippet = substr(strip_tags($response), 0, 150);
+             throw new Exception("Erro HTTP $httpCode ou Rejeição de Schema. O servidor da SEFAZ rejeitou a requisição. Retorno: $snippet");
         }
 
         return $response;

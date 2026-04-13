@@ -83,9 +83,9 @@ class SefazConsultaService extends BaseService {
 
         // 📝 Template XML compacto
         // CORREÇÕES: 
-        // 1. Adicionado versao="1.00" à tag infEvento (Obrigatório em alguns servidores)
+        // 1. Tag infEvento: Removido atributo versao (não permitido pelo schema nesta tag específica)
         // 2. cOrgao dinâmico baseado na UF da filial (ou 91 para AN)
-        return '<?xml version="1.0" encoding="UTF-8"?><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>1</idLote><evento versao="1.00"><infEvento Id="' . $id . '" versao="1.00"><cOrgao>' . $cUF . '</cOrgao><tpAmb>' . $tpAmb . '</tpAmb><CNPJ>' . $cnpjLimpo . '</CNPJ><chNFe>' . $chave . '</chNFe><dhEvento>' . $dhEvento . '</dhEvento><tpEvento>' . $tpEvento . '</tpEvento><nSeqEvento>1</nSeqEvento><verEvento>1.00</verEvento><detEvento versao="1.00"><descEvento>' . $descEvento . '</descEvento></detEvento></infEvento></evento></envEvento>';
+        return '<?xml version="1.0" encoding="UTF-8"?><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>1</idLote><evento versao="1.00"><infEvento Id="' . $id . '"><cOrgao>' . $cUF . '</cOrgao><tpAmb>' . $tpAmb . '</tpAmb><CNPJ>' . $cnpjLimpo . '</CNPJ><chNFe>' . $chave . '</chNFe><dhEvento>' . $dhEvento . '</dhEvento><tpEvento>' . $tpEvento . '</tpEvento><nSeqEvento>1</nSeqEvento><verEvento>1.00</verEvento><detEvento versao="1.00"><descEvento>' . $descEvento . '</descEvento></detEvento></infEvento></evento></envEvento>';
     }
 
     /**
