@@ -262,11 +262,14 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
                     const data = new Uint8Array(e.target.result);
                     // cellDates: true converte datas do Excel diretamente para objetos Date do JS
                     const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                    let allJson = [];
+                    workbook.SheetNames.forEach(sheetName => {
+                        const worksheet = workbook.Sheets[sheetName];
+                        const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                        allJson = allJson.concat(json);
+                    });
 
-                    const finalData = json.map(row => {
+                    const finalData = allJson.map(row => {
                         const mapped = {};
                         Object.keys(row).forEach(key => {
                             const k = key.trim().toUpperCase();
