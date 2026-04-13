@@ -43,7 +43,7 @@
                     <button type="button" class="btn btn-warning fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#modalMovimentacao">
                         <i class="fas fa-exchange-alt me-2"></i>Sangria / Suprimento
                     </button>
-                    <button type="button" class="btn btn-danger fw-bold" style="background-color: #dc2626 !important; border-color: #dc2626 !important; color: #fff !important;" data-bs-toggle="modal" data-bs-target="#modalFecharCaixa">
+                    <button type="button" class="btn btn-danger fw-bold" data-bs-toggle="modal" data-bs-target="#modalFecharCaixa">
                         <i class="fas fa-lock me-2"></i>Fechar Caixa
                     </button>
                 </div>

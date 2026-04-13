@@ -427,7 +427,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
    $empresaId = $_POST['empresa_id'] ?? ($_GET['id'] ?? '');
   // ======= SEM AUTO-PRINT: só mostra link para abrir/imprimir =======
   // ======= AGORA: redireciona direto para o DANFE =======
-  $danfeUrl = 'danfe_a4.php?chave=' . urlencode($chave)
+  $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
      . '&venda_id=' . urlencode((string)$vendaId)
      . '&id=' . urlencode($empresaId);
   // limpa qualquer saída anterior para poder enviar headers
@@ -523,7 +523,7 @@ $st->execute([
     }
     
     // ======= AGORA: redireciona direto para o DANFE =======
-    $danfeUrl = 'danfe_a4.php?chave=' . urlencode($chave)
+    $danfeUrl = 'danfe_nfce.php?chave=' . urlencode($chave)
        . '&venda_id=' . urlencode((string)$vendaId);
     while (ob_get_level() > 0) { ob_end_clean(); }
     if (!headers_sent()) {
