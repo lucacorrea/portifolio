@@ -272,20 +272,26 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
                             const k = key.trim().toUpperCase();
                             const val = row[key];
                             
-                            if (k.includes('Nº DO PROCESSO') || k.includes('PROCESSO')) mapped.numero = val;
+                            if (k.includes('Nº DO PROCESSO') || k.includes('N° DO PROCESSO') || (k.includes('N') && k.includes('PROCESSO'))) {
+                                mapped.numero = val;
+                            } else if (k === 'PROCESSO') {
+                                if (!mapped.numero) mapped.numero = val;
+                                else if (!mapped.tipo_ato) mapped.tipo_ato = val;
+                            }
+                            
                             if (k.includes('TIPO DE ATO')) mapped.tipo_ato = val;
                             if (k.includes('NATUREZA')) mapped.natureza = val;
                             if (k.includes('MANIFESTAÇÃO') && k.includes('TIPO')) mapped.tipo_manifestacao = val;
                             if (k.includes('REVEL')) mapped.revelia = val;
-                            if (k.includes('ENVIO')) mapped.data_envio = formatarDataParaISO(val);
+                            if (k.includes('ENVIO') || k.includes('INTIMAÇÃO')) mapped.data_envio = formatarDataParaISO(val);
                             if (k.includes('CIÊNCIA')) mapped.data_ciencia = formatarDataParaISO(val);
                             if (k.includes('CONTAGEM')) mapped.tipo_contagem = val;
-                            if (k.includes('FINAL DO PRAZO')) mapped.final_prazo = formatarDataParaISO(val);
+                            if (k.includes('FINAL DO PRAZO') || k.includes('FINAL')) mapped.final_prazo = formatarDataParaISO(val);
                             if (k.includes('CRÍTICO')) mapped.prazo_critico = val;
                             if (k.includes('ANALISADOR')) mapped.analisador = val;
                             if (k.includes('STATUS')) mapped.status = val;
                             if (k.includes('PROTOCOLO')) mapped.data_protocolo = formatarDataParaISO(val);
-                            if (k.includes('OBSERVAÇÕES')) mapped.observacoes = val;
+                            if (k.includes('OBSERVAÇÕES') || k.includes('OBSERVACOES')) mapped.observacoes = val;
                         });
                         return mapped;
                     });
