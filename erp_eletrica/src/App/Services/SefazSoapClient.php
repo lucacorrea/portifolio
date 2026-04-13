@@ -125,11 +125,21 @@ class SefazSoapClient extends BaseService {
 
     private function wrapSoap($xml, $serviceName, $methodName, $method) {
         $ns = "http://www.portalfiscal.inf.br/nfe";
+        $wrapWithMethod = false;
+
         if ($method == 'nfe_evento') {
             $ns = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4";
+            $wrapWithMethod = true;
+        } elseif ($serviceName == 'NFeDistribuicaoDFe') {
+            $ns = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe";
+            $wrapWithMethod = true;
         }
 
-        $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
+        if ($wrapWithMethod) {
+            $content = "<{$methodName} xmlns=\"{$ns}\"><nfeDadosMsg>{$xml}</nfeDadosMsg></{$methodName}>";
+        } else {
+            $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
+        }
         
         return "<?xml version=\"1.0\" encoding=\"utf-8\"?>
 <soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\">
