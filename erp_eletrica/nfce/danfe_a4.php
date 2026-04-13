@@ -197,8 +197,13 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
         .qr-box { width: 3cm; height: 3cm; border: 1px solid #000; margin: 10px auto; padding: 5px; }
         
         @media print {
-            body { background: none; padding: 0; display: block; }
-            .page { box-shadow: none; margin: 0; width: 100%; padding: 0.5cm; display: flex; flex-direction: column; min-height: 27.5cm; }
+            @page { size: A4; margin: 0.5cm; }
+            body { background: none; padding: 0; display: block; margin: 0; }
+            .page { 
+                box-shadow: none; margin: 0; width: 100%; padding: 0;
+                display: flex; flex-direction: column; 
+                height: 28cm; /* Explicit height for A4 print */
+            }
             .no-print { display: none; }
         }
     </style>
