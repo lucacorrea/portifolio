@@ -206,6 +206,7 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
 <body>
     <div class="no-print" style="text-align:center; padding: 15px; position: sticky; top: 0; z-index: 100;">
         <button onclick="window.print()" style="padding:10px 30px; font-weight:bold; cursor:pointer; background: #1a73e8; color: #fff; border: none; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">IMPRIMIR DANFE</button>
+        <a href="danfe_nfce.php?id=<?= urlencode($_GET['id'] ?? '') ?>&venda_id=<?= (int)$vendaId ?>&chave=<?= urlencode($ide['chave']) ?>" style="padding:10px 20px; margin-left:10px; text-decoration:none; color:#2b4c7d; border:1px solid #2b4c7d; border-radius:5px; font-weight:bold;">Modelo Térmico/80mm</a>
         <button onclick="window.close()" style="padding:10px 20px; margin-left:10px; cursor:pointer; border: 1px solid #ccc; border-radius: 5px;">Fechar</button>
     </div>
 
