@@ -78,12 +78,12 @@ class SefazSoapClient extends BaseService {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $soapXml);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $soapRequest);
         
         // Use explicitly defined action for each method
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             "Content-Type: application/soap+xml; charset=utf-8; action=\"$actionUrl\"",
-            "Content-Length: " . strlen($soapXml)
+            "Content-Length: " . strlen($soapRequest)
         ]);
         
         // mTLS Authentication
