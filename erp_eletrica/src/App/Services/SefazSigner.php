@@ -41,7 +41,7 @@ class SefazSigner extends BaseService {
 
         // C14N - Canonicalization
         $canonInfNFe = $node->C14N(false, false);
-        $digestValue = base64_encode(hash('sha1', $canonInfNFe, true));
+        $digestValue = base64_encode(hash('sha256', $canonInfNFe, true));
 
         // Create Signature Node
         $dsigNS = 'http://www.w3.org/2000/09/xmldsig#';
@@ -58,7 +58,7 @@ class SefazSigner extends BaseService {
         $signedInfo->appendChild($cm);
 
         $sm = $dom->createElementNS($dsigNS, 'SignatureMethod');
-        $sm->setAttribute('Algorithm', 'http://www.w3.org/2000/09/xmldsig#rsa-sha1');
+        $sm->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256');
         $signedInfo->appendChild($sm);
 
         $reference = $dom->createElementNS($dsigNS, 'Reference');
@@ -77,7 +77,7 @@ class SefazSigner extends BaseService {
         $transforms->appendChild($t2);
 
         $dm = $dom->createElementNS($dsigNS, 'DigestMethod');
-        $dm->setAttribute('Algorithm', 'http://www.w3.org/2000/09/xmldsig#sha1');
+        $dm->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
         $reference->appendChild($dm);
 
         $dv = $dom->createElementNS($dsigNS, 'DigestValue', $digestValue);
@@ -86,7 +86,7 @@ class SefazSigner extends BaseService {
         // Sign SignedInfo
         $canonSignedInfo = $signedInfo->C14N(false, false);
         $signatureValue = '';
-        openssl_sign($canonSignedInfo, $signatureValue, $certs['pkey'], OPENSSL_ALGO_SHA1);
+        openssl_sign($canonSignedInfo, $signatureValue, $certs['pkey'], OPENSSL_ALGO_SHA256);
         
         $sv = $dom->createElementNS($dsigNS, 'SignatureValue', base64_encode($signatureValue));
         $signature->appendChild($sv);
