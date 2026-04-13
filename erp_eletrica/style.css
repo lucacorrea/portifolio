@@ -633,3 +633,18 @@ body .btn-danger:hover {
     border-color: #b91c1c !important;
     color: #ffffff !important;
 }
+
+/* Custom shadow for fixed bottom panels */
+.shadow-lg-top {
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.08) !important;
+}
+
+/* Ensure PDV checkout panel body doesn't cause page scroll */
+#checkoutFormContent {
+    scrollbar-width: thin;
+    scrollbar-color: #dee2e6 transparent;
+}
+
+.extra-small {
+    font-size: 0.75rem;
+}
