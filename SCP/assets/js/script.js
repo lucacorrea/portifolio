@@ -78,6 +78,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Lógica do formulário
     if (formProcesso) {
+        // --- LOGICA PARA CAMPOS PERSONALIZADOS (MOVIDO PARA O TOPO PARA GARANTIR EXECUÇÃO) ---
+        const handleVisibilidadePers = (selectId, inputId) => {
+            const select = document.getElementById(selectId);
+            const input = document.getElementById(inputId);
+            if (select && input) {
+                const atualizar = () => {
+                    const isPers = select.value === 'PERSONALIZADO';
+                    input.style.setProperty('display', isPers ? 'block' : 'none', 'important');
+                };
+                select.addEventListener('change', atualizar);
+                atualizar(); 
+            }
+        };
+        handleVisibilidadePers('tipo_ato', 'tipo_ato_personalizado');
+        handleVisibilidadePers('natureza_prazo', 'natureza_prazo_personalizado');
+        // -----------------------------------------------------------------------------------
+
         const inputCiencia = document.getElementById('data_ciencia');
         const inputEnvio = document.getElementById('data_envio_intimacao');
         const inputContagem = document.getElementById('tipo_contagem');
@@ -179,26 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         checkFormValidity();
-
-        const selectNatPrazo = document.getElementById('natureza_prazo');
-        const inputNatPrazoPers = document.getElementById('natureza_prazo_personalizado');
-        if (selectNatPrazo && inputNatPrazoPers) {
-            const atualizarVisibilidadeNatureza = () => {
-                inputNatPrazoPers.style.display = selectNatPrazo.value === 'PERSONALIZADO' ? 'block' : 'none';
-            };
-            selectNatPrazo.addEventListener('change', atualizarVisibilidadeNatureza);
-            atualizarVisibilidadeNatureza(); // Check on init
-        }
-
-        const selectTipoAto = document.getElementById('tipo_ato');
-        const inputTipoAtoPers = document.getElementById('tipo_ato_personalizado');
-        if (selectTipoAto && inputTipoAtoPers) {
-            const atualizarVisibilidadeAto = () => {
-                inputTipoAtoPers.style.display = selectTipoAto.value === 'PERSONALIZADO' ? 'block' : 'none';
-            };
-            selectTipoAto.addEventListener('change', atualizarVisibilidadeAto);
-            atualizarVisibilidadeAto(); // Check on init
-        }
 
         [inputCiencia, inputContagem, inputDias].forEach(el => {
             if (el) {

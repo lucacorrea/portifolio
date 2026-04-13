@@ -271,6 +271,22 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
     </form>
 </main>
 
-<script src="assets/js/script.js?v=62"></script>
+<script src="assets/js/script.js?v=63"></script>
+<script>
+    // Plano de contingência: Forçar visibilidade se o script externo falhar ou for cacheado
+    document.addEventListener('DOMContentLoaded', function() {
+        const check = (sId, iId) => {
+            const s = document.getElementById(sId);
+            const i = document.getElementById(iId);
+            if(s && i) {
+                const up = () => { i.style.setProperty('display', s.value === 'PERSONALIZADO' ? 'block' : 'none', 'important'); };
+                s.addEventListener('change', up);
+                up();
+            }
+        };
+        check('tipo_ato', 'tipo_ato_personalizado');
+        check('natureza_prazo', 'natureza_prazo_personalizado');
+    });
+</script>
 </body>
 </html>
