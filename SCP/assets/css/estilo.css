@@ -79,7 +79,7 @@
 .header-status-em-elaboração { background: #f97316; }
 .header-status-protocolado { background: #16a34a; }
 .header-status-analisado { background: #2563eb; }
-.header-status-processo-finalizado { background: #1e293b; }
+.header-status-processo-finalizado { background: #2E6C80; }
 
 .detail-section-title {
     grid-column: span 2;
