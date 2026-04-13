@@ -390,8 +390,10 @@ async function visualizarItens(id) {
         if (result.success) {
             activeItems = result.produtos;
             if (activeItems.length === 0) {
-                error.innerText = 'Esta nota não possui itens de produto ou o XML está incompleto.';
+                const msg = 'Esta nota não possui itens de produto ou o XML está incompleto.';
+                error.innerText = msg;
                 error.classList.remove('d-none');
+                alert(msg);
             } else {
                 result.produtos.forEach(p => {
                     const row = `
@@ -414,15 +416,19 @@ async function visualizarItens(id) {
         } else {
             error.innerText = result.error;
             error.classList.remove('d-none');
+            alert('Aviso: ' + result.error);
         }
     } catch (e) {
         clearTimeout(timeoutId);
+        let msg = '';
         if (e.name === 'AbortError') {
-            error.innerText = 'O tempo limite da requisição foi atingido (15s). O servidor está demorando muito para responder.';
+            msg = 'O tempo limite da requisição foi atingido (15s). O servidor está demorando muito para responder.';
         } else {
-            error.innerText = 'Falha ao processar: ' + e.message;
+            msg = 'Falha ao processar: ' + e.message;
         }
+        error.innerText = msg;
         error.classList.remove('d-none');
+        alert('Erro do sistema: ' + msg);
     } finally {
         loader.classList.add('d-none');
     }
