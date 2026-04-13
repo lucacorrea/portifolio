@@ -161,7 +161,7 @@
                             <span class="input-group-text bg-white border-end-0 text-info">
                                 <i class="fas fa-percent"></i>
                             </span>
-                            <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0">
+                            <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="renderCart()">
                         </div>
                         <div class="extra-small text-info mt-1"><i class="fas fa-info-circle me-1"></i> Informe a taxa cobrada pela operadora.</div>
                     </div>
@@ -198,12 +198,16 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted">Desconto (%)</span>
                         <div style="width: 80px;">
-                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onfocus="interceptDiscount(event)" onmousedown="interceptDiscount(event)" onkeydown="interceptDiscount(event)" onchange="renderCart()">
+                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onfocus="interceptDiscount(event)" onmousedown="interceptDiscount(event)" onkeydown="interceptDiscount(event)" oninput="renderCart()">
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted text-success">Desconto</span>
                         <span class="fw-bold text-success" id="totalDesc">- R$ 0,00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 d-none" id="taxRow">
+                        <span class="text-muted text-info">Taxa Maquininha</span>
+                        <span class="fw-bold text-info" id="totalTax">+ R$ 0,00</span>
                     </div>
                     <hr>
                     <div class="d-flex justify-content-between align-items-center">
@@ -492,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 container.classList.add('d-none');
             }
+            renderCart();
         });
     });
 });
@@ -619,10 +624,24 @@ function renderCart() {
 
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     const discountVal = total * (discountPercent / 100);
-    const finalTotalVal = total - discountVal;
+    const baseVal = total - discountVal;
+
+    const payment = document.querySelector('input[name="payment"]:checked').value;
+    const taxPercent = (payment.includes('cartao')) ? (parseFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    const taxVal = baseVal * (taxPercent / 100);
+    const finalTotalVal = baseVal + taxVal;
 
     document.getElementById('totalSub').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
     document.getElementById('totalDesc').innerText = `- R$ ${discountVal.toFixed(2).replace('.', ',')}`;
+    
+    const taxRow = document.getElementById('taxRow');
+    if (taxVal > 0) {
+        taxRow.classList.remove('d-none');
+        document.getElementById('totalTax').innerText = `+ R$ ${taxVal.toFixed(2).replace('.', ',')}`;
+    } else {
+        taxRow.classList.add('d-none');
+    }
+
     finalTotal.innerText = `R$ ${finalTotalVal.toFixed(2).replace('.', ',')}`;
 
     checkDiscountAuth();
@@ -1350,8 +1369,10 @@ async function confirmarCheckoutFiado() {
 async function processarCheckout() {
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const total = subtotal * (1 - (discountPercent / 100));
+    const baseVal = subtotal * (1 - (discountPercent / 100));
     const payment = document.querySelector('input[name="payment"]:checked').value;
+    const taxaCartaoPercent = (payment.includes('cartao')) ? (parseFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    const total = baseVal + (baseVal * (taxaCartaoPercent / 100));
     const taxaCartao = parseFloat(document.getElementById('taxa_cartao').value) || 0;
 
     if (payment.includes('cartao')) {
