@@ -71,26 +71,8 @@ class SefazConsultaService extends BaseService {
         $cnpjLimpo = preg_replace('/[^0-9]/', '', $cnpj);
         $id = 'ID' . $tpEvento . $chave . '01';
 
-        // 📝 Template XML minimalista e rigoroso para evitar erro 225 no Ambiente Nacional
-        return '<?xml version="1.0" encoding="UTF-8"?>
-<envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">
-    <idLote>1</idLote>
-    <evento versao="1.00">
-        <infEvento Id="' . $id . '">
-            <cOrgao>91</cOrgao>
-            <tpAmb>' . $tpAmb . '</tpAmb>
-            <CNPJ>' . $cnpjLimpo . '</CNPJ>
-            <chNFe>' . $chave . '</chNFe>
-            <dhEvento>' . $dhEvento . '</dhEvento>
-            <tpEvento>' . $tpEvento . '</tpEvento>
-            <nSeqEvento>1</nSeqEvento>
-            <verEvento>1.00</verEvento>
-            <detEvento versao="1.00">
-                <descEvento>' . $descEvento . '</descEvento>
-            </detEvento>
-        </infEvento>
-    </evento>
-</envEvento>';
+        // 📝 Template XML compacto e sem espaços para evitar erro 225
+        return '<?xml version="1.0" encoding="UTF-8"?><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>1</idLote><evento versao="1.00"><infEvento Id="' . $id . '"><cOrgao>91</cOrgao><tpAmb>' . $tpAmb . '</tpAmb><CNPJ>' . $cnpjLimpo . '</CNPJ><chNFe>' . $chave . '</chNFe><dhEvento>' . $dhEvento . '</dhEvento><tpEvento>' . $tpEvento . '</tpEvento><nSeqEvento>1</nSeqEvento><verEvento>1.00</verEvento><detEvento versao="1.00"><descEvento>' . $descEvento . '</descEvento></detEvento></infEvento></evento></envEvento>';
     }
 
     /**

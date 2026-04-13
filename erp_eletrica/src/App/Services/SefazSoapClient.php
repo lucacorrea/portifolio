@@ -67,12 +67,12 @@ class SefazSoapClient extends BaseService {
         // SEFAZ 4.00: O conteúdo de nfeDadosMsg NÃO deve ter a declaração XML
         $xmlBody = preg_replace('/^<\?xml[^>]*\?>/i', '', trim($xml));
         
-        $soapXml = $this->wrapSoap($xmlBody, $serviceName, $methodName);
+        $soapRequest = $this->wrapSoap($xml, $serviceName, $methodName, $method);
 
         // DEBUG: Gravar último XML enviado para inspeção
         if (defined('DEBUG') && DEBUG) {
             $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_request.xml';
-            @file_put_contents($logPath, $soapXml);
+            @file_put_contents($logPath, $soapRequest);
         }
 
         $ch = curl_init($url);
@@ -123,21 +123,20 @@ class SefazSoapClient extends BaseService {
         return $response;
     }
 
-    private function wrapSoap($xml, $serviceName, $methodName) {
-        $ns = 'http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName;
-        
-        // For National Services (AN), NFeDistribuicaoDFe typically requires a method wrapper.
-        // However, NFeRecepcaoEvento4 usually expects nfeDadosMsg DIRECTLY in the Body.
-        if ($serviceName === 'NFeDistribuicaoDFe') {
-             $content = "<{$methodName} xmlns=\"{$ns}\"><nfeDadosMsg>{$xml}</nfeDadosMsg></{$methodName}>";
-        } else {
-             $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
+    private function wrapSoap($xml, $serviceName, $methodName, $method) {
+        $ns = "http://www.portalfiscal.inf.br/nfe";
+        if ($method == 'nfe_evento') {
+            $ns = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4";
         }
 
-        return '<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Body>' . $content . '</soap12:Body>
-</soap12:Envelope>';
+        $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
+        
+        return "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\">
+    <soap:Body>
+        {$content}
+    </soap:Body>
+</soap:Envelope>";
     }
 
     private function extractSoapFault($response) {
