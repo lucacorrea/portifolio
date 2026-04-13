@@ -98,8 +98,19 @@ class SefazSigner extends BaseService {
         $keyInfo->appendChild($x509Data);
 
         // Clean certificate string
-        $cleanCert = str_replace(['-----BEGIN CERTIFICATE-----', '-----END CERTIFICATE-----', "\r", "\n"], '', $certs['cert']);
-        $x509Cert = $dom->createElementNS($dsigNS, 'X509Certificate', $cleanCert);
+        $cleanCert = str_replace(['-----BEGIN CERTIFICATE-----', '-----END CERTIFICATE-----', "\r", "\n", ' '], '', $certs['cert']);
+        
+        // Fallback: se NFePHP não retornou o cert, extrair via openssl
+        if (empty(trim($cleanCert))) {
+            $pfxRaw = file_get_contents($pfxPath);
+            $opensslCerts = [];
+            openssl_pkcs12_read($pfxRaw, $opensslCerts, $password);
+            $cleanCert = str_replace(['-----BEGIN CERTIFICATE-----', '-----END CERTIFICATE-----', "\r", "\n", ' '], '', $opensslCerts['cert'] ?? '');
+        }
+        
+        // Usar createTextNode para inserir conteúdo longo de forma confiável
+        $x509Cert = $dom->createElementNS($dsigNS, 'X509Certificate');
+        $x509Cert->appendChild($dom->createTextNode($cleanCert));
         $x509Data->appendChild($x509Cert);
 
         return $dom->saveXML();
