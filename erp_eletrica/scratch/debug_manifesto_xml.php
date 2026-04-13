@@ -1,4 +1,4 @@
-<?php
+ <?php
 require_once 'erp_eletrica/config.php';
 
 $cnpj = "00000000000000"; // Dummy
