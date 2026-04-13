@@ -124,21 +124,13 @@ class SefazSoapClient extends BaseService {
     }
 
     private function wrapSoap($xml, $serviceName, $methodName, $method) {
-        // Determinar namespace correto baseado no serviço
-        $nsMap = [
-            'NFeRecepcaoEvento4'  => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4',
-            'NFeDistribuicaoDFe'  => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe',
-            'NFeAutorizacao4'     => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4',
-            'NFeStatusServico4'   => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4',
-        ];
-        $ns = $nsMap[$serviceName] ?? "http://www.portalfiscal.inf.br/nfe";
-
         // NFeDistribuicaoDFe é o ÚNICO que precisa de wrapper de método
         if ($serviceName === 'NFeDistribuicaoDFe') {
+            $ns = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe";
             $content = "<{$methodName} xmlns=\"{$ns}\"><nfeDadosMsg>{$xml}</nfeDadosMsg></{$methodName}>";
         } else {
-            // Todos os outros serviços (evento, autorização, status): nfeDadosMsg direto
-            $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
+            // Todos os outros serviços: nfeDadosMsg direto com namespace NF-e padrão
+            $content = "<nfeDadosMsg xmlns=\"http://www.portalfiscal.inf.br/nfe\">{$xml}</nfeDadosMsg>";
         }
         
         return "<?xml version=\"1.0\" encoding=\"utf-8\"?>
