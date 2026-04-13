@@ -86,8 +86,9 @@
             <div class="card-header bg-erp-primary py-3 border-0">
                 <h5 class="mb-0 fw-bold text-white"><i class="fas fa-cash-register me-2 text-white"></i>Checkout SaaS</h5>
             </div>
-            <div class="card-body flex-grow-1">
-                <div class="mb-4">
+            <div class="card-body p-0 d-flex flex-column" style="overflow: hidden; height: calc(100vh - 150px);">
+                <div class="flex-grow-1 overflow-auto p-4" id="checkoutFormContent">
+                    <div class="mb-4">
                     <label class="form-label extra-small fw-bold text-uppercase opacity-75">Identificar Cliente (Obrigatório para Fiado)</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white border-end-0 text-muted">
@@ -189,7 +190,23 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Dados Adicionais Section -->
+                <div class="mb-4">
+                    <div class="bg-light p-2 px-3 rounded-top border border-bottom-0">
+                        <label class="form-label extra-small fw-bold text-uppercase mb-0 opacity-75">
+                            <i class="fas fa-info-circle me-1"></i> Dados Adicionais
+                        </label>
+                    </div>
+                    <div class="p-3 border rounded-bottom bg-white shadow-sm">
+                        <label class="form-label extra-small fw-bold text-uppercase text-muted opacity-50">Observações da Venda</label>
+                        <textarea id="venda_obs" class="form-control form-control-sm" rows="3" placeholder="Informações que sairão no cupom/nota..."></textarea>
+                    </div>
+                </div>
+            </div> <!-- End of scrollable area -->
 
+            <!-- Fixed Summary Area -->
+            <div class="mt-auto p-4 bg-white border-top shadow-lg-top">
                 <div class="bg-light p-4 rounded-3 border mb-4">
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Subtotal</span>
@@ -228,7 +245,7 @@
             </div>
             
             <!-- Quick Sales History (Últimos Cupons) -->
-            <div class="card-footer bg-white py-3 border-0 mt-auto">
+            <div class="card-footer bg-light py-2 border-top-0" style="border-top: 1px dashed #ddd !important;">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="small fw-bold text-muted text-uppercase mb-0">Últimos Cupons</h6>
                     <button class="btn btn-sm btn-link text-decoration-none p-0 extra-small" onclick="loadRecentSales()">Atualizar</button>
@@ -1420,7 +1437,8 @@ async function processarCheckout() {
         taxa_cartao: taxaCartao,
         supervisor_id: authSupervisorId,
         supervisor_credential: authSupervisorCredential,
-        tipo_nota: tipoNota
+        tipo_nota: tipoNota,
+        observacoes: document.getElementById('venda_obs').value
     };
 
     const res = await fetch('vendas.php?action=checkout', {
