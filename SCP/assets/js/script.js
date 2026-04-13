@@ -180,20 +180,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         checkFormValidity();
 
-        const selectTipoAto = document.getElementById('tipo_ato');
-        const inputTipoAtoPers = document.getElementById('tipo_ato_personalizado');
-        if (selectTipoAto && inputTipoAtoPers) {
-            selectTipoAto.addEventListener('change', () => {
-                inputTipoAtoPers.style.display = selectTipoAto.value === 'PERSONALIZADO' ? 'block' : 'none';
-            });
-        }
-
         const selectNatPrazo = document.getElementById('natureza_prazo');
         const inputNatPrazoPers = document.getElementById('natureza_prazo_personalizado');
         if (selectNatPrazo && inputNatPrazoPers) {
-            selectNatPrazo.addEventListener('change', () => {
+            const atualizarVisibilidadeNatureza = () => {
                 inputNatPrazoPers.style.display = selectNatPrazo.value === 'PERSONALIZADO' ? 'block' : 'none';
-            });
+            };
+            selectNatPrazo.addEventListener('change', atualizarVisibilidadeNatureza);
+            atualizarVisibilidadeNatureza(); // Check on init
+        }
+
+        const selectTipoAto = document.getElementById('tipo_ato');
+        const inputTipoAtoPers = document.getElementById('tipo_ato_personalizado');
+        if (selectTipoAto && inputTipoAtoPers) {
+            const atualizarVisibilidadeAto = () => {
+                inputTipoAtoPers.style.display = selectTipoAto.value === 'PERSONALIZADO' ? 'block' : 'none';
+            };
+            selectTipoAto.addEventListener('change', atualizarVisibilidadeAto);
+            atualizarVisibilidadeAto(); // Check on init
         }
 
         [inputCiencia, inputContagem, inputDias].forEach(el => {

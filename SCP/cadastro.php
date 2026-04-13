@@ -271,6 +271,6 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
     </form>
 </main>
 
-<script src="assets/js/script.js?v=61"></script>
+<script src="assets/js/script.js?v=62"></script>
 </body>
 </html>
