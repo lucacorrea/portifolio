@@ -522,12 +522,21 @@ body {
 }
 
 /* --- Reforço da Paleta Corporativa (Amarelo -> Azul) --- */
-.btn-warning, .btn-primary, .btn-erp-primary, .btn-success, .btn-danger {
+.btn-warning, .btn-primary, .btn-erp-primary, .btn-success {
     background-color: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
     color: #ffffff !important;
 }
-.btn-warning i, .btn-primary i, .btn-erp-primary i, .btn-success i, .btn-danger i {
+.btn-danger {
+    background-color: var(--danger) !important;
+    border-color: var(--danger) !important;
+    color: #ffffff !important;
+}
+.btn-danger:hover {
+    background-color: #b91c1c !important;
+    border-color: #b91c1c !important;
+}
+.btn-warning i, .btn-primary i, .btn-erp-primary i, .btn-success i {
     color: #ffffff !important;
 }
 .bg-erp-primary {
