@@ -22,7 +22,7 @@
         }
     </script>
     
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="<?= \App\Services\AssetService::getAssetPath('chart.js', 'https://cdn.jsdelivr.net/npm/chart.js') ?>"></script>
 </head>
 <body>
     <div class="erp-wrapper">
@@ -102,7 +102,7 @@
     </div>
 
     <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= \App\Services\AssetService::getAssetPath('bootstrap.bundle.min.js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
 </body>
