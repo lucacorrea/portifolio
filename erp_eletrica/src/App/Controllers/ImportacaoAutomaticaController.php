@@ -214,27 +214,41 @@ class ImportacaoAutomaticaController extends BaseController {
 
         try {
             $db = \App\Config\Database::getInstance()->getConnection();
-            $stmt = $db->prepare("SELECT xml FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+            $stmt = $db->prepare("SELECT * FROM nfe_importadas WHERE id = ? AND filial_id = ?");
             $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
             $nota = $stmt->fetch();
 
             if (!$nota || empty($nota['xml'])) {
-                echo json_encode(['success' => false, 'error' => 'XML não encontrado.']);
+                echo json_encode(['success' => false, 'error' => 'XML não encontrado no banco de dados.']);
                 exit;
             }
 
-            // Tentar ler o XML de forma robusta
             libxml_use_internal_errors(true);
             $xml = simplexml_load_string($nota['xml'], 'SimpleXMLElement', LIBXML_PARSEHUGE);
             
             if ($xml === false) {
-                echo json_encode(['success' => false, 'error' => 'O XML da nota está malformado ou corrompido.']);
+                echo json_encode(['success' => false, 'error' => 'O XML da nota está corrompido ou malformado.']);
                 exit;
             }
 
             if ($xml->getName() == 'resNFe') {
-                 echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota. É necessário manifestar a nota para baixar o XML completo.']);
-                 exit;
+                 // 🕵️ FALLBACK: Tentar baixar o XML completo via Chave de Acesso (Active Fetch)
+                 $stmtF = $db->prepare("SELECT cnpj FROM filiais WHERE id = ?");
+                 $stmtF->execute([$_SESSION['filial_id'] ?? 1]);
+                 $cnpjFilial = $stmtF->fetchColumn();
+
+                 $service = new SefazConsultaService();
+                 $service->consultarPorChave($cnpjFilial, $nota['chave_acesso']);
+
+                 // Recarregar do banco para ver se agora temos o procNFe
+                 $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
+                 $nota = $stmt->fetch();
+                 
+                 $xml = simplexml_load_string($nota['xml'], 'SimpleXMLElement', LIBXML_PARSEHUGE);
+                 if (!$xml || $xml->getName() == 'resNFe') {
+                    echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota e o download do XML completo ainda não foi liberado. Certifique-se de que a nota foi manifestada e aguarde alguns minutos antes de tentar novamente.']);
+                    exit;
+                 }
             }
 
             // Se for procNFe completo (mockado ou real)
