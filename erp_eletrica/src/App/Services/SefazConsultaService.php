@@ -168,6 +168,28 @@ class SefazConsultaService extends BaseService {
             'db_error' => $this->lastSaveError
         ];
     }
+
+    /**
+     * Consulta uma NFe específica pela Chave de Acesso (Active Fetch)
+     * Utilizado quando temos apenas o resumo e precisamos do XML completo agora.
+     */
+    public function consultarPorChave($cnpjDestinario, $chave) {
+        $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
+        $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2;
+
+        $xml_soap = $this->gerarXmlDistDfePorChave($cnpj, $chave, $ambiente);
+        $responseXml = $this->comunicarSefaz($xml_soap);
+        $resultado = $this->processarRetorno($responseXml);
+
+        $documentos = $resultado['documentos'] ?? [];
+        if (!empty($documentos)) {
+            $filialId = $_SESSION['filial_id'] ?? 1;
+            $this->salvarNotasCache($filialId, $documentos);
+            return $documentos[0]; // Retorna a nota processada (agora com XML completo se disponível)
+        }
+
+        return null;
+    }
     
 
     private function gerarXmlDistDfe($cnpj, $ultNSU, $ambiente) {
@@ -195,6 +217,31 @@ class SefazConsultaService extends BaseService {
         $dist = $xml->createElementNS($ns, 'distNSU');
         $dist->appendChild($xml->createElementNS($ns, 'ultNSU', str_pad($ultNSU, 15, '0', STR_PAD_LEFT)));
         $distDFeInt->appendChild($dist);
+
+        return $xml->saveXML($xml->documentElement);
+    }
+
+    private function gerarXmlDistDfePorChave($cnpj, $chave, $ambiente) {
+        $stmt = $this->db->prepare("SELECT uf FROM filiais WHERE cnpj LIKE ? OR cnpj = ? LIMIT 1");
+        $cnpjLimpo = preg_replace('/\D/', '', $cnpj);
+        $cnpjFmt = substr($cnpjLimpo, 0, 2) . '.' . substr($cnpjLimpo, 2, 3) . '.' . substr($cnpjLimpo, 5, 3) . '/' . substr($cnpjLimpo, 8, 4) . '-' . substr($cnpjLimpo, 12, 2);
+        $stmt->execute(['%'.$cnpjLimpo.'%', $cnpjFmt]);
+        $siglaUf = $stmt->fetchColumn() ?: 'SP';
+        $cUF = $this->ufCodes[strtoupper($siglaUf)] ?? '35';
+
+        $xml = new DOMDocument('1.0', 'UTF-8');
+        $ns = 'http://www.portalfiscal.inf.br/nfe';
+        $distDFeInt = $xml->createElementNS($ns, 'distDFeInt');
+        $distDFeInt->setAttribute('versao', '1.01');
+        $xml->appendChild($distDFeInt);
+        
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'tpAmb', $ambiente));
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'cUFAutor', $cUF)); 
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'CNPJ', $cnpjLimpo));
+        
+        $cons = $xml->createElementNS($ns, 'consChNFe');
+        $cons->appendChild($xml->createElementNS($ns, 'chNFe', $chave));
+        $distDFeInt->appendChild($cons);
 
         return $xml->saveXML($xml->documentElement);
     }
