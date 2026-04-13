@@ -105,5 +105,12 @@
     <script src="<?= \App\Services\AssetService::getAssetPath('bootstrap.bundle.min.js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
+    <script>
+        // Prevenção de travamento (Offline Safety): Remove o loader após 3s independente de qualquer falha
+        setTimeout(() => {
+            const loader = document.getElementById('globalLoader');
+            if (loader) loader.style.display = 'none';
+        }, 3000);
+    </script>
 </body>
 </html>
