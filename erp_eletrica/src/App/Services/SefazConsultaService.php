@@ -66,37 +66,31 @@ class SefazConsultaService extends BaseService {
             '210240' => 'Operacao nao Realizada'
         ][$tpEvento] ?? 'Ciencia da Operacao';
 
-        $dom = new DOMDocument('1.0', 'UTF-8');
-        $envEvento = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'envEvento');
-        $envEvento->setAttribute('versao', '1.00');
-        $dom->appendChild($envEvento);
-        
-        $envEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'idLote', '1'));
-        
-        $evento = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'evento');
-        $evento->setAttribute('versao', '1.00');
-        $envEvento->appendChild($evento);
-        
-        $infEvento = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'infEvento');
+        $tpAmb = ($this->config['ambiente'] == 'producao' ? '1' : '2');
+        $dhEvento = date('Y-m-d\TH:i:sP');
+        $cnpjLimpo = preg_replace('/[^0-9]/', '', $cnpj);
         $id = 'ID' . $tpEvento . $chave . '01';
-        $infEvento->setAttribute('Id', $id);
-        $evento->appendChild($infEvento);
-        
-        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'cOrgao', '91')); // Ambiente Nacional
-        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'tpAmb', ($this->config['ambiente'] == 'producao' ? '1' : '2')));
-        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'CNPJ', preg_replace('/[^0-9]/', '', $cnpj)));
-        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'chNFe', $chave));
-        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'dhEvento', date('Y-m-d\TH:i:sP')));
-        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'tpEvento', $tpEvento));
-        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'nSeqEvento', '1'));
-        $infEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'verEvento', '1.00'));
-        
-        $detEvento = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'detEvento');
-        $detEvento->setAttribute('versao', '1.00');
-        $infEvento->appendChild($detEvento);
-        $detEvento->appendChild($dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'descEvento', $descEvento));
-        
-        return $dom->saveXML();
+
+        // 📝 Template XML minimalista e rigoroso para evitar erro 225 no Ambiente Nacional
+        return '<?xml version="1.0" encoding="UTF-8"?>
+<envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">
+    <idLote>1</idLote>
+    <evento versao="1.00">
+        <infEvento Id="' . $id . '">
+            <cOrgao>91</cOrgao>
+            <tpAmb>' . $tpAmb . '</tpAmb>
+            <CNPJ>' . $cnpjLimpo . '</CNPJ>
+            <chNFe>' . $chave . '</chNFe>
+            <dhEvento>' . $dhEvento . '</dhEvento>
+            <tpEvento>' . $tpEvento . '</tpEvento>
+            <nSeqEvento>1</nSeqEvento>
+            <verEvento>1.00</verEvento>
+            <detEvento versao="1.00">
+                <descEvento>' . $descEvento . '</descEvento>
+            </detEvento>
+        </infEvento>
+    </evento>
+</envEvento>';
     }
 
     /**
