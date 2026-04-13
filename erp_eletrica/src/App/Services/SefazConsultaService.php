@@ -67,7 +67,9 @@ class SefazConsultaService extends BaseService {
         ][$tpEvento] ?? 'Ciencia da Operacao';
 
         $tpAmb = ($this->config['ambiente'] == 'producao' ? '1' : '2');
-        $dhEvento = date('Y-m-d\TH:i:sP');
+        // SEFAZ exige fuso horário brasileiro negativo (-02:00 a -05:00), servidor pode estar em UTC
+        $tz = new \DateTimeZone('America/Manaus');
+        $dhEvento = (new \DateTime('now', $tz))->format('Y-m-d\TH:i:sP');
         $cnpjLimpo = preg_replace('/[^0-9]/', '', $cnpj);
         $id = 'ID' . $tpEvento . $chave . '01';
 
