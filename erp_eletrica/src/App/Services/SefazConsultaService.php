@@ -42,7 +42,14 @@ class SefazConsultaService extends BaseService {
      * tpEvento: 210200 (Confirmacao), 210210 (Ciencia), 210220 (Desconhecimento), 210240 (Operacao nao Realizada)
      */
     public function manifestarNota($cnpj, $chave, $tpEvento = '210210') {
-        $xml = $this->gerarXmlEventoManifesto($cnpj, $chave, $tpEvento);
+        // 🔎 Buscar UF da filial para o cOrgao
+        $stmt = $this->db->prepare("SELECT uf FROM filiais WHERE cnpj = ? OR cnpj LIKE ? LIMIT 1");
+        $cnpjLimpo = preg_replace('/[^0-9]/', '', $cnpj);
+        $stmt->execute([$cnpj, "%$cnpjLimpo%"]);
+        $siglaUf = $stmt->fetchColumn() ?: 'SP';
+        $cUF = $this->ufCodes[strtoupper($siglaUf)] ?? '91';
+
+        $xml = $this->gerarXmlEventoManifesto($cnpj, $chave, $tpEvento, $cUF);
         
         $signer = new \App\Services\SefazSigner();
         $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $this->config['certificado_path'];
@@ -58,7 +65,7 @@ class SefazConsultaService extends BaseService {
         return $this->processarRetornoEvento($responseXml);
     }
 
-    private function gerarXmlEventoManifesto($cnpj, $chave, $tpEvento) {
+    private function gerarXmlEventoManifesto($cnpj, $chave, $tpEvento, $cUF = '91') {
         $descEvento = [
             '210200' => 'Confirmacao da Operacao',
             '210210' => 'Ciencia da Operacao',
@@ -67,14 +74,18 @@ class SefazConsultaService extends BaseService {
         ][$tpEvento] ?? 'Ciencia da Operacao';
 
         $tpAmb = ($this->config['ambiente'] == 'producao' ? '1' : '2');
-        // SEFAZ exige fuso horário brasileiro negativo (-02:00 a -05:00), servidor pode estar em UTC
-        $tz = new \DateTimeZone('America/Manaus');
+        
+        // 🕒 Fuso Horário: SEFAZ Ambiente Nacional geralmente usa Brasília (-03:00)
+        $tz = new \DateTimeZone('America/Sao_Paulo');
         $dhEvento = (new \DateTime('now', $tz))->format('Y-m-d\TH:i:sP');
         $cnpjLimpo = preg_replace('/[^0-9]/', '', $cnpj);
         $id = 'ID' . $tpEvento . $chave . '01';
 
-        // 📝 Template XML compacto e sem espaços para evitar erro 225
-        return '<?xml version="1.0" encoding="UTF-8"?><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>1</idLote><evento versao="1.00"><infEvento Id="' . $id . '"><cOrgao>91</cOrgao><tpAmb>' . $tpAmb . '</tpAmb><CNPJ>' . $cnpjLimpo . '</CNPJ><chNFe>' . $chave . '</chNFe><dhEvento>' . $dhEvento . '</dhEvento><tpEvento>' . $tpEvento . '</tpEvento><nSeqEvento>1</nSeqEvento><verEvento>1.00</verEvento><detEvento versao="1.00"><descEvento>' . $descEvento . '</descEvento></detEvento></infEvento></evento></envEvento>';
+        // 📝 Template XML compacto
+        // CORREÇÕES: 
+        // 1. Adicionado versao="1.00" à tag infEvento (Obrigatório em alguns servidores)
+        // 2. cOrgao dinâmico baseado na UF da filial (ou 91 para AN)
+        return '<?xml version="1.0" encoding="UTF-8"?><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>1</idLote><evento versao="1.00"><infEvento Id="' . $id . '" versao="1.00"><cOrgao>' . $cUF . '</cOrgao><tpAmb>' . $tpAmb . '</tpAmb><CNPJ>' . $cnpjLimpo . '</CNPJ><chNFe>' . $chave . '</chNFe><dhEvento>' . $dhEvento . '</dhEvento><tpEvento>' . $tpEvento . '</tpEvento><nSeqEvento>1</nSeqEvento><verEvento>1.00</verEvento><detEvento versao="1.00"><descEvento>' . $descEvento . '</descEvento></detEvento></infEvento></evento></envEvento>';
     }
 
     /**

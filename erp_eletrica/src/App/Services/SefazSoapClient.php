@@ -104,7 +104,10 @@ class SefazSoapClient extends BaseService {
         @unlink($pemCert['file']);
 
         if ($error) {
-            throw new Exception("Erro de conexão SEFAZ CURL: $error");
+            // 📝 Gravar o XML que causou o erro de conexão para análise
+            $errorLogPath = dirname(__DIR__, 3) . '/storage/last_sefaz_curl_error.xml';
+            @file_put_contents($errorLogPath, $soapRequest);
+            throw new Exception("Erro de conexão SEFAZ CURL: $error (XML salvo em storage para análise)");
         }
         
         // DEBUG OVERRIDE: Forçar log de todos os retornos para identificar malformação XML
@@ -112,12 +115,16 @@ class SefazSoapClient extends BaseService {
         $logPath = dirname(__DIR__, 3) . '/last_sefaz_debug.txt';
         @file_put_contents($logPath, "HTTP CODE: $httpCode\n\n=== RESPONSE ===\n$response");
 
-        if ($httpCode >= 400 || empty($response)) {
+        if ($httpCode >= 400 || empty($response) || strpos($response, '<cStat>225</cStat>') !== false) {
+             // 📝 Gravar o XML em caso de rejeição 225 ou erro HTTP
+             $errorLogPath = dirname(__DIR__, 3) . '/storage/last_sefaz_schema_error.xml';
+             @file_put_contents($errorLogPath, $soapRequest);
+
              $motivo = $this->extractSoapFault($response);
              if ($motivo) {
                  throw new Exception("Rejeição SEFAZ: $motivo");
              }
-             throw new Exception("Erro HTTP $httpCode. O servidor da SEFAZ rejeitou a requisição. O certificado e a senha estão corretos, mas o conteúdo ou o Mapeamento da SEFAZ pode estar inválido.");
+             throw new Exception("Erro HTTP $httpCode ou Rejeição de Schema. O servidor da SEFAZ rejeitou a requisição. O XML enviado foi salvo em storage/last_sefaz_schema_error.xml.");
         }
 
         return $response;
