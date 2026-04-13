@@ -42,14 +42,7 @@ class SefazConsultaService extends BaseService {
      * tpEvento: 210200 (Confirmacao), 210210 (Ciencia), 210220 (Desconhecimento), 210240 (Operacao nao Realizada)
      */
     public function manifestarNota($cnpj, $chave, $tpEvento = '210210') {
-        // 🔎 Buscar UF da filial para o cOrgao
-        $stmt = $this->db->prepare("SELECT uf FROM filiais WHERE cnpj = ? OR cnpj LIKE ? LIMIT 1");
-        $cnpjLimpo = preg_replace('/[^0-9]/', '', $cnpj);
-        $stmt->execute([$cnpj, "%$cnpjLimpo%"]);
-        $siglaUf = $stmt->fetchColumn() ?: 'SP';
-        $cUF = $this->ufCodes[strtoupper($siglaUf)] ?? '91';
-
-        $xml = $this->gerarXmlEventoManifesto($cnpj, $chave, $tpEvento, $cUF);
+        $xml = $this->gerarXmlEventoManifesto($cnpj, $chave, $tpEvento);
         
         $signer = new \App\Services\SefazSigner();
         $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $this->config['certificado_path'];
@@ -65,7 +58,7 @@ class SefazConsultaService extends BaseService {
         return $this->processarRetornoEvento($responseXml);
     }
 
-    private function gerarXmlEventoManifesto($cnpj, $chave, $tpEvento, $cUF = '91') {
+    private function gerarXmlEventoManifesto($cnpj, $chave, $tpEvento) {
         $descEvento = [
             '210200' => 'Confirmacao da Operacao',
             '210210' => 'Ciencia da Operacao',
@@ -84,8 +77,8 @@ class SefazConsultaService extends BaseService {
         // 📝 Template XML compacto
         // CORREÇÕES: 
         // 1. Tag infEvento: Removido atributo versao (não permitido pelo schema nesta tag específica)
-        // 2. cOrgao dinâmico baseado na UF da filial (ou 91 para AN)
-        return '<?xml version="1.0" encoding="UTF-8"?><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>1</idLote><evento versao="1.00"><infEvento Id="' . $id . '"><cOrgao>' . $cUF . '</cOrgao><tpAmb>' . $tpAmb . '</tpAmb><CNPJ>' . $cnpjLimpo . '</CNPJ><chNFe>' . $chave . '</chNFe><dhEvento>' . $dhEvento . '</dhEvento><tpEvento>' . $tpEvento . '</tpEvento><nSeqEvento>1</nSeqEvento><verEvento>1.00</verEvento><detEvento versao="1.00"><descEvento>' . $descEvento . '</descEvento></detEvento></infEvento></evento></envEvento>';
+        // 2. cOrgao dinâmico foi revertido para 91 (Ambiente Nacional), o qual é obrigatório.
+        return '<?xml version="1.0" encoding="UTF-8"?><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>1</idLote><evento versao="1.00"><infEvento Id="' . $id . '"><cOrgao>91</cOrgao><tpAmb>' . $tpAmb . '</tpAmb><CNPJ>' . $cnpjLimpo . '</CNPJ><chNFe>' . $chave . '</chNFe><dhEvento>' . $dhEvento . '</dhEvento><tpEvento>' . $tpEvento . '</tpEvento><nSeqEvento>1</nSeqEvento><verEvento>1.00</verEvento><detEvento versao="1.00"><descEvento>' . $descEvento . '</descEvento></detEvento></infEvento></evento></envEvento>';
     }
 
     /**
