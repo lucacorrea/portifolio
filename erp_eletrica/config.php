@@ -65,8 +65,15 @@ function validateCsrf($token) {
 try {
     $migrationService = new \App\Services\MigrationService();
     $migrationService->run();
+    
+    // Automação de ativos para modo offline (Apenas no PDV Local)
+    if (APP_MODE === 'LOCAL_PDV' && !isset($_SESSION['assets_checked'])) {
+        $assetService = new \App\Services\AssetService();
+        $assetService->downloadRequiredAssets();
+        $_SESSION['assets_checked'] = true;
+    }
 } catch (Exception $e) {
-    error_log("Erro de migração: " . $e->getMessage());
+    error_log("Erro de inicialização híbrida: " . $e->getMessage());
 }
 
 // Global Exception Handler
