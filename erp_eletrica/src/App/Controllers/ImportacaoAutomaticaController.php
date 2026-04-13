@@ -4,7 +4,11 @@ namespace App\Controllers;
 use App\Services\SefazConsultaService;
 use App\Models\Product;
 use App\Models\StockMovement;
-use App\Services\AuditLogService;
+use App\Config\Database;
+use PDO;
+
+// Carregar autoloader globalmente para este controller
+require_once dirname(__DIR__) . '/Services/vendor/autoload.php';
 
 class ImportacaoAutomaticaController extends BaseController {
     public function index() {
@@ -388,9 +392,8 @@ class ImportacaoAutomaticaController extends BaseController {
         }
 
         try {
-            // Incluir autoloader do vendor que contém o sped-da
-            require_once dirname(__DIR__) . '/Services/vendor/autoload.php';
-
+            // O autoloader já foi carregado no topo do arquivo para garantir que as classes NFePHP estejam disponíveis
+            
             // Tentar localizar um logo
             $logoPath = dirname(__DIR__, 3) . '/logo_sistema_erp_eletrica.png';
             $logo = file_exists($logoPath) ? $logoPath : '';
