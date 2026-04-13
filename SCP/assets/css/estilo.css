@@ -398,7 +398,7 @@ td:last-child {
 .badge-em-elaboração { background: #ffedd5; color: #ea580c; }
 .badge-protocolado { background: #dcfce7; color: #22c55e; }
 .badge-analisado { background: #dbeafe; color: #3b82f6; }
-.badge-processo-finalizado { background: #334155; color: white; }
+.badge-processo-finalizado { background: #2E6C80; color: white; }
 
 /* Buttons */
 .btn {
