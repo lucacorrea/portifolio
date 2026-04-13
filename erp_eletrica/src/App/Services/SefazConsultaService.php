@@ -319,7 +319,7 @@ class SefazConsultaService extends BaseService {
                 $cStatEv = (string)$root->retEvento->infEvento->cStat;
                 $xMotivoEv = (string)$root->retEvento->infEvento->xMotivo;
                 
-                if ($cStatEv == '135' || $cStatEv == '136') return true;
+                if ($cStatEv == '135' || $cStatEv == '136' || $cStatEv == '573') return true;
                 throw new Exception("Evento rejeitado: [$cStatEv] $xMotivoEv");
             }
         }
@@ -329,7 +329,7 @@ class SefazConsultaService extends BaseService {
         if (!empty($eventoDirect)) {
             $cStat = (string)$eventoDirect[0]->infEvento->cStat;
             $xMotivo = (string)$eventoDirect[0]->infEvento->xMotivo;
-            if ($cStat == '135' || $cStat == '136') return true;
+            if ($cStat == '135' || $cStat == '136' || $cStat == '573') return true;
             throw new Exception("Falha na manifestação: [$cStat] $xMotivo");
         }
 
