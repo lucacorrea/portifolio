@@ -350,11 +350,21 @@ try {
                     };
 
                     $data_ciencia_formatada = $formatarData($data_ciencia);
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND data_ciencia = ?");
-                    $stmt_check->execute([$numero, $data_ciencia_formatada]);
+                    $tipo_proc_csv = $dados[$mapeamento['tipo_processo'] ?? -1] ?? 'CIÊNCIA';
+                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND data_ciencia = ? AND tipo_processo = ?");
+                    $stmt_check->execute([$numero, $data_ciencia_formatada, $tipo_proc_csv]);
                     if ($stmt_check->fetchColumn() > 0) {
                         $pula++;
                         continue;
+                    }
+                    
+                    if (!isset($stmt_import_csv)) {
+                        $stmt_import_csv = $pdo->prepare("INSERT INTO processos (
+                            numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
+                            revelia, data_envio, data_ciencia, tipo_contagem, 
+                            final_prazo, prazo_critico, analisador, status, data_protocolo, 
+                            observacoes, peticionador, quantidade_dias
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     }
 
                     $data_protocolo_raw = trim($dados[$mapeamento['data_protocolo'] ?? -1] ?? '');
@@ -373,8 +383,9 @@ try {
                         $protocolista_import = $analisador_import;
                     }
 
-                    $stmt->execute([
+                    $stmt_import_csv->execute([
                         $numero,
+                        $tipo_proc_csv,
                         $dados[$mapeamento['tipo_ato'] ?? -1] ?? '',
                         $dados[$mapeamento['natureza'] ?? -1] ?? '',
                         $dados[$mapeamento['tipo_manifestacao'] ?? -1] ?? '',
@@ -438,8 +449,9 @@ try {
                     }
 
                     // Verificar duplicata (Processo + Data Ciência)
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND data_ciencia = ?");
-                    $stmt_check->execute([$numero, $data_ciencia]);
+                    $tipo_processo_dados = $item['tipo_processo'] ?? 'CIÊNCIA';
+                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND data_ciencia = ? AND tipo_processo = ?");
+                    $stmt_check->execute([$numero, $data_ciencia, $tipo_processo_dados]);
                     if ($stmt_check->fetchColumn() > 0) {
                         $pula++;
                         continue;
