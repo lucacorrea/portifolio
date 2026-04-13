@@ -51,7 +51,7 @@ class FiscalService extends BaseService {
     /**
      * Generates and transmits an NFC-e (Consumer Invoice)
      */
-    public function issueNFCe($vendaId, $isContingency = false, $justification = 'Falha na conexao com SEFAZ') {
+    public function issueNFCe($vendaId) {
         try {
             // 1. Fetch sale data with items and branch info
             $sale = $this->getSaleData($vendaId);
@@ -61,60 +61,29 @@ class FiscalService extends BaseService {
                 throw new Exception("Configuração fiscal incompleta (CNPJ ou Certificado ausente).");
             }
 
-            // 2. Definir Tipo de Emissão (1-Normal, 9-Contingência)
-            $tpEmis = $isContingency ? 9 : 1;
+            // 2. Generate XML (Mock for now, following SEFAZ 4.00 standard)
+            $xml = $this->generateXML($sale, $fiscal, 'nfce');
 
-            // 3. Generate XML
-            $xml = $this->generateXML($sale, $fiscal, 'nfce', $tpEmis, $justification);
-
-            // 4. Sign XML
+            // 3. Sign XML (Requires openssl and .pfx)
             $signedXml = $this->signXML($xml, $fiscal);
 
-            if ($tpEmis == 1) {
-                // 5a. Transmit to SEFAZ (Normal mode)
-                try {
-                    $response = $this->transmitToSEFAZ($signedXml, $fiscal, 'nfce');
-                    $this->saveFiscalRecord($vendaId, 'nfce', $response, 1);
-                } catch (Exception $e) {
-                    // SE FALHAR A CONEXÃO, TENTA AUTOMATICAMENTE A CONTINGÊNCIA
-                    if (strpos($e->getMessage(), 'comunicação') !== false || strpos($e->getMessage(), 'Timeout') !== false) {
-                        return $this->issueNFCe($vendaId, true, $e->getMessage());
-                    }
-                    throw $e;
-                }
-            } else {
-                // 5b. Contingency Mode: Save signed XML without transmitting
-                $response = [
-                    'status' => 'contingencia',
-                    'protocolo' => 'PENDENTE',
-                    'chave' => $this->extractChaveFromXml($signedXml),
-                    'xml_path' => 'storage/nfe/contingencia/' . date('Y-m-d') . '/nfe_' . $vendaId . '.xml',
-                    'tpEmis' => 9,
-                    'dhCont' => date('Y-m-d H:i:s'),
-                    'xJust' => $justification
-                ];
-                $this->saveFiscalRecord($vendaId, 'nfce', $response, 9);
-            }
+            // 4. Transmit to SEFAZ (Mocked for Homologação)
+            $response = $this->transmitToSEFAZ($signedXml, $fiscal, 'nfce');
+
+            // 5. Save record in database
+            $this->saveFiscalRecord($vendaId, 'nfce', $response);
 
             return [
                 'success' => true,
                 'status' => $response['status'],
                 'protocolo' => $response['protocolo'],
-                'chave' => $response['chave'],
-                'tpEmis' => $tpEmis
+                'chave' => $response['chave']
             ];
 
         } catch (Exception $e) {
             $this->logAction('fiscal_error', 'vendas', $vendaId, null, ['error' => $e->getMessage()]);
             throw $e;
         }
-    }
-
-    private function extractChaveFromXml($xml) {
-        if (preg_match('/Id="NFe(\d{44})"/', $xml, $matches)) {
-            return $matches[1];
-        }
-        return 'N/A';
     }
 
     private function getSaleData($vendaId) {
@@ -275,35 +244,18 @@ class FiscalService extends BaseService {
         }
     }
 
-    private function saveFiscalRecord($vendaId, $type, $response, $tpEmis = 1) {
+    private function saveFiscalRecord($vendaId, $type, $response) {
         $stmt = $this->db->prepare("
-            INSERT INTO nfce_emitidas (
-                venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem,
-                tpEmis, dhCont, xJust, sync_status
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                status_sefaz = VALUES(status_sefaz),
-                protocolo = VALUES(protocolo),
-                tpEmis = VALUES(tpEmis),
-                dhCont = VALUES(dhCont),
-                xJust = VALUES(xJust),
-                sync_status = VALUES(sync_status)
+            INSERT INTO notas_fiscais (venda_id, tipo, chave_acesso, status, protocolo, mensagem_sefaz)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
-
         $stmt->execute([
-            $vendaId,
-            defined('TP_AMB') ? TP_AMB : 2,
-            defined('NFC_SERIE') ? NFC_SERIE : 1,
-            mt_rand(1000, 9999), // Provisório, o certo é pegar o sequencial do banco
-            $response['chave'],
+            $vendaId, 
+            $type, 
+            $response['chave'], 
+            $response['status'], 
             $response['protocolo'],
-            $response['status'] === 'autorizada' ? '100' : ($response['status'] === 'contingencia' ? '9' : '0'),
-            $response['status'] === 'contingencia' ? 'Emitida em Contingência' : 'Nota processada',
-            $tpEmis,
-            $response['dhCont'] ?? null,
-            $response['xJust'] ?? null,
-            'pending'
+            'Nota autorizada em ambiente de homologação'
         ]);
     }
 }

@@ -18,13 +18,6 @@ define('APP_NAME', 'ERP Elétrica');
 define('APP_VERSION', '2.0.0');
 define('SESSION_TIMEOUT', 3600); // 1 hour
 
-// Configurações de Modo Híbrido
-// 'LOCAL_PDV' para lojas físicas
-// 'CLOUD_MATRIZ' para o servidor na nuvem
-define('APP_MODE', 'LOCAL_PDV'); 
-define('CLOUD_API_URL', 'https://api.erp-eletrica.com.br/api/sync'); // URL base para sincronismo
-define('FILIAL_ID', 1); // ID fixo da filial nesta instalação local
-
 // Database Connection via Singleton
 try {
     $database = \App\Config\Database::getInstance();
@@ -65,15 +58,8 @@ function validateCsrf($token) {
 try {
     $migrationService = new \App\Services\MigrationService();
     $migrationService->run();
-    
-    // Automação de ativos para modo offline (Apenas no PDV Local)
-    if (APP_MODE === 'LOCAL_PDV' && !isset($_SESSION['assets_checked'])) {
-        $assetService = new \App\Services\AssetService();
-        $assetService->downloadRequiredAssets();
-        $_SESSION['assets_checked'] = true;
-    }
 } catch (Exception $e) {
-    error_log("Erro de inicialização híbrida: " . $e->getMessage());
+    error_log("Erro de migração: " . $e->getMessage());
 }
 
 // Global Exception Handler

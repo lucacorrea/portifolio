@@ -6,10 +6,10 @@
     <title><?= $title ?? 'ERP Elétrica' ?> - Core Corporate</title>
     
     <!-- Bootstrap 5 CSS -->
-    <link href="<?= \App\Services\AssetService::getAssetPath('bootstrap.min.css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css') ?>" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="<?= \App\Services\AssetService::getAssetPath('all.min.css', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css') ?>">
-    <!-- Google Fonts - Inter (Offline fallback provided by system fonts) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
     <link rel="stylesheet" href="public/css/corporate.css?v=10.6">
@@ -22,7 +22,7 @@
         }
     </script>
     
-    <script src="<?= \App\Services\AssetService::getAssetPath('chart.js', 'https://cdn.jsdelivr.net/npm/chart.js') ?>"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="erp-wrapper">
@@ -102,15 +102,8 @@
     </div>
 
     <!-- Bootstrap 5 JS Bundle -->
-    <script src="<?= \App\Services\AssetService::getAssetPath('bootstrap.bundle.min.js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js') ?>"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
-    <script>
-        // Prevenção de travamento (Offline Safety): Remove o loader após 3s independente de qualquer falha
-        setTimeout(() => {
-            const loader = document.getElementById('globalLoader');
-            if (loader) loader.style.display = 'none';
-        }, 3000);
-    </script>
 </body>
 </html>

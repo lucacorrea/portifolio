@@ -83,14 +83,8 @@
     <!-- Right Side: Checkout Summary -->
     <div class="col-lg-5">
         <div class="card border-0 glass-card h-100 d-flex flex-column" style="border: 1px solid var(--primary-color) !important;">
-            <div class="card-header bg-erp-primary py-3 border-0 d-flex justify-content-between align-items-center">
+            <div class="card-header bg-erp-primary py-3 border-0">
                 <h5 class="mb-0 fw-bold text-white"><i class="fas fa-cash-register me-2 text-white"></i>Checkout SaaS</h5>
-                <div id="syncStatusIndicator" class="badge bg-white bg-opacity-25 text-white border border-white border-opacity-25 py-2 px-3 d-flex align-items-center gap-2 cursor-pointer shadow-sm" onclick="forceSync()" title="Verificar Sincronismo">
-                    <i class="fas fa-circle text-success" id="syncOnlineIcon"></i>
-                    <span id="syncStatusText" class="extra-small fw-bold text-uppercase">Online</span>
-                    <span id="syncPendingCount" class="badge bg-danger rounded-pill ms-1 d-none" style="font-size: 0.6rem;">0</span>
-                    <i class="fas fa-sync-alt ms-1 d-none" id="syncLoadingIcon"></i>
-                </div>
             </div>
             <div class="card-body flex-grow-1">
                 <div class="mb-4">
@@ -1620,60 +1614,4 @@ async function handleBarcode(val) {
 pdvSearch.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') handleBarcode(pdvSearch.value);
 });
-
-async function checkSyncStatus() {
-    try {
-        const response = await fetch('vendas.php?action=sync_status');
-        const data = await response.json();
-        
-        const textEl = document.getElementById('syncStatusText');
-        const iconEl = document.getElementById('syncOnlineIcon');
-        const countEl = document.getElementById('syncPendingCount');
-        
-        if (data.is_online) {
-            textEl.innerText = data.app_mode === 'LOCAL_PDV' ? 'ONLINE' : 'NUVEM';
-            iconEl.className = 'fas fa-circle text-success';
-        } else {
-            textEl.innerText = 'OFFLINE';
-            iconEl.className = 'fas fa-circle text-danger';
-        }
-        
-        if (data.pending_count > 0) {
-            countEl.innerText = data.pending_count;
-            countEl.classList.remove('d-none');
-        } else {
-            countEl.classList.add('d-none');
-        }
-    } catch (e) {
-        console.error("Erro ao verificar sincronismo:", e);
-    }
-}
-
-async function forceSync() {
-    const loadingIcon = document.getElementById('syncLoadingIcon');
-    const onlineIcon = document.getElementById('syncOnlineIcon');
-    
-    loadingIcon.classList.remove('d-none');
-    loadingIcon.classList.add('fa-spin');
-    onlineIcon.classList.add('d-none');
-    
-    try {
-        const response = await fetch('vendas.php?action=sync');
-        const data = await response.json();
-        if (data.success) {
-            // alert("Sincronismo realizado com sucesso!"); // Removed alert to be less intrusive
-        }
-        await checkSyncStatus();
-    } catch (e) {
-        console.error("Erro técnico ao tentar sincronizar.");
-    } finally {
-        loadingIcon.classList.add('d-none');
-        loadingIcon.classList.remove('fa-spin');
-        onlineIcon.classList.remove('d-none');
-    }
-}
-
-// Start periodic check
-setInterval(checkSyncStatus, 20000); 
-checkSyncStatus();
 </script>

@@ -16,12 +16,7 @@ switch ($action) {
     case 'sold_list':
     case 'sold_search':
     case 'get_sale_detail':
-    case 'sync_status':
         \App\Services\AuthService::checkPermission('vendas', 'visualizar');
-        $controller->$action();
-        break;
-    case 'sync':
-        \App\Services\AuthService::checkPermission('vendas', 'criar');
         $controller->$action();
         break;
     case 'checkout':

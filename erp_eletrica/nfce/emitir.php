@@ -386,10 +386,10 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
       $st = $pdo->prepare("
         INSERT INTO nfce_emitidas
           (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem,
-           xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json, sync_status)
+           xml_nfeproc, xml_envio, xml_retorno, valor_total, valor_troco, tpag_json)
         VALUES
           (:empresa_id, :venda_id, :ambiente, :serie, :numero, :chave, :protocolo, :status_sefaz, :mensagem,
-           :xml_nfeproc, :xml_envio, :xml_retorno, :valor_total, :valor_troco, :tpag_json, :sync_status)
+           :xml_nfeproc, :xml_envio, :xml_retorno, :valor_total, :valor_troco, :tpag_json)
         ON DUPLICATE KEY UPDATE
           protocolo    = VALUES(protocolo),
           status_sefaz = VALUES(status_sefaz),
@@ -400,7 +400,6 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
           valor_total  = VALUES(valor_total),
           valor_troco  = VALUES(valor_troco),
           tpag_json    = VALUES(tpag_json),
-          sync_status  = VALUES(sync_status),
           created_at   = NOW()
       ");
 
@@ -419,8 +418,7 @@ if (!empty($stdEnv->cStat) && (int)$stdEnv->cStat === 104) {
         ':xml_retorno'  => $xmlRetorno,
         ':valor_total'  => isset($vNFnum) ? number_format((float)$vNFnum, 2, '.', '') : null,
         ':valor_troco'  => isset($vTrocoVal) ? number_format((float)$vTrocoVal, 2, '.', '') : null,
-        ':tpag_json'    => $tpagJsonStr,
-        ':sync_status'  => 'pending'
+        ':tpag_json'    => $tpagJsonStr
       ]);
     }
   } catch (Throwable $e) {

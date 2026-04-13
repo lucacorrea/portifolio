@@ -808,25 +808,4 @@ class SalesController extends BaseController {
             exit;
         }
     }
-    public function sync() {
-        $syncService = new \App\Services\SyncService();
-        echo json_encode($syncService->syncLocalToCloud());
-        exit;
-    }
-
-    public function sync_status() {
-        $db = \App\Config\Database::getInstance()->getConnection();
-        $syncService = new \App\Services\SyncService();
-        
-        $pendingVendas = $db->query("SELECT COUNT(*) FROM vendas WHERE sync_status = 'pending'")->fetchColumn();
-        $pendingCaixas = $db->query("SELECT COUNT(*) FROM caixas WHERE sync_status = 'pending'")->fetchColumn();
-        $online = $syncService->isOnline();
-        
-        echo json_encode([
-            'pending_count' => (int)$pendingVendas + (int)$pendingCaixas,
-            'is_online' => $online,
-            'app_mode' => APP_MODE
-        ]);
-        exit;
-    }
 }

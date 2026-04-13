@@ -15,7 +15,7 @@ class SefazXmlService extends BaseService {
         return $dom->createElementNS($this->ns, $name);
     }
 
-    public function generateNFCe(array $sale, array $fiscal, $tpEmis = "1", $justification = null) {
+    public function generateNFCe(array $sale, array $fiscal) {
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
         $dom->formatOutput = false;
@@ -32,6 +32,7 @@ class SefazXmlService extends BaseService {
         $mod = "65"; // NFC-e
         $serie = str_pad($fiscal['serie_nfce'] ?? '1', 3, '0', STR_PAD_LEFT);
         $nNF = str_pad($sale['id'], 9, '0', STR_PAD_LEFT);
+        $tpEmis = "1"; // Normal
         $cNF = str_pad(rand(1, 99999999), 8, '0', STR_PAD_LEFT);
         $dhEmi = date('Y-m-d\TH:i:sP');
         
@@ -67,13 +68,6 @@ class SefazXmlService extends BaseService {
         $ide->appendChild($this->createEl($dom, 'indPres', '1')); // Presencial
         $ide->appendChild($this->createEl($dom, 'procEmi', '0')); // Aplicativo do Contribuinte
         $ide->appendChild($this->createEl($dom, 'verProc', 'ERP_ELET_V1'));
-
-        // Se for contingência, adiciona campos específicos
-        if ($tpEmis == "9") {
-            $ide->appendChild($this->createEl($dom, 'dhCont', date('Y-m-d\TH:i:sP')));
-            $ide->appendChild($this->createEl($dom, 'xJust', substr($this->clearText($justification ?: 'Falha na conexao com internet'), 0, 255)));
-        }
-
         $infNFe->appendChild($ide);
 
         // 2. emit
