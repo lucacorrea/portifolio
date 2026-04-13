@@ -311,11 +311,14 @@ class SefazConsultaService extends BaseService {
     private function processarRetornoEvento($xmlStr) {
         if (empty($xmlStr)) throw new Exception("SEFAZ retornou uma resposta vazia no evento.");
 
-        // Limpeza agressiva de namespaces para facilitar XPath
+        // 🧹 Limpeza agressiva: remove namespaces e prefixos para evitar problemas de parsing
+        $xmlStr = preg_replace('/xmlns="[^"]+"/', '', $xmlStr);
+        $xmlStr = preg_replace('/xmlns:[^=]+="[^"]+"/', '', $xmlStr);
         $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $xmlStr);
+        
         $xml = @simplexml_load_string($cleanXml);
         
-        if (!$xml) throw new Exception("Falha ao ler XML de retorno da SEFAZ.");
+        if (!$xml) throw new Exception("Falha ao ler XML de retorno da SEFAZ. RAW: " . substr(strip_tags($xmlStr), 0, 50));
 
         // 1. Tentar encontrar o lote (retEnvEvento)
         $lote = $xml->xpath('//retEnvEvento');
