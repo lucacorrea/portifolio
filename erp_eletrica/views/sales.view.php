@@ -1458,6 +1458,7 @@ async function processarCheckout() {
         currentPvId = null;
         isAuthorized = false;
         authSupervisorId = null;
+        document.getElementById('venda_obs').value = '';
         authSupervisorCredential = null;
         document.getElementById('discountPercent').value = 0;
         if (document.getElementById('entradaValor')) document.getElementById('entradaValor').value = 0;
