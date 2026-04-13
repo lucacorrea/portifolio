@@ -21,14 +21,23 @@ class SyncService extends BaseService {
 
         $url = CLOUD_API_URL;
         $host = parse_url($url, PHP_URL_HOST);
-        $port = parse_url($url, PHP_URL_PORT) ?: 443;
         
-        $waitTimeoutInSeconds = 2;
-        if($fp = @fsockopen($host, $port, $errCode, $errStr, $waitTimeoutInSeconds)){   
+        // Tenta primeiro um check via fsockopen rápido (TCP)
+        $waitTimeoutInSeconds = 1;
+        $fp = @fsockopen($host, 443, $errCode, $errStr, $waitTimeoutInSeconds);
+        
+        if ($fp) {
            fclose($fp);
            return true;
         }
-        return false;
+
+        // Fallback: Verifica se o DNS resolve (se não resolver, está offline)
+        $ip = gethostbyname($host);
+        if ($ip === $host) {
+            return false; // DNS não resolveu
+        }
+
+        return true;
     }
 
     /**
