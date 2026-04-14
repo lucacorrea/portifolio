@@ -1,13 +1,13 @@
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center stack-on-mobile">
                 <h6 class="mb-0 fw-bold">Produtos Mais Vendidos</h6>
-                <form class="d-flex gap-2 align-items-center">
+                <form class="d-flex gap-2 align-items-center w-100-mobile">
                     <input type="hidden" name="action" value="topProdutos">
                     <input type="date" name="inicio" class="form-control form-control-sm" value="<?= $inicio ?>">
                     <input type="date" name="fim" class="form-control form-control-sm" value="<?= $fim ?>">
-                    <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+                    <button type="submit" class="btn btn-sm btn-primary px-3">Filtrar</button>
                 </form>
             </div>
             <div class="card-body">

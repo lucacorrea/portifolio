@@ -7,11 +7,11 @@
 </div>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center stack-on-mobile">
         <h6 class="mb-0 fw-bold">Lista de Produtos sem Giro</h6>
-        <form class="d-flex gap-2">
+        <form class="d-flex gap-2 w-100-mobile">
             <input type="hidden" name="action" value="encalhados">
-            <select name="dias" class="form-select form-select-sm" onchange="this.form.submit()">
+            <select name="dias" class="form-select form-select-sm w-100" onchange="this.form.submit()">
                 <option value="30" <?= $dias == 30 ? 'selected' : '' ?>>Últimos 30 dias</option>
                 <option value="60" <?= $dias == 60 ? 'selected' : '' ?>>Últimos 60 dias</option>
                 <option value="90" <?= $dias == 90 ? 'selected' : '' ?>>Últimos 90 dias</option>
