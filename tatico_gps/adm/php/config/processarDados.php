@@ -205,7 +205,7 @@ try {
 
     $pdo->commit();
 
-    echo "<script>window.location.href='../../configuracoes.php?status=ok';</script>";
+    echo "<script>window.location.href='../../configuracoes.php';</script>";
     exit;
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
