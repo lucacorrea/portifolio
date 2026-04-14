@@ -63,7 +63,7 @@
                     <!-- Certificado Digital Global -->
                     <div class="card border-0 shadow-lg h-100 rounded-4 overflow-hidden">
                         <div class="bg-primary bg-gradient p-4 text-white">
-                            <h6 class="fw-bold mb-1"><i class="fas fa-certificate text-warning me-2"></i>Certificado Digital A1</h6>
+                            <h6 class="fw-bold mb-1 text-white"><i class="fas fa-certificate text-warning me-2"></i>Certificado Digital A1</h6>
                             <p class="small text-white-50 mb-0">Emissão centralizada (Concentrador)</p>
                         </div>
                         <div class="card-body p-4 bg-white d-flex flex-column">
