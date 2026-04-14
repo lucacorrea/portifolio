@@ -344,7 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
 
             <div class="footer-info">
-               Desenvolvido por L&J Soluções Tecnológicas.
+               Desenvolvido por L&J Soluções Tecnológicas.<br>ERP Elétrica © 2026 
             </div>
         </div>
     </div>

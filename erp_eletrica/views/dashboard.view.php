@@ -1,6 +1,6 @@
 <div class="row g-4 mb-4">
 
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-md-3">
         <div class="card h-100 border-start border-warning border-4 p-2">
             <div class="card-body">
                 <div class="text-muted small fw-bold text-uppercase mb-2">Ticket Médio</div>
@@ -9,7 +9,7 @@
         </div>
     </div>
 
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-md-3">
         <div class="card h-100 border-start border-info border-4 p-2">
             <div class="card-body">
                 <div class="text-muted small fw-bold text-uppercase mb-2">Margem de Lucro</div>
@@ -22,7 +22,7 @@
 <?php if ($caixaAberto): ?>
 <div class="row g-4 mb-4">
     <!-- Primeira Linha: Métricas Principais -->
-    <div class="col-md-4">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card h-100 border-0 shadow-sm bg-primary text-white">
             <div class="card-body">
                 <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual em Caixa</div>
@@ -35,7 +35,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body text-center">
                 <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-chart-line me-2 text-primary"></i>Vendido (Total)</div>
@@ -44,7 +44,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-12 col-md-12 col-lg-4">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body text-center">
                 <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-hand-holding-dollar me-2 text-warning"></i>Fiado (A Receber)</div>
