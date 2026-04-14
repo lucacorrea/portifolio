@@ -155,13 +155,10 @@ if ($empresaCnpj) {
 
     <footer class="footer">
       <div class="footer-body d-flex justify-content-between align-items-center">
-        <div class="left-panel">
-          © <script>
+        <div class="left-panel">© <script>
             document.write(new Date().getFullYear())
-          </script>
-          <?= htmlspecialchars($empresaNome, ENT_QUOTES, 'UTF-8') ?>
-        </div>
-        <div class="right-panel">Desenvolvido por Lucas de S. Correa.</div>
+          </script> <?= htmlspecialchars((string)$empresaNome, ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="right-panel">Desenvolvido por L&J Soluções Tecnológicas.</div>
       </div>
     </footer>
   </main>

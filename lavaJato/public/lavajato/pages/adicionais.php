@@ -175,7 +175,7 @@ include '../../layouts/sidebar.php';
         © <script>document.write(new Date().getFullYear())</script>
         <?= htmlspecialchars($empresaNome, ENT_QUOTES, 'UTF-8') ?>
       </div>
-      <div class="right-panel">Desenvolvido por Lucas de S. Correa.</div>
+        <div class="right-panel">Desenvolvido por L&J Soluções Tecnológicas.</div>
     </div>
   </footer>
 
