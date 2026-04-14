@@ -43,7 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $acao = $_POST['acao'] ?? '';
 
-if ($acao === 'salvar_cliente') {
+if ($acao === 'salvar_cliente' || $acao === 'editar_cliente') {
+    $id = (int)($_POST['id'] ?? 0);
+
     $nome = limparTexto($_POST['nome'] ?? '');
     $cpf = limparTexto($_POST['cpf'] ?? '');
     $telefone = limparTexto($_POST['telefone'] ?? '');
@@ -86,39 +88,68 @@ if ($acao === 'salvar_cliente') {
     }
 
     try {
-        $sql = "INSERT INTO clientes (
-                    nome,
-                    cpf,
-                    telefone,
-                    email,
-                    endereco,
-                    mensalidade,
-                    dia_vencimento,
-                    forma_pagamento,
-                    qtd_veiculos,
-                    tipo_veiculo,
-                    status,
-                    mensagem_automatica,
-                    whatsapp_principal,
-                    observacoes
-                ) VALUES (
-                    :nome,
-                    :cpf,
-                    :telefone,
-                    :email,
-                    :endereco,
-                    :mensalidade,
-                    :dia_vencimento,
-                    :forma_pagamento,
-                    :qtd_veiculos,
-                    :tipo_veiculo,
-                    :status,
-                    :mensagem_automatica,
-                    :whatsapp_principal,
-                    :observacoes
-                )";
+        if ($acao === 'salvar_cliente') {
+            $sql = "INSERT INTO clientes (
+                        nome,
+                        cpf,
+                        telefone,
+                        email,
+                        endereco,
+                        mensalidade,
+                        dia_vencimento,
+                        forma_pagamento,
+                        qtd_veiculos,
+                        tipo_veiculo,
+                        status,
+                        mensagem_automatica,
+                        whatsapp_principal,
+                        observacoes
+                    ) VALUES (
+                        :nome,
+                        :cpf,
+                        :telefone,
+                        :email,
+                        :endereco,
+                        :mensalidade,
+                        :dia_vencimento,
+                        :forma_pagamento,
+                        :qtd_veiculos,
+                        :tipo_veiculo,
+                        :status,
+                        :mensagem_automatica,
+                        :whatsapp_principal,
+                        :observacoes
+                    )";
 
-        $stmt = $pdo->prepare($sql);
+            $stmt = $pdo->prepare($sql);
+            $_SESSION['flash_sucesso'] = 'Cliente cadastrado com sucesso.';
+        } else {
+            if ($id <= 0) {
+                voltarComErro('ID do cliente inválido.');
+            }
+
+            $sql = "UPDATE clientes SET
+                        nome = :nome,
+                        cpf = :cpf,
+                        telefone = :telefone,
+                        email = :email,
+                        endereco = :endereco,
+                        mensalidade = :mensalidade,
+                        dia_vencimento = :dia_vencimento,
+                        forma_pagamento = :forma_pagamento,
+                        qtd_veiculos = :qtd_veiculos,
+                        tipo_veiculo = :tipo_veiculo,
+                        status = :status,
+                        mensagem_automatica = :mensagem_automatica,
+                        whatsapp_principal = :whatsapp_principal,
+                        observacoes = :observacoes
+                    WHERE id = :id";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $_SESSION['flash_sucesso'] = 'Cliente atualizado com sucesso.';
+        }
+
         $stmt->bindValue(':nome', $nome);
         $stmt->bindValue(':cpf', $cpf);
         $stmt->bindValue(':telefone', $telefone);
@@ -135,12 +166,11 @@ if ($acao === 'salvar_cliente') {
         $stmt->bindValue(':observacoes', $observacoes);
         $stmt->execute();
 
-        $_SESSION['flash_sucesso'] = 'Cliente cadastrado com sucesso.';
         header('Location: ../../clientes.php');
         exit;
     } catch (Throwable $e) {
         $erro = htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
-        echo "<script>alert('Erro ao salvar cliente: {$erro}'); history.back();</script>";
+        echo "<script>alert('Erro ao processar cliente: {$erro}'); history.back();</script>";
         exit;
     }
 }
