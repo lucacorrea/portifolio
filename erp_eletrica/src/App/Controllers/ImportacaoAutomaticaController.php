@@ -101,6 +101,11 @@ class ImportacaoAutomaticaController extends BaseController {
             $stmt = $db->prepare("SELECT cnpj FROM filiais WHERE id = ?");
             $stmt->execute([$filialId]);
             $cnpjRaw = $stmt->fetchColumn();
+            
+            if (!$cnpjRaw) {
+                throw new \Exception("CNPJ não encontrado para a filial atual. Verifique o cadastro da filial e configure sua empresa.");
+            }
+            
             $cnpj = preg_replace('/\D/', '', $cnpjRaw);
 
             // ⛔ CONTROLE DE TEMPO (⏱️ 1 consulta por hora automático)
@@ -163,7 +168,7 @@ class ImportacaoAutomaticaController extends BaseController {
                 'message' => $message
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Erro na sincronização SEFAZ: " . $e->getMessage());
             echo json_encode([
                 'success' => false,
@@ -206,7 +211,7 @@ class ImportacaoAutomaticaController extends BaseController {
             ][$type] ?? 'Manifestação realizada.';
 
             echo json_encode(['success' => true, 'message' => $msg . ' Sincronize novamente em instantes para baixar os produtos.']);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;
@@ -276,7 +281,7 @@ class ImportacaoAutomaticaController extends BaseController {
             }
 
             echo json_encode(['success' => true, 'produtos' => $produtos]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             echo json_encode(['success' => false, 'error' => 'Erro interno ao processar: ' . $e->getMessage()]);
         }
         exit;
@@ -346,7 +351,7 @@ class ImportacaoAutomaticaController extends BaseController {
                 
                 $db->commit();
                 echo json_encode(['success' => true]);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $db->rollBack();
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
