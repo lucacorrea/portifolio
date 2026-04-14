@@ -85,243 +85,252 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <style>
         :root {
             --login-bg: #cbd5e1;
+            --login-bg-accent: #94a3b8;
             --card-bg: #ffffff;
-            --accent-gold: #2b4c7d;
-            --accent-hover: #1e3a62;
-            --input-bg: #ffffff;
-            --border-color: #e2e8f0;
+            --brand-header: #2b4c7d;
+            --accent-gold: #FFC107;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --input-border: #e2e8f0;
+            --corporate-blue: #2b4c7d;
         }
 
         body {
-            background-color: var(--login-bg);
+            background: linear-gradient(135deg, var(--login-bg) 0%, var(--login-bg-accent) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             margin: 0;
             font-family: 'Inter', sans-serif;
-            color: #1e293b;
+            color: var(--text-main);
         }
 
         .login-card {
             background: var(--card-bg);
-            padding: 50px;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            border-radius: 16px;
+            box-shadow: 
+                0 10px 25px -5px rgba(0, 0, 0, 0.1),
+                0 8px 10px -6px rgba(0, 0, 0, 0.1),
+                0 0 0 1px rgba(0, 0, 0, 0.05);
             width: 100%;
-            max-width: 450px;
-            border: 1px solid var(--border-color);
+            max-width: 440px;
             position: relative;
             overflow: hidden;
+            border: none;
+            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .login-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--accent-gold);
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .login-header {
+        .brand-header {
+            background: var(--brand-header);
+            padding: 40px 30px;
             text-align: center;
-            margin-bottom: 40px;
+            position: relative;
+            border-bottom: 4px solid var(--accent-gold);
         }
 
-        .login-header i {
-            font-size: 3.5rem;
-            color: var(--accent-gold);
-            margin-bottom: 15px;
-            filter: drop-shadow(0 0 10px rgba(255, 193, 7, 0.3));
+        .brand-header img {
+            max-width: 80%;
+            height: auto;
+            max-height: 80px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
         }
 
-        .login-header h1 {
-            font-size: 1.75rem;
-            color: #1e293b;
-            margin: 0;
+        .login-body {
+            padding: 40px;
+        }
+
+        .login-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-title h2 {
+            font-size: 1.25rem;
             font-weight: 800;
-            letter-spacing: 2px;
+            color: var(--text-main);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .login-header p {
-            color: #64748b;
+        .login-title p {
             font-size: 0.85rem;
+            color: var(--text-muted);
             margin-top: 5px;
-            letter-spacing: 1px;
-            font-weight: 500;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .form-label {
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-weight: 700;
-            color: #64748b;
-            font-size: 0.7rem;
-            letter-spacing: 1px;
+            color: var(--text-main);
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
         }
 
         .form-control {
             width: 100%;
-            padding: 14px 18px;
-            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            border: 1px solid var(--input-border);
             border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.2s;
-            background: var(--input-bg);
-            color: #ffffff !important;
+            font-size: 0.95rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #f8fafc;
+            color: var(--text-main);
         }
 
         .form-control:focus {
-            border-color: var(--accent-gold);
-            background: var(--input-bg);
+            border-color: var(--corporate-blue);
+            background: #ffffff;
             outline: none;
-            box-shadow: none;
-            color: #ffffff;
-        }
-
-        .form-control::placeholder {
-            color: #475569 !important;
+            box-shadow: 0 0 0 4px rgba(43, 76, 125, 0.1);
         }
 
         .btn-login {
             width: 100%;
-            padding: 15px;
-            background: var(--accent-gold);
-            color: #fff;
+            padding: 14px;
+            background: var(--corporate-blue);
+            color: #ffffff;
             border: none;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             text-transform: uppercase;
             letter-spacing: 1px;
+            margin-top: 10px;
+            box-shadow: 0 4px 6px -1px rgba(43, 76, 125, 0.2);
         }
 
         .btn-login:hover {
-            background: #1e3a62 !important;
-            border: 2px solid var(--accent-gold) !important;
+            background: var(--brand-header);
             transform: translateY(-1px);
-            color: var(--accent-gold) !important;
+            box-shadow: 0 10px 15px -3px rgba(43, 76, 125, 0.3);
         }
 
         .alert {
-            padding: 15px;
+            padding: 12px 16px;
             border-radius: 8px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             font-size: 0.85rem;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            background-color: rgba(239, 68, 68, 0.15) !important;
-            color: #ff8a8a !important;
+            border: 1px solid transparent;
+        }
+
+        .alert-danger {
+            background-color: #fef2f2;
+            border-color: #fee2e2;
+            color: #b91c1c;
         }
 
         .alert-info {
-            background-color: rgba(59, 130, 246, 0.15) !important;
-            color: #93c5fd !important;
-            border: 1px solid rgba(59, 130, 246, 0.2) !important;
+            background-color: #eff6ff;
+            border-color: #dbeafe;
+            color: #1d4ed8;
         }
 
-        .text-accent {
-            color: var(--accent-gold) !important;
+        .auth-admin-link {
+            display: inline-flex;
+            align-items: center;
+            color: var(--corporate-blue);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .auth-admin-link:hover {
+            color: var(--text-main);
         }
 
         .footer-info {
-            margin-top: 30px;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
             text-align: center;
-            font-size: 0.7rem;
-            color: #404040;
+            font-size: 0.65rem;
+            color: var(--text-muted);
             font-family: 'Roboto Mono', monospace;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        select.form-control option {
-            background-color: var(--input-bg);
-            color: #ffffff;
-        }
-
-        @media (max-width: 480px) {
-            .login-card {
-                padding: 30px 20px;
-                border-radius: 0;
-                height: 100vh;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                border: none;
-            }
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
 <body>
     <div class="login-card">
-        <div class="login-header">
-            <img src="logo_sistema_erp_eletrica.png?v=2" alt="ERP Elétrica - Centro do Eletricista" style="max-width: 75%; height: auto; max-height: 90px; filter: drop-shadow(0 0 8px rgba(43,76,125,0.4));">
+        <div class="brand-header">
+            <img src="logo_sistema_erp_eletrica.png?v=3" alt="ERP Elétrica">
         </div>
 
-        <?php if ($error): ?>
-            <div class="alert alert-danger">
-                <i class="fas fa-shield-alt"></i> <?php echo $error; ?>
+        <div class="login-body">
+            <div class="login-title">
+                <h2>Acesso ao Sistema</h2>
+                <p>Identifique-se para continuar</p>
             </div>
-        <?php endif; ?>
 
-        <?php if (isset($_GET['msg'])): ?>
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> <?php echo htmlspecialchars($_GET['msg']); ?>
-            </div>
-        <?php endif; ?>
-
-        <form method="POST">
-            <div class="form-group">
-                <label class="form-label">UNIDADE DE ACESSO</label>
-                <select name="filial_id" class="form-control" required>
-                    <option value="" disabled selected>Selecione a Empresa...</option>
-                    <?php foreach ($branches as $branch): ?>
-                        <option value="<?= $branch['id'] ?>"><?= $branch['nome'] ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">E-MAIL CORPORATIVO</label>
-                <input type="email" name="email" class="form-control" placeholder="usuario@empresa.com" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">SENHA TÉCNICA</label>
-                <div class="input-group">
-                    <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
-                    <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border-color); background: var(--input-bg); color: #475569;">
-                        <i class="fas fa-eye"></i>
-                    </button>
+            <?php if ($error): ?>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i> <?php echo $error; ?>
                 </div>
+            <?php endif; ?>
+
+            <?php if (isset($_GET['msg'])): ?>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> <?php echo htmlspecialchars($_GET['msg']); ?>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label class="form-label">Unidade de Acesso</label>
+                    <select name="filial_id" class="form-control" required>
+                        <option value="" disabled selected>Selecionar unidade...</option>
+                        <?php foreach ($branches as $branch): ?>
+                            <option value="<?= $branch['id'] ?>"><?= $branch['nome'] ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">E-mail Corporativo</label>
+                    <input type="email" name="email" class="form-control" placeholder="usuario@empresa.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Senha Técnica</label>
+                    <div class="input-group">
+                        <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
+                        <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--input-border); background: #f8fafc; color: #64748b;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-login">
+                    Confirmar Acesso <i class="fas fa-arrow-right ms-1"></i>
+                </button>
+            </form>
+
+            <div class="mt-4 text-center">
+                <a href="gerar_codigo.php" class="auth-admin-link">
+                    <i class="fas fa-key me-1"></i> Área do Administrador
+                </a>
             </div>
-            <button type="submit" class="btn-login">
-                AUTENTICAR ACESSO <i class="fas fa-shield-alt"></i>
-            </button>
-        </form>
 
-        <div class="mt-4 text-center">
-            <a href="gerar_codigo.php" class="text-accent small fw-bold text-decoration-none transition-all">
-                <i class="fas fa-key me-1"></i> Gerar Código de Autorização (Admin)
-            </a>
-        </div>
-
-        <div class="footer-info">
-            VERSÃO <?php echo APP_VERSION; ?> | L&J SOLUCOES TECNOLOGICAS
-            
+            <div class="footer-info">
+                SISTEMA ERP ELÉTRICA | VERSÃO <?php echo APP_VERSION; ?>
+            </div>
         </div>
     </div>
     
