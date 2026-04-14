@@ -14,7 +14,7 @@ if (!isset($menuAtivo)) {
     <a href="../../dashboard.php" class="navbar-brand">
       <div class="logo-main">
         <div class="logo-normal">
-          <img src="../../assets/images/auth/log.png" alt="logo" class="logo-dashboard">
+          <img src="../../assets/images/auth/log.png" alt="logo" class="logo-dashboard" style="max-width: 50px; max-height: 50px;">
         </div>
       </div>
       <h4 class="logo-title title-dashboard">AutoLav Pro</h4>
