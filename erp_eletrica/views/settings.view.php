@@ -1,19 +1,26 @@
-<div class="mb-4">
-    <ul class="nav nav-tabs border-0" id="settingsTabs" role="tablist">
-        <?php if ($_SESSION['is_matriz'] ?? false): ?>
-        <li class="nav-item shadow-sm me-2 rounded-top bg-white">
-            <button class="nav-link active fw-bold border-0 px-4 py-3" id="matriz-tab" data-bs-toggle="tab" data-bs-target="#matriz" type="button" role="tab">
-                <i class="fas fa-building me-2 text-primary"></i>Matriz & Central Fiscal
-            </button>
-        </li>
-        <?php endif; ?>
-        <li class="nav-item shadow-sm rounded-top bg-white">
-            <button class="nav-link <?= !($_SESSION['is_matriz'] ?? false) ? 'active' : '' ?> fw-bold border-0 px-4 py-3" id="unidades-tab" data-bs-toggle="tab" data-bs-target="#unidades" type="button" role="tab">
-                <i class="fas fa-network-wired me-2 text-secondary"></i>Gestão de Unidades
-            </button>
-        </li>
-    </ul>
+<div class="mb-4 overflow-hidden shadow-sm rounded-3">
+    <div class="bg-white p-2">
+        <ul class="nav nav-pills nav-fill flex-nowrap overflow-auto hide-scrollbar" id="settingsTabs" role="tablist" style="gap: 5px;">
+            <?php if ($_SESSION['is_matriz'] ?? false): ?>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold py-2 py-md-3 text-nowrap" id="matriz-tab" data-bs-toggle="tab" data-bs-target="#matriz" type="button" role="tab">
+                    <i class="fas fa-building me-2"></i>Matriz <span class="d-none d-sm-inline">& Central Fiscal</span>
+                </button>
+            </li>
+            <?php endif; ?>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link <?= !($_SESSION['is_matriz'] ?? false) ? 'active' : '' ?> fw-bold py-2 py-md-3 text-nowrap" id="unidades-tab" data-bs-toggle="tab" data-bs-target="#unidades" type="button" role="tab">
+                    <i class="fas fa-network-wired me-2"></i><span class="d-none d-sm-inline">Gestão de </span>Unidades
+                </button>
+            </li>
+        </ul>
+    </div>
 </div>
+
+<style>
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
 
 <div class="tab-content" id="settingsTabsContent">
     <!-- ABA 1: MATRIZ & CERTIFICADO -->

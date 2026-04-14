@@ -134,14 +134,26 @@ body {
 .table-responsive {
     border-radius: 8px;
     margin-bottom: 1rem;
-    overflow-x: auto;
+    overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+
+.table-responsive table {
+    min-width: 650px; /* Force scroll on narrow screens */
+}
+
+@media (min-width: 992px) {
+    .table-responsive table {
+        min-width: 100%; /* Back to normal on desktop */
+    }
 }
 
 /* Ensure body doesn't horizontal scroll because of tables */
 body {
     overflow-x: hidden;
     position: relative;
+    background-color: var(--erp-slate);
 }
 
 /* Smart Stacking Utility */
@@ -163,13 +175,19 @@ body {
 }
 
 .top-navbar {
-    height: 70px;
+    height: var(--header-height);
     background: var(--erp-surface) !important;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 2rem;
+    padding: 0 1rem;
+}
+
+@media (min-width: 992px) {
+    .top-navbar {
+        padding: 0 2rem;
+    }
 }
 
 .content-body {
