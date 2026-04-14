@@ -1,8 +1,8 @@
 <!-- Actions Bar -->
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body d-flex justify-content-between align-items-center py-3">
+    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 py-3">
         <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-users-cog me-2"></i>Diretório de Colaboradores</h6>
-        <button class="btn btn-primary fw-bold" onclick="openUserModal()">
+        <button class="btn btn-primary fw-bold w-100 w-md-auto" onclick="openUserModal()">
             <i class="fas fa-user-plus me-2"></i>Novo Operador
         </button>
     </div>
