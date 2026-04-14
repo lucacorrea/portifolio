@@ -92,6 +92,10 @@ class ImportacaoAutomaticaController extends BaseController {
         ]);
     }
     public function sincronizar() {
+        // Stop output pollution (warnings/notices) from breaking JSON
+        ini_set('display_errors', 0);
+        error_reporting(0);
+        
         try {
             $db = \App\Config\Database::getInstance()->getConnection();
             $filialId = $_SESSION['filial_id'] ?? 1;
