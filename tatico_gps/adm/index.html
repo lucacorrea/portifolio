@@ -1,7 +1,6 @@
 <!doctype html>
-
 <html
-  lang="en"
+  lang="pt-BR"
   class="layout-wide customizer-hide"
   data-assets-path="../assets/"
   data-template="vertical-menu-template-free">
@@ -11,9 +10,9 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
 
-    <title>Demo: Login Basic - Pages | Sneat - Bootstrap Dashboard FREE</title>
+    <title>Tático GPS - Login</title>
 
-    <meta name="description" content="" />
+    <meta name="description" content="Página de login do sistema Tático GPS" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon/favicon.ico" />
@@ -28,37 +27,28 @@
     <link rel="stylesheet" href="../assets/vendor/fonts/iconify-icons.css" />
 
     <!-- Core CSS -->
-    <!-- build:css assets/vendor/css/theme.css  -->
-
     <link rel="stylesheet" href="../assets/vendor/css/core.css" />
     <link rel="stylesheet" href="../assets/css/demo.css" />
 
     <!-- Vendors CSS -->
-
     <link rel="stylesheet" href="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
 
-    <!-- endbuild -->
-
     <!-- Page CSS -->
-    <!-- Page -->
     <link rel="stylesheet" href="../assets/vendor/css/pages/page-auth.css" />
 
     <!-- Helpers -->
     <script src="../assets/vendor/js/helpers.js"></script>
-    <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
 
-    <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
-
+    <!-- Config -->
     <script src="../assets/js/config.js"></script>
   </head>
 
   <body>
-    <!-- Content -->
+    <!-- Conteúdo -->
 
     <div class="container-xxl">
       <div class="authentication-wrapper authentication-basic container-p-y">
         <div class="authentication-inner">
-          <!-- Register -->
           <div class="card px-sm-6 px-0">
             <div class="card-body">
               <!-- Logo -->
@@ -105,7 +95,7 @@
                               </g>
                               <g
                                 id="Triangle"
-                                transform="translate(19.000000, 11.000000) rotate(-300.000000) translate(-19.000000, -11.000000) ">
+                                transform="translate(19.000000, 11.000000) rotate(-300.000000) translate(-19.000000, -11.000000)">
                                 <use fill="currentColor" xlink:href="#path-5"></use>
                                 <use fill-opacity="0.2" fill="#FFFFFF" xlink:href="#path-5"></use>
                               </g>
@@ -115,99 +105,81 @@
                       </svg>
                     </span>
                   </span>
-                  <span class="app-brand-text demo text-heading fw-bold">Sneat</span>
+                  <span class="app-brand-text demo text-heading fw-bold">Tático GPS</span>
                 </a>
               </div>
               <!-- /Logo -->
-              <h4 class="mb-1">Welcome to Sneat! 👋</h4>
-              <p class="mb-6">Please sign-in to your account and start the adventure</p>
 
-              <form id="formAuthentication" class="mb-6" action="index.html">
+              <h4 class="mb-1">Bem-vindo ao Tático GPS 👋</h4>
+              <p class="mb-6">Entre com sua conta para acessar o sistema</p>
+
+              <form id="formAuthentication" class="mb-6" action="index.html" method="POST">
                 <div class="mb-6">
-                  <label for="email" class="form-label">Email or Username</label>
+                  <label for="email" class="form-label">E-mail ou usuário</label>
                   <input
                     type="text"
                     class="form-control"
                     id="email"
                     name="email-username"
-                    placeholder="Enter your email or username"
+                    placeholder="Digite seu e-mail ou usuário"
                     autofocus />
                 </div>
+
                 <div class="mb-6 form-password-toggle">
-                  <label class="form-label" for="password">Password</label>
+                  <label class="form-label" for="password">Senha</label>
                   <div class="input-group input-group-merge">
                     <input
                       type="password"
                       id="password"
                       class="form-control"
                       name="password"
-                      placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                      placeholder="••••••••••••"
                       aria-describedby="password" />
-                    <span class="input-group-text cursor-pointer"><i class="icon-base bx bx-hide"></i></span>
+                    <span class="input-group-text cursor-pointer">
+                      <i class="icon-base bx bx-hide"></i>
+                    </span>
                   </div>
                 </div>
+
                 <div class="mb-8">
                   <div class="d-flex justify-content-between">
                     <div class="form-check mb-0">
                       <input class="form-check-input" type="checkbox" id="remember-me" />
-                      <label class="form-check-label" for="remember-me"> Remember Me </label>
+                      <label class="form-check-label" for="remember-me">Lembrar acesso</label>
                     </div>
                     <a href="auth-forgot-password-basic.html">
-                      <span>Forgot Password?</span>
+                      <span>Esqueceu a senha?</span>
                     </a>
                   </div>
                 </div>
+
                 <div class="mb-6">
-                  <button class="btn btn-primary d-grid w-100" type="submit">Login</button>
+                  <button class="btn btn-primary d-grid w-100" type="submit">Entrar</button>
                 </div>
               </form>
 
               <p class="text-center">
-                <span>New on our platform?</span>
+                <span>Ainda não tem acesso?</span>
                 <a href="auth-register-basic.html">
-                  <span>Create an account</span>
+                  <span>Solicitar cadastro</span>
                 </a>
               </p>
             </div>
           </div>
-          <!-- /Register -->
         </div>
       </div>
     </div>
 
-    <!-- / Content -->
-
-    <div class="buy-now">
-      <a
-        href="https://themeselection.com/item/sneat-dashboard-pro-bootstrap/"
-        target="_blank"
-        class="btn btn-danger btn-buy-now"
-        >Upgrade to Pro</a
-      >
-    </div>
+    <!-- /Conteúdo -->
 
     <!-- Core JS -->
-
     <script src="../assets/vendor/libs/jquery/jquery.js"></script>
-
     <script src="../assets/vendor/libs/popper/popper.js"></script>
     <script src="../assets/vendor/js/bootstrap.js"></script>
-
     <script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
-
     <script src="../assets/vendor/js/menu.js"></script>
 
-    <!-- endbuild -->
-
-    <!-- Vendors JS -->
-
     <!-- Main JS -->
-
     <script src="../assets/js/main.js"></script>
-
-    <!-- Page JS -->
-
-    <!-- Place this tag before closing body tag for github widget button. -->
-    <script async defer src="https://buttons.github.io/buttons.js"></script>
   </body>
 </html>
