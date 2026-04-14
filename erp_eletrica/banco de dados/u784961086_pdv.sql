@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Tempo de geração: 14/04/2026 às 18:18
+-- Tempo de geração: 14/04/2026 às 18:30
 -- Versão do servidor: 11.8.6-MariaDB-log
 -- Versão do PHP: 7.2.34
 
@@ -77,7 +77,8 @@ INSERT INTO `audit_logs` (`id`, `usuario_id`, `acao`, `tabela`, `registro_id`, `
 (233, 6, 'Configurações Globais de Certificado & Identidade Atualizadas', 'configuracoes', NULL, NULL, NULL, '2803:9810:4d1b:fd10:5945:437a:a9ee:ed03', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-04-14 16:35:06'),
 (234, 6, 'Configurações Globais de Certificado & Identidade Atualizadas', 'configuracoes', NULL, NULL, NULL, '2803:9810:4d1b:fd10:5945:437a:a9ee:ed03', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-04-14 16:35:18'),
 (235, 6, 'Configurações Globais de Certificado Atualizadas', 'configuracoes', NULL, NULL, NULL, '2803:9810:4d1b:fd10:ad73:6756:7a4b:22d2', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-04-14 18:18:07'),
-(236, 6, 'Configurações Globais de Certificado Atualizadas', 'configuracoes', NULL, NULL, NULL, '2803:9810:4d1b:fd10:ad73:6756:7a4b:22d2', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-04-14 18:18:10');
+(236, 6, 'Configurações Globais de Certificado Atualizadas', 'configuracoes', NULL, NULL, NULL, '2803:9810:4d1b:fd10:ad73:6756:7a4b:22d2', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-04-14 18:18:10'),
+(237, 6, 'Configurações Globais de Certificado Atualizadas', 'configuracoes', NULL, NULL, NULL, '2803:9810:4d1b:fd10:ad73:6756:7a4b:22d2', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-04-14 18:27:56');
 
 -- --------------------------------------------------------
 
@@ -14560,7 +14561,7 @@ CREATE TABLE `sefaz_config` (
 --
 
 INSERT INTO `sefaz_config` (`id`, `cnpj`, `razao_social`, `nome_fantasia`, `inscricao_estadual`, `inscricao_municipal`, `cep`, `logradouro`, `numero_endereco`, `complemento`, `bairro`, `cidade`, `uf`, `codigo_uf`, `codigo_municipio`, `telefone`, `certificado_path`, `certificado_senha`, `regime_tributario`, `serie_nfce`, `ultimo_numero_nfce`, `ambiente`, `created_at`, `csc_id`, `tipo_emissao`, `finalidade`, `ind_pres`, `tipo_impressao`, `csc`, `email`) VALUES
-(2, '35062192000145', 'MATRIZ CENTRO DO ELETRICISTA ', 'MATRIZ CENTRO DO ELETRICISTA ', '05.415.271-2', NULL, '69460000', 'VIEIRA MARTINS', '266', 'LETRA B', 'CHAGAS AGUIAR', 'Coari', 'AM', 13, '1301209', '9781025451', '', 'rab123456789', 1, 1, 0, 'producao', '2026-04-14 16:35:06', '1', 1, 1, 1, 4, '092c39ec0d341d8f', NULL);
+(2, '35062192000145', 'MATRIZ CENTRO DO ELETRICISTA ', 'MATRIZ CENTRO DO ELETRICISTA ', '05.415.271-2', NULL, '69460000', 'VIEIRA MARTINS', '266', 'LETRA B', 'CHAGAS AGUIAR', 'Coari', 'AM', 13, '1301209', '9781025451', 'global_sefaz_1776191276.pfx', 'rab123456789', 1, 1, 0, 'producao', '2026-04-14 16:35:06', '1', 1, 1, 1, 4, '092c39ec0d341d8f', NULL);
 
 -- --------------------------------------------------------
 
@@ -15054,7 +15055,7 @@ ALTER TABLE `alertas_estoque`
 -- AUTO_INCREMENT de tabela `audit_logs`
 --
 ALTER TABLE `audit_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=237;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=238;
 
 --
 -- AUTO_INCREMENT de tabela `autorizacoes_temporarias`
@@ -15144,7 +15145,7 @@ ALTER TABLE `estoque_detalhado`
 -- AUTO_INCREMENT de tabela `estoque_filiais`
 --
 ALTER TABLE `estoque_filiais`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16903;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16904;
 
 --
 -- AUTO_INCREMENT de tabela `fiados_pagamentos`

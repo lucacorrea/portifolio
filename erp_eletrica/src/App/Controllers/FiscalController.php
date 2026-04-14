@@ -71,6 +71,19 @@ class FiscalController extends BaseController {
         // Get Global Config
         $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
         $globalConfig = $stmt->fetch();
+        
+        // Fallback para a Matriz (comportamento real do backend NfceService)
+        if (empty($globalConfig['certificado_path'])) {
+            $stmtMatriz = $this->db->query("SELECT certificado_pfx, ambiente, csc_id, csc_token as csc FROM filiais WHERE principal = 1 LIMIT 1");
+            $matriz = $stmtMatriz->fetch();
+            if ($matriz && !empty($matriz['certificado_pfx'])) {
+                if (!$globalConfig) $globalConfig = [];
+                $globalConfig['certificado_path'] = $matriz['certificado_pfx'];
+                $globalConfig['ambiente'] = $matriz['ambiente'] == 1 ? 'producao' : 'homologacao';
+                $globalConfig['csc'] = $matriz['csc'];
+                $globalConfig['csc_id'] = $matriz['csc_id'];
+            }
+        }
 
         $this->render('fiscal/settings', [
             'branches' => $branches,
@@ -145,6 +158,16 @@ class FiscalController extends BaseController {
         // Fetch Global Cert Config
         $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
         $globalConfig = $stmt->fetch();
+
+        // Fallback para consistência da UI com o Service
+        if (empty($globalConfig['certificado_path'])) {
+            $stmtMatriz = $this->db->query("SELECT certificado_pfx FROM filiais WHERE principal = 1 LIMIT 1");
+            $matriz = $stmtMatriz->fetch();
+            if ($matriz && !empty($matriz['certificado_pfx'])) {
+                if (!$globalConfig) $globalConfig = [];
+                $globalConfig['certificado_path'] = $matriz['certificado_pfx'];
+            }
+        }
 
         // 1. Environment Tests
         $env = [
