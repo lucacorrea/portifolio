@@ -145,29 +145,35 @@
             font-size: 0.84rem;
         }
 
-        .summary-list {
+        .help-list {
             list-style: none;
-            margin: 0;
             padding: 0;
+            margin: 0;
         }
 
-        .summary-list li {
+        .help-list li {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1rem;
             padding: 0.85rem 0;
             border-bottom: 1px solid #eceef1;
         }
 
-        .summary-list li:last-child {
+        .help-list li:last-child {
             border-bottom: 0;
         }
 
-        .offcanvas.offcanvas-end {
-            width: min(760px, 100%);
+        .help-text-box {
+            background: rgba(105, 108, 255, 0.08);
+            border: 1px solid rgba(105, 108, 255, 0.12);
+            color: #566a7f;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
         }
 
-        .form-section-title {
+        .modal-form-section {
             font-size: 0.95rem;
             font-weight: 700;
             color: #566a7f;
@@ -176,13 +182,8 @@
             border-bottom: 1px solid #eceef1;
         }
 
-        .sticky-form-footer {
-            position: sticky;
-            bottom: 0;
-            background: #fff;
-            border-top: 1px solid #eceef1;
-            padding-top: 1rem;
-            margin-top: 1.5rem;
+        .modal-lg-custom {
+            max-width: 900px;
         }
 
         @media (max-width: 1199.98px) {
@@ -385,7 +386,7 @@
                                         <h3 class="text-primary">Clientes</h3>
                                         <p>
                                             Gerencie a base de clientes do Tático GPS com uma lista mais limpa e
-                                            formulário de cadastro separado.
+                                            formulário em modal.
                                         </p>
                                     </div>
                                 </div>
@@ -443,10 +444,10 @@
                             </div>
                         </div>
 
+                        <!-- Lista -->
                         <div class="row">
-                            <!-- Lista -->
-                            <div class="col-xl-8 mb-4">
-                                <div class="card h-100">
+                            <div class="col-12 mb-4">
+                                <div class="card">
                                     <div class="card-header">
                                         <div class="table-tools">
                                             <div class="left-tools">
@@ -455,10 +456,14 @@
                                             </div>
 
                                             <div class="right-tools">
-                                                <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas"
-                                                    data-bs-target="#offcanvasNovoCliente"
-                                                    aria-controls="offcanvasNovoCliente">
+                                                <button class="btn btn-primary" type="button" data-bs-toggle="modal"
+                                                    data-bs-target="#modalNovoCliente">
                                                     <i class="bx bx-plus me-1"></i> Novo Cliente
+                                                </button>
+
+                                                <button class="btn btn-outline-info" type="button"
+                                                    data-bs-toggle="modal" data-bs-target="#modalAjudaClientes">
+                                                    <i class="bx bx-help-circle me-1"></i> Ajuda
                                                 </button>
 
                                                 <select class="form-select" style="width: 180px;">
@@ -733,48 +738,6 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Resumo lateral -->
-                            <div class="col-xl-4 mb-4">
-                                <div class="card h-100">
-                                    <div class="card-header">
-                                        <h5 class="section-title">Resumo do Módulo</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <ul class="summary-list">
-                                            <li>
-                                                <span>Lista principal</span>
-                                                <span class="badge bg-label-success">Ativa</span>
-                                            </li>
-                                            <li>
-                                                <span>Cadastro separado</span>
-                                                <span class="badge bg-label-primary">Melhor fluxo</span>
-                                            </li>
-                                            <li>
-                                                <span>Mensalidade</span>
-                                                <span class="badge bg-label-success">Incluída</span>
-                                            </li>
-                                            <li>
-                                                <span>Veículos</span>
-                                                <span class="badge bg-label-info">Incluído</span>
-                                            </li>
-                                            <li>
-                                                <span>PIX</span>
-                                                <span class="badge bg-label-warning">Incluído</span>
-                                            </li>
-                                            <li>
-                                                <span>Status</span>
-                                                <span class="badge bg-label-success">Incluído</span>
-                                            </li>
-                                        </ul>
-
-                                        <div class="alert alert-primary mt-4 mb-0">
-                                            <strong>Fluxo melhor:</strong><br />
-                                            lista primeiro, cadastro depois. Isso melhora visualização e operação.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -801,146 +764,200 @@
         <div class="layout-overlay layout-menu-toggle"></div>
     </div>
 
-    <!-- Offcanvas Novo Cliente -->
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasNovoCliente"
-        aria-labelledby="offcanvasNovoClienteLabel">
-        <div class="offcanvas-header">
-            <h5 id="offcanvasNovoClienteLabel" class="offcanvas-title">Novo Cliente</h5>
-            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
-        </div>
-
-        <div class="offcanvas-body">
-            <form>
-                <div class="form-section-title">Dados Pessoais</div>
-                <div class="row g-3">
-                    <div class="col-md-12">
-                        <label class="form-label" for="nome">Nome completo</label>
-                        <input type="text" id="nome" class="form-control" placeholder="Ex.: João da Silva" />
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label" for="cpf">CPF</label>
-                        <input type="text" id="cpf" class="form-control" placeholder="000.000.000-00" />
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label" for="telefone">Telefone</label>
-                        <input type="text" id="telefone" class="form-control" placeholder="(00) 00000-0000" />
-                    </div>
-
-                    <div class="col-md-12">
-                        <label class="form-label" for="email">E-mail</label>
-                        <input type="email" id="email" class="form-control" placeholder="cliente@email.com" />
-                    </div>
-
-                    <div class="col-md-12">
-                        <label class="form-label" for="endereco">Endereço</label>
-                        <input type="text" id="endereco" class="form-control"
-                            placeholder="Rua, número, bairro, cidade" />
-                    </div>
+    <!-- Modal Novo Cliente -->
+    <div class="modal fade" id="modalNovoCliente" tabindex="-1" aria-labelledby="modalNovoClienteLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg modal-lg-custom">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalNovoClienteLabel">Novo Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
 
-                <div class="form-section-title mt-4">Dados Financeiros</div>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label" for="mensalidade">Mensalidade</label>
-                        <input type="text" id="mensalidade" class="form-control" placeholder="R$ 89,90" />
-                    </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="modal-form-section">Dados Pessoais</div>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label" for="nome">Nome completo</label>
+                                <input type="text" id="nome" class="form-control" placeholder="Ex.: João da Silva" />
+                            </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label" for="vencimento">Dia do vencimento</label>
-                        <select id="vencimento" class="form-select">
-                            <option selected>Selecione</option>
-                            <option>05</option>
-                            <option>10</option>
-                            <option>15</option>
-                            <option>20</option>
-                            <option>25</option>
-                            <option>30</option>
-                        </select>
-                    </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="cpf">CPF</label>
+                                <input type="text" id="cpf" class="form-control" placeholder="000.000.000-00" />
+                            </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label" for="pix">Tipo da chave PIX</label>
-                        <select id="pix" class="form-select">
-                            <option selected>Selecione</option>
-                            <option>CPF</option>
-                            <option>Telefone</option>
-                            <option>E-mail</option>
-                            <option>Chave aleatória</option>
-                        </select>
-                    </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="telefone">Telefone</label>
+                                <input type="text" id="telefone" class="form-control" placeholder="(00) 00000-0000" />
+                            </div>
 
-                    <div class="col-md-12">
-                        <label class="form-label" for="chavePix">Chave PIX</label>
-                        <input type="text" id="chavePix" class="form-control"
-                            placeholder="Informe a chave PIX do cliente" />
-                    </div>
+                            <div class="col-md-12">
+                                <label class="form-label" for="email">E-mail</label>
+                                <input type="email" id="email" class="form-control" placeholder="cliente@email.com" />
+                            </div>
+
+                            <div class="col-md-12">
+                                <label class="form-label" for="endereco">Endereço</label>
+                                <input type="text" id="endereco" class="form-control"
+                                    placeholder="Rua, número, bairro, cidade" />
+                            </div>
+                        </div>
+
+                        <div class="modal-form-section mt-4">Dados Financeiros</div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label" for="mensalidade">Mensalidade</label>
+                                <input type="text" id="mensalidade" class="form-control" placeholder="R$ 89,90" />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label" for="vencimento">Dia do vencimento</label>
+                                <select id="vencimento" class="form-select">
+                                    <option selected>Selecione</option>
+                                    <option>05</option>
+                                    <option>10</option>
+                                    <option>15</option>
+                                    <option>20</option>
+                                    <option>25</option>
+                                    <option>30</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label" for="pix">Tipo da chave PIX</label>
+                                <select id="pix" class="form-select">
+                                    <option selected>Selecione</option>
+                                    <option>CPF</option>
+                                    <option>Telefone</option>
+                                    <option>E-mail</option>
+                                    <option>Chave aleatória</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-12">
+                                <label class="form-label" for="chavePix">Chave PIX</label>
+                                <input type="text" id="chavePix" class="form-control"
+                                    placeholder="Informe a chave PIX do cliente" />
+                            </div>
+                        </div>
+
+                        <div class="modal-form-section mt-4">Veículos e Operação</div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label" for="qtdVeiculos">Qtd. de veículos</label>
+                                <input type="number" id="qtdVeiculos" class="form-control" placeholder="1" />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label" for="tipoVeiculo">Tipo de veículo</label>
+                                <select id="tipoVeiculo" class="form-select">
+                                    <option selected>Selecione</option>
+                                    <option>Moto</option>
+                                    <option>Carro</option>
+                                    <option>Caminhonete</option>
+                                    <option>Caminhão</option>
+                                    <option>Frota Mista</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label" for="status">Status</label>
+                                <select id="status" class="form-select">
+                                    <option selected>Ativo</option>
+                                    <option>Pendente</option>
+                                    <option>Bloqueado</option>
+                                    <option>Inativo</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label" for="mensagemAuto">Mensagem automática</label>
+                                <select id="mensagemAuto" class="form-select">
+                                    <option selected>Ativada</option>
+                                    <option>Desativada</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label" for="whatsContato">WhatsApp principal</label>
+                                <input type="text" id="whatsContato" class="form-control"
+                                    placeholder="(00) 00000-0000" />
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label" for="obs">Observações</label>
+                                <textarea id="obs" class="form-control" rows="4"
+                                    placeholder="Informações adicionais sobre o cliente..."></textarea>
+                            </div>
+                        </div>
+                    </form>
                 </div>
 
-                <div class="form-section-title mt-4">Veículos e Operação</div>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label" for="qtdVeiculos">Qtd. de veículos</label>
-                        <input type="number" id="qtdVeiculos" class="form-control" placeholder="1" />
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label" for="tipoVeiculo">Tipo de veículo</label>
-                        <select id="tipoVeiculo" class="form-select">
-                            <option selected>Selecione</option>
-                            <option>Moto</option>
-                            <option>Carro</option>
-                            <option>Caminhonete</option>
-                            <option>Caminhão</option>
-                            <option>Frota Mista</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label" for="status">Status</label>
-                        <select id="status" class="form-select">
-                            <option selected>Ativo</option>
-                            <option>Pendente</option>
-                            <option>Bloqueado</option>
-                            <option>Inativo</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label" for="mensagemAuto">Mensagem automática</label>
-                        <select id="mensagemAuto" class="form-select">
-                            <option selected>Ativada</option>
-                            <option>Desativada</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label" for="whatsContato">WhatsApp principal</label>
-                        <input type="text" id="whatsContato" class="form-control" placeholder="(00) 00000-0000" />
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label" for="obs">Observações</label>
-                        <textarea id="obs" class="form-control" rows="4"
-                            placeholder="Informações adicionais sobre o cliente..."></textarea>
-                    </div>
-                </div>
-
-                <div class="sticky-form-footer d-flex flex-wrap gap-2">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="reset" class="btn btn-outline-primary">Limpar</button>
                     <button type="button" class="btn btn-primary">
                         <i class="bx bx-save me-1"></i> Salvar Cliente
                     </button>
-                    <button type="reset" class="btn btn-outline-secondary">Limpar</button>
-                    <button type="button" class="btn btn-outline-danger" data-bs-dismiss="offcanvas">
-                        Cancelar
-                    </button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <!-- Modal -->
+    <!-- Modal Ajuda -->
+    <div class="modal fade" id="modalAjudaClientes" tabindex="-1" aria-labelledby="modalAjudaClientesLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAjudaClientesLabel">Ajuda do módulo Clientes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <ul class="help-list">
+                        <li>
+                            <span>Lista principal</span>
+                            <span class="badge bg-label-success">Ativa</span>
+                        </li>
+                        <li>
+                            <span>Cadastro separado</span>
+                            <span class="badge bg-label-primary">Melhor fluxo</span>
+                        </li>
+                        <li>
+                            <span>Mensalidade</span>
+                            <span class="badge bg-label-success">Incluída</span>
+                        </li>
+                        <li>
+                            <span>Veículos</span>
+                            <span class="badge bg-label-info">Incluído</span>
+                        </li>
+                        <li>
+                            <span>PIX</span>
+                            <span class="badge bg-label-warning">Incluído</span>
+                        </li>
+                        <li>
+                            <span>Status</span>
+                            <span class="badge bg-label-success">Incluído</span>
+                        </li>
+                    </ul>
+
+                    <div class="help-text-box">
+                        <strong>Fluxo melhor:</strong><br />
+                        lista primeiro, cadastro depois. Isso melhora visualização e operação.
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal detalhes -->
     <div class="modal fade" id="clienteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
