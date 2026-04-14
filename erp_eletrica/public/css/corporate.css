@@ -296,8 +296,8 @@ body {
 
     .sidebar.active {
         transform: translateX(0);
-        box-shadow: 15px 0 35px rgba(0, 0, 0, 0.3);
-        z-index: 1050;
+        box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5); /* Heavier shadow for focus */
+        z-index: 2000; /* Extremely high to ensure focus */
     }
     
     .main-wrapper {
@@ -317,13 +317,13 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(15, 23, 42, 0.65); /* Slate Dark Overlay */
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 1045; /* Just below active sidebar */
+    background: rgba(2, 6, 23, 0.85); /* Much darker for better focus */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 1999; /* Just below active sidebar */
     display: none;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
 }
 
