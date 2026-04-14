@@ -21,10 +21,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'confirmar_recebimento':
             $controller->confirmarRecebimento();
             break;
+        case 'relatar_problema':
+            $controller->relatarProblema();
+            break;
+        case 'resolver_problema':
+            $controller->resolverProblema();
+            break;
         default:
             $controller->index();
     }
 } else {
-    $controller->index();
+    switch ($action) {
+        case 'get_items':
+            $controller->getTransferItems();
+            break;
+        default:
+            $controller->index();
+    }
 }
 exit;

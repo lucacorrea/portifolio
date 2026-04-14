@@ -200,6 +200,13 @@ if (!isset($_SESSION['usuario_id'])) {
                     <option value="">Todos</option>
                 </select>
             </div>
+            <div class="filter-group">
+                <label>Tipo de Processo</label>
+                <i class="fas fa-layer-group"></i>
+                <select id="filtro-tipo-processo-relatorio" class="form-control">
+                    <option value="">Todos</option>
+                </select>
+            </div>
             <div style="display: flex; gap: 0.75rem;">
                 <button id="btn-filtrar" class="btn btn-primary" style="height: 48px; flex: 1; border-radius: 12px; font-weight: 600;">
                     <i class="fas fa-filter"></i> Filtrar
@@ -297,6 +304,7 @@ if (!isset($_SESSION['usuario_id'])) {
     document.addEventListener('DOMContentLoaded', async () => {
         const inputMes = document.getElementById('filtro-mes');
         const selectAnalisador = document.getElementById('filtro-analisador');
+        const selectTipoProcessoRelatorio = document.getElementById('filtro-tipo-processo-relatorio');
         const btnFiltrar = document.getElementById('btn-filtrar');
         const btnExportar = document.getElementById('btn-exportar');
         
@@ -310,15 +318,26 @@ if (!isset($_SESSION['usuario_id'])) {
         const todosDados = await respList.json();
         const analisadoresUnicos = [...new Set(todosDados.map(p => p.analisador))].sort();
         analisadoresUnicos.forEach(a => {
+            if (a) {
+                const opt = document.createElement('option');
+                opt.value = a;
+                opt.textContent = a;
+                selectAnalisador.appendChild(opt);
+            }
+        });
+
+        const tiposUnicos = [...new Set(todosDados.map(p => p.tipo_processo || 'CIÊNCIA'))].sort();
+        tiposUnicos.forEach(t => {
             const opt = document.createElement('option');
-            opt.value = a;
-            opt.textContent = a;
-            selectAnalisador.appendChild(opt);
+            opt.value = t;
+            opt.textContent = t;
+            selectTipoProcessoRelatorio.appendChild(opt);
         });
 
         async function gerarRelatorio() {
             const mes = inputMes.value;
             const analisador = selectAnalisador.value;
+            const tipoProc = selectTipoProcessoRelatorio.value;
             
             if (!mes) return alert('Selecione um mês!');
 
@@ -330,6 +349,7 @@ if (!isset($_SESSION['usuario_id'])) {
                 
                 let match = (pMes === mes);
                 if (analisador) match = match && (p.analisador === analisador);
+                if (tipoProc) match = match && ((p.tipo_processo || 'CIÊNCIA') === tipoProc);
                 return match;
             });
 

@@ -13,11 +13,11 @@
 <div class="row g-4 <?php echo !$caixaAberto ? 'opacity-50 select-none' : ''; ?>" style="<?php echo !$caixaAberto ? 'pointer-events: none;' : ''; ?>">
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-7 d-flex flex-column">
-        <div class="row g-4 mb-4">
-            <div class="col-md-8" style="z-index: 1025;">
-                <div class="card border-0 shadow-sm h-100">
+        <div class="row g-4 mb-4" style="position: relative; z-index: 1050; overflow: visible !important;">
+            <div class="col-md-8" style="position: relative; z-index: 1060; overflow: visible !important;">
+                <div class="card border-0 shadow-sm h-100" style="overflow: visible !important;">
                     <div class="card-body" style="overflow: visible !important;">
-                        <div class="position-relative">
+                        <div class="position-relative" style="overflow: visible !important;">
                             <div class="input-group input-group-lg shadow-sm rounded">
                                 <span class="input-group-text bg-white border-end-0 text-muted">
                                     <i class="fas fa-search"></i>
@@ -30,10 +30,10 @@
                         </div>
                         <div class="mt-3 d-flex gap-2">
                              <button class="btn btn-outline-primary fw-bold" onclick="loadPendingPreSales()">
-                                <i class="fas fa-file-import me-2"></i>Importar Pré-Venda (F8)
+                                <i class="fas fa-file-import me-2"></i>Importar Pré-Venda (F9)
                             </button>
                             <button class="btn btn-outline-info fw-bold" onclick="saveCurrentSaleAsPreSale()" id="btnPauseSale">
-                                <i class="fas fa-pause-circle me-2"></i>Pausar Venda (F7)
+                                <i class="fas fa-pause-circle me-2"></i>Pausar Venda (F10)
                             </button>
                         </div>
                     </div>
@@ -119,37 +119,37 @@
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_dinheiro" value="dinheiro" checked>
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_dinheiro">
-                                <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro
+                                <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro (F1)
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_pix" value="pix">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_pix">
-                                <i class="fa-brands fa-pix me-2 text-info"></i> Pix
+                                <i class="fa-brands fa-pix me-2 text-info"></i> Pix (Ctrl+F1)
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_credito" value="cartao_credito">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_credito">
-                                <i class="fas fa-credit-card me-2 text-primary"></i> Crédito
+                                <i class="fas fa-credit-card me-2 text-primary"></i> Crédito (F6)
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_debito" value="cartao_debito">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_debito">
-                                <i class="fas fa-credit-card me-2 text-info"></i> Débito
+                                <i class="fas fa-credit-card me-2 text-info"></i> Débito (F7)
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_boleto">
-                                <i class="fas fa-barcode me-2 text-secondary"></i> Boleto
+                                <i class="fas fa-barcode me-2 text-secondary"></i> Boleto (F11)
                             </label>
                         </div>
                         <div class="col-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_fiado">
-                                <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado)
+                                <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado) (F8)
                             </label>
                         </div>
                     </div>
@@ -161,7 +161,7 @@
                             <span class="input-group-text bg-white border-end-0 text-info">
                                 <i class="fas fa-percent"></i>
                             </span>
-                            <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0">
+                            <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="renderCart()">
                         </div>
                         <div class="extra-small text-info mt-1"><i class="fas fa-info-circle me-1"></i> Informe a taxa cobrada pela operadora.</div>
                     </div>
@@ -198,12 +198,16 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted">Desconto (%)</span>
                         <div style="width: 80px;">
-                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onfocus="interceptDiscount(event)" onmousedown="interceptDiscount(event)" onkeydown="interceptDiscount(event)" onchange="renderCart()">
+                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onfocus="interceptDiscount(event)" onmousedown="interceptDiscount(event)" onkeydown="interceptDiscount(event)" oninput="renderCart()">
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted text-success">Desconto</span>
                         <span class="fw-bold text-success" id="totalDesc">- R$ 0,00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 d-none" id="taxRow">
+                        <span class="text-muted text-info">Taxa Maquininha</span>
+                        <span class="fw-bold text-info" id="totalTax">+ R$ 0,00</span>
                     </div>
                     <hr>
                     <div class="d-flex justify-content-between align-items-center">
@@ -323,9 +327,61 @@
                     <button class="btn btn-outline-danger fw-bold py-3" onclick="cancelSaleAction()">
                         <i class="fas fa-trash-alt me-2"></i>CANCELAR VENDA (ESTORNO)
                     </button>
-                    <button class="btn btn-outline-secondary fw-bold py-3" onclick="alert('Funcionalidade de troca em desenvolvimento')">
+                    <button class="btn btn-outline-secondary fw-bold py-3" onclick="openExchangeFlow()">
                         <i class="fas fa-exchange-alt me-2"></i>SOLICITAR TROCA
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Exchange Flow -->
+<div class="modal fade" id="modalExchangeFlow" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-secondary text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-exchange-alt me-2"></i>Solicitação de Troca (Venda #<span id="exchangeSaleId"></span>)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <h6 class="fw-bold mb-3">1. Selecione o item que será DEVOLVIDO à loja</h6>
+                <div class="list-group mb-4" id="exchangeItemsList">
+                    <div class="text-center py-3 text-muted">Carregando itens...</div>
+                </div>
+
+                <div id="exchangeStep2" class="d-none">
+                    <h6 class="fw-bold mb-3">2. Selecione o NOVO item que o cliente vai levar</h6>
+                    <div class="input-group input-group-lg shadow-sm border rounded mb-2">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="exchangeProductSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar novo produto...">
+                    </div>
+                    <div id="exchangeSearchResults" class="list-group shadow-sm" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+                
+                <div id="exchangeStep3" class="d-none mt-4 p-4 bg-light border rounded shadow-sm">
+                    <h6 class="fw-bold text-center text-primary mb-4 text-uppercase">Resumo da Troca</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-danger fw-bold"><i class="fas fa-arrow-down me-2"></i>DEVOLVENDO:</span>
+                        <span class="fw-bold text-end" id="exchangeOldName"></span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-success fw-bold"><i class="fas fa-arrow-up me-2"></i>LEVANDO (1 UN):</span>
+                        <span class="fw-bold text-end" id="exchangeNewName"></span>
+                    </div>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-between align-items-center bg-white p-3 border rounded">
+                        <span class="text-muted fw-bold">Ajuste de caixa sugerido:</span>
+                        <span class="fw-bold fs-4" id="exchangeDiff"></span>
+                    </div>
+                    
+                    <div class="d-grid mt-4">
+                        <button class="btn btn-primary btn-lg fw-bold shadow-sm py-3" onclick="confirmExchange()">
+                            <i class="fas fa-check-circle me-2"></i>CONFIRMAR E PROCESSAR TROCA
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -440,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 container.classList.add('d-none');
             }
+            renderCart();
         });
     });
 });
@@ -567,10 +624,24 @@ function renderCart() {
 
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     const discountVal = total * (discountPercent / 100);
-    const finalTotalVal = total - discountVal;
+    const baseVal = total - discountVal;
+
+    const payment = document.querySelector('input[name="payment"]:checked').value;
+    const taxPercent = (payment.includes('cartao')) ? (parseFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    const taxVal = baseVal * (taxPercent / 100);
+    const finalTotalVal = baseVal + taxVal;
 
     document.getElementById('totalSub').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
     document.getElementById('totalDesc').innerText = `- R$ ${discountVal.toFixed(2).replace('.', ',')}`;
+    
+    const taxRow = document.getElementById('taxRow');
+    if (taxVal > 0) {
+        taxRow.classList.remove('d-none');
+        document.getElementById('totalTax').innerText = `+ R$ ${taxVal.toFixed(2).replace('.', ',')}`;
+    } else {
+        taxRow.classList.add('d-none');
+    }
+
     finalTotal.innerText = `R$ ${finalTotalVal.toFixed(2).replace('.', ',')}`;
 
     checkDiscountAuth();
@@ -934,7 +1005,7 @@ function manageSale(sale) {
 }
 
 async function cancelSaleAction() {
-    if (!confirm('Deseja realmente cancelar esta venda? O estoque será devolvido.')) return;
+    if (!confirm('Deseja realmente cancelar esta venda? O estoque será devolvido e o valor sairá do caixa.')) return;
     
     const res = await fetch('vendas.php?action=cancel_sale', {
         method: 'POST',
@@ -948,7 +1019,160 @@ async function cancelSaleAction() {
         loadRecentSales();
         bootstrap.Modal.getInstance(document.getElementById('modalSaleManager')).hide();
     } else {
-        alert('Erro: ' + result.error);
+        alert('Erro ao cancelar venda: ' + result.error);
+    }
+}
+
+// --- LOGICA DE TROCA DE ITENS ---
+let exchangeState = {
+    vendaId: null,
+    oldItemId: null,
+    oldItemName: null,
+    oldItemPrice: 0,
+    newProductId: null,
+    newProductName: null,
+    newProductPrice: 0
+};
+
+async function openExchangeFlow() {
+    exchangeState.vendaId = activeManageId;
+    document.getElementById('exchangeSaleId').innerText = activeManageId;
+    
+    bootstrap.Modal.getInstance(document.getElementById('modalSaleManager')).hide();
+    new bootstrap.Modal(document.getElementById('modalExchangeFlow')).show();
+    
+    document.getElementById('exchangeStep2').classList.add('d-none');
+    document.getElementById('exchangeStep3').classList.add('d-none');
+    document.getElementById('exchangeProductSearch').value = '';
+    document.getElementById('exchangeSearchResults').innerHTML = '';
+    
+    const res = await fetch(`vendas.php?action=get_sale_detail&id=${activeManageId}`);
+    const data = await res.json();
+    
+    const list = document.getElementById('exchangeItemsList');
+    list.innerHTML = '';
+    
+    if (!data.success || !data.sale || !data.sale.itens || data.sale.itens.length === 0) {
+        list.innerHTML = '<div class="alert alert-warning text-center">Nenhum item encontrado nesta venda.</div>';
+        return;
+    }
+    
+    if(data.sale.status === 'cancelado') {
+        list.innerHTML = '<div class="alert alert-danger text-center">Não é possível realizar troca em venda cancelada.</div>';
+        return;
+    }
+    
+    data.sale.itens.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3';
+        btn.innerHTML = `
+            <div>
+                <div class="fw-bold">${item.produto_nome}</div>
+                <small class="opacity-75">${item.quantidade}x R$ ${item.preco_formatado}</small>
+            </div>
+            <span class="btn btn-sm btn-outline-danger fw-bold px-3">DEVOLVER</span>
+        `;
+        btn.onclick = () => {
+            Array.from(list.children).forEach(c => {
+                c.classList.remove('active', 'bg-danger', 'text-white', 'border-danger');
+                c.querySelector('.btn')?.classList.replace('btn-light', 'btn-outline-danger');
+            });
+            
+            btn.classList.add('active', 'bg-danger', 'text-white', 'border-danger');
+            btn.querySelector('.btn').classList.replace('btn-outline-danger', 'btn-light');
+            
+            exchangeState.oldItemId = item.id;
+            exchangeState.oldItemName = item.produto_nome;
+            // The item price here is unitario because we swap 1 unit at a time physically in this flow
+            exchangeState.oldItemPrice = parseFloat(item.preco_unitario); 
+            
+            document.getElementById('exchangeStep2').classList.remove('d-none');
+            document.getElementById('exchangeStep3').classList.add('d-none');
+            
+            setTimeout(() => document.getElementById('exchangeProductSearch').focus(), 300);
+        };
+        list.appendChild(btn);
+    });
+}
+
+document.getElementById('exchangeProductSearch').addEventListener('input', async (e) => {
+    const term = e.target.value;
+    const resultsDiv = document.getElementById('exchangeSearchResults');
+    if (term.length < 2) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+
+    const res = await fetch(`vendas.php?action=search&term=${encodeURIComponent(term)}`);
+    const products = await res.json();
+    
+    resultsDiv.innerHTML = '';
+    products.forEach(p => {
+        if (p.type === 'pre_sale') return;
+        
+        const btn = document.createElement('button');
+        btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3';
+        btn.innerHTML = `
+            <div>
+                <div class="fw-bold text-primary">${p.nome}</div>
+                <small class="text-muted">Valor Unitário: R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</small>
+            </div>
+            <i class="fas fa-check text-success fa-lg opacity-50"></i>
+        `;
+        btn.onclick = () => {
+            exchangeState.newProductId = p.id;
+            exchangeState.newProductName = p.nome;
+            exchangeState.newProductPrice = parseFloat(p.preco_venda);
+            
+            document.getElementById('exchangeOldName').innerText = exchangeState.oldItemName;
+            document.getElementById('exchangeNewName').innerText = exchangeState.newProductName;
+            
+            const diff = exchangeState.newProductPrice - exchangeState.oldItemPrice;
+            const diffEl = document.getElementById('exchangeDiff');
+            if (diff > 0) {
+                diffEl.innerHTML = `<span class="text-success"><i class="fas fa-plus me-1"></i>RECEBER R$ ${diff.toFixed(2).replace('.', ',')}</span>`;
+            } else if (diff < 0) {
+                diffEl.innerHTML = `<span class="text-danger"><i class="fas fa-minus me-1"></i>DEVOLVER R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}</span>`;
+            } else {
+                diffEl.innerHTML = `<span class="text-secondary">R$ 0,00 (Tudo Certo)</span>`;
+            }
+            
+            document.getElementById('exchangeStep3').classList.remove('d-none');
+            resultsDiv.innerHTML = '';
+            document.getElementById('exchangeProductSearch').value = '';
+            
+            setTimeout(() => document.getElementById('exchangeStep3').scrollIntoView({behavior: 'smooth'}), 200);
+        };
+        resultsDiv.appendChild(btn);
+    });
+});
+
+async function confirmExchange() {
+    if (!exchangeState.vendaId || !exchangeState.oldItemId || !exchangeState.newProductId) {
+        return alert("Por favor, selecione qual item será devolvido e qual produto será pego no lugar.");
+    }
+    
+    if (!confirm('Deseja realmente confirmar esta troca?\n\nIsso fará o ajuste automático no estoque (dando entrada no defeituoso/antigo e baixando o novo) e registrará as devidas diferenças financeiras.')) return;
+    
+    const res = await fetch('vendas.php?action=exchange_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            venda_id: exchangeState.vendaId,
+            item_id: exchangeState.oldItemId,
+            new_product_id: exchangeState.newProductId,
+            new_qty: 1, // Currently fixed at 1 unit exchanged at a time for safety
+            new_price: exchangeState.newProductPrice
+        })
+    });
+    
+    const result = await res.json();
+    if (result.success) {
+        alert("S-U-C-E-S-S-O! A Troca foi registrada com sucesso, os estoques foram atualizados e o caixa ajustado.");
+        bootstrap.Modal.getInstance(document.getElementById('modalExchangeFlow')).hide();
+        loadRecentSales(); // Reload the history UI
+    } else {
+        alert("Vish! Erro ao tentar processar troca: " + result.error);
     }
 }
 
@@ -1145,8 +1369,10 @@ async function confirmarCheckoutFiado() {
 async function processarCheckout() {
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const total = subtotal * (1 - (discountPercent / 100));
+    const baseVal = subtotal * (1 - (discountPercent / 100));
     const payment = document.querySelector('input[name="payment"]:checked').value;
+    const taxaCartaoPercent = (payment.includes('cartao')) ? (parseFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    const total = baseVal + (baseVal * (taxaCartaoPercent / 100));
     const taxaCartao = parseFloat(document.getElementById('taxa_cartao').value) || 0;
 
     if (payment.includes('cartao')) {
@@ -1311,22 +1537,63 @@ async function issueNFCe(saleId) {
 
 // Keyboard Hotkeys
 document.addEventListener('keydown', (e) => {
+    // F2: Checkout
     if (e.key === 'F2') {
         e.preventDefault();
         btnCheckout.click();
     }
+    // F4: Search
     if (e.key === 'F4') {
         e.preventDefault();
         pdvSearch.focus();
     }
-    if (e.key === 'F8') {
+    // F9: Pre-sales (Changed from F8)
+    if (e.key === 'F9') {
         e.preventDefault();
         loadPendingPreSales();
     }
-    if (e.key === 'F7') {
+    // F10: Pause sale (Changed from F7)
+    if (e.key === 'F10') {
         e.preventDefault();
         saveCurrentSaleAsPreSale();
     }
+
+    // Payment Shortcuts
+    if (e.key === 'F1') {
+        e.preventDefault();
+        document.getElementById('pay_dinheiro').click();
+    }
+    if (e.key === 'F6') {
+        e.preventDefault();
+        document.getElementById('pay_credito').click();
+    }
+    if (e.key === 'F7') {
+        e.preventDefault();
+        document.getElementById('pay_debito').click();
+    }
+    if (e.key === 'F8') {
+        e.preventDefault();
+        document.getElementById('pay_fiado').click();
+    }
+    if (e.key === 'F11') {
+        e.preventDefault();
+        document.getElementById('pay_boleto').click();
+    }
+    
+    // Pix: Ctrl+F1
+    if (e.key === 'F1' && e.ctrlKey) {
+        e.preventDefault();
+        document.getElementById('pay_pix').click();
+    }
+
+    // Discount: Ctrl+F12
+    if (e.key === 'F12' && e.ctrlKey) {
+        e.preventDefault();
+        const discountInput = document.getElementById('discountPercent');
+        discountInput.focus();
+        discountInput.select();
+    }
+
     if (e.key === 'Escape') {
         searchResults.classList.add('d-none');
     }

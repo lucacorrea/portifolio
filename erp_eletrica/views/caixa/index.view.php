@@ -131,8 +131,11 @@
                         <?php foreach ($caixas as $c): ?>
                         <tr>
                             <td class="ps-4">
-                                <span class="fw-bold"><?= $c['operador_nome'] ?? 'Operador' ?></span>
-                                <div class="text-muted small">Filial #<?= $c['filial_id'] ?></div>
+                                <span class="fw-bold"><?= htmlspecialchars($c['operador_nome'] ?? 'Operador') ?></span>
+                                <div class="text-muted small">
+                                    <i class="fas fa-store-alt me-1 opacity-50"></i>
+                                    <?= $c['filial_principal'] ? 'MATRIZ' : htmlspecialchars($c['filial_nome'] ?? 'Filial #' . $c['filial_id']) ?>
+                                </div>
                             </td>
                             <td><?= date('d/m/Y H:i', strtotime($c['data_abertura'])) ?></td>
                             <td><?= $c['data_fechamento'] ? date('d/m/Y H:i', strtotime($c['data_fechamento'])) : '-' ?></td>
@@ -152,6 +155,50 @@
                 </table>
             </div>
         </div>
+        
+        <!-- Pagination UI -->
+        <?php if (isset($pagination) && $pagination['totalPages'] > 1): 
+            $p = $pagination['page'];
+            $tp = $pagination['totalPages'];
+            $buildUrl = function($pageNum) {
+                $params = $_GET;
+                $params['page'] = $pageNum;
+                return '?' . http_build_query($params);
+            };
+        ?>
+        <div class="card-footer bg-white py-3 border-0 rounded-bottom d-flex align-items-center justify-content-between">
+            <span class="text-muted small">
+                Mostrando <strong><?= count($caixas) ?></strong> de <strong><?= $pagination['totalItems'] ?></strong> registros
+            </span>
+            <nav aria-label="Navegação da listagem">
+                <ul class="pagination pagination-sm mb-0 shadow-sm">
+                    <li class="page-item <?= ($p <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl(1) ?>"><i class="fas fa-angle-double-left"></i></a>
+                    </li>
+                    <li class="page-item <?= ($p <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl(max(1, $p - 1)) ?>"><i class="fas fa-angle-left"></i></a>
+                    </li>
+                    
+                    <?php 
+                        $start = max(1, $p - 2);
+                        $end = min($tp, $p + 2);
+                        for ($i = $start; $i <= $end; $i++): 
+                    ?>
+                        <li class="page-item <?= ($i == $p) ? 'active' : '' ?>">
+                            <a class="page-link px-3 <?= ($i == $p) ? 'fw-bold' : '' ?>" href="<?= $buildUrl($i) ?>"><?= $i ?></a>
+                        </li>
+                    <?php endfor; ?>
+
+                    <li class="page-item <?= ($p >= $tp) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl(min($tp, $p + 1)) ?>"><i class="fas fa-angle-right"></i></a>
+                    </li>
+                    <li class="page-item <?= ($p >= $tp) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl($tp) ?>"><i class="fas fa-angle-double-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 

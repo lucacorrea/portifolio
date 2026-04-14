@@ -104,7 +104,9 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
                     <option value="JUNTADA DE CUMPRIMENTO DE DILIGÊNCIA">JUNTADA DE CUMPRIMENTO DE DILIGÊNCIA</option>
                     <option value="JUNTADA DE PETIÇÃO DE MANIFESTAÇÃO DA PARTE">JUNTADA DE PETIÇÃO DE MANIFESTAÇÃO DA PARTE</option>
                     <option value="CIÊNCIA">CIÊNCIA</option>
+                    <option value="PERSONALIZADO" style="color: #4338ca; font-weight: bold;">PERSONALIZADO</option>
                 </select>
+                <input type="text" id="tipo_ato_personalizado" placeholder="Digite o tipo de ato..." style="display: none; margin-top: 0.5rem; text-transform: uppercase;">
             </div>
 
             <div class="form-group">
@@ -123,7 +125,9 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
                     <option value="AUDIÊNCIA">AUDIÊNCIA</option>
                     <option value="ANÁLISE">ANÁLISE</option>
                     <option value="CIÊNCIA">CIÊNCIA</option>
+                    <option value="PERSONALIZADO" style="color: #4338ca; font-weight: bold;">PERSONALIZADO</option>
                 </select>
+                <input type="text" id="natureza_prazo_personalizado" placeholder="Digite a natureza do prazo..." style="display: none; margin-top: 0.5rem; text-transform: uppercase;">
             </div>
 
             <div class="form-group">
@@ -254,7 +258,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
                         <option value="EM ELABORAÇÃO" style="color: #f97316; font-weight: bold;">EM ELABORAÇÃO</option>
                         <option value="PROTOCOLADO" style="color: #22c55e; font-weight: bold;">PROTOCOLADO</option>
                         <option value="ANALISADO" style="color: #3b82f6; font-weight: bold;">ANALISADO</option>
-                        <option value="PROCESSO FINALIZADO" style="color: #1e293b; font-weight: bold;">PROCESSO FINALIZADO</option>
+                        <option value="PROCESSO FINALIZADO" style="color: #2E6C80; font-weight: bold;">PROCESSO FINALIZADO</option>
                     </select>
                 </div>
             </div>
@@ -267,6 +271,22 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
     </form>
 </main>
 
-<script src="assets/js/script.js?v=61"></script>
+<script src="assets/js/script.js?v=63"></script>
+<script>
+    // Plano de contingência: Forçar visibilidade se o script externo falhar ou for cacheado
+    document.addEventListener('DOMContentLoaded', function() {
+        const check = (sId, iId) => {
+            const s = document.getElementById(sId);
+            const i = document.getElementById(iId);
+            if(s && i) {
+                const up = () => { i.style.setProperty('display', s.value === 'PERSONALIZADO' ? 'block' : 'none', 'important'); };
+                s.addEventListener('change', up);
+                up();
+            }
+        };
+        check('tipo_ato', 'tipo_ato_personalizado');
+        check('natureza_prazo', 'natureza_prazo_personalizado');
+    });
+</script>
 </body>
 </html>

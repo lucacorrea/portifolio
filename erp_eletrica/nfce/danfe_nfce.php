@@ -66,14 +66,68 @@ function mapTPag($t)
 
 /* =========================== Carrega XML procNFe ========================== */
 $base = __DIR__ . DIRECTORY_SEPARATOR;
+$chave = null;
+$error = null;
+
 if (!empty($_GET['arq'])) {
   $file = $base . basename((string)$_GET['arq']);
 } elseif (!empty($_GET['chave'])) {
-  $file = $base . 'procNFCe_' . preg_replace('/\D+/', '', (string)$_GET['chave']) . '.xml';
+  $chave = preg_replace('/\D+/', '', (string)$_GET['chave']);
+  $file = $base . 'procNFCe_' . $chave . '.xml';
+} elseif ($vendaIdUrl > 0) {
+  // Busca a chave no banco se não veio na URL
+  try {
+    $stNF = $pdo->prepare("SELECT chave FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') ORDER BY id DESC LIMIT 1");
+    $stNF->execute([$vendaIdUrl]);
+    $chave = $stNF->fetchColumn();
+    if ($chave) {
+      $file = $base . 'procNFCe_' . $chave . '.xml';
+    } else {
+      $error = "Nenhuma nota fiscal autorizada foi encontrada para a venda #{$vendaIdUrl}.";
+    }
+  } catch (Throwable $e) {
+    $error = "Erro ao buscar dados da nota: " . $e->getMessage();
+  }
 } else {
-  die('Informe ?chave=... ou ?arq=procNFCe_....xml');
+  $error = "Parâmetros de visualização ausentes.";
 }
-if (!is_file($file)) die('Arquivo não encontrado: ' . htmlspecialchars($file));
+
+if ($error || !isset($file) || !is_file($file)) {
+    if (!$error) $error = "O arquivo XML da nota não foi localizado no servidor.";
+    ?>
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8"><title>Nota não encontrada</title>
+        <style>
+            body { font-family: sans-serif; background: #f4f7f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+            .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; max-width: 450px; }
+            h2 { color: #d32f2f; margin-top: 0; }
+            p { color: #555; line-height: 1.5; }
+            .actions { margin-top: 30px; display: flex; gap: 10px; justify-content: center; }
+            .btn { text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+            .btn-primary { background: #2b4c7d; color: white; border: none; }
+            .btn-secondary { background: #e0e0e0; color: #333; border: none; }
+            .btn:hover { filter: brightness(1.1); }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>⚠️ Nota não localizada</h2>
+            <p><?php echo htmlspecialchars($error); ?></p>
+            <p>Apesar da venda ser fiscal, o documento oficial não pôde ser gerado ou encontrado. Você deseja imprimir o recibo comum em vez disso?</p>
+            <div class="actions">
+                <a href="javascript:window.close()" class="btn btn-secondary">Fechar</a>
+                <?php if ($vendaIdUrl > 0): ?>
+                    <a href="../recibo_venda.php?id=<?php echo $vendaIdUrl; ?>" class="btn btn-primary">Imprimir Recibo</a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 
 $xml = file_get_contents($file);
 $dom = new DOMDocument();
@@ -244,7 +298,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 </div>
 
 <div class="actions">
-    <button class="btn btn-secondary" onclick="window.history.back()">Voltar</button>
+    <button class="btn btn-secondary" onclick="if(window.history.length > 1) { window.history.back(); } else { window.close(); }">Voltar / Fechar</button>
     <a class="btn btn-secondary" href="danfe_a4.php?id=<?= urlencode($empresaIdUrl) ?>&venda_id=<?= (int)$vendaIdUrl ?>&chave=<?= urlencode($chave) ?>" target="_blank">Modelo SEFAZ (A4)</a>
     <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
 </div>

@@ -23,11 +23,36 @@ if (!function_exists('format_money')) {
     }
 }
 
+if (!function_exists('normalize_spaces')) {
+    function normalize_spaces(string $text): string
+    {
+        $text = trim($text);
+        $text = preg_replace('/\s+/u', ' ', $text);
+        return (string)$text;
+    }
+}
+
 if (!function_exists('secretaria_sigla')) {
     function secretaria_sigla(string $nome): string
     {
-        $nomeUp = mb_strtoupper(trim($nome), 'UTF-8');
+        $nomeUp = mb_strtoupper(normalize_spaces($nome), 'UTF-8');
 
+        /*
+         * 1) Primeiro tenta pegar a sigla real no FINAL do nome
+         * Exemplos:
+         * - SECRETARIA MUNICIPAL ... - SMSPDS
+         * - SECRETARIA MUNICIPAL ... - AEROPORTO
+         * - COMIÇÃO DE CONTRATAÇÃO DE COARI-CCC
+         * - ... COARI-SEDUC
+         */
+        if (preg_match('/(?:-|\/)\s*([A-Z]{3,})\s*$/u', $nomeUp, $m)) {
+            return trim($m[1]);
+        }
+
+        /*
+         * 2) Depois tenta encontrar siglas conhecidas dentro do texto.
+         * Aqui não deixamos chave duplicada.
+         */
         $map = [
             'SECRETARIA MUNICIPAL DA CASA CIVIL' => 'SMCC',
             'SECRETARIA MUNICIPAL DE ADMINISTRAÇÃO' => 'SEMAD',
@@ -42,15 +67,17 @@ if (!function_exists('secretaria_sigla')) {
             'SECRETARIA MUNICIPAL DE ASSISTÊNCIA SOCIAL' => 'SEMAS',
             'SECRETARIA MUNICIPAL DE TERRAS E HABITAÇÃO' => 'SEMTH',
             'SECRETARIA MUNICIPAL DE MEIO AMBIENTE' => 'SEMMA',
-            'SECRETARIA MUNICIPAL EXTRAORDINÁRIA' => 'SEMEXTRA',
+            'SECRETARIA MUNICIPAL EXTRAORDINÁRIA' => 'SME',
             'PROCURADORIA GERAL DO MUNICÍPIO' => 'PGM',
             'CONTROLADORIA GERAL DO MUNICICÍPIO' => 'CGM',
-            'SECRETARIA MUNICIPAL DE CIÊNCIA, TECNOLOGIA E INOVAÇÃO' => 'SECTI',
+            'SECRETARIA MUNICIPAL DE CIÊNCIA, TECNOLOGIA E INOVAÇÃO' => 'SMCTI',
             'SECRETARIA MUNICIPAL DE DESENVOLVIMENTO RURAL E ECONÔMICO' => 'SMDRE',
             'SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E DEFESA SOCIAL' => 'SMSPDS',
             'SECRETARIA MUNICIPAL DE ESPORTE' => 'SEMESP',
             'SECRETÁRIO MUNICIPAL DE RELAÇÕES INSTITUCIONAIS' => 'SMRI',
             'COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'CREC',
+            'COMIÇÃO DE CONTRATAÇÃO DE COARI' => 'CCC',
+            'SECRETARIA DE ESTADO DA EDUCAÇÃO E DESPORTO ESCOLAR COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'SEDUC',
         ];
 
         foreach ($map as $trecho => $sigla) {
@@ -59,15 +86,35 @@ if (!function_exists('secretaria_sigla')) {
             }
         }
 
-        if (preg_match('/^\s*([A-Z]{3,}(?:\/[A-Z]{3,})?)\s*-/u', $nomeUp, $m)) {
-            return trim($m[1]);
+        /*
+         * 3) Tenta localizar uma sigla no meio do nome
+         */
+        if (preg_match('/\b([A-Z]{3,})\b/u', $nomeUp, $m)) {
+            $candidato = trim($m[1]);
+
+            $bloqueados = [
+                'SECRETARIA',
+                'MUNICIPAL',
+                'GERAL',
+                'COARI',
+                'ESTADO',
+                'EDUCACAO',
+                'EDUCAÇÃO',
+                'DEFESA',
+                'SOCIAL',
+                'PUBLICA',
+                'PÚBLICA',
+            ];
+
+            if (!in_array($candidato, $bloqueados, true)) {
+                return $candidato;
+            }
         }
 
-        if (preg_match('/\b(SE[A-Z]{2,}(?:\/SE[A-Z]{2,})?)\b/u', $nomeUp, $m)) {
-            return trim($m[1]);
-        }
-
-        $partes = preg_split('/\s+/', preg_replace('/[^\p{L}\s\/-]+/u', '', $nomeUp));
+        /*
+         * 4) Último fallback
+         */
+        $partes = preg_split('/\s+/u', preg_replace('/[^\p{L}\s\/-]+/u', '', $nomeUp));
         $ignorar = ['DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'A', 'O', 'AS', 'OS', 'MUNICIPAL', 'SECRETARIA'];
 
         $sigla = '';
@@ -158,6 +205,7 @@ $relatorio_secretarias = $stmt_secretarias->fetchAll(PDO::FETCH_ASSOC);
 ========================= */
 $total_geral = 0;
 $total_qtd_geral = 0;
+
 foreach ($relatorio_secretarias as $row) {
     $total_geral += (float)$row['total_valor'];
     $total_qtd_geral += (float)$row['total_qtd'];
@@ -171,7 +219,9 @@ $chart_labels_full = [];
 $chart_values = [];
 
 foreach ($relatorio_secretarias as $row) {
-    $chart_labels[] = secretaria_sigla((string)$row['secretaria_nome']);
+    $sigla = secretaria_sigla((string)$row['secretaria_nome']);
+
+    $chart_labels[] = $sigla;
     $chart_labels_full[] = (string)$row['secretaria_nome'];
     $chart_values[] = (float)$row['total_valor'];
 }
@@ -1014,77 +1064,82 @@ include 'views/layout/header.php';
     document.addEventListener('DOMContentLoaded', function() {
         const chartElement = document.getElementById('chartSecretaria');
 
-        if (chartElement) {
-            const labels = <?php echo json_encode($chart_labels, JSON_UNESCAPED_UNICODE); ?>;
-            const fullLabels = <?php echo json_encode($chart_labels_full, JSON_UNESCAPED_UNICODE); ?>;
-            const values = <?php echo json_encode($chart_values); ?>;
+        if (!chartElement) {
+            return;
+        }
 
-            if (labels.length > 0) {
-                const ctx = chartElement.getContext('2d');
-                new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: [
-                                '#206bc4',
-                                '#2fb344',
-                                '#f59e0b',
-                                '#d63939',
-                                '#6f42c1',
-                                '#0ea5e9',
-                                '#14b8a6',
-                                '#f97316',
-                                '#64748b',
-                                '#8b5cf6'
-                            ],
-                            borderWidth: 2,
-                            borderColor: '#ffffff'
-                        }]
+        const labels = <?php echo json_encode($chart_labels, JSON_UNESCAPED_UNICODE); ?>;
+        const fullLabels = <?php echo json_encode($chart_labels_full, JSON_UNESCAPED_UNICODE); ?>;
+        const values = <?php echo json_encode($chart_values, JSON_UNESCAPED_UNICODE); ?>;
+
+        if (!Array.isArray(labels) || labels.length === 0) {
+            return;
+        }
+
+        const ctx = chartElement.getContext('2d');
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: [
+                        '#206bc4',
+                        '#2fb344',
+                        '#f59e0b',
+                        '#d63939',
+                        '#6f42c1',
+                        '#0ea5e9',
+                        '#14b8a6',
+                        '#f97316',
+                        '#64748b',
+                        '#8b5cf6',
+                        '#ec4899',
+                        '#22c55e',
+                        '#eab308',
+                        '#3b82f6',
+                        '#ef4444'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '58%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '58%',
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    boxWidth: 12,
-                                    padding: 16,
-                                    usePointStyle: true,
-                                    pointStyle: 'circle'
-                                }
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const index = context[0]?.dataIndex ?? 0;
+                                return fullLabels[index] || '';
                             },
-                            tooltip: {
-                                callbacks: {
-                                    title: function(context) {
-                                        const index = context[0]?.dataIndex ?? 0;
-                                        return fullLabels[index] || labels[index] || '';
-                                    },
-                                    label: function(context) {
-                                        const index = context.dataIndex ?? 0;
-                                        const sigla = labels[index] || '';
+                            label: function(context) {
+                                const index = context.dataIndex ?? 0;
+                                const sigla = labels[index] || '';
+                                const valor = Number(context.raw || 0);
 
-
-
-
-
-                                        
-                                        const value = Number(context.raw || 0);
-                                        return sigla + ': ' + new Intl.NumberFormat('pt-BR', {
-                                            style: 'currency',
-                                            currency: 'BRL'
-                                        }).format(value);
-                                    }
-                                }
+                                return sigla + ': ' + new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL'
+                                }).format(valor);
                             }
                         }
                     }
-                });
+                }
             }
-        }
+        });
     });
 </script>
 

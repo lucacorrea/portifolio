@@ -169,7 +169,7 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
         @import url('https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap');
         
         body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; padding: 10px; background: #f0f0f0; }
-        .page { width: 19cm; min-height: 27cm; padding: 0.5cm; background: #fff; margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .page { width: 19cm; min-height: 27cm; padding: 0.5cm; background: #fff; margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
         .box { border: 1px solid #000; margin-bottom: 2px; padding: 2px; overflow: hidden; }
         .no-top { border-top: none; }
         .no-left { border-left: none; }
@@ -197,8 +197,13 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
         .qr-box { width: 3cm; height: 3cm; border: 1px solid #000; margin: 10px auto; padding: 5px; }
         
         @media print {
-            body { background: none; padding: 0; }
-            .page { box-shadow: none; margin: 0; width: 100%; padding: 0.5cm; }
+            @page { size: A4; margin: 0.5cm; }
+            body { background: none; padding: 0; display: block; margin: 0; }
+            .page { 
+                box-shadow: none; margin: 0; width: 100%; padding: 0;
+                display: flex; flex-direction: column; 
+                height: 28cm; /* Explicit height for A4 print */
+            }
             .no-print { display: none; }
         }
     </style>
@@ -400,46 +405,48 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
 
         <!-- Itens -->
         <div class="bold" style="margin-top: 5px; font-size: 8px;">DADOS DO PRODUTO / SERVIÇOS</div>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th style="width: 35px;">CÓDIGO</th>
-                    <th>DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
-                    <th style="width: 35px;">NCM/SH</th>
-                    <th style="width: 25px;">CST</th>
-                    <th style="width: 25px;">CFOP</th>
-                    <th style="width: 20px;">UNID.</th>
-                    <th style="width: 35px;">QUANT.</th>
-                    <th style="width: 45px;">VALOR UNIT.</th>
-                    <th style="width: 45px;">VALOR TOTAL</th>
-                    <th style="width: 45px;">BC ICMS</th>
-                    <th style="width: 35px;">VALOR ICMS</th>
-                    <th style="width: 35px;">VALOR IPI</th>
-                    <th style="width: 25px;">ALÍQ. ICMS</th>
-                    <th style="width: 25px;">ALÍQ. IPI</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($itens as $it): ?>
-                <tr>
-                    <td><?= $it['cProd'] ?></td>
-                    <td><?= htmlspecialchars($it['xProd']) ?></td>
-                    <td class="center"><?= $it['NCM'] ?></td>
-                    <td class="center"><?= $it['CST'] ?></td>
-                    <td class="center"><?= $it['CFOP'] ?></td>
-                    <td class="center"><?= $it['uCom'] ?></td>
-                    <td class="right"><?= $it['qCom'] ?></td>
-                    <td class="right"><?= $it['vUn'] ?></td>
-                    <td class="right"><?= $it['vTot'] ?></td>
-                    <td class="right"><?= $it['vBC'] ?></td>
-                    <td class="right"><?= $it['vICMS'] ?></td>
-                    <td class="right"><?= $it['vIPI'] ?></td>
-                    <td class="right"><?= $it['pICMS'] ?></td>
-                    <td class="right"><?= $it['pIPI'] ?></td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+        <div style="flex: 1;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 35px;">CÓDIGO</th>
+                        <th>DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
+                        <th style="width: 35px;">NCM/SH</th>
+                        <th style="width: 25px;">CST</th>
+                        <th style="width: 25px;">CFOP</th>
+                        <th style="width: 20px;">UNID.</th>
+                        <th style="width: 35px;">QUANT.</th>
+                        <th style="width: 45px;">VALOR UNIT.</th>
+                        <th style="width: 45px;">VALOR TOTAL</th>
+                        <th style="width: 45px;">BC ICMS</th>
+                        <th style="width: 35px;">VALOR ICMS</th>
+                        <th style="width: 35px;">VALOR IPI</th>
+                        <th style="width: 25px;">ALÍQ. ICMS</th>
+                        <th style="width: 25px;">ALÍQ. IPI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($itens as $it): ?>
+                    <tr>
+                        <td><?= $it['cProd'] ?></td>
+                        <td><?= htmlspecialchars($it['xProd']) ?></td>
+                        <td class="center"><?= $it['NCM'] ?></td>
+                        <td class="center"><?= $it['CST'] ?></td>
+                        <td class="center"><?= $it['CFOP'] ?></td>
+                        <td class="center"><?= $it['uCom'] ?></td>
+                        <td class="right"><?= $it['qCom'] ?></td>
+                        <td class="right"><?= $it['vUn'] ?></td>
+                        <td class="right"><?= $it['vTot'] ?></td>
+                        <td class="right"><?= $it['vBC'] ?></td>
+                        <td class="right"><?= $it['vICMS'] ?></td>
+                        <td class="right"><?= $it['vIPI'] ?></td>
+                        <td class="right"><?= $it['pICMS'] ?></td>
+                        <td class="right"><?= $it['pIPI'] ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
 
         <!-- Dados Adicionais -->
         <div class="bold" style="margin-top: 10px; font-size: 8px;">DADOS ADICIONAIS</div>

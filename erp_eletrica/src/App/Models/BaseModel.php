@@ -175,7 +175,7 @@ abstract class BaseModel {
         }, ARRAY_FILTER_USE_KEY);
     }
 
-    protected function query($sql, $params = []) {
+    public function query($sql, $params = []) {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt;

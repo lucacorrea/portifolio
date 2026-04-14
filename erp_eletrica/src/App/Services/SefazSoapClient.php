@@ -12,14 +12,14 @@ class SefazSoapClient extends BaseService {
             'nfce_retorno' => 'https://homologacao.nfce.fazenda.sp.gov.br/ws/nfceretautorizacao4.asmx',
             'sefaz_status' => 'https://homologacao.nfce.fazenda.sp.gov.br/ws/nfestatusservico4.asmx',
             'nfe_distribuicao' => 'https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx',
-            'nfe_evento' => 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeerecepcaoevento4.asmx'
+            'nfe_evento' => 'https://hom.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx'
         ],
         'producao' => [
             'nfce_autorizacao' => 'https://nfce.fazenda.sp.gov.br/ws/nfceautorizacao4.asmx',
             'nfce_retorno' => 'https://nfce.fazenda.sp.gov.br/ws/nfceretautorizacao4.asmx',
             'sefaz_status' => 'https://nfce.fazenda.sp.gov.br/ws/nfestatusservico4.asmx',
             'nfe_distribuicao' => 'https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx',
-            'nfe_evento' => 'https://nfe.fazenda.sp.gov.br/ws/nfeerecepcaoevento4.asmx'
+            'nfe_evento' => 'https://www.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx'
         ]
     ];
 
@@ -31,8 +31,8 @@ class SefazSoapClient extends BaseService {
         ],
         'nfe_evento' => [
             'service' => 'NFeRecepcaoEvento4', 
-            'method' => 'nfeRecepcaoEvento',
-            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento'
+            'method' => 'nfeRecepcaoEventoNF',
+            'action' => 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEventoNF'
         ],
         'nfce_autorizacao' => [
             'service' => 'NFeAutorizacao4', 
@@ -67,23 +67,23 @@ class SefazSoapClient extends BaseService {
         // SEFAZ 4.00: O conteúdo de nfeDadosMsg NÃO deve ter a declaração XML
         $xmlBody = preg_replace('/^<\?xml[^>]*\?>/i', '', trim($xml));
         
-        $soapXml = $this->wrapSoap($xmlBody, $serviceName, $methodName);
+        $soapRequest = $this->wrapSoap($xmlBody, $serviceName, $methodName, $method);
 
         // DEBUG: Gravar último XML enviado para inspeção
         if (defined('DEBUG') && DEBUG) {
             $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_request.xml';
-            @file_put_contents($logPath, $soapXml);
+            @file_put_contents($logPath, $soapRequest);
         }
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $soapXml);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $soapRequest);
         
         // Use explicitly defined action for each method
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             "Content-Type: application/soap+xml; charset=utf-8; action=\"$actionUrl\"",
-            "Content-Length: " . strlen($soapXml)
+            "Content-Length: " . strlen($soapRequest)
         ]);
         
         // mTLS Authentication
@@ -104,39 +104,52 @@ class SefazSoapClient extends BaseService {
         @unlink($pemCert['file']);
 
         if ($error) {
-            throw new Exception("Erro de conexão SEFAZ CURL: $error");
+            // 📝 Gravar o XML que causou o erro de conexão para análise
+            $errorLogPath = dirname(__DIR__, 3) . '/storage/last_sefaz_curl_error.xml';
+            @file_put_contents($errorLogPath, $soapRequest);
+            throw new Exception("Erro de conexão SEFAZ CURL: $error (XML salvo em storage para análise)");
         }
         
         // DEBUG OVERRIDE: Forçar log de todos os retornos para identificar malformação XML
-        $logPath = dirname(__DIR__, 3) . '/storage/last_sefaz_response.xml';
+        // 📸 CÂMERA DE SEGURANÇA: Salva na raiz para facilitar leitura
+        $logPath = dirname(__DIR__, 3) . '/last_sefaz_debug.txt';
         @file_put_contents($logPath, "HTTP CODE: $httpCode\n\n=== RESPONSE ===\n$response");
 
-        if ($httpCode >= 400 || empty($response)) {
+        if ($httpCode >= 400 || empty($response) || strpos($response, '<cStat>225</cStat>') !== false) {
+             // 📝 Gravar o XML em caso de rejeição 225 ou erro HTTP
+             $errorLogPath = dirname(__DIR__, 3) . '/storage/last_sefaz_schema_error.xml';
+             @file_put_contents($errorLogPath, $soapRequest);
+
              $motivo = $this->extractSoapFault($response);
              if ($motivo) {
                  throw new Exception("Rejeição SEFAZ: $motivo");
              }
-             throw new Exception("Erro HTTP $httpCode. O servidor da SEFAZ rejeitou a requisição. O certificado e a senha estão corretos, mas o conteúdo ou o Mapeamento da SEFAZ pode estar inválido.");
+             
+             // Extrair um trecho do retorno para mostrar no alerta se não houver motivo claro
+             $snippet = substr(strip_tags($response), 0, 150);
+             throw new Exception("Erro HTTP $httpCode ou Rejeição de Schema. O servidor da SEFAZ rejeitou a requisição. Retorno: $snippet");
         }
 
         return $response;
     }
 
-    private function wrapSoap($xml, $serviceName, $methodName) {
-        $ns = 'http://www.portalfiscal.inf.br/nfe/wsdl/' . $serviceName;
-        
-        // For NFeDistribuicaoDFe, the method tag is REQUIRED around nfeDadosMsg
-        // SEFAZ 4.00 core services usually expect Body -> nfeDadosMsg directly
+    private function wrapSoap($xml, $serviceName, $methodName, $method) {
+        // NFeDistribuicaoDFe precisa de wrapper de método
         if ($serviceName === 'NFeDistribuicaoDFe') {
-             $content = "<{$methodName} xmlns=\"{$ns}\"><nfeDadosMsg>{$xml}</nfeDadosMsg></{$methodName}>";
+            $ns = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe";
+            $content = "<{$methodName} xmlns=\"{$ns}\"><nfeDadosMsg>{$xml}</nfeDadosMsg></{$methodName}>";
         } else {
-             $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
+            // Usa o namespace WSDL do serviço específico
+            $ns = "http://www.portalfiscal.inf.br/nfe/wsdl/{$serviceName}";
+            $content = "<nfeDadosMsg xmlns=\"{$ns}\">{$xml}</nfeDadosMsg>";
         }
-
-        return '<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Body>' . $content . '</soap12:Body>
-</soap12:Envelope>';
+        
+        return "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<soap12:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\">
+    <soap12:Body>
+        {$content}
+    </soap12:Body>
+</soap12:Envelope>";
     }
 
     private function extractSoapFault($response) {

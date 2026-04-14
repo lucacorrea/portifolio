@@ -90,6 +90,14 @@ class SettingController extends BaseController {
 
             if ($isMatriz) {
                 // Save to Global Config
+                // Safety: Ensure csc columns exist
+                try {
+                    $db->exec("ALTER TABLE sefaz_config ADD COLUMN csc_id VARCHAR(10) NULL");
+                } catch (\Exception $e) { /* Column already exists */ }
+                try {
+                    $db->exec("ALTER TABLE sefaz_config ADD COLUMN csc VARCHAR(255) NULL");
+                } catch (\Exception $e) { /* Column already exists */ }
+
                 $existing = $db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch();
                 if ($existing) {
                     $sql = "UPDATE sefaz_config SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc = ?";
@@ -102,8 +110,12 @@ class SettingController extends BaseController {
                     $params[] = $existing['id'];
                     $db->prepare($sql)->execute($params);
                 } else {
+                    if (!isset($dataSefaz['certificado_path'])) {
+                        $this->redirect('importar_automatico.php?action=config&msg=Erro: Certificado obrigatório no primeiro cadastro');
+                        return;
+                    }
                     $db->prepare("INSERT INTO sefaz_config (certificado_path, certificado_senha, ambiente, csc_id, csc) VALUES (?, ?, ?, ?, ?)")
-                       ->execute([$dataSefaz['certificado_path'] ?? null, $dataSefaz['certificado_senha'], $dataSefaz['ambiente'], $dataSefaz['csc_id'], $dataSefaz['csc']]);
+                       ->execute([$dataSefaz['certificado_path'], $dataSefaz['certificado_senha'], $dataSefaz['ambiente'], $dataSefaz['csc_id'], $dataSefaz['csc']]);
                 }
                 $audit->record('Configurações Globais de Certificado Atualizadas', 'configuracoes');
             } else {

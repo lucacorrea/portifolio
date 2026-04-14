@@ -20,6 +20,10 @@ switch ($action) {
         \App\Services\AuthService::checkPermission('estoque', 'excluir');
         $controller->delete();
         break;
+    case 'movimentacoes':
+        \App\Services\AuthService::checkPermission('estoque', 'visualizar');
+        $controller->movimentacoes();
+        break;
     default:
         \App\Services\AuthService::checkPermission('estoque', 'visualizar');
         $controller->index();

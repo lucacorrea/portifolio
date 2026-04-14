@@ -72,14 +72,28 @@ $sql = "
         o.numero,
         o.criado_em,
         COALESCE(f.nome, '-') AS fornecedor,
-        COALESCE(SUM(io.quantidade), 0) AS quantidade_total,
-        COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS valor_total
+
+        -- quantidade correta (itens do ofício)
+        (
+            SELECT COALESCE(SUM(io2.quantidade), 0)
+            FROM itens_oficio io2
+            WHERE io2.oficio_id = o.id
+        ) AS quantidade_total,
+
+        -- valor correto (itens da aquisição)
+        (
+            SELECT COALESCE(SUM(ia2.quantidade * ia2.valor_unitario), 0)
+            FROM aquisicoes a2
+            LEFT JOIN itens_aquisicao ia2 ON ia2.aquisicao_id = a2.id
+            WHERE a2.oficio_id = o.id
+        ) AS valor_total
+
     FROM oficios o
-    LEFT JOIN itens_oficio io ON io.oficio_id = o.id
     LEFT JOIN aquisicoes a ON a.oficio_id = o.id
     LEFT JOIN fornecedores f ON f.id = a.fornecedor_id
-    LEFT JOIN itens_aquisicao ia ON ia.aquisicao_id = a.id
+
     WHERE $whereSql
+
     GROUP BY o.id, o.numero, o.criado_em, f.nome
     ORDER BY o.criado_em DESC, o.numero DESC
 ";
@@ -329,15 +343,7 @@ include 'views/layout/header.php';
 
             <div class="no-print">
                 <a
-                    href="relatorios.php?<?php
-                                            echo h(http_build_query([
-                                                'sec_id' => $sec_id,
-                                                'forn_id' => $forn_id,
-                                                'produto' => $produto,
-                                                'inicio' => $periodo_inicio,
-                                                'fim' => $periodo_fim,
-                                            ]));
-                                            ?>"
+                    href="relatorios.php"
                     class="btn btn-outline btn-sm">
                     <i class="fas fa-arrow-left"></i> Voltar
                 </a>
@@ -363,7 +369,7 @@ include 'views/layout/header.php';
                                 <tr>
                                     <td class="oficio-number text-nowrap"><?php echo h($of['numero']); ?></td>
                                     <td class="text-nowrap"><?php echo h($of['fornecedor']); ?></td>
-                                    <td class="text-right text-nowrap"><?php echo number_format((float)$of['quantidade_total'], 2, ',', '.'); ?></td>
+                                    <td class="text-right text-nowrap"><?php echo number_format((int)$of['quantidade_total'], 0, ',', '.'); ?></td>
                                     <td class="text-right text-nowrap">
                                         <span class="badge-money"><?php echo format_money($of['valor_total']); ?></span>
                                     </td>

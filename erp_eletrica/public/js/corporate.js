@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Sidebar toggle for and desktop/mobile persistence
+    // Sidebar toggle for desktop/mobile persistence
     const toggle = document.getElementById('sidebarToggle');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -7,16 +7,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function toggleSidebar() {
         if (window.innerWidth < 992) {
+            // Mobile: slide in/out
             sidebar.classList.toggle('active');
             if (overlay) overlay.classList.toggle('active');
         } else {
-            html.classList.toggle('sidebar-collapsed');
+            // Desktop: collapse/expand
+            const isCollapsed = html.classList.contains('sidebar-collapsed');
+            
+            if (isCollapsed) {
+                // Opening: remove collapsed state, force reflow to ensure clean transition
+                html.classList.remove('sidebar-collapsed');
+                // Reset any inline styles that could interfere
+                sidebar.style.removeProperty('width');
+                sidebar.style.removeProperty('transform');
+                sidebar.style.removeProperty('visibility');
+                sidebar.style.removeProperty('opacity');
+            } else {
+                // Closing: add collapsed state
+                html.classList.add('sidebar-collapsed');
+            }
+            
             localStorage.setItem('sidebar-collapsed', html.classList.contains('sidebar-collapsed'));
         }
     }
 
     if (toggle) toggle.addEventListener('click', toggleSidebar);
 
+    // Ensure sidebar is in a clean state on page load
+    if (sidebar) {
+        sidebar.addEventListener('transitionend', function() {
+            // After transition completes, clean up any stale inline styles
+            if (!html.classList.contains('sidebar-collapsed')) {
+                sidebar.style.removeProperty('transform');
+                sidebar.style.removeProperty('visibility');
+                sidebar.style.removeProperty('opacity');
+            }
+        });
+    }
 
     if (overlay) {
         overlay.addEventListener('click', () => {
@@ -46,6 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 5000);
 
 });
+
 
 // Robust Zoom Modal (Bootstrap-based)
 window.openLightbox = function(src) {

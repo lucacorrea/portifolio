@@ -78,6 +78,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Lógica do formulário
     if (formProcesso) {
+        // --- LOGICA PARA CAMPOS PERSONALIZADOS (MOVIDO PARA O TOPO PARA GARANTIR EXECUÇÃO) ---
+        const handleVisibilidadePers = (selectId, inputId) => {
+            const select = document.getElementById(selectId);
+            const input = document.getElementById(inputId);
+            if (select && input) {
+                const atualizar = () => {
+                    const isPers = select.value === 'PERSONALIZADO';
+                    input.style.setProperty('display', isPers ? 'block' : 'none', 'important');
+                };
+                select.addEventListener('change', atualizar);
+                atualizar(); 
+            }
+        };
+        handleVisibilidadePers('tipo_ato', 'tipo_ato_personalizado');
+        handleVisibilidadePers('natureza_prazo', 'natureza_prazo_personalizado');
+        // -----------------------------------------------------------------------------------
+
         const inputCiencia = document.getElementById('data_ciencia');
         const inputEnvio = document.getElementById('data_envio_intimacao');
         const inputContagem = document.getElementById('tipo_contagem');
@@ -190,12 +207,22 @@ document.addEventListener('DOMContentLoaded', () => {
         formProcesso.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            let tipoAtoVal = document.getElementById('tipo_ato').value;
+            if (tipoAtoVal === 'PERSONALIZADO' && document.getElementById('tipo_ato_personalizado')) {
+                tipoAtoVal = document.getElementById('tipo_ato_personalizado').value.toUpperCase();
+            }
+
+            let natPrazoVal = document.getElementById('natureza_prazo').value;
+            if (natPrazoVal === 'PERSONALIZADO' && document.getElementById('natureza_prazo_personalizado')) {
+                natPrazoVal = document.getElementById('natureza_prazo_personalizado').value.toUpperCase();
+            }
+            
             const formData = {
                 id: document.getElementById('processo-id').value,
                 numero: document.getElementById('numero_processo').value,
                 tipo_processo: document.getElementById('tipo_processo').value,
-                tipo_ato: document.getElementById('tipo_ato').value,
-                natureza: document.getElementById('natureza_prazo').value,
+                tipo_ato: tipoAtoVal,
+                natureza: natPrazoVal,
                 revelia: document.getElementById('revelia').value,
                 data_ciencia: inputCiencia.value,
                 data_envio: document.getElementById('data_envio_intimacao').value,
@@ -606,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (a.includes('SENTENÇA') || a.includes('SEQUESTRO')) return 'bg-red';
         if (a.includes('DILIGÊNCIA') || a.includes('MANIFESTAÇÃO DA PARTE')) return 'bg-pink';
         if (a.includes('CIÊNCIA')) return 'bg-lightgreen';
-        return 'bg-lightyellow';
+        return 'bg-indigo';
     };
 
     window.getColorForNatureza = (nat) => {
@@ -623,7 +650,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (n.includes('AUDIÊNCIA')) return 'bg-purple';
         if (n.includes('ANÁLISE')) return 'bg-pink';
         if (n.includes('CIÊNCIA')) return 'bg-lightgreen';
-        return 'bg-lightyellow';
+        return 'bg-indigo';
     };
 
     window.getColorForUser = (user) => {
@@ -665,8 +692,35 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('processo-id').value = p.id;
         document.getElementById('numero_processo').value = p.numero;
         if (document.getElementById('tipo_processo')) document.getElementById('tipo_processo').value = p.tipo_processo || 'CIÊNCIA';
-        document.getElementById('tipo_ato').value = p.tipo_ato;
-        document.getElementById('natureza_prazo').value = p.natureza;
+        const elAto = document.getElementById('tipo_ato');
+        if (elAto) {
+            let atoEncontrado = Array.from(elAto.options).some(opt => opt.value === p.tipo_ato);
+            if (!atoEncontrado && p.tipo_ato) {
+                elAto.value = 'PERSONALIZADO';
+                const elAtoPers = document.getElementById('tipo_ato_personalizado');
+                if (elAtoPers) {
+                    elAtoPers.value = p.tipo_ato;
+                    elAtoPers.style.display = 'block';
+                }
+            } else {
+                elAto.value = p.tipo_ato;
+            }
+        }
+
+        const elNat = document.getElementById('natureza_prazo');
+        if (elNat) {
+            let natEncontrada = Array.from(elNat.options).some(opt => opt.value === p.natureza);
+            if (!natEncontrada && p.natureza) {
+                elNat.value = 'PERSONALIZADO';
+                const elNatPers = document.getElementById('natureza_prazo_personalizado');
+                if (elNatPers) {
+                    elNatPers.value = p.natureza;
+                    elNatPers.style.display = 'block';
+                }
+            } else {
+                elNat.value = p.natureza;
+            }
+        }
         document.getElementById('revelia').value = p.revelia;
         document.getElementById('data_ciencia').value = p.data_ciencia;
         document.getElementById('data_envio_intimacao').value = p.data_envio || '';

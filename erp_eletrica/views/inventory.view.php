@@ -27,12 +27,14 @@
         </a>
     </div>
     <div class="col-md-3">
-        <div class="card h-100 border-0 shadow-sm border-start border-info border-4">
-            <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Giro (Este Mês)</div>
-                <h3 class="mb-0 fw-bold text-info"><?= $stats['mov_mes'] ?> <small class="fw-normal fs-6">mov</small></h3>
+        <a href="estoque.php?action=movimentacoes" class="text-decoration-none">
+            <div class="card h-100 border-0 shadow-sm border-start border-info border-4 card-hover">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold text-uppercase mb-2">Giro (Este Mês)</div>
+                    <h3 class="mb-0 fw-bold text-info"><?= $stats['mov_mes'] ?> <small class="fw-normal fs-6">mov</small></h3>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 

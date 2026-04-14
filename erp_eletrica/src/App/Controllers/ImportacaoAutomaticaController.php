@@ -4,33 +4,68 @@ namespace App\Controllers;
 use App\Services\SefazConsultaService;
 use App\Models\Product;
 use App\Models\StockMovement;
-use App\Services\AuditLogService;
+use App\Config\Database;
+use PDO;
+
+// Carregar autoloader globalmente para este controller
+require_once dirname(__DIR__) . '/Services/vendor/autoload.php';
 
 class ImportacaoAutomaticaController extends BaseController {
     public function index() {
         $db = \App\Config\Database::getInstance()->getConnection();
         $filialId = $_SESSION['filial_id'] ?? 1;
 
-        // Buscar notas do cache agrupadas por fornecedor
-        $sql = "SELECT fornecedor_cnpj, fornecedor_nome, COUNT(*) as total_notas, SUM(valor_total) as valor_acumulado 
-                FROM nfe_importadas 
-                WHERE filial_id = ? AND status = 'pendente'
-                GROUP BY fornecedor_cnpj, fornecedor_nome
-                ORDER BY fornecedor_nome ASC";
+        // Filtros
+        $search = $_GET['search'] ?? '';
+        $status = $_GET['status'] ?? 'todas';
+        $desde  = $_GET['desde'] ?? '';
+        $ate    = $_GET['ate'] ?? '';
+
+        $params = [$filialId];
+        $where  = ["filial_id = ?"];
+
+        if ($search) {
+            $where[] = "(fornecedor_nome LIKE ? OR fornecedor_cnpj LIKE ? OR numero_nota LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        if ($status === 'pendente' || $status === 'importada') {
+            $where[] = "status = ?";
+            $params[] = $status;
+        }
+
+        if ($desde) {
+            $where[] = "data_emissao >= ?";
+            $params[] = $desde . " 00:00:00";
+        }
+        if ($ate) {
+            $where[] = "data_emissao <= ?";
+            $params[] = $ate . " 23:59:59";
+        }
+
+        // Paginação
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 20;
+        $offset = ($page - 1) * $perPage;
+
+        // Calcular total
+        $sqlTotal = "SELECT COUNT(*) FROM nfe_importadas WHERE " . implode(" AND ", $where);
+        $stmtTotal = $db->prepare($sqlTotal);
+        $stmtTotal->execute($params);
+        $totalItems = (int)$stmtTotal->fetchColumn();
+        $totalPages = ceil($totalItems / $perPage);
+
+        // Buscar itens paginados
+        $sql = "SELECT * FROM nfe_importadas 
+                WHERE " . implode(" AND ", $where) . "
+                ORDER BY data_emissao DESC
+                LIMIT $perPage OFFSET $offset";
         
         $stmt = $db->prepare($sql);
-        $stmt->execute([$filialId]);
-        $fornecedores = $stmt->fetchAll();
-
-        // Popular as notas individuais para cada fornecedor (Ajuste para a View)
-        foreach ($fornecedores as &$f) {
-            $sqlNotas = "SELECT * FROM nfe_importadas 
-                         WHERE filial_id = ? AND fornecedor_cnpj = ? AND status = 'pendente'
-                         ORDER BY data_emissao DESC";
-            $stmtNotas = $db->prepare($sqlNotas);
-            $stmtNotas->execute([$filialId, $f['fornecedor_cnpj']]);
-            $f['notas'] = $stmtNotas->fetchAll();
-        }
+        $stmt->execute($params);
+        $notas = $stmt->fetchAll();
 
         // Buscar última sincronização geral
         $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_last_sync_timestamp'");
@@ -38,60 +73,110 @@ class ImportacaoAutomaticaController extends BaseController {
         $lastSync = $stmt->fetchColumn();
         
         $this->render('importacao_automatica', [
-            'fornecedores' => $fornecedores,
+            'notas' => $notas,
             'lastSync' => $lastSync,
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'desde' => $desde,
+                'ate' => $ate
+            ],
+            'pagination' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'totalPages' => $totalPages,
+                'totalItems' => $totalItems
+            ],
             'title' => 'Importação Automática SEFAZ',
             'pageTitle' => 'Notas Fiscais Destinadas (Certificado A1)'
         ]);
     }
-
     public function sincronizar() {
         try {
             $db = \App\Config\Database::getInstance()->getConnection();
             $filialId = $_SESSION['filial_id'] ?? 1;
             $forceReset = ($_GET['reset'] ?? '0') === '1';
-            
-            // Buscar CNPJ da filial
+
+            // 🔍 Buscar CNPJ da filial
             $stmt = $db->prepare("SELECT cnpj FROM filiais WHERE id = ?");
             $stmt->execute([$filialId]);
-            $cnpj = $stmt->fetchColumn();
+            $cnpjRaw = $stmt->fetchColumn();
+            $cnpj = preg_replace('/\D/', '', $cnpjRaw);
 
-            $service = new SefazConsultaService();
-            
-            // Se reset for 1, passamos 0 como NSU inicial para buscar os últimos 90 dias
-            $ultNSU = $forceReset ? '0' : null;
-            $resultado = $service->consultarNotas($cnpj, $ultNSU);
-            
-            $count = count($resultado['documentos'] ?? []);
-            
-            $hasMore = ($resultado['ultNSU'] < $resultado['maxNSU']);
-            $message = $count > 0 
-                ? "Sincronização concluída. $count novos registros foram processados." 
-                : "Nenhuma nota nova encontrada na SEFAZ para este período.";
+            // ⛔ CONTROLE DE TEMPO (⏱️ 1 consulta por hora automático)
+            $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_last_sync_timestamp'");
+            $stmt->execute();
+            $lastSync = $stmt->fetchColumn();
 
-            if ($hasMore) {
-                $message .= " Atenção: Ainda existem mais notas disponíveis. Clique em 'Atualizar' novamente.";
+            if ($lastSync && !$forceReset) {
+                $diff = time() - strtotime($lastSync);
+                if ($diff < 3600) {
+                    $minutosRestantes = ceil((3600 - $diff) / 60);
+                    echo json_encode([
+                        'success' => false,
+                        'error' => "⏱️ Limite atingido. Aguarde {$minutosRestantes} minutos para uma nova consulta automática à SEFAZ."
+                    ]);
+                    return;
+                }
             }
 
-            // Save last sync timestamp
-            $stmt = $db->prepare("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
-            $stmt->execute(['nfe_last_sync_timestamp', date('Y-m-d H:i:s'), date('Y-m-d H:i:s')]);
+            // 🔌 CONSULTA SEFAZ (Agora com LOOP e persistência automática)
+            $service = new SefazConsultaService();
+            // Passamos null para o NSU para que o service busque o correto no banco (nfe_last_nsu)
+            $resultado = $service->consultarNotas($cnpj, $forceReset ? '000000000000000' : null);
+
+            $count = $resultado['count'] ?? 0;
+            $loops = $resultado['loops'] ?? 1;
+
+            // 💾 SALVAR TIMESTAMP DA ÚLTIMA SINCRONIZAÇÃO
+            $stmt = $db->prepare("
+                INSERT INTO configuracoes (chave, valor) 
+                VALUES ('nfe_last_sync_timestamp', ?) 
+                ON DUPLICATE KEY UPDATE valor = ?
+            ");
+            $now = date('Y-m-d H:i:s');
+            $stmt->execute([$now, $now]);
+
+            // 📊 CONTAR TOTAL ATUALIZADO NO BANCO (para esta filial)
+            $stmt = $db->prepare("SELECT COUNT(*) FROM nfe_importadas WHERE filial_id = ?");
+            $stmt->execute([$filialId]);
+            $totalNoBanco = $stmt->fetchColumn();
+
+            $message = $count > 0 
+                ? "Sincronização concluída ({$loops} lotes). $count novos registros processados."
+                : "Nenhuma nota nova encontrada.";
+
+            if (!empty($resultado['db_error'])) {
+                $message .= "\nERRO (BD): " . $resultado['db_error'];
+            }
+            
+            $message .= "\nTotal no banco: $totalNoBanco notas.";
+
+            if (($resultado['ultNSU'] ?? 0) < ($resultado['maxNSU'] ?? 0)) {
+                $message .= "\nAinda existem mais notas pendentes na SEFAZ (Limite de loop atingido).";
+            }
 
             echo json_encode([
-                'success' => true, 
-                'count' => $count, 
-                'hasMore' => $hasMore,
+                'success' => true,
+                'count' => $count,
+                'totalBanco' => (int)$totalNoBanco,
                 'message' => $message
             ]);
+
         } catch (\Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            error_log("Erro na sincronização SEFAZ: " . $e->getMessage());
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
         }
         exit;
     }
-
     public function manifestar() {
         try {
             $id = $_GET['id'] ?? null;
+            $type = $_GET['type'] ?? '210210'; // Default Ciência
+            
             if (!$id) throw new \Exception("ID da nota não fornecido.");
 
             $db = \App\Config\Database::getInstance()->getConnection();
@@ -107,11 +192,20 @@ class ImportacaoAutomaticaController extends BaseController {
             $stmt->execute([$_SESSION['filial_id'] ?? 1]);
             $cnpjFilial = $stmt->fetchColumn();
 
-            $service->manifestarNota($cnpjFilial, $nota['chave_nfe']);
+            $service->manifestarNota($cnpjFilial, $nota['chave_acesso'], $type);
 
-            // Após manifestar, precisamos sincronizar novamente para baixar o XML completo (procNFe)
-            // A SEFAZ pode demorar alguns segundos, mas geralmente o próximo 'sincronizar' resolve.
-            echo json_encode(['success' => true, 'message' => 'Manifestação (Ciência da Operação) realizada com sucesso. Sincronize novamente em instantes para baixar os produtos.']);
+            // Atualizar o banco com a manifestação realizada
+            $stmtUp = $db->prepare("UPDATE nfe_importadas SET manifestacao_tipo = ?, manifestacao_data = NOW() WHERE id = ?");
+            $stmtUp->execute([$type, $id]);
+
+            $msg = [
+                '210200' => 'Confirmação da Operação realizada.',
+                '210210' => 'Ciência da Operação realizada.',
+                '210220' => 'Desconhecimento da Operação realizado.',
+                '210240' => 'Operação Não Realizada registrada.'
+            ][$type] ?? 'Manifestação realizada.';
+
+            echo json_encode(['success' => true, 'message' => $msg . ' Sincronize novamente em instantes para baixar os produtos.']);
         } catch (\Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -122,42 +216,69 @@ class ImportacaoAutomaticaController extends BaseController {
         $id = $_GET['id'] ?? null;
         if (!$id) exit;
 
-        $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT xml_conteudo FROM nfe_importadas WHERE id = ? AND filial_id = ?");
-        $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
-        $nota = $stmt->fetch();
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT * FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+            $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
+            $nota = $stmt->fetch();
 
-        if (!$nota || empty($nota['xml_conteudo'])) {
-            echo json_encode(['success' => false, 'error' => 'XML não encontrado.']);
-            exit;
+            if (!$nota || empty($nota['xml'])) {
+                echo json_encode(['success' => false, 'error' => 'XML não encontrado no banco de dados.']);
+                exit;
+            }
+
+            libxml_use_internal_errors(true);
+            $xml = simplexml_load_string($nota['xml'], 'SimpleXMLElement', LIBXML_PARSEHUGE);
+            
+            if ($xml === false) {
+                echo json_encode(['success' => false, 'error' => 'O XML da nota está corrompido ou malformado.']);
+                exit;
+            }
+
+            if ($xml->getName() == 'resNFe') {
+                 // 🕵️ FALLBACK: Tentar baixar o XML completo via Chave de Acesso (Active Fetch)
+                 $stmtF = $db->prepare("SELECT cnpj FROM filiais WHERE id = ?");
+                 $stmtF->execute([$_SESSION['filial_id'] ?? 1]);
+                 $cnpjFilial = $stmtF->fetchColumn();
+
+                 $service = new SefazConsultaService();
+                 $service->consultarPorChave($cnpjFilial, $nota['chave_acesso']);
+
+                 // Recarregar do banco para ver se agora temos o procNFe
+                 $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
+                 $nota = $stmt->fetch();
+                 
+                 $xml = simplexml_load_string($nota['xml'], 'SimpleXMLElement', LIBXML_PARSEHUGE);
+                 if (!$xml || $xml->getName() == 'resNFe') {
+                    echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota e o download do XML completo ainda não foi liberado. Certifique-se de que a nota foi manifestada e aguarde alguns minutos antes de tentar novamente.']);
+                    exit;
+                 }
+            }
+
+            // Se for procNFe completo (mockado ou real)
+            $xml->registerXPathNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+            $detalhes = $xml->xpath('//nfe:det');
+            $produtos = [];
+
+            if ($detalhes) {
+                foreach ($detalhes as $det) {
+                    $prod = $det->prod;
+                    $produtos[] = [
+                        'codigo' => (string)$prod->cProd,
+                        'nome' => (string)$prod->xProd,
+                        'ncm' => (string)$prod->NCM,
+                        'cfop' => (string)$prod->CFOP,
+                        'qCom' => (float)$prod->qCom,
+                        'vUnCom' => (float)$prod->vUnCom,
+                        'vUnComFormatted' => number_format((float)$prod->vUnCom, 2, ',', '.')
+                    ];
+                }
+            }
+
+            echo json_encode(['success' => true, 'produtos' => $produtos]);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Erro interno ao processar: ' . $e->getMessage()]);
         }
-
-        // Tentar ler o XML
-        $xml = simplexml_load_string($nota['xml_conteudo']);
-        if ($xml->getName() == 'resNFe') {
-             echo json_encode(['success' => false, 'error' => 'A SEFAZ retornou apenas o resumo da nota. É necessário manifestar a nota para baixar o XML completo. (Funcionalidade de Manifestação Pendente)']);
-             exit;
-        }
-
-        // Se for procNFe completo (mockado ou real)
-        $xml->registerXPathNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
-        $detalhes = $xml->xpath('//nfe:det');
-        $produtos = [];
-
-        foreach ($detalhes as $det) {
-            $prod = $det->prod;
-            $produtos[] = [
-                'codigo' => (string)$prod->cProd,
-                'nome' => (string)$prod->xProd,
-                'ncm' => (string)$prod->NCM,
-                'cfop' => (string)$prod->CFOP,
-                'qCom' => (float)$prod->qCom,
-                'vUnCom' => (float)$prod->vUnCom,
-                'vUnComFormatted' => number_format((float)$prod->vUnCom, 2, ',', '.')
-            ];
-        }
-
-        echo json_encode(['success' => true, 'produtos' => $produtos]);
         exit;
     }
 
@@ -238,14 +359,55 @@ class ImportacaoAutomaticaController extends BaseController {
         if (!$id) exit;
 
         $db = \App\Config\Database::getInstance()->getConnection();
-        $stmt = $db->prepare("SELECT xml_conteudo, chave_nfe FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+        $stmt = $db->prepare("SELECT xml, chave_acesso FROM nfe_importadas WHERE id = ? AND filial_id = ?");
         $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
         $nota = $stmt->fetch();
 
-        if ($nota && !empty($nota['xml_conteudo'])) {
+        if ($nota && !empty($nota['xml'])) {
             header('Content-Type: text/xml');
-            header('Content-Disposition: attachment; filename="NFe_' . $nota['chave_nfe'] . '.xml"');
-            echo $nota['xml_conteudo'];
+            header('Content-Disposition: attachment; filename="NFe_' . $nota['chave_acesso'] . '.xml"');
+            echo $nota['xml'];
+        }
+        exit;
+    }
+
+    public function baixar_danfe() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) exit;
+
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT xml, chave_acesso FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+        $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
+        $nota = $stmt->fetch();
+
+        if (!$nota || empty($nota['xml'])) {
+            die("Erro: XML não encontrado no banco de dados.");
+        }
+
+        $xml = $nota['xml'];
+        
+        // Verificar se é apenas resumo
+        if (strpos($xml, '<resNFe') !== false) {
+            die("Erro: Não é possível gerar o DANFE a partir de um resumo da nota. É necessário manifestar a nota primeiro para que o XML completo seja liberado pela SEFAZ.");
+        }
+
+        try {
+            // O autoloader já foi carregado no topo do arquivo para garantir que as classes NFePHP estejam disponíveis
+            
+            // Tentar localizar um logo
+            $logoPath = dirname(__DIR__, 3) . '/logo_sistema_erp_eletrica.png';
+            $logo = file_exists($logoPath) ? $logoPath : '';
+
+            $danfe = new \NFePHP\DA\NFe\Danfe($xml);
+            $danfe->setDefaultFont('times');
+            
+            $pdf = $danfe->render($logo);
+
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="DANFE_' . $nota['chave_acesso'] . '.pdf"');
+            echo $pdf;
+        } catch (\Exception $e) {
+            die("Erro ao gerar DANFE: " . $e->getMessage());
         }
         exit;
     }
