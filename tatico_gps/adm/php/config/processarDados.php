@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 
 header('Content-Type: text/html; charset=UTF-8');
 
-require_once __DIR__ . '/../../conexao/conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (!isset($pdo) || !($pdo instanceof PDO)) {
     echo "<script>alert('Erro: conexão com o banco não foi carregada.'); history.back();</script>";
