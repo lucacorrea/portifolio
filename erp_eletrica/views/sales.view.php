@@ -28,12 +28,12 @@
                                 <!-- Results will be injected here -->
                             </div>
                         </div>
-                        <div class="mt-3 d-flex gap-2">
-                             <button class="btn btn-outline-primary fw-bold" onclick="loadPendingPreSales()">
-                                <i class="fas fa-file-import me-2"></i>Importar Pré-Venda (F9)
+                        <div class="mt-3 d-flex flex-column flex-sm-row gap-2">
+                             <button class="btn btn-outline-primary fw-bold w-100" onclick="loadPendingPreSales()">
+                                <i class="fas fa-file-import me-2"></i>Importar (F9)
                             </button>
-                            <button class="btn btn-outline-info fw-bold" onclick="saveCurrentSaleAsPreSale()" id="btnPauseSale">
-                                <i class="fas fa-pause-circle me-2"></i>Pausar Venda (F10)
+                            <button class="btn btn-outline-info fw-bold w-100" onclick="saveCurrentSaleAsPreSale()" id="btnPauseSale">
+                                <i class="fas fa-pause-circle me-2"></i>Pausar (F10)
                             </button>
                         </div>
                     </div>
