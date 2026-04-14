@@ -8,7 +8,7 @@ use App\Config\Database;
 use PDO;
 
 // Carregar autoloader globalmente para este controller
-require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+require_once dirname(__DIR__) . '/Services/vendor/autoload.php';
 
 class ImportacaoAutomaticaController extends BaseController {
     public function index() {

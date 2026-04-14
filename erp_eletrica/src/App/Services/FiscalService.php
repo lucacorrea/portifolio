@@ -184,7 +184,7 @@ class FiscalService extends BaseService {
             throw new Exception("Arquivo do certificado não encontrado no servidor.");
         }
 
-        require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+        require_once __DIR__ . '/vendor/autoload.php';
 
         // Step 1: Load certificate – exactly like Açaidinhos
         $pfxContent  = file_get_contents($pfxPath);

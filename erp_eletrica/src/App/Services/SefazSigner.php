@@ -11,7 +11,7 @@ class SefazSigner extends BaseService {
         
         $pfxContent = file_get_contents($pfxPath);
         
-        require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+        require_once __DIR__ . '/vendor/autoload.php';
         
         try {
             $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, $password);

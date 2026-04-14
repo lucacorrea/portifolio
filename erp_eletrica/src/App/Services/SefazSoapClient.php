@@ -168,7 +168,7 @@ class SefazSoapClient extends BaseService {
         $pfxContent = file_get_contents($pfxPath);
         
         // Validate with NFePHP first (same as the rest of the system)
-        require_once dirname(__DIR__, 3) . '/nfce/vendor/autoload.php';
+        require_once __DIR__ . '/vendor/autoload.php';
         try {
             \NFePHP\Common\Certificate::readPfx($pfxContent, $password);
         } catch (\Exception $e) {
