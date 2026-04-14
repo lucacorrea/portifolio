@@ -9,7 +9,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.innerWidth < 992) {
             // Mobile: slide in/out
             sidebar.classList.toggle('active');
-            if (overlay) overlay.classList.toggle('active');
+            if (overlay) {
+                overlay.classList.toggle('active');
+                if (overlay.classList.contains('active')) {
+                    overlay.style.display = 'block';
+                    setTimeout(() => overlay.style.opacity = '1', 10);
+                } else {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 300);
+                }
+            }
         } else {
             // Desktop: collapse/expand
             html.classList.toggle('sidebar-collapsed');
@@ -19,21 +28,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (toggle) toggle.addEventListener('click', toggleSidebar);
 
-    // Ensure sidebar is in a clean state on page load
-    if (sidebar) {
-        sidebar.addEventListener('transitionend', function() {
-            // After transition completes, clean up any stale inline styles
-            if (!html.classList.contains('sidebar-collapsed')) {
-                sidebar.style.removeProperty('transform');
-                sidebar.style.removeProperty('visibility');
-                sidebar.style.removeProperty('opacity');
+    // Auto-close sidebar on mobile when clicking a menu link
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992) {
+                sidebar.classList.remove('active');
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 300);
+                    overlay.classList.remove('active');
+                }
             }
         });
-    }
+    });
 
     if (overlay) {
         overlay.addEventListener('click', () => {
             sidebar.classList.remove('active');
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 300);
             overlay.classList.remove('active');
         });
     }

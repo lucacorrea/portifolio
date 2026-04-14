@@ -261,11 +261,13 @@ body {
 
     .sidebar.active {
         transform: translateX(0);
-        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.2);
+        box-shadow: 15px 0 35px rgba(0, 0, 0, 0.3);
+        z-index: 1050;
     }
     
     .main-wrapper {
         margin-left: 0 !important;
+        width: 100% !important;
     }
 
     .top-navbar {
@@ -278,14 +280,16 @@ body {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(2px);
-    z-index: 1035;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.65); /* Slate Dark Overlay */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1045; /* Just below active sidebar */
     display: none;
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
 }
 
 @media (min-width: 992px) {
@@ -296,7 +300,6 @@ body {
 
 .sidebar-overlay.active {
     display: block;
-    opacity: 1;
 }
 
 /* Content Body Mobile Optimization */
