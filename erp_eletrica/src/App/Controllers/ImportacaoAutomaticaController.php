@@ -92,6 +92,16 @@ class ImportacaoAutomaticaController extends BaseController {
         ]);
     }
     public function sincronizar() {
+        register_shutdown_function(function() {
+            $error = error_get_last();
+            if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_CORE_ERROR || $error['type'] === E_COMPILE_ERROR)) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => "FATAL ERROR: " . $error['message'] . " in " . $error['file'] . " on line " . $error['line']
+                ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            }
+        });
+
         try {
             $db = \App\Config\Database::getInstance()->getConnection();
             $filialId = $_SESSION['filial_id'] ?? 1;
