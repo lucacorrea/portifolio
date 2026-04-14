@@ -5,7 +5,7 @@ ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
-require_once __DIR__ . '/conexao/conexao.php';
+require_once __DIR__ . '/php/conexao.php';
 
 if (!isset($pdo) || !($pdo instanceof PDO)) {
     die('Conexão com banco de dados não disponível.');
