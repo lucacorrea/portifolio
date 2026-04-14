@@ -279,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="login-body">
             <div class="login-title">
                 <h2>LOGIN</h2>
-                
+                <p>Identifique-se para continuar</p>
             </div>
 
             <?php if ($error): ?>
