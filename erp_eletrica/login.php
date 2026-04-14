@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="public/css/corporate.css?v=10.4">
     <style>
         :root {
-            --login-bg: #1e3a62;
+            --login-bg: #cbd5e1;
             --card-bg: #2b4c7d;
             --accent-gold: #FFC107;
             --accent-hover: #FFB300;
