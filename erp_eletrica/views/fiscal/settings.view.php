@@ -3,30 +3,30 @@
     <div class="col-12">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4 stack-on-mobile">
                     <div class="d-flex align-items-center">
-                        <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3 me-3">
+                        <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3 me-3 d-none d-sm-block">
                             <i class="fas fa-server fs-4"></i>
                         </div>
                         <div>
                             <h5 class="fw-bold mb-1">Central de Transmissão SEFAZ</h5>
-                            <p class="text-muted small mb-0">Gerencie certificados digitais e credenciais para emissão de NF-e e NFC-e.</p>
+                            <p class="text-muted extra-small mb-0">Gerencie certificados digitais e emissão de notas.</p>
                         </div>
                     </div>
                     <div>
-                        <a href="fiscal.php?action=diagnostic" class="btn btn-warning fw-bold shadow-sm">
+                        <a href="fiscal.php?action=diagnostic" class="btn btn-warning fw-bold shadow-sm w-100 w-md-auto">
                             <i class="fas fa-stethoscope me-2"></i>DIAGNÓSTICO COMPLETO
                         </a>
                     </div>
                 </div>
 
                 <!-- Global Certificate Status -->
-                <div class="alert bg-light border-0 d-flex align-items-center p-4 mb-4">
-                    <div class="me-4 text-primary">
+                <div class="alert bg-light border-0 d-flex flex-column flex-md-row align-items-center p-4 mb-4 gap-3">
+                    <div class="me-0 me-md-4 text-primary text-center">
                         <i class="fas fa-shield-halved fa-3x"></i>
                     </div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="flex-grow-1 w-100">
+                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-2 gap-2">
                             <h6 class="fw-bold mb-0">Configuração de Certificado Global A1</h6>
                             <?php if ($_SESSION['is_matriz'] ?? false): ?>
                                 <a href="importar_automatico.php?action=config" class="btn btn-sm btn-primary fw-bold">

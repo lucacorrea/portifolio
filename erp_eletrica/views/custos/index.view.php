@@ -57,9 +57,9 @@
 <div class="row mb-4">
     <div class="col-md-8">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold">Extrato de Custos</h6>
-                <div class="btn-group btn-group-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center stack-on-mobile">
+                <h6 class="mb-0 fw-bold"><i class="fas fa-list-ul me-2"></i>Extrato de Custos</h6>
+                <div class="btn-group btn-group-sm w-100 w-md-auto">
                     <a href="custos.php?action=relatorioMensal" class="btn btn-outline-primary">Ver Comparativo</a>
                     <a href="custos.php?action=rentabilidade" class="btn btn-outline-primary">Rentabilidade</a>
                 </div>

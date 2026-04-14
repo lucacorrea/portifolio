@@ -131,6 +131,33 @@ body {
     background-color: var(--erp-light) !important;
 }
 
+.table-responsive {
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure body doesn't horizontal scroll because of tables */
+body {
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Smart Stacking Utility */
+@media (max-width: 767.98px) {
+    .stack-on-mobile {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 1rem !important;
+    }
+    
+    .stack-on-mobile .btn, 
+    .stack-on-mobile .btn-group {
+        width: 100% !important;
+    }
+}
+
 .sidebar-collapsed .main-wrapper {
     margin-left: 0;
 }
