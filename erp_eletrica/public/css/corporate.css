@@ -109,6 +109,23 @@ body {
     color: var(--erp-active-font) !important;
 }
 
+/* Red Logout Button */
+.sidebar .nav-link.logout-btn-sidebar {
+    transition: all 0.2s ease;
+}
+
+.sidebar .nav-link.logout-btn-sidebar:hover {
+    background-color: #bb2d3b !important; /* Slightly darker red */
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.45) !important;
+}
+
+.sidebar .nav-link.logout-btn-sidebar i {
+    color: white !important;
+}
+
+
 .nav-link i {
     width: 20px;
 }
