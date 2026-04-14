@@ -116,37 +116,37 @@
                 <div class="mb-4">
                     <label class="form-label small fw-bold text-uppercase text-muted">Método de Pagamento</label>
                     <div class="row g-2">
-                        <div class="col-6">
+                        <div class="col-12 col-sm-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_dinheiro" value="dinheiro" checked>
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_dinheiro">
                                 <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro (F1)
                             </label>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 col-sm-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_pix" value="pix">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_pix">
                                 <i class="fa-brands fa-pix me-2 text-info"></i> Pix (Ctrl+F1)
                             </label>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 col-sm-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_credito" value="cartao_credito">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_credito">
                                 <i class="fas fa-credit-card me-2 text-primary"></i> Crédito (F6)
                             </label>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 col-sm-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_debito" value="cartao_debito">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_debito">
                                 <i class="fas fa-credit-card me-2 text-info"></i> Débito (F7)
                             </label>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 col-sm-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_boleto">
                                 <i class="fas fa-barcode me-2 text-secondary"></i> Boleto (F11)
                             </label>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 col-sm-6">
                             <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_fiado">
                                 <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado) (F8)
@@ -171,7 +171,7 @@
                 <div class="mb-4">
                     <label class="form-label small fw-bold text-uppercase text-muted">Tipo de Venda</label>
                     <div class="row g-2">
-                        <div class="col-6">
+                        <div class="col-12 col-sm-6">
                             <input type="radio" class="btn-check" name="tipo_nota" id="tipo_fiscal" value="fiscal" autocomplete="off">
                             <label class="btn btn-outline-success d-block text-start p-3 w-100" for="tipo_fiscal">
                                 <i class="fas fa-file-invoice-dollar me-2"></i>
@@ -179,7 +179,7 @@
                                 <div class="extra-small opacity-75 mt-1">Emite NFC-e SEFAZ</div>
                             </label>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 col-sm-6">
                             <input type="radio" class="btn-check" name="tipo_nota" id="tipo_nao_fiscal" value="nao_fiscal" autocomplete="off" checked>
                             <label class="btn btn-outline-secondary d-block text-start p-3 w-100" for="tipo_nao_fiscal">
                                 <i class="fas fa-receipt me-2"></i>
