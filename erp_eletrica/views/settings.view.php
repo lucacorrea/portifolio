@@ -177,8 +177,10 @@
                     <!-- Nav Tabs Inside Modal -->
                     <ul class="nav nav-pills mb-4 small fw-bold" id="modalTabs">
                         <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-basico" type="button">Básico & Endereço</button></li>
-                        <li class="nav-item d-none"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-fiscal" type="button">Emissão Fiscal (NFC-e)</button></li>
-                        <li class="nav-item d-none"><button class="nav-link text-warning" data-bs-toggle="pill" data-bs-target="#tab-cert" type="button">Certificado Próprio</button></li>
+                        <?php if ($_SESSION['is_matriz'] ?? false): ?>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-fiscal" type="button">Emissão Fiscal (NFC-e)</button></li>
+                        <li class="nav-item"><button class="nav-link text-warning" data-bs-toggle="pill" data-bs-target="#tab-cert" type="button">Certificado Próprio</button></li>
+                        <?php endif; ?>
                     </ul>
 
                     <div class="tab-content border-top pt-4">
