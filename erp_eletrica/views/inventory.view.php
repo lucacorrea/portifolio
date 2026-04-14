@@ -80,22 +80,22 @@
     }
 }
 
-/* On mobile, scroll is MANDATORY */
-@media (max-width: 991.98px) {
-    .table-responsive {
-        overflow-x: auto !important;
-        padding-bottom: 1rem;
+    /* On mobile, scroll is MANDATORY */
+    @media (max-width: 991.98px) {
+        .table-responsive {
+            overflow-x: auto !important;
+            padding-bottom: 1rem;
+        }
     }
-}
-</style>
-.card-hover {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    cursor: pointer;
-}
-.card-hover:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
-}
+
+    .card-hover {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
 </style>
 
 <!-- Products Table -->
