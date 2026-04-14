@@ -56,22 +56,18 @@ class SettingController extends BaseController {
             $csc_id = $_POST['csc_id_global'] ?? '';
             $csc_token = $_POST['csc_token_global'] ?? '';
             
-            // Collect Identity fields for Matriz sync
-            $identityData = [
-                'nome' => $_POST['empresa_nome'] ?? '',
-                'cnpj' => $_POST['empresa_cnpj'] ?? '',
-                'telefone' => $_POST['empresa_fone'] ?? '',
-                'email' => $_POST['empresa_email'] ?? ''
-            ];
-
             $dataSefaz = [
-                'ambiente' => ($ambiente === 'producao' ? 1 : 2),
+                'ambiente' => ($isMatriz ? $ambiente : ($ambiente === 'producao' ? 1 : 2)),
                 'certificado_senha' => $senha,
                 'csc_id' => $csc_id,
-                'csc' => $csc_token,
-                'cnpj' => preg_replace('/\D/', '', $identityData['cnpj']),
-                'razao_social' => $identityData['nome']
+                'csc' => $csc_token
             ];
+            
+            // Map keys for Branch table vs Global table
+            if (!$isMatriz) {
+                $dataSefaz['csc_token'] = $csc_token;
+                unset($dataSefaz['csc']);
+            }
 
             if (isset($_FILES['certificado_pfx']) && $_FILES['certificado_pfx']['error'] == 0) {
                 $pfxContent = file_get_contents($_FILES['certificado_pfx']['tmp_name']);
@@ -80,8 +76,7 @@ class SettingController extends BaseController {
                 try {
                     \NFePHP\Common\Certificate::readPfx($pfxContent, $senha);
                 } catch (\Exception $e) {
-                    setFlash('danger', 'Erro no Certificado: ' . $e->getMessage());
-                    $this->redirect('configuracoes.php');
+                    $this->redirect('configuracoes.php?msg=Erro: Certificado inválido ou senha incorreta: ' . urlencode($e->getMessage()));
                 }
 
                 $dir = dirname(__DIR__, 3) . "/storage/certificados/";
@@ -93,74 +88,51 @@ class SettingController extends BaseController {
                 }
             }
 
-            try {
-                if ($isMatriz) {
-                    // Save to Global Config
-                    $existing = $db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch();
-                    if ($existing) {
-                        $sql = "UPDATE sefaz_config SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc = ?, cnpj = ?, razao_social = ?";
-                        $params = [$dataSefaz['ambiente'], $dataSefaz['certificado_senha'], $dataSefaz['csc_id'], $dataSefaz['csc'], $dataSefaz['cnpj'], $dataSefaz['razao_social']];
-                        if (isset($dataSefaz['certificado_path'])) {
-                            $sql .= ", certificado_path = ?";
-                            $params[] = $dataSefaz['certificado_path'];
-                        }
-                        $sql .= " WHERE id = ?";
-                        $params[] = $existing['id'];
-                        $db->prepare($sql)->execute($params);
-                    } else {
-                        $fields = ["certificado_senha", "ambiente", "csc_id", "csc", "cnpj", "razao_social"];
-                        $vals = [$dataSefaz['certificado_senha'], $dataSefaz['ambiente'], $dataSefaz['csc_id'], $dataSefaz['csc'], $dataSefaz['cnpj'], $dataSefaz['razao_social']];
-                        $holders = ["?", "?", "?", "?", "?", "?"];
-                        
-                        if (isset($dataSefaz['certificado_path'])) {
-                            $fields[] = "certificado_path";
-                            $vals[] = $dataSefaz['certificado_path'];
-                            $holders[] = "?";
-                        }
-                        
-                        $db->prepare("INSERT INTO sefaz_config (" . implode(',', $fields) . ") VALUES (" . implode(',', $holders) . ")")
-                           ->execute($vals);
-                    }
-                    
-                    // CRITICAL: Sync Matriz record in 'filiais' table
-                    $stmtMatriz = $db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1");
-                    $matrizId = $stmtMatriz->fetchColumn();
-                    if ($matrizId) {
-                        $db->prepare("UPDATE filiais SET nome = ?, cnpj = ?, telefone = ?, email = ?, csc_id = ?, csc_token = ?, ambiente = ? WHERE id = ?")
-                           ->execute([
-                               $identityData['nome'], 
-                               $identityData['cnpj'], 
-                               $identityData['telefone'], 
-                               $identityData['email'], 
-                               $dataSefaz['csc_id'], 
-                               $dataSefaz['csc'], 
-                               $dataSefaz['ambiente'], 
-                               $matrizId
-                           ]);
-                    }
+            if ($isMatriz) {
+                // Save to Global Config
+                // Safety: Ensure csc columns exist
+                try {
+                    $db->exec("ALTER TABLE sefaz_config ADD COLUMN csc_id VARCHAR(10) NULL");
+                } catch (\Exception $e) { /* Column already exists */ }
+                try {
+                    $db->exec("ALTER TABLE sefaz_config ADD COLUMN csc VARCHAR(255) NULL");
+                } catch (\Exception $e) { /* Column already exists */ }
 
-                    $audit->record('Configurações Globais de Certificado & Identidade Atualizadas', 'configuracoes');
-                } else {
-                    // Save to Branch Config
-                    $sql = "UPDATE filiais SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc_token = ?";
-                    $params = [(string)$dataSefaz['ambiente'], $dataSefaz['certificado_senha'], $dataSefaz['csc_id'], $dataSefaz['csc_token']];
-                    if (isset($dataSefaz['certificado_pfx'])) {
-                        $sql .= ", certificado_pfx = ?";
-                        $params[] = $dataSefaz['certificado_pfx'];
+                $existing = $db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch();
+                if ($existing) {
+                    $sql = "UPDATE sefaz_config SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc = ?";
+                    $params = [$dataSefaz['ambiente'], $dataSefaz['certificado_senha'], $dataSefaz['csc_id'], $dataSefaz['csc']];
+                    if (isset($dataSefaz['certificado_path'])) {
+                        $sql .= ", certificado_path = ?";
+                        $params[] = $dataSefaz['certificado_path'];
                     }
                     $sql .= " WHERE id = ?";
-                    $params[] = $currentBranchId;
+                    $params[] = $existing['id'];
                     $db->prepare($sql)->execute($params);
-                    $audit->record("Configurações de Certificado da Filial $currentBranchId Atualizadas", 'configuracoes');
+                } else {
+                    if (!isset($dataSefaz['certificado_path'])) {
+                        $this->redirect('importar_automatico.php?action=config&msg=Erro: Certificado obrigatório no primeiro cadastro');
+                        return;
+                    }
+                    $db->prepare("INSERT INTO sefaz_config (certificado_path, certificado_senha, ambiente, csc_id, csc) VALUES (?, ?, ?, ?, ?)")
+                       ->execute([$dataSefaz['certificado_path'], $dataSefaz['certificado_senha'], $dataSefaz['ambiente'], $dataSefaz['csc_id'], $dataSefaz['csc']]);
                 }
-
-                setFlash('success', 'Configurações salvas com sucesso');
-                $this->redirect('configuracoes.php');
-
-            } catch (\Exception $e) {
-                setFlash('danger', 'Erro ao salvar configurações: ' . $e->getMessage());
-                $this->redirect('configuracoes.php');
+                $audit->record('Configurações Globais de Certificado Atualizadas', 'configuracoes');
+            } else {
+                // Save to Branch Config
+                $sql = "UPDATE filiais SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc_token = ?";
+                $params = [(string)$dataSefaz['ambiente'], $dataSefaz['certificado_senha'], $dataSefaz['csc_id'], $dataSefaz['csc_token']];
+                if (isset($dataSefaz['certificado_pfx'])) {
+                    $sql .= ", certificado_pfx = ?";
+                    $params[] = $dataSefaz['certificado_pfx'];
+                }
+                $sql .= " WHERE id = ?";
+                $params[] = $currentBranchId;
+                $db->prepare($sql)->execute($params);
+                $audit->record("Configurações de Certificado da Filial $currentBranchId Atualizadas", 'configuracoes');
             }
+
+            $this->redirect('configuracoes.php?msg=Configurações salvas com sucesso');
         }
     }
 
@@ -190,14 +162,8 @@ class SettingController extends BaseController {
             
             if (isset($data['certificado_senha_filial'])) unset($data['certificado_senha_filial']);
 
-            try {
-                $model->save($data);
-                setFlash('success', 'Unidade salva com sucesso');
-                $this->redirect('configuracoes.php#unidades');
-            } catch (\Exception $e) {
-                setFlash('danger', 'Erro ao salvar unidade: ' . $e->getMessage());
-                $this->redirect('configuracoes.php#unidades');
-            }
+            $model->save($data);
+            $this->redirect('configuracoes.php?msg=Unidade salva com sucesso#unidades');
         }
     }
 }

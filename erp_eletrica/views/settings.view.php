@@ -32,19 +32,19 @@
                             <div class="row g-3">
                                 <div class="col-12">
                                     <label class="form-label small fw-bold">Razão Social / Nome da Empresa</label>
-                                    <input type="text" name="empresa_nome" class="form-control" value="<?= $currentBranch['nome'] ?? $settings['empresa_nome'] ?? '' ?>">
+                                    <input type="text" name="empresa_nome" class="form-control bg-light" value="<?= $currentBranch['nome'] ?? $settings['empresa_nome'] ?? '' ?>" readonly>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">CNPJ</label>
-                                    <input type="text" name="empresa_cnpj" class="form-control" value="<?= $currentBranch['cnpj'] ?? $settings['empresa_cnpj'] ?? '' ?>">
+                                    <input type="text" name="empresa_cnpj" class="form-control bg-light" value="<?= $currentBranch['cnpj'] ?? $settings['empresa_cnpj'] ?? '' ?>" readonly>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">Telefone</label>
-                                    <input type="text" name="empresa_fone" class="form-control" value="<?= $currentBranch['telefone'] ?? $settings['empresa_fone'] ?? '' ?>">
+                                    <input type="text" name="empresa_fone" class="form-control bg-light" value="<?= $currentBranch['telefone'] ?? $settings['empresa_fone'] ?? '' ?>" readonly>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label small fw-bold">Email</label>
-                                    <input type="email" name="empresa_email" class="form-control" value="<?= $currentBranch['email'] ?? $settings['empresa_email'] ?? '' ?>">
+                                    <input type="email" name="empresa_email" class="form-control bg-light" value="<?= $currentBranch['email'] ?? $settings['empresa_email'] ?? '' ?>" readonly>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">ID Token CSC</label>
@@ -83,26 +83,26 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-secondary mb-1">Senha do Certificado</label>
-                                <input type="password" name="certificado_senha" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $activeConfig['certificado_senha'] ?? '' ?>">
+                                <input type="password" name="certificado_senha" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['certificado_senha'] ?? '' ?>">
                             </div>
                             
                             <!-- CSC Global Fields -->
                             <div class="row g-2 mb-3">
                                 <div class="col-4">
                                     <label class="form-label small fw-bold text-secondary mb-1">ID Token CSC</label>
-                                    <input type="text" name="csc_id_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $activeConfig['csc_id'] ?? '' ?>" placeholder="000001">
+                                    <input type="text" name="csc_id_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['csc_id'] ?? '' ?>" placeholder="000001">
                                 </div>
                                 <div class="col-8">
                                     <label class="form-label small fw-bold text-secondary mb-1">Token CSC</label>
-                                    <input type="text" name="csc_token_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $activeConfig['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
+                                    <input type="text" name="csc_token_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
                                 </div>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label small fw-bold text-secondary mb-1">Ambiente Sefaz</label>
                                 <select name="ambiente" class="form-select bg-light border-0 shadow-sm text-dark fw-bold">
-                                    <option value="homologacao" <?= (($activeConfig['ambiente'] ?? '') == 'homologacao' || ($activeConfig['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>🟡 Homolog. (Testes)</option>
-                                    <option value="producao" <?= (($activeConfig['ambiente'] ?? '') == 'producao' || ($activeConfig['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>🟢 Produção (Real)</option>
+                                    <option value="homologacao" <?= (($sefaz['ambiente'] ?? '') == 'homologacao' || ($sefaz['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>🟡 Homolog. (Testes)</option>
+                                    <option value="producao" <?= (($sefaz['ambiente'] ?? '') == 'producao' || ($sefaz['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>🟢 Produção (Real)</option>
                                 </select>
                             </div>
 
@@ -177,10 +177,8 @@
                     <!-- Nav Tabs Inside Modal -->
                     <ul class="nav nav-pills mb-4 small fw-bold" id="modalTabs">
                         <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-basico" type="button">Básico & Endereço</button></li>
-                        <?php if ($_SESSION['is_matriz'] ?? false): ?>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-fiscal" type="button">Emissão Fiscal (NFC-e)</button></li>
-                        <li class="nav-item"><button class="nav-link text-warning" data-bs-toggle="pill" data-bs-target="#tab-cert" type="button">Certificado Próprio</button></li>
-                        <?php endif; ?>
+                        <li class="nav-item d-none"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-fiscal" type="button">Emissão Fiscal (NFC-e)</button></li>
+                        <li class="nav-item d-none"><button class="nav-link text-warning" data-bs-toggle="pill" data-bs-target="#tab-cert" type="button">Certificado Próprio</button></li>
                     </ul>
 
                     <div class="tab-content border-top pt-4">
