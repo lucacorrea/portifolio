@@ -9,9 +9,6 @@ CREATE TABLE IF NOT EXISTS configuracoes_automacao (
     automacao_ativa                         TINYINT(1) NOT NULL DEFAULT 1,
 
     dia_vencimento_padrao                   TINYINT UNSIGNED NOT NULL DEFAULT 10,
-    mensalidade_padrao                      DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    multa_atraso                            DECIMAL(5,2) NOT NULL DEFAULT 2.00,
-    juros_atraso                            DECIMAL(5,2) NOT NULL DEFAULT 1.00,
     bloquear_apos_dias                      INT NOT NULL DEFAULT 7,
 
     pix_nome_recebedor                      VARCHAR(150) NOT NULL,
