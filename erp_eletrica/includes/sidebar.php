@@ -155,8 +155,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-sliders-h"></i> <span>Ajustes Gerais</span>
         </a>
         <?php endif; ?>
-        <a href="logout.php" class="nav-link text-danger">
-            <i class="fas fa-power-off"></i> <span>Sair do Sistema</span>
+        <a href="logout.php" class="nav-link bg-danger text-white mx-3 rounded-3 mt-4 mb-4 shadow-sm py-2 logout-btn-sidebar">
+            <i class="fas fa-power-off text-white me-2"></i> <span class="fw-bold">Sair do Sistema</span>
         </a>
     </nav>
 </aside>

@@ -109,6 +109,23 @@ body {
     color: var(--erp-active-font) !important;
 }
 
+/* Red Logout Button */
+.sidebar .nav-link.logout-btn-sidebar {
+    transition: all 0.2s ease;
+}
+
+.sidebar .nav-link.logout-btn-sidebar:hover {
+    background-color: #bb2d3b !important; /* Slightly darker red */
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.45) !important;
+}
+
+.sidebar .nav-link.logout-btn-sidebar i {
+    color: white !important;
+}
+
+
 .nav-link i {
     width: 20px;
 }
@@ -134,14 +151,26 @@ body {
 .table-responsive {
     border-radius: 8px;
     margin-bottom: 1rem;
-    overflow-x: auto;
+    overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+
+.table-responsive table {
+    min-width: 650px; /* Force scroll on narrow screens */
+}
+
+@media (min-width: 992px) {
+    .table-responsive table {
+        min-width: 100%; /* Back to normal on desktop */
+    }
 }
 
 /* Ensure body doesn't horizontal scroll because of tables */
 body {
     overflow-x: hidden;
     position: relative;
+    background-color: var(--erp-slate);
 }
 
 /* Smart Stacking Utility */
@@ -163,13 +192,19 @@ body {
 }
 
 .top-navbar {
-    height: 70px;
+    height: var(--header-height);
     background: var(--erp-surface) !important;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 2rem;
+    padding: 0 1rem;
+}
+
+@media (min-width: 992px) {
+    .top-navbar {
+        padding: 0 2rem;
+    }
 }
 
 .content-body {
@@ -261,8 +296,8 @@ body {
 
     .sidebar.active {
         transform: translateX(0);
-        box-shadow: 15px 0 35px rgba(0, 0, 0, 0.3);
-        z-index: 1050;
+        box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5); /* Heavier shadow for focus */
+        z-index: 2000; /* Extremely high to ensure focus */
     }
     
     .main-wrapper {
@@ -282,13 +317,13 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(15, 23, 42, 0.65); /* Slate Dark Overlay */
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 1045; /* Just below active sidebar */
+    background: rgba(2, 6, 23, 0.85); /* Much darker for better focus */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 1999; /* Just below active sidebar */
     display: none;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
 }
 
