@@ -270,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body>
     <div class="login-card">
         <div class="login-header">
-            <img src="logo_sistema_erp_eletrica.png?v=1" alt="Centro do Eletricista" style="max-width: 220px; width: 100%; height: auto;">
+            <img src="logo_sistema_erp_eletrica.png?v=1" alt="ERP Elétrica - Centro do Eletricista" style="max-width: 75%; height: auto; max-height: 90px; filter: drop-shadow(0 0 5px rgba(43,76,125,0.2));">
         </div>
 
         <?php if ($error): ?>
