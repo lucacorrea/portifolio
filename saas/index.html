@@ -1,1184 +1,1557 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SaaS Contábil | Planos para Contadores</title>
-
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-
-  <style>
-    :root {
-      --primary: #0f172a;
-      --primary-2: #1e293b;
-      --secondary: #1d4ed8;
-      --accent: #f59e0b;
-      --bg: #f8fafc;
-      --text: #1e293b;
-      --muted: #64748b;
-      --white: #ffffff;
-      --border: #e2e8f0;
-      --success: #16a34a;
-      --danger: #dc2626;
-      --soft-blue: #eff6ff;
-      --premium-glow: rgba(245, 158, 11, 0.18);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-    }
-
-    .section-title {
-      font-size: 2.15rem;
-      font-weight: 800;
-      margin-bottom: 12px;
-    }
-
-    .section-subtitle {
-      color: var(--muted);
-      max-width: 820px;
-      margin: 0 auto;
-    }
-
-    .hero {
-      padding: 95px 0 75px;
-      background: linear-gradient(135deg, var(--primary), var(--primary-2));
-      color: white;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero::before {
-      content: "";
-      position: absolute;
-      width: 480px;
-      height: 480px;
-      border-radius: 50%;
-      background: rgba(59, 130, 246, 0.18);
-      top: -120px;
-      right: -120px;
-      filter: blur(15px);
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      width: 340px;
-      height: 340px;
-      border-radius: 50%;
-      background: rgba(245, 158, 11, 0.10);
-      bottom: -120px;
-      left: -80px;
-      filter: blur(15px);
-    }
-
-    .hero h1 {
-      font-size: 3rem;
-      font-weight: 800;
-      line-height: 1.12;
-    }
-
-    .hero p {
-      font-size: 1.08rem;
-      color: #cbd5e1;
-      max-width: 820px;
-      margin: 18px auto 0;
-    }
-
-    .hero-badge {
-      display: inline-block;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.15);
-      padding: 8px 16px;
-      border-radius: 999px;
-      font-size: .9rem;
-      margin-bottom: 18px;
-      font-weight: 700;
-    }
-
-    .hero-mini {
-      margin-top: 26px;
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .hero-mini span {
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.12);
-      color: #e2e8f0;
-      padding: 10px 14px;
-      border-radius: 12px;
-      font-size: .95rem;
-      transition: transform .25s ease, background .25s ease;
-    }
-
-    .hero-mini span:hover {
-      transform: translateY(-3px);
-      background: rgba(255,255,255,.12);
-    }
-
-    .btn-main {
-      background: var(--white);
-      color: var(--primary);
-      border-radius: 14px;
-      padding: 13px 22px;
-      font-weight: 700;
-      border: none;
-      text-decoration: none;
-      display: inline-block;
-      transition: .25s ease;
-    }
-
-    .btn-main:hover {
-      background: #e2e8f0;
-      color: var(--primary);
-      transform: translateY(-2px);
-    }
-
-    .btn-outline-custom {
-      border: 1px solid rgba(255,255,255,.25);
-      color: #fff;
-      border-radius: 14px;
-      padding: 13px 22px;
-      font-weight: 700;
-      text-decoration: none;
-      display: inline-block;
-      transition: .25s ease;
-    }
-
-    .btn-outline-custom:hover {
-      background: rgba(255,255,255,.08);
-      color: #fff;
-      transform: translateY(-2px);
-    }
-
-    .stat-card,
-    .pain-card,
-    .feature-card,
-    .faq-card,
-    .benefit-card,
-    .testimonial-card,
-    .step-card,
-    .structure-card,
-    .module-card {
-      background: white;
-      border-radius: 20px;
-      padding: 24px;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-      border: 1px solid #eef2f7;
-      height: 100%;
-      transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
-    }
-
-    .stat-card:hover,
-    .pain-card:hover,
-    .feature-card:hover,
-    .faq-card:hover,
-    .benefit-card:hover,
-    .testimonial-card:hover,
-    .step-card:hover,
-    .structure-card:hover,
-    .module-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
-      border-color: #dbe7f5;
-    }
-
-    .stat-card {
-      text-align: center;
-      padding: 26px 20px;
-    }
-
-    .stat-number {
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--secondary);
-      margin-bottom: 8px;
-    }
-
-    .highlight-strip {
-      background: linear-gradient(90deg, #e0f2fe, #eff6ff);
-      border: 1px solid #bae6fd;
-      color: var(--primary);
-      border-radius: 18px;
-      padding: 18px 22px;
-      font-weight: 700;
-      transition: transform .25s ease, box-shadow .25s ease;
-    }
-
-    .highlight-strip:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 30px rgba(14, 165, 233, 0.12);
-    }
-
-    .icon-box {
-      width: 54px;
-      height: 54px;
-      border-radius: 14px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.4rem;
-      background: #eff6ff;
-      color: var(--secondary);
-      margin-bottom: 16px;
-      transition: transform .25s ease;
-    }
-
-    .pain-card:hover .icon-box,
-    .feature-card:hover .icon-box,
-    .benefit-card:hover .icon-box,
-    .module-card:hover .icon-box,
-    .structure-card:hover .icon-box {
-      transform: scale(1.08);
-    }
-
-    .pricing-card {
-      background: white;
-      border-radius: 24px;
-      padding: 32px;
-      box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
-      border: 1px solid var(--border);
-      height: 100%;
-      position: relative;
-      transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
-    }
-
-    .pricing-card:hover {
-      transform: translateY(-10px);
-      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.14);
-      border-color: #cbd5e1;
-    }
-
-    .pricing-card.featured {
-      background: linear-gradient(180deg, #0f172a 0%, #162338 100%);
-      color: white;
-      border-color: #0f172a;
-      transform: scale(1.02);
-    }
-
-    .pricing-card.featured .muted,
-    .pricing-card.featured .plan-limit,
-    .pricing-card.featured .plan-desc,
-    .pricing-card.featured .price-old,
-    .pricing-card.featured .pricing-list li {
-      color: #dbe6f7;
-    }
-
-    .pricing-card.premium-card {
-      border: 1px solid rgba(245, 158, 11, 0.35);
-      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(245, 158, 11, 0.10);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .pricing-card.premium-card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at top right, var(--premium-glow), transparent 28%);
-      pointer-events: none;
-    }
-
-    .pricing-badge {
-      position: absolute;
-      top: -14px;
-      right: 24px;
-      background: var(--accent);
-      color: #111827;
-      font-weight: 800;
-      font-size: .75rem;
-      padding: 8px 14px;
-      border-radius: 999px;
-      box-shadow: 0 10px 20px rgba(245, 158, 11, 0.25);
-      z-index: 2;
-    }
-
-    .plan-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: .9rem;
-      font-weight: 700;
-      color: var(--secondary);
-      background: #eff6ff;
-      border-radius: 999px;
-      padding: 8px 14px;
-      margin-bottom: 16px;
-    }
-
-    .featured .plan-label {
-      background: rgba(255,255,255,.10);
-      color: white;
-    }
-
-    .price-old {
-      color: var(--danger);
-      font-size: 1rem;
-      font-weight: 700;
-      text-decoration: line-through;
-      margin-bottom: 4px;
-      display: block;
-    }
-
-    .price {
-      font-size: 2.6rem;
-      font-weight: 800;
-      margin: 6px 0 12px;
-      line-height: 1;
-    }
-
-    .price small {
-      font-size: .95rem;
-      font-weight: 500;
-    }
-
-    .promo-tag {
-      display: inline-block;
-      background: #ecfdf3;
-      color: #166534;
-      border: 1px solid #bbf7d0;
-      font-size: .8rem;
-      font-weight: 700;
-      padding: 7px 12px;
-      border-radius: 999px;
-      margin-bottom: 12px;
-    }
-
-    .featured .promo-tag {
-      background: rgba(34, 197, 94, 0.14);
-      border-color: rgba(34, 197, 94, 0.25);
-      color: #bbf7d0;
-    }
-
-    .plan-limit {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 10px;
-    }
-
-    .plan-desc {
-      color: var(--muted);
-      margin-bottom: 0;
-    }
-
-    .pricing-list,
-    .mini-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .pricing-list li,
-    .mini-list li {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 12px;
-      color: #475569;
-      align-items: flex-start;
-    }
-
-    .pricing-button,
-    .pricing-secondary-button {
-      border-radius: 12px;
-      padding: 13px 18px;
-      font-weight: 700;
-      border: none;
-      text-decoration: none;
-      display: inline-block;
-      width: 100%;
-      text-align: center;
-      transition: .25s ease;
-    }
-
-    .pricing-button {
-      background: var(--primary);
-      color: white;
-      margin-top: 20px;
-    }
-
-    .pricing-button:hover {
-      background: var(--primary-2);
-      color: white;
-      transform: translateY(-2px);
-    }
-
-    .featured .pricing-button {
-      background: white;
-      color: var(--primary);
-    }
-
-    .featured .pricing-button:hover {
-      background: #e2e8f0;
-      color: var(--primary);
-    }
-
-    .pricing-secondary-button {
-      background: #eff6ff;
-      color: var(--secondary);
-      margin-top: 12px;
-    }
-
-    .pricing-secondary-button:hover {
-      background: #dbeafe;
-      color: var(--secondary);
-      transform: translateY(-2px);
-    }
-
-    .featured .pricing-secondary-button {
-      background: rgba(255,255,255,.10);
-      color: white;
-    }
-
-    .featured .pricing-secondary-button:hover {
-      background: rgba(255,255,255,.16);
-      color: white;
-    }
-
-    .comparison-table th,
-    .comparison-table td {
-      vertical-align: middle;
-      padding: 16px;
-    }
-
-    .comparison-table thead th {
-      background: #f8fafc;
-    }
-
-    .table-responsive {
-      transition: transform .25s ease, box-shadow .25s ease;
-    }
-
-    .table-responsive:hover {
-      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-    }
-
-    .step-number {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      background: var(--secondary);
-      color: white;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      margin-bottom: 14px;
-      box-shadow: 0 10px 20px rgba(29, 78, 216, 0.18);
-    }
-
-    .code-block {
-      background: #0f172a;
-      color: #dbeafe;
-      border-radius: 18px;
-      padding: 22px;
-      overflow-x: auto;
-      font-size: .92rem;
-      line-height: 1.6;
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      box-shadow: 0 12px 35px rgba(15, 23, 42, 0.12);
-    }
-
-    .code-block code,
-    .code-block pre {
-      color: inherit;
-      margin: 0;
-      white-space: pre;
-      font-family: Consolas, Monaco, monospace;
-    }
-
-    .cta-box {
-      background: linear-gradient(135deg, var(--secondary), var(--primary));
-      color: white;
-      border-radius: 28px;
-      padding: 48px 34px;
-      box-shadow: 0 20px 50px rgba(29, 78, 216, 0.18);
-      transition: transform .28s ease, box-shadow .28s ease;
-    }
-
-    .cta-box:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 24px 60px rgba(29, 78, 216, 0.22);
-    }
-
-    .modal-content {
-      border: none;
-      border-radius: 24px;
-      overflow: hidden;
-      box-shadow: 0 25px 70px rgba(15, 23, 42, 0.18);
-    }
-
-    .modal-header.custom-modal-header {
-      background: linear-gradient(135deg, var(--primary), var(--primary-2));
-      color: white;
-      border-bottom: none;
-      padding: 24px 24px 18px;
-    }
-
-    .modal-header .btn-close {
-      filter: invert(1);
-      opacity: .9;
-    }
-
-    .modal-subtitle {
-      color: rgba(255,255,255,.78);
-      margin-bottom: 0;
-      font-size: .96rem;
-    }
-
-    .modal-body {
-      padding: 24px;
-      background: #f8fafc;
-    }
-
-    .modal-section {
-      background: white;
-      border: 1px solid #eaeef5;
-      border-radius: 18px;
-      padding: 20px;
-      margin-bottom: 18px;
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
-    }
-
-    .modal-section h5 {
-      font-size: 1rem;
-      font-weight: 800;
-      margin-bottom: 14px;
-    }
-
-    .modal-pill {
-      display: inline-block;
-      padding: 7px 12px;
-      border-radius: 999px;
-      font-size: .82rem;
-      font-weight: 700;
-      margin-right: 8px;
-      margin-bottom: 8px;
-      background: #eff6ff;
-      color: var(--secondary);
-      border: 1px solid #bfdbfe;
-    }
-
-    .modal-price-box {
-      background: linear-gradient(135deg, #eff6ff, #ffffff);
-      border: 1px solid #dbeafe;
-      border-radius: 18px;
-      padding: 18px;
-    }
-
-    .muted {
-      color: var(--muted);
-    }
-
-    .testimonial-stars {
-      color: var(--accent);
-      letter-spacing: 2px;
-    }
-
-    footer {
-      color: var(--muted);
-      font-size: .95rem;
-    }
-
-    @media (max-width: 991px) {
-      .pricing-card.featured {
-        transform: none;
-      }
-    }
-
-    @media (max-width: 768px) {
-      .hero {
-        padding: 80px 0 60px;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SaaS Contábil | Planos para Contadores</title>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+
+    <style>
+      :root {
+        --primary: #0f172a;
+        --primary-2: #1e293b;
+        --secondary: #1d4ed8;
+        --accent: #f59e0b;
+        --bg: #f8fafc;
+        --text: #1e293b;
+        --muted: #64748b;
+        --white: #ffffff;
+        --border: #e2e8f0;
+        --success: #16a34a;
+        --danger: #dc2626;
+        --soft-blue: #eff6ff;
+        --premium-glow: rgba(245, 158, 11, 0.18);
       }
 
-      .hero h1 {
-        font-size: 2.2rem;
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
       }
 
       .section-title {
-        font-size: 1.75rem;
+        font-size: 2.15rem;
+        font-weight: 800;
+        margin-bottom: 12px;
+      }
+
+      .section-subtitle {
+        color: var(--muted);
+        max-width: 820px;
+        margin: 0 auto;
+      }
+
+      .hero {
+        padding: 95px 0 75px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-2));
+        color: white;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        width: 480px;
+        height: 480px;
+        border-radius: 50%;
+        background: rgba(59, 130, 246, 0.18);
+        top: -120px;
+        right: -120px;
+        filter: blur(15px);
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        width: 340px;
+        height: 340px;
+        border-radius: 50%;
+        background: rgba(245, 158, 11, 0.1);
+        bottom: -120px;
+        left: -80px;
+        filter: blur(15px);
+      }
+
+      .hero h1 {
+        font-size: 3rem;
+        font-weight: 800;
+        line-height: 1.12;
+      }
+
+      .hero p {
+        font-size: 1.08rem;
+        color: #cbd5e1;
+        max-width: 820px;
+        margin: 18px auto 0;
+      }
+
+      .hero-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-size: 0.9rem;
+        margin-bottom: 18px;
+        font-weight: 700;
+      }
+
+      .hero-mini {
+        margin-top: 26px;
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .hero-mini span {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #e2e8f0;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        transition:
+          transform 0.25s ease,
+          background 0.25s ease;
+      }
+
+      .hero-mini span:hover {
+        transform: translateY(-3px);
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .btn-main {
+        background: var(--white);
+        color: var(--primary);
+        border-radius: 14px;
+        padding: 13px 22px;
+        font-weight: 700;
+        border: none;
+        text-decoration: none;
+        display: inline-block;
+        transition: 0.25s ease;
+      }
+
+      .btn-main:hover {
+        background: #e2e8f0;
+        color: var(--primary);
+        transform: translateY(-2px);
+      }
+
+      .btn-outline-custom {
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #fff;
+        border-radius: 14px;
+        padding: 13px 22px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-block;
+        transition: 0.25s ease;
+      }
+
+      .btn-outline-custom:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        transform: translateY(-2px);
+      }
+
+      .stat-card,
+      .pain-card,
+      .feature-card,
+      .faq-card,
+      .benefit-card,
+      .testimonial-card,
+      .step-card,
+      .structure-card,
+      .module-card {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        border: 1px solid #eef2f7;
+        height: 100%;
+        transition:
+          transform 0.28s ease,
+          box-shadow 0.28s ease,
+          border-color 0.28s ease;
+      }
+
+      .stat-card:hover,
+      .pain-card:hover,
+      .feature-card:hover,
+      .faq-card:hover,
+      .benefit-card:hover,
+      .testimonial-card:hover,
+      .step-card:hover,
+      .structure-card:hover,
+      .module-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        border-color: #dbe7f5;
+      }
+
+      .stat-card {
+        text-align: center;
+        padding: 26px 20px;
+      }
+
+      .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--secondary);
+        margin-bottom: 8px;
+      }
+
+      .highlight-strip {
+        background: linear-gradient(90deg, #e0f2fe, #eff6ff);
+        border: 1px solid #bae6fd;
+        color: var(--primary);
+        border-radius: 18px;
+        padding: 18px 22px;
+        font-weight: 700;
+        transition:
+          transform 0.25s ease,
+          box-shadow 0.25s ease;
+      }
+
+      .highlight-strip:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(14, 165, 233, 0.12);
+      }
+
+      .icon-box {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        background: #eff6ff;
+        color: var(--secondary);
+        margin-bottom: 16px;
+        transition: transform 0.25s ease;
+      }
+
+      .pain-card:hover .icon-box,
+      .feature-card:hover .icon-box,
+      .benefit-card:hover .icon-box,
+      .module-card:hover .icon-box,
+      .structure-card:hover .icon-box {
+        transform: scale(1.08);
+      }
+
+      .pricing-card {
+        background: white;
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+        border: 1px solid var(--border);
+        height: 100%;
+        position: relative;
+        transition:
+          transform 0.28s ease,
+          box-shadow 0.28s ease,
+          border-color 0.28s ease;
+      }
+
+      .pricing-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.14);
+        border-color: #cbd5e1;
+      }
+
+      .pricing-card.featured {
+        background: linear-gradient(180deg, #0f172a 0%, #162338 100%);
+        color: white;
+        border-color: #0f172a;
+        transform: scale(1.02);
+      }
+
+      .pricing-card.featured .muted,
+      .pricing-card.featured .plan-limit,
+      .pricing-card.featured .plan-desc,
+      .pricing-card.featured .price-old,
+      .pricing-card.featured .pricing-list li {
+        color: #dbe6f7;
+      }
+
+      .pricing-card.premium-card {
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        box-shadow:
+          0 18px 45px rgba(15, 23, 42, 0.12),
+          0 0 0 1px rgba(245, 158, 11, 0.1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .pricing-card.premium-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          circle at top right,
+          var(--premium-glow),
+          transparent 28%
+        );
+        pointer-events: none;
+      }
+
+      .pricing-badge {
+        position: absolute;
+        top: -14px;
+        right: 24px;
+        background: var(--accent);
+        color: #111827;
+        font-weight: 800;
+        font-size: 0.75rem;
+        padding: 8px 14px;
+        border-radius: 999px;
+        box-shadow: 0 10px 20px rgba(245, 158, 11, 0.25);
+        z-index: 2;
+      }
+
+      .plan-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--secondary);
+        background: #eff6ff;
+        border-radius: 999px;
+        padding: 8px 14px;
+        margin-bottom: 16px;
+      }
+
+      .featured .plan-label {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      .price-old {
+        color: var(--danger);
+        font-size: 1rem;
+        font-weight: 700;
+        text-decoration: line-through;
+        margin-bottom: 4px;
+        display: block;
       }
 
       .price {
-        font-size: 2.1rem;
+        font-size: 2.6rem;
+        font-weight: 800;
+        margin: 6px 0 12px;
+        line-height: 1;
+      }
+
+      .price small {
+        font-size: 0.95rem;
+        font-weight: 500;
+      }
+
+      .promo-tag {
+        display: inline-block;
+        background: #ecfdf3;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 7px 12px;
+        border-radius: 999px;
+        margin-bottom: 12px;
+      }
+
+      .featured .promo-tag {
+        background: rgba(34, 197, 94, 0.14);
+        border-color: rgba(34, 197, 94, 0.25);
+        color: #bbf7d0;
+      }
+
+      .plan-limit {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 10px;
+      }
+
+      .plan-desc {
+        color: var(--muted);
+        margin-bottom: 0;
+      }
+
+      .pricing-list,
+      .mini-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .pricing-list li,
+      .mini-list li {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+        color: #475569;
+        align-items: flex-start;
+      }
+
+      .pricing-button,
+      .pricing-secondary-button {
+        border-radius: 12px;
+        padding: 13px 18px;
+        font-weight: 700;
+        border: none;
+        text-decoration: none;
+        display: inline-block;
+        width: 100%;
+        text-align: center;
+        transition: 0.25s ease;
+      }
+
+      .pricing-button {
+        background: var(--primary);
+        color: white;
+        margin-top: 20px;
+      }
+
+      .pricing-button:hover {
+        background: var(--primary-2);
+        color: white;
+        transform: translateY(-2px);
+      }
+
+      .featured .pricing-button {
+        background: white;
+        color: var(--primary);
+      }
+
+      .featured .pricing-button:hover {
+        background: #e2e8f0;
+        color: var(--primary);
+      }
+
+      .pricing-secondary-button {
+        background: #eff6ff;
+        color: var(--secondary);
+        margin-top: 12px;
+      }
+
+      .pricing-secondary-button:hover {
+        background: #dbeafe;
+        color: var(--secondary);
+        transform: translateY(-2px);
+      }
+
+      .featured .pricing-secondary-button {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      .featured .pricing-secondary-button:hover {
+        background: rgba(255, 255, 255, 0.16);
+        color: white;
+      }
+
+      .comparison-table th,
+      .comparison-table td {
+        vertical-align: middle;
+        padding: 16px;
+      }
+
+      .comparison-table thead th {
+        background: #f8fafc;
+      }
+
+      .table-responsive {
+        transition:
+          transform 0.25s ease,
+          box-shadow 0.25s ease;
+      }
+
+      .table-responsive:hover {
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+      }
+
+      .step-number {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: var(--secondary);
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        margin-bottom: 14px;
+        box-shadow: 0 10px 20px rgba(29, 78, 216, 0.18);
+      }
+
+      .code-block {
+        background: #0f172a;
+        color: #dbeafe;
+        border-radius: 18px;
+        padding: 22px;
+        overflow-x: auto;
+        font-size: 0.92rem;
+        line-height: 1.6;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 12px 35px rgba(15, 23, 42, 0.12);
+      }
+
+      .code-block code,
+      .code-block pre {
+        color: inherit;
+        margin: 0;
+        white-space: pre;
+        font-family: Consolas, Monaco, monospace;
       }
 
       .cta-box {
-        padding: 36px 22px;
+        background: linear-gradient(135deg, var(--secondary), var(--primary));
+        color: white;
+        border-radius: 28px;
+        padding: 48px 34px;
+        box-shadow: 0 20px 50px rgba(29, 78, 216, 0.18);
+        transition:
+          transform 0.28s ease,
+          box-shadow 0.28s ease;
       }
 
-      .modal-body,
+      .cta-box:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 24px 60px rgba(29, 78, 216, 0.22);
+      }
+
+      .modal-content {
+        border: none;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 25px 70px rgba(15, 23, 42, 0.18);
+      }
+
       .modal-header.custom-modal-header {
+        background: linear-gradient(135deg, var(--primary), var(--primary-2));
+        color: white;
+        border-bottom: none;
+        padding: 24px 24px 18px;
+      }
+
+      .modal-header .btn-close {
+        filter: invert(1);
+        opacity: 0.9;
+      }
+
+      .modal-subtitle {
+        color: rgba(255, 255, 255, 0.78);
+        margin-bottom: 0;
+        font-size: 0.96rem;
+      }
+
+      .modal-body {
+        padding: 24px;
+        background: #f8fafc;
+      }
+
+      .modal-section {
+        background: white;
+        border: 1px solid #eaeef5;
+        border-radius: 18px;
+        padding: 20px;
+        margin-bottom: 18px;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
+      }
+
+      .modal-section h5 {
+        font-size: 1rem;
+        font-weight: 800;
+        margin-bottom: 14px;
+      }
+
+      .modal-pill {
+        display: inline-block;
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        background: #eff6ff;
+        color: var(--secondary);
+        border: 1px solid #bfdbfe;
+      }
+
+      .modal-price-box {
+        background: linear-gradient(135deg, #eff6ff, #ffffff);
+        border: 1px solid #dbeafe;
+        border-radius: 18px;
         padding: 18px;
       }
-    }
-  </style>
-</head>
-<body>
 
-  <section class="hero text-center">
-    <div class="container position-relative">
-      <span class="hero-badge" data-aos="fade-down">Sistema SaaS para contadores</span>
+      .muted {
+        color: var(--muted);
+      }
 
-      <h1 data-aos="fade-up" data-aos-delay="100">
-        Organize, automatize e escale seu escritório com uma plataforma mais inteligente
-      </h1>
+      .testimonial-stars {
+        color: var(--accent);
+        letter-spacing: 2px;
+      }
 
-      <p data-aos="fade-up" data-aos-delay="200">
-        Um SaaS contábil pensado para transformar cadastro, cobrança, acompanhamento de pagamentos
-        e gestão operacional em uma rotina mais profissional e lucrativa.
-      </p>
+      footer {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
 
-      <div class="mt-4 d-flex justify-content-center gap-3 flex-wrap" data-aos="fade-up" data-aos-delay="300">
-        <a href="#planos" class="btn-main">Ver planos</a>
-        <a href="#arquitetura" class="btn-outline-custom">Ver estrutura do sistema</a>
+      @media (max-width: 991px) {
+        .pricing-card.featured {
+          transform: none;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .hero {
+          padding: 80px 0 60px;
+        }
+
+        .hero h1 {
+          font-size: 2.2rem;
+        }
+
+        .section-title {
+          font-size: 1.75rem;
+        }
+
+        .price {
+          font-size: 2.1rem;
+        }
+
+        .cta-box {
+          padding: 36px 22px;
+        }
+
+        .modal-body,
+        .modal-header.custom-modal-header {
+          padding: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="hero text-center">
+      <div class="container position-relative">
+        <span class="hero-badge" data-aos="fade-down">
+          Sistema para contadores</span
+        >
+
+        <h1 data-aos="fade-up" data-aos-delay="100">
+          Organize seus clientes, automatize cobranças e tenha mais controle no
+          seu escritório
+        </h1>
+
+        <p data-aos="fade-up" data-aos-delay="200">
+          Tenha uma rotina mais organizada, reduza atrasos, acompanhe pagamentos
+          com mais facilidade e ganhe mais produtividade para atender melhor
+          seus clientes.
+        </p>
+
+        <div
+          class="mt-4 d-flex justify-content-center gap-3 flex-wrap"
+          data-aos="fade-up"
+          data-aos-delay="300"
+        >
+          <a href="#planos" class="btn-main">Ver planos</a>
+          <a href="#beneficios" class="btn-outline-custom"
+            >Conhecer benefícios</a
+          >
+        </div>
+
+        <div class="hero-mini" data-aos="fade-up" data-aos-delay="400">
+          <span
+            ><i class="bi bi-check2-circle me-2"></i>Cadastro organizado</span
+          >
+          <span
+            ><i class="bi bi-check2-circle me-2"></i>Cobrança automatizada</span
+          >
+          <span
+            ><i class="bi bi-check2-circle me-2"></i>Mais controle da
+            carteira</span
+          >
+        </div>
       </div>
+    </section>
 
-      <div class="hero-mini" data-aos="fade-up" data-aos-delay="400">
-        <span><i class="bi bi-check2-circle me-2"></i>Cadastro inteligente</span>
-        <span><i class="bi bi-check2-circle me-2"></i>Cobrança automatizada</span>
-        <span><i class="bi bi-check2-circle me-2"></i>Escalabilidade real</span>
+    <section class="py-5">
+      <div class="container">
+        <div class="row g-4">
+          <div class="col-md-3" data-aos="zoom-in">
+            <div class="stat-card">
+              <div class="stat-number">15</div>
+              <div class="muted">clientes no plano inicial</div>
+            </div>
+          </div>
+
+          <div class="col-md-3" data-aos="zoom-in" data-aos-delay="100">
+            <div class="stat-card">
+              <div class="stat-number">35</div>
+              <div class="muted">clientes no plano de crescimento</div>
+            </div>
+          </div>
+
+          <div class="col-md-3" data-aos="zoom-in" data-aos-delay="200">
+            <div class="stat-card">
+              <div class="stat-number">∞</div>
+              <div class="muted">clientes no plano completo</div>
+            </div>
+          </div>
+
+          <div class="col-md-3" data-aos="zoom-in" data-aos-delay="300">
+            <div class="stat-card">
+              <div class="stat-number">+ produtividade</div>
+              <div class="muted">para seu escritório</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-5" id="beneficios">
+      <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+          <h2 class="section-title">
+            Mais organização, menos atraso e mais controle no dia a dia
+          </h2>
+          <p class="section-subtitle">
+            Tenha uma rotina mais prática para cuidar da sua carteira, cobrar
+            com mais eficiência e acompanhar os pagamentos sem depender de
+            processos manuais.
+          </p>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-4" data-aos="fade-up">
+            <div class="pain-card">
+              <div class="icon-box"><i class="bi bi-person-vcard"></i></div>
+              <h3 class="h5 fw-bold">Clientes mais organizados</h3>
+              <p class="muted mb-0">
+                Cadastre clientes, valores, quantidade de veículos e outras
+                informações importantes em um só lugar, com muito mais clareza
+                na rotina.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-md-4" data-aos="fade-up" data-aos-delay="120">
+            <div class="pain-card">
+              <div class="icon-box"><i class="bi bi-chat-dots"></i></div>
+              <h3 class="h5 fw-bold">Cobrança com menos esforço</h3>
+              <p class="muted mb-0">
+                Envie mensagens automáticas, acompanhe vencimentos e use
+                cobrança com PIX para reduzir atrasos e melhorar o recebimento.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-md-4" data-aos="fade-up" data-aos-delay="240">
+            <div class="pain-card">
+              <div class="icon-box">
+                <i class="bi bi-file-earmark-check"></i>
+              </div>
+              <h3 class="h5 fw-bold">Pagamentos mais fáceis de acompanhar</h3>
+              <p class="muted mb-0">
+                Tenha mais controle sobre quem pagou, quem está pendente e como
+                está o andamento da sua carteira com relatórios mais claros.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="planos" class="py-5 bg-white">
+      <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+          <h2 class="section-title">
+            Escolha o plano ideal para o momento do seu escritório
+          </h2>
+          <p class="section-subtitle">
+            Comece com mais organização, avance para automações de cobrança e
+            tenha uma opção completa para crescer sem limite.
+          </p>
+        </div>
+
+        <div class="row g-4 align-items-stretch">
+          <div class="col-lg-4" data-aos="zoom-in-up">
+            <div class="pricing-card">
+              <div class="plan-label">
+                <i class="bi bi-rocket-takeoff"></i> Começo organizado
+              </div>
+
+              <h3 class="fw-bold">Base</h3>
+              <p class="muted mb-1">Para quem quer sair do controle manual</p>
+
+              <span class="price-old">R$ 99,99</span>
+              <span class="promo-tag">Oferta de lançamento</span>
+              <div class="price">R$ 79,99 <small>/mês</small></div>
+
+              <div class="plan-limit">Até 15 clientes</div>
+              <p class="plan-desc">
+                Ideal para organizar a carteira, centralizar informações e
+                começar com mais clareza na rotina.
+              </p>
+
+              <ul class="pricing-list mt-4">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Cadastro de clientes
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Informações pessoais
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Valores, veículos e dados principais
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Controle inicial da carteira
+                </li>
+              </ul>
+
+              <a href="#cta-final" class="pricing-button">Quero começar</a>
+              <button
+                class="pricing-secondary-button"
+                data-bs-toggle="modal"
+                data-bs-target="#modalBase"
+              >
+                Saiba mais sobre o Base
+              </button>
+            </div>
+          </div>
+
+          <div class="col-lg-4" data-aos="zoom-in-up" data-aos-delay="120">
+            <div class="pricing-card featured">
+              <span class="pricing-badge">MAIS ESCOLHIDO</span>
+
+              <div class="plan-label">
+                <i class="bi bi-graph-up-arrow"></i> Mais controle e cobrança
+              </div>
+
+              <h3 class="fw-bold">Médio</h3>
+              <p class="muted mb-1">
+                Para quem quer cobrar melhor e ganhar tempo
+              </p>
+
+              <span class="price-old">R$ 149,99</span>
+              <span class="promo-tag">Oferta de crescimento</span>
+              <div class="price">R$ 119,99 <small>/mês</small></div>
+
+              <div class="plan-limit">Até 35 clientes</div>
+              <p class="plan-desc">
+                O plano ideal para automatizar cobranças, acompanhar pagamentos
+                e ter mais produtividade no dia a dia.
+              </p>
+
+              <ul class="pricing-list mt-4">
+                <li>
+                  <i class="bi bi-check-circle-fill"></i>
+                  Tudo do Base
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill"></i>
+                  Mensagens automáticas personalizadas
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill"></i>
+                  Cobrança com PIX e mensagem pronta
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill"></i>
+                  Leitura de comprovante e confirmação de pagamento
+                </li>
+              </ul>
+
+              <a href="#cta-final" class="pricing-button">Quero automatizar</a>
+              <button
+                class="pricing-secondary-button"
+                data-bs-toggle="modal"
+                data-bs-target="#modalMedio"
+              >
+                Saiba mais sobre o Médio
+              </button>
+            </div>
+          </div>
+
+          <div class="col-lg-4" data-aos="zoom-in-up" data-aos-delay="240">
+            <div class="pricing-card premium-card">
+              <span class="pricing-badge">PLANO MAIS COMPLETO</span>
+
+              <div class="plan-label">
+                <i class="bi bi-stars"></i> Máximo desempenho
+              </div>
+
+              <h3 class="fw-bold">Premium</h3>
+              <p class="muted mb-1">Para crescer com mais força e liberdade</p>
+
+              <span class="price-old">R$ 249,99</span>
+              <span class="promo-tag">Promoção especial</span>
+              <div class="price">R$ 199,99 <small>/mês</small></div>
+
+              <div class="plan-limit">Clientes ilimitados</div>
+              <p class="plan-desc">
+                Feito para quem quer uma operação mais completa, mais escalável
+                e com mais autonomia para crescer.
+              </p>
+
+              <ul class="pricing-list mt-4">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Tudo do Médio
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Clientes ilimitados
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Usuários ilimitados
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Relatórios mais completos e visão mais ampla da carteira
+                </li>
+              </ul>
+
+              <a href="#cta-final" class="pricing-button"
+                >Quero o melhor plano</a
+              >
+              <button
+                class="pricing-secondary-button"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPremium"
+              >
+                Saiba mais sobre o Premium
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <section id="arquitetura" class="py-5">
+      <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+          <h2 class="section-title">
+            Arquitetura pensada para produto SaaS real
+          </h2>
+          <p class="section-subtitle">
+            Essa seção reforça que o sistema não é só uma interface bonita. Ele
+            foi pensado como produto modular, escalável e profissional.
+          </p>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-4" data-aos="fade-up">
+            <div class="structure-card">
+              <div class="icon-box"><i class="bi bi-diagram-3"></i></div>
+              <h3 class="h5 fw-bold">Estrutura modular</h3>
+              <p class="muted mb-0">
+                Separação por núcleo, serviços, middleware, módulos e rotas para
+                facilitar manutenção e crescimento.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-md-4" data-aos="fade-up" data-aos-delay="120">
+            <div class="structure-card">
+              <div class="icon-box"><i class="bi bi-building-gear"></i></div>
+              <h3 class="h5 fw-bold">Modelo multiempresa</h3>
+              <p class="muted mb-0">
+                Base ideal para operar como SaaS alugado para contadores, com
+                planos, assinaturas e gestão separada.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-md-4" data-aos="fade-up" data-aos-delay="240">
+            <div class="structure-card">
+              <div class="icon-box"><i class="bi bi-bar-chart-line"></i></div>
+              <h3 class="h5 fw-bold">Preparado para evoluir</h3>
+              <p class="muted mb-0">
+                Integrações futuras, relatórios mais fortes, automações e
+                expansão de módulos sem virar bagunça.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-5 bg-white">
+      <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+          <h2 class="section-title">Estrutura de negócio da plataforma</h2>
+          <p class="section-subtitle">
+            Aqui você mostra que existe visão de produto, monetização e operação
+            SaaS de verdade.
+          </p>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-lg-6" data-aos="fade-right">
+            <div class="module-card">
+              <div class="icon-box"><i class="bi bi-shield-lock"></i></div>
+              <h3 class="h5 fw-bold">Área Admin</h3>
+              <ul class="mini-list mt-3">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Contadores
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Planos
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Assinaturas
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Suporte
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Financeiro da plataforma
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="col-lg-6" data-aos="fade-left">
+            <div class="module-card">
+              <div class="icon-box"><i class="bi bi-briefcase"></i></div>
+              <h3 class="h5 fw-bold">Área do Contador</h3>
+              <ul class="mini-list mt-3">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Dashboard
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Empresas
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Obrigações
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Documentos
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Fiscal
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Financeiro
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Relatórios
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Usuários
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Configurações
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-5">
+      <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+          <h2 class="section-title">Como funciona na prática</h2>
+          <p class="section-subtitle">
+            Uma explicação simples do fluxo ajuda muito na conversão.
+          </p>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-4" data-aos="flip-left">
+            <div class="step-card">
+              <div class="step-number">1</div>
+              <h3 class="h5 fw-bold">Cadastre sua carteira</h3>
+              <p class="muted mb-0">
+                Clientes, valores, veículos e dados importantes em um ambiente
+                único e organizado.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-md-4" data-aos="flip-left" data-aos-delay="120">
+            <div class="step-card">
+              <div class="step-number">2</div>
+              <h3 class="h5 fw-bold">Automatize cobrança e confirmação</h3>
+              <p class="muted mb-0">
+                Mensagens, PIX, leitura de comprovante e controle do pagamento
+                em um mesmo fluxo.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-md-4" data-aos="flip-left" data-aos-delay="240">
+            <div class="step-card">
+              <div class="step-number">3</div>
+              <h3 class="h5 fw-bold">Acompanhe e escale</h3>
+              <p class="muted mb-0">
+                Use relatórios, painéis e visão da carteira para crescer com
+                mais segurança operacional.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="cta-final" class="py-5">
+      <div class="container">
+        <div class="cta-box text-center" data-aos="fade-up">
+          <h2 class="fw-bold">
+            Escolha o plano ideal para a fase do seu escritório
+          </h2>
+          <p class="mb-4 mt-3">
+            Comece organizando, evolua automatizando e cresça com uma plataforma
+            mais profissional, mais forte e mais escalável.
+          </p>
+          <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a
+              href="#planos"
+              class="btn btn-light rounded-3 px-4 py-3 fw-semibold"
+              >Ver planos novamente</a
+            >
+            <a
+              href="#"
+              class="btn btn-outline-light rounded-3 px-4 py-3 fw-semibold"
+              >Solicitar demonstração</a
+            >
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-5 bg-white">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8" data-aos="zoom-in-up">
+            <div class="testimonial-card text-center">
+              <div class="testimonial-stars fs-4 mb-3">★★★★★</div>
+              <h2 class="h4 fw-bold mb-3">
+                “Agora eu consigo organizar melhor meus clientes, cobrar com
+                mais inteligência e enxergar melhor a operação do escritório.”
+              </h2>
+              <p class="muted mb-3">
+                Esse tipo de posicionamento passa produtividade, controle e
+                valor real de uso.
+              </p>
+              <strong>Exemplo de depoimento comercial</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODAL BASE -->
+    <div class="modal fade" id="modalBase" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable modal-xl">
+        <div class="modal-content">
+          <div class="modal-header custom-modal-header">
+            <div>
+              <h3 class="modal-title fw-bold mb-1">Plano Base</h3>
+              <p class="modal-subtitle">
+                Entrada organizada para quem precisa estruturar a operação sem
+                complexidade.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Fechar"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-section modal-price-box">
+              <span class="modal-pill">Até 15 clientes</span>
+              <span class="modal-pill">1 usuário</span>
+              <span class="modal-pill">Oferta de lançamento</span>
+              <h4 class="fw-bold mt-2 mb-1">~~R$ 99,99~~ por R$ 79,99/mês</h4>
+              <p class="muted mb-0">
+                Plano ideal para organizar a base da operação e sair do controle
+                solto.
+              </p>
+            </div>
+
+            <div class="modal-section">
+              <h5>O que o Base entrega</h5>
+              <ul class="mini-list">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Cadastro
+                  de clientes
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Informações pessoais
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Valores
+                  por cliente
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Quantidade de veículos
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Tipo do
+                  veículo
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Controle
+                  inicial da carteira
+                </li>
+              </ul>
+            </div>
+
+            <div class="modal-section">
+              <h5>Para quem ele é indicado</h5>
+              <p class="mb-0">
+                Para contadores autônomos e escritórios pequenos que querem
+                começar com organização, centralização e estrutura inicial sem
+                investir em automações mais avançadas logo de início.
+              </p>
+            </div>
+
+            <div class="modal-section">
+              <h5>O que ele tem de especial</h5>
+              <p class="mb-0">
+                Ele é o plano certo para quem precisa arrumar a casa, organizar
+                clientes e preparar a operação para crescer depois sem começar
+                já no improviso.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </section>
 
-  <section class="py-5">
-    <div class="container">
-      <div class="row g-4">
-        <div class="col-md-3" data-aos="zoom-in">
-          <div class="stat-card">
-            <div class="stat-number">15</div>
-            <div class="muted">clientes no Base</div>
+    <!-- MODAL MÉDIO -->
+    <div class="modal fade" id="modalMedio" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable modal-xl">
+        <div class="modal-content">
+          <div class="modal-header custom-modal-header">
+            <div>
+              <h3 class="modal-title fw-bold mb-1">Plano Médio</h3>
+              <p class="modal-subtitle">
+                O melhor equilíbrio entre automação, valor percebido e
+                crescimento.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Fechar"
+            ></button>
           </div>
-        </div>
-        <div class="col-md-3" data-aos="zoom-in" data-aos-delay="100">
-          <div class="stat-card">
-            <div class="stat-number">35</div>
-            <div class="muted">clientes no Médio</div>
-          </div>
-        </div>
-        <div class="col-md-3" data-aos="zoom-in" data-aos-delay="200">
-          <div class="stat-card">
-            <div class="stat-number">∞</div>
-            <div class="muted">clientes no Premium</div>
-          </div>
-        </div>
-        <div class="col-md-3" data-aos="zoom-in" data-aos-delay="300">
-          <div class="stat-card">
-            <div class="stat-number">+ Automação</div>
-            <div class="muted">mais valor para o escritório</div>
+          <div class="modal-body">
+            <div class="modal-section modal-price-box">
+              <span class="modal-pill">Até 35 clientes</span>
+              <span class="modal-pill">Até 3 usuários</span>
+              <span class="modal-pill">Mais escolhido</span>
+              <h4 class="fw-bold mt-2 mb-1">~~R$ 149,99~~ por R$ 119,99/mês</h4>
+              <p class="muted mb-0">
+                Pensado para escritórios que querem automatizar a cobrança e
+                acompanhar melhor a carteira.
+              </p>
+            </div>
+
+            <div class="modal-section">
+              <h5>O que o Médio entrega</h5>
+              <ul class="mini-list">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Tudo do
+                  plano Base
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> ChatBot
+                  com mensagem personalizada para cada cliente
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> 4
+                  mensagens automáticas em períodos estratégicos
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Avisos em
+                  10, 5 e 3 dias antes
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Mensagem
+                  de bloqueio
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Mensagem
+                  7 dias antes do fim do pagamento
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Chave PIX
+                  + valor informado + mensagem personalizada
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Leitura
+                  de comprovante e marcação como pago
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Verificação de atraso e marcação como pendente
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Relatórios mensal e semanal
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Relatório
+                  de clientes pendentes e ativos
+                </li>
+              </ul>
+            </div>
+
+            <div class="modal-section">
+              <h5>O que ele tem de especial e incomum</h5>
+              <p class="mb-3">
+                Esse plano já vai além de cadastro e controle básico. Ele começa
+                a entregar automação que o cliente sente no dia a dia.
+              </p>
+              <ul class="mini-list">
+                <li>
+                  <i class="bi bi-star-fill text-warning"></i> Régua de
+                  mensagens em vários momentos do pagamento
+                </li>
+                <li>
+                  <i class="bi bi-star-fill text-warning"></i> PIX com valor e
+                  mensagem pronta
+                </li>
+                <li>
+                  <i class="bi bi-star-fill text-warning"></i> Leitura de
+                  comprovante para reduzir conferência manual
+                </li>
+              </ul>
+            </div>
+
+            <div class="modal-section">
+              <h5>Para quem ele é ideal</h5>
+              <p class="mb-0">
+                Para escritórios que já precisam cobrar melhor, reduzir atraso,
+                automatizar parte da rotina e ter mais controle comercial e
+                operacional sobre a carteira.
+              </p>
+            </div>
+
+            <div class="modal-section">
+              <h5>Como ele ajuda a vender melhor</h5>
+              <p class="mb-0">
+                O Médio é o plano com melhor custo-benefício porque entrega uma
+                mudança de patamar real: sai do simples cadastro e entra em
+                automação, cobrança e confirmação de pagamento.
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </section>
 
-  <section class="pb-5">
-    <div class="container">
-      <div class="highlight-strip text-center" data-aos="fade-up">
-        Cards mais limpos para vender melhor. Detalhes completos dentro de modais para deixar a experiência mais organizada e mais premium.
+    <!-- MODAL PREMIUM -->
+    <div class="modal fade" id="modalPremium" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable modal-xl">
+        <div class="modal-content">
+          <div class="modal-header custom-modal-header">
+            <div>
+              <h3 class="modal-title fw-bold mb-1">Plano Premium</h3>
+              <p class="modal-subtitle">
+                Máxima automação, escala e posicionamento de produto superior.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Fechar"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-section modal-price-box">
+              <span class="modal-pill">Clientes ilimitados</span>
+              <span class="modal-pill">Usuários ilimitados</span>
+              <span class="modal-pill">Maior valor</span>
+              <h4 class="fw-bold mt-2 mb-1">~~R$ 249,99~~ por R$ 199,99/mês</h4>
+              <p class="muted mb-0">
+                Feito para quem quer escalar de verdade, operar melhor e passar
+                uma percepção mais premium do produto.
+              </p>
+            </div>
+
+            <div class="modal-section">
+              <h5>O que o Premium entrega</h5>
+              <ul class="mini-list">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Tudo do
+                  plano Médio
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Clientes
+                  ilimitados
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Usuários
+                  ilimitados
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Relatórios mais completos e estratégicos
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Visão
+                  mais forte de ativos, pendentes e bloqueados
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Mais
+                  autonomia operacional para equipe
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Suporte
+                  prioritário
+                </li>
+              </ul>
+            </div>
+
+            <div class="modal-section">
+              <h5>O que ele tem de especial e mais raro</h5>
+              <p class="mb-3">
+                Aqui o sistema deixa de ser apenas funcional e passa a ser
+                percebido como plataforma mais forte e mais diferenciada.
+              </p>
+              <ul class="mini-list">
+                <li>
+                  <i class="bi bi-gem text-warning"></i> Combinação de automação
+                  de cobrança + leitura de comprovante + PIX personalizado
+                </li>
+                <li>
+                  <i class="bi bi-gem text-warning"></i> Estrutura sem limite de
+                  clientes para crescer sem trava
+                </li>
+                <li>
+                  <i class="bi bi-gem text-warning"></i> Percepção muito maior
+                  de valor e maturidade do produto
+                </li>
+              </ul>
+            </div>
+
+            <div class="modal-section">
+              <h5>Por que ele é melhor que o Médio</h5>
+              <p class="mb-0">
+                Porque o Premium não só automatiza. Ele amplia a escala, melhora
+                a gestão, suporta mais equipe e posiciona seu produto em um
+                nível acima em percepção, uso e crescimento.
+              </p>
+            </div>
+
+            <div class="modal-section">
+              <h5>Arquitetura e visão de produto</h5>
+              <p class="mb-3">
+                O Premium conversa melhor com a visão de SaaS robusto e
+                escalável:
+              </p>
+              <ul class="mini-list">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Estrutura
+                  modular
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Multiempresa
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Expansão
+                  para integrações futuras
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Produto
+                  com cara de ERP moderno
+                </li>
+              </ul>
+            </div>
+
+            <div class="modal-section">
+              <h5>Filosofia do sistema</h5>
+              <ul class="mini-list">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Modular
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Escalável
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Profissional
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Fácil
+                  manutenção
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </section>
 
-  <section class="py-5">
-    <div class="container">
-      <div class="text-center mb-5" data-aos="fade-up">
-        <h2 class="section-title">O que esse sistema resolve no dia a dia</h2>
-        <p class="section-subtitle">
-          Seu produto precisa mostrar utilidade real, não só aparência. Aqui estão as dores e ganhos mais claros para o contador.
+    <footer class="py-4 text-center" data-aos="fade-up">
+      <div class="container">
+        <p class="mb-0">
+          SaaS Contábil • Landing page inicial para validação comercial
         </p>
       </div>
+    </footer>
 
-      <div class="row g-4">
-        <div class="col-md-4" data-aos="fade-up">
-          <div class="pain-card">
-            <div class="icon-box"><i class="bi bi-person-vcard"></i></div>
-            <h3 class="h5 fw-bold">Cadastro completo da carteira</h3>
-            <p class="muted mb-0">Clientes, dados pessoais, valores, quantidade de veículos e tipo do veículo centralizados em um só lugar.</p>
-          </div>
-        </div>
-
-        <div class="col-md-4" data-aos="fade-up" data-aos-delay="120">
-          <div class="pain-card">
-            <div class="icon-box"><i class="bi bi-chat-dots"></i></div>
-            <h3 class="h5 fw-bold">Cobrança e mensagens automáticas</h3>
-            <p class="muted mb-0">Régua de mensagens, PIX com valor e acompanhamento para reduzir atraso e inadimplência.</p>
-          </div>
-        </div>
-
-        <div class="col-md-4" data-aos="fade-up" data-aos-delay="240">
-          <div class="pain-card">
-            <div class="icon-box"><i class="bi bi-file-earmark-check"></i></div>
-            <h3 class="h5 fw-bold">Confirmação e relatórios</h3>
-            <p class="muted mb-0">Leitura de comprovante, marcação como pago e relatórios de clientes ativos, pendentes e operação.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="planos" class="py-5 bg-white">
-    <div class="container">
-      <div class="text-center mb-5" data-aos="fade-up">
-        <h2 class="section-title">Planos pensados para cada fase do escritório</h2>
-        <p class="section-subtitle">
-          O card vende rápido. A modal explica tudo com profundidade. Assim a landing fica mais limpa e mais convincente.
-        </p>
-      </div>
-
-      <div class="row g-4 align-items-stretch">
-        <div class="col-lg-4" data-aos="zoom-in-up">
-          <div class="pricing-card">
-            <div class="plan-label"><i class="bi bi-rocket-takeoff"></i> Entrada organizada</div>
-            <h3 class="fw-bold">Base</h3>
-            <p class="muted mb-1">Para começar com estrutura</p>
-
-            <span class="price-old">R$ 99,99</span>
-            <span class="promo-tag">Oferta de lançamento</span>
-            <div class="price">R$ 79,99 <small>/mês</small></div>
-
-            <div class="plan-limit">Até 15 clientes</div>
-            <p class="plan-desc">
-              Ideal para sair do controle solto e organizar a base da operação.
-            </p>
-
-            <ul class="pricing-list mt-4">
-              <li><i class="bi bi-check-circle-fill text-success"></i> Cadastro de clientes</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Informações pessoais</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Valores e veículos</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Controle inicial da carteira</li>
-            </ul>
-
-            <a href="#cta-final" class="pricing-button">Quero começar</a>
-            <button class="pricing-secondary-button" data-bs-toggle="modal" data-bs-target="#modalBase">
-              Saiba mais sobre o Base
-            </button>
-          </div>
-        </div>
-
-        <div class="col-lg-4" data-aos="zoom-in-up" data-aos-delay="120">
-          <div class="pricing-card featured">
-            <span class="pricing-badge">MAIS ESCOLHIDO</span>
-            <div class="plan-label"><i class="bi bi-graph-up-arrow"></i> Automação real</div>
-            <h3 class="fw-bold">Médio</h3>
-            <p class="muted mb-1">Para crescer com cobrança inteligente</p>
-
-            <span class="price-old">R$ 149,99</span>
-            <span class="promo-tag">Oferta de crescimento</span>
-            <div class="price">R$ 119,99 <small>/mês</small></div>
-
-            <div class="plan-limit">Até 35 clientes</div>
-            <p class="plan-desc">
-              O melhor ponto entre preço, automação e valor percebido.
-            </p>
-
-            <ul class="pricing-list mt-4">
-              <li><i class="bi bi-check-circle-fill"></i> Tudo do Base</li>
-              <li><i class="bi bi-check-circle-fill"></i> ChatBot com mensagens personalizadas</li>
-              <li><i class="bi bi-check-circle-fill"></i> PIX com valor e mensagem</li>
-              <li><i class="bi bi-check-circle-fill"></i> Leitura de comprovante</li>
-            </ul>
-
-            <a href="#cta-final" class="pricing-button">Quero automatizar</a>
-            <button class="pricing-secondary-button" data-bs-toggle="modal" data-bs-target="#modalMedio">
-              Saiba mais sobre o Médio
-            </button>
-          </div>
-        </div>
-
-        <div class="col-lg-4" data-aos="zoom-in-up" data-aos-delay="240">
-          <div class="pricing-card premium-card">
-            <span class="pricing-badge">MAIOR VALOR</span>
-            <div class="plan-label"><i class="bi bi-stars"></i> Escala premium</div>
-            <h3 class="fw-bold">Premium</h3>
-            <p class="muted mb-1">Para máxima automação e crescimento</p>
-
-            <span class="price-old">R$ 249,99</span>
-            <span class="promo-tag">Promoção especial</span>
-            <div class="price">R$ 199,99 <small>/mês</small></div>
-
-            <div class="plan-limit">Clientes ilimitados</div>
-            <p class="plan-desc">
-              Mais escalável, mais estratégico e mais forte para quem quer operar em nível superior.
-            </p>
-
-            <ul class="pricing-list mt-4">
-              <li><i class="bi bi-check-circle-fill text-success"></i> Tudo do Médio</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Clientes ilimitados</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Usuários ilimitados</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Relatórios mais avançados</li>
-            </ul>
-
-            <a href="#cta-final" class="pricing-button">Quero o melhor plano</a>
-            <button class="pricing-secondary-button" data-bs-toggle="modal" data-bs-target="#modalPremium">
-              Saiba mais sobre o Premium
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="arquitetura" class="py-5">
-    <div class="container">
-      <div class="text-center mb-5" data-aos="fade-up">
-        <h2 class="section-title">Arquitetura pensada para produto SaaS real</h2>
-        <p class="section-subtitle">
-          Essa seção reforça que o sistema não é só uma interface bonita. Ele foi pensado como produto modular, escalável e profissional.
-        </p>
-      </div>
-
-      <div class="row g-4 mb-4">
-        <div class="col-md-4" data-aos="fade-up">
-          <div class="structure-card">
-            <div class="icon-box"><i class="bi bi-diagram-3"></i></div>
-            <h3 class="h5 fw-bold">Estrutura modular</h3>
-            <p class="muted mb-0">Separação por núcleo, serviços, middleware, módulos e rotas para facilitar manutenção e crescimento.</p>
-          </div>
-        </div>
-
-        <div class="col-md-4" data-aos="fade-up" data-aos-delay="120">
-          <div class="structure-card">
-            <div class="icon-box"><i class="bi bi-building-gear"></i></div>
-            <h3 class="h5 fw-bold">Modelo multiempresa</h3>
-            <p class="muted mb-0">Base ideal para operar como SaaS alugado para contadores, com planos, assinaturas e gestão separada.</p>
-          </div>
-        </div>
-
-        <div class="col-md-4" data-aos="fade-up" data-aos-delay="240">
-          <div class="structure-card">
-            <div class="icon-box"><i class="bi bi-bar-chart-line"></i></div>
-            <h3 class="h5 fw-bold">Preparado para evoluir</h3>
-            <p class="muted mb-0">Integrações futuras, relatórios mais fortes, automações e expansão de módulos sem virar bagunça.</p>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <section class="py-5 bg-white">
-    <div class="container">
-      <div class="text-center mb-5" data-aos="fade-up">
-        <h2 class="section-title">Estrutura de negócio da plataforma</h2>
-        <p class="section-subtitle">Aqui você mostra que existe visão de produto, monetização e operação SaaS de verdade.</p>
-      </div>
-
-      <div class="row g-4">
-        <div class="col-lg-6" data-aos="fade-right">
-          <div class="module-card">
-            <div class="icon-box"><i class="bi bi-shield-lock"></i></div>
-            <h3 class="h5 fw-bold">Área Admin</h3>
-            <ul class="mini-list mt-3">
-              <li><i class="bi bi-check-circle-fill text-success"></i> Contadores</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Planos</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Assinaturas</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Suporte</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Financeiro da plataforma</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="col-lg-6" data-aos="fade-left">
-          <div class="module-card">
-            <div class="icon-box"><i class="bi bi-briefcase"></i></div>
-            <h3 class="h5 fw-bold">Área do Contador</h3>
-            <ul class="mini-list mt-3">
-              <li><i class="bi bi-check-circle-fill text-success"></i> Dashboard</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Empresas</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Obrigações</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Documentos</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Fiscal</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Financeiro</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Relatórios</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Usuários</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Configurações</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="py-5">
-    <div class="container">
-      <div class="text-center mb-5" data-aos="fade-up">
-        <h2 class="section-title">Como funciona na prática</h2>
-        <p class="section-subtitle">Uma explicação simples do fluxo ajuda muito na conversão.</p>
-      </div>
-
-      <div class="row g-4">
-        <div class="col-md-4" data-aos="flip-left">
-          <div class="step-card">
-            <div class="step-number">1</div>
-            <h3 class="h5 fw-bold">Cadastre sua carteira</h3>
-            <p class="muted mb-0">Clientes, valores, veículos e dados importantes em um ambiente único e organizado.</p>
-          </div>
-        </div>
-
-        <div class="col-md-4" data-aos="flip-left" data-aos-delay="120">
-          <div class="step-card">
-            <div class="step-number">2</div>
-            <h3 class="h5 fw-bold">Automatize cobrança e confirmação</h3>
-            <p class="muted mb-0">Mensagens, PIX, leitura de comprovante e controle do pagamento em um mesmo fluxo.</p>
-          </div>
-        </div>
-
-        <div class="col-md-4" data-aos="flip-left" data-aos-delay="240">
-          <div class="step-card">
-            <div class="step-number">3</div>
-            <h3 class="h5 fw-bold">Acompanhe e escale</h3>
-            <p class="muted mb-0">Use relatórios, painéis e visão da carteira para crescer com mais segurança operacional.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="cta-final" class="py-5">
-    <div class="container">
-      <div class="cta-box text-center" data-aos="fade-up">
-        <h2 class="fw-bold">Escolha o plano ideal para a fase do seu escritório</h2>
-        <p class="mb-4 mt-3">
-          Comece organizando, evolua automatizando e cresça com uma plataforma mais profissional, mais forte e mais escalável.
-        </p>
-        <div class="d-flex justify-content-center gap-3 flex-wrap">
-          <a href="#planos" class="btn btn-light rounded-3 px-4 py-3 fw-semibold">Ver planos novamente</a>
-          <a href="#" class="btn btn-outline-light rounded-3 px-4 py-3 fw-semibold">Solicitar demonstração</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="py-5 bg-white">
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-lg-8" data-aos="zoom-in-up">
-          <div class="testimonial-card text-center">
-            <div class="testimonial-stars fs-4 mb-3">★★★★★</div>
-            <h2 class="h4 fw-bold mb-3">“Agora eu consigo organizar melhor meus clientes, cobrar com mais inteligência e enxergar melhor a operação do escritório.”</h2>
-            <p class="muted mb-3">
-              Esse tipo de posicionamento passa produtividade, controle e valor real de uso.
-            </p>
-            <strong>Exemplo de depoimento comercial</strong>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- MODAL BASE -->
-  <div class="modal fade" id="modalBase" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-xl">
-      <div class="modal-content">
-        <div class="modal-header custom-modal-header">
-          <div>
-            <h3 class="modal-title fw-bold mb-1">Plano Base</h3>
-            <p class="modal-subtitle">Entrada organizada para quem precisa estruturar a operação sem complexidade.</p>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <div class="modal-section modal-price-box">
-            <span class="modal-pill">Até 15 clientes</span>
-            <span class="modal-pill">1 usuário</span>
-            <span class="modal-pill">Oferta de lançamento</span>
-            <h4 class="fw-bold mt-2 mb-1">~~R$ 99,99~~ por R$ 79,99/mês</h4>
-            <p class="muted mb-0">Plano ideal para organizar a base da operação e sair do controle solto.</p>
-          </div>
-
-          <div class="modal-section">
-            <h5>O que o Base entrega</h5>
-            <ul class="mini-list">
-              <li><i class="bi bi-check-circle-fill text-success"></i> Cadastro de clientes</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Informações pessoais</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Valores por cliente</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Quantidade de veículos</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Tipo do veículo</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Controle inicial da carteira</li>
-            </ul>
-          </div>
-
-          <div class="modal-section">
-            <h5>Para quem ele é indicado</h5>
-            <p class="mb-0">Para contadores autônomos e escritórios pequenos que querem começar com organização, centralização e estrutura inicial sem investir em automações mais avançadas logo de início.</p>
-          </div>
-
-          <div class="modal-section">
-            <h5>O que ele tem de especial</h5>
-            <p class="mb-0">Ele é o plano certo para quem precisa arrumar a casa, organizar clientes e preparar a operação para crescer depois sem começar já no improviso.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL MÉDIO -->
-  <div class="modal fade" id="modalMedio" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-xl">
-      <div class="modal-content">
-        <div class="modal-header custom-modal-header">
-          <div>
-            <h3 class="modal-title fw-bold mb-1">Plano Médio</h3>
-            <p class="modal-subtitle">O melhor equilíbrio entre automação, valor percebido e crescimento.</p>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <div class="modal-section modal-price-box">
-            <span class="modal-pill">Até 35 clientes</span>
-            <span class="modal-pill">Até 3 usuários</span>
-            <span class="modal-pill">Mais escolhido</span>
-            <h4 class="fw-bold mt-2 mb-1">~~R$ 149,99~~ por R$ 119,99/mês</h4>
-            <p class="muted mb-0">Pensado para escritórios que querem automatizar a cobrança e acompanhar melhor a carteira.</p>
-          </div>
-
-          <div class="modal-section">
-            <h5>O que o Médio entrega</h5>
-            <ul class="mini-list">
-              <li><i class="bi bi-check-circle-fill text-success"></i> Tudo do plano Base</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> ChatBot com mensagem personalizada para cada cliente</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> 4 mensagens automáticas em períodos estratégicos</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Avisos em 10, 5 e 3 dias antes</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Mensagem de bloqueio</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Mensagem 7 dias antes do fim do pagamento</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Chave PIX + valor informado + mensagem personalizada</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Leitura de comprovante e marcação como pago</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Verificação de atraso e marcação como pendente</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Relatórios mensal e semanal</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Relatório de clientes pendentes e ativos</li>
-            </ul>
-          </div>
-
-          <div class="modal-section">
-            <h5>O que ele tem de especial e incomum</h5>
-            <p class="mb-3">Esse plano já vai além de cadastro e controle básico. Ele começa a entregar automação que o cliente sente no dia a dia.</p>
-            <ul class="mini-list">
-              <li><i class="bi bi-star-fill text-warning"></i> Régua de mensagens em vários momentos do pagamento</li>
-              <li><i class="bi bi-star-fill text-warning"></i> PIX com valor e mensagem pronta</li>
-              <li><i class="bi bi-star-fill text-warning"></i> Leitura de comprovante para reduzir conferência manual</li>
-            </ul>
-          </div>
-
-          <div class="modal-section">
-            <h5>Para quem ele é ideal</h5>
-            <p class="mb-0">Para escritórios que já precisam cobrar melhor, reduzir atraso, automatizar parte da rotina e ter mais controle comercial e operacional sobre a carteira.</p>
-          </div>
-
-          <div class="modal-section">
-            <h5>Como ele ajuda a vender melhor</h5>
-            <p class="mb-0">O Médio é o plano com melhor custo-benefício porque entrega uma mudança de patamar real: sai do simples cadastro e entra em automação, cobrança e confirmação de pagamento.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL PREMIUM -->
-  <div class="modal fade" id="modalPremium" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-xl">
-      <div class="modal-content">
-        <div class="modal-header custom-modal-header">
-          <div>
-            <h3 class="modal-title fw-bold mb-1">Plano Premium</h3>
-            <p class="modal-subtitle">Máxima automação, escala e posicionamento de produto superior.</p>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <div class="modal-section modal-price-box">
-            <span class="modal-pill">Clientes ilimitados</span>
-            <span class="modal-pill">Usuários ilimitados</span>
-            <span class="modal-pill">Maior valor</span>
-            <h4 class="fw-bold mt-2 mb-1">~~R$ 249,99~~ por R$ 199,99/mês</h4>
-            <p class="muted mb-0">Feito para quem quer escalar de verdade, operar melhor e passar uma percepção mais premium do produto.</p>
-          </div>
-
-          <div class="modal-section">
-            <h5>O que o Premium entrega</h5>
-            <ul class="mini-list">
-              <li><i class="bi bi-check-circle-fill text-success"></i> Tudo do plano Médio</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Clientes ilimitados</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Usuários ilimitados</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Relatórios mais completos e estratégicos</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Visão mais forte de ativos, pendentes e bloqueados</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Mais autonomia operacional para equipe</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Suporte prioritário</li>
-            </ul>
-          </div>
-
-          <div class="modal-section">
-            <h5>O que ele tem de especial e mais raro</h5>
-            <p class="mb-3">Aqui o sistema deixa de ser apenas funcional e passa a ser percebido como plataforma mais forte e mais diferenciada.</p>
-            <ul class="mini-list">
-              <li><i class="bi bi-gem text-warning"></i> Combinação de automação de cobrança + leitura de comprovante + PIX personalizado</li>
-              <li><i class="bi bi-gem text-warning"></i> Estrutura sem limite de clientes para crescer sem trava</li>
-              <li><i class="bi bi-gem text-warning"></i> Percepção muito maior de valor e maturidade do produto</li>
-            </ul>
-          </div>
-
-          <div class="modal-section">
-            <h5>Por que ele é melhor que o Médio</h5>
-            <p class="mb-0">Porque o Premium não só automatiza. Ele amplia a escala, melhora a gestão, suporta mais equipe e posiciona seu produto em um nível acima em percepção, uso e crescimento.</p>
-          </div>
-
-          <div class="modal-section">
-            <h5>Arquitetura e visão de produto</h5>
-            <p class="mb-3">O Premium conversa melhor com a visão de SaaS robusto e escalável:</p>
-            <ul class="mini-list">
-              <li><i class="bi bi-check-circle-fill text-success"></i> Estrutura modular</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Multiempresa</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Expansão para integrações futuras</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Produto com cara de ERP moderno</li>
-            </ul>
-          </div>
-
-          <div class="modal-section">
-            <h5>Filosofia do sistema</h5>
-            <ul class="mini-list">
-              <li><i class="bi bi-check-circle-fill text-success"></i> Modular</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Escalável</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Profissional</li>
-              <li><i class="bi bi-check-circle-fill text-success"></i> Fácil manutenção</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <footer class="py-4 text-center" data-aos="fade-up">
-    <div class="container">
-      <p class="mb-0">SaaS Contábil • Landing page inicial para validação comercial</p>
-    </div>
-  </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-  <script>
-    AOS.init({
-      duration: 900,
-      once: true,
-      offset: 80,
-      easing: 'ease-out-cubic',
-      mirror: false
-    });
-  </script>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+      AOS.init({
+        duration: 900,
+        once: true,
+        offset: 80,
+        easing: "ease-out-cubic",
+        mirror: false,
+      });
+    </script>
+  </body>
 </html>
