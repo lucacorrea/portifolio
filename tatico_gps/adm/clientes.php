@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 session_start();
@@ -130,306 +131,235 @@ try {
     <script src="../assets/js/config.js"></script>
 
     <style>
-    html,
-    body {
-        height: 100%;
-    }
+        html,
+        body {
+            height: 100%;
+        }
 
-    body {
-        overflow-x: hidden;
-    }
+        body {
+            overflow-x: hidden;
+        }
 
-    .layout-page {
-        min-height: 100vh;
-    }
+        .layout-page {
+            min-height: 100vh;
+        }
 
-    .layout-menu {
-        height: 100vh !important;
-        overflow: hidden;
-        position: sticky;
-        top: 0;
-    }
-
-    .layout-menu .menu-inner {
-        height: calc(100vh - 90px);
-        overflow-y: auto !important;
-        overflow-x: hidden;
-        padding-bottom: 2rem;
-        scrollbar-width: thin;
-    }
-
-    .layout-menu .menu-inner::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    .layout-menu .menu-inner::-webkit-scrollbar-thumb {
-        background: rgba(105, 108, 255, 0.35);
-        border-radius: 10px;
-    }
-
-    .layout-menu .menu-inner::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .page-banner h3 {
-        margin-bottom: 0.35rem;
-    }
-
-    .page-banner p {
-        margin-bottom: 0;
-        color: #697a8d;
-    }
-
-    .page-banner-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .page-banner-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-
-    .info-card .card-body {
-        padding: 1.25rem;
-    }
-
-    .info-label {
-        color: #697a8d;
-        font-size: 0.92rem;
-        margin-bottom: 0.35rem;
-    }
-
-    .info-value {
-        font-size: 1.9rem;
-        font-weight: 700;
-        line-height: 1.1;
-        color: #233446;
-    }
-
-    .info-meta {
-        margin-top: 0.6rem;
-        font-size: 0.86rem;
-        font-weight: 600;
-    }
-
-    .section-title {
-        margin-bottom: 0;
-        font-weight: 700;
-    }
-
-    .table-tools {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .table-tools .left-tools,
-    .table-tools .right-tools {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-
-    .table-responsive th {
-        white-space: nowrap;
-    }
-
-    .badge-status {
-        min-width: 88px;
-        text-align: center;
-    }
-
-    .vehicle-badge {
-        background: rgba(105, 108, 255, 0.12);
-        color: #696cff;
-        border-radius: 999px;
-        padding: 0.35rem 0.7rem;
-        font-size: 0.78rem;
-        font-weight: 600;
-        display: inline-block;
-    }
-
-    .mini-note {
-        color: #8592a3;
-        font-size: 0.84rem;
-    }
-
-    .help-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .help-list li {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.85rem 0;
-        border-bottom: 1px solid #eceef1;
-    }
-
-    .help-list li:last-child {
-        border-bottom: 0;
-    }
-
-    .help-text-box {
-        background: rgba(105, 108, 255, 0.08);
-        border: 1px solid rgba(105, 108, 255, 0.12);
-        color: #566a7f;
-        border-radius: 12px;
-        padding: 1rem;
-        margin-top: 1rem;
-    }
-
-    .modal-form-section {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: #566a7f;
-        margin-bottom: 0.85rem;
-        padding-bottom: 0.45rem;
-        border-bottom: 1px solid #eceef1;
-    }
-
-    .modal-lg-custom {
-        max-width: 920px;
-    }
-
-    .pix-config-box {
-        background: #f8f9fa;
-        border: 1px dashed #d9dee3;
-        border-radius: 12px;
-        padding: 1rem;
-    }
-
-    .pix-config-box .pix-line {
-        margin-bottom: .4rem;
-        color: #566a7f;
-    }
-
-    .pix-config-box .pix-line:last-child {
-        margin-bottom: 0;
-    }
-
-    .modal-body-scroll {
-        max-height: calc(100vh - 220px);
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding-right: .5rem;
-    }
-
-    .table-actions .dropdown-menu {
-        min-width: 180px;
-    }
-
-    @media (max-width: 1199.98px) {
         .layout-menu {
-            position: fixed;
-            z-index: 1100;
+            height: 100vh !important;
+            overflow: hidden;
+            position: sticky;
+            top: 0;
         }
-    }
 
-    @media (max-width: 767.98px) {
+        .layout-menu .menu-inner {
+            height: calc(100vh - 90px);
+            overflow-y: auto !important;
+            overflow-x: hidden;
+            padding-bottom: 2rem;
+            scrollbar-width: thin;
+        }
+
+        .layout-menu .menu-inner::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .layout-menu .menu-inner::-webkit-scrollbar-thumb {
+            background: rgba(105, 108, 255, 0.35);
+            border-radius: 10px;
+        }
+
+        .layout-menu .menu-inner::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .page-banner h3 {
+            margin-bottom: 0.35rem;
+        }
+
+        .page-banner p {
+            margin-bottom: 0;
+            color: #697a8d;
+        }
+
+        .page-banner-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
         .page-banner-actions {
-            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
         }
 
-        .page-banner-actions .btn {
-            width: 100%;
+        .info-card .card-body {
+            padding: 1.25rem;
+        }
+
+        .info-label {
+            color: #697a8d;
+            font-size: 0.92rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .info-value {
+            font-size: 1.9rem;
+            font-weight: 700;
+            line-height: 1.1;
+            color: #233446;
+        }
+
+        .info-meta {
+            margin-top: 0.6rem;
+            font-size: 0.86rem;
+            font-weight: 600;
+        }
+
+        .section-title {
+            margin-bottom: 0;
+            font-weight: 700;
+        }
+
+        .table-tools {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .table-tools .left-tools,
+        .table-tools .right-tools {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .table-responsive th {
+            white-space: nowrap;
+        }
+
+        .badge-status {
+            min-width: 88px;
+            text-align: center;
+        }
+
+        .vehicle-badge {
+            background: rgba(105, 108, 255, 0.12);
+            color: #696cff;
+            border-radius: 999px;
+            padding: 0.35rem 0.7rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .mini-note {
+            color: #8592a3;
+            font-size: 0.84rem;
+        }
+
+        .help-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .help-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 0;
+            border-bottom: 1px solid #eceef1;
+        }
+
+        .help-list li:last-child {
+            border-bottom: 0;
+        }
+
+        .help-text-box {
+            background: rgba(105, 108, 255, 0.08);
+            border: 1px solid rgba(105, 108, 255, 0.12);
+            color: #566a7f;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .modal-form-section {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #566a7f;
+            margin-bottom: 0.85rem;
+            padding-bottom: 0.45rem;
+            border-bottom: 1px solid #eceef1;
+        }
+
+        .modal-lg-custom {
+            max-width: 920px;
+        }
+
+        .pix-config-box {
+            background: #f8f9fa;
+            border: 1px dashed #d9dee3;
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .pix-config-box .pix-line {
+            margin-bottom: .4rem;
+            color: #566a7f;
+        }
+
+        .pix-config-box .pix-line:last-child {
+            margin-bottom: 0;
         }
 
         .modal-body-scroll {
-            max-height: calc(100vh - 180px);
+            max-height: calc(100vh - 220px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: .5rem;
         }
-    }
+
+        .table-actions .dropdown-menu {
+            min-width: 180px;
+        }
+
+        @media (max-width: 1199.98px) {
+            .layout-menu {
+                position: fixed;
+                z-index: 1100;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .page-banner-actions {
+                width: 100%;
+            }
+
+            .page-banner-actions .btn {
+                width: 100%;
+            }
+
+            .modal-body-scroll {
+                max-height: calc(100vh - 180px);
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="layout-wrapper layout-content-navbar">
         <div class="layout-container">
-            <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
-                <div class="app-brand demo">
-                    <a href="dashboard.php" class="app-brand-link">
-                        <span class="app-brand-logo demo">
-                            <span class="text-primary">
-                                <svg width="25" viewBox="0 0 25 42" version="1.1" xmlns="http://www.w3.org/2000/svg"
-                                    xmlns:xlink="http://www.w3.org/1999/xlink">
-                                    <defs>
-                                        <path
-                                            d="M13.7918663,0.358365126 L3.39788168,7.44174259 C0.566865006,9.69408886 -0.379795268,12.4788597 0.557900856,15.7960551 C0.68998853,16.2305145 1.09562888,17.7872135 3.12357076,19.2293357 C3.8146334,19.7207684 5.32369333,20.3834223 7.65075054,21.2172976 L7.59773219,21.2525164 L2.63468769,24.5493413 C0.445452254,26.3002124 0.0884951797,28.5083815 1.56381646,31.1738486 C2.83770406,32.8170431 5.20850219,33.2640127 7.09180128,32.5391577 C8.347334,32.0559211 11.4559176,30.0011079 16.4175519,26.3747182 C18.0338572,24.4997857 18.6973423,22.4544883 18.4080071,20.2388261 C17.963753,17.5346866 16.1776345,15.5799961 13.0496516,14.3747546 L10.9194936,13.4715819 L18.6192054,7.984237 L13.7918663,0.358365126 Z"
-                                            id="path-1"></path>
-                                    </defs>
-                                    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-                                        <g transform="translate(-27.000000, -15.000000)">
-                                            <g transform="translate(27.000000, 15.000000)">
-                                                <g transform="translate(0.000000, 8.000000)">
-                                                    <mask id="mask-2" fill="white">
-                                                        <use xlink:href="#path-1"></use>
-                                                    </mask>
-                                                    <use fill="currentColor" xlink:href="#path-1"></use>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </svg>
-                            </span>
-                        </span>
-                        <span class="app-brand-text demo menu-text fw-bold ms-2">Tático GPS</span>
-                    </a>
-
-                    <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto">
-                        <i class="bx bx-chevron-left d-block d-xl-none align-middle"></i>
-                    </a>
-                </div>
-
-                <div class="menu-divider mt-0"></div>
-                <div class="menu-inner-shadow"></div>
-
-                <ul class="menu-inner py-1">
-                    <li class="menu-item"><a href="dashboard.php" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-home-circle"></i>
-                            <div class="text-truncate">Painel Geral</div>
-                        </a></li>
-                    <li class="menu-item active"><a href="clientes.php" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-user"></i>
-                            <div class="text-truncate">Clientes</div>
-                        </a></li>
-                    <li class="menu-item"><a href="cobrancas.php" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-wallet"></i>
-                            <div class="text-truncate">Cobranças</div>
-                        </a></li>
-                    <li class="menu-item"><a href="pagamentos.php" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-credit-card"></i>
-                            <div class="text-truncate">Pagamentos</div>
-                        </a></li>
-                    <li class="menu-item"><a href="mensagens.php" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-message-detail"></i>
-                            <div class="text-truncate">Mensagens</div>
-                        </a></li>
-                    <li class="menu-item"><a href="relatorios.php" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-bar-chart-alt-2"></i>
-                            <div class="text-truncate">Relatórios</div>
-                        </a></li>
-                    <li class="menu-item"><a href="configuracoes.php" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-cog"></i>
-                            <div class="text-truncate">Configurações</div>
-                        </a></li>
-                    <li class="menu-item"><a href="logout.php" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-power-off"></i>
-                            <div class="text-truncate">Sair</div>
-                        </a></li>
-                </ul>
-            </aside>
+            <?php $paginaAtiva = 'clientes'; ?>
+            <?php require_once __DIR__ . '/includes/menu.php'; ?>
 
             <div class="layout-page">
                 <nav class="layout-navbar container-xxl navbar-detached navbar navbar-expand-xl align-items-center bg-navbar-theme"
@@ -487,21 +417,21 @@ try {
                     <div class="container-xxl flex-grow-1 container-p-y">
 
                         <?php if ($flashSucesso): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="bx bx-check-circle me-1"></i>
-                            <?= h($flashSucesso) ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"
-                                aria-label="Fechar"></button>
-                        </div>
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="bx bx-check-circle me-1"></i>
+                                <?= h($flashSucesso) ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Fechar"></button>
+                            </div>
                         <?php endif; ?>
 
                         <?php if ($flashErro): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="bx bx-error-circle me-1"></i>
-                            <?= h($flashErro) ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"
-                                aria-label="Fechar"></button>
-                        </div>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="bx bx-error-circle me-1"></i>
+                                <?= h($flashErro) ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Fechar"></button>
+                            </div>
                         <?php endif; ?>
 
                         <div class="row mb-4">
@@ -633,95 +563,95 @@ try {
                                                 </thead>
                                                 <tbody class="table-border-bottom-0">
                                                     <?php if (!$clientes): ?>
-                                                    <tr>
-                                                        <td colspan="8" class="text-center py-4 text-muted">
-                                                            Nenhum cliente encontrado.
-                                                        </td>
-                                                    </tr>
+                                                        <tr>
+                                                            <td colspan="8" class="text-center py-4 text-muted">
+                                                                Nenhum cliente encontrado.
+                                                            </td>
+                                                        </tr>
                                                     <?php else: ?>
-                                                    <?php foreach ($clientes as $cliente): ?>
-                                                    <tr>
-                                                        <td>
-                                                            <div class="d-flex flex-column">
-                                                                <span
-                                                                    class="fw-semibold"><?= h($cliente['nome']) ?></span>
-                                                                <small class="text-muted">CPF:
-                                                                    <?= h($cliente['cpf'] ?: '-') ?></small>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <div class="d-flex flex-column">
-                                                                <span><?= h($cliente['telefone'] ?: '-') ?></span>
-                                                                <small
-                                                                    class="text-muted"><?= h($cliente['email'] ?: '-') ?></small>
-                                                            </div>
-                                                        </td>
-                                                        <td><?= money($cliente['mensalidade']) ?></td>
-                                                        <td><?= str_pad((string)((int)$cliente['dia_vencimento']), 2, '0', STR_PAD_LEFT) ?>
-                                                        </td>
-                                                        <td><small
-                                                                class="text-muted"><?= h($cliente['forma_pagamento'] ?: '-') ?></small>
-                                                        </td>
-                                                        <td>
-                                                            <span class="vehicle-badge">
-                                                                <?= (int)$cliente['qtd_veiculos'] ?>
-                                                                <?= h($cliente['tipo_veiculo'] ?: 'Veículo') ?>
-                                                            </span>
-                                                        </td>
-                                                        <td>
-                                                            <?php
+                                                        <?php foreach ($clientes as $cliente): ?>
+                                                            <tr>
+                                                                <td>
+                                                                    <div class="d-flex flex-column">
+                                                                        <span
+                                                                            class="fw-semibold"><?= h($cliente['nome']) ?></span>
+                                                                        <small class="text-muted">CPF:
+                                                                            <?= h($cliente['cpf'] ?: '-') ?></small>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex flex-column">
+                                                                        <span><?= h($cliente['telefone'] ?: '-') ?></span>
+                                                                        <small
+                                                                            class="text-muted"><?= h($cliente['email'] ?: '-') ?></small>
+                                                                    </div>
+                                                                </td>
+                                                                <td><?= money($cliente['mensalidade']) ?></td>
+                                                                <td><?= str_pad((string)((int)$cliente['dia_vencimento']), 2, '0', STR_PAD_LEFT) ?>
+                                                                </td>
+                                                                <td><small
+                                                                        class="text-muted"><?= h($cliente['forma_pagamento'] ?: '-') ?></small>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="vehicle-badge">
+                                                                        <?= (int)$cliente['qtd_veiculos'] ?>
+                                                                        <?= h($cliente['tipo_veiculo'] ?: 'Veículo') ?>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <?php
                                                                     $status = (string)$cliente['status'];
                                                                     $classe = 'secondary';
                                                                     if ($status === 'Ativo') $classe = 'success';
                                                                     elseif ($status === 'Pendente') $classe = 'warning';
                                                                     elseif ($status === 'Bloqueado') $classe = 'danger';
                                                                     ?>
-                                                            <span
-                                                                class="badge bg-label-<?= $classe ?> badge-status"><?= h($status) ?></span>
-                                                        </td>
-                                                        <td class="text-center table-actions">
-                                                            <div class="dropdown">
-                                                                <button type="button"
-                                                                    class="btn p-0 dropdown-toggle hide-arrow"
-                                                                    data-bs-toggle="dropdown">
-                                                                    <i class="bx bx-dots-vertical-rounded"></i>
-                                                                </button>
-                                                                <div class="dropdown-menu dropdown-menu-end">
-                                                                    <button type="button"
-                                                                        class="dropdown-item btn-ver-cliente"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#clienteModal"
-                                                                        data-id="<?= (int)$cliente['id'] ?>"
-                                                                        data-nome="<?= h($cliente['nome']) ?>"
-                                                                        data-cpf="<?= h($cliente['cpf']) ?>"
-                                                                        data-telefone="<?= h($cliente['telefone']) ?>"
-                                                                        data-email="<?= h($cliente['email']) ?>"
-                                                                        data-endereco="<?= h($cliente['endereco']) ?>"
-                                                                        data-mensalidade="<?= money($cliente['mensalidade']) ?>"
-                                                                        data-vencimento="<?= str_pad((string)((int)$cliente['dia_vencimento']), 2, '0', STR_PAD_LEFT) ?>"
-                                                                        data-forma_pagamento="<?= h($cliente['forma_pagamento']) ?>"
-                                                                        data-veiculos="<?= (int)$cliente['qtd_veiculos'] ?>"
-                                                                        data-tipo_veiculo="<?= h($cliente['tipo_veiculo']) ?>"
-                                                                        data-status="<?= h($cliente['status']) ?>"
-                                                                        data-whatsapp="<?= h($cliente['whatsapp_principal']) ?>"
-                                                                        data-observacoes="<?= h($cliente['observacoes']) ?>">
-                                                                        <i class="bx bx-show-alt me-1"></i> Ver
-                                                                    </button>
+                                                                    <span
+                                                                        class="badge bg-label-<?= $classe ?> badge-status"><?= h($status) ?></span>
+                                                                </td>
+                                                                <td class="text-center table-actions">
+                                                                    <div class="dropdown">
+                                                                        <button type="button"
+                                                                            class="btn p-0 dropdown-toggle hide-arrow"
+                                                                            data-bs-toggle="dropdown">
+                                                                            <i class="bx bx-dots-vertical-rounded"></i>
+                                                                        </button>
+                                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                                            <button type="button"
+                                                                                class="dropdown-item btn-ver-cliente"
+                                                                                data-bs-toggle="modal"
+                                                                                data-bs-target="#clienteModal"
+                                                                                data-id="<?= (int)$cliente['id'] ?>"
+                                                                                data-nome="<?= h($cliente['nome']) ?>"
+                                                                                data-cpf="<?= h($cliente['cpf']) ?>"
+                                                                                data-telefone="<?= h($cliente['telefone']) ?>"
+                                                                                data-email="<?= h($cliente['email']) ?>"
+                                                                                data-endereco="<?= h($cliente['endereco']) ?>"
+                                                                                data-mensalidade="<?= money($cliente['mensalidade']) ?>"
+                                                                                data-vencimento="<?= str_pad((string)((int)$cliente['dia_vencimento']), 2, '0', STR_PAD_LEFT) ?>"
+                                                                                data-forma_pagamento="<?= h($cliente['forma_pagamento']) ?>"
+                                                                                data-veiculos="<?= (int)$cliente['qtd_veiculos'] ?>"
+                                                                                data-tipo_veiculo="<?= h($cliente['tipo_veiculo']) ?>"
+                                                                                data-status="<?= h($cliente['status']) ?>"
+                                                                                data-whatsapp="<?= h($cliente['whatsapp_principal']) ?>"
+                                                                                data-observacoes="<?= h($cliente['observacoes']) ?>">
+                                                                                <i class="bx bx-show-alt me-1"></i> Ver
+                                                                            </button>
 
-                                                                    <a class="dropdown-item"
-                                                                        href="clientesEditar.php?id=<?= (int)$cliente['id'] ?>">
-                                                                        <i class="bx bx-edit-alt me-1"></i> Editar
-                                                                    </a>
+                                                                            <a class="dropdown-item"
+                                                                                href="clientesEditar.php?id=<?= (int)$cliente['id'] ?>">
+                                                                                <i class="bx bx-edit-alt me-1"></i> Editar
+                                                                            </a>
 
-                                                                    <a class="dropdown-item"
-                                                                        href="cobrancas.php?cliente_id=<?= (int)$cliente['id'] ?>">
-                                                                        <i class="bx bx-wallet me-1"></i> Cobrar
-                                                                    </a>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
+                                                                            <a class="dropdown-item"
+                                                                                href="cobrancas.php?cliente_id=<?= (int)$cliente['id'] ?>">
+                                                                                <i class="bx bx-wallet me-1"></i> Cobrar
+                                                                            </a>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        <?php endforeach; ?>
                                                     <?php endif; ?>
                                                 </tbody>
                                             </table>
@@ -745,7 +675,7 @@ try {
                                 class="footer-container d-flex align-items-center justify-content-between py-4 flex-md-row flex-column">
                                 <div class="mb-2 mb-md-0">
                                     © <script>
-                                    document.write(new Date().getFullYear());
+                                        document.write(new Date().getFullYear());
                                     </script> - Tático GPS. Todos os direitos reservados.
                                 </div>
                             </div>
@@ -819,7 +749,7 @@ try {
                                 <select id="vencimento" name="dia_vencimento" class="form-select" required>
                                     <option value="">Selecione</option>
                                     <?php for ($i = 1; $i <= 31; $i++): ?>
-                                    <option value="<?= $i ?>"><?= str_pad((string)$i, 2, '0', STR_PAD_LEFT) ?></option>
+                                        <option value="<?= $i ?>"><?= str_pad((string)$i, 2, '0', STR_PAD_LEFT) ?></option>
                                     <?php endfor; ?>
                                 </select>
                             </div>
@@ -1021,31 +951,31 @@ try {
     <script src="../assets/js/main.js"></script>
 
     <script>
-    document.querySelectorAll('.btn-ver-cliente').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            document.getElementById('detNome').textContent = this.dataset.nome || '-';
-            document.getElementById('detCpf').textContent = this.dataset.cpf || '-';
-            document.getElementById('detTelefone').textContent = this.dataset.telefone || '-';
-            document.getElementById('detEmail').textContent = this.dataset.email || '-';
-            document.getElementById('detEndereco').textContent = this.dataset.endereco || '-';
-            document.getElementById('detMensalidade').textContent = this.dataset.mensalidade || '-';
-            document.getElementById('detVencimento').textContent = this.dataset.vencimento || '-';
-            document.getElementById('detFormaPagamento').textContent = this.dataset.forma_pagamento ||
-                '-';
+        document.querySelectorAll('.btn-ver-cliente').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('detNome').textContent = this.dataset.nome || '-';
+                document.getElementById('detCpf').textContent = this.dataset.cpf || '-';
+                document.getElementById('detTelefone').textContent = this.dataset.telefone || '-';
+                document.getElementById('detEmail').textContent = this.dataset.email || '-';
+                document.getElementById('detEndereco').textContent = this.dataset.endereco || '-';
+                document.getElementById('detMensalidade').textContent = this.dataset.mensalidade || '-';
+                document.getElementById('detVencimento').textContent = this.dataset.vencimento || '-';
+                document.getElementById('detFormaPagamento').textContent = this.dataset.forma_pagamento ||
+                    '-';
 
-            const veiculos = (this.dataset.veiculos || '0') + ' ' + (this.dataset.tipo_veiculo ||
-                'Veículo');
-            document.getElementById('detVeiculos').textContent = veiculos;
+                const veiculos = (this.dataset.veiculos || '0') + ' ' + (this.dataset.tipo_veiculo ||
+                    'Veículo');
+                document.getElementById('detVeiculos').textContent = veiculos;
 
-            document.getElementById('detStatus').textContent = this.dataset.status || '-';
-            document.getElementById('detWhatsapp').textContent = this.dataset.whatsapp || '-';
-            document.getElementById('detObservacoes').textContent = this.dataset.observacoes || '-';
+                document.getElementById('detStatus').textContent = this.dataset.status || '-';
+                document.getElementById('detWhatsapp').textContent = this.dataset.whatsapp || '-';
+                document.getElementById('detObservacoes').textContent = this.dataset.observacoes || '-';
 
-            const id = this.dataset.id || '';
-            document.getElementById('btnEditarClienteModal').setAttribute('href',
-                'clientesEditar.php?id=' + id);
+                const id = this.dataset.id || '';
+                document.getElementById('btnEditarClienteModal').setAttribute('href',
+                    'clientesEditar.php?id=' + id);
+            });
         });
-    });
     </script>
 </body>
 
