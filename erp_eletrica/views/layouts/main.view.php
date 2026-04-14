@@ -79,13 +79,13 @@
             </main>
 
             <!-- Global Footer Bar -->
-            <footer class="erp-footer py-2 bg-white border-top shadow-sm" style="font-size: 0.72rem; z-index: 10; flex-shrink: 0;">
+            <footer class="erp-footer py-3 bg-white border-top shadow-sm mt-auto">
                 <div class="container-fluid d-flex justify-content-between align-items-center">
-                    <div class="fw-medium text-nowrap" style="flex-shrink: 0;">
-                        ERP Elétrica &copy; <?= date('Y') ?> - Conexão Industrial Segura
+                    <div class="fw-medium text-nowrap extra-small">
+                        ERP Elétrica &copy; <?= date('Y') ?>
                     </div>
-                    <div class="text-end" style="flex-shrink: 0;">
-                        Desenvolvido por <strong>L&J Soluções Tecnológicas</strong>.
+                    <div class="text-end extra-small">
+                        Desenvolvido por <strong>L&J Soluções</strong>
                     </div>
                 </div>
             </footer>

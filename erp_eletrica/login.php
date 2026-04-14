@@ -268,6 +268,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-family: 'Roboto Mono', monospace;
             letter-spacing: 0.5px;
         }
+
+        @media (max-width: 480px) {
+            .login-card {
+                max-width: 100%;
+                border-radius: 0;
+                box-shadow: none;
+                min-height: 100vh;
+            }
+            .login-body {
+                padding: 25px;
+            }
+            .brand-header {
+                padding: 30px 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -329,7 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
 
             <div class="footer-info">
-                SISTEMA ERP ELÉTRICA | VERSÃO <?php echo APP_VERSION; ?>
+               Desenvolvido por L&J Soluções Tecnológicas.
             </div>
         </div>
     </div>

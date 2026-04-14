@@ -12,21 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (overlay) overlay.classList.toggle('active');
         } else {
             // Desktop: collapse/expand
-            const isCollapsed = html.classList.contains('sidebar-collapsed');
-            
-            if (isCollapsed) {
-                // Opening: remove collapsed state, force reflow to ensure clean transition
-                html.classList.remove('sidebar-collapsed');
-                // Reset any inline styles that could interfere
-                sidebar.style.removeProperty('width');
-                sidebar.style.removeProperty('transform');
-                sidebar.style.removeProperty('visibility');
-                sidebar.style.removeProperty('opacity');
-            } else {
-                // Closing: add collapsed state
-                html.classList.add('sidebar-collapsed');
-            }
-            
+            html.classList.toggle('sidebar-collapsed');
             localStorage.setItem('sidebar-collapsed', html.classList.contains('sidebar-collapsed'));
         }
     }
