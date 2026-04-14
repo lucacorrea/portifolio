@@ -1,17 +1,17 @@
 <!-- Actions Bar -->
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body d-flex justify-content-between align-items-center py-3">
-        <form method="GET" class="d-flex gap-2 w-50">
+    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 py-3">
+        <form method="GET" class="d-flex gap-2 w-100 w-md-50">
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0 text-muted">
                     <i class="fas fa-search"></i>
                 </span>
-                <input type="text" name="search" class="form-control border-start-0" placeholder="Buscar por nome, CPF/CNPJ ou email..." value="<?= htmlspecialchars($searchTerm ?? '') ?>">
+                <input type="text" name="search" class="form-control border-start-0" placeholder="Buscar cliente..." value="<?= htmlspecialchars($searchTerm ?? '') ?>">
             </div>
             <button type="submit" class="btn btn-outline-primary fw-bold px-4">Filtrar</button>
         </form>
-        <div>
-            <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#clientModal">
+        <div class="w-100 w-md-auto text-end">
+            <button class="btn btn-primary fw-bold w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#clientModal">
                 <i class="fas fa-user-plus me-2"></i>Novo Cliente
             </button>
         </div>
