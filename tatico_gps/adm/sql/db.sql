@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS clientes (
 
     mensalidade                             DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     dia_vencimento                          TINYINT UNSIGNED NOT NULL DEFAULT 10,
-    forma_pagamento                         VARCHAR(30) NOT NULL DEFAULT 'PIX' AFTER dia_vencimento;
+    forma_pagamento                         VARCHAR(30) NOT NULL DEFAULT 'PIX',
 
     qtd_veiculos                            INT NOT NULL DEFAULT 1,
     tipo_veiculo                            VARCHAR(50) DEFAULT NULL,
@@ -48,5 +48,24 @@ CREATE TABLE IF NOT EXISTS clientes (
     observacoes                             TEXT DEFAULT NULL,
 
     criado_em                               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em                           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    atualizado_em                           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_nome (nome),
+    INDEX idx_status (status),
+    INDEX idx_telefone (telefone)
+);
+
+
+CREATE TABLE IF NOT EXISTS whatsapp_envios (
+    id                                      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    cliente_id                              INT UNSIGNED NOT NULL,
+    telefone                                VARCHAR(20) NOT NULL,
+    mensagem                                TEXT NOT NULL,
+    status_envio                            VARCHAR(20) NOT NULL DEFAULT 'pendente',
+    resposta_api                            TEXT DEFAULT NULL,
+    criado_em                               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_cliente_id (cliente_id),
+    INDEX idx_status_envio (status_envio),
+    INDEX idx_criado_em (criado_em)
 );
