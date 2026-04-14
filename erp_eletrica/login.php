@@ -322,8 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
 
         <div class="footer-info">
-            VERSÃO <?php echo APP_VERSION; ?> | SECURE INDUSTRIAL ACCESS <BR>
-            L&J SOLUCOES TECNOLOGICAS
+            VERSÃO <?php echo APP_VERSION; ?> | L&J SOLUCOES TECNOLOGICAS
+            
         </div>
     </div>
     
