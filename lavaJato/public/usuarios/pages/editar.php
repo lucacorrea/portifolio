@@ -1,0 +1,3 @@
+<?php
+// Page: editar.php
+?>

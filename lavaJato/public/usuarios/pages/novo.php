@@ -1,0 +1,3 @@
+<?php
+// Page: novo.php
+?>
