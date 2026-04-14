@@ -85,11 +85,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <style>
         :root {
             --login-bg: #cbd5e1;
-            --card-bg: #2b4c7d;
-            --accent-gold: #FFC107;
-            --accent-hover: #FFB300;
-            --input-bg: #1e3a62;
-            --border-color: rgba(255, 255, 255, 0.15);
+            --card-bg: #ffffff;
+            --accent-gold: #2b4c7d;
+            --accent-hover: #1e3a62;
+            --input-bg: #ffffff;
+            --border-color: #e2e8f0;
         }
 
         body {
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             min-height: 100vh;
             margin: 0;
             font-family: 'Inter', sans-serif;
-            color: #ffffff;
+            color: #1e293b;
         }
 
         .login-card {
@@ -139,14 +139,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         .login-header h1 {
             font-size: 1.75rem;
-            color: #ffffff;
+            color: #1e293b;
             margin: 0;
             font-weight: 800;
             letter-spacing: 2px;
         }
 
         .login-header p {
-            color: #cbd5e1;
+            color: #64748b;
             font-size: 0.85rem;
             margin-top: 5px;
             letter-spacing: 1px;
@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             display: block;
             margin-bottom: 10px;
             font-weight: 700;
-            color: #cbd5e1;
+            color: #64748b;
             font-size: 0.7rem;
             letter-spacing: 1px;
         }
@@ -186,18 +186,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         .form-control::placeholder {
-            color: rgba(255, 255, 255, 0.5) !important;
+            color: #475569 !important;
         }
 
         .btn-login {
             width: 100%;
             padding: 15px;
             background: var(--accent-gold);
-            color: #1e293b;
+            color: #fff;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
-            font-weight: 800;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
@@ -243,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             margin-top: 30px;
             text-align: center;
             font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.5);
+            color: #404040;
             font-family: 'Roboto Mono', monospace;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -303,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <label class="form-label">SENHA TÉCNICA</label>
                 <div class="input-group">
                     <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
-                    <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border-color); background: var(--input-bg); color: rgba(255, 255, 255, 0.7);">
+                    <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border-color); background: var(--input-bg); color: #475569;">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
