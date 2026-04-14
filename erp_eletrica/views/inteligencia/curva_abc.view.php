@@ -1,11 +1,11 @@
 <div class="row mb-4">
     <div class="col-md-9">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center stack-on-mobile">
-                <h6 class="mb-0 fw-bold">Matriz de Curva ABC (Faturamento)</h6>
-                <div class="d-flex gap-2 w-100-mobile">
-                    <a href="inteligencia.php?action=recalcularABC" class="btn btn-sm btn-warning w-100">
-                        <i class="fas fa-sync me-1"></i> Recalcular ABC
+            <div class="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <h6 class="mb-0 fw-bold"><i class="fas fa-chart-pie me-2 text-primary"></i>Matriz de Curva ABC (Faturamento)</h6>
+                <div class="w-100 w-md-auto">
+                    <a href="inteligencia.php?action=recalcularABC" class="btn btn-sm btn-warning w-100 fw-bold shadow-sm">
+                        <i class="fas fa-sync me-1"></i> RECALCULAR ABC
                     </a>
                 </div>
             </div>

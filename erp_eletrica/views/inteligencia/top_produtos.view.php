@@ -1,13 +1,21 @@
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center stack-on-mobile">
-                <h6 class="mb-0 fw-bold">Produtos Mais Vendidos</h6>
-                <form class="d-flex gap-2 align-items-center w-100-mobile">
+            <div class="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <h6 class="mb-0 fw-bold"><i class="fas fa-chart-bar me-2 text-primary"></i>Produtos Mais Vendidos</h6>
+                <form class="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
                     <input type="hidden" name="action" value="topProdutos">
-                    <input type="date" name="inicio" class="form-control form-control-sm" value="<?= $inicio ?>">
-                    <input type="date" name="fim" class="form-control form-control-sm" value="<?= $fim ?>">
-                    <button type="submit" class="btn btn-sm btn-primary px-3">Filtrar</button>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light">De</span>
+                        <input type="date" name="inicio" class="form-control" value="<?= $inicio ?>">
+                    </div>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light">Até</span>
+                        <input type="date" name="fim" class="form-control" value="<?= $fim ?>">
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary px-3 fw-bold">
+                        <i class="fas fa-filter me-1"></i> FILTRAR
+                    </button>
                 </form>
             </div>
             <div class="card-body">
