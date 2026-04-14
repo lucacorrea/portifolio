@@ -156,7 +156,7 @@ include 'views/layout/header.php';
         }
     }
 </style>
-
+<link rel="shortcut icon" href="./assets/img/logo-pmc.png" type="image/x-icon">nk
 <div class="card no-print">
     <div class="card-body">
         <h3 class="card-title" style="margin-bottom: 1rem; font-weight: 700; font-size: 1rem;">
