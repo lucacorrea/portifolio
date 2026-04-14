@@ -197,7 +197,7 @@ foreach ($relatorio_secretarias as $row) {
 /* =========================
    PAGINAÇÃO
 ========================= */
-$per_page = 8;
+$per_page = 6;
 $total_registros = count($relatorio_secretarias);
 $total_pages = max(1, (int)ceil($total_registros / $per_page));
 
