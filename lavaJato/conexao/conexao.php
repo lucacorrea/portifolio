@@ -3,8 +3,8 @@
 
 // Ajuste conforme seu ambiente:
 $host = "localhost";
-$db   = "u449544084_lavajato";
-$user = "u449544084_lavajato";
+$db   = "u784961086_lavajato";
+$user = "u784961086_lavajato";
 $pass = 'mgk3Jqw+7R';
 $charset = "utf8mb4";
 
