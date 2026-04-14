@@ -162,9 +162,6 @@ try {
                         </div>
 
                         <ul class="navbar-nav flex-row align-items-center ms-md-auto">
-                            <li class="nav-item me-3">
-                                <span class="badge rounded-pill bg-label-warning">37 pendências</span>
-                            </li>
 
                             <li class="nav-item navbar-dropdown dropdown-user dropdown">
                                 <a class="nav-link dropdown-toggle hide-arrow p-0" href="javascript:void(0);"
