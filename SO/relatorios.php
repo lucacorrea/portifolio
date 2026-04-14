@@ -168,6 +168,13 @@ $sql_secretarias = "
     SELECT
         s.id AS secretaria_id,
         s.nome AS secretaria_nome,
+        COALESCE(
+            GROUP_CONCAT(
+                DISTINCT NULLIF(TRIM(o.justificativa), '')
+                SEPARATOR ' | '
+            ),
+            ''
+        ) AS justificativa,
         COALESCE(SUM(ia.quantidade), 0) AS total_qtd,
         COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS total_valor
     FROM itens_aquisicao ia
@@ -423,7 +430,9 @@ if ($export === 'excel') {
                 <?php foreach ($relatorio_secretarias as $row): ?>
                     <tr>
                         <td class="left"><?php echo h($row['secretaria_nome']); ?></td>
-                        <td class="left">Resumo consolidado</td>
+                        <td class="left">
+                            <?php echo !empty($row['justificativa']) ? h($row['justificativa']) : 'Sem justificativa'; ?>
+                        </td>
                         <td class="center"><?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?></td>
                         <td class="right"><?php echo format_money($row['total_valor']); ?></td>
                     </tr>
