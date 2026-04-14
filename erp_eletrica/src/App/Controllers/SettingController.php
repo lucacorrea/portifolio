@@ -190,8 +190,14 @@ class SettingController extends BaseController {
             
             if (isset($data['certificado_senha_filial'])) unset($data['certificado_senha_filial']);
 
-            $model->save($data);
-            $this->redirect('configuracoes.php?msg=Unidade salva com sucesso#unidades');
+            try {
+                $model->save($data);
+                setFlash('success', 'Unidade salva com sucesso');
+                $this->redirect('configuracoes.php#unidades');
+            } catch (\Exception $e) {
+                setFlash('danger', 'Erro ao salvar unidade: ' . $e->getMessage());
+                $this->redirect('configuracoes.php#unidades');
+            }
         }
     }
 }
