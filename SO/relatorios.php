@@ -415,7 +415,7 @@ if ($export === 'excel') {
             <tr class="thead">
                 <th>Secretaria</th>
                 <th>Observação</th>
-                <th>Qtd Total</th>
+                <th>Qtd Itens</th>
                 <th>Valor Total</th>
             </tr>
 
@@ -1061,7 +1061,7 @@ include 'views/layout/header.php';
                         <thead>
                             <tr>
                                 <th class="text-nowrap">Secretaria</th>
-                                <th class="td-right text-nowrap">Qtd Total</th>
+                                <th class="td-right text-nowrap">Qtd Itens</th>
                                 <th class="td-right text-nowrap">Valor Total</th>
                                 <th class="no-print td-center text-nowrap" style="width: 150px;">Detalhes</th>
                             </tr>
