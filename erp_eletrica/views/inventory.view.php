@@ -1,37 +1,37 @@
 <!-- Page Header -->
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
+<div class="row g-3 mb-4 row-cols-1 row-cols-sm-2 row-cols-md-4">
+    <div class="col">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Total em Estoque</div>
-                <h3 class="mb-0 fw-bold text-primary"><?= number_format($stats['total_itens'], 0, ',', '.') ?> <small class="fw-normal fs-6">un</small></h3>
+                <div class="text-muted extra-small fw-bold text-uppercase mb-2">Total em Estoque</div>
+                <h4 class="mb-0 fw-bold text-primary"><?= number_format($stats['total_itens'], 0, ',', '.') ?> <small class="text-muted fw-normal fs-6">un</small></h4>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body">
-                <div class="text-muted small fw-bold text-uppercase mb-2">Patrimônio (Custo)</div>
-                <h3 class="mb-0 fw-bold text-success"><?= formatarMoeda($stats['valor_custo']) ?></h3>
+                <div class="text-muted extra-small fw-bold text-uppercase mb-2">Patrimônio (Custo)</div>
+                <h4 class="mb-0 fw-bold text-success"><?= formatarMoeda($stats['valor_custo']) ?></h4>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <a href="estoque_baixo.php" class="text-decoration-none">
-            <div class="card h-100 border-0 shadow-sm card-hover" style="border-left: 6px solid #ffc107 !important;">
+            <div class="card h-100 border-0 shadow-sm card-hover" style="border-left: 4px solid #ffc107 !important;">
                 <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2">Alertas de Baixa</div>
-                    <h3 class="mb-0 fw-bold text-warning"><?= $stats['itens_criticos'] ?> <small class="fw-normal fs-6 text-muted">itens</small></h3>
+                    <div class="text-muted extra-small fw-bold text-uppercase mb-2">Alertas de Baixa</div>
+                    <h4 class="mb-0 fw-bold text-warning"><?= $stats['itens_criticos'] ?> <small class="fw-normal fs-6 text-muted">itens</small></h4>
                 </div>
             </div>
         </a>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <a href="estoque.php?action=movimentacoes" class="text-decoration-none">
             <div class="card h-100 border-0 shadow-sm border-start border-info border-4 card-hover">
                 <div class="card-body">
-                    <div class="text-muted small fw-bold text-uppercase mb-2">Giro (Este Mês)</div>
-                    <h3 class="mb-0 fw-bold text-info"><?= $stats['mov_mes'] ?> <small class="fw-normal fs-6">mov</small></h3>
+                    <div class="text-muted extra-small fw-bold text-uppercase mb-2">Giro (Mês)</div>
+                    <h4 class="mb-0 fw-bold text-info"><?= $stats['mov_mes'] ?> <small class="fw-normal fs-6">mov</small></h4>
                 </div>
             </div>
         </a>
@@ -40,27 +40,27 @@
 
 <!-- Actions Bar -->
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body d-flex justify-content-between align-items-center py-3">
-        <form method="GET" action="estoque.php" class="d-flex gap-2 w-50" id="inventoryFilterForm">
+    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 py-3">
+        <form method="GET" action="estoque.php" class="d-flex flex-column flex-sm-row gap-2 w-100 w-md-75" id="inventoryFilterForm">
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0 text-muted">
                     <i class="fas fa-search"></i>
                 </span>
-                <input type="text" name="q" id="productSearch" class="form-control border-start-0" placeholder="Pesquisar por nome ou código..." value="<?= htmlspecialchars($filters['q']) ?>" autocomplete="off">
+                <input type="text" name="q" id="productSearch" class="form-control border-start-0" placeholder="Pesquisar material..." value="<?= htmlspecialchars($filters['q']) ?>" autocomplete="off">
             </div>
-            <select name="categoria" class="form-select w-auto" id="filterCategory" onchange="this.form.submit()">
+            <select name="categoria" class="form-select w-100 w-sm-auto" id="filterCategory" onchange="this.form.submit()">
                 <option value="">Todas Categorias</option>
                 <?php foreach ($categories as $cat): ?>
                     <option value="<?= $cat ?>" <?= $filters['categoria'] == $cat ? 'selected' : '' ?>><?= $cat ?></option>
                 <?php endforeach; ?>
             </select>
         </form>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 w-100 w-md-auto">
             <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
-            <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#newProductModal">
-                <i class="fas fa-plus me-2"></i>Novo Material
+            <button class="btn btn-primary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#newProductModal">
+                <i class="fas fa-plus me-2"></i>Novo
             </button>
-            <button class="btn btn-outline-secondary fw-bold" data-bs-toggle="modal" data-bs-target="#movementModal">
+            <button class="btn btn-outline-secondary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#movementModal">
                 <i class="fas fa-right-left me-2"></i>Movimentar
             </button>
             <?php endif; ?>
@@ -68,15 +68,23 @@
     </div>
 </div>
 
-<style>
-/* Allow dropdowns to overflow the table container */
-.table-responsive {
-    overflow: visible !important;
-    padding-bottom: 60px; /* Extra space for dropdowns on the last row */
-    min-height: 400px; /* Ensure space even with few rows */
+/* Allow dropdowns to overflow the table container ONLY on desktop */
+@media (min-width: 992px) {
+    .table-responsive {
+        overflow: visible !important;
+        padding-bottom: 120px; /* More space for dropdowns */
+    }
+    .card-body {
+        overflow: visible !important;
+    }
 }
-.card-body {
-    overflow: visible !important;
+
+/* On mobile, scroll is MANDATORY */
+@media (max-width: 991.98px) {
+    .table-responsive {
+        overflow-x: auto !important;
+        padding-bottom: 1rem;
+    }
 }
 .card-hover {
     transition: transform 0.2s ease, box-shadow 0.2s ease;

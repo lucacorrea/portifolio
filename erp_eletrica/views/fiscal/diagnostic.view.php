@@ -1,15 +1,15 @@
 <div class="row g-4 mb-4">
     <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 stack-on-mobile">
             <div>
                 <h4 class="fw-bold mb-1">
                     <i class="fas fa-stethoscope text-primary me-2"></i> Diagnóstico Profundo SEFAZ
                 </h4>
-                <p class="text-muted mb-0">Varredura completa de conectividade, configuração do ambiente e banco de dados.</p>
+                <p class="text-muted mb-0 small">Varredura completa de conectividade e banco de dados.</p>
             </div>
             <div>
-                <a href="fiscal.php?action=settings" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i> Voltar para Configurações
+                <a href="fiscal.php?action=settings" class="btn btn-outline-secondary w-100 w-md-auto">
+                    <i class="fas fa-arrow-left me-2"></i> Voltar
                 </a>
             </div>
         </div>
@@ -20,55 +20,55 @@
     <!-- NOVO COMPONENTE: AÇAIDINHOS STATUS NFC-e -->
     <div class="col-12 mb-2">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex align-items-center justify-content-between">
-                <h5 class="fw-bold mb-0"><i class="fas fa-file-invoice-dollar text-primary me-2"></i> Status NFC-e (Integração SEFAZ)</h5>
-                <span class="badge <?= $isConfigurado ? 'bg-success' : 'bg-danger'; ?> fs-6">
-                    <?= $isConfigurado ? '<i class="fas fa-check-circle me-1"></i> Configurado' : '<i class="fas fa-times-circle me-1"></i> Pendente/Incompleto'; ?>
+            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+                <h5 class="fw-bold mb-0"><i class="fas fa-file-invoice-dollar text-primary me-2"></i> Status NFC-e</h5>
+                <span class="badge <?= $isConfigurado ? 'bg-success' : 'bg-danger'; ?> fs-6 align-self-start align-self-sm-center">
+                    <?= $isConfigurado ? '<i class="fas fa-check-circle me-1"></i> Configurado' : '<i class="fas fa-times-circle me-1"></i> Pendente'; ?>
                 </span>
             </div>
             <div class="card-body mt-3">
-                <div class="row gx-4 gy-3">
-                    <div class="col-md-4">
-                        <span class="fw-bold text-muted d-block mb-1">Certificado Digital:</span>
-                        <span class="badge <?= str_replace('-label-', '-', $certificadoClass); ?> fs-6"><?= $certificadoStatus; ?></span>
+                <div class="row gx-4 gy-4">
+                    <div class="col-12 col-sm-6 col-md-4">
+                        <span class="fw-bold text-muted d-block mb-1 small">Certificado Digital:</span>
+                        <span class="badge <?= str_replace('-label-', '-', $certificadoClass); ?> sm-text"><?= $certificadoStatus; ?></span>
                         <?php if ($pfxPathDisplay): ?>
-                            <div class="mt-2 small text-muted text-break" style="font-size: 11px;"><i class="fas fa-link me-1"></i> <?= $pfxPathDisplay; ?></div>
+                            <div class="mt-2 extra-small text-muted text-break"><i class="fas fa-link me-1"></i> <?= $pfxPathDisplay; ?></div>
                         <?php endif; ?>
                     </div>
-                    <div class="col-md-2">
-                        <span class="fw-bold text-muted d-block mb-1">Ambiente:</span>
-                        <span class="badge <?= str_replace('-label-', '-', $ambienteClass); ?> fs-6"><?= $ambienteStatus; ?></span>
+                    <div class="col-6 col-sm-6 col-md-2">
+                        <span class="fw-bold text-muted d-block mb-1 small">Ambiente:</span>
+                        <span class="badge <?= str_replace('-label-', '-', $ambienteClass); ?> sm-text"><?= $ambienteStatus; ?></span>
                     </div>
-                    <div class="col-md-2">
-                        <span class="fw-bold text-muted d-block mb-1">CNPJ:</span>
-                        <span class="text-dark fw-bold"><?= $cnpjExibe ?: '---'; ?></span>
+                    <div class="col-6 col-sm-6 col-md-2">
+                        <span class="fw-bold text-muted d-block mb-1 small">CNPJ:</span>
+                        <span class="text-dark fw-bold small"><?= $cnpjExibe ?: '---'; ?></span>
                     </div>
-                    <div class="col-md-2">
-                        <span class="fw-bold text-muted d-block mb-1">CSC / ID Token:</span>
-                        <span class="text-dark fw-bold">
+                    <div class="col-6 col-sm-6 col-md-2">
+                        <span class="fw-bold text-muted d-block mb-1 small">CSC / ID Token:</span>
+                        <span class="text-dark fw-bold small">
                             <?= !empty($csc) ? '***' : '---'; ?> / <?= $idTokenExibe ?: '---'; ?>
                         </span>
                     </div>
-                    <div class="col-md-2">
-                        <span class="fw-bold text-muted d-block mb-1">Fonte Configuração:</span>
-                        <span class="badge bg-secondary fs-6"><i class="fas fa-database me-1"></i> <?= $fonte; ?></span>
+                    <div class="col-6 col-sm-6 col-md-2">
+                        <span class="fw-bold text-muted d-block mb-1 small">Fonte:</span>
+                        <span class="badge bg-secondary sm-text"><?= $fonte; ?></span>
                     </div>
                 </div>
             </div>
-            <div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center">
-                <div>
-                    <button class="btn btn-warning btn-sm fw-bold" onclick="runLiveTest(<?= $selectedBranchId ?>)">
-                        <i class="fas fa-play-circle me-1"></i> EXECUTAR TESTE DE COMUNICAÇÃO SEFAZ
-                    </button>
-                </div>
-                <div>
+            <div class="card-footer bg-light border-0 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                <button class="btn btn-warning fw-bold w-100 w-md-auto" onclick="runLiveTest(<?= $selectedBranchId ?>)">
+                    <i class="fas fa-play-circle me-1"></i> TESTE DE COMUNICAÇÃO
+                </button>
+                <div class="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
                     <a href="configuracoes.php?tab=unidades#unidades" class="btn btn-outline-primary btn-sm fw-bold">
-                        <i class="fas fa-edit me-1"></i> Editar Dados da Filial
+                        <i class="fas fa-edit me-1"></i> Editar Filial
                     </a>
-                    <a href="fiscal.php?action=settings" class="btn btn-warning btn-sm fw-bold ms-2">
+                    <a href="fiscal.php?action=settings" class="btn btn-warning btn-sm fw-bold">
                         <i class="fas fa-cog me-1"></i> Configurações SEFAZ
                     </a>
                 </div>
+            </div>
+        </div>
     </div>
 </div>
 
