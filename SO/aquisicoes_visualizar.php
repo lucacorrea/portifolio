@@ -482,7 +482,7 @@ include 'views/layout/header.php';
                 <div>
                     <div class="assinatura-linha">
                         <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Autorização de Saída</div>
+                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Autorização de </div>
                     </div>
                 </div>
                 <div>

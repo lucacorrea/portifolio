@@ -23,10 +23,23 @@ if (!function_exists('format_money')) {
     }
 }
 
+if (!function_exists('normalize_spaces')) {
+    function normalize_spaces(string $text): string
+    {
+        $text = trim($text);
+        $text = preg_replace('/\s+/u', ' ', $text);
+        return (string)$text;
+    }
+}
+
 if (!function_exists('secretaria_sigla')) {
     function secretaria_sigla(string $nome): string
     {
-        $nomeUp = mb_strtoupper(trim($nome), 'UTF-8');
+        $nomeUp = mb_strtoupper(normalize_spaces($nome), 'UTF-8');
+
+        if (preg_match('/(?:-|\/)\s*([A-Z]{3,})\s*$/u', $nomeUp, $m)) {
+            return trim($m[1]);
+        }
 
         $map = [
             'SECRETARIA MUNICIPAL DA CASA CIVIL' => 'SMCC',
@@ -42,15 +55,17 @@ if (!function_exists('secretaria_sigla')) {
             'SECRETARIA MUNICIPAL DE ASSISTÊNCIA SOCIAL' => 'SEMAS',
             'SECRETARIA MUNICIPAL DE TERRAS E HABITAÇÃO' => 'SEMTH',
             'SECRETARIA MUNICIPAL DE MEIO AMBIENTE' => 'SEMMA',
-            'SECRETARIA MUNICIPAL EXTRAORDINÁRIA' => 'SEMEXTRA',
+            'SECRETARIA MUNICIPAL EXTRAORDINÁRIA' => 'SME',
             'PROCURADORIA GERAL DO MUNICÍPIO' => 'PGM',
             'CONTROLADORIA GERAL DO MUNICICÍPIO' => 'CGM',
-            'SECRETARIA MUNICIPAL DE CIÊNCIA, TECNOLOGIA E INOVAÇÃO' => 'SECTI',
+            'SECRETARIA MUNICIPAL DE CIÊNCIA, TECNOLOGIA E INOVAÇÃO' => 'SMCTI',
             'SECRETARIA MUNICIPAL DE DESENVOLVIMENTO RURAL E ECONÔMICO' => 'SMDRE',
             'SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E DEFESA SOCIAL' => 'SMSPDS',
             'SECRETARIA MUNICIPAL DE ESPORTE' => 'SEMESP',
             'SECRETÁRIO MUNICIPAL DE RELAÇÕES INSTITUCIONAIS' => 'SMRI',
             'COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'CREC',
+            'COMIÇÃO DE CONTRATAÇÃO DE COARI' => 'CCC',
+            'SECRETARIA DE ESTADO DA EDUCAÇÃO E DESPORTO ESCOLAR COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'SEDUC',
         ];
 
         foreach ($map as $trecho => $sigla) {
@@ -59,15 +74,29 @@ if (!function_exists('secretaria_sigla')) {
             }
         }
 
-        if (preg_match('/^\s*([A-Z]{3,}(?:\/[A-Z]{3,})?)\s*-/u', $nomeUp, $m)) {
-            return trim($m[1]);
+        if (preg_match('/\b([A-Z]{3,})\b/u', $nomeUp, $m)) {
+            $candidato = trim($m[1]);
+
+            $bloqueados = [
+                'SECRETARIA',
+                'MUNICIPAL',
+                'GERAL',
+                'COARI',
+                'ESTADO',
+                'EDUCACAO',
+                'EDUCAÇÃO',
+                'DEFESA',
+                'SOCIAL',
+                'PUBLICA',
+                'PÚBLICA',
+            ];
+
+            if (!in_array($candidato, $bloqueados, true)) {
+                return $candidato;
+            }
         }
 
-        if (preg_match('/\b(SE[A-Z]{2,}(?:\/SE[A-Z]{2,})?)\b/u', $nomeUp, $m)) {
-            return trim($m[1]);
-        }
-
-        $partes = preg_split('/\s+/', preg_replace('/[^\p{L}\s\/-]+/u', '', $nomeUp));
+        $partes = preg_split('/\s+/u', preg_replace('/[^\p{L}\s\/-]+/u', '', $nomeUp));
         $ignorar = ['DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'A', 'O', 'AS', 'OS', 'MUNICIPAL', 'SECRETARIA'];
 
         $sigla = '';
@@ -92,6 +121,7 @@ $produto         = isset($_GET['produto']) ? trim((string)$_GET['produto']) : ''
 $periodo_inicio  = isset($_GET['inicio']) ? trim((string)$_GET['inicio']) : '';
 $periodo_fim     = isset($_GET['fim']) ? trim((string)$_GET['fim']) : '';
 $export          = isset($_GET['export']) ? trim((string)$_GET['export']) : '';
+$page            = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 
 $whereParts = [];
 $params = [];
@@ -154,14 +184,29 @@ $stmt_secretarias->execute($params);
 $relatorio_secretarias = $stmt_secretarias->fetchAll(PDO::FETCH_ASSOC);
 
 /* =========================
-   TOTAIS
+   TOTAIS GERAIS
 ========================= */
 $total_geral = 0;
 $total_qtd_geral = 0;
+
 foreach ($relatorio_secretarias as $row) {
     $total_geral += (float)$row['total_valor'];
     $total_qtd_geral += (float)$row['total_qtd'];
 }
+
+/* =========================
+   PAGINAÇÃO
+========================= */
+$per_page = 6;
+$total_registros = count($relatorio_secretarias);
+$total_pages = max(1, (int)ceil($total_registros / $per_page));
+
+if ($page > $total_pages) {
+    $page = $total_pages;
+}
+
+$offset = ($page - 1) * $per_page;
+$relatorio_secretarias_paginado = array_slice($relatorio_secretarias, $offset, $per_page);
 
 /* =========================
    DADOS DO GRÁFICO
@@ -171,7 +216,8 @@ $chart_labels_full = [];
 $chart_values = [];
 
 foreach ($relatorio_secretarias as $row) {
-    $chart_labels[] = secretaria_sigla((string)$row['secretaria_nome']);
+    $sigla = secretaria_sigla((string)$row['secretaria_nome']);
+    $chart_labels[] = $sigla;
     $chart_labels_full[] = (string)$row['secretaria_nome'];
     $chart_values[] = (float)$row['total_valor'];
 }
@@ -369,7 +415,7 @@ if ($export === 'excel') {
             <tr class="thead">
                 <th>Secretaria</th>
                 <th>Observação</th>
-                <th>Qtd Total</th>
+                <th>Qtd Itens</th>
                 <th>Valor Total</th>
             </tr>
 
@@ -400,6 +446,14 @@ if ($export === 'excel') {
 <?php
     exit;
 }
+
+$query_base = [
+    'sec_id'  => $sec_id,
+    'forn_id' => $forn_id,
+    'produto' => $produto,
+    'inicio'  => $periodo_inicio,
+    'fim'     => $periodo_fim,
+];
 
 include 'views/layout/header.php';
 ?>
@@ -544,6 +598,37 @@ include 'views/layout/header.php';
         background: #157347;
         border-color: #146c43;
         color: #fff;
+    }
+
+    .btn-pagination {
+        min-width: 70px;
+        height: 34px;
+        padding: .4rem .85rem;
+        border-radius: 8px;
+        border: 1px solid #dbe2ea;
+        background: #fff;
+        color: #475569;
+        font-size: .8rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        transition: .2s ease;
+    }
+
+    .btn-pagination:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #0f172a;
+    }
+
+    .btn-pagination.disabled,
+    .btn-pagination[aria-disabled="true"] {
+        pointer-events: none;
+        opacity: .5;
+        background: #f8fafc;
     }
 
     .summary-card {
@@ -728,6 +813,21 @@ include 'views/layout/header.php';
         color: #64748b !important;
     }
 
+    .pagination-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .65rem;
+        flex-wrap: wrap;
+        padding-top: 1.15rem;
+    }
+
+    .pagination-info {
+        font-size: .86rem;
+        color: #0f172a;
+        font-weight: 700;
+    }
+
     @media (max-width: 992px) {
         .summary-number {
             font-size: 1.6rem;
@@ -764,6 +864,10 @@ include 'views/layout/header.php';
             padding: .75rem .7rem;
             font-size: .86rem;
         }
+
+        .pagination-wrap {
+            flex-direction: column;
+        }
     }
 
     @media (max-width: 480px) {
@@ -778,7 +882,8 @@ include 'views/layout/header.php';
         .btn,
         button,
         .report-actions,
-        .filter-actions {
+        .filter-actions,
+        .pagination-wrap {
             display: none !important;
         }
 
@@ -943,7 +1048,7 @@ include 'views/layout/header.php';
 
                 <div class="report-actions no-print">
                     <a
-                        href="?<?php echo h(http_build_query(array_merge($_GET, ['export' => 'excel']))); ?>"
+                        href="?<?php echo h(http_build_query(array_merge($query_base, ['export' => 'excel']))); ?>"
                         class="btn btn-success-custom btn-sm">
                         <i class="fas fa-file-excel"></i> Exportar Excel
                     </a>
@@ -956,14 +1061,14 @@ include 'views/layout/header.php';
                         <thead>
                             <tr>
                                 <th class="text-nowrap">Secretaria</th>
-                                <th class="td-right text-nowrap">Qtd Total</th>
+                                <th class="td-right text-nowrap">Qtd Itens</th>
                                 <th class="td-right text-nowrap">Valor Total</th>
                                 <th class="no-print td-center text-nowrap" style="width: 150px;">Detalhes</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($relatorio_secretarias)): ?>
-                                <?php foreach ($relatorio_secretarias as $row): ?>
+                            <?php if (!empty($relatorio_secretarias_paginado)): ?>
+                                <?php foreach ($relatorio_secretarias_paginado as $row): ?>
                                     <tr>
                                         <td class="td-secretaria text-nowrap"><?php echo h($row['secretaria_nome']); ?></td>
                                         <td class="td-right text-nowrap"><?php echo number_format((int)$row['total_qtd'], 0, ',', '.'); ?></td>
@@ -975,11 +1080,11 @@ include 'views/layout/header.php';
                                                 class="btn btn-primary btn-sm"
                                                 href="relatorios_oficios_secretaria.php?<?php
                                                                                         echo h(http_build_query([
-                                                                                            'sec_id' => $row['secretaria_id'],
+                                                                                            'sec_id'  => $row['secretaria_id'],
                                                                                             'forn_id' => $forn_id,
                                                                                             'produto' => $produto,
-                                                                                            'inicio' => $periodo_inicio,
-                                                                                            'fim' => $periodo_fim,
+                                                                                            'inicio'  => $periodo_inicio,
+                                                                                            'fim'     => $periodo_fim,
                                                                                         ]));
                                                                                         ?>">
                                                 <i class="fas fa-search"></i> Detalhes
@@ -1005,6 +1110,37 @@ include 'views/layout/header.php';
                     </table>
                 </div>
             </div>
+
+            <?php if ($total_registros > 0 && $total_pages > 1): ?>
+                <div class="pagination-wrap no-print">
+                    <?php
+                    $prev_link = '?' . http_build_query(array_merge($query_base, ['page' => max(1, $page - 1)]));
+                    $next_link = '?' . http_build_query(array_merge($query_base, ['page' => min($total_pages, $page + 1)]));
+                    ?>
+
+                    <?php if ($page > 1): ?>
+                        <a href="<?php echo h($prev_link); ?>" class="btn-pagination">
+                            <i class="fas fa-angle-left"></i> Anterior
+                        </a>
+                    <?php else: ?>
+                        <span class="btn-pagination disabled" aria-disabled="true">
+                            <i class="fas fa-angle-left"></i> Anterior
+                        </span>
+                    <?php endif; ?>
+
+                    <div class="pagination-info">Página <?php echo $page; ?> de <?php echo $total_pages; ?></div>
+
+                    <?php if ($page < $total_pages): ?>
+                        <a href="<?php echo h($next_link); ?>" class="btn-pagination">
+                            Próxima <i class="fas fa-angle-right"></i>
+                        </a>
+                    <?php else: ?>
+                        <span class="btn-pagination disabled" aria-disabled="true">
+                            Próxima <i class="fas fa-angle-right"></i>
+                        </span>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -1014,77 +1150,82 @@ include 'views/layout/header.php';
     document.addEventListener('DOMContentLoaded', function() {
         const chartElement = document.getElementById('chartSecretaria');
 
-        if (chartElement) {
-            const labels = <?php echo json_encode($chart_labels, JSON_UNESCAPED_UNICODE); ?>;
-            const fullLabels = <?php echo json_encode($chart_labels_full, JSON_UNESCAPED_UNICODE); ?>;
-            const values = <?php echo json_encode($chart_values); ?>;
+        if (!chartElement) {
+            return;
+        }
 
-            if (labels.length > 0) {
-                const ctx = chartElement.getContext('2d');
-                new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: [
-                                '#206bc4',
-                                '#2fb344',
-                                '#f59e0b',
-                                '#d63939',
-                                '#6f42c1',
-                                '#0ea5e9',
-                                '#14b8a6',
-                                '#f97316',
-                                '#64748b',
-                                '#8b5cf6'
-                            ],
-                            borderWidth: 2,
-                            borderColor: '#ffffff'
-                        }]
+        const labels = <?php echo json_encode($chart_labels, JSON_UNESCAPED_UNICODE); ?>;
+        const fullLabels = <?php echo json_encode($chart_labels_full, JSON_UNESCAPED_UNICODE); ?>;
+        const values = <?php echo json_encode($chart_values, JSON_UNESCAPED_UNICODE); ?>;
+
+        if (!Array.isArray(labels) || labels.length === 0) {
+            return;
+        }
+
+        const ctx = chartElement.getContext('2d');
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: [
+                        '#206bc4',
+                        '#2fb344',
+                        '#f59e0b',
+                        '#d63939',
+                        '#6f42c1',
+                        '#0ea5e9',
+                        '#14b8a6',
+                        '#f97316',
+                        '#64748b',
+                        '#8b5cf6',
+                        '#ec4899',
+                        '#22c55e',
+                        '#eab308',
+                        '#3b82f6',
+                        '#ef4444'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '58%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '58%',
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    boxWidth: 12,
-                                    padding: 16,
-                                    usePointStyle: true,
-                                    pointStyle: 'circle'
-                                }
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const index = context[0]?.dataIndex ?? 0;
+                                return fullLabels[index] || '';
                             },
-                            tooltip: {
-                                callbacks: {
-                                    title: function(context) {
-                                        const index = context[0]?.dataIndex ?? 0;
-                                        return fullLabels[index] || labels[index] || '';
-                                    },
-                                    label: function(context) {
-                                        const index = context.dataIndex ?? 0;
-                                        const sigla = labels[index] || '';
+                            label: function(context) {
+                                const index = context.dataIndex ?? 0;
+                                const sigla = labels[index] || '';
+                                const valor = Number(context.raw || 0);
 
-
-
-
-
-                                        
-                                        const value = Number(context.raw || 0);
-                                        return sigla + ': ' + new Intl.NumberFormat('pt-BR', {
-                                            style: 'currency',
-                                            currency: 'BRL'
-                                        }).format(value);
-                                    }
-                                }
+                                return sigla + ': ' + new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL'
+                                }).format(valor);
                             }
                         }
                     }
-                });
+                }
             }
-        }
+        });
     });
 </script>
 
