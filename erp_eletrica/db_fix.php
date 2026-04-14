@@ -68,8 +68,35 @@ $filial_cols = [
     ['tipo_impressao', 'TINYINT(1) DEFAULT 4', 'tipo_impressao_danfe']
 ];
 
-foreach ($filial_cols as $col) {
-    addColumn($db, 'filiais', $col[0], $col[1], $col[2]);
-}
+// 3. Ensure configuracoes table
+try {
+    $db->exec("CREATE TABLE IF NOT EXISTS configuracoes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        chave VARCHAR(100) UNIQUE NOT NULL,
+        valor TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )");
+    echo "Table 'configuracoes' checked/created.<br>";
+} catch (Exception $e) { echo "Error creating 'configuracoes': " . $e->getMessage() . "<br>"; }
+
+// 4. Ensure nfe_importadas table
+try {
+    $db->exec("CREATE TABLE IF NOT EXISTS nfe_importadas (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        filial_id INT NOT NULL,
+        chave_acesso VARCHAR(44) UNIQUE NOT NULL,
+        fornecedor_cnpj VARCHAR(20),
+        fornecedor_nome VARCHAR(255),
+        numero_nota VARCHAR(20),
+        data_emissao DATETIME,
+        valor_total DECIMAL(15,2),
+        manifestacao_tipo VARCHAR(10),
+        manifestacao_data DATETIME,
+        xml LONGTEXT,
+        status VARCHAR(20) DEFAULT 'pendente',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+    echo "Table 'nfe_importadas' checked/created.<br>";
+} catch (Exception $e) { echo "Error creating 'nfe_importadas': " . $e->getMessage() . "<br>"; }
 
 echo "DB Fix Completed.";
