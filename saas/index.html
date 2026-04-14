@@ -653,6 +653,35 @@
           padding: 18px;
         }
       }
+
+      .testimonial-card {
+        background: #ffffff;
+        border: 1px solid #eaeef5;
+        border-radius: 22px;
+        padding: 28px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+        transition:
+          transform 0.28s ease,
+          box-shadow 0.28s ease,
+          border-color 0.28s ease;
+      }
+
+      .testimonial-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        border-color: #dbe7f5;
+      }
+
+      .testimonial-card p {
+        color: #334155;
+        line-height: 1.7;
+        font-size: 1rem;
+      }
+
+      .testimonial-stars {
+        color: #f59e0b;
+        letter-spacing: 2px;
+      }
     </style>
   </head>
   <body>
@@ -956,49 +985,49 @@
         </div>
       </div>
     </section>
-    
-    <section id="arquitetura" class="py-5">
+
+    <section id="beneficios-escritorio" class="py-5">
       <div class="container">
         <div class="text-center mb-5" data-aos="fade-up">
           <h2 class="section-title">
-            Arquitetura pensada para produto SaaS real
+            Mais praticidade para cuidar da rotina do seu escritório
           </h2>
           <p class="section-subtitle">
-            Essa seção reforça que o sistema não é só uma interface bonita. Ele
-            foi pensado como produto modular, escalável e profissional.
+            Tenha mais organização no atendimento, mais controle sobre
+            pagamentos e mais clareza para acompanhar sua carteira de clientes.
           </p>
         </div>
 
         <div class="row g-4 mb-4">
           <div class="col-md-4" data-aos="fade-up">
             <div class="structure-card">
-              <div class="icon-box"><i class="bi bi-diagram-3"></i></div>
-              <h3 class="h5 fw-bold">Estrutura modular</h3>
+              <div class="icon-box"><i class="bi bi-folder-check"></i></div>
+              <h3 class="h5 fw-bold">Tudo mais organizado</h3>
               <p class="muted mb-0">
-                Separação por núcleo, serviços, middleware, módulos e rotas para
-                facilitar manutenção e crescimento.
+                Centralize clientes, valores, veículos, cobranças e informações
+                importantes em um só lugar.
               </p>
             </div>
           </div>
 
           <div class="col-md-4" data-aos="fade-up" data-aos-delay="120">
             <div class="structure-card">
-              <div class="icon-box"><i class="bi bi-building-gear"></i></div>
-              <h3 class="h5 fw-bold">Modelo multiempresa</h3>
+              <div class="icon-box"><i class="bi bi-cash-coin"></i></div>
+              <h3 class="h5 fw-bold">Cobrança com mais controle</h3>
               <p class="muted mb-0">
-                Base ideal para operar como SaaS alugado para contadores, com
-                planos, assinaturas e gestão separada.
+                Acompanhe vencimentos, envie mensagens automáticas e facilite o
+                recebimento com PIX e confirmação de pagamento.
               </p>
             </div>
           </div>
 
           <div class="col-md-4" data-aos="fade-up" data-aos-delay="240">
             <div class="structure-card">
-              <div class="icon-box"><i class="bi bi-bar-chart-line"></i></div>
-              <h3 class="h5 fw-bold">Preparado para evoluir</h3>
+              <div class="icon-box"><i class="bi bi-graph-up"></i></div>
+              <h3 class="h5 fw-bold">Mais clareza para crescer</h3>
               <p class="muted mb-0">
-                Integrações futuras, relatórios mais fortes, automações e
-                expansão de módulos sem virar bagunça.
+                Veja melhor sua carteira, acompanhe clientes ativos e pendentes
+                e tome decisões com mais segurança.
               </p>
             </div>
           </div>
@@ -1009,77 +1038,87 @@
     <section class="py-5 bg-white">
       <div class="container">
         <div class="text-center mb-5" data-aos="fade-up">
-          <h2 class="section-title">Estrutura de negócio da plataforma</h2>
+          <h2 class="section-title">
+            Tudo o que você precisa para ter mais controle no escritório
+          </h2>
           <p class="section-subtitle">
-            Aqui você mostra que existe visão de produto, monetização e operação
-            SaaS de verdade.
+            Recursos pensados para facilitar sua rotina, melhorar o
+            acompanhamento da carteira e tornar a cobrança mais prática no dia a
+            dia.
           </p>
         </div>
 
         <div class="row g-4">
-          <div class="col-lg-6" data-aos="fade-right">
+          <div class="col-lg-4" data-aos="fade-up">
             <div class="module-card">
-              <div class="icon-box"><i class="bi bi-shield-lock"></i></div>
-              <h3 class="h5 fw-bold">Área Admin</h3>
+              <div class="icon-box"><i class="bi bi-people"></i></div>
+              <h3 class="h5 fw-bold">Gestão dos clientes</h3>
               <ul class="mini-list mt-3">
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i>
-                  Contadores
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Planos
+                  <i class="bi bi-check-circle-fill text-success"></i> Cadastro
+                  completo
                 </li>
                 <li>
                   <i class="bi bi-check-circle-fill text-success"></i>
-                  Assinaturas
+                  Informações pessoais
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Suporte
+                  <i class="bi bi-check-circle-fill text-success"></i> Valores e
+                  dados principais
                 </li>
                 <li>
                   <i class="bi bi-check-circle-fill text-success"></i>
-                  Financeiro da plataforma
+                  Quantidade e tipo de veículo
                 </li>
               </ul>
             </div>
           </div>
 
-          <div class="col-lg-6" data-aos="fade-left">
+          <div class="col-lg-4" data-aos="fade-up" data-aos-delay="120">
             <div class="module-card">
-              <div class="icon-box"><i class="bi bi-briefcase"></i></div>
-              <h3 class="h5 fw-bold">Área do Contador</h3>
+              <div class="icon-box"><i class="bi bi-chat-dots"></i></div>
+              <h3 class="h5 fw-bold">Cobrança e acompanhamento</h3>
               <ul class="mini-list mt-3">
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Dashboard
+                  <i class="bi bi-check-circle-fill text-success"></i> Mensagens
+                  automáticas
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Empresas
+                  <i class="bi bi-check-circle-fill text-success"></i> Cobrança
+                  com PIX
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Avisos
+                  antes do vencimento
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i> Controle
+                  de pendentes e pagos
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="col-lg-4" data-aos="fade-up" data-aos-delay="240">
+            <div class="module-card">
+              <div class="icon-box"><i class="bi bi-bar-chart-line"></i></div>
+              <h3 class="h5 fw-bold">Relatórios e visão da carteira</h3>
+              <ul class="mini-list mt-3">
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Relatórios semanais
                 </li>
                 <li>
                   <i class="bi bi-check-circle-fill text-success"></i>
-                  Obrigações
+                  Relatórios mensais
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i>
-                  Documentos
+                  <i class="bi bi-check-circle-fill text-success"></i> Clientes
+                  ativos
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Fiscal
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i>
-                  Financeiro
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i>
-                  Relatórios
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Usuários
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i>
-                  Configurações
+                  <i class="bi bi-check-circle-fill text-success"></i> Clientes
+                  pendentes
                 </li>
               </ul>
             </div>
@@ -1093,7 +1132,8 @@
         <div class="text-center mb-5" data-aos="fade-up">
           <h2 class="section-title">Como funciona na prática</h2>
           <p class="section-subtitle">
-            Uma explicação simples do fluxo ajuda muito na conversão.
+            Uma explicação simples do fluxo ajuda muito o contador a entender
+            rapidamente o valor do sistema.
           </p>
         </div>
 
@@ -1101,10 +1141,10 @@
           <div class="col-md-4" data-aos="flip-left">
             <div class="step-card">
               <div class="step-number">1</div>
-              <h3 class="h5 fw-bold">Cadastre sua carteira</h3>
+              <h3 class="h5 fw-bold">Cadastre seus clientes</h3>
               <p class="muted mb-0">
-                Clientes, valores, veículos e dados importantes em um ambiente
-                único e organizado.
+                Organize clientes, valores, veículos e informações importantes
+                em um ambiente único e mais fácil de consultar.
               </p>
             </div>
           </div>
@@ -1112,10 +1152,10 @@
           <div class="col-md-4" data-aos="flip-left" data-aos-delay="120">
             <div class="step-card">
               <div class="step-number">2</div>
-              <h3 class="h5 fw-bold">Automatize cobrança e confirmação</h3>
+              <h3 class="h5 fw-bold">Acompanhe cobranças e pagamentos</h3>
               <p class="muted mb-0">
-                Mensagens, PIX, leitura de comprovante e controle do pagamento
-                em um mesmo fluxo.
+                Use mensagens automáticas, PIX e confirmação de pagamento para
+                ter mais controle e menos trabalho manual.
               </p>
             </div>
           </div>
@@ -1123,10 +1163,10 @@
           <div class="col-md-4" data-aos="flip-left" data-aos-delay="240">
             <div class="step-card">
               <div class="step-number">3</div>
-              <h3 class="h5 fw-bold">Acompanhe e escale</h3>
+              <h3 class="h5 fw-bold">Tenha mais clareza na rotina</h3>
               <p class="muted mb-0">
-                Use relatórios, painéis e visão da carteira para crescer com
-                mais segurança operacional.
+                Visualize melhor sua carteira, acompanhe pendências e tome
+                decisões com mais segurança no dia a dia.
               </p>
             </div>
           </div>
@@ -1138,23 +1178,25 @@
       <div class="container">
         <div class="cta-box text-center" data-aos="fade-up">
           <h2 class="fw-bold">
-            Escolha o plano ideal para a fase do seu escritório
+            Escolha o plano ideal para o momento do seu escritório
           </h2>
           <p class="mb-4 mt-3">
-            Comece organizando, evolua automatizando e cresça com uma plataforma
-            mais profissional, mais forte e mais escalável.
+            Comece com mais organização, avance para automações de cobrança e
+            tenha uma solução mais completa para crescer com mais segurança.
           </p>
           <div class="d-flex justify-content-center gap-3 flex-wrap">
             <a
               href="#planos"
               class="btn btn-light rounded-3 px-4 py-3 fw-semibold"
-              >Ver planos novamente</a
             >
+              Ver planos novamente
+            </a>
             <a
               href="#"
               class="btn btn-outline-light rounded-3 px-4 py-3 fw-semibold"
-              >Solicitar demonstração</a
             >
+              Solicitar demonstração
+            </a>
           </div>
         </div>
       </div>
@@ -1162,19 +1204,65 @@
 
     <section class="py-5 bg-white">
       <div class="container">
-        <div class="row justify-content-center">
-          <div class="col-lg-8" data-aos="zoom-in-up">
-            <div class="testimonial-card text-center">
-              <div class="testimonial-stars fs-4 mb-3">★★★★★</div>
-              <h2 class="h4 fw-bold mb-3">
-                “Agora eu consigo organizar melhor meus clientes, cobrar com
-                mais inteligência e enxergar melhor a operação do escritório.”
-              </h2>
-              <p class="muted mb-3">
-                Esse tipo de posicionamento passa produtividade, controle e
-                valor real de uso.
+        <div class="text-center mb-5" data-aos="fade-up">
+          <h2 class="section-title">Quem usa sente a diferença na rotina</h2>
+          <p class="section-subtitle">
+            Mais organização, mais controle sobre cobranças e uma visão mais
+            clara da carteira no dia a dia do escritório.
+          </p>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+          <div class="col-lg-4 col-md-6" data-aos="zoom-in-up">
+            <div class="testimonial-card h-100">
+              <div class="testimonial-stars fs-5 mb-3">★★★★★</div>
+              <p class="mb-4">
+                “Hoje eu consigo organizar melhor meus clientes e acompanhar os
+                pagamentos com muito mais facilidade. A rotina ficou mais leve e
+                mais clara.”
               </p>
-              <strong>Exemplo de depoimento comercial</strong>
+              <div>
+                <h3 class="h6 fw-bold mb-1">Mariana Costa</h3>
+                <p class="muted mb-0">Contadora</p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="col-lg-4 col-md-6"
+            data-aos="zoom-in-up"
+            data-aos-delay="120"
+          >
+            <div class="testimonial-card h-100">
+              <div class="testimonial-stars fs-5 mb-3">★★★★★</div>
+              <p class="mb-4">
+                “A parte de cobrança ajudou muito. Antes eu fazia tudo de forma
+                mais manual, agora consigo ter mais controle e menos atraso no
+                recebimento.”
+              </p>
+              <div>
+                <h3 class="h6 fw-bold mb-1">Ricardo Almeida</h3>
+                <p class="muted mb-0">Escritório contábil</p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="col-lg-4 col-md-6"
+            data-aos="zoom-in-up"
+            data-aos-delay="240"
+          >
+            <div class="testimonial-card h-100">
+              <div class="testimonial-stars fs-5 mb-3">★★★★★</div>
+              <p class="mb-4">
+                “O que mais gostei foi enxergar melhor minha carteira. Ficou
+                mais fácil saber quem pagou, quem está pendente e o que preciso
+                acompanhar.”
+              </p>
+              <div>
+                <h3 class="h6 fw-bold mb-1">Patrícia Souza</h3>
+                <p class="muted mb-0">Contadora autônoma</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1189,8 +1277,8 @@
             <div>
               <h3 class="modal-title fw-bold mb-1">Plano Base</h3>
               <p class="modal-subtitle">
-                Entrada organizada para quem precisa estruturar a operação sem
-                complexidade.
+                Ideal para quem quer começar com mais organização e controle no
+                dia a dia.
               </p>
             </div>
             <button
@@ -1200,6 +1288,7 @@
               aria-label="Fechar"
             ></button>
           </div>
+
           <div class="modal-body">
             <div class="modal-section modal-price-box">
               <span class="modal-pill">Até 15 clientes</span>
@@ -1207,56 +1296,56 @@
               <span class="modal-pill">Oferta de lançamento</span>
               <h4 class="fw-bold mt-2 mb-1">~~R$ 99,99~~ por R$ 79,99/mês</h4>
               <p class="muted mb-0">
-                Plano ideal para organizar a base da operação e sair do controle
-                solto.
+                Um plano pensado para organizar sua carteira e centralizar as
+                informações mais importantes do escritório.
               </p>
             </div>
 
             <div class="modal-section">
-              <h5>O que o Base entrega</h5>
+              <h5>O que o Base inclui</h5>
               <ul class="mini-list">
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Cadastro
-                  de clientes
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Cadastro de clientes
                 </li>
                 <li>
                   <i class="bi bi-check-circle-fill text-success"></i>
                   Informações pessoais
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Valores
-                  por cliente
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Valores por cliente
                 </li>
                 <li>
                   <i class="bi bi-check-circle-fill text-success"></i>
                   Quantidade de veículos
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Tipo do
-                  veículo
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Tipo do veículo
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Controle
-                  inicial da carteira
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Controle inicial da carteira
                 </li>
               </ul>
             </div>
 
             <div class="modal-section">
-              <h5>Para quem ele é indicado</h5>
+              <h5>Para quem esse plano é indicado</h5>
               <p class="mb-0">
                 Para contadores autônomos e escritórios pequenos que querem
-                começar com organização, centralização e estrutura inicial sem
-                investir em automações mais avançadas logo de início.
+                começar com mais organização, sair do controle manual solto e
+                ter uma base mais clara para acompanhar seus clientes.
               </p>
             </div>
 
             <div class="modal-section">
-              <h5>O que ele tem de especial</h5>
+              <h5>O diferencial do Base</h5>
               <p class="mb-0">
-                Ele é o plano certo para quem precisa arrumar a casa, organizar
-                clientes e preparar a operação para crescer depois sem começar
-                já no improviso.
+                Ele ajuda a arrumar a rotina desde o começo, deixando clientes,
+                valores e informações principais em um lugar mais organizado e
+                fácil de acompanhar.
               </p>
             </div>
           </div>
@@ -1272,8 +1361,8 @@
             <div>
               <h3 class="modal-title fw-bold mb-1">Plano Médio</h3>
               <p class="modal-subtitle">
-                O melhor equilíbrio entre automação, valor percebido e
-                crescimento.
+                O plano ideal para quem quer automatizar cobranças e ter mais
+                controle sobre pagamentos.
               </p>
             </div>
             <button
@@ -1283,6 +1372,7 @@
               aria-label="Fechar"
             ></button>
           </div>
+
           <div class="modal-body">
             <div class="modal-section modal-price-box">
               <span class="modal-pill">Até 35 clientes</span>
@@ -1290,45 +1380,45 @@
               <span class="modal-pill">Mais escolhido</span>
               <h4 class="fw-bold mt-2 mb-1">~~R$ 149,99~~ por R$ 119,99/mês</h4>
               <p class="muted mb-0">
-                Pensado para escritórios que querem automatizar a cobrança e
-                acompanhar melhor a carteira.
+                Perfeito para escritórios que querem cobrar melhor, reduzir
+                atrasos e acompanhar a carteira com mais produtividade.
               </p>
             </div>
 
             <div class="modal-section">
-              <h5>O que o Médio entrega</h5>
+              <h5>O que o Médio inclui</h5>
               <ul class="mini-list">
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Tudo do
-                  plano Base
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Tudo do plano Base
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> ChatBot
-                  com mensagem personalizada para cada cliente
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  ChatBot com mensagem personalizada para cada cliente
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> 4
-                  mensagens automáticas em períodos estratégicos
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  4 mensagens automáticas em períodos estratégicos
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Avisos em
-                  10, 5 e 3 dias antes
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Avisos em 10, 5 e 3 dias antes
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Mensagem
-                  de bloqueio
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Mensagem de bloqueio
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Mensagem
-                  7 dias antes do fim do pagamento
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Mensagem 7 dias antes do fim do pagamento
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Chave PIX
-                  + valor informado + mensagem personalizada
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Chave PIX + valor informado + mensagem personalizada
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Leitura
-                  de comprovante e marcação como pago
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Leitura de comprovante e marcação como pago
                 </li>
                 <li>
                   <i class="bi bi-check-circle-fill text-success"></i>
@@ -1339,49 +1429,50 @@
                   Relatórios mensal e semanal
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Relatório
-                  de clientes pendentes e ativos
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Relatório de clientes pendentes e ativos
                 </li>
               </ul>
             </div>
 
             <div class="modal-section">
-              <h5>O que ele tem de especial e incomum</h5>
+              <h5>O que esse plano tem de especial</h5>
               <p class="mb-3">
-                Esse plano já vai além de cadastro e controle básico. Ele começa
-                a entregar automação que o cliente sente no dia a dia.
+                Aqui você já sente uma diferença real na rotina, porque o plano
+                passa a ajudar também na cobrança e no acompanhamento dos
+                pagamentos.
               </p>
               <ul class="mini-list">
                 <li>
-                  <i class="bi bi-star-fill text-warning"></i> Régua de
-                  mensagens em vários momentos do pagamento
+                  <i class="bi bi-star-fill text-warning"></i>
+                  Régua de mensagens em vários momentos do pagamento
                 </li>
                 <li>
-                  <i class="bi bi-star-fill text-warning"></i> PIX com valor e
-                  mensagem pronta
+                  <i class="bi bi-star-fill text-warning"></i>
+                  PIX com valor e mensagem pronta
                 </li>
                 <li>
-                  <i class="bi bi-star-fill text-warning"></i> Leitura de
-                  comprovante para reduzir conferência manual
+                  <i class="bi bi-star-fill text-warning"></i>
+                  Leitura de comprovante para reduzir conferência manual
                 </li>
               </ul>
             </div>
 
             <div class="modal-section">
-              <h5>Para quem ele é ideal</h5>
+              <h5>Para quem esse plano é ideal</h5>
               <p class="mb-0">
-                Para escritórios que já precisam cobrar melhor, reduzir atraso,
-                automatizar parte da rotina e ter mais controle comercial e
-                operacional sobre a carteira.
+                Para escritórios que já precisam cobrar melhor, acompanhar
+                pendências, reduzir atrasos e ganhar mais controle sobre a
+                carteira sem depender tanto de processos manuais.
               </p>
             </div>
 
             <div class="modal-section">
-              <h5>Como ele ajuda a vender melhor</h5>
+              <h5>Por que ele costuma ser o mais escolhido</h5>
               <p class="mb-0">
-                O Médio é o plano com melhor custo-benefício porque entrega uma
-                mudança de patamar real: sai do simples cadastro e entra em
-                automação, cobrança e confirmação de pagamento.
+                Porque ele entrega uma mudança muito clara no dia a dia: sai do
+                simples cadastro e entra em cobrança automatizada, confirmação
+                de pagamento e acompanhamento mais eficiente.
               </p>
             </div>
           </div>
@@ -1397,7 +1488,8 @@
             <div>
               <h3 class="modal-title fw-bold mb-1">Plano Premium</h3>
               <p class="modal-subtitle">
-                Máxima automação, escala e posicionamento de produto superior.
+                A opção mais completa para quem quer mais liberdade, mais
+                controle e mais força para crescer.
               </p>
             </div>
             <button
@@ -1407,70 +1499,76 @@
               aria-label="Fechar"
             ></button>
           </div>
+
           <div class="modal-body">
             <div class="modal-section modal-price-box">
               <span class="modal-pill">Clientes ilimitados</span>
               <span class="modal-pill">Usuários ilimitados</span>
-              <span class="modal-pill">Maior valor</span>
+              <span class="modal-pill">Plano mais completo</span>
               <h4 class="fw-bold mt-2 mb-1">~~R$ 249,99~~ por R$ 199,99/mês</h4>
               <p class="muted mb-0">
-                Feito para quem quer escalar de verdade, operar melhor e passar
-                uma percepção mais premium do produto.
+                Feito para escritórios que querem operar com mais liberdade,
+                atender mais clientes e ter uma visão mais ampla da rotina.
               </p>
             </div>
 
             <div class="modal-section">
-              <h5>O que o Premium entrega</h5>
+              <h5>O que o Premium inclui</h5>
               <ul class="mini-list">
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Tudo do
-                  plano Médio
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Clientes
-                  ilimitados
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Usuários
-                  ilimitados
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Tudo do plano Médio
                 </li>
                 <li>
                   <i class="bi bi-check-circle-fill text-success"></i>
-                  Relatórios mais completos e estratégicos
+                  Clientes ilimitados
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Visão
-                  mais forte de ativos, pendentes e bloqueados
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Usuários ilimitados
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Mais
-                  autonomia operacional para equipe
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Relatórios mais completos
                 </li>
                 <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Suporte
-                  prioritário
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Visão mais ampla de clientes ativos, pendentes e bloqueados
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Mais autonomia para a equipe
+                </li>
+                <li>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                  Suporte prioritário
                 </li>
               </ul>
             </div>
 
             <div class="modal-section">
-              <h5>O que ele tem de especial e mais raro</h5>
+              <h5>O que ele tem de mais forte</h5>
               <p class="mb-3">
-                Aqui o sistema deixa de ser apenas funcional e passa a ser
-                percebido como plataforma mais forte e mais diferenciada.
+                Esse plano entrega o máximo da proposta: mais automação, mais
+                espaço para crescer e mais clareza para acompanhar a operação.
               </p>
               <ul class="mini-list">
                 <li>
-                  <i class="bi bi-gem text-warning"></i> Combinação de automação
-                  de cobrança + leitura de comprovante + PIX personalizado
+                  <i class="bi bi-gem text-warning"></i>
+                  Cobrança automatizada com mais liberdade de uso
                 </li>
                 <li>
-                  <i class="bi bi-gem text-warning"></i> Estrutura sem limite de
-                  clientes para crescer sem trava
+                  <i class="bi bi-gem text-warning"></i>
+                  Leitura de comprovante com mais apoio à rotina
                 </li>
                 <li>
-                  <i class="bi bi-gem text-warning"></i> Percepção muito maior
-                  de valor e maturidade do produto
+                  <i class="bi bi-gem text-warning"></i>
+                  PIX com valor e mensagem pronta para facilitar o recebimento
+                </li>
+                <li>
+                  <i class="bi bi-gem text-warning"></i>
+                  Mais espaço para crescer sem se preocupar com limite de
+                  clientes
                 </li>
               </ul>
             </div>
@@ -1478,56 +1576,19 @@
             <div class="modal-section">
               <h5>Por que ele é melhor que o Médio</h5>
               <p class="mb-0">
-                Porque o Premium não só automatiza. Ele amplia a escala, melhora
-                a gestão, suporta mais equipe e posiciona seu produto em um
-                nível acima em percepção, uso e crescimento.
+                Porque além de automatizar, ele amplia a capacidade do
+                escritório: mais clientes, mais usuários, mais visão da carteira
+                e mais liberdade para crescer com segurança.
               </p>
             </div>
 
             <div class="modal-section">
-              <h5>Arquitetura e visão de produto</h5>
-              <p class="mb-3">
-                O Premium conversa melhor com a visão de SaaS robusto e
-                escalável:
+              <h5>Para quem esse plano faz mais sentido</h5>
+              <p class="mb-0">
+                Para escritórios que querem uma operação mais completa, precisam
+                acompanhar uma carteira maior e desejam ter mais controle, mais
+                autonomia e mais força para expandir.
               </p>
-              <ul class="mini-list">
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Estrutura
-                  modular
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i>
-                  Multiempresa
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Expansão
-                  para integrações futuras
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Produto
-                  com cara de ERP moderno
-                </li>
-              </ul>
-            </div>
-
-            <div class="modal-section">
-              <h5>Filosofia do sistema</h5>
-              <ul class="mini-list">
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Modular
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Escalável
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i>
-                  Profissional
-                </li>
-                <li>
-                  <i class="bi bi-check-circle-fill text-success"></i> Fácil
-                  manutenção
-                </li>
-              </ul>
             </div>
           </div>
         </div>
@@ -1536,8 +1597,9 @@
 
     <footer class="py-4 text-center" data-aos="fade-up">
       <div class="container">
-        <p class="mb-0">
-          SaaS Contábil • Landing page inicial para validação comercial
+        <p class="mb-1 fw-semibold">ContaFlow • Sistema para contadores</p>
+        <p class="mb-0 text-muted">
+          Desenvolvido por L&amp;J Soluções Tecnológicas
         </p>
       </div>
     </footer>
