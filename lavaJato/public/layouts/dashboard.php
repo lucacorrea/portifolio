@@ -44,16 +44,7 @@ if (!isset($menuAtivo)) {
 
         <!-- VENDAS -->
 
-        <li class="nav-item">
-          <a class="nav-link <?= ($menuAtivo === 'vendas-rapida' ? 'active' : '') ?>" href="./vendas/pages/vendaRapida.php">
-            <i class="bi bi-cash-coin icon"></i><span class="item-name">Venda Rápida</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link <?= ($menuAtivo === 'vendas-orcamentos' ? 'active' : '') ?>" href="./vendas/pages/orcamentos.php">
-            <i class="bi bi-file-earmark-text icon"></i><span class="item-name">Orçamentos</span>
-          </a>
-        </li>
+       
         <!-- LAVA JATO -->
         <li class="nav-item">
           <a class="nav-link <?= ($menuAtivo === 'lavagemRapida' ? 'active' : '') ?>" href="./lavajato/pages/lavagemRapida.php">
@@ -65,18 +56,7 @@ if (!isset($menuAtivo)) {
             <i class="bi bi-list icon"></i><span class="item-name">Lavagens Abertas</span>
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link <?= ($menuAtivo === 'vendas-abriCaixa' ? 'active' : '') ?>" href="./vendas/pages/caixaAbrir.php">
-            <i class="bi bi-cash-coin icon"></i><span class="item-name">Abrir Caixa</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link <?= ($menuAtivo === 'vendas-fechaCaixa' ? 'active' : '') ?>" href="./vendas/pages/caixaFechar.php">
-            <i class="bi bi-cash-coin icon"></i><span class="item-name">Fechar Caixa</span>
-          </a>
-        </li>
-
+       
         <li class="nav-item">
           <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-lavajato" role="button"
             aria-expanded="<?= str_starts_with($menuAtivo, 'lavajato-') ? 'true' : 'false' ?>"
@@ -136,46 +116,7 @@ if (!isset($menuAtivo)) {
         </li>
 
         <!-- ESTOQUE -->
-        <li class="nav-item">
-          <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-estoque" role="button"
-            aria-expanded="<?= str_starts_with($menuAtivo, 'estoque-') ? 'true' : 'false' ?>"
-            aria-controls="sidebar-estoque">
-            <i class="bi bi-truck icon"></i><span class="item-name">Estoque</span><i class="bi bi-chevron-right right-icon"></i>
-          </a>
-          <ul class="sub-nav collapse <?= str_starts_with($menuAtivo, 'estoque-') ? 'show' : '' ?>" id="sidebar-estoque" data-bs-parent="#sidebar-menu">
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'estoque-categorias' ? 'active' : '') ?>" href="./estoque/pages/categorias.php">
-                <i class="bi bi-box icon"></i><span class="item-name">Categorias</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'estoque-lista' ? 'active' : '') ?>" href="./estoque/pages/estoque.php">
-                <i class="bi bi-box icon"></i><span class="item-name">Lista Estoque</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'estoque-produtos' ? 'active' : '') ?>" href="./estoque/pages/produtos.php">
-                <i class="bi bi-gear icon"></i><span class="item-name">Lista Produtos</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'estoque-fornecedores' ? 'active' : '') ?>" href="./estoque/pages/fornecedores.php">
-                <i class="bi bi-person-check icon"></i><span class="item-name">Lista Fornecedores</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'estoque-add-fornecedor' ? 'active' : '') ?>" href="./estoque/pages/fornecedoresNovo.php">
-                <i class="bi bi-journal-text icon"></i><span class="item-name">Add Fornecedor</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'estoque-add-produto' ? 'active' : '') ?>" href="./estoque/pages/produtosNovo.php">
-                <i class="bi bi-arrow-down-circle icon"></i><span class="item-name">Add Produto</span>
-              </a>
-            </li>
-          </ul>
-        </li>
-
+       
         <!-- RELATÓRIOS -->
         <li class="nav-item">
           <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-relatorios" role="button"
@@ -184,11 +125,7 @@ if (!isset($menuAtivo)) {
             <i class="bi bi-clipboard-data icon"></i><span class="item-name">Relatórios</span><i class="bi bi-chevron-right right-icon"></i>
           </a>
           <ul class="sub-nav collapse <?= str_starts_with($menuAtivo, 'relatorios-') ? 'show' : '' ?>" id="sidebar-relatorios" data-bs-parent="#sidebar-menu">
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'relatorios-vendas' ? 'active' : '') ?>" href="./vendas/pages/relatorioVendas.php">
-                <i class="bi bi-bar-chart icon"></i><span class="item-name">Vendas</span>
-              </a>
-            </li>
+           
             <li class="nav-item">
               <a class="nav-link <?= ($menuAtivo === 'relatorios-lavagens' ? 'active' : '') ?>" href="./lavajato/pages/relatorioLavagens.php">
                 <i class="bi bi-droplet icon"></i><span class="item-name">Lavagens</span>
@@ -197,30 +134,7 @@ if (!isset($menuAtivo)) {
           </ul>
         </li>
         <!-- CLIENTES -->
-        <li class="nav-item">
-          <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-clientes" role="button"
-            aria-expanded="<?= str_starts_with($menuAtivo, 'clientes-') ? 'true' : 'false' ?>"
-            aria-controls="sidebar-clientes">
-            <i class="bi bi-person-vcard icon"></i><span class="item-name">Clientes</span><i class="bi bi-chevron-right right-icon"></i>
-          </a>
-          <ul class="sub-nav collapse <?= str_starts_with($menuAtivo, 'clientes-') ? 'show' : '' ?>" id="sidebar-clientes" data-bs-parent="#sidebar-menu">
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'clientes-lista' ? 'active' : '') ?>" href="./clientes/pages/clientes.php">
-                <i class="bi bi-people icon"></i><span class="item-name">Lista de Clientes</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'clientes-novo' ? 'active' : '') ?>" href="./clientes/pages/clientesNovo.php">
-                <i class="bi bi-person-plus icon"></i><span class="item-name">Novo Cliente</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'clientes-cupom' ? 'active' : '') ?>" href="./clientes/pages/cupomNovo.php">
-                <i class="bi bi-receipt-cutoff icon"></i><span class="item-name">Emitir Cupom</span>
-              </a>
-            </li>
-          </ul>
-        </li>
+       
 
         <!-- CONFIGURAÇÕES -->
         <li class="nav-item">
