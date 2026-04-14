@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 session_start();
@@ -51,7 +50,24 @@ if ($where) {
     $sqlBase .= " WHERE " . implode(' AND ', $where);
 }
 
+$configAutomacao = [
+    'pix_nome_recebedor' => '',
+    'pix_tipo_chave' => '',
+    'pix_chave' => '',
+];
+
 try {
+    $stmtConfig = $pdo->query("
+        SELECT pix_nome_recebedor, pix_tipo_chave, pix_chave
+        FROM configuracoes_automacao
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $cfg = $stmtConfig->fetch(PDO::FETCH_ASSOC);
+    if ($cfg) {
+        $configAutomacao = array_merge($configAutomacao, $cfg);
+    }
+
     $stmtResumo = $pdo->query("
         SELECT
             COUNT(*) AS total_clientes,
@@ -82,7 +98,7 @@ try {
         'total_veiculos' => 0,
     ];
     $clientes = [];
-    $flashErro = 'Erro ao carregar clientes: ' . $e->getMessage();
+    $flashErro = 'Erro ao carregar dados: ' . $e->getMessage();
 }
 ?>
 <!doctype html>
@@ -285,7 +301,31 @@ try {
     }
 
     .modal-lg-custom {
-        max-width: 900px;
+        max-width: 920px;
+    }
+
+    .pix-config-box {
+        background: #f8f9fa;
+        border: 1px dashed #d9dee3;
+        border-radius: 12px;
+        padding: 1rem;
+    }
+
+    .pix-config-box .pix-line {
+        margin-bottom: .4rem;
+        color: #566a7f;
+    }
+
+    .pix-config-box .pix-line:last-child {
+        margin-bottom: 0;
+    }
+
+    .modal-footer.sticky-footer {
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+        z-index: 2;
+        border-top: 1px solid #eceef1;
     }
 
     @media (max-width: 1199.98px) {
@@ -578,8 +618,8 @@ try {
                                                         <th>Contato</th>
                                                         <th>Mensalidade</th>
                                                         <th>Vencimento</th>
+                                                        <th>Forma Pgto</th>
                                                         <th>Veículos</th>
-                                                        <th>PIX</th>
                                                         <th>Status</th>
                                                     </tr>
                                                 </thead>
@@ -611,14 +651,14 @@ try {
                                                         <td><?= money($cliente['mensalidade']) ?></td>
                                                         <td><?= str_pad((string)((int)$cliente['dia_vencimento']), 2, '0', STR_PAD_LEFT) ?>
                                                         </td>
+                                                        <td><small
+                                                                class="text-muted"><?= h($cliente['forma_pagamento'] ?: '-') ?></small>
+                                                        </td>
                                                         <td>
                                                             <span class="vehicle-badge">
                                                                 <?= (int)$cliente['qtd_veiculos'] ?>
                                                                 <?= h($cliente['tipo_veiculo'] ?: 'Veículo') ?>
                                                             </span>
-                                                        </td>
-                                                        <td><small
-                                                                class="text-muted"><?= h($cliente['pix_tipo'] ?: '-') ?></small>
                                                         </td>
                                                         <td>
                                                             <?php
@@ -736,21 +776,26 @@ try {
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label" for="pix">Tipo da chave PIX</label>
-                                <select id="pix" name="pix_tipo" class="form-select">
-                                    <option value="">Selecione</option>
-                                    <option>CPF</option>
-                                    <option>Telefone</option>
-                                    <option>E-mail</option>
-                                    <option>Chave aleatória</option>
-                                    <option>CNPJ</option>
+                                <label class="form-label" for="forma_pagamento">Forma de pagamento</label>
+                                <select id="forma_pagamento" name="forma_pagamento" class="form-select" required>
+                                    <option value="PIX" selected>PIX</option>
+                                    <option value="Dinheiro">Dinheiro</option>
+                                    <option value="Cartão">Cartão</option>
+                                    <option value="Boleto">Boleto</option>
+                                    <option value="Transferência">Transferência</option>
                                 </select>
                             </div>
 
-                            <div class="col-md-12">
-                                <label class="form-label" for="chavePix">Chave PIX</label>
-                                <input type="text" id="chavePix" name="pix_chave" class="form-control"
-                                    placeholder="Informe a chave PIX do cliente" />
+                            <div class="col-12">
+                                <div class="pix-config-box">
+                                    <div class="fw-semibold mb-2">PIX configurado no sistema</div>
+                                    <div class="pix-line"><strong>Recebedor:</strong>
+                                        <?= h($configAutomacao['pix_nome_recebedor'] ?: '-') ?></div>
+                                    <div class="pix-line"><strong>Tipo da chave:</strong>
+                                        <?= h($configAutomacao['pix_tipo_chave'] ?: '-') ?></div>
+                                    <div class="pix-line"><strong>Chave PIX:</strong>
+                                        <?= h($configAutomacao['pix_chave'] ?: '-') ?></div>
+                                </div>
                             </div>
                         </div>
 
@@ -806,7 +851,7 @@ try {
                         </div>
                     </div>
 
-                    <div class="modal-footer">
+                    <div class="modal-footer sticky-footer">
                         <button type="button" class="btn btn-outline-secondary"
                             data-bs-dismiss="modal">Cancelar</button>
                         <button type="reset" class="btn btn-outline-primary">Limpar</button>
@@ -833,14 +878,15 @@ try {
                         <li><span>Lista principal</span><span class="badge bg-label-success">Ativa</span></li>
                         <li><span>Cadastro separado</span><span class="badge bg-label-primary">Melhor fluxo</span></li>
                         <li><span>Mensalidade</span><span class="badge bg-label-success">Incluída</span></li>
-                        <li><span>Veículos</span><span class="badge bg-label-info">Incluído</span></li>
-                        <li><span>PIX</span><span class="badge bg-label-warning">Incluído</span></li>
+                        <li><span>Forma de pagamento</span><span class="badge bg-label-info">Incluída</span></li>
+                        <li><span>PIX global</span><span class="badge bg-label-warning">Vem da configuração</span></li>
                         <li><span>Status</span><span class="badge bg-label-success">Incluído</span></li>
                     </ul>
 
                     <div class="help-text-box">
                         <strong>Fluxo melhor:</strong><br />
-                        lista primeiro, cadastro depois. Isso melhora visualização e operação.
+                        os dados do cliente ficam no cadastro dele, mas o PIX do recebimento vem da configuração global
+                        do sistema.
                     </div>
                 </div>
 
