@@ -20,31 +20,20 @@ class SefazConsultaService extends BaseService {
     }
 
     private function loadConfig() {
-        try {
-            // Encontra os dados fiscais via NfceService (que já possui a lógica de fallback Matriz)
-            $nfceService = new \App\Services\NfceService();
-            
-            // Busca a configuração da Matriz (principal) para ser a base global
-            $stmtMatriz = $this->db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1");
-            $matriz = $stmtMatriz->fetch();
-            $matrizId = $matriz['id'] ?? 1;
+        // Encontra os dados fiscais via NfceService (que já possui a lógica de fallback Matriz)
+        $nfceService = new \App\Services\NfceService();
+        
+        // Busca a configuração da Matriz (principal) para ser a base global
+        $stmtMatriz = $this->db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1");
+        $matriz = $stmtMatriz->fetch();
+        $matrizId = $matriz['id'] ?? 1;
 
-            $this->config = $nfceService->getConfig($matrizId);
-            
-            if (empty($this->config['certificado_path'])) {
-                throw new Exception("⚠️ Certificado A1 não configurado nas Configurações Globais.");
-            }
-            
-            $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $this->config['certificado_path'];
-            if (!file_exists($pfxPath)) {
-                throw new Exception("⚠️ Arquivo do certificado não encontrado no servidor (" . $this->config['certificado_path'] . "). Faça o upload novamente.");
-            }
-            
-            // Password handling
-            $this->config['certificado_senha_raw'] = $this->config['certificado_senha'] ?? '';
-        } catch (Exception $e) {
-            throw new Exception("Erro de configuração SEFAZ: " . $e->getMessage());
-        }
+        $this->config = $nfceService->getConfig($matrizId);
+        
+        if (!$this->config['certificado_path']) throw new Exception("Certificado A1 (Global) não configurado ou não encontrado na Matriz.");
+        
+        // Password handling
+        $this->config['certificado_senha_raw'] = $this->config['certificado_senha'] ?? '';
     }
 
 

@@ -92,10 +92,6 @@ class ImportacaoAutomaticaController extends BaseController {
         ]);
     }
     public function sincronizar() {
-        // Stop output pollution (warnings/notices) from breaking JSON
-        ini_set('display_errors', 0);
-        error_reporting(0);
-        
         try {
             $db = \App\Config\Database::getInstance()->getConnection();
             $filialId = $_SESSION['filial_id'] ?? 1;
@@ -167,11 +163,11 @@ class ImportacaoAutomaticaController extends BaseController {
                 'message' => $message
             ]);
 
-        } catch (\Throwable $e) {
-            error_log("Erro Fatal na sincronização SEFAZ: " . $e->getMessage() . " em " . $e->getFile() . ":" . $e->getLine());
+        } catch (\Exception $e) {
+            error_log("Erro na sincronização SEFAZ: " . $e->getMessage());
             echo json_encode([
                 'success' => false,
-                'error' => "Erro no servidor: " . $e->getMessage()
+                'error' => $e->getMessage()
             ]);
         }
         exit;
