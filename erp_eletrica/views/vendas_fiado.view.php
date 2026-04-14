@@ -88,12 +88,12 @@
 </style>
 
 <div class="row g-4 mb-4">
-    <div class="col-12 d-flex justify-content-between align-items-center">
+    <div class="col-12 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
         <div>
             <h4 class="fw-bold mb-0">Gestão de Fiados</h4>
             <p class="text-muted mb-0">Controle total de débitos e recebimentos</p>
         </div>
-        <button onclick="exportExcel()" class="btn btn-outline-success rounded-pill px-4">
+        <button onclick="exportExcel()" class="btn btn-outline-success rounded-pill px-4 align-self-start align-self-sm-center">
             <i class="fas fa-file-excel me-2"></i>Exportar Excel
         </button>
     </div>

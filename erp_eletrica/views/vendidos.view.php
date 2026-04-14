@@ -1,5 +1,5 @@
-<div class="row mb-4">
-    <div class="col-md-3">
+<div class="row g-4 mb-4">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="stat-card primary">
             <div>
                 <div class="stat-label">Vendas Hoje</div>
@@ -8,7 +8,7 @@
             <div class="stat-icon"><i class="fas fa-shopping-cart"></i></div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="stat-card success">
             <div>
                 <div class="stat-label">Total Vendido</div>
@@ -17,7 +17,7 @@
             <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="stat-card danger">
             <div>
                 <div class="stat-label">Cancelamentos</div>
@@ -26,7 +26,7 @@
             <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="stat-card secondary">
             <div>
                 <div class="stat-label">Ticket Médio</div>
@@ -130,18 +130,20 @@
                         <p class="mb-0" id="det-vendedor"></p>
                     </div>
                 </div>
-                <table class="table table-sm table-hover align-middle">
-                    <thead class="bg-light">
-                        <tr>
-                            <th>Produto</th>
-                            <th class="text-center">Qtd</th>
-                            <th class="text-end">V. Unit</th>
-                            <th class="text-end">Subtotal</th>
-                            <th class="text-end">Troca</th>
-                        </tr>
-                    </thead>
-                    <tbody id="det-items"></tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Produto</th>
+                                <th class="text-center">Qtd</th>
+                                <th class="text-end">V. Unit</th>
+                                <th class="text-end">Subtotal</th>
+                                <th class="text-end">Troca</th>
+                            </tr>
+                        </thead>
+                        <tbody id="det-items"></tbody>
+                    </table>
+                </div>
                 <div class="row mt-3">
                     <div class="col-md-8">
                         <div class="p-3 bg-light rounded">
