@@ -44,7 +44,7 @@ if (!isset($menuAtivo)) {
 
         <!-- VENDAS -->
 
-       
+
         <!-- LAVA JATO -->
         <li class="nav-item">
           <a class="nav-link <?= ($menuAtivo === 'lavagemRapida' ? 'active' : '') ?>" href="./lavajato/pages/lavagemRapida.php">
@@ -56,7 +56,12 @@ if (!isset($menuAtivo)) {
             <i class="bi bi-list icon"></i><span class="item-name">Lavagens Abertas</span>
           </a>
         </li>
-       
+        <li class="nav-item">
+          <a class="nav-link <?= ($menuAtivo === 'lavajato-vales' ? 'active' : '') ?>" href="./lavajato/pages/vales.php">
+            <i class="bi bi-cash-stack icon"></i>
+            <span class="item-name">Vales Lavadores</span>
+          </a>
+        </li>
         <li class="nav-item">
           <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-lavajato" role="button"
             aria-expanded="<?= str_starts_with($menuAtivo, 'lavajato-') ? 'true' : 'false' ?>"
@@ -64,17 +69,8 @@ if (!isset($menuAtivo)) {
             <i class="bi bi-droplet icon"></i><span class="item-name">Lava Jato</span><i class="bi bi-chevron-right right-icon"></i>
           </a>
           <ul class="sub-nav collapse <?= str_starts_with($menuAtivo, 'lavajato-') ? 'show' : '' ?>" id="sidebar-lavajato" data-bs-parent="#sidebar-menu">
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'lavajato-lavagens' ? 'active' : '') ?>" href="./lavajato/pages/lavagens.php">
-                <i class="bi bi-list icon"></i><span class="item-name">Lista Lavagens</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <?= ($menuAtivo === 'lavajato-vales' ? 'active' : '') ?>" href="./lavajato/pages/vales.php">
-                <i class="bi bi-cash-stack icon"></i>
-                <span class="item-name">Vales Lavadores</span>
-              </a>
-            </li>
+
+
 
             <li class="nav-item">
               <a class="nav-link <?= ($menuAtivo === 'lavajato-lavadores' ? 'active' : '') ?>" href="./lavajato/pages/lavadores.php">
@@ -116,7 +112,7 @@ if (!isset($menuAtivo)) {
         </li>
 
         <!-- ESTOQUE -->
-       
+
         <!-- RELATÓRIOS -->
         <li class="nav-item">
           <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-relatorios" role="button"
@@ -125,7 +121,7 @@ if (!isset($menuAtivo)) {
             <i class="bi bi-clipboard-data icon"></i><span class="item-name">Relatórios</span><i class="bi bi-chevron-right right-icon"></i>
           </a>
           <ul class="sub-nav collapse <?= str_starts_with($menuAtivo, 'relatorios-') ? 'show' : '' ?>" id="sidebar-relatorios" data-bs-parent="#sidebar-menu">
-           
+
             <li class="nav-item">
               <a class="nav-link <?= ($menuAtivo === 'relatorios-lavagens' ? 'active' : '') ?>" href="./lavajato/pages/relatorioLavagens.php">
                 <i class="bi bi-droplet icon"></i><span class="item-name">Lavagens</span>
@@ -134,7 +130,7 @@ if (!isset($menuAtivo)) {
           </ul>
         </li>
         <!-- CLIENTES -->
-       
+
 
         <!-- CONFIGURAÇÕES -->
         <li class="nav-item">
