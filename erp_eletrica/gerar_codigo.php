@@ -42,10 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     <link rel="stylesheet" href="public/css/corporate.css?v=3.9">
     <style>
         :root {
-            --login-bg: #f8fafc;
+            --login-bg: #cbd5e1;
             --card-bg: #ffffff;
-            --accent-gold: #FFC107;
-            --accent-hover: #FFB300;
+            --accent-gold: #2b4c7d;
+            --accent-hover: #1e3a62;
             --input-bg: #ffffff;
             --border-color: #e2e8f0;
         }
@@ -133,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         .btn-primary {
             background-color: var(--accent-gold) !important;
             border: none !important;
-            color: #000 !important;
+            color: #fff !important;
             font-weight: 700 !important;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -142,8 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
 
         .btn-primary:hover {
-            background-color: #0a0a0a !important;
-            border-color: #FFC107 !important;
+            background-color: var(--accent-hover) !important;
+            border-color: var(--accent-gold) !important;
             transform: translateY(-1px);
             color: #fff !important;
         }
@@ -156,8 +156,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
 
         .btn-outline-primary:hover {
-            background-color: #0a0a0a !important;
-            border-color: #FFC107 !important;
+            background-color: var(--accent-hover) !important;
+            border-color: var(--accent-gold) !important;
             color: #fff !important;
         }
 
