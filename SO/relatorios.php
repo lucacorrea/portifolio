@@ -51,6 +51,7 @@ if (!function_exists('secretaria_sigla')) {
             'SECRETARIA MUNICIPAL DE ESPORTE' => 'SEMESP',
             'SECRETÁRIO MUNICIPAL DE RELAÇÕES INSTITUCIONAIS' => 'SMRI',
             'COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'CREC',
+            'COMIÇÃO DE CONTRATAÇÃO DE COARI' => 'CCC' 
         ];
 
         foreach ($map as $trecho => $sigla) {
