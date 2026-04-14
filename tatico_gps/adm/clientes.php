@@ -320,12 +320,15 @@ try {
         margin-bottom: 0;
     }
 
-    .modal-footer.sticky-footer {
-        position: sticky;
-        bottom: 0;
-        background: #fff;
-        z-index: 2;
-        border-top: 1px solid #eceef1;
+    .modal-body-scroll {
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: .5rem;
+    }
+
+    .table-actions .dropdown-menu {
+        min-width: 180px;
     }
 
     @media (max-width: 1199.98px) {
@@ -342,6 +345,10 @@ try {
 
         .page-banner-actions .btn {
             width: 100%;
+        }
+
+        .modal-body-scroll {
+            max-height: calc(100vh - 180px);
         }
     }
     </style>
@@ -621,12 +628,13 @@ try {
                                                         <th>Forma Pgto</th>
                                                         <th>Veículos</th>
                                                         <th>Status</th>
+                                                        <th class="text-center">Ações</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody class="table-border-bottom-0">
                                                     <?php if (!$clientes): ?>
                                                     <tr>
-                                                        <td colspan="7" class="text-center py-4 text-muted">
+                                                        <td colspan="8" class="text-center py-4 text-muted">
                                                             Nenhum cliente encontrado.
                                                         </td>
                                                     </tr>
@@ -670,6 +678,47 @@ try {
                                                                     ?>
                                                             <span
                                                                 class="badge bg-label-<?= $classe ?> badge-status"><?= h($status) ?></span>
+                                                        </td>
+                                                        <td class="text-center table-actions">
+                                                            <div class="dropdown">
+                                                                <button type="button"
+                                                                    class="btn p-0 dropdown-toggle hide-arrow"
+                                                                    data-bs-toggle="dropdown">
+                                                                    <i class="bx bx-dots-vertical-rounded"></i>
+                                                                </button>
+                                                                <div class="dropdown-menu dropdown-menu-end">
+                                                                    <button type="button"
+                                                                        class="dropdown-item btn-ver-cliente"
+                                                                        data-bs-toggle="modal"
+                                                                        data-bs-target="#clienteModal"
+                                                                        data-id="<?= (int)$cliente['id'] ?>"
+                                                                        data-nome="<?= h($cliente['nome']) ?>"
+                                                                        data-cpf="<?= h($cliente['cpf']) ?>"
+                                                                        data-telefone="<?= h($cliente['telefone']) ?>"
+                                                                        data-email="<?= h($cliente['email']) ?>"
+                                                                        data-endereco="<?= h($cliente['endereco']) ?>"
+                                                                        data-mensalidade="<?= money($cliente['mensalidade']) ?>"
+                                                                        data-vencimento="<?= str_pad((string)((int)$cliente['dia_vencimento']), 2, '0', STR_PAD_LEFT) ?>"
+                                                                        data-forma_pagamento="<?= h($cliente['forma_pagamento']) ?>"
+                                                                        data-veiculos="<?= (int)$cliente['qtd_veiculos'] ?>"
+                                                                        data-tipo_veiculo="<?= h($cliente['tipo_veiculo']) ?>"
+                                                                        data-status="<?= h($cliente['status']) ?>"
+                                                                        data-whatsapp="<?= h($cliente['whatsapp_principal']) ?>"
+                                                                        data-observacoes="<?= h($cliente['observacoes']) ?>">
+                                                                        <i class="bx bx-show-alt me-1"></i> Ver
+                                                                    </button>
+
+                                                                    <a class="dropdown-item"
+                                                                        href="clientesEditar.php?id=<?= (int)$cliente['id'] ?>">
+                                                                        <i class="bx bx-edit-alt me-1"></i> Editar
+                                                                    </a>
+
+                                                                    <a class="dropdown-item"
+                                                                        href="cobrancas.php?cliente_id=<?= (int)$cliente['id'] ?>">
+                                                                        <i class="bx bx-wallet me-1"></i> Cobrar
+                                                                    </a>
+                                                                </div>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                     <?php endforeach; ?>
@@ -720,10 +769,10 @@ try {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
 
-                <form action="./php/clientes/processarDados.php" method="POST">
+                <form action="./php/config/processarDados.php" method="POST">
                     <input type="hidden" name="acao" value="salvar_cliente">
 
-                    <div class="modal-body">
+                    <div class="modal-body modal-body-scroll">
                         <div class="modal-form-section">Dados Pessoais</div>
                         <div class="row g-3">
                             <div class="col-md-12">
@@ -851,7 +900,7 @@ try {
                         </div>
                     </div>
 
-                    <div class="modal-footer sticky-footer">
+                    <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary"
                             data-bs-dismiss="modal">Cancelar</button>
                         <button type="reset" class="btn btn-outline-primary">Limpar</button>
@@ -897,12 +946,107 @@ try {
         </div>
     </div>
 
+    <div class="modal fade" id="clienteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalhes do Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>Nome:</strong><br>
+                        <span id="detNome">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>CPF:</strong><br>
+                        <span id="detCpf">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Telefone:</strong><br>
+                        <span id="detTelefone">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>E-mail:</strong><br>
+                        <span id="detEmail">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Endereço:</strong><br>
+                        <span id="detEndereco">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Mensalidade:</strong><br>
+                        <span id="detMensalidade">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Vencimento:</strong><br>
+                        <span id="detVencimento">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Forma de pagamento:</strong><br>
+                        <span id="detFormaPagamento">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Veículos:</strong><br>
+                        <span id="detVeiculos">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Status:</strong><br>
+                        <span id="detStatus">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong>WhatsApp principal:</strong><br>
+                        <span id="detWhatsapp">-</span>
+                    </div>
+                    <div class="mb-0">
+                        <strong>Observações:</strong><br>
+                        <span id="detObservacoes">-</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="#" id="btnEditarClienteModal" class="btn btn-primary">
+                        <i class="bx bx-edit-alt me-1"></i> Editar Cliente
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="../assets/vendor/libs/jquery/jquery.js"></script>
     <script src="../assets/vendor/libs/popper/popper.js"></script>
     <script src="../assets/vendor/js/bootstrap.js"></script>
     <script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
     <script src="../assets/vendor/js/menu.js"></script>
     <script src="../assets/js/main.js"></script>
+
+    <script>
+    document.querySelectorAll('.btn-ver-cliente').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('detNome').textContent = this.dataset.nome || '-';
+            document.getElementById('detCpf').textContent = this.dataset.cpf || '-';
+            document.getElementById('detTelefone').textContent = this.dataset.telefone || '-';
+            document.getElementById('detEmail').textContent = this.dataset.email || '-';
+            document.getElementById('detEndereco').textContent = this.dataset.endereco || '-';
+            document.getElementById('detMensalidade').textContent = this.dataset.mensalidade || '-';
+            document.getElementById('detVencimento').textContent = this.dataset.vencimento || '-';
+            document.getElementById('detFormaPagamento').textContent = this.dataset.forma_pagamento ||
+                '-';
+
+            const veiculos = (this.dataset.veiculos || '0') + ' ' + (this.dataset.tipo_veiculo ||
+                'Veículo');
+            document.getElementById('detVeiculos').textContent = veiculos;
+
+            document.getElementById('detStatus').textContent = this.dataset.status || '-';
+            document.getElementById('detWhatsapp').textContent = this.dataset.whatsapp || '-';
+            document.getElementById('detObservacoes').textContent = this.dataset.observacoes || '-';
+
+            const id = this.dataset.id || '';
+            document.getElementById('btnEditarClienteModal').setAttribute('href',
+                'clientesEditar.php?id=' + id);
+        });
+    });
+    </script>
 </body>
 
 </html>
