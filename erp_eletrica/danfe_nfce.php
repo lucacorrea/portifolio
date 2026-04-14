@@ -7,7 +7,7 @@ if (empty($_SESSION['usuario_id'])) { http_response_code(403); exit('Acesso nega
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: private, max-age=60');
 
-require_once __DIR__ . '/src/autoload.php';
+require_once __DIR__ . '/config.php';
 
 $db = \App\Config\Database::getInstance()->getConnection();
 
@@ -18,14 +18,19 @@ $chaveReq = preg_replace('/\D+/', '', (string)($_GET['chave'] ?? ''));
 $xmlRaw = null;
 $nfRecord = null;
 try {
-    if ($vendaId > 0 || strlen($chaveReq) === 44) {
-        $where = $vendaId > 0 ? "venda_id = ?" : "chave_acesso = ?";
-        $param = $vendaId > 0 ? $vendaId : $chaveReq;
+    if (strlen($chaveReq) === 44 || $vendaId > 0) {
+        if (strlen($chaveReq) === 44) {
+            $where = "chave_acesso = ?";
+            $param = $chaveReq;
+        } else {
+            $where = "venda_id = ?";
+            $param = $vendaId;
+        }
         $st = $db->prepare("SELECT * FROM notas_fiscais WHERE $where ORDER BY id DESC LIMIT 1");
         $st->execute([$param]);
         $nfRecord = $st->fetch(PDO::FETCH_ASSOC);
         if ($nfRecord && !empty($nfRecord['xml_path'])) {
-            $fullPath = dirname(__DIR__) . '/storage/' . ltrim($nfRecord['xml_path'], '/');
+            $fullPath = __DIR__ . '/storage/' . ltrim($nfRecord['xml_path'], '/');
             if (is_file($fullPath)) {
                 $xmlRaw = file_get_contents($fullPath);
             }
@@ -220,18 +225,29 @@ if ($prot) {
     $dhRec = $dhRecTag ? lm_($dhRecTag->nodeValue) : '';
     $protInfo = $nProt ? "Protocolo: $nProt — $dhRec" : '';
 }
-$qrTxt = ($supl && $supl->getElementsByTagNameNS($ns,'qrCode')->item(0)) ? lm_($supl->getElementsByTagNameNS($ns,'qrCode')->item(0)->nodeValue) : '';
+$qrTxt = '';
+if ($supl) {
+    $qrNode = $supl->getElementsByTagNameNS($ns,'qrCode')->item(0);
+    if ($qrNode) $qrTxt = lm_($qrNode->nodeValue);
+}
+
 $itens = [];
 foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
     $prod = $det->getElementsByTagNameNS($ns,'prod')->item(0);
     if (!$prod) continue;
-    $g   = fn($t) => lm_($prod->getElementsByTagNameNS($ns,$t)->item(0)->nodeValue);
+    
+    $getVal = function($node, $tag) use ($ns) {
+        $found = $node->getElementsByTagNameNS($ns, $tag)->item(0);
+        return $found ? lm_($found->nodeValue) : '';
+    };
+
     $itens[] = [
-        'cProd'=>$g('cProd'), 'xProd'=>$g('xProd'),
-        'qCom' =>number_format((float)$prod->getElementsByTagNameNS($ns,'qCom')->item(0)->nodeValue,3,',','.'),
-        'uCom' =>$g('uCom'),
-        'vUn'  =>br_($prod->getElementsByTagNameNS($ns,'vUnCom')->item(0)->nodeValue),
-        'vTot' =>br_($prod->getElementsByTagNameNS($ns,'vProd')->item(0)->nodeValue),
+        'cProd' => $getVal($prod, 'cProd'),
+        'xProd' => $getVal($prod, 'xProd'),
+        'qCom'  => number_format((float)($prod->getElementsByTagNameNS($ns,'qCom')->item(0)->nodeValue ?? 0), 3, ',', '.'),
+        'uCom'  => $getVal($prod, 'uCom'),
+        'vUn'   => br_($prod->getElementsByTagNameNS($ns,'vUnCom')->item(0)->nodeValue ?? 0),
+        'vTot'  => br_($prod->getElementsByTagNameNS($ns,'vProd')->item(0)->nodeValue ?? 0),
     ];
 }
 ?>

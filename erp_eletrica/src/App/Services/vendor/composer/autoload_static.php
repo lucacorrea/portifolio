@@ -14,6 +14,7 @@ class ComposerStaticInit218c12f846c261e9b9eb0b71cac34a83
         'N' => 
         array (
             'NFePHP\\NFe\\' => 11,
+            'NFePHP\\DA\\' => 10,
             'NFePHP\\Gtin\\' => 12,
             'NFePHP\\Common\\' => 14,
         ),
@@ -31,6 +32,10 @@ class ComposerStaticInit218c12f846c261e9b9eb0b71cac34a83
         'NFePHP\\NFe\\' => 
         array (
             0 => __DIR__ . '/..' . '/nfephp-org/sped-nfe/src',
+        ),
+        'NFePHP\\DA\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/nfephp-org/sped-da/src',
         ),
         'NFePHP\\Gtin\\' => 
         array (

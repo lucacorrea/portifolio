@@ -1,8 +1,8 @@
 <?php
 ob_start();
 session_start();
-if (!isset($_SESSION['usuario_id'])) {
-    header('Location: login.php');
+if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORES') {
+    header('Location: index.php');
     exit;
 }
 ?>
@@ -84,6 +84,8 @@ if (!isset($_SESSION['usuario_id'])) {
                     <option value="">Selecione...</option>
                     <option value="CIÊNCIA">CIÊNCIA</option>
                     <option value="CUMPRIMENTO">CUMPRIMENTO</option>
+                    <option value="RECURSO - CIÊNCIA">RECURSO - CIÊNCIA</option>
+                    <option value="RECURSO - CUMPRIMENTO">RECURSO - CUMPRIMENTO</option>
                 </select>
             </div>
 
@@ -102,7 +104,9 @@ if (!isset($_SESSION['usuario_id'])) {
                     <option value="JUNTADA DE CUMPRIMENTO DE DILIGÊNCIA">JUNTADA DE CUMPRIMENTO DE DILIGÊNCIA</option>
                     <option value="JUNTADA DE PETIÇÃO DE MANIFESTAÇÃO DA PARTE">JUNTADA DE PETIÇÃO DE MANIFESTAÇÃO DA PARTE</option>
                     <option value="CIÊNCIA">CIÊNCIA</option>
+                    <option value="PERSONALIZADO" style="color: #4338ca; font-weight: bold;">PERSONALIZADO</option>
                 </select>
+                <input type="text" id="tipo_ato_personalizado" placeholder="Digite o tipo de ato..." style="display: none; margin-top: 0.5rem; text-transform: uppercase;">
             </div>
 
             <div class="form-group">
@@ -121,7 +125,9 @@ if (!isset($_SESSION['usuario_id'])) {
                     <option value="AUDIÊNCIA">AUDIÊNCIA</option>
                     <option value="ANÁLISE">ANÁLISE</option>
                     <option value="CIÊNCIA">CIÊNCIA</option>
+                    <option value="PERSONALIZADO" style="color: #4338ca; font-weight: bold;">PERSONALIZADO</option>
                 </select>
+                <input type="text" id="natureza_prazo_personalizado" placeholder="Digite a natureza do prazo..." style="display: none; margin-top: 0.5rem; text-transform: uppercase;">
             </div>
 
             <div class="form-group">
@@ -153,8 +159,13 @@ if (!isset($_SESSION['usuario_id'])) {
             </div>
 
                 <div class="form-group">
-                    <label for="quantidade_dias">Quantidade de Dias do Prazo</label>
-                    <input type="number" id="quantidade_dias" value="15" min="1" required>
+                    <label for="final_prazo">Data Final do Prazo</label>
+                    <input type="date" id="final_prazo" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="quantidade_dias">Qtd. Dias (Calculado)</label>
+                    <input type="number" id="quantidade_dias" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700; color: var(--primary);">
                 </div>
             </div>
             
@@ -167,11 +178,6 @@ if (!isset($_SESSION['usuario_id'])) {
         <!-- Step 2: Conclusão -->
         <div class="form-step" id="step-2">
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
-                <div class="form-group">
-                    <label for="final_prazo">Final do Prazo (Calculado)</label>
-                    <input type="date" id="final_prazo" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700; color: var(--primary);">
-                </div>
-
                 <div class="form-group">
                     <label for="prazo_critico">Prazo Crítico?</label>
                     <select id="prazo_critico">
@@ -239,12 +245,20 @@ if (!isset($_SESSION['usuario_id'])) {
                     </div>
                 </div>
 
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="observacoes">Observações</label>
+                    <textarea id="observacoes" rows="4" placeholder="Adicione notas ou detalhes importantes sobre este processo..."></textarea>
+                </div>
+
                 <div class="form-group">
                     <label for="status">Status</label>
                     <select id="status">
-                        <option value="PENDENTE" style="color: var(--status-pendente);">PENDENTE</option>
-                        <option value="PROTOCOLADO" style="color: var(--status-protocolado);">PROTOCOLADO</option>
-                        <option value="ANALISADO" style="color: var(--status-analisado);">ANALISADO</option>
+                        <option value="PENDENTE" style="color: #ef4444; font-weight: bold;">PENDENTE</option>
+                        <option value="SENDO AVALIADO" style="color: #eab308; font-weight: bold;">SENDO AVALIADO</option>
+                        <option value="EM ELABORAÇÃO" style="color: #f97316; font-weight: bold;">EM ELABORAÇÃO</option>
+                        <option value="PROTOCOLADO" style="color: #22c55e; font-weight: bold;">PROTOCOLADO</option>
+                        <option value="ANALISADO" style="color: #3b82f6; font-weight: bold;">ANALISADO</option>
+                        <option value="PROCESSO FINALIZADO" style="color: #2E6C80; font-weight: bold;">PROCESSO FINALIZADO</option>
                     </select>
                 </div>
             </div>
@@ -257,6 +271,22 @@ if (!isset($_SESSION['usuario_id'])) {
     </form>
 </main>
 
-<script src="assets/js/script.js?v=6"></script>
+<script src="assets/js/script.js?v=63"></script>
+<script>
+    // Plano de contingência: Forçar visibilidade se o script externo falhar ou for cacheado
+    document.addEventListener('DOMContentLoaded', function() {
+        const check = (sId, iId) => {
+            const s = document.getElementById(sId);
+            const i = document.getElementById(iId);
+            if(s && i) {
+                const up = () => { i.style.setProperty('display', s.value === 'PERSONALIZADO' ? 'block' : 'none', 'important'); };
+                s.addEventListener('change', up);
+                up();
+            }
+        };
+        check('tipo_ato', 'tipo_ato_personalizado');
+        check('natureza_prazo', 'natureza_prazo_personalizado');
+    });
+</script>
 </body>
 </html>

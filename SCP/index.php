@@ -12,9 +12,34 @@ if (!isset($_SESSION['usuario_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCP - Sistema de Controle de Processos (PGM)</title>
-    <link rel="stylesheet" href="assets/css/estilo.css?v=6">
+    <link rel="stylesheet" href="assets/css/estilo.css?v=61">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .tab-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .tab-btn:hover {
+            background: rgba(37, 99, 235, 0.05);
+            color: var(--primary);
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+    </style>
 </head>
 <body>
 
@@ -25,7 +50,9 @@ if (!isset($_SESSION['usuario_id'])) {
     </div>
     <nav class="nav-links">
         <a href="index.php" class="nav-link active"><i class="fas fa-home"></i> Dashboard</a>
+        <?php if ($_SESSION['usuario_perfil'] !== 'ACESSORES'): ?>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
+        <?php endif; ?>
         <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
         <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>
@@ -59,11 +86,11 @@ if (!isset($_SESSION['usuario_id'])) {
             <div class="value" id="total-processos">0</div>
         </div>
         <div class="stat-card">
-            <div class="label">Pendentes</div>
+            <div class="label">Pendentes / Início</div>
             <div class="value" id="total-pendentes" style="color: var(--status-pendente)">0</div>
         </div>
         <div class="stat-card">
-            <div class="label">Protocolados</div>
+            <div class="label">Protocolados / Finais</div>
             <div class="value" id="total-protocolados" style="color: var(--status-protocolado)">0</div>
         </div>
         <div class="stat-card">
@@ -101,9 +128,10 @@ if (!isset($_SESSION['usuario_id'])) {
         <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="font-size: 1.25rem; margin: 0;">Lista de Processos</h2>
-                <div id="filtro-meus-prazos" class="filter-toggle" title="Mostrar apenas os meus processos" style="padding: 0.45rem 1rem; font-size: 0.85rem; height: fit-content;">
-                    <i class="fas fa-user-check"></i> Meus
-                </div>
+            </div>
+            
+            <div class="tabs-container" id="analisador-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <!-- Preenchido via JS -->
             </div>
             
             <div class="filter-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: flex-start;">
@@ -111,13 +139,18 @@ if (!isset($_SESSION['usuario_id'])) {
                     <option value="">Tipo (Todos)</option>
                     <option value="CIÊNCIA">Ciência</option>
                     <option value="CUMPRIMENTO">Cumprimento</option>
+                    <option value="RECURSO - CIÊNCIA">Recurso - Ciência</option>
+                    <option value="RECURSO - CUMPRIMENTO">Recurso - Cumprimento</option>
                 </select>
 
                 <select id="filtro-status" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
                     <option value="">Status (Todos)</option>
                     <option value="PENDENTE">Pendente</option>
+                    <option value="SENDO AVALIADO">Sendo Avaliado</option>
+                    <option value="EM ELABORAÇÃO">Em Elaboração</option>
                     <option value="PROTOCOLADO">Protocolado</option>
                     <option value="ANALISADO">Analisado</option>
+                    <option value="PROCESSO FINALIZADO">Processo Finalizado</option>
                 </select>
 
                 <div style="display: flex; align-items: center; gap: 0.2rem; background: white; border: 1px solid var(--border); border-radius: 50px; padding: 0 0.5rem; height: 32px;">
@@ -132,9 +165,11 @@ if (!isset($_SESSION['usuario_id'])) {
                     <input type="text" id="filtro-busca" placeholder="Pesquisar nº ou tipo..." style="width: 100%; padding: 0.45rem 1rem 0.45rem 32px; border-radius: 50px; border: 1px solid var(--border); font-size: 0.85rem; outline: none;">
                 </div>
                 
+                <?php if ($_SESSION['usuario_perfil'] !== 'ACESSORES'): ?>
                 <a href="cadastro.php" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem; border-radius: 50px; white-space: nowrap; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                     <i class="fas fa-plus"></i> Novo
                 </a>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -160,6 +195,18 @@ if (!isset($_SESSION['usuario_id'])) {
     </section>
 </main>
 
-<script src="assets/js/script.js?v=9"></script>
+<!-- Modal de Detalhes do Processo -->
+<div id="modal-detalhes" class="modal-overlay">
+    <div class="modal-content">
+        <div id="detalhes-conteudo">
+            <!-- Preenchido via JS -->
+        </div>
+    </div>
+</div>
+
+<script>
+    window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
+</script>
+<script src="assets/js/script.js?v=62"></script>
 </body>
 </html>

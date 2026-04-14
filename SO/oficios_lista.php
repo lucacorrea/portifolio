@@ -13,6 +13,11 @@ if (isset($_GET['status']) && $_GET['status'] != '') {
 if (isset($_GET['busca']) && $_GET['busca'] != '') {
     $where .= " AND (o.numero LIKE '%" . $_GET['busca'] . "%' OR s.nome LIKE '%" . $_GET['busca'] . "%')";
 }
+if (isset($_GET['secretaria_id']) && $_GET['secretaria_id'] != '') {
+    $where .= " AND o.secretaria_id = " . (int)$_GET['secretaria_id'];
+}
+
+$secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll();
 
 // Configurações de Paginação
 $itens_por_pagina = 6;
@@ -57,7 +62,7 @@ include 'views/layout/header.php';
         display: grid;
         grid-row-gap: 1rem;
         grid-column-gap: 1.5rem;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: 1fr 1fr 1fr 42px;
         align-items: end;
     }
 
@@ -175,15 +180,21 @@ include 'views/layout/header.php';
                 </select>
             </div>
 
-            <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    <i class="fas fa-search"></i> Filtrar
-                </button>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Secretaria</label>
+                <select name="secretaria_id" class="form-control">
+                    <option value="">Todas as Secretarias</option>
+                    <?php foreach ($secretarias_list as $sec): ?>
+                        <option value="<?php echo $sec['id']; ?>" <?php echo ($_GET['secretaria_id'] ?? '') == $sec['id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($sec['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
 
             <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <a href="oficios_lista.php" class="btn btn-outline btn-limpar">
-                    <i class="fas fa-eraser"></i> Limpar
+                <a href="oficios_lista.php" class="btn" style="width: 42px; height: 40px; padding: 0; display: flex; justify-content: center; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; color: #64748b; background: white;" title="Limpar Filtros">
+                    <i class="fas fa-eraser" style="margin: 0;"></i>
                 </a>
             </div>
         </form>
@@ -196,9 +207,11 @@ include 'views/layout/header.php';
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1rem; margin: 0;">
                 <i class="fas fa-list-ul" style="margin-right: 10px; color: var(--primary);"></i> Solicitações Recebidas
             </h3>
-            <a href="oficios_novo.php" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> Novo Cadastro
-            </a>
+            <?php if (strtoupper($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
+                <a href="oficios_novo.php" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Novo Cadastro
+                </a>
+            <?php endif; ?>
         </div>
 
         <?php display_flash(); ?>
@@ -239,13 +252,20 @@ include 'views/layout/header.php';
                                         <i class="fas fa-eye"></i>
                                     </a>
 
-                                    <?php if ($o['status'] == 'ENVIADO' && (($_SESSION['nivel'] ?? '') == 'ADMIN' || ($_SESSION['nivel'] ?? '') == 'SUPORTE')): ?>
+                                    <?php 
+                                        $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
+                                        if ($o['status'] == 'ENVIADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): 
+                                    ?>
                                         <a href="analisar_oficio.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Analisar">
                                             <i class="fas fa-gavel"></i> Analisar
                                         </a>
                                     <?php endif; ?>
+ 
+                                    <a href="oficios_anexar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Anexar Ofício de Solicitação" style="color: var(--secondary); border-color: var(--secondary);">
+                                        <i class="fas fa-paperclip"></i>
+                                    </a>
 
-                                    <?php if ($o['status'] == 'APROVADO' && (($_SESSION['nivel'] ?? '') == 'ADMIN' || ($_SESSION['nivel'] ?? '') == 'SUPORTE')): ?>
+                                    <?php if ($o['status'] == 'APROVADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): ?>
                                         <a href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Gerar Aquisição">
                                             <i class="fas fa-shopping-cart"></i> Gerar
                                         </a>

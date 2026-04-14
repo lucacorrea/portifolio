@@ -3,7 +3,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header d-flex align-items-center justify-content-center p-3">
-        <img src="logo_sistema_erp_eletrica.jpeg" alt="Centro do Eletricista" style="max-width: 90%; height: auto; max-height: 55px; filter: drop-shadow(0 0 5px rgba(255,193,7,0.2));">
+        <img src="logo_sistema_erp_eletrica.png?v=<?= time() ?>" alt="Centro do Eletricista" style="max-width: 90%; height: auto; max-height: 55px; filter: drop-shadow(0 0 5px rgba(255,193,7,0.2));">
     </div>
     
     <nav class="nav flex-column sidebar-menu">
@@ -24,6 +24,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="vendas.php" class="nav-link <?= $current_page == 'vendas.php' ? 'active' : '' ?>">
             <i class="fas fa-cash-register"></i> <span>Balcão / Vendas</span>
         </a>
+        <a href="vendidos.php" class="nav-link <?= $current_page == 'vendidos.php' ? 'active' : '' ?>">
+            <i class="fas fa-receipt"></i> <span>Histórico de Vendas</span>
+        </a>
         <a href="fiado.php" class="nav-link <?= $current_page == 'fiado.php' ? 'active' : '' ?>">
             <i class="fas fa-hand-holding-dollar"></i> <span>Gestão de Fiados</span>
         </a>
@@ -36,18 +39,37 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php endif; ?>
         
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão de Materiais</div>
+        <?php 
+            $productModel = new \App\Models\Product();
+            $s_filialId = $_SESSION['filial_id'] ?? null;
+            $s_isMatriz = $_SESSION['is_matriz'] ?? false;
+        ?>
         
         <a href="estoque.php" class="nav-link <?= $current_page == 'estoque.php' ? 'active' : '' ?>">
             <i class="fas fa-boxes-stacked"></i> <span>Estoque / Materiais</span>
+        </a>
+        
+        <a href="transferencias.php" class="nav-link <?= $current_page == 'transferencias.php' ? 'active' : '' ?>">
+            <i class="fas fa-truck-fast"></i> <span>Transferências (B2B)</span>
+            <?php 
+                if ($s_isMatriz) {
+                    // Matriz vê: Solicitações Pendentes + Ocorrências não resolvidas
+                    $b2bCount = $productModel->query("SELECT COUNT(*) FROM erp_transferencias WHERE status = 'pendente' OR (origem_filial_id = 1 AND tem_problema = 1 AND problema_resolvido = 0)")->fetchColumn();
+                } else {
+                    // Filial vê: Pedidos que estão em trânsito para ela
+                    $b2bCount = $productModel->query("SELECT COUNT(*) FROM erp_transferencias WHERE destino_filial_id = ? AND status = 'em_transito'", [$s_filialId])->fetchColumn();
+                }
+
+                if ($b2bCount > 0): 
+            ?>
+                <span class="badge bg-danger ms-auto rounded-pill" style="font-size: 0.6rem;"><?= $b2bCount ?></span>
+            <?php endif; ?>
         </a>
         
         <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
         <a href="estoque_baixo.php" class="nav-link <?= $current_page == 'estoque_baixo.php' ? 'active' : '' ?>">
             <i class="fas fa-triangle-exclamation"></i> <span>Estoque Baixo</span>
             <?php 
-                $productModel = new \App\Models\Product();
-                $s_filialId = $_SESSION['filial_id'] ?? null;
-                $s_isMatriz = $_SESSION['is_matriz'] ?? false;
                 $stats = $productModel->getStockStats(!$s_isMatriz ? $s_filialId : null);
                 if ($stats['critical'] > 0): 
             ?>
@@ -67,9 +89,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="fornecedores.php" class="nav-link <?= $current_page == 'fornecedores.php' ? 'active' : '' ?>">
             <i class="fas fa-truck-fast"></i> <span>Fornecedores</span>
         </a>
+        <?php if ($s_isMatriz): ?>
         <a href="importar_automatico.php" class="nav-link <?= $current_page == 'importar_automatico.php' ? 'active' : '' ?>">
             <i class="fas fa-cloud-download-alt"></i> <span>Importação Automática</span>
         </a>
+        <?php endif; ?>
         
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Financeiro</div>
         

@@ -9,8 +9,8 @@ $page_title = "Configurações do Sistema";
 // Lógica de Cadastro Simples via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_sec'])) {
-        $nome = $_POST['nome'];
-        $cod = $_POST['codigo'];
+        $nome = mb_strtoupper($_POST['nome'], 'UTF-8');
+        $cod = mb_strtoupper($_POST['codigo'], 'UTF-8');
         $resp = $_POST['responsavel'];
         $stmt = $pdo->prepare("INSERT INTO secretarias (nome, codigo_acesso, responsavel) VALUES (?, ?, ?)");
         $stmt->execute([$nome, $cod, $resp]);
@@ -42,11 +42,11 @@ include 'views/layout/header.php';
             <form action="" method="POST" style="margin-bottom: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div class="form-group" style="grid-column: span 2;">
                     <label class="form-label">Nome da Secretaria</label>
-                    <input type="text" name="nome" class="form-control" placeholder="Ex: Secretaria de Saúde" required>
+                    <input type="text" name="nome" class="form-control" placeholder="Ex: SECRETARIA DE SAÚDE" required oninput="this.value = this.value.toUpperCase()">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Código de Acesso</label>
-                    <input type="text" name="codigo" class="form-control" placeholder="Ex: SEC2024" required>
+                    <input type="text" name="codigo" class="form-control" placeholder="Ex: SEC2024" required oninput="this.value = this.value.toUpperCase()">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Responsável</label>

@@ -34,17 +34,17 @@ class SalesController extends BaseController {
         
         $results = [];
 
-        // 1. Search Products
-        $sqlProd = "SELECT id, nome, preco_venda, unidade, imagens, codigo, 'product' as type 
-                    FROM produtos 
-                    WHERE (nome LIKE ? OR codigo LIKE ? OR codigo = ?) ";
-        $paramsProd = ["%$term%", "%$term%", $term];
-        
-        if (!$isMatriz) {
-            $sqlProd .= " AND filial_id = ?";
-            $paramsProd[] = $filialId;
-        }
-        $sqlProd .= " ORDER BY (CASE WHEN codigo = ? THEN 1 WHEN codigo LIKE ? THEN 2 ELSE 3 END), nome ASC LIMIT 10";
+        // 1. Search Products (Global catalog for Matriz, Branch-specific for others)
+        $join = ((int)$filialId === 1) ? "LEFT JOIN" : "INNER JOIN";
+
+        $sqlProd = "SELECT p.id, p.nome, p.preco_venda, p.unidade, p.imagens, p.codigo, 'product' as type,
+                    COALESCE(ef.quantidade, 0) as stock_qty
+                    FROM produtos p
+                    $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                    WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ?) ";
+        $paramsProd = [$filialId, "%$term%", "%$term%", $term];
+
+        $sqlProd .= " ORDER BY (CASE WHEN p.codigo = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
         $paramsProd[] = $term;
         $paramsProd[] = "$term%";
 
@@ -254,6 +254,7 @@ class SalesController extends BaseController {
                     'tipo_nota'           => $tipoNota,
                     'valor_recebido'      => isset($data['valor_recebido']) ? (float)$data['valor_recebido'] : null,
                     'troco'               => isset($data['troco']) ? (float)$data['troco'] : null,
+                    'taxa_cartao'         => isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0,
                 ];
 
                 $saleId = $saleModel->create($saleData);
@@ -366,7 +367,7 @@ class SalesController extends BaseController {
                            ->execute([$saleId, $item['id'], $item['qty'], $item['price']]);
                     }
 
-                    $productModel->updateStock($item['id'], $item['qty'], 'saida');
+                    $productModel->updateStock($item['id'], $item['qty'], 'saida', $_SESSION['filial_id'] ?? 1);
                 }
 
                 $db->commit();
@@ -429,8 +430,287 @@ class SalesController extends BaseController {
         exit;
     }
 
+    public function sold_list() {
+        $filterDefaults = [
+            'data_inicio' => '',
+            'data_fim' => '',
+            'status' => '',
+            'tipo_nota' => '',
+            'forma_pagamento' => ''
+        ];
+        
+        $this->render('vendidos', [
+            'filters' => $filterDefaults,
+            'title' => 'Histórico de Vendas',
+            'pageTitle' => 'Gestão de Vendas Realizadas'
+        ]);
+    }
+
+    public function sold_search() {
+        $filters = $_GET;
+        $page = (int)($filters['page'] ?? 1);
+        $perPage = (int)($filters['perPage'] ?? 9);
+        
+        $saleModel = new Sale();
+        $sales = $saleModel->getFiltered($filters, $page, $perPage);
+        $total = $saleModel->getTotalFiltered($filters);
+        
+        foreach ($sales as &$s) {
+            $s['data_formatada'] = date('d/m/Y H:i', strtotime($s['data_venda']));
+            $s['valor_formatado'] = number_format($s['valor_total'], 2, ',', '.');
+        }
+
+        echo json_encode([
+            'sales' => $sales,
+            'total' => $total,
+            'page' => $page,
+            'perPage' => $perPage,
+            'totalPages' => ceil($total / $perPage)
+        ]);
+        exit;
+    }
+
+    public function get_sale_detail() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            echo json_encode(['success' => false, 'error' => 'ID não fornecido']);
+            exit;
+        }
+        
+        $saleModel = new Sale();
+        $sale = $saleModel->findById($id);
+        
+        if (!$sale) {
+            echo json_encode(['success' => false, 'error' => 'Venda não encontrada']);
+            exit;
+        }
+
+        $sale['data_formatada'] = date('d/m/Y H:i', strtotime($sale['data_venda']));
+        foreach ($sale['itens'] as &$item) {
+            $item['subtotal'] = $item['quantidade'] * $item['preco_unitario'];
+            $item['preco_formatado'] = number_format($item['preco_unitario'], 2, ',', '.');
+            $item['subtotal_formatado'] = number_format($item['subtotal'], 2, ',', '.');
+        }
+
+        echo json_encode(['success' => true, 'sale' => $sale]);
+        exit;
+    }
+
     public function cancel_sale() {
-        // ... (existing code for cancel_sale)
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
+        
+        $data = json_decode(file_get_contents('php://input'), true);
+        $id = $data['id'] ?? null;
+        $motivo = $data['motivo'] ?? 'Cancelamento solicitado pelo usuário';
+
+        if (!$id) {
+            echo json_encode(['success' => false, 'error' => 'ID da venda não fornecido']);
+            exit;
+        }
+
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $saleModel = new Sale();
+        $productModel = new Product();
+        $movementModel = new \App\Models\CashierMovement();
+        $cashierModel = new \App\Models\Cashier();
+
+        try {
+            $db->beginTransaction();
+
+            $sale = $saleModel->findById($id);
+            if (!$sale) throw new \Exception("Venda não encontrada.");
+            if ($sale['status'] === 'cancelado') throw new \Exception("Esta venda já está cancelada.");
+
+            // --- NOVO: Lógica de Cancelamento Fiscal (SEFAZ) ---
+            $isFiscal = ($sale['tipo_nota'] === 'fiscal');
+            if ($isFiscal) {
+                // Prepara ambiente para carregar as bibliotecas de NF-e
+                $nfceDir = dirname(__DIR__, 3) . '/nfce';
+                if (file_exists($nfceDir . '/vendor/autoload.php')) {
+                    require_once $nfceDir . '/vendor/autoload.php';
+                }
+                
+                // Define venda_id globalmente para que o config.php da NF-e carregue a filial correta
+                $_REQUEST['venda_id'] = $id;
+                require_once $nfceDir . '/config.php';
+                $configNFe = require $nfceDir . '/nfce_config.php';
+                
+                // Carrega certificado
+                $pfx = file_get_contents(PFX_PATH);
+                $cert = \NFePHP\Common\Certificate::readPfx($pfx, PFX_PASSWORD);
+                
+                $tools = new \NFePHP\NFe\Tools(json_encode($configNFe), $cert);
+                $tools->model('65');
+
+                // Busca protocolo da emissão original
+                $stP = $db->prepare("SELECT protocolo, chave FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') ORDER BY id DESC LIMIT 1");
+                $stP->execute([$id]);
+                $nfceEmitida = $stP->fetch(\PDO::FETCH_ASSOC);
+
+                if ($nfceEmitida) {
+                    $chave = trim((string)$nfceEmitida['chave']);
+                    $protocolo = trim((string)$nfceEmitida['protocolo']);
+                    $xJust = trim($motivo ?: 'Cancelamento de venda por solicitacao do cliente');
+
+                    // Validações antes de enviar para SEFAZ
+                    if (empty($chave) || strlen($chave) !== 44) {
+                        throw new \Exception("Chave de acesso inválida ou ausente ({$chave}).");
+                    }
+                    if (empty($protocolo)) {
+                        throw new \Exception("Número de protocolo de autorização ausente.");
+                    }
+                    if (strlen($xJust) < 15) {
+                        $xJust = str_pad($xJust, 15, '.');
+                    }
+
+                    // Envia evento de cancelamento para a SEFAZ
+                    try {
+                        $response = $tools->sefazCancela($chave, $xJust, $protocolo);
+                        $std = new \NFePHP\NFe\Common\Standardize();
+                        $res = $std->toStd($response);
+                        
+                        $cStat = (string)($res->retEvento->infEvento->cStat ?? $res->cStat ?? '');
+                        
+                        // 135: Evento registrado e vinculado a NF-e, 136: Evento registrado mas não vinculado, 155: Cancelamento homologado fora de prazo
+                        $approved = in_array($cStat, ['135', '136', '155']);
+                        
+                        if (!$approved) {
+                            $errorMsg = $res->retEvento->infEvento->xMotivo ?? $res->xMotivo ?? 'Erro desconhecido na SEFAZ';
+                            throw new \Exception("SEFAZ Rejeitou o cancelamento: " . $errorMsg);
+                        }
+                    } catch (\Exception $sefazError) {
+                        throw new \Exception("Erro na comunicação SEFAZ: " . $sefazError->getMessage());
+                    }
+
+                    // Atualiza status da NFC-e na nossa tabela
+                    $stN = $db->prepare("UPDATE nfce_emitidas SET status_sefaz = '101', mensagem = 'Cancelamento homologado (Evento 135)' WHERE venda_id = ?");
+                    $stN->execute([$id]);
+                }
+            }
+
+            // 1. Reverter Estoque
+            foreach ($sale['itens'] as $item) {
+                $productModel->updateStock($item['produto_id'], $item['quantidade'], 'entrada');
+            }
+
+            // 2. Financeiro (Estorno de Caixa)
+            if ($sale['forma_pagamento'] !== 'fiado') {
+                $caixaAberto = $cashierModel->getOpenForFilial($sale['filial_id']);
+                if ($caixaAberto) {
+                    $movementModel->create([
+                        'caixa_id' => $caixaAberto['id'],
+                        'tipo' => 'saida',
+                        'valor' => $sale['valor_total'],
+                        'motivo' => "Estorno Venda #{$id} - Motivo: {$motivo}",
+                        'operador_id' => $_SESSION['usuario_id']
+                    ]);
+                }
+            } else {
+                // Se for fiado, precisamos cancelar o registro de contas a receber
+                $db->prepare("UPDATE contas_receber SET status = 'cancelado' WHERE venda_id = ?")->execute([$id]);
+            }
+
+            // 3. Atualizar Status
+            $saleModel->updateStatus($id, 'cancelado');
+            if ($isFiscal) {
+                $db->prepare("UPDATE vendas SET tipo_nota = 'fiscal_cancelada' WHERE id = ?")->execute([$id]);
+            }
+
+            // 4. Auditoria
+            $audit = new \App\Services\AuditLogService();
+            $audit->record('Cancelamento de venda', 'vendas', $id, null, $motivo . ($isFiscal ? " (Cancelado na SEFAZ)" : ""));
+
+            $db->commit();
+            echo json_encode(['success' => true]);
+
+        } catch (\Exception $e) {
+            $db->rollBack();
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    public function exchange_item() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
+
+        $data = json_decode(file_get_contents('php://input'), true);
+        $vendaId = $data['venda_id'] ?? null;
+        $itemId = $data['item_id'] ?? null; // ID da linha em vendas_itens
+        $newProdId = $data['new_product_id'] ?? null;
+        $newQty = $data['new_qty'] ?? 1;
+        $newPrice = $data['new_price'] ?? 0;
+
+        if (!$vendaId || !$itemId || !$newProdId) {
+            echo json_encode(['success' => false, 'error' => 'Dados incompletos para a troca']);
+            exit;
+        }
+
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $productModel = new Product();
+        $saleModel = new Sale();
+
+        try {
+            $db->beginTransaction();
+
+            // 1. Obter item atual
+            $stmtItem = $db->prepare("SELECT * FROM vendas_itens WHERE id = ? AND venda_id = ?");
+            $stmtItem->execute([$itemId, $vendaId]);
+            $oldItem = $stmtItem->fetch(\PDO::FETCH_ASSOC);
+            if (!$oldItem) throw new \Exception("Item original não encontrado.");
+
+            // 2. Devolver estoque antigo
+            $productModel->updateStock($oldItem['produto_id'], $oldItem['quantidade'], 'entrada');
+
+            // 3. Verificar estoque novo
+            if (!$productModel->hasEnoughStock($newProdId, $newQty)) {
+                throw new \Exception("Estoque insuficiente para o novo produto.");
+            }
+
+            // 4. Debitar estoque novo
+            $productModel->updateStock($newProdId, $newQty, 'saida');
+
+            // 5. Atualizar vendas_itens
+            $db->prepare("UPDATE vendas_itens SET produto_id = ?, quantidade = ?, preco_unitario = ? WHERE id = ?")
+               ->execute([$newProdId, $newQty, $newPrice, $itemId]);
+
+            // 6. Recalcular total da venda
+            $stmtTotal = $db->prepare("SELECT SUM(quantidade * preco_unitario) as total FROM vendas_itens WHERE venda_id = ?");
+            $stmtTotal->execute([$vendaId]);
+            $newTotalItems = $stmtTotal->fetchColumn() ?: 0;
+            
+            $sale = $saleModel->findById($vendaId);
+            $newTotalVenda = $newTotalItems - ($sale['desconto_total'] ?? 0);
+
+            $db->prepare("UPDATE vendas SET valor_total = ? WHERE id = ?")->execute([$newTotalVenda, $vendaId]);
+
+            // 7. Financeiro (Ajuste no caixa se necessário)
+            $diff = $newTotalVenda - $sale['valor_total'];
+            if ($diff != 0 && $sale['forma_pagamento'] !== 'fiado') {
+                $cashierModel = new \App\Models\Cashier();
+                $caixaAberto = $cashierModel->getOpenForFilial($sale['filial_id']);
+                if ($caixaAberto) {
+                    $movementModel = new \App\Models\CashierMovement();
+                    $movementModel->create([
+                        'caixa_id' => $caixaAberto['id'],
+                        'tipo' => $diff > 0 ? 'entrada' : 'saida',
+                        'valor' => abs($diff),
+                        'motivo' => "Ajuste Troca Item Venda #{$vendaId}",
+                        'operador_id' => $_SESSION['usuario_id']
+                    ]);
+                }
+            }
+
+            $audit = new \App\Services\AuditLogService();
+            $audit->record('Troca de item em venda', 'vendas', $vendaId, null, "Item ID {$itemId} trocado por Prod ID {$newProdId}");
+
+            $db->commit();
+            echo json_encode(['success' => true]);
+
+        } catch (\Exception $e) {
+            $db->rollBack();
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
     }
 
     public function issue_nfce() {

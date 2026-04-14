@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SaaS Contábil | Planos para Contadores</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+
+    .hero {
+      padding: 90px 0 70px;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 760px;
+      margin: 20px auto 0;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.18);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: .9rem;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .section-subtitle {
+      color: #64748b;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .pain-card, .feature-card, .faq-card {
+      background: white;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+      height: 100%;
+    }
+
+    .pricing-card {
+      background: white;
+      border-radius: 24px;
+      padding: 30px;
+      box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+      border: 1px solid #e2e8f0;
+      height: 100%;
+      position: relative;
+      transition: .25s ease;
+    }
+
+    .pricing-card:hover {
+      transform: translateY(-6px);
+    }
+
+    .pricing-card.featured {
+      background: #0f172a;
+      color: white;
+      border-color: #0f172a;
+      transform: scale(1.03);
+    }
+
+    .pricing-card.featured .muted,
+    .pricing-card.featured .pricing-list li,
+    .pricing-card.featured .pricing-note {
+      color: #cbd5e1;
+    }
+
+    .pricing-badge {
+      position: absolute;
+      top: -14px;
+      right: 24px;
+      background: #f59e0b;
+      color: #111827;
+      font-weight: 700;
+      font-size: .75rem;
+      padding: 8px 14px;
+      border-radius: 999px;
+    }
+
+    .price {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 12px 0;
+    }
+
+    .pricing-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .pricing-list li {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: #475569;
+    }
+
+    .btn-main {
+      background: #0f172a;
+      color: white;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-weight: 600;
+      border: none;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-main:hover {
+      background: #1e293b;
+      color: white;
+    }
+
+    .featured .btn-main {
+      background: white;
+      color: #0f172a;
+    }
+
+    .featured .btn-main:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .cta-box {
+      background: linear-gradient(135deg, #1d4ed8, #0f172a);
+      color: white;
+      border-radius: 26px;
+      padding: 42px;
+    }
+
+    .muted {
+      color: #64748b;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      vertical-align: middle;
+      padding: 16px;
+    }
+
+    footer {
+      color: #64748b;
+      font-size: .95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <section class="hero text-center">
+    <div class="container">
+      <span class="hero-badge">Sistema SaaS para contadores</span>
+      <h1>Mais controle, menos atraso e uma rotina contábil muito mais organizada</h1>
+      <p>
+        Organize empresas, documentos, obrigações e rotinas fiscais em um só lugar.
+        Uma plataforma pensada para escritórios contábeis que querem produtividade, controle e crescimento.
+      </p>
+      <div class="mt-4 d-flex justify-content-center gap-3 flex-wrap">
+        <a href="#planos" class="btn-main">Ver planos</a>
+        <a href="#comparativo" class="btn btn-outline-light rounded-3 px-4 py-3 fw-semibold">Comparar recursos</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-5">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="section-title">As dores que o contador quer resolver</h2>
+        <p class="section-subtitle">Sua landing precisa bater primeiro na dor e depois mostrar o plano como solução.</p>
+      </div>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="pain-card">
+            <div class="fs-2 mb-3"><i class="bi bi-calendar-check"></i></div>
+            <h3 class="h5 fw-bold">Obrigações e prazos</h3>
+            <p class="muted mb-0">Evite atraso, reduza risco de multa e tenha visão clara do que precisa ser entregue.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="pain-card">
+            <div class="fs-2 mb-3"><i class="bi bi-folder2-open"></i></div>
+            <h3 class="h5 fw-bold">Documentos espalhados</h3>
+            <p class="muted mb-0">Centralize arquivos, histórico e pendências sem depender de processos confusos.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="pain-card">
+            <div class="fs-2 mb-3"><i class="bi bi-receipt"></i></div>
+            <h3 class="h5 fw-bold">Rotina fiscal cansativa</h3>
+            <p class="muted mb-0">Ganhe velocidade na operação e prepare seu escritório para mais escala com menos retrabalho.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="planos" class="py-5">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="section-title">Planos pensados para cada fase do contador</h2>
+        <p class="section-subtitle">Aqui o contador enxerga com clareza o que recebe em cada nível e por que vale subir de plano.</p>
+      </div>
+
+      <div class="row g-4 align-items-stretch">
+        <div class="col-lg-4">
+          <div class="pricing-card">
+            <h3 class="fw-bold">Basic</h3>
+            <p class="muted mb-1">Para quem está começando</p>
+            <div class="price">R$ 59,90<span class="fs-6 fw-normal">/mês</span></div>
+            <p class="pricing-note muted">Ideal para contadores com operação enxuta e até 10 empresas.</p>
+            <ul class="pricing-list mt-4">
+              <li><i class="bi bi-check-circle-fill text-success"></i> Até 10 empresas</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> Dashboard básico</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> Controle manual de obrigações</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> Upload de documentos</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> 1 usuário</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> Notificações básicas</li>
+            </ul>
+            <a href="#comparativo" class="btn-main w-100 text-center mt-4">Quero começar</a>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="pricing-card featured">
+            <span class="pricing-badge">MAIS ESCOLHIDO</span>
+            <h3 class="fw-bold">Profissional</h3>
+            <p class="muted mb-1">Para quem quer crescer com controle</p>
+            <div class="price">R$ 99,90<span class="fs-6 fw-normal">/mês</span></div>
+            <p class="pricing-note">Ideal para escritórios com carteira ativa e necessidade de mais produtividade.</p>
+            <ul class="pricing-list mt-4">
+              <li><i class="bi bi-check-circle-fill"></i> Até 40 empresas</li>
+              <li><i class="bi bi-check-circle-fill"></i> Alertas automáticos de obrigações</li>
+              <li><i class="bi bi-check-circle-fill"></i> Gestão completa de documentos</li>
+              <li><i class="bi bi-check-circle-fill"></i> Relatórios básicos</li>
+              <li><i class="bi bi-check-circle-fill"></i> Até 3 usuários</li>
+              <li><i class="bi bi-check-circle-fill"></i> Permissões básicas</li>
+            </ul>
+            <a href="#comparativo" class="btn-main w-100 text-center mt-4">Esse é o ideal</a>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="pricing-card">
+            <h3 class="fw-bold">Premium</h3>
+            <p class="muted mb-1">Para escritório mais estruturado</p>
+            <div class="price">R$ 149,90<span class="fs-6 fw-normal">/mês</span></div>
+            <p class="pricing-note muted">Ideal para quem quer escala, produtividade alta e mais valor operacional.</p>
+            <ul class="pricing-list mt-4">
+              <li><i class="bi bi-check-circle-fill text-success"></i> Até 100 empresas</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> Fiscal completo (NFe, NFSe, XML)</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> Relatórios avançados</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> Usuários ilimitados</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> Permissões completas</li>
+              <li><i class="bi bi-check-circle-fill text-success"></i> Suporte prioritário</li>
+            </ul>
+            <a href="#comparativo" class="btn-main w-100 text-center mt-4">Quero máxima produtividade</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="comparativo" class="py-5">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="section-title">Comparativo rápido entre os planos</h2>
+        <p class="section-subtitle">Isso ajuda o contador a entender em segundos por que cada valor existe.</p>
+      </div>
+
+      <div class="table-responsive bg-white rounded-4 shadow-sm p-2">
+        <table class="table comparison-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Recurso</th>
+              <th>Basic</th>
+              <th>Profissional</th>
+              <th>Premium</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Empresas</td>
+              <td>Até 10</td>
+              <td>Até 40</td>
+              <td>Até 100</td>
+            </tr>
+            <tr>
+              <td>Usuários</td>
+              <td>1</td>
+              <td>3</td>
+              <td>Ilimitados</td>
+            </tr>
+            <tr>
+              <td>Obrigações</td>
+              <td>Manual</td>
+              <td>Com alertas automáticos</td>
+              <td>Avançado</td>
+            </tr>
+            <tr>
+              <td>Documentos</td>
+              <td>Básico</td>
+              <td>Completo</td>
+              <td>Completo</td>
+            </tr>
+            <tr>
+              <td>Relatórios</td>
+              <td>Não</td>
+              <td>Básicos</td>
+              <td>Avançados</td>
+            </tr>
+            <tr>
+              <td>Fiscal completo</td>
+              <td>Não</td>
+              <td>Não</td>
+              <td>Sim</td>
+            </tr>
+            <tr>
+              <td>Suporte prioritário</td>
+              <td>Não</td>
+              <td>Não</td>
+              <td>Sim</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-5">
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="feature-card">
+            <h3 class="h5 fw-bold">Mais organização</h3>
+            <p class="muted mb-0">Tudo centralizado para reduzir bagunça operacional no escritório.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="feature-card">
+            <h3 class="h5 fw-bold">Mais controle</h3>
+            <p class="muted mb-0">Acompanhe prazos, pendências e rotina com mais previsibilidade.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="feature-card">
+            <h3 class="h5 fw-bold">Mais produtividade</h3>
+            <p class="muted mb-0">Ganhe tempo para crescer sem depender de processos desorganizados.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-5">
+    <div class="container">
+      <div class="cta-box text-center">
+        <h2 class="fw-bold">Escolha o plano ideal para a fase do seu escritório</h2>
+        <p class="mb-4 mt-3">Comece com controle, evolua com produtividade e escale com muito mais segurança.</p>
+        <a href="#planos" class="btn btn-light rounded-3 px-4 py-3 fw-semibold">Ver planos novamente</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-5">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="section-title">Perguntas que o contador faz antes de contratar</h2>
+      </div>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="faq-card">
+            <h3 class="h6 fw-bold">Posso mudar de plano depois?</h3>
+            <p class="muted mb-0">Sim. A ideia é permitir crescimento sem perder dados e sem complicação.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="faq-card">
+            <h3 class="h6 fw-bold">Serve para escritório pequeno?</h3>
+            <p class="muted mb-0">Sim. O Basic foi pensado para entrada e o Profissional para crescimento.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="faq-card">
+            <h3 class="h6 fw-bold">O que muda no Premium?</h3>
+            <p class="muted mb-0">Mais escala, mais automação, mais usuários e percepção real de produtividade.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="py-4 text-center">
+    <div class="container">
+      <p class="mb-0">SaaS Contábil • Estrutura inicial de landing para validação comercial</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

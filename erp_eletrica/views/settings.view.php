@@ -1,12 +1,14 @@
 <div class="mb-4">
     <ul class="nav nav-tabs border-0" id="settingsTabs" role="tablist">
+        <?php if ($_SESSION['is_matriz'] ?? false): ?>
         <li class="nav-item shadow-sm me-2 rounded-top bg-white">
             <button class="nav-link active fw-bold border-0 px-4 py-3" id="matriz-tab" data-bs-toggle="tab" data-bs-target="#matriz" type="button" role="tab">
                 <i class="fas fa-building me-2 text-primary"></i>Matriz & Central Fiscal
             </button>
         </li>
+        <?php endif; ?>
         <li class="nav-item shadow-sm rounded-top bg-white">
-            <button class="nav-link fw-bold border-0 px-4 py-3" id="unidades-tab" data-bs-toggle="tab" data-bs-target="#unidades" type="button" role="tab">
+            <button class="nav-link <?= !($_SESSION['is_matriz'] ?? false) ? 'active' : '' ?> fw-bold border-0 px-4 py-3" id="unidades-tab" data-bs-toggle="tab" data-bs-target="#unidades" type="button" role="tab">
                 <i class="fas fa-network-wired me-2 text-secondary"></i>Gestão de Unidades
             </button>
         </li>
@@ -15,8 +17,10 @@
 
 <div class="tab-content" id="settingsTabsContent">
     <!-- ABA 1: MATRIZ & CERTIFICADO -->
+    <?php if ($_SESSION['is_matriz'] ?? false): ?>
     <div class="tab-pane fade show active" id="matriz" role="tabpanel">
         <form action="configuracoes.php?action=saveMatriz" method="POST" enctype="multipart/form-data">
+            <!-- ... existing content ... -->
             <div class="row g-4">
                 <div class="col-lg-7">
                     <!-- Identidade -->
@@ -57,51 +61,52 @@
 
                 <div class="col-lg-5">
                     <!-- Certificado Digital Global -->
-                    <div class="card border-0 shadow-sm h-100 bg-dark text-white border-top border-4 border-warning">
-                        <div class="card-body p-4">
-                            <h6 class="fw-bold mb-3"><i class="fas fa-certificate me-2 text-warning"></i>Certificado Digital A1 (Concentrado)</h6>
-                            <p class="extra-small text-white-50 mb-4">Emita notas em todas as filiais com uma única assinatura. Configure o CSC global abaixo.</p>
-                            
+                    <div class="card border-0 shadow-lg h-100 rounded-4 overflow-hidden">
+                        <div class="bg-primary bg-gradient p-4 text-white">
+                            <h6 class="fw-bold mb-1"><i class="fas fa-certificate text-warning me-2"></i>Certificado Digital A1</h6>
+                            <p class="small text-white-50 mb-0">Emissão centralizada (Concentrador)</p>
+                        </div>
+                        <div class="card-body p-4 bg-white d-flex flex-column">
                             <?php if (!empty($sefaz['certificado_path'])): ?>
-                                <div class="alert bg-warning text-dark border-0 small d-flex align-items-center mb-4 py-2">
-                                    <i class="fas fa-check-circle me-3 fa-lg"></i>
+                                <div class="alert alert-success border-0 small d-flex align-items-center mb-4 py-3 rounded-3 shadow-sm">
+                                    <i class="fas fa-check-circle fa-2x me-3 text-success"></i>
                                     <div class="overflow-hidden">
-                                        <strong class="d-block small">Certificado Ativo</strong>
-                                        <span class="extra-small opacity-75 text-truncate d-block"><?= $sefaz['certificado_path'] ?></span>
+                                        <strong class="d-block text-dark">Certificado Ativo</strong>
+                                        <span class="text-muted d-block text-truncate extra-small"><?= $sefaz['certificado_path'] ?></span>
                                     </div>
                                 </div>
                             <?php endif; ?>
 
-                             <div class="mb-3">
-                                <label class="form-label extra-small text-white-50 mb-1">Arquivo do Certificado (.pfx)</label>
-                                <input type="file" name="certificado_pfx" class="form-control form-control-sm bg-secondary border-0 text-white">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-secondary mb-1">Arquivo do Certificado (.pfx)</label>
+                                <input type="file" name="certificado_pfx" class="form-control bg-light border-0 shadow-sm text-dark">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label extra-small text-white-50 mb-1">Senha do Certificado</label>
-                                <input type="password" name="certificado_senha" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $activeConfig['certificado_senha'] ?? '' ?>">
+                                <label class="form-label small fw-bold text-secondary mb-1">Senha do Certificado</label>
+                                <input type="password" name="certificado_senha" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['certificado_senha'] ?? '' ?>">
                             </div>
                             
                             <!-- CSC Global Fields -->
                             <div class="row g-2 mb-3">
                                 <div class="col-4">
-                                    <label class="form-label extra-small text-white-50 mb-1">ID Token CSC</label>
-                                    <input type="text" name="csc_id_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $activeConfig['csc_id'] ?? '' ?>" placeholder="000001">
+                                    <label class="form-label small fw-bold text-secondary mb-1">ID Token CSC</label>
+                                    <input type="text" name="csc_id_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['csc_id'] ?? '' ?>" placeholder="000001">
                                 </div>
                                 <div class="col-8">
-                                    <label class="form-label extra-small text-white-50 mb-1">Token CSC</label>
-                                    <input type="text" name="csc_token_global" class="form-control form-control-sm bg-secondary border-0 text-white" value="<?= $activeConfig['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
+                                    <label class="form-label small fw-bold text-secondary mb-1">Token CSC</label>
+                                    <input type="text" name="csc_token_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
                                 </div>
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label extra-small text-white-50 mb-1">Ambiente Sefaz</label>
-                                <select name="ambiente" class="form-select form-select-sm bg-secondary border-0 text-white">
-                                    <option value="homologacao" <?= (($activeConfig['ambiente'] ?? '') == 'homologacao' || ($activeConfig['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>Homologação (Testes)</option>
-                                    <option value="producao" <?= (($activeConfig['ambiente'] ?? '') == 'producao' || ($activeConfig['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>Produção (Real)</option>
+                                <label class="form-label small fw-bold text-secondary mb-1">Ambiente Sefaz</label>
+                                <select name="ambiente" class="form-select bg-light border-0 shadow-sm text-dark fw-bold">
+                                    <option value="homologacao" <?= (($sefaz['ambiente'] ?? '') == 'homologacao' || ($sefaz['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>🟡 Homolog. (Testes)</option>
+                                    <option value="producao" <?= (($sefaz['ambiente'] ?? '') == 'producao' || ($sefaz['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>🟢 Produção (Real)</option>
                                 </select>
                             </div>
 
-                            <button type="submit" class="btn btn-warning w-100 fw-bold py-2 mt-auto shadow">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold py-3 mt-auto shadow rounded-3">
                                 <i class="fas fa-save me-2"></i>Salvar Tudo
                             </button>
                         </div>
@@ -110,14 +115,17 @@
             </div>
         </form>
     </div>
+    <?php endif; ?>
 
     <!-- ABA 2: GESTÃO DE UNIDADES (FILIAIS) -->
-    <div class="tab-pane fade" id="unidades" role="tabpanel">
+    <div class="tab-pane fade <?= !($_SESSION['is_matriz'] ?? false) ? 'show active' : '' ?>" id="unidades" role="tabpanel">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="mb-0 fw-bold text-dark">Unidades Registradas</h5>
-            <button class="btn btn-primary btn-sm px-4 fw-bold" onclick="abrirModalFilial()">
-                <i class="fas fa-plus me-2"></i>Nova Unidade
-            </button>
+            <?php if ($_SESSION['is_matriz'] ?? false): ?>
+                <button class="btn btn-primary btn-sm px-4 fw-bold" onclick="abrirModalFilial()">
+                    <i class="fas fa-plus me-2"></i>Nova Unidade
+                </button>
+            <?php endif; ?>
         </div>
 
         <div class="row g-3">
@@ -134,17 +142,19 @@
                                 </span>
                             </div>
                             <h6 class="fw-bold mb-1"><?= $branch['nome'] ?></h6>
-                            <p class="extra-small text-muted mb-3"><?= $branch['cnpj'] ?></p>
+                            <p class="extra-small text-muted mb-3"><?= !empty($branch['cnpj']) ? $branch['cnpj'] : $matrizConfig['cnpj'] ?></p>
                             
                             <div class="extra-small text-muted border-top pt-2 mb-3">
                                 <i class="fas fa-map-marker-alt me-1"></i> <?= $branch['municipio'] ?> - <?= $branch['uf'] ?>
                             </div>
 
+                            <?php if ($_SESSION['is_matriz'] ?? false): ?>
                             <div class="d-grid">
                                 <button class="btn btn-outline-primary btn-sm fw-bold" onclick='abrirModalFilial(<?= json_encode($branch, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                     <i class="fas fa-edit me-2"></i>Gerenciar Dados
                                 </button>
                             </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -159,7 +169,7 @@
         <div class="modal-content border-0 shadow-lg">
             <form action="configuracoes.php?action=saveFilial" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="id" id="f_id">
-                <div class="modal-header bg-dark text-white py-3 border-0">
+                <div class="modal-header bg-primary text-white py-3 border-0">
                     <h6 class="modal-title fw-bold" id="modalTitle"><i class="fas fa-store me-2"></i>Dados da Unidade</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -167,8 +177,8 @@
                     <!-- Nav Tabs Inside Modal -->
                     <ul class="nav nav-pills mb-4 small fw-bold" id="modalTabs">
                         <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-basico" type="button">Básico & Endereço</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-fiscal" type="button">Emissão Fiscal (NFC-e)</button></li>
-                        <li class="nav-item"><button class="nav-link text-warning" data-bs-toggle="pill" data-bs-target="#tab-cert" type="button">Certificado Próprio</button></li>
+                        <li class="nav-item d-none"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-fiscal" type="button">Emissão Fiscal (NFC-e)</button></li>
+                        <li class="nav-item d-none"><button class="nav-link text-warning" data-bs-toggle="pill" data-bs-target="#tab-cert" type="button">Certificado Próprio</button></li>
                     </ul>
 
                     <div class="tab-content border-top pt-4">
@@ -378,16 +388,19 @@ function abrirModalFilial(data = null) {
             csc_id: <?= json_encode($matrizConfig['csc_id'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
             csc_token: <?= json_encode($matrizConfig['csc'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
             ambiente: <?= json_encode(($matrizConfig['ambiente'] ?? '') == '1' || ($matrizConfig['ambiente'] ?? '') == 'producao' ? '1' : '2') ?>,
-            senha: <?= json_encode($matrizConfig['certificado_senha'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+            senha: <?= json_encode($matrizConfig['certificado_senha'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+            cnpj: <?= json_encode($matrizConfig['cnpj'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+            razao_social: <?= json_encode($matrizConfig['razao_social'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+            ie: <?= json_encode($matrizConfig['inscricao_estadual'] ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
         };
 
         // Reset inputs
         document.getElementById('f_id').value = data ? (data.id || '') : '';
         document.getElementById('f_nome').value = data ? (data.nome || '') : '';
-        document.getElementById('f_cnpj').value = data ? (data.cnpj || '') : '';
-        document.getElementById('f_razao').value = data ? (data.razao_social || '') : '';
+        document.getElementById('f_cnpj').value = data ? (data.cnpj || '') : defaultSefaz.cnpj;
+        document.getElementById('f_razao').value = data ? (data.razao_social || '') : defaultSefaz.razao_social;
         document.getElementById('f_crt').value = data ? (data.crt || '1') : '1';
-        document.getElementById('f_ie').value = data ? (data.inscricao_estadual || '') : '';
+        document.getElementById('f_ie').value = data ? (data.inscricao_estadual || '') : defaultSefaz.ie;
         document.getElementById('f_cep').value = data ? (data.cep || '') : '';
         document.getElementById('f_municipio').value = data ? (data.municipio || '') : '';
         document.getElementById('f_ibge_mun').value = data ? (data.codigo_municipio || '') : '';
@@ -592,8 +605,8 @@ function atualizarCodigoUF() {
 
 /* Custom Overrides for Tabs */
 .nav-pills .nav-link.active {
-    background-color: #ffc107 !important;
-    color: #000 !important;
+    background-color: var(--primary-color) !important;
+    color: #fff !important;
 }
 .nav-pills .nav-link {
     color: #6c757d;

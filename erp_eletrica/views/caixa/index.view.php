@@ -6,11 +6,27 @@
         </div>
     <?php endif; ?>
     <?php if (isset($_GET['success'])): ?>
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i><?= htmlspecialchars($_GET['success']) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="this.parentElement.remove()"></button>
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-lg mb-4 d-flex align-items-center justify-content-between" role="alert" style="border-left: 5px solid #198754 !important;">
+            <div>
+                <i class="fas fa-check-circle me-2 fs-5"></i>
+                <span class="fw-bold"><?= htmlspecialchars($_GET['success']) ?></span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <?php if (isset($_GET['print_id'])): ?>
+                    <a href="caixa_imprimir.php?id=<?= (int)$_GET['print_id'] ?>" target="_blank" class="btn btn-dark btn-sm fw-bold px-3">
+                        <i class="fas fa-print me-2"></i>Imprimir Resumo Agora
+                    </a>
+                    <script>
+                        window.addEventListener('load', function() {
+                            window.open('caixa_imprimir.php?id=<?= (int)$_GET['print_id'] ?>', '_blank');
+                        });
+                    </script>
+                <?php endif; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="position: static; padding: 0.5rem;"></button>
+            </div>
         </div>
     <?php endif; ?>
+
 
     <div class="row mb-4 align-items-center">
         <div class="col">
@@ -115,8 +131,11 @@
                         <?php foreach ($caixas as $c): ?>
                         <tr>
                             <td class="ps-4">
-                                <span class="fw-bold"><?= $c['operador_nome'] ?? 'Operador' ?></span>
-                                <div class="text-muted small">Filial #<?= $c['filial_id'] ?></div>
+                                <span class="fw-bold"><?= htmlspecialchars($c['operador_nome'] ?? 'Operador') ?></span>
+                                <div class="text-muted small">
+                                    <i class="fas fa-store-alt me-1 opacity-50"></i>
+                                    <?= $c['filial_principal'] ? 'MATRIZ' : htmlspecialchars($c['filial_nome'] ?? 'Filial #' . $c['filial_id']) ?>
+                                </div>
                             </td>
                             <td><?= date('d/m/Y H:i', strtotime($c['data_abertura'])) ?></td>
                             <td><?= $c['data_fechamento'] ? date('d/m/Y H:i', strtotime($c['data_fechamento'])) : '-' ?></td>
@@ -136,6 +155,50 @@
                 </table>
             </div>
         </div>
+        
+        <!-- Pagination UI -->
+        <?php if (isset($pagination) && $pagination['totalPages'] > 1): 
+            $p = $pagination['page'];
+            $tp = $pagination['totalPages'];
+            $buildUrl = function($pageNum) {
+                $params = $_GET;
+                $params['page'] = $pageNum;
+                return '?' . http_build_query($params);
+            };
+        ?>
+        <div class="card-footer bg-white py-3 border-0 rounded-bottom d-flex align-items-center justify-content-between">
+            <span class="text-muted small">
+                Mostrando <strong><?= count($caixas) ?></strong> de <strong><?= $pagination['totalItems'] ?></strong> registros
+            </span>
+            <nav aria-label="Navegação da listagem">
+                <ul class="pagination pagination-sm mb-0 shadow-sm">
+                    <li class="page-item <?= ($p <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl(1) ?>"><i class="fas fa-angle-double-left"></i></a>
+                    </li>
+                    <li class="page-item <?= ($p <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl(max(1, $p - 1)) ?>"><i class="fas fa-angle-left"></i></a>
+                    </li>
+                    
+                    <?php 
+                        $start = max(1, $p - 2);
+                        $end = min($tp, $p + 2);
+                        for ($i = $start; $i <= $end; $i++): 
+                    ?>
+                        <li class="page-item <?= ($i == $p) ? 'active' : '' ?>">
+                            <a class="page-link px-3 <?= ($i == $p) ? 'fw-bold' : '' ?>" href="<?= $buildUrl($i) ?>"><?= $i ?></a>
+                        </li>
+                    <?php endfor; ?>
+
+                    <li class="page-item <?= ($p >= $tp) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl(min($tp, $p + 1)) ?>"><i class="fas fa-angle-right"></i></a>
+                    </li>
+                    <li class="page-item <?= ($p >= $tp) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= $buildUrl($tp) ?>"><i class="fas fa-angle-double-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -230,43 +293,152 @@
 
 <!-- Modal Fechar Caixa -->
 <div class="modal fade" id="modalFecharCaixa" tabindex="-1">
-    <div class="modal-dialog">
-        <form action="caixa.php?action=fechar" method="POST" class="modal-content">
+    <div class="modal-dialog modal-lg">
+        <form action="caixa.php?action=fechar" method="POST" class="modal-content border-0 shadow-lg">
             <input type="hidden" name="caixa_id" value="<?= $caixaAberto['id'] ?>">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Fechamento de Caixa</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-lock me-2"></i>Fechamento de Caixa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="row g-3 mb-4">
-                    <div class="col-6">
-                        <div class="bg-light p-3 rounded">
-                            <div class="text-muted small">Saldo Sistema</div>
-                            <div class="fw-bold">
-                                <?php 
-                                    $totalSistema = $caixaAberto['valor_abertura'] + $summary['dinheiro_em_gaveta'];
-                                    echo formatarMoeda($totalSistema);
-                                ?>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <div class="col-md-12">
+                        <div class="table-responsive rounded-3 border">
+                            <table class="table table-hover align-middle mb-0" id="tableFechamento">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-3">TIPO PAGAMENTOS</th>
+                                        <th class="text-center">SISTEMA</th>
+                                        <th class="text-center">INFORMADO</th>
+                                        <th class="pe-3 text-end">DIFERENÇA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php 
+                                    $metodos = ['A PRAZO', 'CARTAO', 'DINHEIRO', 'PIX'];
+                                    $breakdown = ($detailedSummary && is_array($detailedSummary['breakdown'])) ? $detailedSummary['breakdown'] : [];
+
+                                    foreach ($metodos as $metodo): 
+                                        $calculado = $breakdown[$metodo] ?? 0;
+                                    ?>
+
+                                    <tr>
+                                        <td class="ps-3 fw-bold text-secondary"><?= $metodo ?></td>
+                                        <td class="text-center text-muted">
+                                            R$ <span class="calc-val" data-metodo="<?= $metodo ?>"><?= number_format($calculado, 2, ',', '.') ?></span>
+                                            <input type="hidden" class="calc-raw" name="calculado[<?= $metodo ?>]" value="<?= $calculado ?>">
+                                        </td>
+                                        <td style="width: 150px;">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text bg-white border-end-0">R$</span>
+                                                <input type="number" step="0.01" value="0.00" name="breakdown[<?= $metodo ?>]" 
+                                                       class="form-control form-control-sm informed-input text-end border-start-0 fw-bold" 
+                                                       data-metodo="<?= $metodo ?>"
+                                                       oninput="calcularDiferenca('<?= $metodo ?>')">
+                                            </div>
+                                        </td>
+                                        <td class="pe-3 text-end fw-bold">
+                                            <span class="diff-val text-muted" id="diff-<?= str_replace(' ', '-', $metodo) ?>">R$ 0,00</span>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                                <tfoot class="bg-light fw-bold">
+                                    <tr>
+                                        <td class="ps-3">TOTAIS:</td>
+                                        <td class="text-center" id="total-sistema">R$ <?= number_format($detailedSummary['total_vendas'], 2, ',', '.') ?></td>
+                                        <td class="text-center" id="total-informado">R$ 0,00</td>
+                                        <td class="pe-3 text-end" id="total-diferenca">R$ 0,00</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="fw-bold mb-3"><i class="fas fa-cash-register me-2"></i>Resumo do Fluxo</h6>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted small">Valor Abertura:</span>
+                                    <span class="fw-bold"><?= formatarMoeda($caixaAberto['valor_abertura']) ?></span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted small">Suprimentos:</span>
+                                    <span class="text-success small fw-bold">+ <?= formatarMoeda($detailedSummary['suprimento']) ?></span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted small">Sangrias:</span>
+                                    <span class="text-danger small fw-bold">- <?= formatarMoeda($detailedSummary['sangria']) ?></span>
+                                </div>
+                                <hr class="my-2">
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-bold small">Saldo Final em Gaveta:</span>
+                                    <span class="text-primary fw-bold" id="label-saldo-final">
+                                        <?= formatarMoeda($caixaAberto['valor_abertura'] + $detailedSummary['saldo']) ?>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Valor Físico em Caixa (R$)</label>
-                    <input type="number" step="0.01" name="valor_fechamento" class="form-control form-control-lg text-center fw-bold" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Observações / Justificativa (Opcional)</label>
-                    <textarea name="justificativa" class="form-control" rows="3" placeholder="Ex: Diferença de troco, troca de turno..."></textarea>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">Observações / Justificativa</label>
+                            <textarea name="justificativa" class="form-control form-control-sm" rows="4" placeholder="Alguma observação sobre as diferenças ou motivo do fechamento..."></textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" class="btn btn-danger fw-bold">Confirmar Fechamento</button>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-link link-secondary text-decoration-none fw-bold" data-bs-toggle="modal" data-bs-target="#modalConfirmacaoRapida">Voltar</button>
+                <div class="ms-auto">
+                    <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger btn-lg px-4 fw-bold shadow-sm">Confirmar Fechamento</button>
+                </div>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+function calcularDiferenca(metodo) {
+    const input = document.querySelector(`input[name="breakdown[${metodo}]"]`);
+    const calcVal = parseFloat(document.querySelector(`input[name="calculado[${metodo}]"]`).value);
+    const infVal = parseFloat(input.value) || 0;
+    const diff = infVal - calcVal;
+    
+    const diffSpan = document.getElementById(`diff-${metodo.replace(/ /g, '-')}`);
+    diffSpan.innerText = 'R$ ' + diff.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+    
+    if (diff > 0) {
+        diffSpan.className = 'diff-val text-success';
+    } else if (diff < 0) {
+        diffSpan.className = 'diff-val text-danger';
+    } else {
+        diffSpan.className = 'diff-val text-muted';
+    }
+    
+    atualizarTotaisFechamento();
+}
+
+function atualizarTotaisFechamento() {
+    let totalInf = 0;
+    document.querySelectorAll('.informed-input').forEach(input => {
+        totalInf += parseFloat(input.value) || 0;
+    });
+    
+    const totalCalc = <?= (float)$detailedSummary['total_vendas'] ?>;
+    const totalDiff = totalInf - totalCalc;
+    
+    document.getElementById('total-informado').innerText = 'R$ ' + totalInf.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+    
+    const diffLabel = document.getElementById('total-diferenca');
+    diffLabel.innerText = 'R$ ' + totalDiff.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+    diffLabel.className = 'pe-3 text-end ' + (totalDiff >= 0 ? (totalDiff > 0 ? 'text-success' : 'text-muted') : 'text-danger');
+}
+</script>
+
 <?php endif; ?>
 
 <script>

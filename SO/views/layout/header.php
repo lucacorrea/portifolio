@@ -1,5 +1,15 @@
 <?php include_once __DIR__ . '/../../config/database.php'; ?>
-<?php include_once __DIR__ . '/../../config/functions.php'; ?>
+<?php 
+include_once __DIR__ . '/../../config/functions.php'; 
+
+$badge_pendentes = 0;
+if (isset($pdo)) {
+    try {
+        $stmt_badge = $pdo->query("SELECT COUNT(*) FROM oficios WHERE status = 'PENDENTE_ITENS'");
+        $badge_pendentes = (int)$stmt_badge->fetchColumn();
+    } catch (\Exception $e) {}
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -8,6 +18,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? htmlspecialchars($page_title) . ' | Prefeitura Municipal' : 'SGAO - Sistema de Gestão de Ofícios e Aquisições'; ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+    <link rel="shortcut icon" href="../../assets/img/logo-pmc.png" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -18,33 +30,111 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 1rem;
         position: relative;
     }
 
     /* LOGO */
+    .navbar-brand {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
     .navbar-brand img {
         height: 50px;
+        width: auto;
+        display: block;
+    }
+
+    /* USUÁRIO */
+    .navbar-user {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        flex-shrink: 0;
+        margin-left: 1rem;
+    }
+
+    .user-meta {
+        text-align: right;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .user-name {
+        font-weight: 800;
+    }
+
+    .user-role {
+        font-weight: 700;
+        opacity: .85;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #eef2f7;
+    }
+
+    /* MENU WRAP DESKTOP */
+    .navbar-menu {
+        margin-top: 14px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    .navbar-menu::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .navbar-menu::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 999px;
+    }
+
+    .navbar-menu::-webkit-scrollbar-track {
+        background: transparent;
     }
 
     /* MENU DESKTOP */
     .nav-list {
         display: flex;
-        gap: 15px;
+        align-items: stretch;
+        gap: 12px;
         list-style: none;
         margin: 0;
         padding: 0;
+        flex-wrap: nowrap;
+        min-width: max-content;
     }
 
     .nav-item {
         list-style: none;
+        flex: 0 0 auto;
     }
 
     .nav-link {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 10px;
         text-decoration: none;
         transition: .2s ease;
+        white-space: nowrap;
+        word-break: keep-all;
+        padding: 12px 16px;
+        min-height: 48px;
+    }
+
+    .nav-link i {
+        flex-shrink: 0;
     }
 
     /* ITEM ATIVO */
@@ -77,6 +167,27 @@
         display: none;
     }
 
+    /* ================= TABLET / DESKTOP MENOR ================= */
+    @media (min-width: 769px) and (max-width: 1200px) {
+        .nav-list {
+            gap: 10px;
+        }
+
+        .nav-link {
+            padding: 11px 13px;
+            font-size: 14px;
+        }
+
+        .navbar-user {
+            margin-left: .5rem;
+        }
+
+        .user-name,
+        .user-role {
+            font-size: 14px;
+        }
+    }
+
     /* ================= MOBILE ================= */
     @media (max-width: 768px) {
 
@@ -84,6 +195,7 @@
         .menu-toggle {
             display: block;
             z-index: 1001;
+            flex-shrink: 0;
         }
 
         /* CENTRALIZA LOGO */
@@ -93,7 +205,21 @@
             transform: translateX(-50%);
         }
 
-        /* ESCONDE MENU NORMAL */
+        .navbar-brand img {
+            height: 44px;
+        }
+
+        /* USUÁRIO */
+        .navbar-user {
+            margin-left: 0;
+            gap: .55rem;
+        }
+
+        .user-meta {
+            display: none;
+        }
+
+        /* MENU MOBILE */
         .navbar-menu {
             position: fixed;
             top: 0;
@@ -106,6 +232,8 @@
             transition: 0.3s;
             z-index: 1002;
             overflow-y: auto;
+            overflow-x: hidden;
+            margin-top: 0;
         }
 
         /* MENU ABERTO */
@@ -138,11 +266,19 @@
         .nav-list {
             flex-direction: column;
             gap: 10px;
+            min-width: 100%;
+        }
+
+        .nav-item {
+            width: 100%;
         }
 
         .nav-link {
+            display: flex;
+            width: 100%;
             padding: 10px 12px;
             border-radius: 10px;
+            white-space: normal;
         }
 
         /* OVERLAY ESCURO */
@@ -217,6 +353,7 @@
                         <ul class="nav-list">
 
                             <?php if (isset($_SESSION['user_id'])): ?>
+                                <?php $nivel = strtoupper(trim($_SESSION['nivel'] ?? '')); ?>
 
                                 <li class="nav-item <?php echo isActive(['dashboard.php', 'index.php']); ?>">
                                     <a href="dashboard.php" class="nav-link">
@@ -224,33 +361,49 @@
                                     </a>
                                 </li>
 
-                                <li class="nav-item <?php echo isActive(['oficios_novo.php']); ?>">
-                                    <a href="oficios_novo.php" class="nav-link">
-                                        <i class="fas fa-plus-circle"></i> Nova Solicitação
-                                    </a>
-                                </li>
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'FUNCIONARIO', 'CASA_CIVIL'])): ?>
+                                    <li class="nav-item <?php echo isActive(['oficios_novo.php']); ?>">
+                                        <a href="oficios_novo.php" class="nav-link">
+                                            <i class="fas fa-plus-circle"></i> Nova Solicitação
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
 
-                                <li class="nav-item <?php echo isActive(['oficios_lista.php', 'oficios_visualizar.php', 'oficios_editar.php']); ?>">
-                                    <a href="oficios_lista.php" class="nav-link">
-                                        <i class="fas fa-folder-open"></i> Lista de Solicitações
-                                    </a>
-                                </li>
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO', 'SEFAZ'])): ?>
+                                    <li class="nav-item <?php echo isActive(['oficios_lista.php', 'analisar_oficio.php', 'gerar_aquisicao.php', 'oficios_visualizar.php', 'oficios_editar.php', 'oficios_lista_sefaz.php', 'oficios_anexar.php', 'atribuir_itens.php']); ?>">
+                                        <a href="<?php echo $nivel === 'SEFAZ' ? 'oficios_lista_sefaz.php' : 'oficios_lista.php'; ?>" class="nav-link">
+                                            <i class="fas fa-folder-open"></i> Lista de Solicitações
+                                            <?php if ($badge_pendentes > 0): ?>
+                                                <span class="badge" style="background:#dc3545; color:#fff; font-size:0.7rem; padding: 2px 6px; border-radius:10px; margin-left:4px; vertical-align: middle;">
+                                                    <?php echo $badge_pendentes; ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
 
-                                <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php']); ?>">
-                                    <a href="aquisicoes_lista.php" class="nav-link">
-                                        <i class="fas fa-shopping-bag"></i> Aquisições
-                                    </a>
-                                </li>
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
+                                    <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicao_editar.php', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php']); ?>">
+                                        <a href="aquisicoes_lista.php" class="nav-link">
+                                            <i class="fas fa-shopping-bag"></i> Aquisições
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
 
-                                <?php if ($_SESSION['nivel'] === 'ADMIN' || $_SESSION['nivel'] === 'SUPORTE'): ?>
-                                    <li class="nav-item <?php echo isActive(['relatorios.php']); ?>">
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
+                                    <li class="nav-item <?php echo isActive(['relatorios.php', 'relatorios_oficios_secretaria.php', 'relatorios_oficio_detalhes.php']); ?>">
                                         <a href="relatorios.php" class="nav-link">
                                             <i class="fas fa-file-contract"></i> Relatórios
                                         </a>
                                     </li>
                                 <?php endif; ?>
 
-                                <?php if ($_SESSION['nivel'] === 'SUPORTE'): ?>
+                                <?php if ($nivel === 'SUPORTE'): ?>
+                                    <li class="nav-item <?php echo isActive(['usuarios.php']); ?>">
+                                        <a href="usuarios.php" class="nav-link">
+                                            <i class="fas fa-users-cog"></i> Gerenciar Usuários
+                                        </a>
+                                    </li>
                                     <li class="nav-item <?php echo isActive(['configuracoes.php']); ?>">
                                         <a href="configuracoes.php" class="nav-link">
                                             <i class="fas fa-tools"></i> Configurações
@@ -313,7 +466,6 @@
                     }
                 }
 
-                /* FECHAR AO CLICAR FORA */
                 document.addEventListener('click', function(event) {
                     const menu = document.getElementById('navbarMenu');
                     const button = document.querySelector('.menu-toggle');
@@ -330,7 +482,6 @@
                     }
                 });
 
-                /* FECHAR AO REDIMENSIONAR PARA DESKTOP */
                 window.addEventListener('resize', function() {
                     if (window.innerWidth > 768) {
                         closeMenu();

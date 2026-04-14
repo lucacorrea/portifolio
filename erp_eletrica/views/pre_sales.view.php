@@ -11,11 +11,11 @@
 <div class="row g-4 <?php echo !$caixaAberto ? 'opacity-50 select-none' : ''; ?>" style="<?php echo !$caixaAberto ? 'pointer-events: none;' : ''; ?>">
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-8 d-flex flex-column">
-        <div class="row g-4 mb-4">
-            <div class="col-md-9" style="z-index: 1025;">
-                <div class="card border-0 shadow-sm h-100">
+        <div class="row g-4 mb-4" style="position: relative; z-index: 1050; overflow: visible !important;">
+            <div class="col-md-9" style="position: relative; z-index: 1060; overflow: visible !important;">
+                <div class="card border-0 shadow-sm h-100" style="overflow: visible !important;">
                     <div class="card-body" style="overflow: visible !important;">
-                        <div class="position-relative">
+                        <div class="position-relative" style="overflow: visible !important;">
                             <div class="input-group input-group-lg shadow-sm rounded">
                                 <span class="input-group-text bg-white border-end-0 text-muted">
                                     <i class="fas fa-barcode"></i>
@@ -111,7 +111,7 @@
                     A pré-venda reserva o estoque temporariamente e gera um código para o caixa.
                 </div>
 
-                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-black mb-2" style="background-color: var(--erp-primary) !important;" onclick="generatePreSale()">
+                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-white mb-2" style="background-color: var(--erp-primary) !important;" onclick="generatePreSale()">
                     <i class="fas fa-check-circle me-2"></i>CONFIRMAR PRÉ-VENDA (F9)
                 </button>
                 <button class="btn btn-outline-danger w-100 py-2 fw-bold shadow-sm border-0" onclick="if(confirm('Tem certeza que deseja cancelar o orçamento atual e limpar a tela?')) location.reload()">

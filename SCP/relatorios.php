@@ -148,7 +148,9 @@ if (!isset($_SESSION['usuario_id'])) {
     </div>
     <nav class="nav-links">
         <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
+        <?php if ($_SESSION['usuario_perfil'] !== 'ACESSORES'): ?>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
+        <?php endif; ?>
         <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
         <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link active"><i class="fas fa-chart-line"></i> Relatórios</a>
@@ -195,6 +197,13 @@ if (!isset($_SESSION['usuario_id'])) {
                 <label>Analisador</label>
                 <i class="fas fa-user-tie"></i>
                 <select id="filtro-analisador" class="form-control">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Tipo de Processo</label>
+                <i class="fas fa-layer-group"></i>
+                <select id="filtro-tipo-processo-relatorio" class="form-control">
                     <option value="">Todos</option>
                 </select>
             </div>
@@ -285,11 +294,17 @@ if (!isset($_SESSION['usuario_id'])) {
     </div>
 </main>
 
-<script src="assets/js/script.js"></script>
+<script>
+    window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
+</script>
+<script src="assets/js/script.js?v=62"></script>
+</body>
+</html>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const inputMes = document.getElementById('filtro-mes');
         const selectAnalisador = document.getElementById('filtro-analisador');
+        const selectTipoProcessoRelatorio = document.getElementById('filtro-tipo-processo-relatorio');
         const btnFiltrar = document.getElementById('btn-filtrar');
         const btnExportar = document.getElementById('btn-exportar');
         
@@ -303,15 +318,26 @@ if (!isset($_SESSION['usuario_id'])) {
         const todosDados = await respList.json();
         const analisadoresUnicos = [...new Set(todosDados.map(p => p.analisador))].sort();
         analisadoresUnicos.forEach(a => {
+            if (a) {
+                const opt = document.createElement('option');
+                opt.value = a;
+                opt.textContent = a;
+                selectAnalisador.appendChild(opt);
+            }
+        });
+
+        const tiposUnicos = [...new Set(todosDados.map(p => p.tipo_processo || 'CIÊNCIA'))].sort();
+        tiposUnicos.forEach(t => {
             const opt = document.createElement('option');
-            opt.value = a;
-            opt.textContent = a;
-            selectAnalisador.appendChild(opt);
+            opt.value = t;
+            opt.textContent = t;
+            selectTipoProcessoRelatorio.appendChild(opt);
         });
 
         async function gerarRelatorio() {
             const mes = inputMes.value;
             const analisador = selectAnalisador.value;
+            const tipoProc = selectTipoProcessoRelatorio.value;
             
             if (!mes) return alert('Selecione um mês!');
 
@@ -323,6 +349,7 @@ if (!isset($_SESSION['usuario_id'])) {
                 
                 let match = (pMes === mes);
                 if (analisador) match = match && (p.analisador === analisador);
+                if (tipoProc) match = match && ((p.tipo_processo || 'CIÊNCIA') === tipoProc);
                 return match;
             });
 

@@ -1,0 +1,1 @@
+ALTER TABLE vendas ADD COLUMN taxa_cartao DECIMAL(10,2) DEFAULT 0.00;

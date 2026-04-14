@@ -93,9 +93,40 @@ class InventoryController extends BaseController {
         }
     }
 
+    public function movimentacoes() {
+        $movementModel = new \App\Models\StockMovement();
+        $productModel = new \App\Models\Product();
+
+        $filters = [
+            'desde' => $_GET['desde'] ?? date('Y-m-01'),
+            'ate' => $_GET['ate'] ?? date('Y-m-d'),
+            'produto_id' => $_GET['produto_id'] ?? ''
+        ];
+
+        $movements = $movementModel->getHistory($filters, 100);
+        $products = $productModel->all("nome ASC");
+
+        $this->render('inventory_movements', [
+            'movements' => $movements,
+            'products' => $products,
+            'filters' => $filters,
+            'title' => 'Histórico de Movimentações',
+            'pageTitle' => 'Movimentações de Estoque'
+        ]);
+    }
+
     private function sum($table, $expression, $filialCol = 'filial_id') {
         $db = \App\Config\Database::getInstance()->getConnection();
-        $filialId = $_SESSION['filial_id'] ?? null;
+        $filialId = $_SESSION['filial_id'] ?? 1;
+
+        if ($table === 'produtos') {
+            $expr = str_replace('quantidade', 'COALESCE(ef.quantidade, 0)', $expression);
+            $sql = "SELECT SUM($expr) FROM produtos p LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$filialId]);
+            return $stmt->fetchColumn() ?: 0;
+        }
+
         $isMatriz = $_SESSION['is_matriz'] ?? false;
         $where = (!$isMatriz && $filialId) ? " WHERE $filialCol = $filialId" : "";
         return $db->query("SELECT SUM($expression) FROM $table $where")->fetchColumn() ?: 0;
@@ -103,7 +134,14 @@ class InventoryController extends BaseController {
 
     private function count($table, $condition = "1=1", $filialCol = 'filial_id') {
         $db = \App\Config\Database::getInstance()->getConnection();
-        $filialId = $_SESSION['filial_id'] ?? null;
+        $filialId = $_SESSION['filial_id'] ?? 1;
+
+        if ($table === 'produtos') {
+             // Se for produtos, geralmente queremos todos os produtos do catálogo (se centralizado)
+             // ou apenas os que têm estoque (se for filtro de estoque). 
+             // Mas aqui 'count' costuma ser usado para estatísticas gerais.
+        }
+
         $isMatriz = $_SESSION['is_matriz'] ?? false;
         $whereFilial = (!$isMatriz && $filialId) ? " AND $filialCol = $filialId" : "";
         return $db->query("SELECT COUNT(*) FROM $table WHERE ($condition) $whereFilial")->fetchColumn() ?: 0;

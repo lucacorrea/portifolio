@@ -20,22 +20,29 @@ class SefazConsultaService extends BaseService {
     }
 
     private function loadConfig() {
-        $stmt = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
-        $this->config = $stmt->fetch();
-        if (!$this->config) throw new Exception("Configuração SEFAZ Global não encontrada.");
-        if (empty($this->config['certificado_path'])) throw new Exception("Certificado A1 não configurado.");
+        // Encontra os dados fiscais via NfceService (que já possui a lógica de fallback Matriz)
+        $nfceService = new \App\Services\NfceService();
         
-        // Ensure password is raw
-        if (!empty($this->config['certificado_senha'])) {
-             $this->config['certificado_senha_raw'] = $this->config['certificado_senha'];
-        }
+        // Busca a configuração da Matriz (principal) para ser a base global
+        $stmtMatriz = $this->db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1");
+        $matriz = $stmtMatriz->fetch();
+        $matrizId = $matriz['id'] ?? 1;
+
+        $this->config = $nfceService->getConfig($matrizId);
+        
+        if (!$this->config['certificado_path']) throw new Exception("Certificado A1 (Global) não configurado ou não encontrado na Matriz.");
+        
+        // Password handling
+        $this->config['certificado_senha_raw'] = $this->config['certificado_senha'] ?? '';
     }
 
+
     /**
-     * Realiza a manifestação do destinatário (Ciência da Operação)
+     * Realiza a manifestação do destinatário
+     * tpEvento: 210200 (Confirmacao), 210210 (Ciencia), 210220 (Desconhecimento), 210240 (Operacao nao Realizada)
      */
-    public function manifestarNota($cnpj, $chave) {
-        $xml = $this->gerarXmlEventoManifesto($cnpj, $chave);
+    public function manifestarNota($cnpj, $chave, $tpEvento = '210210') {
+        $xml = $this->gerarXmlEventoManifesto($cnpj, $chave, $tpEvento);
         
         $signer = new \App\Services\SefazSigner();
         $pfxPath = dirname(__DIR__, 3) . "/storage/certificados/" . $this->config['certificado_path'];
@@ -51,99 +58,139 @@ class SefazConsultaService extends BaseService {
         return $this->processarRetornoEvento($responseXml);
     }
 
-    private function gerarXmlEventoManifesto($cnpj, $chave) {
-        $dom = new DOMDocument('1.0', 'UTF-8');
-        $envEvento = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', 'envEvento');
-        $envEvento->setAttribute('versao', '1.00');
-        $dom->appendChild($envEvento);
+    private function gerarXmlEventoManifesto($cnpj, $chave, $tpEvento) {
+        $descEvento = [
+            '210200' => 'Confirmacao da Operacao',
+            '210210' => 'Ciencia da Operacao',
+            '210220' => 'Desconhecimento da Operacao',
+            '210240' => 'Operacao nao Realizada'
+        ][$tpEvento] ?? 'Ciencia da Operacao';
+
+        $tpAmb = ($this->config['ambiente'] == 'producao' ? '1' : '2');
         
-        $envEvento->appendChild($dom->createElement('idLote', '1'));
-        
-        $evento = $dom->createElement('evento');
-        $evento->setAttribute('versao', '1.00');
-        $envEvento->appendChild($evento);
-        
-        $infEvento = $dom->createElement('infEvento');
-        $id = 'ID210210' . $chave . '01';
-        $infEvento->setAttribute('Id', $id);
-        $evento->appendChild($infEvento);
-        
-        $infEvento->appendChild($dom->createElement('cOrgao', '91')); // Ambiente Nacional
-        $infEvento->appendChild($dom->createElement('tpAmb', ($this->config['ambiente'] == 'producao' ? '1' : '2')));
-        $infEvento->appendChild($dom->createElement('CNPJ', preg_replace('/[^0-9]/', '', $cnpj)));
-        $infEvento->appendChild($dom->createElement('chNFe', $chave));
-        $infEvento->appendChild($dom->createElement('dhEvento', date('Y-m-d\TH:i:sP')));
-        $infEvento->appendChild($dom->createElement('tpEvento', '210210')); // Ciência da Operação
-        $infEvento->appendChild($dom->createElement('nSeqEvento', '1'));
-        $infEvento->appendChild($dom->createElement('verEvento', '1.00'));
-        
-        $detEvento = $dom->createElement('detEvento');
-        $detEvento->setAttribute('versao', '1.00');
-        $infEvento->appendChild($detEvento);
-        $detEvento->appendChild($dom->createElement('descEvento', 'Ciencia da Operacao'));
-        
-        return $dom->saveXML();
+        // 🕒 Fuso Horário: SEFAZ Ambiente Nacional geralmente usa Brasília (-03:00)
+        $tz = new \DateTimeZone('America/Sao_Paulo');
+        $dhEvento = (new \DateTime('now', $tz))->format('Y-m-d\TH:i:sP');
+        $cnpjLimpo = preg_replace('/[^0-9]/', '', $cnpj);
+        $id = 'ID' . $tpEvento . $chave . '01';
+
+        // 📝 Template XML compacto
+        // CORREÇÕES: 
+        // 1. Tag infEvento: Removido atributo versao (não permitido pelo schema nesta tag específica)
+        // 2. cOrgao dinâmico foi revertido para 91 (Ambiente Nacional), o qual é obrigatório.
+        return '<?xml version="1.0" encoding="UTF-8"?><envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00"><idLote>1</idLote><evento versao="1.00"><infEvento Id="' . $id . '"><cOrgao>91</cOrgao><tpAmb>' . $tpAmb . '</tpAmb><CNPJ>' . $cnpjLimpo . '</CNPJ><chNFe>' . $chave . '</chNFe><dhEvento>' . $dhEvento . '</dhEvento><tpEvento>' . $tpEvento . '</tpEvento><nSeqEvento>1</nSeqEvento><verEvento>1.00</verEvento><detEvento versao="1.00"><descEvento>' . $descEvento . '</descEvento></detEvento></infEvento></evento></envEvento>';
     }
 
     /**
-     * Consulta as NF-e destinadas via NFeDistribuicaoDFe
+     * Consulta as NF-e destinadas via NFeDistribuicaoDFe em loop até esgotar notas
      */
     public function consultarNotas($cnpjDestinario, $ultNSU = null) {
         $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
         if (empty($cnpj) || strlen($cnpj) !== 14) {
-            throw new Exception("CNPJ inválido ou não configurado (" . htmlspecialchars($cnpjDestinario) . "). Verifique os dados da sua filial.");
-        }
-        
-        $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2; 
-        
-        // Se ultNSU não for fornecido, buscar das configurações
-        if ($ultNSU === null) {
-            $key = $ambiente == 1 ? 'nfe_last_nsu' : 'nfe_last_nsu_homologacao';
-            $stmt = $this->db->prepare("SELECT valor FROM configuracoes WHERE chave = ?");
-            $stmt->execute([$key]);
-            $ultNSU = $stmt->fetchColumn() ?: '0';
+            throw new Exception("CNPJ inválido ou não configurado (" . htmlspecialchars($cnpjDestinario) . ").");
         }
 
-        $allDocs = [];
+        $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2;
+        $key = $ambiente == 1 ? 'nfe_last_nsu' : 'nfe_last_nsu_homologacao';
+
+        // ✅ NSU correto se não fornecido
+        if ($ultNSU === null || $ultNSU === '0') {
+            $stmt = $this->db->prepare("SELECT valor FROM configuracoes WHERE chave = ?");
+            $stmt->execute([$key]);
+            $ultNSU = $stmt->fetchColumn();
+            if (!$ultNSU || $ultNSU === '0') {
+                $ultNSU = '000000000000000';
+            }
+        }
+
+        $allDocumentos = [];
+        $loops = 0;
+        $maxLoops = 20; // Limite de segurança para evitar timeout excessivo
         $currentNSU = $ultNSU;
-        $maxIterations = 10; // Evitar loop infinito se houver erro
-        
+        $globalMaxNSU = '000000000000000';
+
+        $this->lastSaveError = null;
+
         do {
+            $loops++;
             $xml_soap = $this->gerarXmlDistDfe($cnpj, $currentNSU, $ambiente);
             $responseXml = $this->comunicarSefaz($xml_soap);
             $resultado = $this->processarRetorno($responseXml);
+
+            $documentos = $resultado['documentos'] ?? [];
+            $novoUltNSU = $resultado['ultNSU'] ?? $currentNSU;
+            $maxNSU     = $resultado['maxNSU'] ?? $currentNSU;
             
-            if (!empty($resultado['documentos'])) {
-                $allDocs = array_merge($allDocs, $resultado['documentos']);
-                
-                // Salvar imediatamente no banco para não perder dados se a próxima iteração falhar
-                $this->salvarNotasCache($_SESSION['filial_id'] ?? 1, $resultado['documentos']);
-                
-                // Auto-manifestar notas que vieram apenas como resumo para permitir download futuro do XML completo
-                foreach ($resultado['documentos'] as $doc) {
+            if ($maxNSU > $globalMaxNSU) $globalMaxNSU = $maxNSU;
+
+            if (!empty($documentos)) {
+                $filialId = $_SESSION['filial_id'] ?? 1;
+                $this->salvarNotasCache($filialId, $documentos);
+                $allDocumentos = array_merge($allDocumentos, $documentos);
+
+                // Auto-manifestação
+                foreach ($documentos as $doc) {
                     if (strpos($doc['xml'], '<resNFe') !== false) {
                         try {
                             $this->manifestarNota($cnpj, $doc['chave']);
-                        } catch (Exception $me) {
-                            error_log("Erro ao auto-manifestar nota " . $doc['chave'] . ": " . $me->getMessage());
+                        } catch (Exception $e) {
+                            error_log("Erro ao manifestar nota " . $doc['chave'] . ": " . $e->getMessage());
                         }
                     }
                 }
             }
-            
-            $currentNSU = $resultado['ultNSU'];
-            $maxNSU = $resultado['maxNSU'];
-            
-            // Atualizar o último NSU nas configurações
-            $key = $ambiente == 1 ? 'nfe_last_nsu' : 'nfe_last_nsu_homologacao';
-            $stmt = $this->db->prepare("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
-            $stmt->execute([$key, $currentNSU, $currentNSU]);
-            
-            $maxIterations--;
-        } while ($currentNSU < $maxNSU && $maxIterations > 0);
 
-        return ['documentos' => $allDocs, 'ultNSU' => $currentNSU, 'maxNSU' => $maxNSU];
+            // 🔄 Atualizar NSU no banco imediatamente após cada lote de 50
+            if ($novoUltNSU > $currentNSU) {
+                $stmt = $this->db->prepare("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
+                $stmt->execute([$key, $novoUltNSU, $novoUltNSU]);
+                $currentNSU = $novoUltNSU;
+            } else {
+                // Se o NSU não avançou, paramos o loop para evitar loop infinito
+                break;
+            }
+
+            // Se for cStat 137 (nenhum documento), o status vem no retorno. 
+            // processarRetorno já lança exceção se for erro, mas se for 137 ele deve parar.
+            // Aqui assumimos que se documentos vier vazio ou status for 137, paramos.
+            if (empty($documentos) || $resultado['status'] == '137') {
+                break;
+            }
+
+        } while ($currentNSU < $maxNSU && $loops < $maxLoops);
+
+        return [
+            'documentos' => $allDocumentos,
+            'count' => count($allDocumentos),
+            'ultNSU' => $currentNSU,
+            'maxNSU' => $globalMaxNSU,
+            'loops' => $loops,
+            'db_error' => $this->lastSaveError
+        ];
     }
+
+    /**
+     * Consulta uma NFe específica pela Chave de Acesso (Active Fetch)
+     * Utilizado quando temos apenas o resumo e precisamos do XML completo agora.
+     */
+    public function consultarPorChave($cnpjDestinario, $chave) {
+        $cnpj = preg_replace('/[^0-9]/', '', $cnpjDestinario);
+        $ambiente = $this->config['ambiente'] == 'producao' ? 1 : 2;
+
+        $xml_soap = $this->gerarXmlDistDfePorChave($cnpj, $chave, $ambiente);
+        $responseXml = $this->comunicarSefaz($xml_soap);
+        $resultado = $this->processarRetorno($responseXml);
+
+        $documentos = $resultado['documentos'] ?? [];
+        if (!empty($documentos)) {
+            $filialId = $_SESSION['filial_id'] ?? 1;
+            $this->salvarNotasCache($filialId, $documentos);
+            return $documentos[0]; // Retorna a nota processada (agora com XML completo se disponível)
+        }
+
+        return null;
+    }
+    
 
     private function gerarXmlDistDfe($cnpj, $ultNSU, $ambiente) {
         // Encontrar UF da filial baseada no CNPJ
@@ -170,6 +217,31 @@ class SefazConsultaService extends BaseService {
         $dist = $xml->createElementNS($ns, 'distNSU');
         $dist->appendChild($xml->createElementNS($ns, 'ultNSU', str_pad($ultNSU, 15, '0', STR_PAD_LEFT)));
         $distDFeInt->appendChild($dist);
+
+        return $xml->saveXML($xml->documentElement);
+    }
+
+    private function gerarXmlDistDfePorChave($cnpj, $chave, $ambiente) {
+        $stmt = $this->db->prepare("SELECT uf FROM filiais WHERE cnpj LIKE ? OR cnpj = ? LIMIT 1");
+        $cnpjLimpo = preg_replace('/\D/', '', $cnpj);
+        $cnpjFmt = substr($cnpjLimpo, 0, 2) . '.' . substr($cnpjLimpo, 2, 3) . '.' . substr($cnpjLimpo, 5, 3) . '/' . substr($cnpjLimpo, 8, 4) . '-' . substr($cnpjLimpo, 12, 2);
+        $stmt->execute(['%'.$cnpjLimpo.'%', $cnpjFmt]);
+        $siglaUf = $stmt->fetchColumn() ?: 'SP';
+        $cUF = $this->ufCodes[strtoupper($siglaUf)] ?? '35';
+
+        $xml = new DOMDocument('1.0', 'UTF-8');
+        $ns = 'http://www.portalfiscal.inf.br/nfe';
+        $distDFeInt = $xml->createElementNS($ns, 'distDFeInt');
+        $distDFeInt->setAttribute('versao', '1.01');
+        $xml->appendChild($distDFeInt);
+        
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'tpAmb', $ambiente));
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'cUFAutor', $cUF)); 
+        $distDFeInt->appendChild($xml->createElementNS($ns, 'CNPJ', $cnpjLimpo));
+        
+        $cons = $xml->createElementNS($ns, 'consChNFe');
+        $cons->appendChild($xml->createElementNS($ns, 'chNFe', $chave));
+        $distDFeInt->appendChild($cons);
 
         return $xml->saveXML($xml->documentElement);
     }
@@ -266,44 +338,139 @@ class SefazConsultaService extends BaseService {
     }
 
     private function processarRetornoEvento($xmlStr) {
+        if (empty($xmlStr)) throw new Exception("SEFAZ retornou uma resposta vazia no evento.");
+
+        // 🧹 Limpeza agressiva: remove namespaces e prefixos para evitar problemas de parsing
+        $xmlStr = preg_replace('/xmlns="[^"]+"/', '', $xmlStr);
+        $xmlStr = preg_replace('/xmlns:[^=]+="[^"]+"/', '', $xmlStr);
         $cleanXml = preg_replace('/(<\/?)(\w+):([^>]*>)/', '$1$3', $xmlStr);
-        $xml = simplexml_load_string($cleanXml);
         
-        $ret = $xml->xpath('//retEnvEvento');
-        if (empty($ret)) throw new Exception("Resposta de evento inválida da SEFAZ.");
+        $xml = @simplexml_load_string($cleanXml);
         
-        $cStat = (string)$ret[0]->retEvento->infEvento->cStat;
-        $xMotivo = (string)$ret[0]->retEvento->infEvento->xMotivo;
-        
-        if ($cStat != '135' && $cStat != '136') {
+        if (!$xml) throw new Exception("Falha ao ler XML de retorno da SEFAZ. RAW: " . substr(strip_tags($xmlStr), 0, 50));
+
+        // 1. Tentar encontrar o lote (retEnvEvento)
+        $lote = $xml->xpath('//retEnvEvento');
+        if (!empty($lote)) {
+            $root = $lote[0];
+            $cStatLote = (string)$root->cStat;
+            $xMotivoLote = (string)$root->xMotivo;
+
+            // Se o lote foi rejeitado (cStat != 128)
+            if ($cStatLote != '128') {
+                throw new Exception("Lote rejeitado pela SEFAZ: [$cStatLote] $xMotivoLote");
+            }
+
+            // Se o lote está OK, buscar o retorno do evento dentro dele
+            if (isset($root->retEvento)) {
+                $cStatEv = (string)$root->retEvento->infEvento->cStat;
+                $xMotivoEv = (string)$root->retEvento->infEvento->xMotivo;
+                
+                if ($cStatEv == '135' || $cStatEv == '136' || $cStatEv == '573') return true;
+                throw new Exception("Evento rejeitado: [$cStatEv] $xMotivoEv");
+            }
+        }
+
+        // 2. Fallback: Tentar encontrar retEvento diretamente (algumas SEFAZ respondem assim)
+        $eventoDirect = $xml->xpath('//retEvento');
+        if (!empty($eventoDirect)) {
+            $cStat = (string)$eventoDirect[0]->infEvento->cStat;
+            $xMotivo = (string)$eventoDirect[0]->infEvento->xMotivo;
+            if ($cStat == '135' || $cStat == '136' || $cStat == '573') return true;
             throw new Exception("Falha na manifestação: [$cStat] $xMotivo");
         }
-        
-        return true;
+
+        // 3. Fallback Final: Procurar qualquer cStat e xMotivo se nada acima funcionou
+        $anyStat = $xml->xpath('//cStat');
+        $anyMotivo = $xml->xpath('//xMotivo');
+        if (!empty($anyStat)) {
+            $stat = (string)$anyStat[0];
+            $motivo = !empty($anyMotivo) ? (string)$anyMotivo[0] : "Erro desconhecido";
+            throw new Exception("SEFAZ retornou status inesperado: [$stat] $motivo");
+        }
+
+        $debugRaw = substr(strip_tags($xmlStr), 0, 50);
+        throw new Exception("Resposta de evento da SEFAZ não contém dados de processamento. Início da resposta: " . $debugRaw);
     }
 
     public function salvarNotasCache($filialId, $documentos) {
+        $saved = 0;
+        $skipped = 0;
+        
+        $this->ensureTableSchema();
+        
         foreach ($documentos as $doc) {
             try {
+                $cnpjLimpo = preg_replace('/\D/', '', $doc['cnpj'] ?? '');
+                if (empty($cnpjLimpo)) $cnpjLimpo = '00000000000000';
+                
+                $dataEmissao = !empty($doc['data']) ? date('Y-m-d H:i:s', strtotime($doc['data'])) : date('Y-m-d H:i:s');
+                if ($dataEmissao === '1970-01-01 00:00:00') $dataEmissao = date('Y-m-d H:i:s');
+                
+                // Usar INSERT ... ON DUPLICATE KEY UPDATE para garantir que não estamos falhando por duplicidade de forma invisível
+                // E também para atualizar o conteúdo se necessário (ex: pegar XML completo após resumo)
                 $stmt = $this->db->prepare("
                     INSERT INTO nfe_importadas (filial_id, chave_acesso, fornecedor_cnpj, fornecedor_nome, numero_nota, data_emissao, valor_total, xml, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
+                    ON DUPLICATE KEY UPDATE 
+                        xml = IF(LENGTH(xml) < ?, ?, xml),
+                        data_emissao = ?,
+                        valor_total = ?
                 ");
+                $xmlVal = $doc['xml'] ?? '';
                 $stmt->execute([
                     $filialId,
-                    $doc['chave'],
-                    $doc['cnpj'],
-                    $doc['nome'],
-                    $doc['numero'],
-                    date('Y-m-d H:i:s', strtotime($doc['data'])),
-                    $doc['valor'],
-                    $doc['xml']
+                    $doc['chave'] ?? '',
+                    $cnpjLimpo,
+                    $doc['nome'] ?? 'Não identificado',
+                    $doc['numero'] ?? '0',
+                    $dataEmissao,
+                    $doc['valor'] ?? 0,
+                    $xmlVal,
+                    // Parâmetros do UPDATE
+                    strlen($xmlVal),
+                    $xmlVal,
+                    $dataEmissao,
+                    $doc['valor'] ?? 0
                 ]);
-                $this->logAction('Nota SEFAZ Listada', 'nfe_importadas', $this->db->lastInsertId(), null, $doc['chave']);
-            } catch (Exception $e) {
-                // Provavelmente duplicidade (chave_acesso UNIQUE), ignoramos silenciosamente
+
+                if ($stmt->rowCount() > 0) {
+                    $saved++;
+                } else {
+                    $skipped++;
+                }
+            } catch (\Exception $e) {
+                if (!$this->lastSaveError) {
+                    $this->lastSaveError = "DB ERROR: " . $e->getMessage() . " / SQLSTATE: " . (is_callable([$e, 'getCode']) ? $e->getCode() : '');
+                }
+                error_log("SEFAZ SAVE ERROR for chave " . ($doc['chave'] ?? 'unknown') . ": " . $e->getMessage());
+                $skipped++;
                 continue;
             }
         }
+        error_log("SEFAZ salvarNotasCache: filial=$filialId, total=" . count($documentos) . ", saved=$saved, skipped=$skipped");
+        return $saved;
     }
+    
+    /**
+     * Garante que a tabela nfe_importadas tem a estrutura atualizada:
+     * - UNIQUE na chave_nfe (necessário para INSERT IGNORE funcionar)
+     * - fornecedor_cnpj com tamanho adequado
+     */
+    private function ensureTableSchema() {
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+        
+        try {
+            // Expandir fornecedor_cnpj para VARCHAR(20) caso ainda esteja em VARCHAR(14)
+            $this->db->exec("ALTER TABLE nfe_importadas MODIFY COLUMN fornecedor_cnpj VARCHAR(20) NOT NULL DEFAULT ''");
+        } catch (\Exception $e) { /* já está OK */ }
+        
+        try {
+            // Adicionar UNIQUE na chave_acesso se não existir
+            $this->db->exec("ALTER TABLE nfe_importadas ADD UNIQUE INDEX uk_chave_acesso (chave_acesso)");
+        } catch (\Exception $e) { /* já existe */ }
+    }
+
 }

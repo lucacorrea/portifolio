@@ -13,14 +13,41 @@ function login_check() {
 }
 
 function admin_check() {
-    if ($_SESSION['nivel'] !== 'ADMIN' && $_SESSION['nivel'] !== 'SUPORTE') {
+    $nivel = strtoupper($_SESSION['nivel'] ?? '');
+    if ($nivel !== 'ADMIN' && $nivel !== 'SUPORTE') {
+        header("Location: dashboard.php?error=access_denied");
+        exit();
+    }
+}
+
+function view_check() {
+    $nivel = strtoupper($_SESSION['nivel'] ?? '');
+    $allowed = ['ADMIN', 'SUPORTE', 'SECRETARIO', 'CASA_CIVIL', 'SEFAZ'];
+    if (!in_array($nivel, $allowed)) {
+        header("Location: dashboard.php?error=access_denied");
+        exit();
+    }
+}
+
+function casa_civil_check() {
+    $nivel = strtoupper($_SESSION['nivel'] ?? '');
+    if ($nivel !== 'CASA_CIVIL' && $nivel !== 'ADMIN' && $nivel !== 'SUPORTE') {
+        header("Location: dashboard.php?error=access_denied");
+        exit();
+    }
+}
+
+function sefaz_check() {
+    $nivel = strtoupper($_SESSION['nivel'] ?? '');
+    if ($nivel !== 'SEFAZ' && $nivel !== 'ADMIN' && $nivel !== 'SUPORTE') {
         header("Location: dashboard.php?error=access_denied");
         exit();
     }
 }
 
 function suporte_check() {
-    if ($_SESSION['nivel'] !== 'SUPORTE') {
+    $nivel = strtoupper($_SESSION['nivel'] ?? '');
+    if ($nivel !== 'SUPORTE') {
         header("Location: dashboard.php?error=access_denied");
         exit();
     }

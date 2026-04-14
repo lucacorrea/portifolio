@@ -3,59 +3,117 @@ require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
 
+$nivel_user = strtoupper(trim($_SESSION['nivel'] ?? ''));
+
 $page_title = "Cadastrar Nova Solicitação";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $secretaria_id = $_POST['secretaria_id'];
-    $justificativa = trim($_POST['justificativa']);
-    $produtos = $_POST['produtos'] ?? [];
+    $secretaria_id    = $_POST['secretaria_id'] ?? '';
+    $justificativa    = trim($_POST['justificativa'] ?? '');
+    $valor_orcamento  = !empty($_POST['valor_orcamento']) ? str_replace(',', '.', $_POST['valor_orcamento']) : null;
+    $numero_manual    = isset($_POST['numero_oficio']) ? mb_strtoupper(trim($_POST['numero_oficio']), 'UTF-8') : null;
+    $criado_em_device = trim($_POST['criado_em_device'] ?? '');
 
-    // Validação de Justificativa (Obrigatória)
+    // Validação de Campos Obrigatórios
     if (empty($justificativa)) {
         $error = "O campo Justificativa é obrigatório.";
-    } elseif (!empty($produtos)) {
+    } elseif (empty($numero_manual)) {
+        $error = "O número do ofício é obrigatório.";
+    } elseif (empty($secretaria_id)) {
+        $error = "Selecione a secretaria solicitante.";
+    } elseif (empty($criado_em_device)) {
+        $error = "Não foi possível capturar a data e hora do dispositivo. Atualize a página e tente novamente.";
+    } else {
         try {
             $pdo->beginTransaction();
 
-            // Tratamento de Upload de Orçamento (Opcional)
-            $arquivo_orcamento = null;
-            if (isset($_FILES['orcamento']) && $_FILES['orcamento']['error'] === UPLOAD_ERR_OK) {
-                $file_tmp = $_FILES['orcamento']['tmp_name'];
-                $file_name = $_FILES['orcamento']['name'];
-                $ext = pathinfo($file_name, PATHINFO_EXTENSION);
-
-                // Gerar nome único para o arquivo
-                $new_name = "ORC_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
-                $upload_dir = "assets/uploads/orcamentos/";
-
-                if (move_uploaded_file($file_tmp, $upload_dir . $new_name)) {
-                    $arquivo_orcamento = $upload_dir . $new_name;
-                }
+            // Tratamento do horário vindo do dispositivo
+            $dt = DateTime::createFromFormat('Y-m-d H:i:s', $criado_em_device);
+            if (!$dt || $dt->format('Y-m-d H:i:s') !== $criado_em_device) {
+                throw new Exception("Data/hora do dispositivo inválida.");
             }
 
-            $numero = generate_oficio_number($pdo);
-            $stmt = $pdo->prepare("INSERT INTO oficios (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$numero, $secretaria_id, $justificativa, $_SESSION['user_id'], $arquivo_orcamento]);
+            // Função auxiliar para upload múltiplo
+            function handleMultipleUploads($filesKey, $targetDir, $prefix, $tipo, $oficio_id, $pdo) {
+                if (!isset($_FILES[$filesKey]) || empty($_FILES[$filesKey]['name'][0])) return null;
+
+                $first_file_path = null;
+                $files = $_FILES[$filesKey];
+                
+                if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+
+                for ($i = 0; $i < count($files['name']); $i++) {
+                    if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                        $file_tmp  = $files['tmp_name'][$i];
+                        $file_name = $files['name'][$i];
+                        $ext       = pathinfo($file_name, PATHINFO_EXTENSION);
+                        $new_name   = $prefix . "_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
+                        
+                        if (move_uploaded_file($file_tmp, $targetDir . $new_name)) {
+                            $caminho = $targetDir . $new_name;
+                            if ($i === 0) $first_file_path = $caminho;
+
+                            // Inserir na nova tabela de anexos
+                            $stmt_anexo = $pdo->prepare("INSERT INTO oficio_anexos (oficio_id, caminho, tipo, nome_original) VALUES (?, ?, ?, ?)");
+                            $stmt_anexo->execute([$oficio_id, $caminho, $tipo, $file_name]);
+                        }
+                    }
+                }
+                return $first_file_path;
+            }
+
+            // Verificar se o número do ofício já existe
+            $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ?");
+            $stmt_check->execute([$numero_manual]);
+            if ($stmt_check->fetch()) {
+                throw new Exception("O número de ofício '$numero_manual' já está cadastrado.");
+            }
+
+            // Toda nova solicitação agora entra como PENDENTE_ITENS
+            $status = 'PENDENTE_ITENS';
+
+            $stmt = $pdo->prepare("
+                INSERT INTO oficios 
+                    (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento, arquivo_oficio, valor_orcamento, status, criado_em) 
+                VALUES 
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $numero_manual,
+                $secretaria_id,
+                $justificativa,
+                $_SESSION['user_id'],
+                $arquivo_orcamento,
+                $arquivo_oficio,
+                $valor_orcamento,
+                $status,
+                $criado_em_device
+            ]);
+
             $oficio_id = $pdo->lastInsertId();
 
-            $stmt_item = $pdo->prepare("INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade) VALUES (?, ?, ?, ?)");
-            foreach ($produtos as $item) {
-                if (!empty($item['nome'])) {
-                    $stmt_item->execute([$oficio_id, $item['nome'], $item['qtd'], $item['unidade'] ?: 'UN']);
-                }
+            // Processar múltiplos uploads agora que temos o oficio_id
+            $arquivo_orcamento = handleMultipleUploads('orcamento', "assets/uploads/orcamentos/", "ORC", "ORCAMENTO", $oficio_id, $pdo);
+            $arquivo_oficio    = handleMultipleUploads('arquivo_oficio', "assets/uploads/oficios/", "OFI", "OFICIO", $oficio_id, $pdo);
+
+            // Opcional: Atualizar a tabela principal com o primeiro arquivo para retrocompatibilidade
+            if ($arquivo_orcamento || $arquivo_oficio) {
+                $stmt_upd = $pdo->prepare("UPDATE oficios SET arquivo_orcamento = ?, arquivo_oficio = ? WHERE id = ?");
+                $stmt_upd->execute([$arquivo_orcamento, $arquivo_oficio, $oficio_id]);
             }
 
-            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero criado com anexo: " . ($arquivo_orcamento ? 'SIM' : 'NÃO'));
+            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero_manual cadastrado aguardando itens.");
             $pdo->commit();
-            flash_message('success', "Ofício $numero cadastrado com sucesso!");
+
+            flash_message('success', "Solicitação $numero_manual cadastrada com sucesso! Agora a SEMFAZ deverá atribuir os itens.");
             header("Location: oficios_visualizar.php?id=$oficio_id");
             exit();
         } catch (Exception $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             $error = "Erro ao cadastrar: " . $e->getMessage();
         }
-    } else {
-        $error = "Adicione pelo menos um produto ao ofício.";
     }
 }
 
@@ -71,6 +129,7 @@ include 'views/layout/header.php';
         align-items: center;
         gap: 1rem;
         margin-bottom: 2rem;
+        flex-wrap: wrap;
     }
 
     .solicitacao-top-grid {
@@ -80,39 +139,8 @@ include 'views/layout/header.php';
         margin-bottom: 1.5rem;
     }
 
-    .itens-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .product-item {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr auto;
-        gap: 1rem;
-        margin-bottom: 1rem;
-        align-items: end;
-    }
-
-    .remove-product-btn {
-        color: var(--status-rejected);
-        border-color: var(--status-rejected);
-        padding: 0.5rem;
-        min-width: 44px;
-        height: 42px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    #add-product{
-        padding: 0.5rem 1rem;
-    }
-
     .solicitacao-actions {
-        margin-top: 3rem;
+        margin-top: 2rem;
         border-top: 1px solid var(--border-color);
         padding-top: 1.5rem;
         text-align: right;
@@ -122,77 +150,31 @@ include 'views/layout/header.php';
         padding: 0.75rem 2rem;
     }
 
+    .device-time-box {
+        margin-bottom: 1.5rem;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 0.95rem;
+        color: #334155;
+    }
+
+    .device-time-box strong {
+        color: #0f172a;
+    }
+
     @media (max-width: 768px) {
-        .solicitacao-header {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .solicitacao-header h3 {
-            margin-bottom: 0;
-            font-size: 1.1rem !important;
-        }
-
-        .solicitacao-header .btn {
-            width: 100%;
-            text-align: center;
-        }
-
         .solicitacao-top-grid {
             grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-
-        .itens-header {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .itens-header h4 {
-            width: 100%;
-        }
-
-        .itens-header .btn {
-            width: 100%;
-            text-align: center;
-        }
-
-        .product-item {
-            grid-template-columns: 1fr;
-            gap: 0.75rem;
-            padding: 0.9rem;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            background: #fff;
-        }
-
-        .product-item .form-group {
-            width: 100%;
-        }
-
-        .remove-product-wrap {
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .remove-product-btn {
-            width: 100%;
-            height: 42px;
         }
 
         .solicitacao-actions {
-            text-align: stretch;
+            text-align: center;
         }
 
         .btn-salvar-solicitacao {
             width: 100%;
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        textarea.form-control {
-            min-height: 110px;
         }
     }
 </style>
@@ -201,72 +183,95 @@ include 'views/layout/header.php';
     <div class="card-body">
         <div class="solicitacao-header">
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1.25rem; margin: 0;">
-                <i class="fas fa-edit" style="margin-right: 10px; color: var(--primary);"></i> Formulário de Solicitação
+                <i class="fas fa-edit" style="margin-right: 10px; color: var(--primary);"></i>
+                Formulário de Solicitação (Casa Civil)
             </h3>
             <a href="oficios_lista.php" class="btn btn-outline btn-sm">Voltar</a>
         </div>
 
         <?php if (isset($error)): ?>
-            <div class="alert alert-danger"><?php echo $error; ?></div>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
+        <div class="device-time-box">
+            <strong>Data/hora do dispositivo:</strong>
+            <span id="preview-datahora-dispositivo">Carregando...</span>
+        </div>
+
         <form action="" method="POST" id="oficio-form" enctype="multipart/form-data">
+            <input type="hidden" name="criado_em_device" id="criado_em_device" value="">
+
             <div class="solicitacao-top-grid">
+
                 <div class="form-group">
-                    <label class="form-label">Secretaria Solicitante</label>
+                    <label class="form-label">Número do Ofício <span style="color:red">*</span></label>
+                    <input
+                        type="text"
+                        name="numero_oficio"
+                        class="form-control"
+                        required
+                        placeholder="Ex: OF-2026-01"
+                        oninput="this.value = this.value.toUpperCase()"
+                        value="<?php echo htmlspecialchars($_POST['numero_oficio'] ?? ''); ?>"
+                    >
+                    <small class="text-muted">Informe o número do processo físico ou ofício.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Secretaria Solicitante <span style="color:red">*</span></label>
                     <select name="secretaria_id" class="form-control" required>
                         <option value="">Selecione a Secretaria...</option>
                         <?php foreach ($secretarias as $sec): ?>
-                            <option value="<?php echo $sec['id']; ?>"><?php echo $sec['nome']; ?></option>
+                            <option
+                                value="<?php echo $sec['id']; ?>"
+                                <?php echo (isset($_POST['secretaria_id']) && $_POST['secretaria_id'] == $sec['id']) ? 'selected' : ''; ?>
+                            >
+                                <?php echo htmlspecialchars($sec['nome']); ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label">Valor do Orçamento (Opcional)</label>
+                    <input
+                        type="text"
+                        name="valor_orcamento"
+                        class="form-control"
+                        placeholder="0,00"
+                        onkeyup="this.value = this.value.replace(/[^\d,]/g, '')"
+                        value="<?php echo htmlspecialchars($_POST['valor_orcamento'] ?? ''); ?>"
+                    >
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Arquivo do Orçamento (Opcional)</label>
-                    <input type="file" name="orcamento" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
-                    <small class="text-muted">Formatos aceitos: PDF, JPG, PNG</small>
+                    <input type="file" name="orcamento[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" multiple>
+                    <small class="text-muted">Você pode selecionar múltiplos arquivos.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Ofício de Solicitação (Opcional)</label>
+                    <input type="file" name="arquivo_oficio[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" multiple>
+                    <small class="text-muted">Você pode selecionar múltiplos arquivos.</small>
                 </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 2rem;">
                 <label class="form-label">Justificativa / Finalidade <span style="color:red">*</span></label>
-                <textarea name="justificativa" class="form-control" placeholder="Descreva detalhadamente a necessidade da solicitação..." rows="3" required></textarea>
+                <textarea
+                    name="justificativa"
+                    class="form-control"
+                    placeholder="Descreva detalhadamente a necessidade da solicitação..."
+                    rows="4"
+                    required
+                ><?php echo htmlspecialchars($_POST['justificativa'] ?? ''); ?></textarea>
             </div>
 
-            <div style="border-top: 1px solid var(--border-color); padding-top: 2rem; margin-bottom: 1.5rem;">
-                <div class="itens-header">
-                    <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin: 0;">
-                        <i class="fas fa-box" style="margin-right: 8px; color: var(--primary);"></i> Itens da Solicitação
-                    </h4>
-                    <button type="button" class="btn btn-outline btn-sm" id="add-product">
-                        <i class="fas fa-plus"></i> Adicionar Produto
-                    </button>
-                </div>
-
-                <div id="products-container">
-                    <div class="product-item">
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Produto/Serviço</label>
-                            <input type="text" name="produtos[0][nome]" class="form-control" required placeholder="Ex: Resma de Papel A4">
-                        </div>
-
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Qtd</label>
-                            <input type="number" step="0.01" name="produtos[0][qtd]" class="form-control" required placeholder="0.00">
-                        </div>
-
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Unidade</label>
-                            <input type="text" name="produtos[0][unidade]" class="form-control" placeholder="UN" value="UN">
-                        </div>
-
-                        <div class="form-group remove-product-wrap" style="margin: 0;">
-                            <button type="button" class="btn btn-outline btn-sm remove-product remove-product-btn">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
+            <div class="alert alert-info" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <i class="fas fa-info-circle" style="font-size: 1.5rem;"></i>
+                <div>
+                    <strong>Nota:</strong> Este formulário é destinado ao registro inicial. Os itens específicos de produtos serão atribuídos pela <strong>SEMFAZ</strong> após a criação deste registro.
                 </div>
             </div>
 
@@ -280,48 +285,46 @@ include 'views/layout/header.php';
 </div>
 
 <script>
-    document.getElementById('add-product').addEventListener('click', function() {
-        const container = document.getElementById('products-container');
-        const index = container.getElementsByClassName('product-item').length;
-        const item = document.createElement('div');
-        item.className = 'product-item';
-        item.innerHTML = `
-        <div class="form-group" style="margin: 0;">
-            <label class="form-label">Produto/Serviço</label>
-            <input type="text" name="produtos[${index}][nome]" class="form-control" required placeholder="Ex: Item extra">
-        </div>
+    function pad(n) {
+        return String(n).padStart(2, '0');
+    }
 
-        <div class="form-group" style="margin: 0;">
-            <label class="form-label">Qtd</label>
-            <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control" required placeholder="0.00">
-        </div>
+    function getDeviceDateTimeForMysql() {
+        const now = new Date();
+        return now.getFullYear() + '-' +
+            pad(now.getMonth() + 1) + '-' +
+            pad(now.getDate()) + ' ' +
+            pad(now.getHours()) + ':' +
+            pad(now.getMinutes()) + ':' +
+            pad(now.getSeconds());
+    }
 
-        <div class="form-group" style="margin: 0;">
-            <label class="form-label">Unidade</label>
-            <input type="text" name="produtos[${index}][unidade]" class="form-control" placeholder="UN" value="UN">
-        </div>
+    function getDeviceDateTimeForPreview() {
+        const now = new Date();
+        return pad(now.getDate()) + '/' +
+            pad(now.getMonth() + 1) + '/' +
+            now.getFullYear() + ' ' +
+            pad(now.getHours()) + ':' +
+            pad(now.getMinutes()) + ':' +
+            pad(now.getSeconds());
+    }
 
-        <div class="form-group remove-product-wrap" style="margin: 0;">
-            <button type="button" class="btn btn-outline btn-sm remove-product remove-product-btn">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `;
-        container.appendChild(item);
+    function atualizarDataHoraDispositivo() {
+        const mysqlDatetime = getDeviceDateTimeForMysql();
+        const previewDatetime = getDeviceDateTimeForPreview();
 
-        item.querySelector('.remove-product').addEventListener('click', function() {
-            if (document.querySelectorAll('.product-item').length > 1) {
-                item.remove();
-            }
-        });
-    });
+        const inputHidden = document.getElementById('criado_em_device');
+        const preview = document.getElementById('preview-datahora-dispositivo');
 
-    document.querySelectorAll('.remove-product').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (document.querySelectorAll('.product-item').length > 1) {
-                this.closest('.product-item').remove();
-            }
-        });
+        if (inputHidden) inputHidden.value = mysqlDatetime;
+        if (preview) preview.textContent = previewDatetime;
+    }
+
+    atualizarDataHoraDispositivo();
+    setInterval(atualizarDataHoraDispositivo, 1000);
+
+    document.getElementById('oficio-form').addEventListener('submit', function () {
+        atualizarDataHoraDispositivo();
     });
 </script>
 

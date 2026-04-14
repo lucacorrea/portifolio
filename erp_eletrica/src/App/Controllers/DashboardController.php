@@ -26,40 +26,70 @@ class DashboardController extends BaseController {
             $faturamento_historico = $cached['history'];
             $top_produtos = $cached['top_products'];
         } else {
+            // Prepared statements for main stats
+            $where_filial_query = $is_matriz ? "" : " AND filial_id = :filial_id";
+            $params = $is_matriz ? [] : [':filial_id' => $filial_id];
+
+            $stmt_hoje = $db->prepare("SELECT SUM(valor_total) FROM vendas WHERE DATE(data_venda) = CURRENT_DATE $where_filial_query");
+            $stmt_hoje->execute($params);
+            $vendas_hoje = $stmt_hoje->fetchColumn() ?: 0;
+
+            $stmt_mes = $db->prepare("SELECT SUM(valor_total) FROM vendas WHERE MONTH(data_venda) = :mes AND YEAR(data_venda) = :ano $where_filial_query");
+            $stmt_mes->execute(array_merge($params, [':mes' => $mes_atual, ':ano' => $ano_atual]));
+            $vendas_mes = $stmt_mes->fetchColumn() ?: 0;
+
+            $stmt_critico = $db->prepare("SELECT COUNT(*) FROM produtos WHERE quantidade <= estoque_minimo $where_filial_query");
+            $stmt_critico->execute($params);
+            $estoque_critico = $stmt_critico->fetchColumn() ?: 0;
+
+            $stmt_ticket = $db->prepare("SELECT AVG(valor_total) FROM vendas WHERE MONTH(data_venda) = :mes $where_filial_query");
+            $stmt_ticket->execute(array_merge($params, [':mes' => $mes_atual]));
+            $ticket_medio = $stmt_ticket->fetchColumn() ?: 0;
+
+            $sql_margem = "
+                SELECT (SUM(vi.preco_unitario * vi.quantidade) - SUM(p.preco_custo * vi.quantidade)) / NULLIF(SUM(vi.preco_unitario * vi.quantidade), 0) * 100
+                FROM vendas_itens vi
+                JOIN produtos p ON vi.produto_id = p.id
+                JOIN vendas v ON vi.venda_id = v.id
+                WHERE MONTH(v.data_venda) = :mes " . ($is_matriz ? "" : "AND v.filial_id = :filial_id");
+            $stmt_margem = $db->prepare($sql_margem);
+            $stmt_margem->execute(array_merge([':mes' => $mes_atual], $params));
+            $margem_lucro = $stmt_margem->fetchColumn() ?: 0;
+
             $stats = [
-                'vendas_hoje' => $db->query("SELECT SUM(valor_total) FROM vendas WHERE DATE(data_venda) = CURRENT_DATE $where_filial")->fetchColumn() ?: 0,
-                'vendas_mes' => $db->query("SELECT SUM(valor_total) FROM vendas WHERE MONTH(data_venda) = $mes_atual AND YEAR(data_venda) = $ano_atual $where_filial")->fetchColumn() ?: 0,
-                'estoque_critico' => $db->query("SELECT COUNT(*) FROM produtos WHERE quantidade <= estoque_minimo $where_filial")->fetchColumn(),
-                'ticket_medio' => $db->query("SELECT AVG(valor_total) FROM vendas WHERE MONTH(data_venda) = $mes_atual $where_filial")->fetchColumn() ?: 0,
-                'margem_lucro' => $db->query("
-                    SELECT (SUM(vi.preco_unitario * vi.quantidade) - SUM(p.preco_custo * vi.quantidade)) / SUM(vi.preco_unitario * vi.quantidade) * 100
-                    FROM vendas_itens vi
-                    JOIN produtos p ON vi.produto_id = p.id
-                    JOIN vendas v ON vi.venda_id = v.id
-                    WHERE MONTH(v.data_venda) = $mes_atual " . ($is_matriz ? "" : "AND v.filial_id = $filial_id") . "
-                ")->fetchColumn() ?: 0
+                'vendas_hoje' => $vendas_hoje,
+                'vendas_mes' => $vendas_mes,
+                'estoque_critico' => $estoque_critico,
+                'ticket_medio' => $ticket_medio,
+                'margem_lucro' => $margem_lucro
             ];
 
             // Billing History (Last 6 months)
-            $faturamento_historico = $db->query("
+            $sql_history = "
                 SELECT DATE_FORMAT(data_venda, '%b') as mes, SUM(valor_total) as total
                 FROM vendas
-                WHERE data_venda >= DATE_SUB(NOW(), INTERVAL 6 MONTH) " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
+                WHERE data_venda >= DATE_SUB(NOW(), INTERVAL 6 MONTH) " . ($is_matriz ? "" : "AND filial_id = :filial_id") . "
                 GROUP BY DATE_FORMAT(data_venda, '%Y-%m')
                 ORDER BY data_venda ASC
-            ")->fetchAll();
+            ";
+            $stmt_history = $db->prepare($sql_history);
+            $stmt_history->execute($params);
+            $faturamento_historico = $stmt_history->fetchAll();
 
             // Top Vendas
-            $top_produtos = $db->query("
+            $sql_top = "
                 SELECT p.nome, SUM(vi.quantidade) as total_vendido, SUM(vi.quantidade * vi.preco_unitario) as receita
                 FROM vendas_itens vi
                 JOIN produtos p ON vi.produto_id = p.id
                 JOIN vendas v ON vi.venda_id = v.id
-                " . ($is_matriz ? "" : "WHERE v.filial_id = $filial_id") . "
+                " . ($is_matriz ? "" : "WHERE v.filial_id = :filial_id") . "
                 GROUP BY vi.produto_id
                 ORDER BY total_vendido DESC
                 LIMIT 5
-            ")->fetchAll();
+            ";
+            $stmt_top = $db->prepare($sql_top);
+            $stmt_top->execute($params);
+            $top_produtos = $stmt_top->fetchAll();
 
             \App\Services\CacheService::set($cacheKey, [
                 'stats' => $stats,
@@ -69,24 +99,29 @@ class DashboardController extends BaseController {
         }
         
         // --- REAL TIME STATS (ALWAYS FRESH) ---
-        $stats['fiado_pendente'] = $db->query("
+        $sql_fiado = "
             SELECT SUM(COALESCE(valor, 0) - COALESCE(valor_pago, 0)) 
             FROM contas_receber 
-            WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
-        ")->fetchColumn() ?: 0;
+            WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = :filial_id");
+        $stmt_fiado = $db->prepare($sql_fiado);
+        $stmt_fiado->execute($is_matriz ? [] : [':filial_id' => $filial_id]);
+        $stats['fiado_pendente'] = $stmt_fiado->fetchColumn() ?: 0;
 
         $cashierModel = new \App\Models\Cashier();
         $caixaAberto = $cashierModel->getOpenForFilial($filial_id);
         $cashierSummary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
         // --------------------------------------
 
-        $recentes_vendas = $db->query("
+        $sql_recentes = "
             SELECT v.*, c.nome as cliente_nome 
             FROM vendas v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
-            " . ($is_matriz ? "" : "WHERE v.filial_id = $filial_id") . "
+            " . ($is_matriz ? "" : "WHERE v.filial_id = :filial_id") . "
             ORDER BY v.data_venda DESC LIMIT 5
-        ")->fetchAll();
+        ";
+        $stmt_recentes = $db->prepare($sql_recentes);
+        $stmt_recentes->execute($is_matriz ? [] : [':filial_id' => $filial_id]);
+        $recentes_vendas = $stmt_recentes->fetchAll();
 
         $this->render('dashboard', [
             'stats' => $stats,
@@ -116,11 +151,13 @@ class DashboardController extends BaseController {
         $summary = $caixaAberto ? $cashierModel->getSummary($caixaAberto['id']) : null;
 
         // Correct Fiado Pending (Total from all time)
-        $fiado_pendente = $db->query("
+        $sql_fiado = "
             SELECT SUM(COALESCE(valor, 0) - COALESCE(valor_pago, 0)) 
             FROM contas_receber 
-            WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = $filial_id") . "
-        ")->fetchColumn() ?: 0;
+            WHERE status != 'pago' " . ($is_matriz ? "" : "AND filial_id = :filial_id");
+        $stmt_fiado = $db->prepare($sql_fiado);
+        $stmt_fiado->execute($is_matriz ? [] : [':filial_id' => $filial_id]);
+        $fiado_pendente = $stmt_fiado->fetchColumn() ?: 0;
 
         $saldo_caixa = 0;
         if ($caixaAberto && $summary) {

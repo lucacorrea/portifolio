@@ -83,4 +83,46 @@ class PreSale extends BaseModel {
     public function markAsFinalized($id) {
         return $this->query("UPDATE {$this->table} SET status = 'finalizado' WHERE id = ?", [$id]);
     }
+
+    public function update($id, $data) {
+        $hasAvulso = $this->columnExists('nome_cliente_avulso');
+        $hasCpfCliente = $this->columnExists('cpf_cliente');
+        $hasUpdatedAt = $this->columnExists('updated_at');
+
+        $sets = ['cliente_id = ?', 'valor_total = ?'];
+        $params = [$data['cliente_id'] ?? null, $data['valor_total']];
+
+        if ($hasAvulso) {
+            $sets[] = 'nome_cliente_avulso = ?';
+            $params[] = $data['nome_cliente_avulso'] ?? null;
+        }
+
+        if ($hasCpfCliente) {
+            $sets[] = 'cpf_cliente = ?';
+            $params[] = $data['cpf_cliente'] ?? null;
+        }
+
+        if ($hasUpdatedAt) {
+            $sets[] = 'updated_at = NOW()';
+        }
+
+        $params[] = $id;
+
+        // Update main record
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = ?";
+        $this->query($sql, $params);
+
+        // Delete old items
+        $this->query("DELETE FROM pre_venda_itens WHERE pre_venda_id = ?", [$id]);
+
+        // Insert new items
+        foreach ($data['items'] as $item) {
+            $this->query(
+                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)",
+                [$id, $item['id'], $item['qty'], $item['price']]
+            );
+        }
+
+        return true;
+    }
 }

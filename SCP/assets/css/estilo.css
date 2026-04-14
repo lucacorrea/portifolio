@@ -12,8 +12,11 @@
     
     /* Cores de Status baseadas no print */
     --status-pendente: #ef4444;
+    --status-sendo-avaliado: #eab308;
+    --status-em-elaboracao: #f97316;
     --status-protocolado: #22c55e;
     --status-analisado: #3b82f6;
+    --status-finalizado: #2E6C80;
     
     /* Cores de Tipos de Ato */
     --ato-despacho: #ec4899;
@@ -59,6 +62,39 @@
 .bg-purple { background-color: #d8b4fe; color: #581c87; border: 1px solid #c084fc; }
 .bg-magenta { background-color: #d946ef; color: white; border: 1px solid #d946ef; }
 .bg-orange { background-color: #f97316; color: white; border: 1px solid #f97316; }
+.bg-indigo { background-color: #e0e7ff; color: #4338ca; border: 1px solid #a5b4fc; }
+
+/* Modal Header Status Colors */
+.modal-header-status {
+    margin: -2rem -2rem 1.5rem -2rem;
+    padding: 1.5rem 2rem;
+    border-radius: var(--radius) var(--radius) 0 0;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.header-status-pendente { background: #dc2626; } 
+.header-status-sendo-avaliado { background: #eab308; }
+.header-status-em-elaboração { background: #f97316; }
+.header-status-protocolado { background: #16a34a; }
+.header-status-analisado { background: #2563eb; }
+.header-status-processo-finalizado { background: #2E6C80; }
+
+.detail-section-title {
+    grid-column: span 2;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding-bottom: 0.5rem;
+    margin-top: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
 
 /* Colors - Users */
 .user-ananda { background-color: #fefce8; color: #854d0e; border: 1px solid #fef08a; }
@@ -358,8 +394,11 @@ td:last-child {
 }
 
 .badge-pendente { background: #fee2e2; color: #ef4444; }
+.badge-sendo-avaliado { background: #fef9c3; color: #854d0e; }
+.badge-em-elaboração { background: #ffedd5; color: #ea580c; }
 .badge-protocolado { background: #dcfce7; color: #22c55e; }
 .badge-analisado { background: #dbeafe; color: #3b82f6; }
+.badge-processo-finalizado { background: #2E6C80; color: white; }
 
 /* Buttons */
 .btn {
@@ -417,25 +456,32 @@ input:focus, select:focus {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.45);
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 2000;
+}
+
+.modal-overlay.active {
+    display: flex;
 }
 
 .modal-content {
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    padding: 2rem;
-    width: 100%;
-    max-width: 500px;
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    transform: translateY(-20px);
-    transition: all 0.3s;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0;
+    width: 90%;
+    max-width: 900px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    animation: modalReveal 0.2s ease-out;
+}
+
+@keyframes modalReveal {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .modal-overlay.active {
@@ -671,4 +717,360 @@ input:focus, select:focus {
 
 .dropdown-item.text-danger:hover i {
     color: #ef4444;
+}
+
+.modal-header-classic {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+}
+
+.btn-quick-close {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+.btn-quick-close:hover { 
+    color: #0f172a; 
+    background: #f1f5f9;
+}
+
+.modal-body-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    padding: 2rem;
+    background: #ffffff;
+}
+
+.split-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.split-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+    margin-top: 0;
+}
+
+.split-item {
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.split-item.flex-between {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.split-item.flex-row {
+    flex-direction: row;
+    gap: 2rem;
+}
+
+.split-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+.split-item.flex-between .split-label {
+    margin-bottom: 0;
+    text-transform: none;
+    font-size: 0.85rem;
+}
+
+.split-value {
+    font-size: 0.95rem;
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.split-obs {
+    font-size: 0.85rem;
+    color: #475569;
+    padding: 1rem;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.page-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+
+/* Dropdown Actions */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-dots {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.btn-dots:hover {
+    background: #f1f5f9;
+    color: var(--text-main);
+}
+
+.dropdown-menu {
+    display: none;
+    background-color: white;
+    min-width: 220px;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.dropdown-menu-fixed {
+    animation: fadeIn 0.15s ease-out;
+}
+
+.dropdown-item {
+    color: var(--text-main);
+    padding: 10px 16px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.2s;
+}
+
+.dropdown-item i {
+    width: 16px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.dropdown-item:hover {
+    background-color: #f1f5f9;
+}
+
+.dropdown-item:hover i {
+    color: var(--primary);
+}
+
+.dropdown-item.text-danger:hover {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.dropdown-item.text-danger:hover i {
+    color: #ef4444;
+}
+
+.modal-header-classic {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+}
+
+.btn-quick-close {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px; /* quadrado em vez de redondo */
+}
+.btn-quick-close:hover { 
+    color: #0f172a; 
+    background: #f1f5f9;
+}
+
+.modal-body-split {
+    display: flex;
+    gap: 3rem;
+    padding: 2rem;
+    background: #ffffff;
+}
+
+.split-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.split-col.right-col {
+    border-left: 1px solid #e2e8f0;
+    padding-left: 2rem;
+}
+
+.split-title {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+    margin-top: 0;
+}
+
+.split-item {
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.split-item.flex-between {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.split-item.flex-row {
+    flex-direction: row;
+    gap: 2rem;
+}
+
+.split-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+.split-item.flex-between .split-label {
+    margin-bottom: 0;
+    text-transform: none;
+    font-size: 0.85rem;
+}
+
+.split-value {
+    font-size: 0.95rem;
+    color: #1e293b;
+    font-weight: 700;
+}
+
+.split-obs {
+    font-size: 0.85rem;
+    color: #475569;
+    padding: 1rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+}
+
+.split-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: white;
+}
+
+/* Classes CSS Específicas para Empilhamento Vertical (Fatura/Extrato) */
+.split-item-stacked {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dashed #e2e8f0;
+}
+
+.split-item-stacked:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.split-value-large {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #000000;
+    letter-spacing: 0.02em;
+    word-break: break-all;
+}
+
+.split-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.split-grid-2 .split-item-stacked {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .modal-body-split { flex-direction: column; gap: 1.5rem; }
+    .split-col.right-col { border-left: none; padding-left: 0; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; }
+    .split-item.flex-row { flex-direction: column; gap: 0.75rem; }
+    .split-grid-2 { grid-template-columns: 1fr; gap: 1rem; }
 }

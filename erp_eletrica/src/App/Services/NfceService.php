@@ -17,17 +17,25 @@ class NfceService extends BaseService {
      * Gets NFC-e configuration for a specific filial, with global fallback.
      */
     public function getConfig($filialId) {
-        // Individual config
+        // 1. Individual branch data
         $stmt = $this->db->prepare("SELECT * FROM filiais WHERE id = ?");
         $stmt->execute([$filialId]);
         $filial = $stmt->fetch();
 
-        // Global config
+        // 2. Global Sefaz Config (Digital Certificate & CSC)
         $stmtGlobal = $this->db->query("SELECT * FROM sefaz_config LIMIT 1");
         $global = $stmtGlobal->fetch();
 
-        // Merge logic: prefer filial-specific, fallback to global
-        // The 27 fields from Açaí system
+        // 3. Matriz Info (for CNPJ, Name, and address fallback)
+        $stmtMatriz = $this->db->query("SELECT * FROM filiais WHERE principal = 1 LIMIT 1");
+        $matriz = $stmtMatriz->fetch();
+
+        // Define which fields MUST be global (Centralized Fiscal)
+        $globalFields = [
+            'certificado_path', 'certificado_senha', 'ambiente', 
+            'csc', 'csc_id', 'cnpj', 'razao_social'
+        ];
+
         $fields = [
             'cnpj', 'razao_social', 'nome_fantasia', 'inscricao_estadual', 'inscricao_municipal',
             'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'municipio', 'uf',
@@ -38,14 +46,23 @@ class NfceService extends BaseService {
 
         $config = [];
         foreach ($fields as $field) {
-            // Special handling for certificate path and CSC column names in filiais table
             $filialKey = $field;
             if ($field === 'certificado_path') $filialKey = 'certificado_pfx';
             if ($field === 'csc') $filialKey = 'csc_token';
             if ($field === 'nome_fantasia') $filialKey = 'nome';
             
-            // Priority: Filial (if it has the field populated differently from default/null)
-            $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : ($global[$field] ?? null);
+            // Hard Override for Global Fields: Only Global or Matriz, NEVER Filial
+            if (in_array($field, $globalFields)) {
+                // Priority: sefaz_config (Global Card) -> Matriz Record (Corporate Identity)
+                $val = ($global[$field] ?? null);
+                if (empty($val)) {
+                    $val = ($matriz[$filialKey] ?? null);
+                }
+            } else {
+                // Shared fields: Filial has priority (Address/Phones), fallback to Matriz
+                $val = (!empty($filial[$filialKey])) ? $filial[$filialKey] : ($matriz[$filialKey] ?? null);
+            }
+
             $config[$field] = $val;
         }
 

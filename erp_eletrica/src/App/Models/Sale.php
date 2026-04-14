@@ -10,6 +10,7 @@ class Sale extends BaseModel {
         $hasValorRecebido = $this->columnExists('valor_recebido');
         $hasCpfCliente  = $this->columnExists('cpf_cliente');
         $hasClienteNome = $this->columnExists('cliente_nome');
+        $hasTaxaCartao  = $this->columnExists('taxa_cartao');
 
         $cols   = ['cliente_id', 'usuario_id', 'filial_id', 'valor_total', 'desconto_total', 'autorizado_por', 'forma_pagamento', 'status'];
         $params = [
@@ -48,6 +49,11 @@ class Sale extends BaseModel {
             $params[] = isset($data['valor_recebido']) ? (float)$data['valor_recebido'] : null;
             $cols[]   = 'troco';
             $params[] = isset($data['troco']) ? (float)$data['troco'] : null;
+        }
+
+        if ($hasTaxaCartao) {
+            $cols[]   = 'taxa_cartao';
+            $params[] = isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0.00;
         }
 
         $placeholders = implode(', ', array_fill(0, count($cols), '?'));
@@ -102,7 +108,9 @@ class Sale extends BaseModel {
     public function findById($id) {
         $nameField = $this->columnExists('nome_cliente_avulso') ? 'v.nome_cliente_avulso' : 'NULL';
         $sale = $this->query("
-            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome 
+            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome,
+                   (SELECT status_sefaz FROM nfce_emitidas WHERE venda_id = v.id ORDER BY id DESC LIMIT 1) as nf_status,
+                   (SELECT chave FROM nfce_emitidas WHERE venda_id = v.id ORDER BY id DESC LIMIT 1) as chave_acesso
             FROM {$this->table} v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
             LEFT JOIN usuarios u ON v.usuario_id = u.id 
@@ -122,5 +130,107 @@ class Sale extends BaseModel {
 
     public function updateStatus($id, $status) {
         return $this->query("UPDATE {$this->table} SET status = ? WHERE id = ?", [$status, $id]);
+    }
+
+    public function getFiltered($filters = [], $page = 1, $perPage = 9) {
+        $offset = ($page - 1) * $perPage;
+        $filialId = $this->getFilialContext();
+        
+        $where = "WHERE 1=1";
+        $params = [];
+
+        if ($filialId) {
+            $where .= " AND v.filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        if (!empty($filters['status'])) {
+            $where .= " AND v.status = ?";
+            $params[] = $filters['status'];
+        }
+
+        if (!empty($filters['tipo_nota'])) {
+            $where .= " AND v.tipo_nota = ?";
+            $params[] = $filters['tipo_nota'];
+        }
+
+        if (!empty($filters['forma_pagamento'])) {
+            $where .= " AND v.forma_pagamento = ?";
+            $params[] = $filters['forma_pagamento'];
+        }
+
+        if (!empty($filters['data_inicio'])) {
+            $where .= " AND DATE(v.data_venda) >= ?";
+            $params[] = $filters['data_inicio'];
+        }
+
+        if (!empty($filters['data_fim'])) {
+            $where .= " AND DATE(v.data_venda) <= ?";
+            $params[] = $filters['data_fim'];
+        }
+
+        if (!empty($filters['search'])) {
+            $where .= " AND (v.id = ? OR c.nome LIKE ? OR v.nome_cliente_avulso LIKE ? OR v.cpf_cliente LIKE ?)";
+            $params[] = $filters['search'];
+            $params[] = "%{$filters['search']}%";
+            $params[] = "%{$filters['search']}%";
+            $params[] = "%{$filters['search']}%";
+        }
+
+        $nameField = $this->columnExists('nome_cliente_avulso') ? 'v.nome_cliente_avulso' : 'NULL';
+
+        return $this->query("
+            SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome,
+                   (SELECT chave FROM nfce_emitidas WHERE venda_id = v.id ORDER BY id DESC LIMIT 1) as chave_acesso
+            FROM {$this->table} v 
+            LEFT JOIN clientes c ON v.cliente_id = c.id 
+            LEFT JOIN usuarios u ON v.usuario_id = u.id 
+            $where
+            ORDER BY v.data_venda DESC LIMIT $perPage OFFSET $offset
+        ", $params)->fetchAll();
+    }
+
+    public function getTotalFiltered($filters = []) {
+        $filialId = $this->getFilialContext();
+        $where = "WHERE 1=1";
+        $params = [];
+
+        if ($filialId) {
+            $where .= " AND v.filial_id = ?";
+            $params[] = $filialId;
+        }
+        
+        // Add same filters as getFiltered
+        if (!empty($filters['status'])) {
+            $where .= " AND v.status = ?";
+            $params[] = $filters['status'];
+        }
+        if (!empty($filters['tipo_nota'])) {
+            $where .= " AND v.tipo_nota = ?";
+            $params[] = $filters['tipo_nota'];
+        }
+        if (!empty($filters['forma_pagamento'])) {
+            $where .= " AND v.forma_pagamento = ?";
+            $params[] = $filters['forma_pagamento'];
+        }
+        if (!empty($filters['data_inicio'])) {
+            $where .= " AND DATE(v.data_venda) >= ?";
+            $params[] = $filters['data_inicio'];
+        }
+        if (!empty($filters['data_fim'])) {
+            $where .= " AND DATE(v.data_venda) <= ?";
+            $params[] = $filters['data_fim'];
+        }
+        if (!empty($filters['search'])) {
+            $where .= " AND (v.id = ? OR c.nome LIKE ? OR v.nome_cliente_avulso LIKE ? OR v.cpf_cliente LIKE ?)";
+            $params[] = $filters['search'];
+            $params[] = "%{$filters['search']}%";
+            $params[] = "%{$filters['search']}%";
+            $params[] = "%{$filters['search']}%";
+        }
+
+        $join = "LEFT JOIN clientes c ON v.cliente_id = c.id";
+
+        return $this->query("SELECT COUNT(*) FROM {$this->table} v $join $where", $params)->fetchColumn();
     }
 }

@@ -56,7 +56,9 @@ if (!isset($_SESSION['usuario_id'])) {
     </div>
     <nav class="nav-links">
         <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
+        <?php if ($_SESSION['usuario_perfil'] !== 'ACESSORES'): ?>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
+        <?php endif; ?>
         <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
         <a href="tipos.php" class="nav-link active"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>
@@ -91,6 +93,8 @@ if (!isset($_SESSION['usuario_id'])) {
     <div class="tabs" style="margin-top: 2rem;">
         <button class="tab-btn active" onclick="switchTab('ciencia')"><i class="fas fa-file-signature"></i> Processos de Ciência</button>
         <button class="tab-btn" onclick="switchTab('cumprimento')"><i class="fas fa-gavel"></i> Processos de Cumprimento</button>
+        <button class="tab-btn" onclick="switchTab('recurso-ciencia')"><i class="fas fa-file-export"></i> Recurso - Ciência</button>
+        <button class="tab-btn" onclick="switchTab('recurso-cumprimento')"><i class="fas fa-balance-scale-right"></i> Recurso - Cumprimento</button>
     </div>
 
     <!-- Aba Ciência -->
@@ -154,15 +158,82 @@ if (!isset($_SESSION['usuario_id'])) {
             <div id="paginacao-cumprimento" class="pagination" style="margin-top: 1.5rem;"></div>
         </section>
     </div>
+
+    <!-- Aba Recurso - Ciência -->
+    <div id="tab-recurso-ciencia" class="tab-content">
+        <section class="data-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem;">Recurso - Ciência</h2>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="text" id="filtro-recurso-ciencia" placeholder="Pesquisar..." style="width: 250px; padding: 0.5rem 1rem; height: 38px; border: 1px solid var(--border); border-radius: 8px;">
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table id="tabela-recurso-ciencia">
+                    <thead>
+                        <tr>
+                            <th>Nº PROCESSO</th>
+                            <th>ATO / NATUREZA</th>
+                            <th>PRAZO FINAL</th>
+                            <th>ANALISADOR</th>
+                            <th>STATUS</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-recurso-ciencia">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="paginacao-recurso-ciencia" class="pagination" style="margin-top: 1.5rem;"></div>
+        </section>
+    </div>
+
+    <!-- Aba Recurso - Cumprimento -->
+    <div id="tab-recurso-cumprimento" class="tab-content">
+        <section class="data-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem;">Recurso - Cumprimento</h2>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="text" id="filtro-recurso-cumprimento" placeholder="Pesquisar..." style="width: 250px; padding: 0.5rem 1rem; height: 38px; border: 1px solid var(--border); border-radius: 8px;">
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table id="tabela-recurso-cumprimento">
+                    <thead>
+                        <tr>
+                            <th>Nº PROCESSO</th>
+                            <th>ATO / NATUREZA</th>
+                            <th>PRAZO FINAL</th>
+                            <th>ANALISADOR</th>
+                            <th>STATUS</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-recurso-cumprimento">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="paginacao-recurso-cumprimento" class="pagination" style="margin-top: 1.5rem;"></div>
+        </section>
+    </div>
 </main>
 
-<script src="assets/js/script.js?v=9"></script>
+<script>
+    window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
+</script>
+<script src="assets/js/script.js?v=62"></script>
 <script>
     let todosProcessos = [];
     
     // Estados para cada aba
     let stateCiencia = { pagina: 1, itens: 10 };
     let stateCumprimento = { pagina: 1, itens: 10 };
+    let stateRecursoCiencia = { pagina: 1, itens: 10 };
+    let stateRecursoCumprimento = { pagina: 1, itens: 10 };
 
     function switchTab(tab) {
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -184,14 +255,35 @@ if (!isset($_SESSION['usuario_id'])) {
             stateCumprimento.pagina = 1;
             renderTabelaTipos('CUMPRIMENTO', 'lista-cumprimento', 'filtro-cumprimento', 'paginacao-cumprimento', stateCumprimento);
         });
+
+        document.getElementById('filtro-recurso-ciencia').addEventListener('input', () => {
+            stateRecursoCiencia.pagina = 1;
+            renderTabelaTipos('RECURSO - CIÊNCIA', 'lista-recurso-ciencia', 'filtro-recurso-ciencia', 'paginacao-recurso-ciencia', stateRecursoCiencia);
+        });
+
+        document.getElementById('filtro-recurso-cumprimento').addEventListener('input', () => {
+            stateRecursoCumprimento.pagina = 1;
+            renderTabelaTipos('RECURSO - CUMPRIMENTO', 'lista-recurso-cumprimento', 'filtro-recurso-cumprimento', 'paginacao-recurso-cumprimento', stateRecursoCumprimento);
+        });
     });
 
     async function carregarProcessosTipos() {
         const resp = await fetch('api.php?acao=listar');
-        todosProcessos = await resp.json();
+        let dados = await resp.json();
+
+        // Ordenação inteligente: Data de Ciência decrescente
+        dados.sort((a, b) => {
+            if (!a.data_ciencia) return 1;
+            if (!b.data_ciencia) return -1;
+            return new Date(b.data_ciencia) - new Date(a.data_ciencia);
+        });
+
+        todosProcessos = dados;
         
         renderTabelaTipos('CIÊNCIA', 'lista-ciencia', 'filtro-ciencia', 'paginacao-ciencia', stateCiencia);
         renderTabelaTipos('CUMPRIMENTO', 'lista-cumprimento', 'filtro-cumprimento', 'paginacao-cumprimento', stateCumprimento);
+        renderTabelaTipos('RECURSO - CIÊNCIA', 'lista-recurso-ciencia', 'filtro-recurso-ciencia', 'paginacao-recurso-ciencia', stateRecursoCiencia);
+        renderTabelaTipos('RECURSO - CUMPRIMENTO', 'lista-recurso-cumprimento', 'filtro-recurso-cumprimento', 'paginacao-recurso-cumprimento', stateRecursoCumprimento);
     }
 
     function renderTabelaTipos(tipoProcesso, tbodyId, filtroId, pagId, stateObj) {
@@ -238,25 +330,24 @@ if (!isset($_SESSION['usuario_id'])) {
                     ${window.formatarData(p.final_prazo)}
                 </td>
                 <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
-                <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
+                <td>
+                    <span class="badge badge-${p.status.toLowerCase().trim()}">${p.status.trim()}</span>
+                    ${p.status.toUpperCase().trim() === 'PROTOCOLADO' ? `
+                        <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
+                            ${(p.data_protocolo || p.protocolista || p.peticionador) ? `
+                                <i class="fas fa-calendar-check" style="color: var(--status-protocolado);"></i> ${window.formatarData(p.data_protocolo)}<br>
+                                <i class="fas fa-user-edit" style="color: var(--status-protocolado);"></i> ${p.protocolista || p.peticionador || 'N/A'}
+                            ` : `<i class="fas fa-info-circle"></i> Sem registro de detalhes`}
+                        </div>
+                    ` : ''}
+                </td>
                 <td>
                     <div class="dropdown">
                         <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="dropdown-menu">
-                            ${p.status === 'PENDENTE' ? `
-                                <button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>
-                            ` : ''}
-                            ${(p.status === 'PENDENTE' || p.status === 'PROTOCOLADO') ? `
-                                <button class="dropdown-item" onclick="window.marcarAnalisado(${p.id})"><i class="fas fa-eye"></i> Marcar Analisado</button>
-                            ` : ''}
-                            ${(!p.peticionador && (p.status === 'PENDENTE' || p.status === 'PROTOCOLADO')) ? `
-                                <button class="dropdown-item" onclick="window.peticionarProcesso(${p.id})"><i class="fas fa-file-upload"></i> Peticionar</button>
-                            ` : ''}
-                            <button class="dropdown-item" onclick="window.editarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-edit"></i> Editar</button>
-                            <div style="border-top: 1px solid var(--border); margin: 4px 0;"></div>
-                            <button class="dropdown-item text-danger" onclick="window.excluirProcesso(${p.id})"><i class="fas fa-trash"></i> Excluir</button>
+                            ${window.renderDropdownActions(p)}
                         </div>
                     </div>
                 </td>

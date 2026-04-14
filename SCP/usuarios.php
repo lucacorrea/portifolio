@@ -25,7 +25,9 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
     </div>
     <nav class="nav-links">
         <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
+        <?php if ($_SESSION['usuario_perfil'] !== 'ACESSORES'): ?>
         <a href="cadastro.php" class="nav-link"><i class="fas fa-plus-circle"></i> Novo</a>
+        <?php endif; ?>
         <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
         <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
         <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>
@@ -111,6 +113,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
                 <label>Perfil de Acesso</label>
                 <select id="user-perfil">
                     <option value="ANALISADOR">ANALISADOR</option>
+                    <option value="ACESSORES">ACESSORES</option>
                     <option value="ADMIN">ADMINISTRADOR</option>
                 </select>
             </div>
@@ -296,6 +299,9 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
         }
     });
 </script>
-<script src="assets/js/script.js"></script>
+<script>
+    window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
+</script>
+<script src="assets/js/script.js?v=62"></script>
 </body>
 </html>
