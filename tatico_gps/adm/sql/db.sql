@@ -38,8 +38,7 @@ CREATE TABLE IF NOT EXISTS clientes (
 
     mensalidade                             DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     dia_vencimento                          TINYINT UNSIGNED NOT NULL DEFAULT 10,
-    pix_tipo                                VARCHAR(30) DEFAULT NULL,
-    pix_chave                               VARCHAR(255) DEFAULT NULL,
+    forma_pagamento                         VARCHAR(30) NOT NULL DEFAULT 'PIX' AFTER dia_vencimento;
 
     qtd_veiculos                            INT NOT NULL DEFAULT 1,
     tipo_veiculo                            VARCHAR(50) DEFAULT NULL,
