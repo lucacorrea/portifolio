@@ -48,11 +48,11 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">ID Token CSC</label>
-                                    <input type="text" class="form-control bg-light text-muted" value="<?= $sefaz['csc_id'] ?? '' ?>" readonly>
+                                    <input type="text" class="form-control bg-light text-muted" value="<?= $activeConfig['csc_id'] ?? '' ?>" readonly>
                                 </div>
                                 <div class="col-md-8">
                                     <label class="form-label small fw-bold">Token CSC</label>
-                                    <input type="text" class="form-control bg-light text-muted" value="<?= $sefaz['csc'] ?? '' ?>" readonly>
+                                    <input type="text" class="form-control bg-light text-muted" value="<?= $activeConfig['csc'] ?? '' ?>" readonly>
                                 </div>
                             </div>
                         </div>
@@ -83,26 +83,26 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-secondary mb-1">Senha do Certificado</label>
-                                <input type="password" name="certificado_senha" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['certificado_senha'] ?? '' ?>">
+                                <input type="password" name="certificado_senha" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $activeConfig['certificado_senha'] ?? '' ?>">
                             </div>
                             
                             <!-- CSC Global Fields -->
                             <div class="row g-2 mb-3">
                                 <div class="col-4">
                                     <label class="form-label small fw-bold text-secondary mb-1">ID Token CSC</label>
-                                    <input type="text" name="csc_id_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['csc_id'] ?? '' ?>" placeholder="000001">
+                                    <input type="text" name="csc_id_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $activeConfig['csc_id'] ?? '' ?>" placeholder="000001">
                                 </div>
                                 <div class="col-8">
                                     <label class="form-label small fw-bold text-secondary mb-1">Token CSC</label>
-                                    <input type="text" name="csc_token_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
+                                    <input type="text" name="csc_token_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $activeConfig['csc'] ?? '' ?>" placeholder="AAAA-BBBB-CCCC">
                                 </div>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label small fw-bold text-secondary mb-1">Ambiente Sefaz</label>
                                 <select name="ambiente" class="form-select bg-light border-0 shadow-sm text-dark fw-bold">
-                                    <option value="homologacao" <?= (($sefaz['ambiente'] ?? '') == 'homologacao' || ($sefaz['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>🟡 Homolog. (Testes)</option>
-                                    <option value="producao" <?= (($sefaz['ambiente'] ?? '') == 'producao' || ($sefaz['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>🟢 Produção (Real)</option>
+                                    <option value="homologacao" <?= (($activeConfig['ambiente'] ?? '') == 'homologacao' || ($activeConfig['ambiente'] ?? '') == '2') ? 'selected' : '' ?>>🟡 Homolog. (Testes)</option>
+                                    <option value="producao" <?= (($activeConfig['ambiente'] ?? '') == 'producao' || ($activeConfig['ambiente'] ?? '') == '1') ? 'selected' : '' ?>>🟢 Produção (Real)</option>
                                 </select>
                             </div>
 
