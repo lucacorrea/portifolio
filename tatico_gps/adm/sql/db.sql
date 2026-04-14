@@ -26,3 +26,28 @@ CREATE TABLE IF NOT EXISTS configuracoes_automacao (
     atualizado_em                           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     criado_em                               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+
+CREATE TABLE IF NOT EXISTS clientes (
+    id                                      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nome                                    VARCHAR(150) NOT NULL,
+    cpf                                     VARCHAR(20) DEFAULT NULL,
+    telefone                                VARCHAR(20) DEFAULT NULL,
+    email                                   VARCHAR(150) DEFAULT NULL,
+    endereco                                VARCHAR(255) DEFAULT NULL,
+
+    mensalidade                             DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    dia_vencimento                          TINYINT UNSIGNED NOT NULL DEFAULT 10,
+    pix_tipo                                VARCHAR(30) DEFAULT NULL,
+    pix_chave                               VARCHAR(255) DEFAULT NULL,
+
+    qtd_veiculos                            INT NOT NULL DEFAULT 1,
+    tipo_veiculo                            VARCHAR(50) DEFAULT NULL,
+    status                                  VARCHAR(30) NOT NULL DEFAULT 'Ativo',
+    mensagem_automatica                     TINYINT(1) NOT NULL DEFAULT 1,
+    whatsapp_principal                      VARCHAR(20) DEFAULT NULL,
+    observacoes                             TEXT DEFAULT NULL,
+
+    criado_em                               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em                           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
