@@ -9,55 +9,111 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/../lib/auth_guard.php';
 ensure_logged_in(['dono', 'funcionario']);
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 /* ===========================================================
    Sessão
    =========================================================== */
 $cnpjSess = preg_replace('/\D+/', '', (string)($_SESSION['user_empresa_cnpj'] ?? ''));
-$cpfSess  = preg_replace('/\D+/', '', (string)($_SESSION['user_cpf'] ?? ''));
+$nomeUser = $_SESSION['user_nome'] ?? 'Usuário';
+$perfil   = strtolower((string)($_SESSION['user_perfil'] ?? 'funcionario'));
+$tipo     = strtolower((string)($_SESSION['user_tipo'] ?? ''));
 
 /* ===========================================================
    Conexão
    =========================================================== */
 $pdo = null;
 $pathConexao = realpath(__DIR__ . '/../conexao/conexao.php');
-if ($pathConexao && file_exists($pathConexao)) require_once $pathConexao;
-if (!($pdo instanceof PDO)) die('Conexão indisponível.');
+if ($pathConexao && file_exists($pathConexao)) {
+    require_once $pathConexao;
+}
+if (!($pdo instanceof PDO)) {
+    die('Conexão indisponível.');
+}
 
 /* ===========================================================
-   Controller opcional
+   Helpers
    =========================================================== */
-$empresaNome = $empresaNome ?? '';
-$ctrl = __DIR__ . '/controllers/dashboardController.php';
-if (is_file($ctrl)) require_once $ctrl;
+function h(string $v): string
+{
+    return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+}
 
-/* ===========================================================
-   Guarda/empresa
-   =========================================================== */
+function money(float $v): string
+{
+    return 'R$ ' . number_format($v, 2, ',', '.');
+}
+
+function fmtDateTime(?string $dt): string
+{
+    if (!$dt) return '-';
+    $ts = strtotime($dt);
+    return $ts ? date('d/m/Y H:i', $ts) : $dt;
+}
+
+function fmtDate(?string $dt): string
+{
+    if (!$dt) return '-';
+    $ts = strtotime($dt);
+    return $ts ? date('d/m', $ts) : $dt;
+}
+
+function statusBadge(string $status): array
+{
+    $status = strtolower(trim($status));
+    return match ($status) {
+        'concluida' => ['success', 'Concluída'],
+        'cancelada' => ['danger', 'Cancelada'],
+        default     => ['warning', 'Aberta'],
+    };
+}
+
+$empresaNome = $_SESSION['empresa_nome'] ?? 'Lava Jato';
+$empresaRow = null;
 $empresaPendente = false;
 $msgCompletar = '';
-$canEditEmpresa = (($_SESSION['user_perfil'] ?? '') === 'dono');
-$empresaRow = null;
+$canEditEmpresa = ($perfil === 'dono');
+
 try {
-    if (!empty($cnpjSess)) {
-        $st = $pdo->prepare("SELECT * FROM empresas_peca WHERE REPLACE(REPLACE(REPLACE(cnpj,'.',''),'-',''),'/','')=:c LIMIT 1");
-        $st->execute([':c' => $cnpjSess]);
-        $empresaRow = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($cnpjSess !== '') {
+        $stEmpresa = $pdo->prepare("
+            SELECT *
+            FROM empresas_peca
+            WHERE REPLACE(REPLACE(REPLACE(cnpj,'.',''),'-',''),'/','') = :c
+            LIMIT 1
+        ");
+        $stEmpresa->execute([':c' => $cnpjSess]);
+        $empresaRow = $stEmpresa->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if ($empresaRow) {
+            $empresaNome = (string)($empresaRow['nome_fantasia'] ?? $empresaNome);
+        }
     }
 } catch (Throwable $e) {
     $empresaRow = null;
 }
 
-$camposObrigatorios = ['nome_fantasia' => 'Nome Fantasia', 'email' => 'E-mail', 'telefone' => 'Telefone', 'endereco' => 'Endereço', 'cidade' => 'Cidade', 'estado' => 'UF', 'cep' => 'CEP'];
-$faltando = [];
+$camposObrigatorios = [
+    'nome_fantasia' => 'Nome Fantasia',
+    'email'         => 'E-mail',
+    'telefone'      => 'Telefone',
+    'endereco'      => 'Endereço',
+    'cidade'        => 'Cidade',
+    'estado'        => 'UF',
+    'cep'           => 'CEP'
+];
+
 if (!$empresaRow) {
     $empresaPendente = true;
-    $msgCompletar = 'Sua empresa ainda não está cadastrada. Complete as informações para aproveitar todos os recursos.';
+    $msgCompletar = 'Sua empresa ainda não está cadastrada. Complete as informações para usar todos os recursos do sistema.';
 } else {
-    foreach ($camposObrigatorios as $k => $rot) {
-        $val = trim((string)($empresaRow[$k] ?? ''));
-        if ($val === '') $faltando[] = $rot;
+    $faltando = [];
+    foreach ($camposObrigatorios as $campo => $rotulo) {
+        if (trim((string)($empresaRow[$campo] ?? '')) === '') {
+            $faltando[] = $rotulo;
+        }
     }
     if ($faltando) {
         $empresaPendente = true;
@@ -65,141 +121,170 @@ if (!$empresaRow) {
     }
 }
 
-/* ===========================================================
-   Cabeçalho
-   =========================================================== */
-$nomeUser     = $_SESSION['user_nome']         ?? ($nomeUser     ?? 'Usuário');
-$empresaNome  = $empresaNome                   ?? ($_SESSION['empresa_nome'] ?? 'sua empresa');
-$perfil       = strtolower($_SESSION['user_perfil'] ?? 'funcionario');
-$tipo         = strtolower($_SESSION['user_tipo']   ?? '');
-
-$rotTipo = ['administrativo' => 'Administrativo', 'caixa' => 'Caixa', 'estoque' => 'Estoque', 'lavajato' => 'Lava Jato'];
-$tipoLabel = $rotTipo[$tipo] ?? 'Colaborador';
 $fraseHeader = $perfil === 'dono'
-    ? 'Você é o dono. Gerencie sua empresa, cadastre sua equipe e mantenha tudo em dia.'
-    : "Você está logado como {$tipoLabel}. " . (
-        $tipo === 'administrativo' ? 'Acompanhe o financeiro, cadastre produtos e dê suporte à operação.' : ($tipo === 'caixa' ? 'Abra vendas rápidas, finalize pagamentos e agilize o atendimento.' : ($tipo === 'estoque' ? 'Gerencie entradas e saídas, controle níveis e mantenha o estoque organizado.' : ($tipo === 'lavajato' ? 'Registre lavagens, acompanhe status e mantenha o fluxo do box.' :
-            'Bem-vindo ao sistema. Use o menu ao lado para começar.')))
-    );
+    ? 'Acompanhe as lavagens, o faturamento, os vales e o desempenho da equipe em tempo real.'
+    : 'Acompanhe a operação do lava jato, registre serviços e mantenha o fluxo organizado.';
 
 /* ===========================================================
-   EXPRESSÕES SQL (campos corretos da DDL)
-   - Data: v.criado_em (timestamp) -> DATE()
-   - Valor: v.total_liquido; fallback soma de itens se vier 0/NULL
-   - Status válido para faturamento: 'fechada'
+   Indicadores do Dashboard
    =========================================================== */
-$DATE_NORM = "DATE(v.criado_em)";
-$TOTAL_NUM = "CAST(
-  CASE
-    WHEN v.total_liquido IS NOT NULL AND v.total_liquido > 0
-      THEN v.total_liquido
-    ELSE (
-      SELECT COALESCE(SUM(vi.valor_total),0)
-      FROM venda_itens_peca vi
-      WHERE vi.venda_id = v.id
-    )
-  END AS DECIMAL(15,2)
-)";
-$CNPJ_NORM = "REPLACE(REPLACE(REPLACE(v.empresa_cnpj,'.',''),'-',''),'/','')";
+$lavagensHoje = 0;
+$faturamentoHoje = 0.0;
+$lavagensAbertas = 0;
+$lavagensSemana = 0;
+$faturamentoSemana = 0.0;
+$lavadoresAtivos = 0;
+$valesSemana = 0.0;
 
-/* ===========================================================
-   Séries do gráfico + cálculo do card Faturamento (30 dias)
-   =========================================================== */
-$dailyLabels = [];
-$dailySeries = [];
-$monthlyLabels = [];
-$monthlySeries = [];
-$faturamento30d_calc = 0.0;
+$chartLabels = [];
+$chartLavagens = [];
+$chartValores = [];
+$lavagensRecentes = [];
+$topLavadores = [];
 
 try {
-    if (!empty($cnpjSess)) {
+    if ($cnpjSess !== '') {
+        $cnpjExpr = "REPLACE(REPLACE(REPLACE(empresa_cnpj,'.',''),'-',''),'/','')";
 
-        // --------- DIÁRIA (30 dias) ---------
-        $dias = [];
-        $hoje = new DateTime('today');
-        for ($i = 29; $i >= 0; $i--) {
-            $d = (clone $hoje)->modify("-{$i} days");
-            $dias[$d->format('Y-m-d')] = 0.0;
+        // Lavagens hoje
+        $st = $pdo->prepare("
+            SELECT COUNT(*) AS total, COALESCE(SUM(valor),0) AS valor_total
+            FROM lavagens_peca
+            WHERE $cnpjExpr = :c
+              AND DATE(criado_em) = CURDATE()
+              AND status <> 'cancelada'
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $row = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        $lavagensHoje = (int)($row['total'] ?? 0);
+        $faturamentoHoje = (float)($row['valor_total'] ?? 0);
+
+        // Lavagens abertas
+        $st = $pdo->prepare("
+            SELECT COUNT(*) AS total
+            FROM lavagens_peca
+            WHERE $cnpjExpr = :c
+              AND status = 'aberta'
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $lavagensAbertas = (int)($st->fetchColumn() ?: 0);
+
+        // Semana atual
+        $st = $pdo->prepare("
+            SELECT COUNT(*) AS total, COALESCE(SUM(valor),0) AS valor_total
+            FROM lavagens_peca
+            WHERE $cnpjExpr = :c
+              AND YEARWEEK(criado_em, 1) = YEARWEEK(CURDATE(), 1)
+              AND status <> 'cancelada'
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $row = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        $lavagensSemana = (int)($row['total'] ?? 0);
+        $faturamentoSemana = (float)($row['valor_total'] ?? 0);
+
+        // Lavadores ativos
+        $st = $pdo->prepare("
+            SELECT COUNT(*) AS total
+            FROM lavadores_peca
+            WHERE $cnpjExpr = :c
+              AND ativo = 1
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $lavadoresAtivos = (int)($st->fetchColumn() ?: 0);
+
+        // Vales da semana
+        $st = $pdo->prepare("
+            SELECT COALESCE(SUM(valor),0) AS total
+            FROM vales_lavadores_peca
+            WHERE $cnpjExpr = :c
+              AND YEARWEEK(criado_em, 1) = YEARWEEK(CURDATE(), 1)
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $valesSemana = (float)($st->fetchColumn() ?: 0);
+
+        // Gráfico últimos 7 dias
+        $diasBase = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $d = date('Y-m-d', strtotime("-{$i} days"));
+            $diasBase[$d] = ['qtd' => 0, 'valor' => 0.0];
         }
 
-        $sqlDia = "
-      SELECT $DATE_NORM AS dia, SUM($TOTAL_NUM) AS total
-      FROM vendas_peca v
-      WHERE $CNPJ_NORM = :c
-        AND $DATE_NORM >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-        AND v.status = 'fechada'
-      GROUP BY $DATE_NORM
-      ORDER BY $DATE_NORM
-    ";
-        $st = $pdo->prepare($sqlDia);
+        $st = $pdo->prepare("
+            SELECT DATE(criado_em) AS dia,
+                   COUNT(*) AS qtd,
+                   COALESCE(SUM(valor),0) AS total
+            FROM lavagens_peca
+            WHERE $cnpjExpr = :c
+              AND DATE(criado_em) >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+              AND status <> 'cancelada'
+            GROUP BY DATE(criado_em)
+            ORDER BY DATE(criado_em) ASC
+        ");
         $st->execute([':c' => $cnpjSess]);
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
-            $k = (string)$r['dia'];
-            $dias[$k] = (float)($r['total'] ?? 0);
+            $dia = (string)$r['dia'];
+            if (isset($diasBase[$dia])) {
+                $diasBase[$dia]['qtd'] = (int)($r['qtd'] ?? 0);
+                $diasBase[$dia]['valor'] = (float)($r['total'] ?? 0);
+            }
         }
 
-        $acum = 0.0;
-        foreach ($dias as $k => $v) {
-            $d = DateTime::createFromFormat('Y-m-d', $k);
-            $dailyLabels[] = $d ? $d->format('d/m') : $k;
-            $acum += $v;
-            $dailySeries[] = $acum;
-        }
-        $faturamento30d_calc = $acum;
-
-        // --------- MENSAL (12 meses) ---------
-        $meses = [];
-        $agora = new DateTime('first day of this month 00:00:00');
-        for ($i = 11; $i >= 0; $i--) {
-            $d = (clone $agora)->modify("-{$i} months");
-            $meses[$d->format('Y-m')] = 0.0;
+        foreach ($diasBase as $dia => $dados) {
+            $chartLabels[] = fmtDate($dia);
+            $chartLavagens[] = (int)$dados['qtd'];
+            $chartValores[] = (float)$dados['valor'];
         }
 
-        $sqlMes = "
-      SELECT DATE_FORMAT($DATE_NORM,'%Y-%m') AS ym, SUM($TOTAL_NUM) AS total
-      FROM vendas_peca v
-      WHERE $CNPJ_NORM = :c
-        AND $DATE_NORM >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-        AND v.status = 'fechada'
-      GROUP BY DATE_FORMAT($DATE_NORM,'%Y-%m')
-      ORDER BY ym
-    ";
-        $st2 = $pdo->prepare($sqlMes);
-        $st2->execute([':c' => $cnpjSess]);
-        foreach ($st2->fetchAll(PDO::FETCH_ASSOC) as $r) {
-            $meses[(string)$r['ym']] = (float)($r['total'] ?? 0);
-        }
+        // Lavagens recentes
+        $st = $pdo->prepare("
+            SELECT
+                l.id,
+                l.lavador_cpf,
+                l.placa,
+                l.modelo,
+                l.cor,
+                l.categoria_nome,
+                l.valor,
+                l.forma_pagamento,
+                l.status,
+                l.checkin_at,
+                l.checkout_at,
+                l.criado_em,
+                lv.nome AS lavador_nome
+            FROM lavagens_peca l
+            LEFT JOIN lavadores_peca lv
+              ON REPLACE(REPLACE(REPLACE(lv.empresa_cnpj,'.',''),'-',''),'/','') = REPLACE(REPLACE(REPLACE(l.empresa_cnpj,'.',''),'-',''),'/','')
+             AND REPLACE(REPLACE(lv.cpf,'.',''),'-','') = REPLACE(REPLACE(l.lavador_cpf,'.',''),'-','')
+            WHERE REPLACE(REPLACE(REPLACE(l.empresa_cnpj,'.',''),'-',''),'/','') = :c
+            ORDER BY l.criado_em DESC
+            LIMIT 12
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $lavagensRecentes = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        $acumM = 0.0;
-        foreach ($meses as $k => $v) {
-            $d = DateTime::createFromFormat('Y-m', $k);
-            $monthlyLabels[] = $d ? $d->format('m/y') : $k;
-            $acumM += $v;
-            $monthlySeries[] = $acumM;
-        }
+        // Top lavadores da semana
+        $st = $pdo->prepare("
+            SELECT
+                COALESCE(lv.nome, CONCAT('CPF: ', l.lavador_cpf)) AS lavador,
+                COUNT(*) AS qtd,
+                COALESCE(SUM(l.valor),0) AS total
+            FROM lavagens_peca l
+            LEFT JOIN lavadores_peca lv
+              ON REPLACE(REPLACE(REPLACE(lv.empresa_cnpj,'.',''),'-',''),'/','') = REPLACE(REPLACE(REPLACE(l.empresa_cnpj,'.',''),'-',''),'/','')
+             AND REPLACE(REPLACE(lv.cpf,'.',''),'-','') = REPLACE(REPLACE(l.lavador_cpf,'.',''),'-','')
+            WHERE REPLACE(REPLACE(REPLACE(l.empresa_cnpj,'.',''),'-',''),'/','') = :c
+              AND YEARWEEK(l.criado_em, 1) = YEARWEEK(CURDATE(), 1)
+              AND l.status <> 'cancelada'
+            GROUP BY lavador
+            ORDER BY qtd DESC, total DESC
+            LIMIT 5
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $topLavadores = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 } catch (Throwable $e) {
-    error_log('ERRO DASH GRAFICO: ' . $e->getMessage());
+    error_log('ERRO DASHBOARD LAVAJATO: ' . $e->getMessage());
 }
-
-/* ===========================================================
-   Cards (mantém variáveis do controller quando existirem)
-   =========================================================== */
-$vendasPct       = $vendasPct       ?? 0;
-$vendasQtde      = $vendasQtde      ?? 0;
-$estoquePct      = $estoquePct      ?? 0;
-$itensEstoque    = $itensEstoque    ?? 0;
-$faturamentoPct  = $faturamentoPct  ?? 0;
-
-/* Card faturamento usa o valor calculado acima
-   (mesma base do gráfico) */
-$faturamento30d  = $faturamento30d_calc;
-
-$despesasPct     = $despesasPct     ?? 0;
-$despesas30d     = $despesas30d     ?? 0.0;
-
-// Lavagens (se o controller já preencheu, mantém)
-$lavagens = $lavagens ?? [];
 ?>
 <!doctype html>
 <html lang="pt-BR" dir="ltr">
@@ -207,7 +292,7 @@ $lavagens = $lavagens ?? [];
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AutoERP - Dashboard</title>
+    <title>Lava Jato - Dashboard</title>
 
     <link rel="icon" type="image/png" sizes="512x512" href="./assets/images/dashboard/icon.png">
     <link rel="shortcut icon" href="./assets/images/favicon.ico">
@@ -221,67 +306,103 @@ $lavagens = $lavagens ?? [];
     <link rel="stylesheet" href="./assets/css/customizer.css">
     <link rel="stylesheet" href="./assets/css/rtl.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
     <style>
-        .btn-range.active {
-            pointer-events: none
+        .dashboard-lavajato .metric-card {
+            border: 0;
+            border-radius: 18px;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, .06);
+            height: 100%;
+        }
+
+        .dashboard-lavajato .metric-icon {
+            width: 54px;
+            height: 54px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+        }
+
+        .dashboard-lavajato .metric-value {
+            font-size: 1.55rem;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .dashboard-lavajato .metric-label {
+            color: #64748b;
+            font-size: .92rem;
+        }
+
+        .dashboard-lavajato .hero-box {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+            color: #fff;
+            border-radius: 22px;
+            padding: 28px;
+            box-shadow: 0 18px 45px rgba(2, 132, 199, .28);
+        }
+
+        .dashboard-lavajato .hero-box .mini-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .15);
+            font-size: .9rem;
+        }
+
+        .dashboard-lavajato .card-soft {
+            border: 0;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, .05);
+        }
+
+        .dashboard-lavajato .table td,
+        .dashboard-lavajato .table th {
+            vertical-align: middle;
+        }
+
+        .dashboard-lavajato .top-list li {
+            border-bottom: 1px solid #eef2f7;
+            padding: 12px 0;
+        }
+
+        .dashboard-lavajato .top-list li:last-child {
+            border-bottom: 0;
         }
     </style>
 </head>
-<?php
-function fmt_compacto_brl(float $v): string
-{
-    $abs = abs($v);
-    if ($abs >= 1_000_000_000) return 'R$ ' . number_format($v / 1_000_000_000, 1, ',', '.') . 'B';
-    if ($abs >= 1_000_000)     return 'R$ ' . number_format($v / 1_000_000,     1, ',', '.') . 'M';
-    if ($abs >= 1_000)         return 'R$ ' . number_format($v / 1_000,         1, ',', '.') . 'K';
-    return 'R$ ' . number_format($v, 2, ',', '.');
-}
-
-// Decide se usa compacto
-$fat_full    = 'R$ ' . number_format((float)$faturamento30d, 2, ',', '.');
-$fat_compact = fmt_compacto_brl((float)$faturamento30d);
-$usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
-?>
-<style>
-    /* encolhe suavemente se mesmo abreviado ficar grande */
-    .fat-valor {
-        display: inline-block;
-        max-width: 100%;
-        font-weight: 700;
-        line-height: 1.1;
-        /* reduz se precisar, mas mantém legível */
-        font-size: clamp(0.95rem, 2.4vw, 1.25rem);
-        white-space: nowrap;
-    }
-
-    /* versão “normal” um pouco maior quando couber */
-    .fat-valor--normal {
-        font-size: clamp(1.1rem, 2.8vw, 1.35rem);
-    }
-</style>
 
 <body>
     <?php
-    if (session_status() === PHP_SESSION_NONE) session_start();
     $menuAtivo = 'dashboard';
     include './layouts/dashboard.php';
     ?>
-    <main class="main-content">
-        <?php if (!empty($empresaPendente)): ?>
-            <div class="modal fade" id="modalEmpresaIncompleta" tabindex="-1" aria-labelledby="modalEmpresaIncompletaLabel" aria-hidden="true">
+
+    <main class="main-content dashboard-lavajato">
+
+        <?php if ($empresaPendente): ?>
+            <div class="modal fade" id="modalEmpresaIncompleta" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header bg-warning-subtle">
-                            <h5 class="modal-title" id="modalEmpresaIncompletaLabel"><i class="bi bi-exclamation-triangle me-2"></i> Completar cadastro da empresa</h5>
+                            <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Completar cadastro da empresa</h5>
                         </div>
                         <div class="modal-body">
-                            <p class="mb-0"><?= htmlspecialchars($msgCompletar, ENT_QUOTES, 'UTF-8') ?></p>
+                            <p class="mb-0"><?= h($msgCompletar) ?></p>
                         </div>
-                        <div class="modal-footer text-center">
-                            <?php if (!empty($canEditEmpresa)): ?>
-                                <a href="./configuracao/pages/empresa.php" class="btn btn-primary w-100"><i class="bi bi-building me-1"></i> Ir para Dados da Empresa</a>
+                        <div class="modal-footer">
+                            <?php if ($canEditEmpresa): ?>
+                                <a href="./configuracao/pages/empresa.php" class="btn btn-primary w-100">
+                                    <i class="bi bi-building me-1"></i> Ir para dados da empresa
+                                </a>
                             <?php else: ?>
-                                <button type="button" class="btn btn-outline-secondary" disabled title="Peça ao dono para completar o cadastro"><i class="bi bi-lock me-1"></i> Somente o dono pode editar</button>
+                                <button type="button" class="btn btn-outline-secondary w-100" disabled>
+                                    Somente o dono pode editar
+                                </button>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -289,422 +410,306 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
             </div>
             <script>
                 document.addEventListener('DOMContentLoaded', function() {
-                    var el = document.getElementById('modalEmpresaIncompleta');
-                    if (!el || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
-                    new bootstrap.Modal(el, {
-                        backdrop: 'static',
-                        keyboard: false
-                    }).show();
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        const el = document.getElementById('modalEmpresaIncompleta');
+                        if (el) new bootstrap.Modal(el, {
+                            backdrop: 'static',
+                            keyboard: false
+                        }).show();
+                    }
                 });
             </script>
         <?php endif; ?>
 
-        <div class="position-relative iq-banner">
-            <nav class="nav navbar navbar-expand-lg navbar-light iq-navbar">
-                <div class="container-fluid navbar-inner">
-                    <a href="./dashboard.php" class="navbar-brand">
-                        <h4 class="logo-title">AutoERP</h4>
-                    </a>
-                    <div class="sidebar-toggle" data-toggle="sidebar" data-active="true"><i class="icon">
-                            <svg width="20px" class="icon-20" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z" />
-                            </svg>
-                        </i></div>
-                    <div class="input-group search-input">
-                        <span class="input-group-text" id="search-input">
-                            <svg class="icon-18" width="18" viewBox="0 0 24 24" fill="none">
-                                <circle cx="11.7669" cy="11.7666" r="8.98856" stroke="currentColor" stroke-width="1.5"></circle>
-                                <path d="M18.0186 18.4851L21.5426 22" stroke="currentColor" stroke-width="1.5"></path>
-                            </svg>
-                        </span>
-                        <input type="search" class="form-control" placeholder="Pesquisar...">
+        <div class="container-fluid content-inner py-4">
+            <div class="hero-box mb-4" data-aos="fade-up">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div>
+                        <h2 class="mb-2 text-white">Bem-vindo, <?= h($nomeUser) ?>!</h2>
+                        <p class="mb-0 opacity-75">
+                            <?= h($fraseHeader) ?>
+                            Empresa: <strong><?= h($empresaNome) ?></strong>
+                        </p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="mini-pill"><i class="bi bi-car-front"></i> Lava Jato</span>
+                        <span class="mini-pill"><i class="bi bi-calendar-week"></i> Semana atual</span>
                     </div>
                 </div>
-            </nav>
+            </div>
 
-            <div class="iq-navbar-header" style="height: 215px;">
-                <div class="container-fluid iq-container">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="d-flex justify-content-between align-items-center flex-wrap">
-                                <div>
-                                    <h1>Bem-vindo, <?= htmlspecialchars($nomeUser, ENT_QUOTES, 'UTF-8') ?>!</h1>
-                                    <p><?= htmlspecialchars($fraseHeader, ENT_QUOTES, 'UTF-8') ?> Empresa: <strong><?= htmlspecialchars($empresaNome, ENT_QUOTES, 'UTF-8') ?></strong></p>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6 col-xl-3" data-aos="fade-up" data-aos-delay="100">
+                    <div class="card metric-card">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="metric-label">Lavagens de hoje</div>
+                                <div class="metric-value"><?= number_format($lavagensHoje, 0, ',', '.') ?></div>
+                            </div>
+                            <div class="metric-icon bg-primary-subtle text-primary">
+                                <i class="bi bi-droplet-half"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-3" data-aos="fade-up" data-aos-delay="150">
+                    <div class="card metric-card">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="metric-label">Faturamento de hoje</div>
+                                <div class="metric-value"><?= h(money($faturamentoHoje)) ?></div>
+                            </div>
+                            <div class="metric-icon bg-success-subtle text-success">
+                                <i class="bi bi-cash-coin"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-3" data-aos="fade-up" data-aos-delay="200">
+                    <div class="card metric-card">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="metric-label">Lavagens em aberto</div>
+                                <div class="metric-value"><?= number_format($lavagensAbertas, 0, ',', '.') ?></div>
+                            </div>
+                            <div class="metric-icon bg-warning-subtle text-warning">
+                                <i class="bi bi-hourglass-split"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-3" data-aos="fade-up" data-aos-delay="250">
+                    <div class="card metric-card">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="metric-label">Lavadores ativos</div>
+                                <div class="metric-value"><?= number_format($lavadoresAtivos, 0, ',', '.') ?></div>
+                            </div>
+                            <div class="metric-icon bg-info-subtle text-info">
+                                <i class="bi bi-people"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6 col-xl-6" data-aos="fade-up" data-aos-delay="300">
+                    <div class="card card-soft">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="mb-0">Resumo da semana</h5>
+                                <i class="bi bi-bar-chart-line text-primary"></i>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="text-muted small">Lavagens</div>
+                                    <div class="fs-4 fw-bold"><?= number_format($lavagensSemana, 0, ',', '.') ?></div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-muted small">Faturamento</div>
+                                    <div class="fs-4 fw-bold"><?= h(money($faturamentoSemana)) ?></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="iq-header-img"><img src="./assets/images/dashboard/top-header.png" alt="header" class="theme-color-default-img img-fluid w-100 h-100 animated-scaleX"></div>
-            </div>
-        </div>
 
-        <div class="container-fluid content-inner mt-n5 py-0">
-            <div class="row">
-                <div class="col-md-12 col-lg-12">
-                    <div class="row">
-                        <div class="overflow-hidden d-slider1 ">
-                            <ul class="p-0 m-0 mb-2 swiper-wrapper list-inline" style="gap:6px;">
-                                <li class="swiper-slide card card-slide col-lg-3" data-aos="fade-up" data-aos-delay="700">
-                                    <div class="card-body">
-                                        <div class="progress-widget">
-                                            <div id="circle-progress-01" class="text-center circle-progress-01 circle-progress circle-progress-primary" data-min-value="0" data-max-value="100" data-value="<?= (int)$vendasPct ?>" data-type="percent"></div>
-                                            <div class="progress-detail">
-                                                <p class="mb-2">Vendas</p>
-                                                <h4 class="counter"><?= number_format((float)$vendasQtde, 0, ',', '.') ?></h4>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li class="swiper-slide card card-slide col-lg-3" data-aos="fade-up" data-aos-delay="800">
-                                    <div class="card-body">
-                                        <div class="progress-widget">
-                                            <div id="circle-progress-02" class="text-center circle-progress-01 circle-progress circle-progress-info" data-min-value="0" data-max-value="100" data-value="<?= (int)$estoquePct ?>" data-type="percent"></div>
-                                            <div class="progress-detail">
-                                                <p class="mb-2">Itens em Estoque</p>
-                                                <h4 class="counter"><?= number_format((float)$itensEstoque, 0, ',', '.') ?></h4>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li class="swiper-slide card card-slide col-lg-3" data-aos="fade-up" data-aos-delay="900">
-                                    <div class="card-body">
-                                        <div class="progress-widget">
-                                            <div id="circle-progress-03"
-                                                class="text-center circle-progress-01 circle-progress circle-progress-primary"
-                                                data-min-value="0" data-max-value="100"
-                                                data-value="<?= (int)$faturamentoPct ?>" data-type="percent"></div>
-
-                                            <div class="progress-detail">
-                                                <p class="mb-2">Faturamento</p>
-                                                <h4 class="counter">
-                                                    <span class="fat-valor <?= $usa_compacto ? '' : 'fat-valor--normal' ?>">
-                                                        <?= $usa_compacto ? htmlspecialchars($fat_compact, ENT_QUOTES, 'UTF-8')
-                                                            : htmlspecialchars($fat_full, ENT_QUOTES, 'UTF-8') ?>
-                                                    </span>
-                                                </h4>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </li>
-
-                                <li class="swiper-slide card card-slide col-lg-3 px-3" data-aos="fade-up" data-aos-delay="1100">
-                                    <div class="card-body">
-                                        <div class="progress-widget">
-                                            <div id="circle-progress-04" class="text-center circle-progress-01 circle-progress circle-progress-primary" data-min-value="0" data-max-value="100" data-value="<?= (int)$despesasPct ?>" data-type="percent"></div>
-                                            <div class="progress-detail">
-                                                <p class="mb-2">Despesas</p>
-                                                <h4 class="counter">R$ <?= number_format((float)$despesas30d, 2, ',', '.') ?></h4>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </li>
-                            </ul>
+                <div class="col-md-6 col-xl-6" data-aos="fade-up" data-aos-delay="350">
+                    <div class="card card-soft">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="mb-0">Vales pagos na semana</h5>
+                                <i class="bi bi-wallet2 text-danger"></i>
+                            </div>
+                            <div class="text-muted small">Adiantamentos lançados para os lavadores</div>
+                            <div class="fs-3 fw-bold mt-2"><?= h(money($valesSemana)) ?></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- GRÁFICO -->
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card" data-aos="fade-up" data-aos-delay="800">
-                        <div class="flex-wrap card-header d-flex justify-content-between align-items-center">
-                            <div class="header-title">
-                                <h4 class="card-title">Gráfico de Vendas</h4>
-                                <p class="mb-0">Tendência diária / mensal (acumulado)</p>
-                            </div>
-                            <div class="d-none d-md-block text-muted small">Use os filtros</div>
+            <div class="row g-3 mb-4">
+                <div class="col-lg-8" data-aos="fade-up" data-aos-delay="400">
+                    <div class="card card-soft">
+                        <div class="card-header border-0 pb-0">
+                            <h5 class="card-title mb-1">Desempenho dos últimos 7 dias</h5>
+                            <p class="text-muted mb-0">Quantidade de lavagens e faturamento diário</p>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex flex-wrap gap-2 mb-3">
-                                <button class="btn btn-sm btn-outline-primary btn-range" data-range="7">Semana</button>
-                                <button class="btn btn-sm btn-outline-primary btn-range" data-range="30">Mês</button>
-                                <button class="btn btn-sm btn-outline-primary btn-range" data-range="180">6 Meses</button>
-                                <button class="btn btn-sm btn-primary btn-range" data-range="365">12 Meses</button>
-                            </div>
-                            <canvas id="graficoVendas" style="max-height:360px"></canvas>
+                            <canvas id="graficoLavajato" style="max-height:360px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="450">
+                    <div class="card card-soft h-100">
+                        <div class="card-header border-0 pb-0">
+                            <h5 class="card-title mb-1">Top lavadores da semana</h5>
+                            <p class="text-muted mb-0">Mais produtivos no período</p>
+                        </div>
+                        <div class="card-body">
+                            <?php if (empty($topLavadores)): ?>
+                                <div class="text-muted">Sem dados na semana.</div>
+                            <?php else: ?>
+                                <ul class="list-unstyled top-list mb-0">
+                                    <?php foreach ($topLavadores as $i => $item): ?>
+                                        <li class="d-flex justify-content-between align-items-center gap-3">
+                                            <div>
+                                                <div class="fw-semibold"><?= h((string)($item['lavador'] ?? '-')) ?></div>
+                                                <div class="small text-muted">
+                                                    <?= number_format((int)($item['qtd'] ?? 0), 0, ',', '.') ?> lavagens
+                                                </div>
+                                            </div>
+                                            <div class="text-end fw-bold"><?= h(money((float)($item['total'] ?? 0))) ?></div>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
-            <script>
-                // Se seu controller já limita para a semana, use $lavagens (ou renomeie para o que você usa)
-                window.LAVAGENS_SEMANA = <?= json_encode($lavagens ?? [], JSON_UNESCAPED_UNICODE) ?>;
-            </script>
 
-            <!-- LAVAGENS -->
-            <div class="row">
-                <div class="col-md-12 col-lg-12">
-                    <div class="overflow-hidden card" data-aos="fade-up" data-aos-delay="600">
-                        <!-- Cabeçalho do card atualizado -->
-                        <div class="flex-wrap card-header d-flex justify-content-between align-items-center">
-                            <div class="header-title">
-                                <h4 class="mb-1 card-title">Lavagens Recentes</h4>
-                                <p class="mb-0 text-muted small">Semana atual • <span id="lavSemanaRange"><?= htmlspecialchars($lavSemanaLabel ?? '—', ENT_QUOTES, 'UTF-8') ?></span></p>
-                            </div>
-                            <div class="text-muted small">
-                                <span id="lavInfo" class="me-2">—</span>
-                                <span class="d-none d-md-inline">Paginação no cliente</span>
-                            </div>
-                        </div>
-
-                        <div class="p-0 card-body">
-                            <div class="mt-3 table-responsive">
-                                <table class="table mb-0 align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th style="min-width:160px">Lavador</th>
-                                            <th style="min-width:180px">Serviço</th>
-                                            <th style="min-width:220px">Veículo</th>
-                                            <th class="text-end" style="width:120px">Valor</th>
-                                            <th style="width:160px">Data/Hora</th>
-                                            <th style="width:110px">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbLavagens">
-                                        <?php if (empty($lavagens)): ?>
-                                            <tr>
-                                                <td colspan="6" class="text-center text-muted py-4">Sem registros.</td>
-                                            </tr>
-                                        <?php else: ?>
-                                            <?php foreach ($lavagens as $L): /* fallback se JS off */ ?>
-                                                <tr>
-                                                    <td><?= htmlspecialchars($L['lavador'] ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
-                                                    <td><?= htmlspecialchars($L['servico'] ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
-                                                    <td><?= htmlspecialchars($L['veiculo'] ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
-                                                    <td class="text-end">R$ <?= number_format((float)($L['valor'] ?? 0), 2, ',', '.') ?></td>
-                                                    <td><?= htmlspecialchars($L['quando'] ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
-                                                    <td>
-                                                        <?php
-                                                        $st = (string)($L['status'] ?? 'aberta');
-                                                        $badge = ($st === 'concluida' ? 'success' : ($st === 'cancelada' ? 'danger' : 'secondary'));
-                                                        $rot   = ($st === 'concluida' ? 'Concluída' : ($st === 'cancelada' ? 'Cancelada' : 'Aberta'));
-                                                        ?>
-                                                        <span class="badge bg-<?= $badge ?>"><?= $rot ?></span>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <!-- Paginação -->
-                            <div class="mt-3 d-flex justify-content-end mb-3">
-                                <nav aria-label="Paginação lavagens">
-                                    <ul id="lavPager" class="pagination pagination-sm mb-0"><!-- via JS --></ul>
-                                </nav>
-                            </div>
-                        </div>
-
-                        <script>
-                            // Dados da semana (controller sem LIMIT)
-                            window.LAVAGENS_SEMANA = <?= json_encode($lavagens ?? [], JSON_UNESCAPED_UNICODE) ?>;
-                        </script>
-
-                        <script>
-                            (function() {
-                                const DATA = Array.isArray(window.LAVAGENS_SEMANA) ? window.LAVAGENS_SEMANA : [];
-                                const PER = 6; // 6 por página
-                                let page = 1; // página atual
-                                const tbody = document.getElementById('tbLavagens');
-                                const pager = document.getElementById('lavPager');
-                                const infoEl = document.getElementById('lavInfo');
-
-                                const fmtBRL = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                });
-                                const statusBadge = (st) => {
-                                    const s = String(st || 'aberta');
-                                    if (s === 'concluida') return ['success', 'Concluída'];
-                                    if (s === 'cancelada') return ['danger', 'Cancelada'];
-                                    return ['secondary', 'Aberta'];
-                                };
-
-                                function updateInfo(from, to, total) {
-                                    if (infoEl) infoEl.textContent = total ? `Mostrando ${from}–${to} de ${total}` : 'Sem registros';
-                                }
-
-                                function renderPage(p) {
-                                    if (!tbody) return;
-                                    tbody.innerHTML = '';
-
-                                    const total = DATA.length;
-                                    const pages = Math.max(1, Math.ceil(total / PER));
-                                    page = Math.min(Math.max(1, p), pages);
-
-                                    if (!total) {
-                                        const tr = document.createElement('tr');
-                                        tr.innerHTML = `<td colspan="6" class="text-center text-muted py-4">Sem registros.</td>`;
-                                        tbody.appendChild(tr);
-                                        renderPager(1, 1);
-                                        updateInfo(0, 0, 0);
-                                        return;
-                                    }
-
-                                    const ini = (page - 1) * PER;
-                                    const fim = Math.min(ini + PER, total);
-                                    const slice = DATA.slice(ini, fim);
-
-                                    slice.forEach(L => {
-                                        const [cls, rot] = statusBadge(L.status);
-                                        const tr = document.createElement('tr');
-                                        tr.innerHTML = `
-        <td>${(L.lavador ?? '-').toString().replace(/</g,'&lt;')}</td>
-        <td>${(L.servico ?? '-').toString().replace(/</g,'&lt;')}</td>
-        <td>${(L.veiculo ?? '-').toString().replace(/</g,'&lt;')}</td>
-        <td class="text-end">${fmtBRL(L.valor)}</td>
-        <td>${(L.quando ?? '-').toString().replace(/</g,'&lt;')}</td>
-        <td><span class="badge bg-${cls}">${rot}</span></td>
-      `;
-                                        tbody.appendChild(tr);
-                                    });
-
-                                    renderPager(page, pages);
-                                    updateInfo(ini + 1, fim, total);
-                                }
-
-                                function renderPager(current, pages) {
-                                    if (!pager) return;
-                                    pager.innerHTML = '';
-
-                                    const mk = (label, disabled, active, go) => {
-                                        const li = document.createElement('li');
-                                        li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
-                                        const a = document.createElement('a');
-                                        a.className = 'page-link';
-                                        a.href = '#';
-                                        a.textContent = label;
-                                        if (!disabled && go) a.addEventListener('click', (ev) => {
-                                            ev.preventDefault();
-                                            go();
-                                        });
-                                        li.appendChild(a);
-                                        return li;
-                                    };
-
-                                    pager.appendChild(mk('Anterior', current <= 1, false, () => renderPage(current - 1)));
-
-                                    // janela de 5 páginas
-                                    const span = 2;
-                                    let start = Math.max(1, current - span);
-                                    let end = Math.min(pages, current + span);
-                                    if (end - start < span * 2) {
-                                        start = Math.max(1, end - span * 2);
-                                        end = Math.min(pages, start + span * 2);
-                                    }
-                                    for (let p = start; p <= end; p++) {
-                                        pager.appendChild(mk(String(p), false, p === current, () => renderPage(p)));
-                                    }
-
-                                    pager.appendChild(mk('Próxima', current >= pages, false, () => renderPage(current + 1)));
-                                }
-
-                                // Inicializa
-                                renderPage(1);
-                            })();
-                        </script>
-
-
+            <div class="card card-soft" data-aos="fade-up" data-aos-delay="500">
+                <div class="card-header border-0 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h5 class="card-title mb-1">Lavagens recentes</h5>
+                        <p class="text-muted mb-0">Últimos serviços registrados no sistema</p>
                     </div>
+                    <a href="./lavajato/pages/lavagens.php" class="btn btn-sm btn-primary">
+                        <i class="bi bi-list-ul me-1"></i> Ver todas
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Lavador</th>
+                                    <th>Serviço</th>
+                                    <th>Veículo</th>
+                                    <th>Valor</th>
+                                    <th>Pagamento</th>
+                                    <th>Entrada</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($lavagensRecentes)): ?>
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">Nenhuma lavagem encontrada.</td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($lavagensRecentes as $item): ?>
+                                        <?php
+                                        [$badgeClass, $badgeText] = statusBadge((string)($item['status'] ?? 'aberta'));
+                                        $veiculo = trim(
+                                            (string)($item['modelo'] ?? '') .
+                                                ((string)($item['cor'] ?? '') !== '' ? ' / ' . (string)$item['cor'] : '') .
+                                                ((string)($item['placa'] ?? '') !== '' ? ' - ' . (string)$item['placa'] : '')
+                                        );
+                                        $servico = (string)($item['categoria_nome'] ?? 'Lavagem');
+                                        ?>
+                                        <tr>
+                                            <td>#<?= (int)($item['id'] ?? 0) ?></td>
+                                            <td><?= h((string)($item['lavador_nome'] ?? ('CPF: ' . ($item['lavador_cpf'] ?? '-')))) ?></td>
+                                            <td><?= h($servico) ?></td>
+                                            <td><?= h($veiculo !== '' ? $veiculo : '-') ?></td>
+                                            <td class="fw-semibold"><?= h(money((float)($item['valor'] ?? 0))) ?></td>
+                                            <td><?= h((string)($item['forma_pagamento'] ?? '-')) ?></td>
+                                            <td><?= h(fmtDateTime((string)($item['checkin_at'] ?? $item['criado_em'] ?? ''))) ?></td>
+                                            <td><span class="badge bg-<?= h($badgeClass) ?>"><?= h($badgeText) ?></span></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
-                    <footer class="footer">
-                        <div class="footer-body d-flex justify-content-between align-items-center">
-                            <div class="left-panel">© <script>
-                                    document.write(new Date().getFullYear())
-                                </script> <?= htmlspecialchars($empresaNome, ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="right-panel">Desenvolvido por L&J Soluções Tecnológicas.</div>
-                        </div>
-                    </footer>
+            <footer class="footer mt-4">
+                <div class="footer-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>© <script>
+                            document.write(new Date().getFullYear())
+                        </script> <?= h($empresaNome) ?></div>
+                    <div>Desenvolvido por L&amp;J Soluções Tecnológicas.</div>
+                </div>
+            </footer>
+        </div>
     </main>
 
-    <!-- LIBS -->
     <script src="./assets/js/core/libs.min.js"></script>
     <script src="./assets/js/core/external.min.js"></script>
-    <script src="./assets/js/charts/widgetcharts.js"></script>
-    <script src="./assets/js/charts/vectore-chart.js"></script>
     <script src="./assets/js/plugins/fslightbox.js"></script>
     <script src="./assets/js/plugins/setting.js"></script>
     <script src="./assets/js/plugins/slider-tabs.js"></script>
     <script src="./assets/js/plugins/form-wizard.js"></script>
     <script src="./assets/vendor/aos/dist/aos.js"></script>
     <script src="./assets/js/hope-ui.js" defer></script>
-
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Dados do PHP para JS -->
     <script>
-        window.CHART_DAILY_LABELS = <?= json_encode($dailyLabels,   JSON_UNESCAPED_UNICODE) ?>;
-        window.CHART_DAILY_SERIES = <?= json_encode($dailySeries,   JSON_UNESCAPED_UNICODE) ?>;
-        window.CHART_MONTHLY_LABELS = <?= json_encode($monthlyLabels, JSON_UNESCAPED_UNICODE) ?>;
-        window.CHART_MONTHLY_SERIES = <?= json_encode($monthlySeries, JSON_UNESCAPED_UNICODE) ?>;
-    </script>
+        window.DASH_LAVAJATO_LABELS = <?= json_encode($chartLabels, JSON_UNESCAPED_UNICODE) ?>;
+        window.DASH_LAVAJATO_QTD = <?= json_encode($chartLavagens, JSON_UNESCAPED_UNICODE) ?>;
+        window.DASH_LAVAJATO_VALOR = <?= json_encode($chartValores, JSON_UNESCAPED_UNICODE) ?>;
 
-    <!-- Gráfico + filtros -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const canvas = document.getElementById("graficoVendas");
-            if (!canvas) return;
-
-            function toNum(x) {
-                if (typeof x === "number") return x;
-                if (x == null) return 0;
-                const s = String(x).trim()
-                    .replace(/\s+/g, "")
-                    .replace(/\.(?=\d{3}(\D|$))/g, "")
-                    .replace(/,/, ".");
-                const n = Number(s);
-                return Number.isFinite(n) ? n : 0;
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof AOS !== 'undefined') {
+                AOS.init();
             }
 
-            function suggestedMaxOf(arr) {
-                const m = Math.max(0, ...arr);
-                return (isFinite(m) && m > 0) ? m * 1.1 : undefined;
-            }
+            const el = document.getElementById('graficoLavajato');
+            if (!el || typeof Chart === 'undefined') return;
 
-            const DL = Array.isArray(window.CHART_DAILY_LABELS) ? window.CHART_DAILY_LABELS : [];
-            const DS = Array.isArray(window.CHART_DAILY_SERIES) ? window.CHART_DAILY_SERIES : [];
-            const ML = Array.isArray(window.CHART_MONTHLY_LABELS) ? window.CHART_MONTHLY_LABELS : [];
-            const MS = Array.isArray(window.CHART_MONTHLY_SERIES) ? window.CHART_MONTHLY_SERIES : [];
+            const labels = Array.isArray(window.DASH_LAVAJATO_LABELS) ? window.DASH_LAVAJATO_LABELS : [];
+            const qtd = Array.isArray(window.DASH_LAVAJATO_QTD) ? window.DASH_LAVAJATO_QTD : [];
+            const valor = Array.isArray(window.DASH_LAVAJATO_VALOR) ? window.DASH_LAVAJATO_VALOR : [];
 
-            const dailyLabels = DL.length ? DL : ["01/01", "02/01", "03/01", "04/01", "05/01", "06/01", "07/01"];
-            const dailySeries = (DS.length ? DS : [0, 0, 0, 0, 0, 0, 0]).map(toNum);
-            const monthlyLabels = ML.length ? ML : ["01/24", "02/24", "03/24", "04/24", "05/24", "06/24", "07/24", "08/24", "09/24", "10/24", "11/24", "12/24"];
-            const monthlySeries = (MS.length ? MS : Array(12).fill(0)).map(toNum);
-
-            const chart = new Chart(canvas.getContext("2d"), {
-                type: "line",
+            new Chart(el.getContext('2d'), {
+                type: 'bar',
                 data: {
-                    labels: monthlyLabels,
+                    labels: labels,
                     datasets: [{
-                        label: "Faturamento acumulado",
-                        data: monthlySeries,
-                        fill: true,
-                        tension: 0.3,
-                        backgroundColor: "rgba(54,162,235,0.2)",
-                        borderColor: "rgba(54,162,235,1)",
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        pointBackgroundColor: "rgba(54,162,235,1)"
-                    }]
+                            type: 'bar',
+                            label: 'Lavagens',
+                            data: qtd,
+                            yAxisID: 'y',
+                            borderRadius: 8
+                        },
+                        {
+                            type: 'line',
+                            label: 'Faturamento',
+                            data: valor,
+                            yAxisID: 'y1',
+                            tension: 0.35,
+                            fill: false
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
                     plugins: {
-                        legend: {
-                            display: false
-                        },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => {
-                                    const v = Number(ctx.parsed.y || 0);
-                                    return "R$ " + v.toLocaleString("pt-BR", {
-                                        minimumFractionDigits: 2
-                                    });
+                                label: function(ctx) {
+                                    if (ctx.dataset.label === 'Faturamento') {
+                                        return 'Faturamento: R$ ' + Number(ctx.parsed.y || 0).toLocaleString('pt-BR', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        });
+                                    }
+                                    return 'Lavagens: ' + Number(ctx.parsed.y || 0).toLocaleString('pt-BR');
                                 }
                             }
                         }
@@ -712,64 +717,34 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                     scales: {
                         y: {
                             beginAtZero: true,
-                            suggestedMax: suggestedMaxOf(monthlySeries),
+                            position: 'left',
                             ticks: {
-                                callback: (val) => "R$ " + Number(val).toLocaleString("pt-BR")
+                                precision: 0
+                            },
+                            title: {
+                                display: true,
+                                text: 'Lavagens'
+                            }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return 'R$ ' + Number(value).toLocaleString('pt-BR');
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Faturamento'
                             }
                         }
                     }
                 }
             });
-
-            function setActive(btn) {
-                document.querySelectorAll('.btn-range').forEach(b => {
-                    b.classList.remove('btn-primary', 'active');
-                    b.classList.add('btn-outline-primary');
-                });
-                btn.classList.remove('btn-outline-primary');
-                btn.classList.add('btn-primary', 'active');
-            }
-
-            function renderDaily(lastDays) {
-                const qtd = Math.min(lastDays, dailyLabels.length);
-                const data = dailySeries.slice(-qtd);
-                chart.data.labels = dailyLabels.slice(-qtd);
-                chart.data.datasets[0].data = data;
-                chart.options.scales.y.suggestedMax = suggestedMaxOf(data);
-                chart.update();
-            }
-
-            function renderMonthly(lastMonths) {
-                const qtd = Math.min(lastMonths, monthlyLabels.length);
-                const data = monthlySeries.slice(-qtd);
-                chart.data.labels = monthlyLabels.slice(-qtd);
-                chart.data.datasets[0].data = data;
-                chart.options.scales.y.suggestedMax = suggestedMaxOf(data);
-                chart.update();
-            }
-
-            document.querySelectorAll(".btn-range").forEach(btn => {
-                btn.addEventListener("click", () => {
-                    const val = parseInt(btn.getAttribute("data-range"), 10);
-                    if (val === 7) {
-                        renderDaily(7);
-                        setActive(btn);
-                    } else if (val === 30) {
-                        renderDaily(30);
-                        setActive(btn);
-                    } else if (val === 180) {
-                        renderMonthly(6);
-                        setActive(btn);
-                    } else if (val === 365) {
-                        renderMonthly(12);
-                        setActive(btn);
-                    }
-                });
-            });
-
-            const startBtn = document.querySelector('.btn-range[data-range="365"]');
-            if (startBtn) setActive(startBtn);
-            renderMonthly(12);
         });
     </script>
 </body>
