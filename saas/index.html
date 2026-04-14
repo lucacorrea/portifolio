@@ -308,14 +308,15 @@
         content: "";
         position: absolute;
         inset: 0;
+        border-radius: 24px;
         background: radial-gradient(
           circle at top right,
-          var(--premium-glow),
-          transparent 28%
+          rgba(245, 158, 11, 0.2),
+          transparent 30%
         );
         pointer-events: none;
+        z-index: 0;
       }
-
       .pricing-badge {
         position: absolute;
         top: -14px;
