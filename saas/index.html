@@ -301,7 +301,7 @@
           0 18px 45px rgba(15, 23, 42, 0.12),
           0 0 0 1px rgba(245, 158, 11, 0.1);
         position: relative;
-        overflow: hidden;
+        overflow: visible;
       }
 
       .pricing-card.premium-card::before {
@@ -682,6 +682,45 @@
         color: #f59e0b;
         letter-spacing: 2px;
       }
+
+      .testimonial-card {
+        background: #ffffff;
+        border: 1px solid #eaeef5;
+        border-radius: 22px;
+        padding: 28px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+        transition:
+          transform 0.28s ease,
+          box-shadow 0.28s ease,
+          border-color 0.28s ease;
+      }
+
+      .testimonial-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        border-color: #dbe7f5;
+      }
+
+      .testimonial-card p {
+        color: #334155;
+        line-height: 1.7;
+        font-size: 1rem;
+      }
+
+      .testimonial-stars {
+        color: #f59e0b;
+        letter-spacing: 2px;
+      }
+
+      .testimonial-photo {
+        width: 58px;
+        height: 58px;
+        min-width: 58px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #fff;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+      }
     </style>
   </head>
   <body>
@@ -930,7 +969,7 @@
             </div>
           </div>
 
-          <div class="col-lg-4" data-aos="zoom-in-up" data-aos-delay="240">
+          <div class="col-lg-4" data-aos="zoom-in-up" data-aos-delay="120">
             <div class="pricing-card premium-card">
               <span class="pricing-badge">PLANO MAIS COMPLETO</span>
 
@@ -1215,16 +1254,27 @@
         <div class="row g-4 justify-content-center">
           <div class="col-lg-4 col-md-6" data-aos="zoom-in-up">
             <div class="testimonial-card h-100">
-              <div class="testimonial-stars fs-5 mb-3">★★★★★</div>
-              <p class="mb-4">
-                “Hoje eu consigo organizar melhor meus clientes e acompanhar os
-                pagamentos com muito mais facilidade. A rotina ficou mais leve e
-                mais clara.”
-              </p>
-              <div>
-                <h3 class="h6 fw-bold mb-1">Mariana Costa</h3>
-                <p class="muted mb-0">Contadora</p>
+              <div class="d-flex align-items-center mb-3">
+                <img
+                  src="https://i.pravatar.cc/120?img=32"
+                  alt="Mariana Costa"
+                  class="testimonial-photo me-3"
+                />
+                <div class="text-start">
+                  <h3 class="h6 fw-bold mb-1">Mariana Costa</h3>
+                  <p class="muted mb-0 small">
+                    Contadora • Costa Assessoria Contábil
+                  </p>
+                </div>
               </div>
+
+              <div class="testimonial-stars fs-5 mb-3">★★★★★</div>
+
+              <p class="mb-0">
+                “Hoje eu consigo organizar melhor meus clientes e acompanhar os
+                pagamentos com muito mais facilidade. A rotina ficou mais leve,
+                mais clara e com menos retrabalho.”
+              </p>
             </div>
           </div>
 
@@ -1234,16 +1284,27 @@
             data-aos-delay="120"
           >
             <div class="testimonial-card h-100">
-              <div class="testimonial-stars fs-5 mb-3">★★★★★</div>
-              <p class="mb-4">
-                “A parte de cobrança ajudou muito. Antes eu fazia tudo de forma
-                mais manual, agora consigo ter mais controle e menos atraso no
-                recebimento.”
-              </p>
-              <div>
-                <h3 class="h6 fw-bold mb-1">Ricardo Almeida</h3>
-                <p class="muted mb-0">Escritório contábil</p>
+              <div class="d-flex align-items-center mb-3">
+                <img
+                  src="https://i.pravatar.cc/120?img=12"
+                  alt="Ricardo Almeida"
+                  class="testimonial-photo me-3"
+                />
+                <div class="text-start">
+                  <h3 class="h6 fw-bold mb-1">Ricardo Almeida</h3>
+                  <p class="muted mb-0 small">
+                    Gestor • Almeida Serviços Contábeis
+                  </p>
+                </div>
               </div>
+
+              <div class="testimonial-stars fs-5 mb-3">★★★★★</div>
+
+              <p class="mb-0">
+                “A parte de cobrança ajudou muito. Antes eu fazia tudo de forma
+                manual, agora consigo ter mais controle, menos atraso no
+                recebimento e muito mais praticidade.”
+              </p>
             </div>
           </div>
 
@@ -1253,16 +1314,27 @@
             data-aos-delay="240"
           >
             <div class="testimonial-card h-100">
+              <div class="d-flex align-items-center mb-3">
+                <img
+                  src="https://i.pravatar.cc/120?img=47"
+                  alt="Patrícia Souza"
+                  class="testimonial-photo me-3"
+                />
+                <div class="text-start">
+                  <h3 class="h6 fw-bold mb-1">Patrícia Souza</h3>
+                  <p class="muted mb-0 small">
+                    Contadora autônoma • Atendimento empresarial
+                  </p>
+                </div>
+              </div>
+
               <div class="testimonial-stars fs-5 mb-3">★★★★★</div>
-              <p class="mb-4">
+
+              <p class="mb-0">
                 “O que mais gostei foi enxergar melhor minha carteira. Ficou
                 mais fácil saber quem pagou, quem está pendente e o que preciso
-                acompanhar.”
+                acompanhar no dia a dia.”
               </p>
-              <div>
-                <h3 class="h6 fw-bold mb-1">Patrícia Souza</h3>
-                <p class="muted mb-0">Contadora autônoma</p>
-              </div>
             </div>
           </div>
         </div>
