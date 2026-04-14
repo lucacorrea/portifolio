@@ -84,12 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="public/css/corporate.css?v=10.4">
     <style>
         :root {
-            --login-bg: #cbd5e1;
-            --card-bg: #ffffff;
-            --accent-gold: #2b4c7d;
-            --accent-hover: #1e3a62;
-            --input-bg: #ffffff;
-            --border-color: #e2e8f0;
+            --login-bg: #1e3a62;
+            --card-bg: #2b4c7d;
+            --accent-gold: #FFC107;
+            --accent-hover: #FFB300;
+            --input-bg: #1e3a62;
+            --border-color: rgba(255, 255, 255, 0.15);
         }
 
         body {
@@ -100,14 +100,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             min-height: 100vh;
             margin: 0;
             font-family: 'Inter', sans-serif;
-            color: #1e293b;
+            color: #ffffff;
         }
 
         .login-card {
             background: var(--card-bg);
             padding: 50px;
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             width: 100%;
             max-width: 450px;
             border: 1px solid var(--border-color);
@@ -134,19 +134,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-size: 3.5rem;
             color: var(--accent-gold);
             margin-bottom: 15px;
-            filter: drop-shadow(0 0 10px rgba(43, 76, 125, 0.3));
+            filter: drop-shadow(0 0 10px rgba(255, 193, 7, 0.3));
         }
 
         .login-header h1 {
             font-size: 1.75rem;
-            color: #1e293b;
+            color: #ffffff;
             margin: 0;
             font-weight: 800;
             letter-spacing: 2px;
         }
 
         .login-header p {
-            color: #64748b;
+            color: #cbd5e1;
             font-size: 0.85rem;
             margin-top: 5px;
             letter-spacing: 1px;
@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             display: block;
             margin-bottom: 10px;
             font-weight: 700;
-            color: #64748b;
+            color: #cbd5e1;
             font-size: 0.7rem;
             letter-spacing: 1px;
         }
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-size: 1rem;
             transition: all 0.2s;
             background: var(--input-bg);
-            color: #1e293b !important;
+            color: #ffffff !important;
         }
 
         .form-control:focus {
@@ -182,22 +182,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             background: var(--input-bg);
             outline: none;
             box-shadow: none;
-            color: #1e293b;
+            color: #ffffff;
         }
 
         .form-control::placeholder {
-            color: #475569 !important;
+            color: rgba(255, 255, 255, 0.5) !important;
         }
 
         .btn-login {
             width: 100%;
             padding: 15px;
             background: var(--accent-gold);
-            color: #fff;
+            color: #1e293b;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
-            font-weight: 700;
+            font-weight: 800;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
@@ -210,9 +210,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         .btn-login:hover {
             background: #1e3a62 !important;
-            border: 2px solid #2b4c7d !important;
+            border: 2px solid var(--accent-gold) !important;
             transform: translateY(-1px);
-            color: #fff !important;
+            color: var(--accent-gold) !important;
         }
 
         .alert {
@@ -243,15 +243,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             margin-top: 30px;
             text-align: center;
             font-size: 0.7rem;
-            color: #404040;
+            color: rgba(255, 255, 255, 0.5);
             font-family: 'Roboto Mono', monospace;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         select.form-control option {
-            background-color: #ffffff;
-            color: #1e293b;
+            background-color: var(--input-bg);
+            color: #ffffff;
         }
 
         @media (max-width: 480px) {
@@ -303,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <label class="form-label">SENHA TÉCNICA</label>
                 <div class="input-group">
                     <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
-                    <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border-color); background: var(--input-bg); color: #475569;">
+                    <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePasswordVisibility(this)" style="border-color: var(--border-color); background: var(--input-bg); color: rgba(255, 255, 255, 0.7);">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
