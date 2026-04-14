@@ -599,7 +599,7 @@ if (!isset($pdo) || !($pdo instanceof PDO)) {
     die('Conexão com banco de dados não disponível.');
 }
 
-function h(?string $value): string
+function html(?string $value): string
 {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
