@@ -192,6 +192,40 @@ class SettingController extends BaseController {
 
             try {
                 $model->save($data);
+
+                // CRITICAL: If this is the Matriz, sync to Global Config (sefaz_config)
+                $stmtMatriz = $db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1");
+                $matrizId = $stmtMatriz->fetchColumn();
+                
+                if ($matrizId == $id) {
+                    $existing = $db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch();
+                    $sefazData = [
+                        'csc_id' => $data['csc_id'] ?? '',
+                        'csc_token' => $data['csc_token'] ?? '',
+                        'ambiente' => $data['ambiente'] ?? 'homologacao',
+                        'certificado_path' => $data['certificado_pfx'] ?? null,
+                        'certificado_senha' => $data['certificado_senha'] ?? null
+                    ];
+
+                    if ($existing) {
+                        $sqlSefaz = "UPDATE sefaz_config SET csc_id = ?, csc_token = ?, ambiente = ?";
+                        $paramsSefaz = [$sefazData['csc_id'], $sefazData['csc_token'], $sefazData['ambiente']];
+                        
+                        if ($sefazData['certificado_path']) {
+                            $sqlSefaz .= ", certificado_path = ?, certificado_senha = ?";
+                            $paramsSefaz[] = $sefazData['certificado_path'];
+                            $paramsSefaz[] = $sefazData['certificado_senha'];
+                        }
+                        
+                        $sqlSefaz .= " WHERE id = ?";
+                        $paramsSefaz[] = $existing['id'];
+                        $db->prepare($sqlSefaz)->execute($paramsSefaz);
+                    } else {
+                        $db->prepare("INSERT INTO sefaz_config (csc_id, csc_token, ambiente, certificado_path, certificado_senha) VALUES (?, ?, ?, ?, ?)")
+                           ->execute([$sefazData['csc_id'], $sefazData['csc_token'], $sefazData['ambiente'], $sefazData['certificado_path'], $sefazData['certificado_senha']]);
+                    }
+                }
+
                 setFlash('success', 'Unidade salva com sucesso');
                 $this->redirect('configuracoes.php#unidades');
             } catch (\Exception $e) {
