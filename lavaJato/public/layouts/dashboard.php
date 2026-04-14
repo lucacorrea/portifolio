@@ -63,6 +63,11 @@ if (!isset($menuAtivo)) {
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link <?= ($menuAtivo === 'lavajato-lavagens' ? 'active' : '') ?>" href="./lavajato/pages/lavagens.php">
+            <i class="bi bi-list icon"></i><span class="item-name">Lista Lavagens</span>
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-lavajato" role="button"
             aria-expanded="<?= str_starts_with($menuAtivo, 'lavajato-') ? 'true' : 'false' ?>"
             aria-controls="sidebar-lavajato">
