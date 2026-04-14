@@ -52,7 +52,6 @@ if (!function_exists('secretaria_sigla')) {
             'SECRETÁRIO MUNICIPAL DE RELAÇÕES INSTITUCIONAIS' => 'SMRI',
             'COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'CREC',
             'COMIÇÃO DE CONTRATAÇÃO DE COARI' => 'CCC',
-            'COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'SEDUC'
         ];
 
         foreach ($map as $trecho => $sigla) {
