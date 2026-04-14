@@ -68,6 +68,7 @@
     </div>
 </div>
 
+<style>
 /* Allow dropdowns to overflow the table container ONLY on desktop */
 @media (min-width: 992px) {
     .table-responsive {
@@ -86,6 +87,7 @@
         padding-bottom: 1rem;
     }
 }
+</style>
 .card-hover {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
