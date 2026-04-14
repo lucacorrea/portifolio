@@ -124,8 +124,17 @@ class SettingController extends BaseController {
                 $stmtMatriz = $db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1");
                 $matrizId = $stmtMatriz->fetchColumn();
                 if ($matrizId) {
-                    $db->prepare("UPDATE filiais SET nome = ?, cnpj = ?, telefone = ?, email = ? WHERE id = ?")
-                       ->execute([$identityData['nome'], $identityData['cnpj'], $identityData['telefone'], $identityData['email'], $matrizId]);
+                    $db->prepare("UPDATE filiais SET nome = ?, cnpj = ?, telefone = ?, email = ?, csc_id = ?, csc_token = ?, ambiente = ? WHERE id = ?")
+                       ->execute([
+                           $identityData['nome'], 
+                           $identityData['cnpj'], 
+                           $identityData['telefone'], 
+                           $identityData['email'], 
+                           $dataSefaz['csc_id'], 
+                           $dataSefaz['csc'], 
+                           $dataSefaz['ambiente'], 
+                           $matrizId
+                       ]);
                 }
 
                 $audit->record('Configurações Globais de Certificado & Identidade Atualizadas', 'configuracoes');
