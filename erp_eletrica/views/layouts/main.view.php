@@ -76,17 +76,17 @@
                 <?php endif; ?>
 
                 <?= $content ?>
-
-                <!-- Global Footer -->
-                <footer class="mt-5 pt-3 pb-2 border-top border-secondary border-opacity-10 d-flex flex-column flex-md-row justify-content-between align-items-center text-muted" style="font-size: 0.75rem;">
-                    <div class="mb-2 mb-md-0 fw-medium">
-                        ERP Elétrica &copy; <?= date('Y') ?> - Conexão Industrial Segura
-                    </div>
-                    <div class="text-md-end">
-                        Desenvolvido por <strong>L&J Soluções Tecnológicas</strong>.
-                    </div>
-                </footer>
             </main>
+
+            <!-- Global Footer Bar -->
+            <footer class="erp-footer py-3 px-4 bg-white border-top d-flex flex-column flex-md-row justify-content-between align-items-center text-muted shadow-sm" style="font-size: 0.75rem; z-index: 10;">
+                <div class="mb-2 mb-md-0 fw-medium">
+                    ERP Elétrica &copy; <?= date('Y') ?> - Conexão Industrial Segura
+                </div>
+                <div class="text-md-end">
+                    Desenvolvido por <strong>L&J Soluções Tecnológicas</strong>.
+                </div>
+            </footer>
         </div>
         <!-- Sidebar Mobile Overlay -->
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
