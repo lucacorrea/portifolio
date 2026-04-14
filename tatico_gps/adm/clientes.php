@@ -689,7 +689,7 @@ try {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
 
-                <form action="./php/config/processarDados.php" method="POST">
+                <form action="./php/clientes/processarDados.php" method="POST">
                     <input type="hidden" name="acao" value="salvar_cliente">
 
                     <div class="modal-body modal-body-scroll">
@@ -827,7 +827,7 @@ try {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
 
-                <form action="./php/config/processarDados.php" method="POST">
+                <form action="./php/clientes/processarDados.php" method="POST">
                     <input type="hidden" name="acao" value="editar_cliente">
                     <input type="hidden" name="id" id="edit_id">
 
