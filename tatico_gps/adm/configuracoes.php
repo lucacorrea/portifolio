@@ -1,5 +1,8 @@
 <?php
+
 declare(strict_types=1);
+
+session_start();
 
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
@@ -16,6 +19,9 @@ function h(?string $value): string
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
 
+$flashSucesso = $_SESSION['flash_sucesso'] ?? null;
+unset($_SESSION['flash_sucesso']);
+
 $padrao = [
     'empresa_nome' => 'Tático GPS',
     'empresa_cnpj' => '',
@@ -24,9 +30,6 @@ $padrao = [
     'empresa_endereco' => '',
     'automacao_ativa' => 1,
     'dia_vencimento_padrao' => 10,
-    'mensalidade_padrao' => '89.90',
-    'multa_atraso' => '2.00',
-    'juros_atraso' => '1.00',
     'bloquear_apos_dias' => 7,
     'pix_nome_recebedor' => 'Tático GPS LTDA',
     'pix_tipo_chave' => 'Telefone',
@@ -42,15 +45,15 @@ $padrao = [
 try {
     $stmt = $pdo->query("SELECT * FROM configuracoes_automacao ORDER BY id DESC LIMIT 1");
     $config = $stmt->fetch(PDO::FETCH_ASSOC);
+
     if (!$config) {
         $config = $padrao;
+    } else {
+        $config = array_merge($padrao, $config);
     }
 } catch (Throwable $e) {
     $config = $padrao;
 }
-
-$status = $_GET['status'] ?? '';
-$msg = $_GET['msg'] ?? '';
 ?>
 <!doctype html>
 <html lang="pt-BR" class="layout-menu-fixed layout-compact" data-assets-path="./assets/"
@@ -75,8 +78,8 @@ $msg = $_GET['msg'] ?? '';
     <link rel="stylesheet" href="../assets/css/demo.css" />
     <link rel="stylesheet" href="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
 
-    <script src="./assets/vendor/js/helpers.js"></script>
-    <script src="./assets/js/config.js"></script>
+    <script src="../assets/vendor/js/helpers.js"></script>
+    <script src="../assets/js/config.js"></script>
 
     <style>
     html,
@@ -113,15 +116,6 @@ $msg = $_GET['msg'] ?? '';
 
     .settings-card .card-header h5 {
         margin: 0;
-    }
-
-    .form-section-title {
-        font-size: .95rem;
-        font-weight: 700;
-        color: #566a7f;
-        margin-bottom: .85rem;
-        padding-bottom: .45rem;
-        border-bottom: 1px solid #eceef1;
     }
 
     .placeholder-box {
@@ -242,6 +236,19 @@ $msg = $_GET['msg'] ?? '';
                 <div class="content-wrapper">
                     <div class="container-xxl flex-grow-1 container-p-y">
 
+                        <?php if ($flashSucesso): ?>
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <i class="bx bx-check-circle me-1"></i>
+                                    <?= h($flashSucesso) ?>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                        aria-label="Fechar"></button>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
                         <div class="row mb-4">
                             <div class="col-12">
                                 <div class="card page-banner">
@@ -258,7 +265,6 @@ $msg = $_GET['msg'] ?? '';
                             <input type="hidden" name="acao" value="salvar_configuracao_automacao">
 
                             <div class="row g-4">
-
                                 <div class="col-12">
                                     <div class="card settings-card">
                                         <div class="card-header">
@@ -324,27 +330,6 @@ $msg = $_GET['msg'] ?? '';
                                                 </div>
 
                                                 <div class="col-md-6">
-                                                    <label class="form-label">Mensalidade padrão</label>
-                                                    <input type="text" class="form-control money-mask"
-                                                        name="mensalidade_padrao" required
-                                                        value="<?= h(number_format((float)$config['mensalidade_padrao'], 2, ',', '.')) ?>">
-                                                </div>
-
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Multa por atraso (%)</label>
-                                                    <input type="text" class="form-control decimal-mask"
-                                                        name="multa_atraso" required
-                                                        value="<?= h(number_format((float)$config['multa_atraso'], 2, ',', '.')) ?>">
-                                                </div>
-
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Juros por atraso (%)</label>
-                                                    <input type="text" class="form-control decimal-mask"
-                                                        name="juros_atraso" required
-                                                        value="<?= h(number_format((float)$config['juros_atraso'], 2, ',', '.')) ?>">
-                                                </div>
-
-                                                <div class="col-md-6">
                                                     <label class="form-label">Bloquear após quantos dias de
                                                         atraso</label>
                                                     <input type="number" min="1" class="form-control"
@@ -356,13 +341,13 @@ $msg = $_GET['msg'] ?? '';
                                                     <label class="form-label">Status após atraso</label>
                                                     <select class="form-select" name="status_cliente_apos_atraso">
                                                         <option value="Pendente"
-                                                            <?= $config['status_cliente_apos_atraso'] === 'Pendente' ? 'selected' : '' ?>>
+                                                            <?= ($config['status_cliente_apos_atraso'] ?? '') === 'Pendente' ? 'selected' : '' ?>>
                                                             Pendente</option>
                                                         <option value="Em cobrança"
-                                                            <?= $config['status_cliente_apos_atraso'] === 'Em cobrança' ? 'selected' : '' ?>>
+                                                            <?= ($config['status_cliente_apos_atraso'] ?? '') === 'Em cobrança' ? 'selected' : '' ?>>
                                                             Em cobrança</option>
                                                         <option value="Atrasado"
-                                                            <?= $config['status_cliente_apos_atraso'] === 'Atrasado' ? 'selected' : '' ?>>
+                                                            <?= ($config['status_cliente_apos_atraso'] ?? '') === 'Atrasado' ? 'selected' : '' ?>>
                                                             Atrasado</option>
                                                     </select>
                                                 </div>
@@ -371,13 +356,13 @@ $msg = $_GET['msg'] ?? '';
                                                     <label class="form-label">Status após bloqueio</label>
                                                     <select class="form-select" name="status_cliente_apos_bloqueio">
                                                         <option value="Bloqueado"
-                                                            <?= $config['status_cliente_apos_bloqueio'] === 'Bloqueado' ? 'selected' : '' ?>>
+                                                            <?= ($config['status_cliente_apos_bloqueio'] ?? '') === 'Bloqueado' ? 'selected' : '' ?>>
                                                             Bloqueado</option>
                                                         <option value="Suspenso"
-                                                            <?= $config['status_cliente_apos_bloqueio'] === 'Suspenso' ? 'selected' : '' ?>>
+                                                            <?= ($config['status_cliente_apos_bloqueio'] ?? '') === 'Suspenso' ? 'selected' : '' ?>>
                                                             Suspenso</option>
                                                         <option value="Inadimplente"
-                                                            <?= $config['status_cliente_apos_bloqueio'] === 'Inadimplente' ? 'selected' : '' ?>>
+                                                            <?= ($config['status_cliente_apos_bloqueio'] ?? '') === 'Inadimplente' ? 'selected' : '' ?>>
                                                             Inadimplente</option>
                                                     </select>
                                                 </div>
@@ -406,8 +391,9 @@ $msg = $_GET['msg'] ?? '';
                                                         foreach ($tiposPix as $tipo):
                                                         ?>
                                                         <option value="<?= h($tipo) ?>"
-                                                            <?= $config['pix_tipo_chave'] === $tipo ? 'selected' : '' ?>>
-                                                            <?= h($tipo) ?></option>
+                                                            <?= ($config['pix_tipo_chave'] ?? '') === $tipo ? 'selected' : '' ?>>
+                                                            <?= h($tipo) ?>
+                                                        </option>
                                                         <?php endforeach; ?>
                                                     </select>
                                                 </div>
@@ -492,7 +478,7 @@ $msg = $_GET['msg'] ?? '';
                                                         3. Envia mensagem no dia do vencimento.<br>
                                                         4. Se não houver confirmação, envia aviso após 7 dias e pode
                                                         bloquear.<br><br>
-                                                        O conteúdo da mensagem já leva PIX e dados do pagamento.
+                                                        O valor usado nas mensagens deve vir do cadastro do cliente.
                                                     </div>
                                                 </div>
                                             </div>
@@ -526,38 +512,24 @@ $msg = $_GET['msg'] ?? '';
         <div class="layout-overlay layout-menu-toggle"></div>
     </div>
 
-    <script src="./assets/vendor/libs/jquery/jquery.js"></script>
-    <script src="./assets/vendor/libs/popper/popper.js"></script>
-    <script src="./assets/vendor/js/bootstrap.js"></script>
-    <script src="./assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
-    <script src="./assets/vendor/js/menu.js"></script>
-    <script src="./assets/js/main.js"></script>
+    <script src="../assets/vendor/libs/jquery/jquery.js"></script>
+    <script src="../assets/vendor/libs/popper/popper.js"></script>
+    <script src="../assets/vendor/js/bootstrap.js"></script>
+    <script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+    <script src="../assets/vendor/js/menu.js"></script>
+    <script src="../assets/js/main.js"></script>
 
     <script>
-    function aplicarMascaraDecimal(input) {
-        input.addEventListener('input', function() {
-            let valor = this.value.replace(/[^\d,]/g, '');
-            const partes = valor.split(',');
-            if (partes.length > 2) {
-                valor = partes[0] + ',' + partes[1];
-            }
-            this.value = valor;
-        });
-    }
-
-    document.querySelectorAll('.money-mask, .decimal-mask').forEach(aplicarMascaraDecimal);
-
     function montarPreview() {
         const textarea = document.querySelector('textarea[name="mensagem_dia_vencimento"]');
         const pixNome = document.querySelector('input[name="pix_nome_recebedor"]').value || 'Tático GPS LTDA';
         const pixChave = document.querySelector('input[name="pix_chave"]').value || '(00) 00000-0000';
         const empresa = document.querySelector('input[name="empresa_nome"]').value || 'Tático GPS';
-        const valor = document.querySelector('input[name="mensalidade_padrao"]').value || '89,90';
 
         let texto = textarea.value || '';
         texto = texto
             .replaceAll('@cliente', 'João da Silva')
-            .replaceAll('@valor', valor)
+            .replaceAll('@valor', '89,90')
             .replaceAll('@vencimento', '10/05/2026')
             .replaceAll('@pix_nome', pixNome)
             .replaceAll('@pix_chave', pixChave)
@@ -566,22 +538,13 @@ $msg = $_GET['msg'] ?? '';
         document.getElementById('previewMensagem').textContent = texto;
     }
 
-    document.querySelectorAll('textarea, input').forEach(el => {
+    document.querySelectorAll('textarea, input, select').forEach(el => {
         el.addEventListener('input', montarPreview);
+        el.addEventListener('change', montarPreview);
     });
 
     montarPreview();
     </script>
-
-    <?php if ($status === 'ok'): ?>
-    <script>
-    alert('Configurações salvas com sucesso.');
-    </script>
-    <?php elseif ($status === 'erro' && $msg !== ''): ?>
-    <script>
-    alert('<?= h($msg) ?>');
-    </script>
-    <?php endif; ?>
 </body>
 
 </html>

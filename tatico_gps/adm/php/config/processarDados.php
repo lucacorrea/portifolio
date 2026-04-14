@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+session_start();
+
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
@@ -26,15 +28,6 @@ function limparTexto(?string $valor): string
     return trim((string)$valor);
 }
 
-function limparNumeroBrasil(?string $valor): string
-{
-    $valor = trim((string)$valor);
-    $valor = str_replace('.', '', $valor);
-    $valor = str_replace(',', '.', $valor);
-    $valor = preg_replace('/[^\d.\-]/', '', $valor);
-    return $valor !== '' ? $valor : '0';
-}
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     voltarComErro('Requisição inválida.');
 }
@@ -53,9 +46,6 @@ $empresa_endereco = limparTexto($_POST['empresa_endereco'] ?? '');
 $automacao_ativa = isset($_POST['automacao_ativa']) ? 1 : 0;
 
 $dia_vencimento_padrao = (int)($_POST['dia_vencimento_padrao'] ?? 10);
-$mensalidade_padrao = (float)limparNumeroBrasil($_POST['mensalidade_padrao'] ?? '0');
-$multa_atraso = (float)limparNumeroBrasil($_POST['multa_atraso'] ?? '0');
-$juros_atraso = (float)limparNumeroBrasil($_POST['juros_atraso'] ?? '0');
 $bloquear_apos_dias = (int)($_POST['bloquear_apos_dias'] ?? 7);
 
 $pix_nome_recebedor = limparTexto($_POST['pix_nome_recebedor'] ?? '');
@@ -78,10 +68,6 @@ if ($dia_vencimento_padrao < 1 || $dia_vencimento_padrao > 31) {
     voltarComErro('O dia de vencimento deve estar entre 1 e 31.');
 }
 
-if ($mensalidade_padrao <= 0) {
-    voltarComErro('Informe uma mensalidade válida.');
-}
-
 if ($pix_nome_recebedor === '') {
     voltarComErro('Informe o nome do recebedor do PIX.');
 }
@@ -94,7 +80,12 @@ if ($pix_chave === '') {
     voltarComErro('Informe a chave PIX.');
 }
 
-if ($mensagem_10_dias === '' || $mensagem_5_dias === '' || $mensagem_dia_vencimento === '' || $mensagem_7_dias_atraso === '') {
+if (
+    $mensagem_10_dias === ''
+    || $mensagem_5_dias === ''
+    || $mensagem_dia_vencimento === ''
+    || $mensagem_7_dias_atraso === ''
+) {
     voltarComErro('Preencha todas as mensagens automáticas.');
 }
 
@@ -117,9 +108,6 @@ try {
                     empresa_endereco = :empresa_endereco,
                     automacao_ativa = :automacao_ativa,
                     dia_vencimento_padrao = :dia_vencimento_padrao,
-                    mensalidade_padrao = :mensalidade_padrao,
-                    multa_atraso = :multa_atraso,
-                    juros_atraso = :juros_atraso,
                     bloquear_apos_dias = :bloquear_apos_dias,
                     pix_nome_recebedor = :pix_nome_recebedor,
                     pix_tipo_chave = :pix_tipo_chave,
@@ -133,6 +121,7 @@ try {
                 WHERE id = :id";
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':id', (int)$registro['id'], PDO::PARAM_INT);
+        $mensagemRetorno = 'Configurações atualizadas com sucesso.';
     } else {
         $sql = "INSERT INTO configuracoes_automacao (
                     empresa_nome,
@@ -142,9 +131,6 @@ try {
                     empresa_endereco,
                     automacao_ativa,
                     dia_vencimento_padrao,
-                    mensalidade_padrao,
-                    multa_atraso,
-                    juros_atraso,
                     bloquear_apos_dias,
                     pix_nome_recebedor,
                     pix_tipo_chave,
@@ -163,9 +149,6 @@ try {
                     :empresa_endereco,
                     :automacao_ativa,
                     :dia_vencimento_padrao,
-                    :mensalidade_padrao,
-                    :multa_atraso,
-                    :juros_atraso,
                     :bloquear_apos_dias,
                     :pix_nome_recebedor,
                     :pix_tipo_chave,
@@ -178,6 +161,7 @@ try {
                     :status_cliente_apos_bloqueio
                 )";
         $stmt = $pdo->prepare($sql);
+        $mensagemRetorno = 'Configurações cadastradas com sucesso.';
     }
 
     $stmt->bindValue(':empresa_nome', $empresa_nome);
@@ -187,9 +171,6 @@ try {
     $stmt->bindValue(':empresa_endereco', $empresa_endereco);
     $stmt->bindValue(':automacao_ativa', $automacao_ativa, PDO::PARAM_INT);
     $stmt->bindValue(':dia_vencimento_padrao', $dia_vencimento_padrao, PDO::PARAM_INT);
-    $stmt->bindValue(':mensalidade_padrao', $mensalidade_padrao);
-    $stmt->bindValue(':multa_atraso', $multa_atraso);
-    $stmt->bindValue(':juros_atraso', $juros_atraso);
     $stmt->bindValue(':bloquear_apos_dias', $bloquear_apos_dias, PDO::PARAM_INT);
     $stmt->bindValue(':pix_nome_recebedor', $pix_nome_recebedor);
     $stmt->bindValue(':pix_tipo_chave', $pix_tipo_chave);
@@ -205,14 +186,18 @@ try {
 
     $pdo->commit();
 
-    echo "<script>window.location.href='../../configuracoes.php';</script>";
+    $_SESSION['flash_sucesso'] = $mensagemRetorno;
+
+    header('Location: ../../configuracoes.php');
     exit;
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
-    $erro = addslashes($e->getMessage());
+    $erro = htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
     echo "<script>alert('Erro ao salvar: {$erro}'); history.back();</script>";
     exit;
 }
+
+?>
