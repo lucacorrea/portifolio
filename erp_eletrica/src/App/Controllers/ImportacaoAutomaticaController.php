@@ -163,11 +163,11 @@ class ImportacaoAutomaticaController extends BaseController {
                 'message' => $message
             ]);
 
-        } catch (\Exception $e) {
-            error_log("Erro na sincronização SEFAZ: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            error_log("Erro Fatal na sincronização SEFAZ: " . $e->getMessage() . " em " . $e->getFile() . ":" . $e->getLine());
             echo json_encode([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => "Erro no servidor: " . $e->getMessage()
             ]);
         }
         exit;
