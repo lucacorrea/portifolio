@@ -37,22 +37,10 @@ if (!function_exists('secretaria_sigla')) {
     {
         $nomeUp = mb_strtoupper(normalize_spaces($nome), 'UTF-8');
 
-        /*
-         * 1) Primeiro tenta pegar a sigla real no FINAL do nome
-         * Exemplos:
-         * - SECRETARIA MUNICIPAL ... - SMSPDS
-         * - SECRETARIA MUNICIPAL ... - AEROPORTO
-         * - COMIÇÃO DE CONTRATAÇÃO DE COARI-CCC
-         * - ... COARI-SEDUC
-         */
         if (preg_match('/(?:-|\/)\s*([A-Z]{3,})\s*$/u', $nomeUp, $m)) {
             return trim($m[1]);
         }
 
-        /*
-         * 2) Depois tenta encontrar siglas conhecidas dentro do texto.
-         * Aqui não deixamos chave duplicada.
-         */
         $map = [
             'SECRETARIA MUNICIPAL DA CASA CIVIL' => 'SMCC',
             'SECRETARIA MUNICIPAL DE ADMINISTRAÇÃO' => 'SEMAD',
@@ -86,9 +74,6 @@ if (!function_exists('secretaria_sigla')) {
             }
         }
 
-        /*
-         * 3) Tenta localizar uma sigla no meio do nome
-         */
         if (preg_match('/\b([A-Z]{3,})\b/u', $nomeUp, $m)) {
             $candidato = trim($m[1]);
 
@@ -111,9 +96,6 @@ if (!function_exists('secretaria_sigla')) {
             }
         }
 
-        /*
-         * 4) Último fallback
-         */
         $partes = preg_split('/\s+/u', preg_replace('/[^\p{L}\s\/-]+/u', '', $nomeUp));
         $ignorar = ['DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'A', 'O', 'AS', 'OS', 'MUNICIPAL', 'SECRETARIA'];
 
@@ -139,6 +121,7 @@ $produto         = isset($_GET['produto']) ? trim((string)$_GET['produto']) : ''
 $periodo_inicio  = isset($_GET['inicio']) ? trim((string)$_GET['inicio']) : '';
 $periodo_fim     = isset($_GET['fim']) ? trim((string)$_GET['fim']) : '';
 $export          = isset($_GET['export']) ? trim((string)$_GET['export']) : '';
+$page            = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 
 $whereParts = [];
 $params = [];
@@ -201,7 +184,7 @@ $stmt_secretarias->execute($params);
 $relatorio_secretarias = $stmt_secretarias->fetchAll(PDO::FETCH_ASSOC);
 
 /* =========================
-   TOTAIS
+   TOTAIS GERAIS
 ========================= */
 $total_geral = 0;
 $total_qtd_geral = 0;
@@ -212,6 +195,20 @@ foreach ($relatorio_secretarias as $row) {
 }
 
 /* =========================
+   PAGINAÇÃO
+========================= */
+$per_page = 8;
+$total_registros = count($relatorio_secretarias);
+$total_pages = max(1, (int)ceil($total_registros / $per_page));
+
+if ($page > $total_pages) {
+    $page = $total_pages;
+}
+
+$offset = ($page - 1) * $per_page;
+$relatorio_secretarias_paginado = array_slice($relatorio_secretarias, $offset, $per_page);
+
+/* =========================
    DADOS DO GRÁFICO
 ========================= */
 $chart_labels = [];
@@ -220,7 +217,6 @@ $chart_values = [];
 
 foreach ($relatorio_secretarias as $row) {
     $sigla = secretaria_sigla((string)$row['secretaria_nome']);
-
     $chart_labels[] = $sigla;
     $chart_labels_full[] = (string)$row['secretaria_nome'];
     $chart_values[] = (float)$row['total_valor'];
@@ -451,6 +447,14 @@ if ($export === 'excel') {
     exit;
 }
 
+$query_base = [
+    'sec_id'  => $sec_id,
+    'forn_id' => $forn_id,
+    'produto' => $produto,
+    'inicio'  => $periodo_inicio,
+    'fim'     => $periodo_fim,
+];
+
 include 'views/layout/header.php';
 ?>
 
@@ -594,6 +598,37 @@ include 'views/layout/header.php';
         background: #157347;
         border-color: #146c43;
         color: #fff;
+    }
+
+    .btn-pagination {
+        min-width: 70px;
+        height: 34px;
+        padding: .4rem .85rem;
+        border-radius: 8px;
+        border: 1px solid #dbe2ea;
+        background: #fff;
+        color: #475569;
+        font-size: .8rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        transition: .2s ease;
+    }
+
+    .btn-pagination:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #0f172a;
+    }
+
+    .btn-pagination.disabled,
+    .btn-pagination[aria-disabled="true"] {
+        pointer-events: none;
+        opacity: .5;
+        background: #f8fafc;
     }
 
     .summary-card {
@@ -778,6 +813,21 @@ include 'views/layout/header.php';
         color: #64748b !important;
     }
 
+    .pagination-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .65rem;
+        flex-wrap: wrap;
+        padding-top: 1.15rem;
+    }
+
+    .pagination-info {
+        font-size: .86rem;
+        color: #0f172a;
+        font-weight: 700;
+    }
+
     @media (max-width: 992px) {
         .summary-number {
             font-size: 1.6rem;
@@ -814,6 +864,10 @@ include 'views/layout/header.php';
             padding: .75rem .7rem;
             font-size: .86rem;
         }
+
+        .pagination-wrap {
+            flex-direction: column;
+        }
     }
 
     @media (max-width: 480px) {
@@ -828,7 +882,8 @@ include 'views/layout/header.php';
         .btn,
         button,
         .report-actions,
-        .filter-actions {
+        .filter-actions,
+        .pagination-wrap {
             display: none !important;
         }
 
@@ -993,7 +1048,7 @@ include 'views/layout/header.php';
 
                 <div class="report-actions no-print">
                     <a
-                        href="?<?php echo h(http_build_query(array_merge($_GET, ['export' => 'excel']))); ?>"
+                        href="?<?php echo h(http_build_query(array_merge($query_base, ['export' => 'excel']))); ?>"
                         class="btn btn-success-custom btn-sm">
                         <i class="fas fa-file-excel"></i> Exportar Excel
                     </a>
@@ -1012,8 +1067,8 @@ include 'views/layout/header.php';
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($relatorio_secretarias)): ?>
-                                <?php foreach ($relatorio_secretarias as $row): ?>
+                            <?php if (!empty($relatorio_secretarias_paginado)): ?>
+                                <?php foreach ($relatorio_secretarias_paginado as $row): ?>
                                     <tr>
                                         <td class="td-secretaria text-nowrap"><?php echo h($row['secretaria_nome']); ?></td>
                                         <td class="td-right text-nowrap"><?php echo number_format((int)$row['total_qtd'], 0, ',', '.'); ?></td>
@@ -1025,11 +1080,11 @@ include 'views/layout/header.php';
                                                 class="btn btn-primary btn-sm"
                                                 href="relatorios_oficios_secretaria.php?<?php
                                                                                         echo h(http_build_query([
-                                                                                            'sec_id' => $row['secretaria_id'],
+                                                                                            'sec_id'  => $row['secretaria_id'],
                                                                                             'forn_id' => $forn_id,
                                                                                             'produto' => $produto,
-                                                                                            'inicio' => $periodo_inicio,
-                                                                                            'fim' => $periodo_fim,
+                                                                                            'inicio'  => $periodo_inicio,
+                                                                                            'fim'     => $periodo_fim,
                                                                                         ]));
                                                                                         ?>">
                                                 <i class="fas fa-search"></i> Detalhes
@@ -1055,6 +1110,37 @@ include 'views/layout/header.php';
                     </table>
                 </div>
             </div>
+
+            <?php if ($total_registros > 0 && $total_pages > 1): ?>
+                <div class="pagination-wrap no-print">
+                    <?php
+                    $prev_link = '?' . http_build_query(array_merge($query_base, ['page' => max(1, $page - 1)]));
+                    $next_link = '?' . http_build_query(array_merge($query_base, ['page' => min($total_pages, $page + 1)]));
+                    ?>
+
+                    <?php if ($page > 1): ?>
+                        <a href="<?php echo h($prev_link); ?>" class="btn-pagination">
+                            <i class="fas fa-angle-left"></i> Anterior
+                        </a>
+                    <?php else: ?>
+                        <span class="btn-pagination disabled" aria-disabled="true">
+                            <i class="fas fa-angle-left"></i> Anterior
+                        </span>
+                    <?php endif; ?>
+
+                    <div class="pagination-info">Página <?php echo $page; ?> de <?php echo $total_pages; ?></div>
+
+                    <?php if ($page < $total_pages): ?>
+                        <a href="<?php echo h($next_link); ?>" class="btn-pagination">
+                            Próxima <i class="fas fa-angle-right"></i>
+                        </a>
+                    <?php else: ?>
+                        <span class="btn-pagination disabled" aria-disabled="true">
+                            Próxima <i class="fas fa-angle-right"></i>
+                        </span>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
