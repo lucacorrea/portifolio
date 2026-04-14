@@ -157,12 +157,22 @@ body {
 }
 
 .table-responsive table {
-    min-width: 650px; /* Force scroll on narrow screens */
+    min-width: 750px !important; /* Increased and forced */
+    width: 100% !important;
+}
+
+.table-responsive th, 
+.table-responsive td {
+    white-space: nowrap !important; /* Prevents text squishing/wrapping */
 }
 
 @media (min-width: 992px) {
     .table-responsive table {
-        min-width: 100%; /* Back to normal on desktop */
+        min-width: 100% !important;
+    }
+    .table-responsive th, 
+    .table-responsive td {
+        white-space: normal !important; /* Back to normal wrapping on desktop */
     }
 }
 
