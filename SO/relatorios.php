@@ -423,7 +423,7 @@ if ($export === 'excel') {
                 <?php foreach ($relatorio_secretarias as $row): ?>
                     <tr>
                         <td class="left"><?php echo h($row['secretaria_nome']); ?></td>
-                        <td class="center">Resumo consolidado</td>
+                        <td class="left">Resumo consolidado</td>
                         <td class="center"><?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?></td>
                         <td class="right"><?php echo format_money($row['total_valor']); ?></td>
                     </tr>
