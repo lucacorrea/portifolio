@@ -120,7 +120,7 @@ class ImportacaoAutomaticaController extends BaseController {
                     echo json_encode([
                         'success' => false,
                         'error' => "⏱️ Limite atingido. Aguarde {$minutosRestantes} minutos para uma nova consulta automática à SEFAZ."
-                    ]);
+                    ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
                     return;
                 }
             }
@@ -165,15 +165,15 @@ class ImportacaoAutomaticaController extends BaseController {
                 'success' => true,
                 'count' => $count,
                 'totalBanco' => (int)$totalNoBanco,
-                'message' => $message
-            ]);
+                'message' => mb_convert_encoding($message, 'UTF-8', 'UTF-8')
+            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 
         } catch (\Throwable $e) {
             error_log("Erro na sincronização SEFAZ: " . $e->getMessage());
             echo json_encode([
                 'success' => false,
-                'error' => $e->getMessage()
-            ]);
+                'error' => mb_convert_encoding($e->getMessage(), 'UTF-8', 'UTF-8')
+            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         }
         exit;
     }
