@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$error) {
             $pdo->beginTransaction();
 
             // 1. Create Matriz (Filial Principal)
-            $stmt = $pdo->prepare("INSERT INTO filiais (nome, principal, ativo, cnpj) VALUES (?, 1, 1, ?)");
+            $stmt = $pdo->prepare("INSERT INTO filiais (nome, principal, cnpj) VALUES (?, 1, ?)");
             $stmt->execute([$matriz_nome, $_POST['cnpj'] ?? '00.000.000/0001-00']);
             $filial_id = $pdo->lastInsertId();
 
