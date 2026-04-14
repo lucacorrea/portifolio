@@ -32,27 +32,27 @@
                             <div class="row g-3">
                                 <div class="col-12">
                                     <label class="form-label small fw-bold">Razão Social / Nome da Empresa</label>
-                                    <input type="text" name="empresa_nome" class="form-control bg-light" value="<?= $currentBranch['nome'] ?? $settings['empresa_nome'] ?? '' ?>" readonly>
+                                    <input type="text" name="empresa_nome" class="form-control" value="<?= $currentBranch['nome'] ?? $settings['empresa_nome'] ?? '' ?>">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">CNPJ</label>
-                                    <input type="text" name="empresa_cnpj" class="form-control bg-light" value="<?= $currentBranch['cnpj'] ?? $settings['empresa_cnpj'] ?? '' ?>" readonly>
+                                    <input type="text" name="empresa_cnpj" class="form-control" value="<?= $currentBranch['cnpj'] ?? $settings['empresa_cnpj'] ?? '' ?>">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">Telefone</label>
-                                    <input type="text" name="empresa_fone" class="form-control bg-light" value="<?= $currentBranch['telefone'] ?? $settings['empresa_fone'] ?? '' ?>" readonly>
+                                    <input type="text" name="empresa_fone" class="form-control" value="<?= $currentBranch['telefone'] ?? $settings['empresa_fone'] ?? '' ?>">
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label small fw-bold">Email</label>
-                                    <input type="email" name="empresa_email" class="form-control bg-light" value="<?= $currentBranch['email'] ?? $settings['empresa_email'] ?? '' ?>" readonly>
+                                    <input type="email" name="empresa_email" class="form-control" value="<?= $currentBranch['email'] ?? $settings['empresa_email'] ?? '' ?>">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">ID Token CSC</label>
-                                    <input type="text" class="form-control bg-light text-muted" value="<?= $activeConfig['csc_id'] ?? '' ?>" readonly>
+                                    <input type="text" class="form-control bg-light text-muted" value="<?= $sefaz['csc_id'] ?? '' ?>" readonly>
                                 </div>
                                 <div class="col-md-8">
                                     <label class="form-label small fw-bold">Token CSC</label>
-                                    <input type="text" class="form-control bg-light text-muted" value="<?= $activeConfig['csc'] ?? '' ?>" readonly>
+                                    <input type="text" class="form-control bg-light text-muted" value="<?= $sefaz['csc'] ?? '' ?>" readonly>
                                 </div>
                             </div>
                         </div>
