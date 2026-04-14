@@ -105,10 +105,6 @@
             font-weight: 700;
         }
 
-        .form-card .card-body {
-            padding-top: 1.2rem;
-        }
-
         .table-tools {
             display: flex;
             gap: 0.75rem;
@@ -165,6 +161,28 @@
 
         .summary-list li:last-child {
             border-bottom: 0;
+        }
+
+        .offcanvas.offcanvas-end {
+            width: min(760px, 100%);
+        }
+
+        .form-section-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #566a7f;
+            margin-bottom: 0.85rem;
+            padding-bottom: 0.45rem;
+            border-bottom: 1px solid #eceef1;
+        }
+
+        .sticky-form-footer {
+            position: sticky;
+            bottom: 0;
+            background: #fff;
+            border-top: 1px solid #eceef1;
+            padding-top: 1rem;
+            margin-top: 1.5rem;
         }
 
         @media (max-width: 1199.98px) {
@@ -366,8 +384,8 @@
                                     <div class="card-body">
                                         <h3 class="text-primary">Clientes</h3>
                                         <p>
-                                            Cadastre e gerencie os clientes do Tático GPS com dados pessoais,
-                                            mensalidade, veículos e chave PIX.
+                                            Gerencie a base de clientes do Tático GPS com uma lista mais limpa e
+                                            formulário de cadastro separado.
                                         </p>
                                     </div>
                                 </div>
@@ -403,7 +421,7 @@
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <div class="card info-card h-100">
                                     <div class="card-body">
-                                        <div class="info-label">Clientes Pendentes</div>
+                                        <div class="info-label">Pendentes</div>
                                         <div class="info-value">37</div>
                                         <div class="info-meta text-danger">
                                             <i class="bx bx-error-circle"></i> requer cobrança
@@ -426,178 +444,9 @@
                         </div>
 
                         <div class="row">
-                            <!-- Formulário -->
+                            <!-- Lista -->
                             <div class="col-xl-8 mb-4">
-                                <div class="card form-card h-100">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5 class="section-title">Cadastrar Cliente</h5>
-                                        <small class="text-muted">Dados fictícios para estrutura inicial</small>
-                                    </div>
-
-                                    <div class="card-body">
-                                        <form>
-                                            <div class="row g-3">
-                                                <div class="col-md-6">
-                                                    <label class="form-label" for="nome">Nome completo</label>
-                                                    <input type="text" id="nome" class="form-control"
-                                                        placeholder="Ex.: João da Silva" />
-                                                </div>
-
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="cpf">CPF</label>
-                                                    <input type="text" id="cpf" class="form-control"
-                                                        placeholder="000.000.000-00" />
-                                                </div>
-
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="telefone">Telefone</label>
-                                                    <input type="text" id="telefone" class="form-control"
-                                                        placeholder="(00) 00000-0000" />
-                                                </div>
-
-                                                <div class="col-md-6">
-                                                    <label class="form-label" for="email">E-mail</label>
-                                                    <input type="email" id="email" class="form-control"
-                                                        placeholder="cliente@email.com" />
-                                                </div>
-
-                                                <div class="col-md-6">
-                                                    <label class="form-label" for="endereco">Endereço</label>
-                                                    <input type="text" id="endereco" class="form-control"
-                                                        placeholder="Rua, número, bairro, cidade" />
-                                                </div>
-
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="mensalidade">Valor da
-                                                        mensalidade</label>
-                                                    <input type="text" id="mensalidade" class="form-control"
-                                                        placeholder="R$ 89,90" />
-                                                </div>
-
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="vencimento">Dia do vencimento</label>
-                                                    <select id="vencimento" class="form-select">
-                                                        <option selected>Selecione</option>
-                                                        <option>05</option>
-                                                        <option>10</option>
-                                                        <option>15</option>
-                                                        <option>20</option>
-                                                        <option>25</option>
-                                                        <option>30</option>
-                                                    </select>
-                                                </div>
-
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="qtdVeiculos">Qtd. de veículos</label>
-                                                    <input type="number" id="qtdVeiculos" class="form-control"
-                                                        placeholder="1" />
-                                                </div>
-
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="tipoVeiculo">Tipo de veículo</label>
-                                                    <select id="tipoVeiculo" class="form-select">
-                                                        <option selected>Selecione</option>
-                                                        <option>Moto</option>
-                                                        <option>Carro</option>
-                                                        <option>Caminhonete</option>
-                                                        <option>Caminhão</option>
-                                                        <option>Frota Mista</option>
-                                                    </select>
-                                                </div>
-
-                                                <div class="col-md-6">
-                                                    <label class="form-label" for="pix">Chave PIX</label>
-                                                    <input type="text" id="pix" class="form-control"
-                                                        placeholder="CPF, e-mail, telefone ou chave aleatória" />
-                                                </div>
-
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="status">Status</label>
-                                                    <select id="status" class="form-select">
-                                                        <option selected>Ativo</option>
-                                                        <option>Pendente</option>
-                                                        <option>Bloqueado</option>
-                                                        <option>Inativo</option>
-                                                    </select>
-                                                </div>
-
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="mensagemAuto">Mensagem
-                                                        automática</label>
-                                                    <select id="mensagemAuto" class="form-select">
-                                                        <option selected>Ativada</option>
-                                                        <option>Desativada</option>
-                                                    </select>
-                                                </div>
-
-                                                <div class="col-12">
-                                                    <label class="form-label" for="obs">Observações</label>
-                                                    <textarea id="obs" class="form-control" rows="4"
-                                                        placeholder="Informações adicionais sobre o cliente..."></textarea>
-                                                </div>
-
-                                                <div class="col-12 d-flex flex-wrap gap-2 pt-2">
-                                                    <button type="button" class="btn btn-primary">
-                                                        <i class="bx bx-save me-1"></i> Salvar Cliente
-                                                    </button>
-                                                    <button type="reset" class="btn btn-outline-secondary">
-                                                        Limpar Campos
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Resumo lateral -->
-                            <div class="col-xl-4 mb-4">
                                 <div class="card h-100">
-                                    <div class="card-header">
-                                        <h5 class="section-title">Resumo do Cadastro</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <ul class="summary-list">
-                                            <li>
-                                                <span>Campos essenciais</span>
-                                                <span class="badge bg-label-primary">Completo</span>
-                                            </li>
-                                            <li>
-                                                <span>Mensalidade</span>
-                                                <span class="badge bg-label-success">Incluída</span>
-                                            </li>
-                                            <li>
-                                                <span>Veículos</span>
-                                                <span class="badge bg-label-info">Incluído</span>
-                                            </li>
-                                            <li>
-                                                <span>PIX</span>
-                                                <span class="badge bg-label-warning">Incluído</span>
-                                            </li>
-                                            <li>
-                                                <span>Status do cliente</span>
-                                                <span class="badge bg-label-success">Incluído</span>
-                                            </li>
-                                            <li>
-                                                <span>Automação de mensagens</span>
-                                                <span class="badge bg-label-primary">Preparado</span>
-                                            </li>
-                                        </ul>
-
-                                        <div class="alert alert-primary mt-4 mb-0">
-                                            <strong>Estrutura certa para começar:</strong><br />
-                                            primeiro cadastrar clientes com qualidade, depois ligar cobrança, pagamento
-                                            e mensagens.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Tabela -->
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="card">
                                     <div class="card-header">
                                         <div class="table-tools">
                                             <div class="left-tools">
@@ -606,6 +455,12 @@
                                             </div>
 
                                             <div class="right-tools">
+                                                <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas"
+                                                    data-bs-target="#offcanvasNovoCliente"
+                                                    aria-controls="offcanvasNovoCliente">
+                                                    <i class="bx bx-plus me-1"></i> Novo Cliente
+                                                </button>
+
                                                 <select class="form-select" style="width: 180px;">
                                                     <option selected>Todos os status</option>
                                                     <option>Ativo</option>
@@ -651,12 +506,9 @@
                                                         </td>
                                                         <td>R$ 89,90</td>
                                                         <td>10</td>
-                                                        <td>
-                                                            <span class="vehicle-badge">1 Carro</span>
-                                                        </td>
+                                                        <td><span class="vehicle-badge">1 Carro</span></td>
                                                         <td><small class="text-muted">CPF</small></td>
-                                                        <td>
-                                                            <span
+                                                        <td><span
                                                                 class="badge bg-label-success badge-status">Ativo</span>
                                                         </td>
                                                         <td class="text-center">
@@ -698,12 +550,9 @@
                                                         </td>
                                                         <td>R$ 119,90</td>
                                                         <td>15</td>
-                                                        <td>
-                                                            <span class="vehicle-badge">2 Veículos</span>
-                                                        </td>
+                                                        <td><span class="vehicle-badge">2 Veículos</span></td>
                                                         <td><small class="text-muted">Telefone</small></td>
-                                                        <td>
-                                                            <span
+                                                        <td><span
                                                                 class="badge bg-label-warning badge-status">Pendente</span>
                                                         </td>
                                                         <td class="text-center">
@@ -745,12 +594,9 @@
                                                         </td>
                                                         <td>R$ 149,90</td>
                                                         <td>20</td>
-                                                        <td>
-                                                            <span class="vehicle-badge">1 Moto</span>
-                                                        </td>
+                                                        <td><span class="vehicle-badge">1 Moto</span></td>
                                                         <td><small class="text-muted">E-mail</small></td>
-                                                        <td>
-                                                            <span
+                                                        <td><span
                                                                 class="badge bg-label-danger badge-status">Bloqueado</span>
                                                         </td>
                                                         <td class="text-center">
@@ -792,12 +638,9 @@
                                                         </td>
                                                         <td>R$ 99,90</td>
                                                         <td>05</td>
-                                                        <td>
-                                                            <span class="vehicle-badge">1 Caminhonete</span>
-                                                        </td>
+                                                        <td><span class="vehicle-badge">1 Caminhonete</span></td>
                                                         <td><small class="text-muted">Chave aleatória</small></td>
-                                                        <td>
-                                                            <span
+                                                        <td><span
                                                                 class="badge bg-label-success badge-status">Ativo</span>
                                                         </td>
                                                         <td class="text-center">
@@ -839,12 +682,9 @@
                                                         </td>
                                                         <td>R$ 129,90</td>
                                                         <td>25</td>
-                                                        <td>
-                                                            <span class="vehicle-badge">3 Veículos</span>
-                                                        </td>
+                                                        <td><span class="vehicle-badge">3 Veículos</span></td>
                                                         <td><small class="text-muted">Telefone</small></td>
-                                                        <td>
-                                                            <span
+                                                        <td><span
                                                                 class="badge bg-label-secondary badge-status">Inativo</span>
                                                         </td>
                                                         <td class="text-center">
@@ -893,6 +733,48 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Resumo lateral -->
+                            <div class="col-xl-4 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="section-title">Resumo do Módulo</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="summary-list">
+                                            <li>
+                                                <span>Lista principal</span>
+                                                <span class="badge bg-label-success">Ativa</span>
+                                            </li>
+                                            <li>
+                                                <span>Cadastro separado</span>
+                                                <span class="badge bg-label-primary">Melhor fluxo</span>
+                                            </li>
+                                            <li>
+                                                <span>Mensalidade</span>
+                                                <span class="badge bg-label-success">Incluída</span>
+                                            </li>
+                                            <li>
+                                                <span>Veículos</span>
+                                                <span class="badge bg-label-info">Incluído</span>
+                                            </li>
+                                            <li>
+                                                <span>PIX</span>
+                                                <span class="badge bg-label-warning">Incluído</span>
+                                            </li>
+                                            <li>
+                                                <span>Status</span>
+                                                <span class="badge bg-label-success">Incluído</span>
+                                            </li>
+                                        </ul>
+
+                                        <div class="alert alert-primary mt-4 mb-0">
+                                            <strong>Fluxo melhor:</strong><br />
+                                            lista primeiro, cadastro depois. Isso melhora visualização e operação.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -917,6 +799,145 @@
         </div>
 
         <div class="layout-overlay layout-menu-toggle"></div>
+    </div>
+
+    <!-- Offcanvas Novo Cliente -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasNovoCliente"
+        aria-labelledby="offcanvasNovoClienteLabel">
+        <div class="offcanvas-header">
+            <h5 id="offcanvasNovoClienteLabel" class="offcanvas-title">Novo Cliente</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+        </div>
+
+        <div class="offcanvas-body">
+            <form>
+                <div class="form-section-title">Dados Pessoais</div>
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label" for="nome">Nome completo</label>
+                        <input type="text" id="nome" class="form-control" placeholder="Ex.: João da Silva" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="cpf">CPF</label>
+                        <input type="text" id="cpf" class="form-control" placeholder="000.000.000-00" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="telefone">Telefone</label>
+                        <input type="text" id="telefone" class="form-control" placeholder="(00) 00000-0000" />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label" for="email">E-mail</label>
+                        <input type="email" id="email" class="form-control" placeholder="cliente@email.com" />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label" for="endereco">Endereço</label>
+                        <input type="text" id="endereco" class="form-control"
+                            placeholder="Rua, número, bairro, cidade" />
+                    </div>
+                </div>
+
+                <div class="form-section-title mt-4">Dados Financeiros</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="mensalidade">Mensalidade</label>
+                        <input type="text" id="mensalidade" class="form-control" placeholder="R$ 89,90" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="vencimento">Dia do vencimento</label>
+                        <select id="vencimento" class="form-select">
+                            <option selected>Selecione</option>
+                            <option>05</option>
+                            <option>10</option>
+                            <option>15</option>
+                            <option>20</option>
+                            <option>25</option>
+                            <option>30</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="pix">Tipo da chave PIX</label>
+                        <select id="pix" class="form-select">
+                            <option selected>Selecione</option>
+                            <option>CPF</option>
+                            <option>Telefone</option>
+                            <option>E-mail</option>
+                            <option>Chave aleatória</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label" for="chavePix">Chave PIX</label>
+                        <input type="text" id="chavePix" class="form-control"
+                            placeholder="Informe a chave PIX do cliente" />
+                    </div>
+                </div>
+
+                <div class="form-section-title mt-4">Veículos e Operação</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="qtdVeiculos">Qtd. de veículos</label>
+                        <input type="number" id="qtdVeiculos" class="form-control" placeholder="1" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="tipoVeiculo">Tipo de veículo</label>
+                        <select id="tipoVeiculo" class="form-select">
+                            <option selected>Selecione</option>
+                            <option>Moto</option>
+                            <option>Carro</option>
+                            <option>Caminhonete</option>
+                            <option>Caminhão</option>
+                            <option>Frota Mista</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="status">Status</label>
+                        <select id="status" class="form-select">
+                            <option selected>Ativo</option>
+                            <option>Pendente</option>
+                            <option>Bloqueado</option>
+                            <option>Inativo</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="mensagemAuto">Mensagem automática</label>
+                        <select id="mensagemAuto" class="form-select">
+                            <option selected>Ativada</option>
+                            <option>Desativada</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="whatsContato">WhatsApp principal</label>
+                        <input type="text" id="whatsContato" class="form-control" placeholder="(00) 00000-0000" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label" for="obs">Observações</label>
+                        <textarea id="obs" class="form-control" rows="4"
+                            placeholder="Informações adicionais sobre o cliente..."></textarea>
+                    </div>
+                </div>
+
+                <div class="sticky-form-footer d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-primary">
+                        <i class="bx bx-save me-1"></i> Salvar Cliente
+                    </button>
+                    <button type="reset" class="btn btn-outline-secondary">Limpar</button>
+                    <button type="button" class="btn btn-outline-danger" data-bs-dismiss="offcanvas">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Modal -->
