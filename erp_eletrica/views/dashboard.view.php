@@ -26,7 +26,7 @@
         <div class="card h-100 border-0 shadow-sm bg-primary text-white">
             <div class="card-body">
                 <div class="text-white-50 small fw-bold text-uppercase mb-2">Saldo Atual em Caixa</div>
-                <h3 class="mb-0 fw-bold" id="val-saldo-caixa">
+                <h3 class="mb-0 fw-bold text-white" id="val-saldo-caixa">
                     <?= formatarMoeda(($caixaAberto['valor_abertura'] ?? 0) + ($cashierSummary['vendas_dinheiro'] ?? 0) + ($cashierSummary['suprimentos'] ?? 0) - ($cashierSummary['sangrias'] ?? 0)) ?>
                 </h3>
                 <div class="mt-2 small">
