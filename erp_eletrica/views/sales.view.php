@@ -13,8 +13,8 @@
 <div class="row g-4 <?php echo !$caixaAberto ? 'opacity-50 select-none' : ''; ?>" style="<?php echo !$caixaAberto ? 'pointer-events: none;' : ''; ?>">
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-7 d-flex flex-column">
-        <div class="row g-4 mb-4" style="position: relative; z-index: 1050; overflow: visible !important;">
-            <div class="col-md-8" style="position: relative; z-index: 1060; overflow: visible !important;">
+        <div class="row g-4 mb-4" style="position: relative; overflow: visible !important;">
+            <div class="col-md-8" style="position: relative; overflow: visible !important;">
                 <div class="card border-0 shadow-sm h-100" style="overflow: visible !important;">
                     <div class="card-body" style="overflow: visible !important;">
                         <div class="position-relative" style="overflow: visible !important;">
