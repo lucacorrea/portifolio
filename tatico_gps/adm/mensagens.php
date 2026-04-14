@@ -55,41 +55,8 @@
 <body>
     <div class="layout-wrapper layout-content-navbar">
         <div class="layout-container">
-            <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
-                <div class="app-brand demo"><a href="dashboard.html" class="app-brand-link"><span
-                            class="app-brand-text demo menu-text fw-bold ms-2">Tático GPS</span></a></div>
-                <div class="menu-divider mt-0"></div>
-                <ul class="menu-inner py-1">
-                    <li class="menu-item"><a href="dashboard.html" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-home-circle"></i>
-                            <div>Painel Geral</div>
-                        </a></li>
-                    <li class="menu-item"><a href="clientes.html" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-user"></i>
-                            <div>Clientes</div>
-                        </a></li>
-                    <li class="menu-item"><a href="cobrancas.html" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-wallet"></i>
-                            <div>Cobranças</div>
-                        </a></li>
-                    <li class="menu-item"><a href="pagamentos.html" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-credit-card"></i>
-                            <div>Pagamentos</div>
-                        </a></li>
-                    <li class="menu-item active"><a href="mensagens.html" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-message-detail"></i>
-                            <div>Mensagens</div>
-                        </a></li>
-                    <li class="menu-item"><a href="relatorios.html" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-bar-chart-alt-2"></i>
-                            <div>Relatórios</div>
-                        </a></li>
-                    <li class="menu-item"><a href="configuracoes.html" class="menu-link"><i
-                                class="menu-icon tf-icons bx bx-cog"></i>
-                            <div>Configurações</div>
-                        </a></li>
-                </ul>
-            </aside>
+           <?php $paginaAtiva = 'mensagens'; ?>
+            <?php require_once __DIR__ . '/includes/menu.php'; ?>
 
             <div class="layout-page">
                 <div class="content-wrapper">
@@ -210,11 +177,8 @@
                         </div>
                     </div>
 
-                    <footer class="content-footer footer bg-footer-theme">
-                        <div class="container-xxl py-4">©
-                            <script>document.write(new Date().getFullYear())</script> - Tático GPS
-                        </div>
-                    </footer>
+                     <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
                 </div>
             </div>
         </div>
