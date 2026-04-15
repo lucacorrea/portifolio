@@ -50,7 +50,7 @@ function money_br($value): string
 
 function render_itens_aquisicao_table(array $items, float $valorTotal): void
 {
-?>
+    ?>
     <div class="ordem-items-wrap">
         <table class="ordem-items-table">
             <thead>
@@ -108,7 +108,7 @@ function render_itens_aquisicao_table(array $items, float $valorTotal): void
             </tbody>
         </table>
     </div>
-<?php
+    <?php
 }
 
 include 'views/layout/header.php';
@@ -282,7 +282,7 @@ include 'views/layout/header.php';
 
         .ordem-right,
         .ordem-logo,
-        .ordem-header>div:first-child {
+        .ordem-header > div:first-child {
             text-align: center;
             justify-self: center;
             margin-right: 0;
@@ -462,14 +462,14 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr 1fr !important;
             gap: 2rem !important;
             text-align: center !important;
-            margin-top: 10px !important;
+            margin-top: 60px !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
 
         .assinatura-linha {
             border-top: 1.5px solid #000 !important;
-            padding-top: 60px !important;
+            padding-top: 6px !important;
         }
     }
 </style>
