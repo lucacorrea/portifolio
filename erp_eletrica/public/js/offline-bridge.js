@@ -1053,10 +1053,13 @@
         },
 
         /**
-         * Fetch interceptado
+         * Fetch interceptado — 3 etapas de fallback:
+         * 1. Tenta com timeout (15s) via rede
+         * 2. Se timeout, tenta sem timeout (última chance na rede)
+         * 3. Se rede falhar totalmente, usa dados offline do IndexedDB
          */
         async _interceptedFetch(url, method, init) {
-            // Se está online, tenta normalmente com timeout
+            // Se está online, tenta normalmente
             if (ConnectionMonitor.isOnline) {
                 try {
                     const response = await this._fetchWithTimeout(url, init, CONFIG.FETCH_TIMEOUT);
@@ -1072,9 +1075,25 @@
 
                     return response;
                 } catch (err) {
-                    Logger.warn('INTERCEPT', `Fetch online falhou para ${url}: ${err.message}`);
-                    // Cai para modo offline
-                    return this._handleOffline(url, method, init);
+                    Logger.warn('INTERCEPT', `Fetch com timeout falhou para ${url}: ${err.message} — Tentando sem timeout...`);
+                    
+                    // SEGUNDA CHANCE: tenta sem timeout
+                    try {
+                        const retryResponse = await this._originalFetch(url, init || {});
+                        
+                        if (method === 'GET' && url.includes('action=search') && !url.includes('search_clients')) {
+                            retryResponse.clone().json().then(data => {
+                                if (Array.isArray(data)) {
+                                    CacheManager.cacheSearchResults(data);
+                                }
+                            }).catch(() => {});
+                        }
+                        
+                        return retryResponse;
+                    } catch (retryErr) {
+                        Logger.warn('INTERCEPT', `Retry também falhou: ${retryErr.message} — Usando modo offline`);
+                        return this._handleOffline(url, method, init);
+                    }
                 }
             }
 

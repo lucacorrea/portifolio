@@ -135,7 +135,19 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('[ERP] Service Worker registrado:', reg.scope))
+                .then(reg => {
+                    console.log('[ERP] Service Worker registrado:', reg.scope);
+                    // Forçar atualização do SW para substituir versão antiga
+                    reg.update();
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'activated') {
+                                console.log('[ERP] Service Worker v2 ativado');
+                            }
+                        });
+                    });
+                })
                 .catch(err => console.warn('[ERP] Falha ao registrar Service Worker:', err));
         }
     </script>
