@@ -120,14 +120,7 @@
             usuario_nome: <?= json_encode($_SESSION['usuario_nome'] ?? 'Desconhecido') ?>,
             filial_id: <?= json_encode($_SESSION['filial_id'] ?? 1) ?>,
             is_matriz: <?= json_encode($_SESSION['is_matriz'] ?? false) ?>,
-            usuario_nivel: <?= json_encode($_SESSION['usuario_nivel'] ?? 'operador') ?>,
-            local_server_url: <?= json_encode(defined('LOCAL_SERVER_URL') ? LOCAL_SERVER_URL : null) ?>,
-            is_local_server: <?= json_encode(defined('IS_LOCAL_SERVER') && IS_LOCAL_SERVER) ?>,
-            db_connection: <?= json_encode(
-                class_exists('\App\Config\Database') 
-                    ? \App\Config\Database::getInstance()->getConnectionType() 
-                    : 'remote'
-            ) ?>
+            usuario_nivel: <?= json_encode($_SESSION['usuario_nivel'] ?? 'operador') ?>
         };
     </script>
 
@@ -138,25 +131,35 @@
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
     
-    <!-- Service Worker Registration -->
+    <!-- Service Worker: Registro v6 (cache persistente) -->
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => {
-                    console.log('[ERP] Service Worker registrado:', reg.scope);
-                    // Forçar atualização do SW para substituir versão antiga
-                    reg.update();
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'activated') {
-                                console.log('[ERP] Service Worker v2 ativado');
+        (async function() {
+            if (!('serviceWorker' in navigator)) return;
+            
+            try {
+                // Registrar SW v6 — NÃO limpa caches existentes (eles devem persistir!)
+                const reg = await navigator.serviceWorker.register('sw.js');
+                console.log('[ERP] SW v6 registrado:', reg.scope);
+                
+                // Forçar ativação imediata se houver update
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+                reg.addEventListener('updatefound', () => {
+                    const newSW = reg.installing;
+                    if (newSW) {
+                        newSW.addEventListener('statechange', () => {
+                            if (newSW.state === 'activated') {
+                                console.log('[ERP] SW v6 ativado com sucesso!');
                             }
                         });
-                    });
-                })
-                .catch(err => console.warn('[ERP] Falha ao registrar Service Worker:', err));
-        }
+                    }
+                });
+            } catch (err) {
+                console.warn('[ERP] Erro no setup do SW:', err);
+            }
+        })();
     </script>
+
 </body>
 </html>

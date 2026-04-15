@@ -118,6 +118,7 @@ class SyncService {
             ];
 
             $saleId = $saleModel->create($saleData);
+            $this->log('INFO', "Venda criada no DB principal: ID=$saleId", ['temp_id' => $tempId]);
 
             // Processar itens
             $productModel = new \App\Models\Product();
@@ -141,6 +142,7 @@ class SyncService {
 
                 // Baixar estoque (mesmo que fique negativo)
                 $productModel->updateStock($item['id'], $item['qty'], 'saida', $filialId);
+                $this->log('INFO', "Estoque atualizado: Produto #{$item['id']}, Qty -{$item['qty']}");
             }
 
             // Registar movimento de caixa (se caixa estiver aberto)
@@ -194,6 +196,7 @@ class SyncService {
             }
 
             $this->db->commit();
+            $this->log('INFO', "Transação COMMITADA com sucesso para Venda #{$saleId}");
 
             // Registrar auditoria
             $audit = new AuditLogService();

@@ -7,20 +7,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Credentials (padrão — usado na Hostinger)
+// Database Credentials
 define('DB_HOST', 'localhost');
 define('DB_USER', 'u784961086_pdv');
 define('DB_PASS', 'Uv$1NhLlkRub');
 define('DB_NAME', 'u784961086_pdv');
-
-// Detectar se está rodando no servidor LOCAL (XAMPP)
-// Para ativar: crie o arquivo 'local_server.flag' na raiz do projeto no XAMPP
-define('IS_LOCAL_SERVER', file_exists(__DIR__ . '/local_server.flag'));
-
-// Carregar configuração de sync se estiver no servidor local
-if (IS_LOCAL_SERVER && file_exists(__DIR__ . '/sync_config.php')) {
-    require_once __DIR__ . '/sync_config.php';
-}
 
 // Technical Constants
 define('APP_NAME', 'ERP Elétrica');

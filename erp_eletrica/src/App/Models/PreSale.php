@@ -27,18 +27,6 @@ class PreSale extends BaseModel {
             }
         }
 
-        // Camada 2: Sync tracking quando rodando no servidor local
-        if (defined('IS_LOCAL_SERVER') && IS_LOCAL_SERVER) {
-            if ($this->columnExists('sync_origin')) {
-                $cols[] = 'sync_origin';
-                $params[] = 'local';
-            }
-            if ($this->columnExists('sync_id')) {
-                $cols[] = 'sync_id';
-                $params[] = 'L-pre_vendas-' . time() . '-' . bin2hex(random_bytes(4));
-            }
-        }
-
         $colList = implode(', ', $cols);
         $placeholders = implode(', ', array_fill(0, count($cols), '?'));
         

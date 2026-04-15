@@ -100,6 +100,13 @@ function menuAtivo(string $paginaAtual, string $paginaMenu): string
             </a>
         </li>
 
+        <li class="menu-item<?= menuAtivo($paginaAtiva, 'whatsapp') ?>">
+            <a href="whatsapp.php" class="menu-link">
+                <i class="menu-icon tf-icons bx bxl-whatsapp"></i>
+                <div class="text-truncate">Conectar WhatsApp</div>
+            </a>
+        </li>
+
         <li class="menu-item<?= menuAtivo($paginaAtiva, 'configuracoes') ?>">
             <a href="configuracoes.php" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-cog"></i>

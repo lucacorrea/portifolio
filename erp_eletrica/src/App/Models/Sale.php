@@ -56,18 +56,6 @@ class Sale extends BaseModel {
             $params[] = isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0.00;
         }
 
-        // Camada 2: Sync tracking quando rodando no servidor local
-        if (defined('IS_LOCAL_SERVER') && IS_LOCAL_SERVER) {
-            if ($this->columnExists('sync_origin') && !isset($data['sync_origin'])) {
-                $cols[] = 'sync_origin';
-                $params[] = 'local';
-            }
-            if ($this->columnExists('sync_id') && !isset($data['sync_id'])) {
-                $cols[] = 'sync_id';
-                $params[] = 'L-vendas-' . time() . '-' . bin2hex(random_bytes(4));
-            }
-        }
-
         $placeholders = implode(', ', array_fill(0, count($cols), '?'));
         $colList      = implode(', ', $cols);
 

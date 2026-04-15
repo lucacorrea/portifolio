@@ -1,3 +1,9 @@
+<?php
+require_once __DIR__ . '/php/conexao.php';
+require_once __DIR__ . '/php/whatsapp/functions.php';
+
+function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
+?>
 <!doctype html>
 <html lang="pt-BR" class="layout-menu-fixed layout-compact" data-assets-path="../assets/"
     data-template="vertical-menu-template-free">
@@ -73,11 +79,18 @@
                         </div>
 
                         <div class="row g-4 mb-4">
+                            <?php
+                            $hj = date('Y-m-d');
+                            $enviadasHj = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE DATE(criado_em) = '$hj' AND status_envio = 'enviado'")->fetchColumn();
+                            $pendentes = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE status_envio = 'pendente'")->fetchColumn();
+                            $falhas = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE status_envio = 'falhou'")->fetchColumn();
+                            $bloqueios = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE resposta_api LIKE '%regra: atraso_bloqueio%'")->fetchColumn();
+                            ?>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Enviadas hoje</div>
-                                        <h2 class="mb-0">46</h2>
+                                        <h2 class="mb-0"><?= $enviadasHj ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -85,7 +98,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Pendentes</div>
-                                        <h2 class="mb-0 text-warning">12</h2>
+                                        <h2 class="mb-0 text-warning"><?= $pendentes ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -93,15 +106,15 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Falhas</div>
-                                        <h2 class="mb-0 text-danger">3</h2>
+                                        <h2 class="mb-0 text-danger"><?= $falhas ?></h2>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
-                                        <div class="text-muted">Bloqueio enviado</div>
-                                        <h2 class="mb-0">7</h2>
+                                        <div class="text-muted">Regras de Bloqueio</div>
+                                        <h2 class="mb-0"><?= $bloqueios ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -139,37 +152,52 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <?php
+                                            $stmtMsg = $pdo->query("
+                                                SELECT w.*, c.nome as cliente_nome, c.mensalidade
+                                                FROM whatsapp_envios w
+                                                LEFT JOIN clientes c ON w.cliente_id = c.id
+                                                ORDER BY w.criado_em DESC
+                                                LIMIT 50
+                                            ");
+                                            $envios = $stmtMsg->fetchAll();
+
+                                            if (count($envios) > 0):
+                                                foreach ($envios as $env):
+                                                    $badgeClass = 'bg-label-secondary';
+                                                    if ($env['status_envio'] === 'enviado') $badgeClass = 'bg-label-success';
+                                                    if ($env['status_envio'] === 'falhou') $badgeClass = 'bg-label-danger';
+                                                    
+                                                    // Extrair tipo da regra da resposta_api se existir
+                                                    $tipo = 'Outro';
+                                                    if (preg_match('/Regra: ([^|]+)/', $env['resposta_api'] ?? '', $matches)) {
+                                                        $tipo = str_replace('_', ' ', $matches[1]);
+                                                    }
+                                            ?>
                                             <tr>
-                                                <td>João da Silva</td>
-                                                <td>7 dias antes</td>
-                                                <td>08/05/2026 09:12</td>
+                                                <td><?= h($env['cliente_nome'] ?? $env['telefone']) ?></td>
+                                                <td class="text-capitalize"><?= h($tipo) ?></td>
+                                                <td><?= date('d/m/Y H:i', strtotime($env['criado_em'])) ?></td>
                                                 <td>WhatsApp</td>
-                                                <td><span class="badge bg-label-success">Enviada</span></td>
-                                                <td>R$ 89,90</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Reenviar</button></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Maria Oliveira</td>
-                                                <td>Bloqueio</td>
-                                                <td>15/05/2026 08:47</td>
-                                                <td>WhatsApp</td>
-                                                <td><span class="badge bg-label-warning">Pendente</span></td>
-                                                <td>R$ 119,90</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Reenviar</button></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Carlos Mendes</td>
-                                                <td>3 dias antes</td>
-                                                <td>13/05/2026 10:20</td>
-                                                <td>SMS</td>
-                                                <td><span class="badge bg-label-danger">Falhou</span></td>
-                                                <td>R$ 149,90</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Tentar de novo</button>
+                                                <td><span class="badge <?= $badgeClass ?>"><?= ucfirst(h($env['status_envio'])) ?></span></td>
+                                                <td>R$ <?= number_format((float)($env['mensalidade'] ?? 0), 2, ',', '.') ?></td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-outline-primary btn-ver-msg" 
+                                                        data-msg="<?= h($env['mensagem']) ?>"
+                                                        data-cliente="<?= h($env['cliente_nome'] ?? $env['telefone']) ?>"
+                                                        data-data="<?= date('d/m/Y H:i', strtotime($env['criado_em'])) ?>">
+                                                        Ver
+                                                    </button>
                                                 </td>
                                             </tr>
+                                            <?php 
+                                                endforeach;
+                                            else:
+                                            ?>
+                                            <tr>
+                                                <td colspan="7" class="text-center">Histórico de mensagens vazio.</td>
+                                            </tr>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -185,35 +213,73 @@
         <div class="layout-overlay layout-menu-toggle"></div>
     </div>
 
+    <!-- Modal Enviar Mensagem -->
     <div class="modal fade" id="modalMensagem" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
+                <form id="formEnviarManual">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Enviar Mensagem Manual</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Cliente</label>
+                                <select name="cliente_id" id="manual_cliente_id" class="form-select" required>
+                                    <option value="">Selecione um cliente...</option>
+                                    <?php
+                                    $stmtCl = $pdo->query("SELECT id, nome, telefone, whatsapp_principal FROM clientes WHERE status = 'Ativo' ORDER BY nome ASC");
+                                    while($cl = $stmtCl->fetch()):
+                                        $tel = $cl['whatsapp_principal'] ?: $cl['telefone'];
+                                    ?>
+                                        <option value="<?= $cl['id'] ?>" data-tel="<?= h($tel) ?>"><?= h($cl['nome']) ?> (<?= h($tel) ?>)</option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo de Mensagem</label>
+                                <select name="tipo" id="manual_tipo" class="form-select">
+                                    <option value="manual">Manual / Livre</option>
+                                    <option value="cobranca">Cobrança Direta</option>
+                                    <option value="aviso">Aviso Geral</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Mensagem</label>
+                                <textarea name="mensagem" id="manual_mensagem" class="form-control" rows="5" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnEnviarManual">
+                            <i class="bx bx-send me-1"></i> Enviar Agora
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ver Detalhes -->
+    <div class="modal fade" id="modalVer" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Enviar Mensagem</h5><button class="btn-close"
-                        data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title">Conteúdo da Mensagem</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label">Cliente</label><select class="form-select">
-                                <option>João da Silva</option>
-                                <option>Maria Oliveira</option>
-                            </select></div>
-                        <div class="col-md-6"><label class="form-label">Tipo</label><select class="form-select">
-                                <option>10 dias antes</option>
-                                <option>7 dias antes</option>
-                                <option>5 dias antes</option>
-                                <option>3 dias antes</option>
-                                <option>Bloqueio</option>
-                                <option>Manual</option>
-                            </select></div>
-                        <div class="col-12"><label class="form-label">Mensagem</label><textarea class="form-control"
-                                rows="5">Olá, sua mensalidade do Tático GPS está próxima do vencimento. Segue a chave PIX para pagamento.</textarea>
-                        </div>
+                    <div class="mb-3">
+                        <strong>Cliente:</strong> <span id="ver_cliente">-</span><br>
+                        <strong>Data:</strong> <span id="ver_data">-</span>
+                    </div>
+                    <div class="p-3 bg-light rounded border" id="ver_texto" style="white-space: pre-wrap;">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button class="btn btn-primary">Enviar Agora</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
@@ -225,6 +291,53 @@
     <script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
     <script src="../assets/vendor/js/menu.js"></script>
     <script src="../assets/js/main.js"></script>
-</body>
 
+    <script>
+        $(document).ready(function() {
+            // Ver detalhes da mensagem (ID modalVer)
+            $(document).on('click', '.btn-ver-msg', function() {
+                const msg = $(this).data('msg');
+                const cliente = $(this).data('cliente');
+                const data = $(this).data('data');
+
+                $('#ver_cliente').text(cliente);
+                $('#ver_data').text(data);
+                $('#ver_texto').text(msg);
+                
+                const myModal = new bootstrap.Modal(document.getElementById('modalVer'));
+                myModal.show();
+            });
+
+            // Enviar mensagem manualmente
+            $('#formEnviarManual').on('submit', function(e) {
+                e.preventDefault();
+                
+                const btn = $('#btnEnviarManual');
+                const originalText = btn.html();
+                
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Enviando...');
+
+                $.ajax({
+                    url: 'php/whatsapp/enviar_manual.php',
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.ok) {
+                            alert('Mensagem enviada com sucesso!');
+                            location.reload();
+                        } else {
+                            alert('Erro: ' + (res.error || 'Falha ao enviar.'));
+                            btn.prop('disabled', false).html(originalText);
+                        }
+                    },
+                    error: function() {
+                        alert('Erro na comunicação com o servidor. Verifique sua conexão.');
+                        btn.prop('disabled', false).html(originalText);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
 </html>

@@ -1,3 +1,8 @@
+<?php
+require_once __DIR__ . '/php/conexao.php';
+
+function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
+?>
 <!doctype html>
 <html lang="pt-BR" class="layout-menu-fixed layout-compact" data-assets-path="../assets/"
     data-template="vertical-menu-template-free">
@@ -74,11 +79,16 @@
                         </div>
 
                         <div class="row g-4 mb-4">
+                            <?php
+                            $totalConfirmados = $pdo->query("SELECT COUNT(*) FROM pagamentos WHERE status = 'Confirmado'")->fetchColumn();
+                            $totalPendentes = $pdo->query("SELECT COUNT(*) FROM pagamentos WHERE status = 'Pendente'")->fetchColumn();
+                            $totalRecebidos = $pdo->query("SELECT COUNT(*) FROM pagamentos WHERE mensagem_id IS NOT NULL")->fetchColumn();
+                            ?>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Confirmados</div>
-                                        <h2 class="mb-0 text-success">193</h2>
+                                        <h2 class="mb-0 text-success"><?= $totalConfirmados ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -86,15 +96,15 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Pendentes de conferência</div>
-                                        <h2 class="mb-0 text-warning">12</h2>
+                                        <h2 class="mb-0 text-warning"><?= $totalPendentes ?></h2>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
-                                        <div class="text-muted">Baixa manual</div>
-                                        <h2 class="mb-0">21</h2>
+                                        <div class="text-muted">Pagas este mês</div>
+                                        <h2 class="mb-0"><?= $totalConfirmados ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -102,7 +112,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Comprovantes recebidos</div>
-                                        <h2 class="mb-0">34</h2>
+                                        <h2 class="mb-0"><?= $totalRecebidos ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -139,36 +149,38 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <?php
+                                            $stmtPag = $pdo->query("
+                                                SELECT p.*, c.nome as cliente_nome 
+                                                FROM pagamentos p
+                                                JOIN clientes c ON p.cliente_id = c.id
+                                                ORDER BY p.data_pagamento DESC
+                                            ");
+                                            $pagamentos = $stmtPag->fetchAll();
+
+                                            if (count($pagamentos) > 0):
+                                                foreach ($pagamentos as $pag):
+                                                    $badgeClass = $pag['status'] === 'Confirmado' ? 'bg-label-success' : 'bg-label-warning';
+                                            ?>
                                             <tr>
-                                                <td>João da Silva</td>
-                                                <td>08/05/2026</td>
-                                                <td>R$ 89,90</td>
-                                                <td>PIX</td>
-                                                <td><span class="badge bg-label-success">Confirmado</span></td>
-                                                <td>Enviado</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-secondary">Ver</button></td>
+                                                <td><?= h($pag['cliente_nome']) ?></td>
+                                                <td><?= date('d/m/Y H:i', strtotime($pag['data_pagamento'])) ?></td>
+                                                <td>R$ <?= number_format($pag['valor'], 2, ',', '.') ?></td>
+                                                <td><?= h($pag['forma_pagamento']) ?></td>
+                                                <td><span class="badge <?= $badgeClass ?>"><?= h($pag['status']) ?></span></td>
+                                                <td><?= $pag['comprovante_url'] ? 'Sim' : 'Automático' ?></td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-outline-secondary">Ver</button>
+                                                </td>
                                             </tr>
+                                            <?php 
+                                                endforeach;
+                                            else:
+                                            ?>
                                             <tr>
-                                                <td>Maria Oliveira</td>
-                                                <td>15/05/2026</td>
-                                                <td>R$ 119,90</td>
-                                                <td>PIX</td>
-                                                <td><span class="badge bg-label-warning">Pendente</span></td>
-                                                <td>Aguardando</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Confirmar</button></td>
+                                                <td colspan="7" class="text-center">Nenhum pagamento registrado ainda.</td>
                                             </tr>
-                                            <tr>
-                                                <td>Ana Souza</td>
-                                                <td>05/05/2026</td>
-                                                <td>R$ 99,90</td>
-                                                <td>Dinheiro</td>
-                                                <td><span class="badge bg-label-success">Confirmado</span></td>
-                                                <td>Não</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-secondary">Ver</button></td>
-                                            </tr>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>

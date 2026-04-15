@@ -1,3 +1,8 @@
+<?php
+require_once __DIR__ . '/php/conexao.php';
+
+function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
+?>
 <!doctype html>
 <html lang="pt-BR" class="layout-menu-fixed layout-compact" data-assets-path="../assets/"
     data-template="vertical-menu-template-free">
@@ -79,11 +84,18 @@
                         </div>
 
                         <div class="row g-4 mb-4">
+                            <?php
+                            $refAtual = date('m/Y');
+                            $totalMes = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE referencia = '$refAtual'")->fetchColumn();
+                            $abertas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Em aberto'")->fetchColumn();
+                            $vencidas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Em aberto' AND data_vencimento < CURDATE()")->fetchColumn();
+                            $pagas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Paga'")->fetchColumn();
+                            ?>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Cobranças do mês</div>
-                                        <div class="metric-value">248</div>
+                                        <div class="metric-value"><?= $totalMes ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -91,7 +103,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Em aberto</div>
-                                        <div class="metric-value text-warning">37</div>
+                                        <div class="metric-value text-warning"><?= $abertas ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -99,7 +111,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Vencidas</div>
-                                        <div class="metric-value text-danger">18</div>
+                                        <div class="metric-value text-danger"><?= $vencidas ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -107,7 +119,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Pagas</div>
-                                        <div class="metric-value text-success">193</div>
+                                        <div class="metric-value text-success"><?= $pagas ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -117,9 +129,9 @@
                             <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
                                 <h5 class="mb-0">Lista de Cobranças</h5>
                                 <div class="d-flex gap-2 flex-wrap">
+                                    <button class="btn btn-outline-info" id="btnGerarLote"><i class="bx bx-sync me-1"></i>Gerar Lote (Mês Atual)</button>
                                     <button class="btn btn-primary" data-bs-toggle="modal"
-                                        data-bs-target="#modalNovaCobranca"><i class="bx bx-plus me-1"></i>Nova
-                                        Cobrança</button>
+                                        data-bs-target="#modalNovaCobranca"><i class="bx bx-plus me-1"></i>Previsão Individual</button>
                                     <select class="form-select" style="width:180px">
                                         <option>Todos os status</option>
                                         <option>Em aberto</option>
@@ -144,36 +156,54 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <?php
+                                            $stmtCob = $pdo->query("
+                                                SELECT cb.*, cl.nome as cliente_nome 
+                                                FROM cobrancas cb
+                                                JOIN clientes cl ON cb.cliente_id = cl.id
+                                                ORDER BY cb.data_vencimento DESC
+                                            ");
+                                            $cobrancas = $stmtCob->fetchAll();
+
+                                            if (count($cobrancas) > 0):
+                                                foreach ($cobrancas as $cob):
+                                                    $status = $cob['status'];
+                                                    $hoje = date('Y-m-d');
+                                                    if ($status === 'Em aberto' && $cob['data_vencimento'] < $hoje) {
+                                                        $status = 'Vencida';
+                                                    }
+
+                                                    $badgeClass = 'bg-label-warning';
+                                                    if ($status === 'Paga') $badgeClass = 'bg-label-success';
+                                                    if ($status === 'Vencida' || $status === 'Vencida') $badgeClass = 'bg-label-danger';
+
+                                                    $atraso = 0;
+                                                    if ($status === 'Vencida') {
+                                                        $d1 = new DateTime($cob['data_vencimento']);
+                                                        $d2 = new DateTime($hoje);
+                                                        $diff = $d1->diff($d2);
+                                                        $atraso = $diff->days;
+                                                    }
+                                            ?>
                                             <tr>
-                                                <td>João da Silva</td>
-                                                <td>Mensalidade - Maio/2026</td>
-                                                <td>R$ 89,90</td>
-                                                <td>10/05/2026</td>
-                                                <td><span class="badge bg-label-warning">Em aberto</span></td>
-                                                <td>0 dias</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Cobrar</button></td>
+                                                <td><?= h($cob['cliente_nome']) ?></td>
+                                                <td><?= h($cob['referencia']) ?></td>
+                                                <td>R$ <?= number_format($cob['valor'], 2, ',', '.') ?></td>
+                                                <td><?= date('d/m/Y', strtotime($cob['data_vencimento'])) ?></td>
+                                                <td><span class="badge <?= $badgeClass ?>"><?= h($status) ?></span></td>
+                                                <td><?= $atraso > 0 ? $atraso . ' dias' : '-' ?></td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-outline-primary">Ver Histórico</button>
+                                                </td>
                                             </tr>
+                                            <?php 
+                                                endforeach;
+                                            else:
+                                            ?>
                                             <tr>
-                                                <td>Maria Oliveira</td>
-                                                <td>Mensalidade - Maio/2026</td>
-                                                <td>R$ 119,90</td>
-                                                <td>15/05/2026</td>
-                                                <td><span class="badge bg-label-danger">Vencida</span></td>
-                                                <td>4 dias</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Cobrar</button></td>
+                                                <td colspan="7" class="text-center">Nenhuma cobrança encontrada.</td>
                                             </tr>
-                                            <tr>
-                                                <td>Ana Souza</td>
-                                                <td>Mensalidade - Maio/2026</td>
-                                                <td>R$ 99,90</td>
-                                                <td>05/05/2026</td>
-                                                <td><span class="badge bg-label-success">Paga</span></td>
-                                                <td>-</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-secondary">Ver</button></td>
-                                            </tr>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -193,35 +223,56 @@
     <div class="modal fade" id="modalNovaCobranca" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Nova Cobrança</h5><button class="btn-close"
-                        data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label">Cliente</label><select class="form-select">
-                                <option>João da Silva</option>
-                                <option>Maria Oliveira</option>
-                            </select></div>
-                        <div class="col-md-6"><label class="form-label">Referência</label><input class="form-control"
-                                value="Mensalidade - Maio/2026" /></div>
-                        <div class="col-md-4"><label class="form-label">Valor</label><input class="form-control"
-                                value="R$ 89,90" /></div>
-                        <div class="col-md-4"><label class="form-label">Vencimento</label><input type="date"
-                                class="form-control" /></div>
-                        <div class="col-md-4"><label class="form-label">Status</label><select class="form-select">
-                                <option selected>Em aberto</option>
-                                <option>Paga</option>
-                                <option>Vencida</option>
-                            </select></div>
-                        <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control"
-                                rows="3"></textarea></div>
+                <form id="formNovaCobranca">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Nova Previsão de Cobrança</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button class="btn btn-primary">Salvar Cobrança</button>
-                </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Cliente</label>
+                                <select name="cliente_id" id="cad_cliente_id" class="form-select" required>
+                                    <option value="">Selecione um cliente...</option>
+                                    <?php
+                                    $stmtCl = $pdo->query("SELECT id, nome, mensalidade FROM clientes WHERE status = 'Ativo' ORDER BY nome ASC");
+                                    while($cl = $stmtCl->fetch()):
+                                    ?>
+                                        <option value="<?= $cl['id'] ?>" data-valor="<?= $cl['mensalidade'] ?>"><?= h($cl['nome']) ?></option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Referência (Mês/Ano)</label>
+                                <input name="referencia" class="form-control" value="<?= date('m/Y') ?>" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Valor</label>
+                                <input name="valor" id="cad_valor" class="form-control" placeholder="0.00" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Vencimento</label>
+                                <input type="date" name="data_vencimento" class="form-control" value="<?= date('Y-m-d') ?>" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="Em aberto" selected>Em aberto</option>
+                                    <option value="Paga">Paga</option>
+                                    <option value="Vencida">Vencida</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Observações</label>
+                                <textarea name="observacoes" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnSalvarCobranca">Salvar Cobrança</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -232,6 +283,49 @@
     <script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
     <script src="../assets/vendor/js/menu.js"></script>
     <script src="../assets/js/main.js"></script>
-</body>
 
+    <script>
+        $(document).ready(function() {
+            // Auto preencher valor ao selecionar cliente
+            $('#cad_cliente_id').on('change', function() {
+                const valor = $(this).find(':selected').data('valor');
+                if (valor) $('#cad_valor').val(valor);
+            });
+
+            // Salvar cobrança manual
+            $('#formNovaCobranca').on('submit', function(e) {
+                e.preventDefault();
+                const btn = $('#btnSalvarCobranca');
+                btn.prop('disabled', true).text('Salvando...');
+
+                $.post('php/cobrancas/processarDados.php', $(this).serialize() + '&acao=salvar', function(res) {
+                    if (res.ok) {
+                        location.reload();
+                    } else {
+                        alert('Erro: ' + (res.error || 'Falha ao salvar.'));
+                        btn.prop('disabled', false).text('Salvar Cobrança');
+                    }
+                }, 'json');
+            });
+
+            // Gerar Lote
+            $('#btnGerarLote').on('click', function() {
+                if (!confirm('Deseja gerar as cobranças de todos os clientes ativos para o mês atual?')) return;
+                
+                const btn = $(this);
+                btn.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Processando...');
+
+                $.post('php/cobrancas/processarDados.php', { acao: 'gerar_lote' }, function(res) {
+                    if (res.ok) {
+                        alert('Sucesso! Foram geradas ' + res.total + ' cobranças.');
+                        location.reload();
+                    } else {
+                        alert('Erro: ' + (res.error || 'Falha ao gerar lote.'));
+                        btn.prop('disabled', false).html('<i class="bx bx-sync me-1"></i>Gerar Lote (Mês Atual)');
+                    }
+                }, 'json');
+            });
+        });
+    </script>
+</body>
 </html>
