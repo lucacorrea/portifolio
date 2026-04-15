@@ -1100,6 +1100,8 @@ try {
         document.getElementById('edit_status').value = cliente.status || 'Ativo';
         document.getElementById('edit_mensagem_automatica').value = cliente.mensagem_automatica || '1';
         document.getElementById('edit_whatsapp_principal').value = cliente.whatsapp || '';
+        document.getElementById('edit_mensagem_automatica').value = cliente.mensagem_automatica || '1';
+        document.getElementById('edit_whatsapp_principal').value = cliente.whatsapp || '';
         document.getElementById('edit_observacoes').value = cliente.observacoes || '';
     }
 
