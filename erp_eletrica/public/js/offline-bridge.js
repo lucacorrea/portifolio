@@ -675,12 +675,7 @@
         async enqueueSale(data) {
             const tempId = this._tempId();
             const isContingencia = data.tipo_nota === 'fiscal';
-            
-            if (isContingencia) {
-                data.tipo_nota = 'contingencia';
-                data.dh_cont = new Date().toISOString().split('.')[0] + '-03:00'; // Formato ISO simplificado com fuso
-                data.x_just = 'Sem conexao com o servidor SEFAZ no momento da venda';
-            }
+            if (isContingencia) data.tipo_nota = 'contingencia';
 
             await OfflineDB.add('offline_queue', {
                 type: 'sale', temp_id: tempId, status: 'pending',

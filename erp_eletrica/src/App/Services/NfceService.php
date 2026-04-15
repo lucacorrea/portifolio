@@ -175,10 +175,7 @@ class NfceService extends BaseService {
                 'cliente_id'          => $venda['cliente_id'],
                 'nome_cliente_avulso' => $venda['nome_cliente_avulso'],
                 'cpf_cnpj'            => null,
-                'cliente_nome'        => null,
-                'tipo_nota'           => $venda['tipo_nota'] ?? 'nao_fiscal',
-                'dh_cont'             => $venda['dh_cont'] ?? null,
-                'x_just'              => $venda['x_just'] ?? null
+                'cliente_nome'        => null
             ];
 
             // Fetch customer data if exists

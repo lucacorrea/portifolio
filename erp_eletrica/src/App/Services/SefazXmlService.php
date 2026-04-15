@@ -32,11 +32,7 @@ class SefazXmlService extends BaseService {
         $mod = "65"; // NFC-e
         $serie = str_pad($fiscal['serie_nfce'] ?? '1', 3, '0', STR_PAD_LEFT);
         $nNF = str_pad($sale['id'], 9, '0', STR_PAD_LEFT);
-        
-        // Determinar tpEmis (Normal vs Contingência Offline)
-        $isContingencia = ($sale['tipo_nota'] ?? '') === 'contingencia';
-        $tpEmis = $isContingencia ? "9" : "1"; 
-        
+        $tpEmis = "1"; // Normal
         $cNF = str_pad(rand(1, 99999999), 8, '0', STR_PAD_LEFT);
         $dhEmi = date('Y-m-d\TH:i:sP');
         
@@ -50,7 +46,7 @@ class SefazXmlService extends BaseService {
         $infNFe->setAttribute('Id', 'NFe' . $chave);
         $infNFe->setAttribute('versao', '4.00');
         $nfe->appendChild($infNFe);
- 
+
         // 1. ide
         $ide = $this->createEl($dom, 'ide');
         $ide->appendChild($this->createEl($dom, 'cUF', $cUF));
@@ -67,15 +63,6 @@ class SefazXmlService extends BaseService {
         $ide->appendChild($this->createEl($dom, 'tpEmis', $tpEmis));
         $ide->appendChild($this->createEl($dom, 'cDV', $cDV));
         $ide->appendChild($this->createEl($dom, 'tpAmb', $tpAmb));
-        
-        // Adicionar campos de contingência se necessário
-        if ($isContingencia) {
-            $dhCont = $sale['dh_cont'] ?? date('Y-m-d\TH:i:sP');
-            $xJust  = $sale['x_just'] ?? 'SEM CONEXAO COM O SERVIDOR SEFAZ NO MOMENTO DA VENDA';
-            $ide->appendChild($this->createEl($dom, 'dhCont', $dhCont));
-            $ide->appendChild($this->createEl($dom, 'xJust', strtoupper($xJust)));
-        }
-
         $ide->appendChild($this->createEl($dom, 'finNFe', '1')); // Normal
         $ide->appendChild($this->createEl($dom, 'indFinal', '1')); // Consumidor Final
         $ide->appendChild($this->createEl($dom, 'indPres', '1')); // Presencial

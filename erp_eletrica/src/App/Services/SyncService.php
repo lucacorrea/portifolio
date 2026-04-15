@@ -115,8 +115,6 @@ class SyncService {
                 'valor_recebido'      => $data['valor_recebido'] ?? null,
                 'troco'               => $data['troco'] ?? null,
                 'taxa_cartao'         => $data['taxa_cartao'] ?? 0,
-                'dh_cont'             => $data['dh_cont'] ?? null,
-                'x_just'              => $data['x_just'] ?? null,
             ];
 
             $saleId = $saleModel->create($saleData);
