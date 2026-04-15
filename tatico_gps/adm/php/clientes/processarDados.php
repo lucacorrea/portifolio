@@ -77,11 +77,7 @@ function normalizarTelefoneWhatsapp(?string $telefone): string
 function buscarConfiguracaoAutomacao(PDO $pdo): array
 {
     $stmt = $pdo->query("
-        SELECT
-            empresa_nome,
-            pix_nome_recebedor,
-            pix_tipo_chave,
-            pix_chave
+        SELECT *
         FROM configuracoes_automacao
         ORDER BY id DESC
         LIMIT 1
