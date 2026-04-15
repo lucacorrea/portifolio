@@ -113,9 +113,31 @@
         </div>
     </div>
 
+    <!-- ERP Offline Bridge: Session Data Injection -->
+    <script>
+        window.__ERP_SESSION = {
+            usuario_id: <?= json_encode($_SESSION['usuario_id'] ?? null) ?>,
+            usuario_nome: <?= json_encode($_SESSION['usuario_nome'] ?? 'Desconhecido') ?>,
+            filial_id: <?= json_encode($_SESSION['filial_id'] ?? 1) ?>,
+            is_matriz: <?= json_encode($_SESSION['is_matriz'] ?? false) ?>,
+            usuario_nivel: <?= json_encode($_SESSION['usuario_nivel'] ?? 'operador') ?>
+        };
+    </script>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- ERP Offline Bridge (MUST load before other scripts to intercept fetch) -->
+    <script src="public/js/offline-bridge.js?v=<?= time() ?>"></script>
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('[ERP] Service Worker registrado:', reg.scope))
+                .catch(err => console.warn('[ERP] Falha ao registrar Service Worker:', err));
+        }
+    </script>
 </body>
 </html>

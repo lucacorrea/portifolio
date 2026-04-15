@@ -1458,9 +1458,19 @@ async function processarCheckout() {
 
 function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = null) {
     const isFiscal = tipoNota === 'fiscal';
-    const tipoLabel = isFiscal
-        ? '<span class="badge bg-success mb-3"><i class="fas fa-file-invoice-dollar me-1"></i>Venda Fiscal</span>'
-        : '<span class="badge bg-secondary mb-3"><i class="fas fa-receipt me-1"></i>Venda Não Fiscal</span>';
+    const isContingencia = tipoNota === 'contingencia';
+    const isOffline = String(saleId).startsWith('OFF-');
+
+    let tipoLabel;
+    if (isContingencia) {
+        tipoLabel = '<span class="badge bg-warning text-dark mb-3"><i class="fas fa-exclamation-triangle me-1"></i>Venda em Contingência (Offline)</span>';
+    } else if (isFiscal) {
+        tipoLabel = '<span class="badge bg-success mb-3"><i class="fas fa-file-invoice-dollar me-1"></i>Venda Fiscal</span>';
+    } else if (isOffline) {
+        tipoLabel = '<span class="badge bg-info mb-3"><i class="fas fa-wifi-slash me-1"></i>Venda Offline (Sincronizará Automaticamente)</span>';
+    } else {
+        tipoLabel = '<span class="badge bg-secondary mb-3"><i class="fas fa-receipt me-1"></i>Venda Não Fiscal</span>';
+    }
 
     // Troco block (Açaidinhos style - show prominently in green for dinheiro)
     const trocoBlock = (troco > 0)
@@ -1470,13 +1480,29 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
            </div>`
         : '';
 
-    const btnPrint = isFiscal
-        ? `<button class="btn btn-success btn-lg fw-bold py-3 shadow-sm" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
+    let btnPrint;
+    if (isOffline || isContingencia) {
+        // Offline: não pode imprimir nem emitir NFC-e até sincronizar
+        btnPrint = `<div class="alert alert-info small mb-2 text-start">
+            <i class="fas fa-info-circle me-1"></i>
+            ${isContingencia 
+                ? 'Venda fiscal registrada em <strong>modo contingência</strong>. A NFC-e será emitida automaticamente quando a internet voltar.'
+                : 'Venda registrada <strong>offline</strong>. O recibo estará disponível após a sincronização automática.'}
+        </div>
+        <button class="btn btn-outline-secondary btn-lg fw-bold py-3 shadow-sm" disabled>
+            <i class="fas fa-clock me-2"></i>AGUARDANDO SINCRONIZAÇÃO
+        </button>`;
+    } else if (isFiscal) {
+        btnPrint = `<button class="btn btn-success btn-lg fw-bold py-3 shadow-sm" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
                <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Nota Fiscal)
-           </button>`
-        : `<button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm" onclick="imprimirRecibo(${saleId})">
+           </button>`;
+    } else {
+        btnPrint = `<button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm" onclick="imprimirRecibo(${saleId})">
                <i class="fas fa-print me-2"></i>IMPRIMIR RECIBO
            </button>`;
+    }
+
+    const saleIdDisplay = isOffline ? saleId : `#${saleId}`;
 
     const modalHtml = `
         <div class="modal fade" id="modalSuccess" tabindex="-1">
@@ -1484,11 +1510,11 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-body text-center p-5">
                         <div class="mb-3">
-                            <i class="fas fa-check-circle text-success" style="font-size: 4.5rem;"></i>
+                            <i class="fas fa-check-circle ${isOffline || isContingencia ? 'text-warning' : 'text-success'}" style="font-size: 4.5rem;"></i>
                         </div>
                         ${tipoLabel}
                         <h3 class="fw-bold mb-2">Venda Finalizada!</h3>
-                        <p class="text-muted mb-3">Venda <strong>#${saleId}</strong> — <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong></p>
+                        <p class="text-muted mb-3">Venda <strong>${saleIdDisplay}</strong> — <strong>R$ ${total.toFixed(2).replace('.', ',')}</strong></p>
                         ${trocoBlock}
                         <div class="d-grid gap-2">
                             ${btnPrint}
@@ -1514,8 +1540,8 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
     });
     modal.show();
 
-    // For non-fiscal: auto-open print window
-    if (!isFiscal) {
+    // For non-fiscal online: auto-open print window
+    if (!isFiscal && !isOffline && !isContingencia) {
         setTimeout(() => imprimirRecibo(saleId), 400);
     }
 }
