@@ -4,7 +4,7 @@
  */
 
 function enviarMensagemWhatsApp(string $telefone, string $mensagem): array {
-    $node_api_url = 'https://smthcoari.cloud/send';
+    $node_api_url = 'https://smthcoari.cloud/send-message';
     
     // Garantir que o telefone está no formato correto
     $telefone = preg_replace('/\D/', '', $telefone);
@@ -25,7 +25,7 @@ function enviarMensagemWhatsApp(string $telefone, string $mensagem): array {
         'Content-Type: application/json',
         'Content-Length: ' . strlen($payload)
     ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
 
     $result = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -41,7 +41,10 @@ function enviarMensagemWhatsApp(string $telefone, string $mensagem): array {
         return ['ok' => true, 'response' => $response];
     }
 
-    return ['ok' => false, 'error' => "Erro no Servidor ({$http_code}): " . ($response['error'] ?? 'Falha ao processar envio')];
+    $errorMsg = $response['error'] ?? 'Falha ao processar envio';
+    if ($http_code === 404) $errorMsg = "Endpoint não encontrado (404). Verifique se o servidor Node está rodando a versão correta.";
+
+    return ['ok' => false, 'error' => "Erro no Servidor ({$http_code}): " . $errorMsg];
 }
 
 function registrarLogEnvio(PDO $pdo, int $clienteId, string $telefone, string $mensagem, string $status, string $resposta = ''): void {
