@@ -3,7 +3,9 @@ const {
     useMultiFileAuthState, 
     DisconnectReason, 
     fetchLatestBaileysVersion, 
-    makeCacheableSignalKeyStore 
+    makeCacheableSignalKeyStore,
+    downloadMediaMessage,
+    downloadContentFromMessage 
 } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const express = require('express');
@@ -14,6 +16,9 @@ const path = require('path');
 
 const app = express();
 const port = 8080;
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 let sock;
 let qrCodeBase64 = null;
@@ -65,8 +70,50 @@ async function connectToWhatsApp() {
 
     // Evento para processar mensagens (Base para o seu futuro Chatbot)
     sock.ev.on('messages.upsert', async m => {
-        // Futura lógica do chatbot entrará aqui
-        // console.log(JSON.stringify(m, undefined, 2));
+        if (m.type !== 'notify') return;
+
+        for (const msg of m.messages) {
+            if (msg.key.fromMe) continue; // Ignorar mensagens enviadas por nós
+
+            const sender = msg.key.remoteJid.split('@')[0];
+            const messageType = Object.keys(msg.message || {})[0];
+
+            // Detectar Imagem ou Documento (PDF)
+            if (messageType === 'imageMessage' || messageType === 'documentWithCaptionMessage' || messageType === 'documentMessage') {
+                console.log(`Mídia recebida de ${sender}. Processando como possível comprovante...`);
+
+                try {
+                    // Baixar a mídia
+                    const buffer = await downloadMediaMessage(msg, 'buffer', {}, { 
+                        logger: pino({ level: 'silent' }),
+                        reuploadRequest: sock.updateMediaMessage
+                    });
+
+                    const base64 = buffer.toString('base64');
+                    const mimeType = msg.message[messageType]?.mimetype || 'image/jpeg';
+
+                    // Notificar o PHP
+                    // Ajuste a URL para o seu domínio principal
+                    const webhookUrl = 'https://lucascorrea.pro/tatico_gps/adm/php/whatsapp/processar_comprovante.php';
+                    
+                    await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sender,
+                            business_id: sock.user.id.split(':')[0],
+                            media: base64,
+                            mimeType,
+                            messageId: msg.key.id
+                        })
+                    });
+
+                    console.log(`Notificação de comprovante enviada para o PHP (${sender})`);
+                } catch (err) {
+                    console.error('Erro ao processar mídia:', err);
+                }
+            }
+        }
     });
 }
 
@@ -84,6 +131,26 @@ app.get('/qrcode', (req, res) => {
         res.json({ qr: qrCodeBase64 });
     } else {
         res.json({ qr: null, message: connectionStatus === 'connected' ? 'Já conectado' : 'Gerando...' });
+    }
+});
+
+app.post('/send-message', async (req, res) => {
+    const { number, text } = req.body;
+
+    if (!sock || connectionStatus !== 'connected') {
+        return res.status(503).json({ error: 'WhatsApp não está conectado' });
+    }
+
+    if (!number || !text) {
+        return res.status(400).json({ error: 'Número e texto são obrigatórios' });
+    }
+
+    try {
+        const jid = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`;
+        await sock.sendMessage(jid, { text });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

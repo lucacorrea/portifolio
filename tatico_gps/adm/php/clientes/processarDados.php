@@ -10,6 +10,7 @@ error_reporting(E_ALL);
 header('Content-Type: text/html; charset=UTF-8');
 
 require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../whatsapp/functions.php';
 
 if (!isset($pdo) || !($pdo instanceof PDO)) {
     echo "<script>alert('Erro: conexão com o banco não foi carregada.'); history.back();</script>";
@@ -131,91 +132,7 @@ function montarMensagemBoasVindas(array $cliente, array $cfg): string
     return $mensagem;
 }
 
-function registrarLogWhatsapp(
-    PDO $pdo,
-    int $clienteId,
-    string $telefone,
-    string $mensagem,
-    string $statusEnvio,
-    string $respostaApi = ''
-): void {
-    $sql = "INSERT INTO whatsapp_envios (
-                cliente_id,
-                telefone,
-                mensagem,
-                status_envio,
-                resposta_api
-            ) VALUES (
-                :cliente_id,
-                :telefone,
-                :mensagem,
-                :status_envio,
-                :resposta_api
-            )";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindValue(':cliente_id', $clienteId, PDO::PARAM_INT);
-    $stmt->bindValue(':telefone', $telefone);
-    $stmt->bindValue(':mensagem', $mensagem);
-    $stmt->bindValue(':status_envio', $statusEnvio);
-    $stmt->bindValue(':resposta_api', $respostaApi);
-    $stmt->execute();
-}
-
-function enviarWhatsappAutomatico(string $telefone, string $mensagem): array
-{
-    if (WHATSAPP_API_URL === '' || WHATSAPP_API_KEY === '') {
-        return [
-            'ok' => false,
-            'status' => 'nao_configurado',
-            'resposta' => 'API do WhatsApp não configurada.',
-        ];
-    }
-
-    $payload = [
-        'number' => $telefone,
-        'text' => $mensagem,
-    ];
-
-    $ch = curl_init(WHATSAPP_API_URL);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'apikey: ' . WHATSAPP_API_KEY,
-        ],
-        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
-        CURLOPT_TIMEOUT => 30,
-    ]);
-
-    $response = curl_exec($ch);
-    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    if ($curlError !== '') {
-        return [
-            'ok' => false,
-            'status' => 'erro',
-            'resposta' => 'cURL: ' . $curlError,
-        ];
-    }
-
-    if ($httpCode >= 200 && $httpCode < 300) {
-        return [
-            'ok' => true,
-            'status' => 'enviado',
-            'resposta' => (string)$response,
-        ];
-    }
-
-    return [
-        'ok' => false,
-        'status' => 'falhou',
-        'resposta' => 'HTTP ' . $httpCode . ' | ' . (string)$response,
-    ];
-}
+// Funções de envio migradas para adm/php/whatsapp/functions.php
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     voltarComErro('Requisição inválida.');
@@ -367,15 +284,15 @@ if ($acao === 'salvar_cliente' || $acao === 'editar_cliente') {
                 ];
 
                 $mensagem = montarMensagemBoasVindas($dadosCliente, $cfg);
-                $retorno = enviarWhatsappAutomatico($telefoneEnvio, $mensagem);
+                $retorno = enviarMensagemWhatsApp($telefoneEnvio, $mensagem);
 
-                registrarLogWhatsapp(
+                registrarLogEnvio(
                     $pdo,
                     $clienteId,
                     $telefoneEnvio,
                     $mensagem,
-                    $retorno['status'],
-                    $retorno['resposta']
+                    $retorno['ok'] ? 'enviado' : 'falhou',
+                    $retorno['ok'] ? 'Sucesso' : ($retorno['error'] ?? 'Erro')
                 );
 
                 if ($retorno['ok']) {

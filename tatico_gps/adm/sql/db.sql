@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS configuracoes_automacao (
 
     status_cliente_apos_atraso              VARCHAR(30) NOT NULL DEFAULT 'Pendente',
     status_cliente_apos_bloqueio            VARCHAR(30) NOT NULL DEFAULT 'Bloqueado',
+    gemini_api_key                          VARCHAR(255) DEFAULT NULL,
 
     atualizado_em                           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     criado_em                               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -68,4 +69,21 @@ CREATE TABLE IF NOT EXISTS whatsapp_envios (
     INDEX idx_cliente_id (cliente_id),
     INDEX idx_status_envio (status_envio),
     INDEX idx_criado_em (criado_em)
+);
+
+CREATE TABLE IF NOT EXISTS pagamentos (
+    id                                      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    cliente_id                              INT UNSIGNED NOT NULL,
+    valor                                   DECIMAL(10,2) NOT NULL,
+    data_pagamento                          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    forma_pagamento                         VARCHAR(30) NOT NULL DEFAULT 'PIX',
+    status                                  VARCHAR(30) NOT NULL DEFAULT 'Confirmado',
+    comprovante_url                         VARCHAR(255) DEFAULT NULL,
+    mensagem_id                             VARCHAR(100) DEFAULT NULL,
+    referencia_mes                          VARCHAR(7) DEFAULT NULL, -- Ex: 05/2026
+    observacoes                             TEXT DEFAULT NULL,
+
+    INDEX idx_cliente_id (cliente_id),
+    INDEX idx_data_pagamento (data_pagamento),
+    INDEX idx_referencia (referencia_mes)
 );

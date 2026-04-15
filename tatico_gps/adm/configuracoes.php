@@ -354,6 +354,13 @@ try {
                                                         value="<?= h($config['pix_chave']) ?>">
                                                 </div>
 
+                                                 <div class="col-12">
+                                                    <label class="form-label">Chave API do Google Gemini (IA para leitura de fotos)</label>
+                                                    <input type="password" class="form-control" name="gemini_api_key" placeholder="Cole aqui sua chave do Gemini"
+                                                        value="<?= h($config['gemini_api_key'] ?? '') ?>">
+                                                    <small class="text-muted">Obtenha em <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+                                                </div>
+
                                                 <div class="col-12">
                                                     <div class="placeholder-box">
                                                         <strong>Variáveis disponíveis nas mensagens:</strong><br>

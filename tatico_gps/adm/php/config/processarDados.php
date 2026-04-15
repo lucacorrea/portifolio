@@ -117,7 +117,8 @@ try {
                     mensagem_dia_vencimento = :mensagem_dia_vencimento,
                     mensagem_7_dias_atraso = :mensagem_7_dias_atraso,
                     status_cliente_apos_atraso = :status_cliente_apos_atraso,
-                    status_cliente_apos_bloqueio = :status_cliente_apos_bloqueio
+                    status_cliente_apos_bloqueio = :status_cliente_apos_bloqueio,
+                    gemini_api_key = :gemini_api_key
                 WHERE id = :id";
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':id', (int)$registro['id'], PDO::PARAM_INT);
@@ -140,7 +141,8 @@ try {
                     mensagem_dia_vencimento,
                     mensagem_7_dias_atraso,
                     status_cliente_apos_atraso,
-                    status_cliente_apos_bloqueio
+                    status_cliente_apos_bloqueio,
+                    gemini_api_key
                 ) VALUES (
                     :empresa_nome,
                     :empresa_cnpj,
@@ -158,7 +160,8 @@ try {
                     :mensagem_dia_vencimento,
                     :mensagem_7_dias_atraso,
                     :status_cliente_apos_atraso,
-                    :status_cliente_apos_bloqueio
+                    :status_cliente_apos_bloqueio,
+                    :gemini_api_key
                 )";
         $stmt = $pdo->prepare($sql);
         $mensagemRetorno = 'Configurações cadastradas com sucesso.';
@@ -181,6 +184,7 @@ try {
     $stmt->bindValue(':mensagem_7_dias_atraso', $mensagem_7_dias_atraso);
     $stmt->bindValue(':status_cliente_apos_atraso', $status_cliente_apos_atraso);
     $stmt->bindValue(':status_cliente_apos_bloqueio', $status_cliente_apos_bloqueio);
+    $stmt->bindValue(':gemini_api_key', $_POST['gemini_api_key'] ?? null);
 
     $stmt->execute();
 
