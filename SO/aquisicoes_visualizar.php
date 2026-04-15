@@ -462,14 +462,14 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr 1fr !important;
             gap: 2rem !important;
             text-align: center !important;
-            margin-top: 50px !important;
+            margin-top: 10px !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
 
         .assinatura-linha {
             border-top: 1.5px solid #000 !important;
-            padding-top: 6px !important;
+            padding-top: 60px !important;
         }
     }
 </style>
