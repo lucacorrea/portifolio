@@ -87,3 +87,20 @@ CREATE TABLE IF NOT EXISTS pagamentos (
     INDEX idx_data_pagamento (data_pagamento),
     INDEX idx_referencia (referencia_mes)
 );
+
+CREATE TABLE IF NOT EXISTS cobrancas (
+    id                                      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    cliente_id                              INT UNSIGNED NOT NULL,
+    referencia                              VARCHAR(7) NOT NULL, -- Ex: 05/2026
+    valor                                   DECIMAL(10,2) NOT NULL,
+    data_vencimento                         DATE NOT NULL,
+    status                                  VARCHAR(20) NOT NULL DEFAULT 'Em aberto', -- Em aberto, Paga, Vencida, Cancelada
+    observacoes                             TEXT DEFAULT NULL,
+    criado_em                               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em                           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_cliente_id (cliente_id),
+    INDEX idx_referencia (referencia),
+    INDEX idx_status (status),
+    INDEX idx_vencimento (data_vencimento)
+);
