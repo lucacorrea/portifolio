@@ -462,7 +462,7 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr 1fr !important;
             gap: 2rem !important;
             text-align: center !important;
-            margin-top: 20px !important;
+            margin-top: 50px !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
