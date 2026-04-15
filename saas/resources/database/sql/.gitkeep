@@ -1,0 +1,192 @@
+CREATE DATABASE IF NOT EXISTS contaflow_saas
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE contaflow_saas;
+
+-- =========================================================
+-- 1) ADMINS DA PLATAFORMA
+-- =========================================================
+CREATE TABLE IF NOT EXISTS admins (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    senha_hash VARCHAR(255) NOT NULL,
+    telefone VARCHAR(20) DEFAULT NULL,
+    nivel ENUM('super_admin', 'admin', 'suporte', 'financeiro') NOT NULL DEFAULT 'admin',
+    status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
+    ultimo_login_em DATETIME DEFAULT NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 2) PLANOS DO SAAS
+-- =========================================================
+CREATE TABLE IF NOT EXISTS planos (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(120) NOT NULL,
+    slug VARCHAR(120) NOT NULL UNIQUE,
+    descricao TEXT DEFAULT NULL,
+    valor_mensal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    valor_anual DECIMAL(10,2) DEFAULT NULL,
+    limite_empresas INT UNSIGNED NOT NULL DEFAULT 1,
+    limite_usuarios INT UNSIGNED NOT NULL DEFAULT 1,
+    permite_documentos TINYINT(1) NOT NULL DEFAULT 1,
+    permite_fiscal TINYINT(1) NOT NULL DEFAULT 0,
+    permite_relatorios TINYINT(1) NOT NULL DEFAULT 0,
+    permite_multiusuario TINYINT(1) NOT NULL DEFAULT 0,
+    permite_whatsapp TINYINT(1) NOT NULL DEFAULT 0,
+    destaque TINYINT(1) NOT NULL DEFAULT 0,
+    status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 3) CONTADORES / CLIENTES DO SAAS
+-- =========================================================
+CREATE TABLE IF NOT EXISTS contadores (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    plano_id BIGINT UNSIGNED DEFAULT NULL,
+    razao_social VARCHAR(180) NOT NULL,
+    nome_fantasia VARCHAR(180) DEFAULT NULL,
+    cnpj VARCHAR(18) NOT NULL UNIQUE,
+    crc VARCHAR(50) DEFAULT NULL,
+    responsavel_nome VARCHAR(150) NOT NULL,
+    responsavel_email VARCHAR(150) NOT NULL,
+    responsavel_telefone VARCHAR(20) DEFAULT NULL,
+    cidade VARCHAR(100) DEFAULT NULL,
+    estado CHAR(2) DEFAULT NULL,
+    status ENUM('ativo', 'inativo', 'bloqueado', 'teste') NOT NULL DEFAULT 'teste',
+    observacoes TEXT DEFAULT NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_contadores_plano
+        FOREIGN KEY (plano_id) REFERENCES planos(id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 4) ASSINATURAS
+-- =========================================================
+CREATE TABLE IF NOT EXISTS assinaturas (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    contador_id BIGINT UNSIGNED NOT NULL,
+    plano_id BIGINT UNSIGNED NOT NULL,
+    tipo_ciclo ENUM('mensal', 'anual') NOT NULL DEFAULT 'mensal',
+    valor_contratado DECIMAL(10,2) NOT NULL,
+    data_inicio DATE NOT NULL,
+    data_fim DATE DEFAULT NULL,
+    data_proximo_vencimento DATE DEFAULT NULL,
+    status ENUM('ativa', 'pendente', 'atrasada', 'cancelada', 'encerrada', 'teste') NOT NULL DEFAULT 'pendente',
+    observacoes TEXT DEFAULT NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_assinaturas_contador
+        FOREIGN KEY (contador_id) REFERENCES contadores(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_assinaturas_plano
+        FOREIGN KEY (plano_id) REFERENCES planos(id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 5) FATURAS / COBRANÇAS DA PLATAFORMA
+-- =========================================================
+CREATE TABLE IF NOT EXISTS faturas (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    assinatura_id BIGINT UNSIGNED NOT NULL,
+    contador_id BIGINT UNSIGNED NOT NULL,
+    referencia VARCHAR(20) NOT NULL,
+    descricao VARCHAR(255) DEFAULT NULL,
+    valor DECIMAL(10,2) NOT NULL,
+    vencimento DATE NOT NULL,
+    data_pagamento DATE DEFAULT NULL,
+    forma_pagamento ENUM('pix', 'boleto', 'cartao', 'transferencia', 'manual') DEFAULT NULL,
+    status ENUM('pendente', 'paga', 'vencida', 'cancelada') NOT NULL DEFAULT 'pendente',
+    gateway_transacao VARCHAR(120) DEFAULT NULL,
+    observacoes TEXT DEFAULT NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_faturas_assinatura
+        FOREIGN KEY (assinatura_id) REFERENCES assinaturas(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_faturas_contador
+        FOREIGN KEY (contador_id) REFERENCES contadores(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    UNIQUE KEY uk_fatura_assinatura_referencia (assinatura_id, referencia)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 6) TICKETS DE SUPORTE
+-- =========================================================
+CREATE TABLE IF NOT EXISTS tickets_suporte (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    contador_id BIGINT UNSIGNED DEFAULT NULL,
+    admin_responsavel_id BIGINT UNSIGNED DEFAULT NULL,
+    protocolo VARCHAR(30) NOT NULL UNIQUE,
+    assunto VARCHAR(180) NOT NULL,
+    mensagem_inicial TEXT NOT NULL,
+    prioridade ENUM('baixa', 'media', 'alta', 'urgente') NOT NULL DEFAULT 'media',
+    status ENUM('aberto', 'em_atendimento', 'aguardando_cliente', 'resolvido', 'fechado') NOT NULL DEFAULT 'aberto',
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_tickets_contador
+        FOREIGN KEY (contador_id) REFERENCES contadores(id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+    CONSTRAINT fk_tickets_admin
+        FOREIGN KEY (admin_responsavel_id) REFERENCES admins(id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 7) MENSAGENS DOS TICKETS
+-- =========================================================
+CREATE TABLE IF NOT EXISTS ticket_mensagens (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    ticket_id BIGINT UNSIGNED NOT NULL,
+    admin_id BIGINT UNSIGNED DEFAULT NULL,
+    contador_id BIGINT UNSIGNED DEFAULT NULL,
+    remetente_tipo ENUM('admin', 'contador', 'sistema') NOT NULL,
+    mensagem TEXT NOT NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ticket_mensagens_ticket
+        FOREIGN KEY (ticket_id) REFERENCES tickets_suporte(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_ticket_mensagens_admin
+        FOREIGN KEY (admin_id) REFERENCES admins(id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+    CONSTRAINT fk_ticket_mensagens_contador
+        FOREIGN KEY (contador_id) REFERENCES contadores(id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 8) LOG DE AUDITORIA ADMIN
+-- =========================================================
+CREATE TABLE IF NOT EXISTS auditoria_admin (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    admin_id BIGINT UNSIGNED DEFAULT NULL,
+    acao VARCHAR(120) NOT NULL,
+    entidade VARCHAR(120) NOT NULL,
+    entidade_id BIGINT UNSIGNED DEFAULT NULL,
+    descricao TEXT DEFAULT NULL,
+    ip VARCHAR(45) DEFAULT NULL,
+    user_agent VARCHAR(255) DEFAULT NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_auditoria_admin
+        FOREIGN KEY (admin_id) REFERENCES admins(id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
