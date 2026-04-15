@@ -15,6 +15,14 @@ if (!$config || !(int)$config['automacao_ativa']) {
     die("Automação desativada ou não configurada.\n");
 }
 
+// Forçar saída em tempo real no navegador
+if (php_sapi_name() !== 'cli') {
+    header('Content-Type: text/plain');
+    header('Cache-Control: no-cache');
+}
+ob_implicit_flush(true);
+while (ob_get_level()) ob_end_flush();
+
 $hoje = new DateTime();
 $mesAtual = $hoje->format('m');
 $anoAtual = $hoje->format('Y');
@@ -65,8 +73,14 @@ foreach ($clientes as $cliente) {
             // Montar mensagem com variáveis
             $mensagemFinal = montarMensagem($mensagemBase, $cliente, $config, $vencimento->format('d/m/Y'));
             
-            echo "Enviando regra '$regra' para {$cliente['nome']}...\n";
+            echo ">> Enviando regra '$regra' para {$cliente['nome']} ($telefone)... ";
             $retorno = enviarMensagemWhatsApp($telefone, $mensagemFinal);
+            
+            if ($retorno['ok']) {
+                echo "SUCESSO! ✅\n";
+            } else {
+                echo "FALHOU: " . ($retorno['error'] ?? 'Erro desconhecido') . " ❌\n";
+            }
             
             // Registrar log com a regra na resposta para controle
             $statusLog = $retorno['ok'] ? 'enviado' : 'falhou';
@@ -74,8 +88,10 @@ foreach ($clientes as $cliente) {
             
             registrarLogEnvio($pdo, (int)$cliente['id'], $telefone, $mensagemFinal, $statusLog, $respostaLog);
         } else {
-            echo "Pulo: {$cliente['nome']} já recebeu a regra '$regra' este mês.\n";
+            echo "-- Pulo: {$cliente['nome']} já recebeu a regra '$regra' este mês.\n";
         }
+    } else {
+        echo "-- Nenhuma regra ativa hoje para {$cliente['nome']} (Vencimento dia {$diaVenc}).\n";
     }
 }
 
