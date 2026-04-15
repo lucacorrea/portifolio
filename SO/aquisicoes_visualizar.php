@@ -235,25 +235,28 @@ include 'views/layout/header.php';
         margin: 1.85rem 0 0.5rem;
     }
 
-    .assinaturas-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4rem;
-        text-align: center;
-        margin-top: 5rem;
-    }
-
-    .assinatura-linha {
-        border-top: 1.5px solid #000;
-        padding-top: 0.75rem;
+    .rodape-documento {
+        margin-top: 1.25rem;
     }
 
     .texto-entrega {
         font-size: 0.75rem;
         color: #555;
-        margin-top: 1.5rem;
-        margin-bottom: 4rem;
+        margin: 0 0 1.25rem 0;
         line-height: 1.5;
+    }
+
+    .assinaturas-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        text-align: center;
+        margin-top: 1.5rem;
+    }
+
+    .assinatura-linha {
+        border-top: 1.5px solid #000;
+        padding-top: 0.75rem;
     }
 
     @media (max-width: 768px) {
@@ -292,7 +295,7 @@ include 'views/layout/header.php';
         .assinaturas-grid {
             grid-template-columns: 1fr;
             gap: 2rem;
-            margin-top: 3rem;
+            margin-top: 1.25rem;
         }
 
         .ordem-info-table,
@@ -402,7 +405,7 @@ include 'views/layout/header.php';
         }
 
         .ordem-info-wrap {
-            margin-bottom: 12px !important;
+            margin-bottom: 10px !important;
         }
 
         .ordem-info-table,
@@ -427,37 +430,46 @@ include 'views/layout/header.php';
             border: 1px solid #000 !important;
         }
 
+        .ordem-section-title {
+            margin: 12px 0 4px !important;
+            font-size: 10px !important;
+        }
+
         .ordem-total-row,
-        .ordem-total-row td,
-        .texto-entrega,
-        .assinaturas-grid {
+        .ordem-total-row td {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
 
-        .ordem-section-title {
-            margin: 14px 0 4px !important;
+        .rodape-documento {
+            margin-top: 8px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        .texto-entrega {
+            margin: 8px 0 10px !important;
             font-size: 10px !important;
+            line-height: 1.35 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            orphans: 3;
+            widows: 3;
         }
 
         .assinaturas-grid {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
-            gap: 4rem !important;
+            gap: 2rem !important;
             text-align: center !important;
-            margin-top: 5rem !important;
+            margin-top: 10px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
 
         .assinatura-linha {
             border-top: 1.5px solid #000 !important;
-            padding-top: 0.75rem !important;
-        }
-
-        .texto-entrega {
-            margin-top: 1.5rem !important;
-            margin-bottom: 4rem !important;
-            font-size: 0.75rem !important;
-            line-height: 1.5 !important;
+            padding-top: 6px !important;
         }
     }
 </style>
@@ -534,20 +546,22 @@ include 'views/layout/header.php';
 
             <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
 
-            <div class="assinaturas-grid">
-                <div>
-                    <div class="assinatura-linha">
-                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                            Autorização de Recebimento
+            <div class="rodape-documento">
+                <div class="assinaturas-grid">
+                    <div>
+                        <div class="assinatura-linha">
+                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
+                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                Autorização de Recebimento
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div>
-                    <div class="assinatura-linha">
-                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                            Assinatura e Carimbo
+                    <div>
+                        <div class="assinatura-linha">
+                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                Assinatura e Carimbo
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -614,26 +628,28 @@ include 'views/layout/header.php';
 
             <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
 
-            <p class="texto-entrega">
-                No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável.
-                Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada
-                no setor administrativo/financeiro.
-            </p>
+            <div class="rodape-documento">
+                <p class="texto-entrega">
+                    No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável.
+                    Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada
+                    no setor administrativo/financeiro.
+                </p>
 
-            <div class="assinaturas-grid" style="margin-top: 4rem;">
-                <div>
-                    <div class="assinatura-linha">
-                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                            Autorização de Saída
+                <div class="assinaturas-grid">
+                    <div>
+                        <div class="assinatura-linha">
+                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
+                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                Autorização de Saída
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div>
-                    <div class="assinatura-linha">
-                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                            Assinatura e Carimbo
+                    <div>
+                        <div class="assinatura-linha">
+                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                Assinatura e Carimbo
+                            </div>
                         </div>
                     </div>
                 </div>
