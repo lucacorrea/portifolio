@@ -131,24 +131,20 @@
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
     
-    <!-- Service Worker Registration -->
+    <!-- Service Worker: Limpa caches antigos -->
     <script>
         if ('serviceWorker' in navigator) {
+            // Registrar SW v3 (auto-limpeza) para substituir versões antigas
             navigator.serviceWorker.register('sw.js')
-                .then(reg => {
-                    console.log('[ERP] Service Worker registrado:', reg.scope);
-                    // Forçar atualização do SW para substituir versão antiga
-                    reg.update();
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'activated') {
-                                console.log('[ERP] Service Worker v2 ativado');
-                            }
-                        });
-                    });
-                })
-                .catch(err => console.warn('[ERP] Falha ao registrar Service Worker:', err));
+                .then(reg => { reg.update(); })
+                .catch(() => {});
+            
+            // Safety net: limpar caches diretamente do main thread
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
         }
     </script>
 </body>
