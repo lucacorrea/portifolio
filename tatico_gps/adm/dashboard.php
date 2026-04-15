@@ -169,8 +169,18 @@
         <div class="layout-container">
 
             <?php
+            require_once __DIR__ . '/php/conexao.php';
             $paginaAtiva = 'dashboard';
             require_once __DIR__ . '/includes/menu.php';
+
+            // Buscar Métricas Reais
+            $ativos = $pdo->query("SELECT COUNT(*) FROM clientes WHERE status = 'Ativo'")->fetchColumn();
+            $pendentes = $pdo->query("SELECT COUNT(*) FROM clientes WHERE status = 'Pendente' OR status = 'Bloqueado'")->fetchColumn();
+            
+            $inicioSemana = date('Y-m-d', strtotime('monday this week'));
+            $recebidoSemana = $pdo->query("SELECT SUM(valor) FROM pagamentos WHERE status = 'Confirmado' AND DATE(data_pagamento) >= '$inicioSemana'")->fetchColumn() ?: 0;
+            
+            $msgHj = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE DATE(criado_em) = CURDATE()")->fetchColumn();
             ?>
 
             <div class="layout-page">
@@ -274,9 +284,9 @@
                                 <div class="card stat-card h-100">
                                     <div class="card-body">
                                         <div class="stat-title">Clientes Ativos</div>
-                                        <div class="stat-value">248</div>
+                                        <div class="stat-value"><?= $ativos ?></div>
                                         <div class="stat-meta text-success">
-                                            <i class="bx bx-up-arrow-alt"></i> +12 este mês
+                                            <i class="bx bx-up-arrow-alt"></i> em tempo real
                                         </div>
                                     </div>
                                 </div>
@@ -286,7 +296,7 @@
                                 <div class="card stat-card h-100">
                                     <div class="card-body">
                                         <div class="stat-title">Pendentes</div>
-                                        <div class="stat-value">37</div>
+                                        <div class="stat-value text-danger"><?= $pendentes ?></div>
                                         <div class="stat-meta text-danger">
                                             <i class="bx bx-error-circle"></i> requer atenção
                                         </div>
@@ -298,7 +308,7 @@
                                 <div class="card stat-card h-100">
                                     <div class="card-body">
                                         <div class="stat-title">Recebido na Semana</div>
-                                        <div class="stat-value" style="font-size: 1.7rem;">R$ 18.450,00</div>
+                                        <div class="stat-value" style="font-size: 1.7rem;">R$ <?= number_format($recebidoSemana, 2, ',', '.') ?></div>
                                         <div class="stat-meta text-success">
                                             <i class="bx bx-check-circle"></i> pagamentos confirmados
                                         </div>
@@ -309,10 +319,10 @@
                             <div class="col-xl-3 col-md-6 mb-4">
                                 <div class="card stat-card h-100">
                                     <div class="card-body">
-                                        <div class="stat-title">Mensagens Enviadas</div>
-                                        <div class="stat-value">126</div>
+                                        <div class="stat-title">Mensagens (Hoje)</div>
+                                        <div class="stat-value"><?= $msgHj ?></div>
                                         <div class="stat-meta text-primary">
-                                            <i class="bx bx-message-square-detail"></i> cobranças automáticas
+                                            <i class="bx bx-message-square-detail"></i> disparos automáticos
                                         </div>
                                     </div>
                                 </div>
@@ -404,22 +414,23 @@
                                     </div>
                                     <div class="card-body">
                                         <ul class="list-unstyled customer-status-list mb-0">
-                                            <li>
-                                                <span>João Silva</span>
-                                                <span class="badge bg-label-danger">Pendente</span>
-                                            </li>
-                                            <li>
-                                                <span>Maria Oliveira</span>
-                                                <span class="badge bg-label-warning">Aviso enviado</span>
-                                            </li>
-                                            <li>
-                                                <span>Carlos Mendes</span>
-                                                <span class="badge bg-label-danger">Bloqueio previsto</span>
-                                            </li>
-                                            <li>
-                                                <span>Ana Souza</span>
-                                                <span class="badge bg-label-success">Pago</span>
-                                            </li>
+                                            <?php
+                                            $stmtPend = $pdo->query("SELECT nome, status FROM clientes WHERE status IN ('Pendente', 'Bloqueado') ORDER BY id DESC LIMIT 5");
+                                            $pends = $stmtPend->fetchAll();
+                                            if (count($pends) > 0):
+                                                foreach ($pends as $p):
+                                                    $b = $p['status'] === 'Bloqueado' ? 'bg-label-danger' : 'bg-label-warning';
+                                            ?>
+                                                <li>
+                                                    <span><?= h($p['nome']) ?></span>
+                                                    <span class="badge <?= $b ?>"><?= h($p['status']) ?></span>
+                                                </li>
+                                            <?php 
+                                                endforeach;
+                                            else:
+                                            ?>
+                                                <li class="text-muted">Nenhuma pendência crítica encontrada.</li>
+                                            <?php endif; ?>
                                         </ul>
                                     </div>
                                 </div>
@@ -475,10 +486,10 @@
             },
             series: [{
                 name: 'Recebido',
-                data: [9200, 11350, 10400, 12890, 13750, 14900, 16100, 18450]
+                data: [0, 0, 0, 0, 0, 0, 0, <?= $recebidoSemana ?>]
             }],
             xaxis: {
-                categories: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8']
+                categories: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Esta Sem']
             },
             dataLabels: {
                 enabled: false
@@ -512,8 +523,8 @@
                 type: 'donut',
                 height: 320
             },
-            labels: ['Pagos', 'Pendentes', 'Em aviso', 'Bloqueados'],
-            series: [248, 37, 22, 9],
+            labels: ['Ativos', 'Pendentes', 'Bloqueados'],
+            series: [<?= $ativos ?>, <?= $pendentes ?>, 0],
             legend: {
                 position: 'bottom'
             },
