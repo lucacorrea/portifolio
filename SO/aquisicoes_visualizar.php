@@ -629,11 +629,6 @@ include 'views/layout/header.php';
             <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
 
             <div class="rodape-documento">
-                <p class="texto-entrega">
-                    No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável.
-                    Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada
-                    no setor administrativo/financeiro.
-                </p>
 
                 <div class="assinaturas-grid">
                     <div>
