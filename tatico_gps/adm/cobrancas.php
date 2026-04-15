@@ -129,9 +129,9 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
                             <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
                                 <h5 class="mb-0">Lista de Cobranças</h5>
                                 <div class="d-flex gap-2 flex-wrap">
+                                    <button class="btn btn-outline-info" id="btnGerarLote"><i class="bx bx-sync me-1"></i>Gerar Lote (Mês Atual)</button>
                                     <button class="btn btn-primary" data-bs-toggle="modal"
-                                        data-bs-target="#modalNovaCobranca"><i class="bx bx-plus me-1"></i>Nova
-                                        Cobrança</button>
+                                        data-bs-target="#modalNovaCobranca"><i class="bx bx-plus me-1"></i>Previsão Individual</button>
                                     <select class="form-select" style="width:180px">
                                         <option>Todos os status</option>
                                         <option>Em aberto</option>
@@ -223,35 +223,56 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
     <div class="modal fade" id="modalNovaCobranca" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Nova Cobrança</h5><button class="btn-close"
-                        data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label">Cliente</label><select class="form-select">
-                                <option>João da Silva</option>
-                                <option>Maria Oliveira</option>
-                            </select></div>
-                        <div class="col-md-6"><label class="form-label">Referência</label><input class="form-control"
-                                value="Mensalidade - Maio/2026" /></div>
-                        <div class="col-md-4"><label class="form-label">Valor</label><input class="form-control"
-                                value="R$ 89,90" /></div>
-                        <div class="col-md-4"><label class="form-label">Vencimento</label><input type="date"
-                                class="form-control" /></div>
-                        <div class="col-md-4"><label class="form-label">Status</label><select class="form-select">
-                                <option selected>Em aberto</option>
-                                <option>Paga</option>
-                                <option>Vencida</option>
-                            </select></div>
-                        <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control"
-                                rows="3"></textarea></div>
+                <form id="formNovaCobranca">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Nova Previsão de Cobrança</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button class="btn btn-primary">Salvar Cobrança</button>
-                </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Cliente</label>
+                                <select name="cliente_id" id="cad_cliente_id" class="form-select" required>
+                                    <option value="">Selecione um cliente...</option>
+                                    <?php
+                                    $stmtCl = $pdo->query("SELECT id, nome, mensalidade FROM clientes WHERE status = 'Ativo' ORDER BY nome ASC");
+                                    while($cl = $stmtCl->fetch()):
+                                    ?>
+                                        <option value="<?= $cl['id'] ?>" data-valor="<?= $cl['mensalidade'] ?>"><?= h($cl['nome']) ?></option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Referência (Mês/Ano)</label>
+                                <input name="referencia" class="form-control" value="<?= date('m/Y') ?>" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Valor</label>
+                                <input name="valor" id="cad_valor" class="form-control" placeholder="0.00" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Vencimento</label>
+                                <input type="date" name="data_vencimento" class="form-control" value="<?= date('Y-m-d') ?>" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="Em aberto" selected>Em aberto</option>
+                                    <option value="Paga">Paga</option>
+                                    <option value="Vencida">Vencida</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Observações</label>
+                                <textarea name="observacoes" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnSalvarCobranca">Salvar Cobrança</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
