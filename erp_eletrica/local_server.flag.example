@@ -1,0 +1,15 @@
+# ERP Elétrica — Local Server Flag
+# 
+# A PRESENÇA deste arquivo indica que o sistema está rodando
+# no servidor LOCAL (XAMPP) e NÃO na Hostinger.
+#
+# O config.php detecta este arquivo e:
+#   1. Carrega o sync_config.php (credenciais dos dois bancos)
+#   2. Ativa o failover no Database.php (Remote → Local)
+#   3. Injeta sync_origin='local' nos registros criados
+#
+# INSTRUÇÕES:
+#   - Na Hostinger: NÃO ter este arquivo (já é o padrão)
+#   - No XAMPP (balcão): manter este arquivo na raiz do projeto
+#
+# Para DESATIVAR o modo local, basta renomear ou apagar este arquivo.
