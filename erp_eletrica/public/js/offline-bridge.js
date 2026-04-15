@@ -1053,11 +1053,10 @@
         },
 
         /**
-         * Fetch interceptado — 4 etapas de fallback:
-         * 1. Tenta servidor remoto (Hostinger) com timeout (15s)
-         * 2. Se timeout, retenta sem timeout (última chance na rede)
-         * 3. Se rede falhar, tenta servidor local (XAMPP via LAN)
-         * 4. Se tudo falhar, usa dados offline do IndexedDB
+         * Fetch interceptado — 3 etapas de fallback:
+         * 1. Tenta com timeout (15s) via rede
+         * 2. Se timeout, tenta sem timeout (última chance na rede)
+         * 3. Se rede falhar totalmente, usa dados offline do IndexedDB
          */
         async _interceptedFetch(url, method, init) {
             // Se está online, tenta normalmente
@@ -1092,54 +1091,14 @@
                         
                         return retryResponse;
                     } catch (retryErr) {
-                        Logger.warn('INTERCEPT', `Retry remoto falhou: ${retryErr.message}`);
-                        // Cai para fallback LAN e depois offline
+                        Logger.warn('INTERCEPT', `Retry também falhou: ${retryErr.message} — Usando modo offline`);
+                        return this._handleOffline(url, method, init);
                     }
                 }
             }
 
-            // TERCEIRA CHANCE: tenta servidor LOCAL (XAMPP via LAN)
-            const localUrl = this._getLocalUrl(url);
-            if (localUrl) {
-                try {
-                    Logger.log('INTERCEPT', `Tentando servidor local (LAN): ${localUrl}`);
-                    const localResponse = await this._fetchWithTimeout(localUrl, init, 8000);
-                    
-                    if (localResponse.ok) {
-                        Logger.log('INTERCEPT', `✅ Servidor local respondeu com sucesso`);
-                        
-                        // Cache incremental
-                        if (method === 'GET' && url.includes('action=search') && !url.includes('search_clients')) {
-                            localResponse.clone().json().then(data => {
-                                if (Array.isArray(data)) CacheManager.cacheSearchResults(data);
-                            }).catch(() => {});
-                        }
-                        
-                        return localResponse;
-                    }
-                } catch (lanErr) {
-                    Logger.warn('INTERCEPT', `Servidor local também falhou: ${lanErr.message} — Usando IndexedDB`);
-                }
-            }
-
-            // ÚLTIMO RECURSO: Modo offline (IndexedDB)
+            // Modo offline
             return this._handleOffline(url, method, init);
-        },
-
-        /**
-         * Converte URL relativa para URL do servidor local (XAMPP)
-         * Exemplo: 'vendas.php?action=search' → 'http://192.168.1.100/erp_eletrica/vendas.php?action=search'
-         */
-        _getLocalUrl(url) {
-            const localServerUrl = window.__ERP_SESSION?.local_server_url;
-            if (!localServerUrl) return null;
-
-            // Se a URL já é absoluta e aponta para o local, retorna null (evita loop)
-            if (url.startsWith(localServerUrl)) return null;
-
-            // Se é URL relativa, converter para URL do servidor local
-            const path = url.startsWith('http') ? new URL(url).pathname + new URL(url).search : url;
-            return `${localServerUrl}/${path}`;
         },
 
         /**
