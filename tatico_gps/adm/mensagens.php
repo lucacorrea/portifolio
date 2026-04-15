@@ -332,7 +332,7 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
                         }
                     },
                     error: function() {
-                        alert('Erro na comunicação com o servidor.');
+                        alert('Erro na comunicação com o servidor. Verifique sua conexão.');
                         btn.prop('disabled', false).html(originalText);
                     }
                 });

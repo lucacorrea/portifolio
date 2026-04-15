@@ -4,7 +4,7 @@
  */
 
 function enviarMensagemWhatsApp(string $telefone, string $mensagem): array {
-    $node_api_url = 'https://smthcoari.cloud/send-message';
+    $node_api_url = 'https://smthcoari.cloud/send';
     
     // Garantir que o telefone está no formato correto
     $telefone = preg_replace('/\D/', '', $telefone);
@@ -33,7 +33,7 @@ function enviarMensagemWhatsApp(string $telefone, string $mensagem): array {
     curl_close($ch);
 
     if ($error) {
-        return ['ok' => false, 'error' => $error];
+        return ['ok' => false, 'error' => "Erro de conexão: " . $error];
     }
 
     $response = json_decode($result, true);
@@ -41,7 +41,7 @@ function enviarMensagemWhatsApp(string $telefone, string $mensagem): array {
         return ['ok' => true, 'response' => $response];
     }
 
-    return ['ok' => false, 'error' => "HTTP {$http_code}: " . ($response['error'] ?? $result)];
+    return ['ok' => false, 'error' => "Erro no Servidor ({$http_code}): " . ($response['error'] ?? 'Falha ao processar envio')];
 }
 
 function registrarLogEnvio(PDO $pdo, int $clienteId, string $telefone, string $mensagem, string $status, string $resposta = ''): void {
