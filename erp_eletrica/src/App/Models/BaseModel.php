@@ -129,6 +129,16 @@ abstract class BaseModel {
             $data['filial_id'] = $filialId;
         }
 
+        // Camada 2: Injetar sync_origin e sync_id quando rodando no servidor local
+        if (defined('IS_LOCAL_SERVER') && IS_LOCAL_SERVER) {
+            if ($this->columnExists('sync_origin') && !isset($data['sync_origin'])) {
+                $data['sync_origin'] = 'local';
+            }
+            if ($this->columnExists('sync_id') && !isset($data['sync_id'])) {
+                $data['sync_id'] = 'L-' . $this->table . '-' . time() . '-' . bin2hex(random_bytes(4));
+            }
+        }
+
         $fields = array_keys($data);
         $placeholders = array_fill(0, count($fields), '?');
         $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";

@@ -113,9 +113,50 @@
         </div>
     </div>
 
+    <!-- ERP Offline Bridge: Session Data Injection -->
+    <script>
+        window.__ERP_SESSION = {
+            usuario_id: <?= json_encode($_SESSION['usuario_id'] ?? null) ?>,
+            usuario_nome: <?= json_encode($_SESSION['usuario_nome'] ?? 'Desconhecido') ?>,
+            filial_id: <?= json_encode($_SESSION['filial_id'] ?? 1) ?>,
+            is_matriz: <?= json_encode($_SESSION['is_matriz'] ?? false) ?>,
+            usuario_nivel: <?= json_encode($_SESSION['usuario_nivel'] ?? 'operador') ?>,
+            local_server_url: <?= json_encode(defined('LOCAL_SERVER_URL') ? LOCAL_SERVER_URL : null) ?>,
+            is_local_server: <?= json_encode(defined('IS_LOCAL_SERVER') && IS_LOCAL_SERVER) ?>,
+            db_connection: <?= json_encode(
+                class_exists('\App\Config\Database') 
+                    ? \App\Config\Database::getInstance()->getConnectionType() 
+                    : 'remote'
+            ) ?>
+        };
+    </script>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- ERP Offline Bridge (MUST load before other scripts to intercept fetch) -->
+    <script src="public/js/offline-bridge.js?v=<?= time() ?>"></script>
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => {
+                    console.log('[ERP] Service Worker registrado:', reg.scope);
+                    // Forçar atualização do SW para substituir versão antiga
+                    reg.update();
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'activated') {
+                                console.log('[ERP] Service Worker v2 ativado');
+                            }
+                        });
+                    });
+                })
+                .catch(err => console.warn('[ERP] Falha ao registrar Service Worker:', err));
+        }
+    </script>
 </body>
 </html>
