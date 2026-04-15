@@ -1,0 +1,88 @@
+<?php
+declare(strict_types=1);
+
+require_once APP_PATH . '/Modules/Auth/Models/Admin.php';
+
+final class LoginController
+{
+    public function show(): void
+    {
+        if (!empty($_SESSION['auth']['guard']) && $_SESSION['auth']['guard'] === 'admin') {
+            redirect('/admin/dashboard');
+        }
+
+        View::render('Auth/Views/login', [
+            'flashError'   => flash_get('error'),
+            'flashSuccess' => flash_get('success'),
+            'oldEmail'     => $_SESSION['old']['email'] ?? '',
+        ]);
+
+        unset($_SESSION['old']);
+    }
+
+    public function authenticate(): void
+    {
+        $email = trim((string)($_POST['email'] ?? ''));
+        $senha = (string)($_POST['senha'] ?? '');
+
+        $_SESSION['old']['email'] = $email;
+
+        if ($email === '' || $senha === '') {
+            flash_set('error', 'Preencha e-mail e senha.');
+            redirect('/');
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            flash_set('error', 'Informe um e-mail válido.');
+            redirect('/');
+        }
+
+        try {
+            $admin = Admin::findByEmail($email);
+        } catch (Throwable $e) {
+            flash_set('error', 'Não foi possível conectar ao banco de dados.');
+            redirect('/');
+        }
+
+        if (!$admin) {
+            flash_set('error', 'E-mail ou senha inválidos.');
+            redirect('/');
+        }
+
+        if (!password_verify($senha, (string)$admin['senha_hash'])) {
+            flash_set('error', 'E-mail ou senha inválidos.');
+            redirect('/');
+        }
+
+        if (($admin['status'] ?? 'inativo') !== 'ativo') {
+            flash_set('error', 'Seu acesso está inativo.');
+            redirect('/');
+        }
+
+        Admin::updateLastLogin((int)$admin['id']);
+
+        session_regenerate_id(true);
+
+        $_SESSION['auth'] = [
+            'id'    => (int)$admin['id'],
+            'nome'  => (string)$admin['nome'],
+            'email' => (string)$admin['email'],
+            'nivel' => (string)$admin['nivel'],
+            'guard' => 'admin',
+        ];
+
+        unset($_SESSION['old']);
+
+        redirect('/admin/dashboard');
+    }
+
+    public function logout(): void
+    {
+        unset($_SESSION['auth']);
+
+        session_regenerate_id(true);
+
+        flash_set('success', 'Logout realizado com sucesso.');
+        redirect('/');
+    }
+}
