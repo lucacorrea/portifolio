@@ -291,6 +291,53 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
     <script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
     <script src="../assets/vendor/js/menu.js"></script>
     <script src="../assets/js/main.js"></script>
-</body>
 
+    <script>
+        $(document).ready(function() {
+            // Ver detalhes da mensagem (ID modalVer)
+            $(document).on('click', '.btn-ver-msg', function() {
+                const msg = $(this).data('msg');
+                const cliente = $(this).data('cliente');
+                const data = $(this).data('data');
+
+                $('#ver_cliente').text(cliente);
+                $('#ver_data').text(data);
+                $('#ver_texto').text(msg);
+                
+                const myModal = new bootstrap.Modal(document.getElementById('modalVer'));
+                myModal.show();
+            });
+
+            // Enviar mensagem manualmente
+            $('#formEnviarManual').on('submit', function(e) {
+                e.preventDefault();
+                
+                const btn = $('#btnEnviarManual');
+                const originalText = btn.html();
+                
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Enviando...');
+
+                $.ajax({
+                    url: 'php/whatsapp/enviar_manual.php',
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.ok) {
+                            alert('Mensagem enviada com sucesso!');
+                            location.reload();
+                        } else {
+                            alert('Erro: ' + (res.error || 'Falha ao enviar.'));
+                            btn.prop('disabled', false).html(originalText);
+                        }
+                    },
+                    error: function() {
+                        alert('Erro na comunicação com o servidor.');
+                        btn.prop('disabled', false).html(originalText);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
 </html>
