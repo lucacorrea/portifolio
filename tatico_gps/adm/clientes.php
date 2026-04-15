@@ -309,10 +309,6 @@ try {
           <div class="navbar-nav-right d-flex align-items-center justify-content-end w-100">
             <div class="navbar-nav align-items-center me-auto">
               <div class="nav-item d-flex align-items-center">
-                <span class="w-px-22 h-px-22"><i class="icon-base bx bx-search icon-md"></i></span>
-                <input type="text"
-                  class="form-control border-0 shadow-none ps-1 ps-sm-2 d-md-block d-none"
-                  placeholder="Buscar cliente, cobrança ou pagamento..." aria-label="Buscar" />
               </div>
             </div>
 
