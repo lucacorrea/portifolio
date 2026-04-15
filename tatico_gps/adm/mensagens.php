@@ -1,3 +1,8 @@
+<?php
+require_once __DIR__ . '/php/conexao.php';
+require_once __DIR__ . '/php/whatsapp/functions.php';
+require_once __DIR__ . '/php/clientes/processarDados.php'; // Para h()
+?>
 <!doctype html>
 <html lang="pt-BR" class="layout-menu-fixed layout-compact" data-assets-path="../assets/"
     data-template="vertical-menu-template-free">
@@ -73,11 +78,18 @@
                         </div>
 
                         <div class="row g-4 mb-4">
+                            <?php
+                            $hj = date('Y-m-d');
+                            $enviadasHj = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE DATE(criado_em) = '$hj' AND status_envio = 'enviado'")->fetchColumn();
+                            $pendentes = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE status_envio = 'pendente'")->fetchColumn();
+                            $falhas = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE status_envio = 'falhou'")->fetchColumn();
+                            $bloqueios = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE resposta_api LIKE '%regra: atraso_bloqueio%'")->fetchColumn();
+                            ?>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Enviadas hoje</div>
-                                        <h2 class="mb-0">46</h2>
+                                        <h2 class="mb-0"><?= $enviadasHj ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -85,7 +97,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Pendentes</div>
-                                        <h2 class="mb-0 text-warning">12</h2>
+                                        <h2 class="mb-0 text-warning"><?= $pendentes ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -93,15 +105,15 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Falhas</div>
-                                        <h2 class="mb-0 text-danger">3</h2>
+                                        <h2 class="mb-0 text-danger"><?= $falhas ?></h2>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
-                                        <div class="text-muted">Bloqueio enviado</div>
-                                        <h2 class="mb-0">7</h2>
+                                        <div class="text-muted">Regras de Bloqueio</div>
+                                        <h2 class="mb-0"><?= $bloqueios ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -139,37 +151,47 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <?php
+                                            $stmtMsg = $pdo->query("
+                                                SELECT w.*, c.nome as cliente_nome, c.mensalidade
+                                                FROM whatsapp_envios w
+                                                LEFT JOIN clientes c ON w.cliente_id = c.id
+                                                ORDER BY w.criado_em DESC
+                                                LIMIT 50
+                                            ");
+                                            $envios = $stmtMsg->fetchAll();
+
+                                            if (count($envios) > 0):
+                                                foreach ($envios as $env):
+                                                    $badgeClass = 'bg-label-secondary';
+                                                    if ($env['status_envio'] === 'enviado') $badgeClass = 'bg-label-success';
+                                                    if ($env['status_envio'] === 'falhou') $badgeClass = 'bg-label-danger';
+                                                    
+                                                    // Extrair tipo da regra da resposta_api se existir
+                                                    $tipo = 'Outro';
+                                                    if (preg_match('/Regra: ([^|]+)/', $env['resposta_api'] ?? '', $matches)) {
+                                                        $tipo = str_replace('_', ' ', $matches[1]);
+                                                    }
+                                            ?>
                                             <tr>
-                                                <td>João da Silva</td>
-                                                <td>7 dias antes</td>
-                                                <td>08/05/2026 09:12</td>
+                                                <td><?= h($env['cliente_nome'] ?? $env['telefone']) ?></td>
+                                                <td class="text-capitalize"><?= h($tipo) ?></td>
+                                                <td><?= date('d/m/Y H:i', strtotime($env['criado_em'])) ?></td>
                                                 <td>WhatsApp</td>
-                                                <td><span class="badge bg-label-success">Enviada</span></td>
-                                                <td>R$ 89,90</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Reenviar</button></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Maria Oliveira</td>
-                                                <td>Bloqueio</td>
-                                                <td>15/05/2026 08:47</td>
-                                                <td>WhatsApp</td>
-                                                <td><span class="badge bg-label-warning">Pendente</span></td>
-                                                <td>R$ 119,90</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Reenviar</button></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Carlos Mendes</td>
-                                                <td>3 dias antes</td>
-                                                <td>13/05/2026 10:20</td>
-                                                <td>SMS</td>
-                                                <td><span class="badge bg-label-danger">Falhou</span></td>
-                                                <td>R$ 149,90</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Tentar de novo</button>
+                                                <td><span class="badge <?= $badgeClass ?>"><?= ucfirst(h($env['status_envio'])) ?></span></td>
+                                                <td>R$ <?= number_format((float)($env['mensalidade'] ?? 0), 2, ',', '.') ?></td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-outline-primary">Ver</button>
                                                 </td>
                                             </tr>
+                                            <?php 
+                                                endforeach;
+                                            else:
+                                            ?>
+                                            <tr>
+                                                <td colspan="7" class="text-center">Histórico de mensagens vazio.</td>
+                                            </tr>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>

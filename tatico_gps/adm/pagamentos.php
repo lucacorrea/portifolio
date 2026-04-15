@@ -78,11 +78,16 @@ require_once __DIR__ . '/php/clientes/processarDados.php'; // Para carregar h() 
                         </div>
 
                         <div class="row g-4 mb-4">
+                            <?php
+                            $totalConfirmados = $pdo->query("SELECT COUNT(*) FROM pagamentos WHERE status = 'Confirmado'")->fetchColumn();
+                            $totalPendentes = $pdo->query("SELECT COUNT(*) FROM pagamentos WHERE status = 'Pendente'")->fetchColumn();
+                            $totalRecebidos = $pdo->query("SELECT COUNT(*) FROM pagamentos WHERE mensagem_id IS NOT NULL")->fetchColumn();
+                            ?>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Confirmados</div>
-                                        <h2 class="mb-0 text-success">193</h2>
+                                        <h2 class="mb-0 text-success"><?= $totalConfirmados ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -90,15 +95,15 @@ require_once __DIR__ . '/php/clientes/processarDados.php'; // Para carregar h() 
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Pendentes de conferência</div>
-                                        <h2 class="mb-0 text-warning">12</h2>
+                                        <h2 class="mb-0 text-warning"><?= $totalPendentes ?></h2>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
-                                        <div class="text-muted">Baixa manual</div>
-                                        <h2 class="mb-0">21</h2>
+                                        <div class="text-muted">Pagas este mês</div>
+                                        <h2 class="mb-0"><?= $totalConfirmados ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -106,7 +111,7 @@ require_once __DIR__ . '/php/clientes/processarDados.php'; // Para carregar h() 
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Comprovantes recebidos</div>
-                                        <h2 class="mb-0">34</h2>
+                                        <h2 class="mb-0"><?= $totalRecebidos ?></h2>
                                     </div>
                                 </div>
                             </div>

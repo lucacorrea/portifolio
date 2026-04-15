@@ -1,3 +1,7 @@
+<?php
+require_once __DIR__ . '/php/conexao.php';
+require_once __DIR__ . '/php/clientes/processarDados.php'; // Para h()
+?>
 <!doctype html>
 <html lang="pt-BR" class="layout-menu-fixed layout-compact" data-assets-path="../assets/"
     data-template="vertical-menu-template-free">
@@ -79,11 +83,18 @@
                         </div>
 
                         <div class="row g-4 mb-4">
+                            <?php
+                            $refAtual = date('m/Y');
+                            $totalMes = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE referencia LIKE '%$refAtual%'")->fetchColumn();
+                            $abertas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Em aberto'")->fetchColumn();
+                            $vencidas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Vencida' OR (status = 'Em aberto' AND data_vencimento < CURDATE())")->fetchColumn();
+                            $pagas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Paga'")->fetchColumn();
+                            ?>
                             <div class="col-md-3">
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Cobranças do mês</div>
-                                        <div class="metric-value">248</div>
+                                        <div class="metric-value"><?= $totalMes ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -91,7 +102,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Em aberto</div>
-                                        <div class="metric-value text-warning">37</div>
+                                        <div class="metric-value text-warning"><?= $abertas ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -99,7 +110,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Vencidas</div>
-                                        <div class="metric-value text-danger">18</div>
+                                        <div class="metric-value text-danger"><?= $vencidas ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -107,7 +118,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <div class="text-muted">Pagas</div>
-                                        <div class="metric-value text-success">193</div>
+                                        <div class="metric-value text-success"><?= $pagas ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -144,36 +155,54 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <?php
+                                            $stmtCob = $pdo->query("
+                                                SELECT cb.*, cl.nome as cliente_nome 
+                                                FROM cobrancas cb
+                                                JOIN clientes cl ON cb.cliente_id = cl.id
+                                                ORDER BY cb.data_vencimento DESC
+                                            ");
+                                            $cobrancas = $stmtCob->fetchAll();
+
+                                            if (count($cobrancas) > 0):
+                                                foreach ($cobrancas as $cob):
+                                                    $status = $cob['status'];
+                                                    $hoje = date('Y-m-d');
+                                                    if ($status === 'Em aberto' && $cob['data_vencimento'] < $hoje) {
+                                                        $status = 'Vencida';
+                                                    }
+
+                                                    $badgeClass = 'bg-label-warning';
+                                                    if ($status === 'Paga') $badgeClass = 'bg-label-success';
+                                                    if ($status === 'Vencida') $badgeClass = 'bg-label-danger';
+
+                                                    $atraso = 0;
+                                                    if ($status === 'Vencida') {
+                                                        $d1 = new DateTime($cob['data_vencimento']);
+                                                        $d2 = new DateTime($hoje);
+                                                        $diff = $d1->diff($d2);
+                                                        $atraso = $diff->days;
+                                                    }
+                                            ?>
                                             <tr>
-                                                <td>João da Silva</td>
-                                                <td>Mensalidade - Maio/2026</td>
-                                                <td>R$ 89,90</td>
-                                                <td>10/05/2026</td>
-                                                <td><span class="badge bg-label-warning">Em aberto</span></td>
-                                                <td>0 dias</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Cobrar</button></td>
+                                                <td><?= h($cob['cliente_nome']) ?></td>
+                                                <td><?= h($cob['referencia']) ?></td>
+                                                <td>R$ <?= number_format($cob['valor'], 2, ',', '.') ?></td>
+                                                <td><?= date('d/m/Y', strtotime($cob['data_vencimento'])) ?></td>
+                                                <td><span class="badge <?= $badgeClass ?>"><?= h($status) ?></span></td>
+                                                <td><?= $atraso > 0 ? $atraso . ' dias' : '-' ?></td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-outline-primary">Cobrar</button>
+                                                </td>
                                             </tr>
+                                            <?php 
+                                                endforeach;
+                                            else:
+                                            ?>
                                             <tr>
-                                                <td>Maria Oliveira</td>
-                                                <td>Mensalidade - Maio/2026</td>
-                                                <td>R$ 119,90</td>
-                                                <td>15/05/2026</td>
-                                                <td><span class="badge bg-label-danger">Vencida</span></td>
-                                                <td>4 dias</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-primary">Cobrar</button></td>
+                                                <td colspan="7" class="text-center">Nenhuma cobrança encontrada.</td>
                                             </tr>
-                                            <tr>
-                                                <td>Ana Souza</td>
-                                                <td>Mensalidade - Maio/2026</td>
-                                                <td>R$ 99,90</td>
-                                                <td>05/05/2026</td>
-                                                <td><span class="badge bg-label-success">Paga</span></td>
-                                                <td>-</td>
-                                                <td class="text-center"><button
-                                                        class="btn btn-sm btn-outline-secondary">Ver</button></td>
-                                            </tr>
+                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
