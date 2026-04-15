@@ -9,204 +9,162 @@
  *  5. NÃO intercepta POST requests
  */
 
-const CACHE_NAME = 'erp-v4';
+12: const CACHE_NAME = 'erp-v5';
+13: 
+14: // Expressões para identificar páginas críticas (SEM query params de action)
+15: function isCriticalPage(url) {
+16:     try {
+17:         const u = new URL(url);
+18:         // Só cacheia se NÃO tem action= (page load, não API call)
+19:         if (u.searchParams.has('action')) return false;
+20:         const path = u.pathname;
+21:         return path.endsWith('vendas.php') || 
+22:                path.endsWith('pre_vendas.php') || 
+23:                path.endsWith('caixa.php');
+24:     } catch(e) { return false; }
+25: }
+26: 
+27: function isStaticAsset(url) {
+28:     return /\.(css|js|woff2?|ttf|eot)(\?.*)?$/i.test(url) ||
+29:            url.includes('cdn.jsdelivr.net') ||
+30:            url.includes('cdnjs.cloudflare.com') ||
+31:            url.includes('fonts.googleapis.com') ||
+32:            url.includes('fonts.gstatic.com');
+33: }
+34: 
+35: function isImage(url) {
+36:     return /\.(png|jpg|jpeg|gif|webp|svg|ico)(\?.*)?$/i.test(url);
+37: }
+38: 
+39: // ===== INSTALL =====
+40: self.addEventListener('install', (event) => {
+41:     console.log('[SW v5] Instalando...');
+42:     event.waitUntil(
+43:         caches.keys()
+44:             .then(names => Promise.all(
+45:                 names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n))
+46:             ))
+47:             .then(() => self.skipWaiting())
+48:     );
+49: });
+50: 
+51: // ===== ACTIVATE =====
+52: self.addEventListener('activate', (event) => {
+53:     console.log('[SW v5] Ativado');
+54:     event.waitUntil(self.clients.claim());
+55: });
+56: 
+57: // ===== FETCH =====
+58: self.addEventListener('fetch', (event) => {
+59:     const req = event.request;
+60:     const url = req.url;
+61: 
+62:     // NUNCA interceptar POST
+63:     if (req.method !== 'GET') return;
+64: 
+65:     // NUNCA interceptar login, logout, api_sync
+66:     if (url.includes('login.php') || url.includes('logout.php') || url.includes('api_sync.php')) return;
+67: 
+68:     // NUNCA interceptar requests com ?action= (API calls — offline-bridge cuida)
+69:     if (url.includes('action=')) return;
+70: 
+71:     // 1) Páginas críticas → Network First, Cache Fallback
+72:     if (isCriticalPage(url)) {
+73:         event.respondWith(networkFirstPage(req));
+74:         return;
+75:     }
+76: 
+77:     // 2) Assets estáticos (CSS, JS, Fontes) → Cache First (Stale While Revalidate)
+78:     if (isStaticAsset(url)) {
+79:         event.respondWith(cacheFirstAsset(req));
+80:         return;
+81:     }
+82: 
+83:     // 3) Imagens → Cache First com gerenciamento de espaço
+84:     if (isImage(url)) {
+85:         event.respondWith(cacheFirstAsset(req, true)); // true = is image
+86:         return;
+87:     }
+88: });
+89: 
+90: /**
+91:  * Network First para páginas críticas.
+92:  */
+93: async function networkFirstPage(request) {
+94:     const cache = await caches.open(CACHE_NAME);
+95:     try {
+96:         const response = await fetch(request);
+97:         if (response.ok && response.headers.get('content-type')?.includes('text/html')) {
+98:             cache.put(request, response.clone());
+99:         }
+100:         return response;
+101:     } catch (err) {
+102:         const cached = await cache.match(request);
+103:         return cached || serveErrorPage();
+104:     }
+105: }
+106: 
+107: /**
+108:  * Cache First (Stale-While-Revalidate) para assets e imagens.
+109:  */
+110: async function cacheFirstAsset(request, isImage = false) {
+111:     const cache = await caches.open(CACHE_NAME);
+112:     const cached = await cache.match(request);
+113:     
+114:     const fetchPromise = fetch(request).then(response => {
+115:         if (response.ok) {
+116:             if (isImage) limitCacheSize(cache, 50); // Limite de 50 imagens
+117:             cache.put(request, response.clone());
+118:         }
+119:         return response;
+120:     }).catch(() => {});
+121: 
+122:     return cached || fetchPromise;
+123: }
+124: 
+125: /**
+126:  * Limita o tamanho do cache removendo os itens mais antigos.
+127:  */
+128: async function limitCacheSize(cache, maxItems) {
+129:     const keys = await cache.keys();
+130:     if (keys.length > maxItems) {
+131:         await cache.delete(keys[0]);
+132:         limitCacheSize(cache, maxItems);
+133:     }
+134: }
+135: 
+136: function serveErrorPage() {
+137:     return new Response(`
+138:         <!DOCTYPE html>
+139:         <html lang="pt-BR">
+140:         <head>
+141:             <meta charset="UTF-8">
+142:             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+143:             <title>Modo Offline — ERP Elétrica</title>
+144:             <style>
+145:                 body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: #fff; text-align: center; }
+146:                 .box { padding: 2rem; border-radius: 1rem; background: #1e293b; max-width: 400px; }
+147:                 button { margin-top: 1rem; padding: 10px 20px; border: none; border-radius: 5px; background: #3b82f6; color: #fff; cursor: pointer; }
+148:             </style>
+149:         </head>
+150:         <body>
+151:             <div class="box">
+152:                 <h2>Página não Carregada</h2>
+153:                 <p>Você está offline e esta página ainda não foi salva no cache.</p>
+154:                 <button onclick="location.reload()">🔄 Tentar Novamente</button>
+155:             </div>
+156:         </body>
+157:         </html>
+158:     `, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+159: }
+160: 
+161: // ===== MENSAGENS =====
+162: self.addEventListener('message', (event) => {
+163:     if (event.data?.type === 'SKIP_WAITING') {
+164:         self.skipWaiting();
+165:     }
+166: });
 
-// Expressões para identificar páginas críticas (SEM query params de action)
-function isCriticalPage(url) {
-    try {
-        const u = new URL(url);
-        // Só cacheia se NÃO tem action= (page load, não API call)
-        if (u.searchParams.has('action')) return false;
-        const path = u.pathname;
-        return path.endsWith('vendas.php') || 
-               path.endsWith('pre_vendas.php') || 
-               path.endsWith('caixa.php');
-    } catch(e) { return false; }
-}
-
-function isStaticAsset(url) {
-    return /\.(css|js|woff2?|ttf|eot)(\?.*)?$/i.test(url) ||
-           url.includes('cdn.jsdelivr.net') ||
-           url.includes('cdnjs.cloudflare.com') ||
-           url.includes('fonts.googleapis.com') ||
-           url.includes('fonts.gstatic.com');
-}
-
-function isImage(url) {
-    return /\.(png|jpg|jpeg|gif|webp|svg|ico)(\?.*)?$/i.test(url);
-}
-
-// ===== INSTALL =====
-self.addEventListener('install', (event) => {
-    console.log('[SW v4] Instalando...');
-    // Limpar caches antigos e tomar controle imediatamente
-    event.waitUntil(
-        caches.keys()
-            .then(names => Promise.all(
-                names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n))
-            ))
-            .then(() => self.skipWaiting())
-    );
-});
-
-// ===== ACTIVATE =====
-self.addEventListener('activate', (event) => {
-    console.log('[SW v4] Ativado');
-    event.waitUntil(self.clients.claim());
-});
-
-// ===== FETCH =====
-self.addEventListener('fetch', (event) => {
-    const req = event.request;
-    const url = req.url;
-
-    // NUNCA interceptar POST
-    if (req.method !== 'GET') return;
-
-    // NUNCA interceptar login, logout, api_sync
-    if (url.includes('login.php') || url.includes('logout.php') || url.includes('api_sync.php')) return;
-
-    // NUNCA interceptar requests com ?action= (API calls — offline-bridge cuida)
-    if (url.includes('action=')) return;
-
-    // 1) Páginas críticas → Network First, Cache Fallback
-    if (isCriticalPage(url)) {
-        event.respondWith(networkFirstPage(req));
-        return;
-    }
-
-    // 2) Assets estáticos (CSS, JS, Fontes) → Cache First
-    if (isStaticAsset(url)) {
-        event.respondWith(cacheFirstAsset(req));
-        return;
-    }
-
-    // 3) Imagens → Cache First (com limite)
-    if (isImage(url)) {
-        event.respondWith(cacheFirstAsset(req));
-        return;
-    }
-
-    // QUALQUER OUTRA COISA: NÃO interceptar (browser padrão)
-    // Isso inclui todas as outras páginas PHP → sem tela preta
-});
-
-/**
- * Network First para páginas críticas.
- * Quando online: busca do servidor e salva no cache.
- * Quando offline: serve a versão cacheada.
- */
-async function networkFirstPage(request) {
-    const cache = await caches.open(CACHE_NAME);
-
-    try {
-        // Tenta buscar da rede (sem timeout — não queremos interferir)
-        const response = await fetch(request);
-        
-        // Só cacheia respostas válidas (200 OK, com HTML)
-        if (response.ok && response.headers.get('content-type')?.includes('text/html')) {
-            cache.put(request, response.clone());
-            console.log('[SW v4] Página cacheada:', request.url);
-        }
-        
-        return response;
-    } catch (err) {
-        // Rede falhou → tenta servir do cache
-        console.log('[SW v4] Offline — servindo do cache:', request.url);
-        const cached = await cache.match(request);
-        
-        if (cached) {
-            return cached;
-        }
-
-        // Sem cache → página de erro amigável
-        return new Response(`
-            <!DOCTYPE html>
-            <html lang="pt-BR">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Sem Conexão — ERP Elétrica</title>
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body {
-                        font-family: 'Inter', 'Segoe UI', sans-serif;
-                        display: flex; align-items: center; justify-content: center;
-                        min-height: 100vh; background: #0f172a; color: #e2e8f0;
-                        text-align: center; padding: 2rem;
-                    }
-                    .container { max-width: 480px; }
-                    .icon { font-size: 5rem; margin-bottom: 1.5rem; }
-                    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #f59e0b; }
-                    p { color: #94a3b8; line-height: 1.6; margin-bottom: 1.5rem; }
-                    .tip {
-                        background: #1e293b; border: 1px solid #334155;
-                        border-radius: 12px; padding: 1rem; font-size: 0.85rem;
-                        color: #cbd5e1;
-                    }
-                    .tip strong { color: #60a5fa; }
-                    .btn {
-                        display: inline-block; margin-top: 1.5rem;
-                        padding: 12px 24px; background: #3b82f6; color: #fff;
-                        border: none; border-radius: 8px; font-size: 1rem;
-                        font-weight: 600; cursor: pointer; text-decoration: none;
-                    }
-                    .btn:hover { background: #2563eb; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="icon">⚡</div>
-                    <h1>Sem Conexão com a Internet</h1>
-                    <p>Esta página precisa ser carregada pelo menos uma vez com internet para funcionar offline.</p>
-                    <div class="tip">
-                        <strong>💡 Dica:</strong> Abra a tela de <strong>Vendas</strong>, <strong>Pré-Venda</strong> 
-                        ou <strong>Caixa</strong> enquanto estiver online. Depois, mesmo sem internet, 
-                        essas telas continuarão funcionando.
-                    </div>
-                    <a class="btn" href="javascript:location.reload()">🔄 Tentar Novamente</a>
-                </div>
-            </body>
-            </html>
-        `, {
-            status: 503,
-            headers: { 'Content-Type': 'text/html; charset=utf-8' }
-        });
-    }
-}
-
-/**
- * Cache First para assets estáticos.
- * Serve do cache quando disponível, atualiza em background.
- */
-async function cacheFirstAsset(request) {
-    const cache = await caches.open(CACHE_NAME);
-
-    try {
-        const cached = await cache.match(request);
-        if (cached) {
-            // Atualiza em background (Stale While Revalidate)
-            fetch(request).then(res => {
-                if (res.ok) cache.put(request, res);
-            }).catch(() => {});
-            return cached;
-        }
-
-        // Não está no cache → busca da rede
-        const response = await fetch(request);
-        if (response.ok) {
-            cache.put(request, response.clone());
-        }
-        return response;
-    } catch (err) {
-        // Tenta cache antigo
-        const cached = await cache.match(request);
-        if (cached) return cached;
-
-        // Sem cache → let it fail naturally
-        return new Response('', { status: 503 });
-    }
-}
 
 // ===== MENSAGENS =====
 self.addEventListener('message', (event) => {

@@ -345,194 +345,244 @@
     // =========================================================================
     // NOTIFICATION MANAGER — Indicador visual discreto
     // =========================================================================
-    const NotificationUI = {
-        _el: null,
+346:     // =========================================================================
+347:     // NOTIFICATION MANAGER — Indicador visual e Avisos Detalhados
+348:     // =========================================================================
+349:     const NotificationUI = {
+350:         _el: null,
+351: 
+352:         init() {
+353:             const el = document.createElement('div');
+354:             el.id = 'erp-offline-indicator';
+355:             el.style.cssText = `
+356:                 position:fixed; bottom:20px; right:20px; z-index:99999;
+357:                 padding:12px 20px; border-radius:12px; font-size:13px;
+358:                 font-weight:600; font-family:'Inter',sans-serif;
+359:                 display:flex; flex-direction:column; gap:8px;
+360:                 transition:all .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+361:                 pointer-events:auto; opacity:0; transform:translateY(20px);
+362:                 box-shadow:0 10px 25px rgba(0,0,0,0.2); max-width: 320px;
+363:             `;
+364:             document.body.appendChild(el);
+365:             this._el = el;
+366: 
+367:             ConnectionMonitor.onChange(status => {
+368:                 if (status === 'online') {
+369:                     this._show('#10b981', '🟢 Conexão Estabelecida', 'O sistema está online.');
+370:                     setTimeout(() => this._hide(), 4000);
+371:                 } else {
+372:                     this._show('#ef4444', '🔴 Modo Offline Ativado', 'Vendas serão salvas localmente.');
+373:                 }
+374:             });
+375:         },
+376: 
+377:         _show(bg, title, text) {
+378:             if (!this._el) return;
+379:             this._el.style.background = bg;
+380:             this._el.style.color = '#fff';
+381:             this._el.innerHTML = `
+382:                 <div style="display:flex; align-items:center; gap:8px;">
+383:                     <strong>${title}</strong>
+384:                 </div>
+385:                 <div style="font-size:11px; opacity:0.9; font-weight:400;">${text}</div>
+386:             `;
+387:             this._el.style.opacity = '1';
+388:             this._el.style.transform = 'translateY(0)';
+389:         },
+390: 
+391:         _hide() {
+392:             if (!this._el) return;
+393:             this._el.style.opacity = '0';
+394:             this._el.style.transform = 'translateY(20px)';
+395:         },
+396: 
+397:         showSyncProgress(count) {
+398:             this._show('#3b82f6', '🔄 Sincronizando', `Enviando ${count} operação(ões) pendente(s)...`);
+399:         },
+400: 
+401:         showSyncResult(results) {
+402:             const ok = results.filter(r => r.success);
+403:             if (ok.length === 0) return;
+404: 
+405:             let details = ok.map(r => {
+406:                 const icon = r.type === 'sale' ? '💰' : '📝';
+407:                 const label = r.type === 'sale' ? 'Venda' : 'P-Venda';
+408:                 const valor = r.total ? ` (R$ ${parseFloat(r.total).toFixed(2)})` : '';
+409:                 return `<div>${icon} ${label} #${r.real_id || r.real_code}${valor}</div>`;
+410:             }).join('');
+411: 
+412:             this._show('#10b981', '✅ Sincronizado com Sucesso', `
+413:                 <div style="margin-bottom:5px;">${ok.length} operação(ões) enviada(s):</div>
+414:                 <div style="max-height:100px; overflow-y:auto; font-size:10px; background:rgba(0,0,0,0.1); padding:5px; border-radius:4px;">
+415:                     ${details}
+416:                 </div>
+417:             `);
+418:             
+419:             // Som de sucesso (opcional, discreto)
+420:             try { 
+421:                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
+422:                 const osc = ctx.createOscillator();
+423:                 const gain = ctx.createGain();
+424:                 osc.connect(gain); gain.connect(ctx.destination);
+425:                 osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
+426:                 gain.gain.setValueAtTime(0.1, ctx.currentTime);
+427:                 osc.start(); osc.stop(ctx.currentTime + 0.1);
+428:             } catch(e){}
+429: 
+430:             setTimeout(() => this._hide(), 8000);
+431:         },
+432: 
+433:         showPending(count) {
+434:             if (count > 0 && !ConnectionMonitor.isOnline) {
+435:                 this._show('#ef4444', '🔴 Modo Offline', `${count} venda(s) aguardando conexão.`);
+436:             }
+437:         }
+438:     };
+439: 
+440:     // =========================================================================
+441:     // CACHE MANAGER
+442:     // =========================================================================
+443:     const CacheManager = {
+444:         async init() {
+445:             if (ConnectionMonitor.isOnline) {
+446:                 this.refreshAll().catch(() => {});
+447:             }
+448:             setInterval(() => {
+449:                 if (ConnectionMonitor.isOnline) this.refreshAll().catch(() => {});
+450:             }, CONFIG.CACHE_REFRESH_INTERVAL);
+451:         },
+445: 
+446:         async refreshAll() {
+447:             await Promise.allSettled([
+448:                 this._cacheEndpoint(CONFIG.CACHE_PRODUCTS_ENDPOINT, 'cached_products'),
+449:                 this._cacheEndpoint(CONFIG.CACHE_CLIENTS_ENDPOINT, 'cached_clients'),
+450:                 this._cachePreSales()
+451:             ]);
+452:         },
+453: 
+454:         async _cacheEndpoint(url, storeName) {
+455:             try {
+456:                 const res = await _rawFetch(url, { cache: 'no-store' });
+457:                 if (!res.ok) return;
+458:                 const data = await res.json();
+459:                 if (!Array.isArray(data)) return;
+460:                 await OfflineDB.clear(storeName);
+461:                 for (const item of data) await OfflineDB.put(storeName, item);
+462:                 Logger.log('CACHE', `${storeName}: ${data.length} itens cacheados`);
+463:             } catch (e) {
+464:                 Logger.warn('CACHE', `Falha ao cachear ${storeName}`, e);
+465:             }
+466:         },
+467: 
+468:         async _cachePreSales() {
+469:             try {
+470:                 const res = await _rawFetch('pre_vendas.php?action=list_pending', { cache: 'no-store' });
+471:                 if (!res.ok) return;
+472:                 const data = await res.json();
+473:                 if (!Array.isArray(data)) return;
+474:                 await OfflineDB.clear('cached_presales');
+475:                 for (const pv of data) await OfflineDB.put('cached_presales', pv);
+476:                 Logger.log('CACHE', `Pré-vendas: ${data.length} itens cacheados`);
+477:             } catch (e) {
+478:                 Logger.warn('CACHE', 'Falha ao cachear pré-vendas', e);
+479:             }
+480:         },
+481: 
+482:         async cacheSearchResults(products) {
+483:             try {
+484:                 for (const p of products) {
+485:                     if (p.type !== 'pre_sale' && p.id) {
+486:                         await OfflineDB.put('cached_products', p);
+487:                     }
+488:                 }
+489:             } catch (e) { /* silêncio */ }
+490:         }
+491:     };
+492: 
+493:     // =========================================================================
+494:     // SYNC MANAGER
+495:     // =========================================================================
+496:     const SyncManager = {
+497:         _busy: false,
+498: 
+499:         init() {
+500:             ConnectionMonitor.onChange(status => {
+501:                 if (status === 'online') setTimeout(() => this.sync(), 2000);
+502:             });
+503:             setInterval(() => {
+504:                 if (ConnectionMonitor.isOnline && !this._busy) this.sync();
+505:             }, CONFIG.SYNC_INTERVAL);
+506:         },
+507: 
+508:         async sync() {
+509:             if (this._busy || !ConnectionMonitor.isOnline) return;
+510: 
+511:             const all = await OfflineDB.getAll('offline_queue');
+512:             const pending = all.filter(o => o.status === 'pending');
+513:             if (pending.length === 0) return;
+514: 
+515:             this._busy = true;
+516:             Logger.log('SYNC', `Iniciando sincronização de ${pending.length} itens`);
+517:             NotificationUI.showSyncProgress(pending.length);
+518: 
+519:             pending.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+520: 
+521:             const syncResults = [];
+522: 
+523:             for (const op of pending) {
+524:                 try {
+525:                     const res = await _rawFetch(CONFIG.SYNC_ENDPOINT, {
+526:                         method: 'POST',
+527:                         headers: { 'Content-Type': 'application/json' },
+528:                         body: JSON.stringify({
+529:                             action: 'sync_batch',
+530:                             operations: [{
+531:                                 type: op.type, temp_id: op.temp_id,
+532:                                 temp_code: op.temp_code || null,
+533:                                 data: op.data, session: op.session,
+534:                                 created_at: op.created_at,
+535:                                 is_contingencia: op.is_contingencia || false
+536:                             }]
+537:                         })
+538:                     });
+539:                     const result = await res.json();
+540:                     if (result.success && result.results?.[0]?.success) {
+541:                         await OfflineDB.delete('offline_queue', op.id);
+542:                         const serverOp = result.results[0];
+543:                         syncResults.push({
+544:                             success: true,
+545:                             type: op.type,
+546:                             real_id: serverOp.real_id,
+547:                             real_code: serverOp.real_code,
+548:                             total: op.data.total || op.data.valor_total
+549:                         });
+550:                         Logger.log('SYNC', `✅ Sincronizado: ${op.temp_id}`);
+551:                     } else {
+552:                         throw new Error(result.error || result.results?.[0]?.error || 'Erro no servidor');
+553:                     }
+554:                 } catch (err) {
+555:                     op.retry_count = (op.retry_count || 0) + 1;
+556:                     if (op.retry_count >= 5) {
+557:                         op.status = 'error';
+558:                         op.error_message = err.message;
+559:                     }
+560:                     await OfflineDB.put('offline_queue', op);
+561:                     Logger.error('SYNC', `❌ Erro ao sincronizar ${op.temp_id}: ${err.message}`);
+562:                 }
+563:             }
+564: 
+565:             this._busy = false;
+566:             if (syncResults.length > 0) {
+567:                 NotificationUI.showSyncResult(syncResults);
+568:                 CacheManager.refreshAll().catch(() => {});
+569:             } else {
+570:                 const remaining = (await OfflineDB.getAll('offline_queue')).filter(o => o.status === 'pending');
+571:                 if (remaining.length === 0) NotificationUI._hide();
+572:                 else NotificationUI.showPending(remaining.length);
+573:             }
+574:         }
+575:     };
 
-        init() {
-            const el = document.createElement('div');
-            el.id = 'erp-offline-indicator';
-            el.style.cssText = `
-                position:fixed; bottom:10px; right:10px; z-index:99999;
-                padding:6px 14px; border-radius:20px; font-size:11px;
-                font-weight:600; font-family:'Inter',sans-serif;
-                display:flex; align-items:center; gap:6px;
-                transition:all .3s ease; pointer-events:none;
-                opacity:0; transform:translateY(10px);
-                box-shadow:0 2px 12px rgba(0,0,0,.15);
-            `;
-            document.body.appendChild(el);
-            this._el = el;
-
-            ConnectionMonitor.onChange(status => {
-                if (status === 'online') {
-                    this._show('#10b981', '🟢 Online');
-                    setTimeout(() => this._hide(), 3000);
-                } else {
-                    this._show('#ef4444', '🔴 Modo Offline');
-                }
-            });
-        },
-
-        _show(bg, text) {
-            if (!this._el) return;
-            this._el.style.background = bg;
-            this._el.style.color = '#fff';
-            this._el.textContent = text;
-            this._el.style.opacity = '1';
-            this._el.style.transform = 'translateY(0)';
-        },
-
-        _hide() {
-            if (!this._el) return;
-            this._el.style.opacity = '0';
-            this._el.style.transform = 'translateY(10px)';
-        },
-
-        showSync(msg) {
-            this._show('#3b82f6', '🔄 ' + msg);
-        },
-
-        showPending(count) {
-            if (count > 0 && !ConnectionMonitor.isOnline) {
-                this._show('#ef4444', `🔴 Offline (${count} pendente${count > 1 ? 's' : ''})`);
-            }
-        }
-    };
-
-    // =========================================================================
-    // CACHE MANAGER
-    // =========================================================================
-    const CacheManager = {
-        async init() {
-            if (ConnectionMonitor.isOnline) {
-                // Cache em background — não bloqueia
-                this.refreshAll().catch(() => {});
-            }
-            setInterval(() => {
-                if (ConnectionMonitor.isOnline) this.refreshAll().catch(() => {});
-            }, CONFIG.CACHE_REFRESH_INTERVAL);
-        },
-
-        async refreshAll() {
-            await Promise.allSettled([
-                this._cacheEndpoint(CONFIG.CACHE_PRODUCTS_ENDPOINT, 'cached_products'),
-                this._cacheEndpoint(CONFIG.CACHE_CLIENTS_ENDPOINT, 'cached_clients'),
-                this._cachePreSales()
-            ]);
-        },
-
-        async _cacheEndpoint(url, storeName) {
-            try {
-                const res = await _rawFetch(url, { cache: 'no-store' });
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!Array.isArray(data)) return;
-                await OfflineDB.clear(storeName);
-                for (const item of data) await OfflineDB.put(storeName, item);
-                Logger.log('CACHE', `${storeName}: ${data.length} itens cacheados`);
-            } catch (e) {
-                Logger.warn('CACHE', `Falha ao cachear ${storeName}`, e);
-            }
-        },
-
-        async _cachePreSales() {
-            try {
-                const res = await _rawFetch('pre_vendas.php?action=list_pending', { cache: 'no-store' });
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!Array.isArray(data)) return;
-                await OfflineDB.clear('cached_presales');
-                for (const pv of data) await OfflineDB.put('cached_presales', pv);
-                Logger.log('CACHE', `Pré-vendas: ${data.length} itens cacheados`);
-            } catch (e) {
-                Logger.warn('CACHE', 'Falha ao cachear pré-vendas', e);
-            }
-        },
-
-        async cacheSearchResults(products) {
-            try {
-                for (const p of products) {
-                    if (p.type !== 'pre_sale' && p.id) {
-                        await OfflineDB.put('cached_products', p);
-                    }
-                }
-            } catch (e) { /* silêncio */ }
-        }
-    };
-
-    // =========================================================================
-    // SYNC MANAGER
-    // =========================================================================
-    const SyncManager = {
-        _busy: false,
-
-        init() {
-            ConnectionMonitor.onChange(status => {
-                if (status === 'online') setTimeout(() => this.sync(), 2000);
-            });
-            setInterval(() => {
-                if (ConnectionMonitor.isOnline && !this._busy) this.sync();
-            }, CONFIG.SYNC_INTERVAL);
-        },
-
-        async sync() {
-            if (this._busy || !ConnectionMonitor.isOnline) return;
-
-            const all = await OfflineDB.getAll('offline_queue');
-            const pending = all.filter(o => o.status === 'pending');
-            if (pending.length === 0) return;
-
-            this._busy = true;
-            Logger.log('SYNC', `Sincronizando ${pending.length} operações`);
-            NotificationUI.showSync(`Sincronizando ${pending.length}...`);
-
-            pending.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-
-            let ok = 0, fail = 0;
-            for (const op of pending) {
-                try {
-                    const res = await _rawFetch(CONFIG.SYNC_ENDPOINT, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'sync_batch',
-                            operations: [{
-                                type: op.type, temp_id: op.temp_id,
-                                temp_code: op.temp_code || null,
-                                data: op.data, session: op.session,
-                                created_at: op.created_at,
-                                is_contingencia: op.is_contingencia || false
-                            }]
-                        })
-                    });
-                    const result = await res.json();
-                    if (result.success) {
-                        await OfflineDB.delete('offline_queue', op.id);
-                        ok++;
-                        Logger.log('SYNC', `✅ ${op.type} ${op.temp_id} sincronizado`, result.results?.[0]);
-                    } else {
-                        throw new Error(result.error || 'Erro no servidor');
-                    }
-                } catch (err) {
-                    fail++;
-                    op.retry_count = (op.retry_count || 0) + 1;
-                    if (op.retry_count >= 5) {
-                        op.status = 'error';
-                        op.error_message = err.message;
-                    }
-                    await OfflineDB.put('offline_queue', op);
-                    Logger.error('SYNC', `❌ Falha: ${op.temp_id}`, err);
-                }
-            }
-
-            this._busy = false;
-            Logger.log('SYNC', `Sync concluído: ${ok} OK, ${fail} erros`);
-
-            const remaining = (await OfflineDB.getAll('offline_queue')).filter(o => o.status === 'pending');
-            NotificationUI.showPending(remaining.length);
-            if (ok > 0) CacheManager.refreshAll().catch(() => {});
-        }
-    };
 
     // =========================================================================
     // OFFLINE QUEUE — Enfileira operações

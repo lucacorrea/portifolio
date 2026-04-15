@@ -131,50 +131,51 @@
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
     
-    <!-- Service Worker: Limpeza nuclear + registro v4 -->
-    <script>
-        (async function() {
-            if (!('serviceWorker' in navigator)) return;
-            
-            try {
-                // PASSO 1: Desregistrar TODOS os service workers antigos
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                for (const reg of registrations) {
-                    await reg.unregister();
-                    console.log('[ERP] SW antigo removido:', reg.scope);
-                }
+134:     <!-- Service Worker: Limpeza nuclear + registro v5 -->
+135:     <script>
+136:         (async function() {
+137:             if (!('serviceWorker' in navigator)) return;
+138:             
+139:             try {
+140:                 // PASSO 1: Desregistrar TODOS os service workers antigos
+141:                 const registrations = await navigator.serviceWorker.getRegistrations();
+142:                 for (const reg of registrations) {
+143:                     await reg.unregister();
+144:                     console.log('[ERP] SW antigo removido:', reg.scope);
+145:                 }
+146: 
+147:                 // PASSO 2: Limpar TODOS os caches
+148:                 if ('caches' in window) {
+149:                     const names = await caches.keys();
+150:                     for (const name of names) {
+151:                         await caches.delete(name);
+152:                     }
+153:                     if (names.length > 0) console.log('[ERP] Caches limpos:', names.length);
+154:                 }
+155: 
+156:                 // PASSO 3: Registrar o novo SW v5
+157:                 const reg = await navigator.serviceWorker.register('sw.js');
+158:                 console.log('[ERP] SW v5 registrado:', reg.scope);
+159:                 
+160:                 // Forçar ativação imediata
+161:                 if (reg.waiting) {
+162:                     reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+163:                 }
+164:                 reg.addEventListener('updatefound', () => {
+165:                     const newSW = reg.installing;
+166:                     if (newSW) {
+167:                         newSW.addEventListener('statechange', () => {
+168:                             if (newSW.state === 'activated') {
+169:                                 console.log('[ERP] SW v5 ativado com sucesso!');
+170:                             }
+171:                         });
+172:                     }
+173:                 });
+174:             } catch (err) {
+175:                 console.warn('[ERP] Erro no setup do SW:', err);
+176:             }
+177:         })();
+178:     </script>
 
-                // PASSO 2: Limpar TODOS os caches
-                if ('caches' in window) {
-                    const names = await caches.keys();
-                    for (const name of names) {
-                        await caches.delete(name);
-                    }
-                    if (names.length > 0) console.log('[ERP] Caches limpos:', names.length);
-                }
-
-                // PASSO 3: Registrar o novo SW v4
-                const reg = await navigator.serviceWorker.register('sw.js');
-                console.log('[ERP] SW v4 registrado:', reg.scope);
-                
-                // Forçar ativação imediata
-                if (reg.waiting) {
-                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
-                reg.addEventListener('updatefound', () => {
-                    const newSW = reg.installing;
-                    if (newSW) {
-                        newSW.addEventListener('statechange', () => {
-                            if (newSW.state === 'activated') {
-                                console.log('[ERP] SW v4 ativado com sucesso!');
-                            }
-                        });
-                    }
-                });
-            } catch (err) {
-                console.warn('[ERP] Erro no setup do SW:', err);
-            }
-        })();
-    </script>
 </body>
 </html>
