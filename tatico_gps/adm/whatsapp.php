@@ -154,41 +154,56 @@
     <script src="../assets/js/main.js"></script>
 
     <script>
-        // Lógica de simulação de status e QR Code
-        // Em um sistema real, isso faria chamadas AJAX para o backend Bridge (Node.js)
-        
         function updateStatus() {
-            // Placeholder: Em produção, chamar PHP que chama Node.js
             $.get('php/whatsapp_api.php?action=status', function(response) {
-                const data = JSON.parse(response);
+                // Se a resposta vier como string, parseia. Se já for objeto, usa direto.
+                const data = typeof response === 'string' ? JSON.parse(response) : response;
                 
                 if(data.connected) {
                     $('#status-dot').removeClass('status-offline status-connecting').addClass('status-online');
                     $('#status-text').text('Conectado (' + data.number + ')');
                     $('#qrcode-container').hide();
                     $('#btn-logout').show();
+                    $('#qr-placeholder').show(); // Reset placeholder para quando desconectar
+                    $('#qrcode-img').hide();
                 } else {
                     $('#status-dot').removeClass('status-online status-connecting').addClass('status-offline');
-                    $('#status-text').text('Desconectado');
+                    $('#status-text').text(data.status === 'offline' ? 'Bridge Offline (Inicie o Node.js)' : 'Desconectado');
                     $('#qrcode-container').show();
                     $('#btn-logout').hide();
-                    fetchQRCode();
+                    
+                    if (data.status !== 'offline') {
+                        fetchQRCode();
+                    }
                 }
             }).fail(function() {
-                // Simulação p/ demonstração inicial se o PHP não existir
-                console.log('API não encontrada, usando modo demonstração');
+                $('#status-text').text('Erro na API PHP');
             });
         }
 
         function fetchQRCode() {
-            // Placeholder: Em produção, carregar imagem real do Bridge
-            // $('#qrcode-img').attr('src', 'php/whatsapp_api.php?action=qrcode&t=' + new Date().getTime()).show();
-            // $('#qr-placeholder').hide();
+            $.get('php/whatsapp_api.php?action=qrcode', function(response) {
+                const data = typeof response === 'string' ? JSON.parse(response) : response;
+                if (data.qr) {
+                    $('#qrcode-img').attr('src', data.qr).show();
+                    $('#qr-placeholder').hide();
+                } else if (data.message === 'Já conectado') {
+                    updateStatus();
+                }
+            });
         }
 
-        // Poll status every 5 seconds
-        // setInterval(updateStatus, 5000);
-        // updateStatus();
+        $('#btn-logout').click(function() {
+            if(confirm('Tem certeza que deseja desconectar?')) {
+                $.get('php/whatsapp_api.php?action=logout', function() {
+                    updateStatus();
+                });
+            }
+        });
+
+        // Atualiza a cada 5 segundos
+        setInterval(updateStatus, 5000);
+        updateStatus();
     </script>
 </body>
 </html>

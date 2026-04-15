@@ -16,22 +16,35 @@ $instance_name = 'tatico_gps';
 
 switch ($action) {
     case 'status':
-        // Simulação de resposta enquanto o serviço Node não está configurado
-        echo json_encode([
-            'connected' => false,
-            'number' => null,
-            'message' => 'Serviço Node.js não iniciado'
-        ]);
+        try {
+            $response = @file_get_contents($node_api_url . '/status');
+            if ($response === false) {
+                throw new Exception("Bridge Offline");
+            }
+            echo $response;
+        } catch (Exception $e) {
+            echo json_encode([
+                'connected' => false,
+                'status' => 'offline',
+                'message' => $e->getMessage()
+            ]);
+        }
         break;
 
     case 'qrcode':
-        // Aqui o PHP solicitaria o QR Code (em base64 ou link) para o Node.js
-        // Por agora, retorna uma imagem de instrução ou erro
-        header('Content-Type: image/png');
-        // readfile('../../assets/img/illustrations/qr-placeholder.png');
+        try {
+            $response = @file_get_contents($node_api_url . '/qrcode');
+            if ($response === false) {
+                throw new Exception("Bridge Offline");
+            }
+            echo $response;
+        } catch (Exception $e) {
+            echo json_encode(['qr' => null, 'error' => $e->getMessage()]);
+        }
         break;
 
     case 'logout':
+        @file_get_contents($node_api_url . '/logout');
         echo json_encode(['success' => true]);
         break;
 
