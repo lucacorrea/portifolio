@@ -1,105 +1,85 @@
 /**
  * ERP Elétrica — Service Worker (Modo Híbrido Offline/Online)
  * 
- * Estratégia:
- *  - Static Assets (CSS, JS, Fonts, Images): Cache First
- *  - PHP Pages (PDV, Pré-Venda, etc.): Network First, Cache Fallback
- *  - API Requests (GET): Network First, Cache Fallback
- *  - API Requests (POST): Pass-through (handled by offline-bridge.js)
- * 
- * IMPORTANTE: Este SW NÃO altera nenhuma funcionalidade existente.
- * Ele apenas adiciona uma camada de cache para resiliência offline.
+ * CONSERVADOR: Só cacheia assets estáticos e as páginas CRÍTICAS (PDV, Pré-Venda).
+ * NÃO intercepta outras páginas PHP para evitar telas pretas/quebradas.
  */
 
-const CACHE_VERSION = 'erp-eletrica-v1';
+const CACHE_VERSION = 'erp-eletrica-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGES_CACHE = `${CACHE_VERSION}-pages`;
-const API_CACHE = `${CACHE_VERSION}-api`;
-const IMG_CACHE = `${CACHE_VERSION}-images`;
 
-// Assets que serão pré-cacheados na instalação
-const PRECACHE_ASSETS = [
-    // CSS
-    'public/css/corporate.css',
-    'style.css',
-    // JS
-    'public/js/corporate.js',
-    'public/js/offline-bridge.js',
-    'script.js',
-    // CDN (critical)
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
-];
-
-// Páginas que DEVEM funcionar offline (serão cacheadas no primeiro acesso)
+// Páginas que DEVEM funcionar offline
 const CRITICAL_PAGES = [
     'vendas.php',
     'pre_vendas.php',
-    'caixa.php',
 ];
 
-// Padrões de URL para identificar tipo de recurso
-const isStaticAsset = (url) => {
-    return /\.(css|js|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp)(\?.*)?$/i.test(url) ||
-           url.includes('cdn.jsdelivr.net') ||
+// Assets estáticos locais para pré-cachear
+const PRECACHE_ASSETS = [
+    'public/css/corporate.css',
+    'style.css',
+    'public/js/corporate.js',
+    'public/js/offline-bridge.js',
+    'script.js',
+];
+
+// ===== HELPERS =====
+
+/** Verifica se é um asset estático LOCAL (CSS, JS, imagens, fontes) */
+function isLocalStaticAsset(url) {
+    const u = new URL(url);
+    // Apenas assets do nosso domínio
+    if (u.origin !== self.location.origin) return false;
+    return /\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|eot)(\?.*)?$/i.test(u.pathname);
+}
+
+/** Verifica se é um recurso CDN (Bootstrap, Font Awesome, Google Fonts) */
+function isCDNAsset(url) {
+    return url.includes('cdn.jsdelivr.net') ||
            url.includes('cdnjs.cloudflare.com') ||
            url.includes('fonts.googleapis.com') ||
            url.includes('fonts.gstatic.com');
-};
+}
 
-const isImageAsset = (url) => {
-    return /\.(png|jpg|jpeg|gif|webp|svg|ico)(\?.*)?$/i.test(url) ||
-           url.includes('public/uploads/');
-};
-
-const isAPIRequest = (url) => {
-    return url.includes('action=') && !url.includes('action=index');
-};
-
-const isPHPPage = (url) => {
-    return url.endsWith('.php') || url.endsWith('/');
-};
+/** Verifica se é uma das páginas críticas que queremos cachear */
+function isCriticalPage(url) {
+    const u = new URL(url);
+    const path = u.pathname;
+    // Só intercepta se for uma das páginas críticas SEM action (página principal)
+    // Requests com action= são API calls tratados pelo offline-bridge.js
+    if (u.searchParams.has('action')) return false;
+    return CRITICAL_PAGES.some(page => path.endsWith(page));
+}
 
 // ===== INSTALL =====
 self.addEventListener('install', (event) => {
-    console.log('[SW] Instalando Service Worker v1...');
+    console.log('[SW] Instalando v2...');
     event.waitUntil(
         caches.open(STATIC_CACHE)
             .then(cache => {
-                console.log('[SW] Pré-cacheando assets estáticos...');
-                // Use addAll with error tolerance — some CDN URLs might fail on first install
                 return Promise.allSettled(
-                    PRECACHE_ASSETS.map(url => 
-                        cache.add(url).catch(err => 
-                            console.warn(`[SW] Falha ao cachear: ${url}`, err)
+                    PRECACHE_ASSETS.map(url =>
+                        cache.add(url).catch(err =>
+                            console.warn(`[SW] Falha ao pré-cachear: ${url}`, err)
                         )
                     )
                 );
             })
-            .then(() => {
-                console.log('[SW] Assets pré-cacheados com sucesso');
-                return self.skipWaiting();
-            })
+            .then(() => self.skipWaiting())
     );
 });
 
 // ===== ACTIVATE =====
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Ativando Service Worker v1...');
+    console.log('[SW] Ativando v2...');
     event.waitUntil(
         caches.keys()
-            .then(names => {
-                return Promise.all(
-                    names
-                        .filter(name => name.startsWith('erp-eletrica-') && name !== STATIC_CACHE && name !== PAGES_CACHE && name !== API_CACHE && name !== IMG_CACHE)
-                        .map(name => {
-                            console.log(`[SW] Removendo cache antigo: ${name}`);
-                            return caches.delete(name);
-                        })
-                );
-            })
+            .then(names => Promise.all(
+                names
+                    .filter(name => name.startsWith('erp-eletrica-') && !name.startsWith(CACHE_VERSION))
+                    .map(name => caches.delete(name))
+            ))
             .then(() => self.clients.claim())
     );
 });
@@ -109,142 +89,127 @@ self.addEventListener('fetch', (event) => {
     const request = event.request;
     const url = request.url;
 
-    // Nunca interceptar POST — o offline-bridge.js cuida disso
-    if (request.method !== 'GET') {
+    // REGRA 1: NUNCA interceptar POST, PUT, DELETE
+    if (request.method !== 'GET') return;
+
+    // REGRA 2: NUNCA interceptar login, logout, api_sync (heartbeat)
+    if (url.includes('login.php') || url.includes('logout.php') || url.includes('api_sync.php')) return;
+
+    // REGRA 3: Assets estáticos LOCAIS → Cache First
+    if (isLocalStaticAsset(url)) {
+        event.respondWith(cacheFirstSafe(request, STATIC_CACHE));
         return;
     }
 
-    // Nunca interceptar requests de login/logout
-    if (url.includes('login.php') || url.includes('logout.php')) {
+    // REGRA 4: CDN Assets → Cache First
+    if (isCDNAsset(url)) {
+        event.respondWith(cacheFirstSafe(request, STATIC_CACHE));
         return;
     }
 
-    // Estratégia por tipo de recurso
-    if (isStaticAsset(url)) {
-        event.respondWith(cacheFirst(request, STATIC_CACHE));
-    } else if (isImageAsset(url)) {
-        event.respondWith(cacheFirst(request, IMG_CACHE));
-    } else if (isAPIRequest(url)) {
-        event.respondWith(networkFirst(request, API_CACHE, 5000));
-    } else if (isPHPPage(url)) {
-        event.respondWith(networkFirst(request, PAGES_CACHE, 8000));
+    // REGRA 5: Páginas críticas (PDV, Pré-Venda) → Network First, Cache Fallback
+    if (isCriticalPage(url)) {
+        event.respondWith(networkFirstSafe(request, PAGES_CACHE));
+        return;
     }
-    // Qualquer outra coisa: comportamento padrão do browser
+
+    // QUALQUER OUTRA COISA: NÃO INTERCEPTAR (comportamento padrão do browser)
+    // Isso evita telas pretas em páginas que não são críticas
 });
 
-// ===== ESTRATÉGIAS DE CACHE =====
+// ===== ESTRATÉGIAS SEGURAS =====
 
 /**
- * Cache First: Tenta servir do cache, se não tiver vai na rede.
- * Ideal para assets estáticos que mudam raramente.
+ * Cache First com fallback seguro.
+ * Se o cache falhar E a rede falhar, retorna a resposta de rede crua
+ * em vez de um erro customizado.
  */
-async function cacheFirst(request, cacheName) {
-    const cache = await caches.open(cacheName);
-    const cached = await cache.match(request);
-    
-    if (cached) {
-        // Atualiza cache em background (stale-while-revalidate)
-        fetchAndCache(request, cacheName).catch(() => {});
-        return cached;
-    }
-    
+async function cacheFirstSafe(request, cacheName) {
     try {
+        const cache = await caches.open(cacheName);
+        const cached = await cache.match(request);
+
+        if (cached) {
+            // Background update (stale-while-revalidate)
+            fetch(request).then(res => {
+                if (res && res.ok) cache.put(request, res);
+            }).catch(() => {});
+            return cached;
+        }
+
+        // Não está no cache → busca na rede
         const response = await fetch(request);
         if (response.ok) {
             cache.put(request, response.clone());
         }
         return response;
     } catch (err) {
-        console.warn(`[SW] Cache miss e rede indisponível: ${request.url}`);
-        return new Response('Recurso indisponível offline', { status: 503 });
+        // Fallback: tenta cache antigo
+        try {
+            const cache = await caches.open(cacheName);
+            const cached = await cache.match(request);
+            if (cached) return cached;
+        } catch (e) {}
+
+        // Último recurso: deixa o browser lidar
+        return fetch(request);
     }
 }
 
 /**
- * Network First: Tenta a rede primeiro (com timeout), cai pro cache se falhar.
- * Ideal para páginas PHP e APIs de leitura.
+ * Network First com cache fallback SEGURO.
+ * Timeout generoso (10s). Se tudo falhar, tenta cache.
+ * NUNCA retorna uma resposta vazia/error — prefere deixar o browser lidar.
  */
-async function networkFirst(request, cacheName, timeout = 5000) {
+async function networkFirstSafe(request, cacheName) {
     const cache = await caches.open(cacheName);
-    
+
     try {
-        const response = await fetchWithTimeout(request, timeout);
+        // Timeout generoso para servidores lentos (Hostinger)
+        const response = await fetchWithTimeout(request, 10000);
         if (response.ok) {
             cache.put(request, response.clone());
         }
         return response;
     } catch (err) {
-        console.log(`[SW] Rede falhou, servindo do cache: ${request.url}`);
+        // Rede falhou → tenta cache
+        console.log(`[SW] Rede falhou para ${request.url}, tentando cache...`);
         const cached = await cache.match(request);
         if (cached) {
             return cached;
         }
-        
-        // Se nem cache tem, retorna erro genérico
-        console.warn(`[SW] Sem cache para: ${request.url}`);
-        return new Response(JSON.stringify({ 
-            error: 'offline', 
-            message: 'Recurso indisponível no modo offline' 
-        }), {
-            status: 503,
-            headers: { 'Content-Type': 'application/json' }
-        });
+
+        // Sem cache → tenta a rede novamente sem timeout (última chance)
+        try {
+            return await fetch(request);
+        } catch (e) {
+            // Retorna uma página de erro simples ao invés de uma tela preta
+            return new Response(
+                `<html><body style="font-family:Inter,sans-serif;text-align:center;padding:50px">
+                    <h2>⚡ Sem Conexão</h2>
+                    <p>Esta página não está disponível offline.</p>
+                    <p><a href="vendas.php">Ir para o PDV (disponível offline)</a></p>
+                </body></html>`,
+                { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+            );
+        }
     }
 }
 
-/**
- * Fetch com timeout para evitar esperas longas quando a rede está ruim.
- */
 function fetchWithTimeout(request, timeout) {
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('Timeout')), timeout);
-        
         fetch(request)
-            .then(response => {
-                clearTimeout(timer);
-                resolve(response);
-            })
-            .catch(err => {
-                clearTimeout(timer);
-                reject(err);
-            });
+            .then(res => { clearTimeout(timer); resolve(res); })
+            .catch(err => { clearTimeout(timer); reject(err); });
     });
 }
 
-/**
- * Atualiza o cache em background sem bloquear a resposta.
- */
-async function fetchAndCache(request, cacheName) {
-    try {
-        const response = await fetch(request);
-        if (response.ok) {
-            const cache = await caches.open(cacheName);
-            cache.put(request, response.clone());
-        }
-    } catch (err) {
-        // Silêncio — atualização em background não deve gerar erro
-    }
-}
-
-// ===== MENSAGENS DO MAIN THREAD =====
+// ===== MENSAGENS =====
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
-    }
-    
-    if (event.data && event.data.type === 'CACHE_PAGE') {
-        // O offline-bridge.js pode pedir para cachear uma página específica
-        caches.open(PAGES_CACHE).then(cache => {
-            cache.add(event.data.url).catch(err => 
-                console.warn('[SW] Falha ao cachear página solicitada:', err)
-            );
-        });
-    }
-    
-    if (event.data && event.data.type === 'CLEAR_API_CACHE') {
-        // Limpar cache de API após sincronização
-        caches.delete(API_CACHE).then(() => {
-            console.log('[SW] Cache de API limpo após sincronização');
-        });
+    if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+    if (event.data?.type === 'CLEAR_API_CACHE') {
+        // Nada a fazer — API cache não é mais gerenciado pelo SW
+        console.log('[SW] Cache refresh solicitado');
     }
 });

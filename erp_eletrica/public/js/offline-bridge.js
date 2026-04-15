@@ -29,7 +29,7 @@
         HEARTBEAT_INTERVAL: 15000,       // 15 segundos
         CACHE_REFRESH_INTERVAL: 300000,  // 5 minutos
         SYNC_INTERVAL: 10000,            // 10 segundos quando online
-        FETCH_TIMEOUT: 5000,             // 5 segundos de timeout
+        FETCH_TIMEOUT: 15000,            // 15 segundos de timeout (Hostinger pode ser lento)
         SYNC_ENDPOINT: 'api_sync.php',
         HEARTBEAT_ENDPOINT: 'api_sync.php?action=heartbeat',
         CACHE_PRODUCTS_ENDPOINT: 'api_sync.php?action=cache_products',
@@ -409,6 +409,7 @@
         _listeners: [],
         _heartbeatTimer: null,
         _consecutiveFailures: 0,
+        _rawFetch: window.fetch.bind(window), // Referência PURA do fetch (antes do override)
 
         get isOnline() {
             return this._isOnline;
@@ -419,8 +420,11 @@
             window.addEventListener('online', () => this._handleOnline());
             window.addEventListener('offline', () => this._handleOffline());
 
-            // Heartbeat contínuo
-            this._startHeartbeat();
+            // Heartbeat contínuo (com delay para não atrapalhar o carregamento da página)
+            setTimeout(() => {
+                this._doHeartbeat();
+                this._heartbeatTimer = setInterval(() => this._doHeartbeat(), CONFIG.HEARTBEAT_INTERVAL);
+            }, 3000);
 
             Logger.log('CONN', `Status inicial: ${this._isOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}`);
         },
@@ -429,19 +433,13 @@
             this._listeners.push(callback);
         },
 
-        _startHeartbeat() {
-            // Heartbeat imediato
-            this._doHeartbeat();
-            // Heartbeat periódico
-            this._heartbeatTimer = setInterval(() => this._doHeartbeat(), CONFIG.HEARTBEAT_INTERVAL);
-        },
-
         async _doHeartbeat() {
             try {
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 4000);
+                const timeout = setTimeout(() => controller.abort(), 6000);
 
-                const response = await fetch(CONFIG.HEARTBEAT_ENDPOINT, {
+                // IMPORTANTE: Usa _rawFetch (fetch original) para NÃO ser interceptado
+                const response = await this._rawFetch(CONFIG.HEARTBEAT_ENDPOINT, {
                     method: 'GET',
                     cache: 'no-store',
                     signal: controller.signal
@@ -464,8 +462,8 @@
 
         _handleHeartbeatFailure() {
             this._consecutiveFailures++;
-            // Considera offline após 2 falhas consecutivas para evitar falsos positivos
-            if (this._consecutiveFailures >= 2 && this._isOnline) {
+            // Considera offline após 3 falhas consecutivas para evitar falsos positivos
+            if (this._consecutiveFailures >= 3 && this._isOnline) {
                 this._handleOffline();
             }
         },
