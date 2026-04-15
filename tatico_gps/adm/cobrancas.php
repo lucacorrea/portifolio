@@ -86,9 +86,9 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
                         <div class="row g-4 mb-4">
                             <?php
                             $refAtual = date('m/Y');
-                            $totalMes = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE referencia LIKE '%$refAtual%'")->fetchColumn();
+                            $totalMes = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE referencia = '$refAtual'")->fetchColumn();
                             $abertas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Em aberto'")->fetchColumn();
-                            $vencidas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Vencida' OR (status = 'Em aberto' AND data_vencimento < CURDATE())")->fetchColumn();
+                            $vencidas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Em aberto' AND data_vencimento < CURDATE()")->fetchColumn();
                             $pagas = $pdo->query("SELECT COUNT(*) FROM cobrancas WHERE status = 'Paga'")->fetchColumn();
                             ?>
                             <div class="col-md-3">
@@ -175,7 +175,7 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
 
                                                     $badgeClass = 'bg-label-warning';
                                                     if ($status === 'Paga') $badgeClass = 'bg-label-success';
-                                                    if ($status === 'Vencida') $badgeClass = 'bg-label-danger';
+                                                    if ($status === 'Vencida' || $status === 'Vencida') $badgeClass = 'bg-label-danger';
 
                                                     $atraso = 0;
                                                     if ($status === 'Vencida') {
@@ -193,7 +193,7 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
                                                 <td><span class="badge <?= $badgeClass ?>"><?= h($status) ?></span></td>
                                                 <td><?= $atraso > 0 ? $atraso . ' dias' : '-' ?></td>
                                                 <td class="text-center">
-                                                    <button class="btn btn-sm btn-outline-primary">Cobrar</button>
+                                                    <button class="btn btn-sm btn-outline-primary">Ver Histórico</button>
                                                 </td>
                                             </tr>
                                             <?php 
@@ -283,6 +283,49 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
     <script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
     <script src="../assets/vendor/js/menu.js"></script>
     <script src="../assets/js/main.js"></script>
-</body>
 
+    <script>
+        $(document).ready(function() {
+            // Auto preencher valor ao selecionar cliente
+            $('#cad_cliente_id').on('change', function() {
+                const valor = $(this).find(':selected').data('valor');
+                if (valor) $('#cad_valor').val(valor);
+            });
+
+            // Salvar cobrança manual
+            $('#formNovaCobranca').on('submit', function(e) {
+                e.preventDefault();
+                const btn = $('#btnSalvarCobranca');
+                btn.prop('disabled', true).text('Salvando...');
+
+                $.post('php/cobrancas/processarDados.php', $(this).serialize() + '&acao=salvar', function(res) {
+                    if (res.ok) {
+                        location.reload();
+                    } else {
+                        alert('Erro: ' + (res.error || 'Falha ao salvar.'));
+                        btn.prop('disabled', false).text('Salvar Cobrança');
+                    }
+                }, 'json');
+            });
+
+            // Gerar Lote
+            $('#btnGerarLote').on('click', function() {
+                if (!confirm('Deseja gerar as cobranças de todos os clientes ativos para o mês atual?')) return;
+                
+                const btn = $(this);
+                btn.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Processando...');
+
+                $.post('php/cobrancas/processarDados.php', { acao: 'gerar_lote' }, function(res) {
+                    if (res.ok) {
+                        alert('Sucesso! Foram geradas ' + res.total + ' cobranças.');
+                        location.reload();
+                    } else {
+                        alert('Erro: ' + (res.error || 'Falha ao gerar lote.'));
+                        btn.prop('disabled', false).html('<i class="bx bx-sync me-1"></i>Gerar Lote (Mês Atual)');
+                    }
+                }, 'json');
+            });
+        });
+    </script>
+</body>
 </html>
