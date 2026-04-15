@@ -11,29 +11,26 @@ header('Content-Type: application/json');
 $action = $_GET['action'] ?? '';
 
 // Em um cenário real, estas variáveis viriam de um arquivo de configuração (.env ou banco)
-$node_api_url = 'http://localhost:8080'; // URL onde o serviço Node.js estaria rodando
-$instance_name = 'tatico_gps';
+$node_api_url = 'https://smthcoari.cloud'; 
 
 switch ($action) {
     case 'status':
         try {
-            $response = @file_get_contents($node_api_url . '/status');
+            $context = stream_context_create(["http" => ["timeout" => 5]]);
+            $response = @file_get_contents($node_api_url . '/status', false, $context);
             if ($response === false) {
                 throw new Exception("Bridge Offline");
             }
             echo $response;
         } catch (Exception $e) {
-            echo json_encode([
-                'connected' => false,
-                'status' => 'offline',
-                'message' => $e->getMessage()
-            ]);
+            echo json_encode(['connected' => false, 'status' => 'offline', 'message' => $e->getMessage()]);
         }
         break;
 
     case 'qrcode':
         try {
-            $response = @file_get_contents($node_api_url . '/qrcode');
+            $context = stream_context_create(["http" => ["timeout" => 5]]);
+            $response = @file_get_contents($node_api_url . '/qrcode', false, $context);
             if ($response === false) {
                 throw new Exception("Bridge Offline");
             }
