@@ -39,6 +39,7 @@ $empresaPendente = false;
 $msgCompletar = '';
 $canEditEmpresa = (($_SESSION['user_perfil'] ?? '') === 'dono');
 $empresaRow = null;
+
 try {
     if (!empty($cnpjSess)) {
         $st = $pdo->prepare("SELECT * FROM empresas_peca WHERE REPLACE(REPLACE(REPLACE(cnpj,'.',''),'-',''),'/','')=:c LIMIT 1");
@@ -49,7 +50,16 @@ try {
     $empresaRow = null;
 }
 
-$camposObrigatorios = ['nome_fantasia' => 'Nome Fantasia', 'email' => 'E-mail', 'telefone' => 'Telefone', 'endereco' => 'Endereço', 'cidade' => 'Cidade', 'estado' => 'UF', 'cep' => 'CEP'];
+$camposObrigatorios = [
+    'nome_fantasia' => 'Nome Fantasia',
+    'email' => 'E-mail',
+    'telefone' => 'Telefone',
+    'endereco' => 'Endereço',
+    'cidade' => 'Cidade',
+    'estado' => 'UF',
+    'cep' => 'CEP'
+];
+
 $faltando = [];
 if (!$empresaRow) {
     $empresaPendente = true;
@@ -68,53 +78,132 @@ if (!$empresaRow) {
 /* ===========================================================
    Cabeçalho
    =========================================================== */
-$nomeUser     = $_SESSION['user_nome']         ?? ($nomeUser     ?? 'Usuário');
-$empresaNome  = $empresaNome                   ?? ($_SESSION['empresa_nome'] ?? 'sua empresa');
-$perfil       = strtolower($_SESSION['user_perfil'] ?? 'funcionario');
-$tipo         = strtolower($_SESSION['user_tipo']   ?? '');
+$nomeUser     = $_SESSION['user_nome'] ?? ($nomeUser ?? 'Usuário');
+$empresaNome  = $empresaNome ?: ($_SESSION['empresa_nome'] ?? 'sua empresa');
+$perfil       = strtolower((string)($_SESSION['user_perfil'] ?? 'funcionario'));
+$tipo         = strtolower((string)($_SESSION['user_tipo'] ?? ''));
 
-$rotTipo = ['administrativo' => 'Administrativo', 'caixa' => 'Caixa', 'estoque' => 'Estoque', 'lavajato' => 'Lava Jato'];
+$rotTipo = [
+    'administrativo' => 'Administrativo',
+    'caixa' => 'Caixa',
+    'estoque' => 'Estoque',
+    'lavajato' => 'Lava Jato'
+];
 $tipoLabel = $rotTipo[$tipo] ?? 'Colaborador';
+
 $fraseHeader = $perfil === 'dono'
-    ? 'Você é o dono. Gerencie sua empresa, cadastre sua equipe e mantenha tudo em dia.'
+    ? 'Você é o dono. Acompanhe lavagens, equipe, faturamento e vales em um só lugar.'
     : "Você está logado como {$tipoLabel}. " . (
-        $tipo === 'administrativo' ? 'Acompanhe o financeiro, cadastre produtos e dê suporte à operação.' : ($tipo === 'caixa' ? 'Abra vendas rápidas, finalize pagamentos e agilize o atendimento.' : ($tipo === 'estoque' ? 'Gerencie entradas e saídas, controle níveis e mantenha o estoque organizado.' : ($tipo === 'lavajato' ? 'Registre lavagens, acompanhe status e mantenha o fluxo do box.' :
-            'Bem-vindo ao sistema. Use o menu ao lado para começar.')))
+        $tipo === 'lavajato'
+            ? 'Registre lavagens, acompanhe status e mantenha o fluxo do box.'
+            : 'Acompanhe a operação do lava jato e utilize o menu ao lado para gerenciar.'
     );
 
 /* ===========================================================
-   EXPRESSÕES SQL (campos corretos da DDL)
-   - Data: v.criado_em (timestamp) -> DATE()
-   - Valor: v.total_liquido; fallback soma de itens se vier 0/NULL
-   - Status válido para faturamento: 'fechada'
+   Helpers
    =========================================================== */
-$DATE_NORM = "DATE(v.criado_em)";
-$TOTAL_NUM = "CAST(
-  CASE
-    WHEN v.total_liquido IS NOT NULL AND v.total_liquido > 0
-      THEN v.total_liquido
-    ELSE (
-      SELECT COALESCE(SUM(vi.valor_total),0)
-      FROM venda_itens_peca vi
-      WHERE vi.venda_id = v.id
-    )
-  END AS DECIMAL(15,2)
-)";
-$CNPJ_NORM = "REPLACE(REPLACE(REPLACE(v.empresa_cnpj,'.',''),'-',''),'/','')";
+function fmt_compacto_brl(float $v): string
+{
+    $abs = abs($v);
+    if ($abs >= 1_000_000_000) return 'R$ ' . number_format($v / 1_000_000_000, 1, ',', '.') . 'B';
+    if ($abs >= 1_000_000)     return 'R$ ' . number_format($v / 1_000_000, 1, ',', '.') . 'M';
+    if ($abs >= 1_000)         return 'R$ ' . number_format($v / 1_000, 1, ',', '.') . 'K';
+    return 'R$ ' . number_format($v, 2, ',', '.');
+}
+
+function pct_from_total(float $valor, float $meta): int
+{
+    if ($meta <= 0) return 0;
+    $pct = (int)round(($valor / $meta) * 100);
+    return max(0, min(100, $pct));
+}
 
 /* ===========================================================
-   Séries do gráfico + cálculo do card Faturamento (30 dias)
+   Dashboard do Lava Jato
    =========================================================== */
+$lavagensHoje = 0;
+$lavadoresAtivosCalc = 0;
+$faturamento30d_calc = 0.0;
+$vales30d_calc = 0.0;
+
+$lavagensPctCalc = 0;
+$lavadoresPctCalc = 0;
+$faturamentoPctCalc = 0;
+$valesPctCalc = 0;
+
 $dailyLabels = [];
 $dailySeries = [];
 $monthlyLabels = [];
 $monthlySeries = [];
-$faturamento30d_calc = 0.0;
+
+$lavagens = $lavagens ?? [];
+$lavSemanaLabel = $lavSemanaLabel ?? 'Semana atual';
 
 try {
     if (!empty($cnpjSess)) {
+        $CNPJ_NORM_L = "REPLACE(REPLACE(REPLACE(empresa_cnpj,'.',''),'-',''),'/','')";
 
-        // --------- DIÁRIA (30 dias) ---------
+        /* ==========================
+           Card 1 - Lavagens hoje
+           ========================== */
+        $st = $pdo->prepare("
+            SELECT COUNT(*) AS total
+            FROM lavagens_peca
+            WHERE $CNPJ_NORM_L = :c
+              AND DATE(criado_em) = CURDATE()
+              AND status <> 'cancelada'
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $lavagensHoje = (int)($st->fetchColumn() ?: 0);
+
+        /* ==========================
+           Card 2 - Lavadores ativos
+           ========================== */
+        $st = $pdo->prepare("
+            SELECT COUNT(*) AS total
+            FROM lavadores_peca
+            WHERE $CNPJ_NORM_L = :c
+              AND ativo = 1
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $lavadoresAtivosCalc = (int)($st->fetchColumn() ?: 0);
+
+        /* ==========================
+           Card 3 - Faturamento 30 dias
+           ========================== */
+        $st = $pdo->prepare("
+            SELECT COALESCE(SUM(valor),0) AS total
+            FROM lavagens_peca
+            WHERE $CNPJ_NORM_L = :c
+              AND DATE(criado_em) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+              AND status <> 'cancelada'
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $faturamento30d_calc = (float)($st->fetchColumn() ?: 0);
+
+        /* ==========================
+           Card 4 - Vales 30 dias
+           ========================== */
+        $st = $pdo->prepare("
+            SELECT COALESCE(SUM(valor),0) AS total
+            FROM vales_lavadores_peca
+            WHERE $CNPJ_NORM_L = :c
+              AND DATE(criado_em) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        ");
+        $st->execute([':c' => $cnpjSess]);
+        $vales30d_calc = (float)($st->fetchColumn() ?: 0);
+
+        /* ==========================
+           Percentuais visuais
+           ========================== */
+        $lavagensPctCalc    = pct_from_total((float)$lavagensHoje, 20);
+        $lavadoresPctCalc   = pct_from_total((float)$lavadoresAtivosCalc, 10);
+        $faturamentoPctCalc = pct_from_total((float)$faturamento30d_calc, 10000);
+        $valesPctCalc       = pct_from_total((float)$vales30d_calc, 3000);
+
+        /* ==========================
+           Gráfico diário - 30 dias
+           ========================== */
         $dias = [];
         $hoje = new DateTime('today');
         for ($i = 29; $i >= 0; $i--) {
@@ -123,14 +212,14 @@ try {
         }
 
         $sqlDia = "
-      SELECT $DATE_NORM AS dia, SUM($TOTAL_NUM) AS total
-      FROM vendas_peca v
-      WHERE $CNPJ_NORM = :c
-        AND $DATE_NORM >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-        AND v.status = 'fechada'
-      GROUP BY $DATE_NORM
-      ORDER BY $DATE_NORM
-    ";
+            SELECT DATE(criado_em) AS dia, COALESCE(SUM(valor),0) AS total
+            FROM lavagens_peca
+            WHERE $CNPJ_NORM_L = :c
+              AND DATE(criado_em) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+              AND status <> 'cancelada'
+            GROUP BY DATE(criado_em)
+            ORDER BY DATE(criado_em)
+        ";
         $st = $pdo->prepare($sqlDia);
         $st->execute([':c' => $cnpjSess]);
         foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
@@ -145,9 +234,10 @@ try {
             $acum += $v;
             $dailySeries[] = $acum;
         }
-        $faturamento30d_calc = $acum;
 
-        // --------- MENSAL (12 meses) ---------
+        /* ==========================
+           Gráfico mensal - 12 meses
+           ========================== */
         $meses = [];
         $agora = new DateTime('first day of this month 00:00:00');
         for ($i = 11; $i >= 0; $i--) {
@@ -156,14 +246,14 @@ try {
         }
 
         $sqlMes = "
-      SELECT DATE_FORMAT($DATE_NORM,'%Y-%m') AS ym, SUM($TOTAL_NUM) AS total
-      FROM vendas_peca v
-      WHERE $CNPJ_NORM = :c
-        AND $DATE_NORM >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-        AND v.status = 'fechada'
-      GROUP BY DATE_FORMAT($DATE_NORM,'%Y-%m')
-      ORDER BY ym
-    ";
+            SELECT DATE_FORMAT(criado_em,'%Y-%m') AS ym, COALESCE(SUM(valor),0) AS total
+            FROM lavagens_peca
+            WHERE $CNPJ_NORM_L = :c
+              AND DATE(criado_em) >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+              AND status <> 'cancelada'
+            GROUP BY DATE_FORMAT(criado_em,'%Y-%m')
+            ORDER BY ym
+        ";
         $st2 = $pdo->prepare($sqlMes);
         $st2->execute([':c' => $cnpjSess]);
         foreach ($st2->fetchAll(PDO::FETCH_ASSOC) as $r) {
@@ -177,29 +267,64 @@ try {
             $acumM += $v;
             $monthlySeries[] = $acumM;
         }
+
+        /* ==========================
+           Lavagens recentes
+           ========================== */
+        if (empty($lavagens)) {
+            $sqlLavagens = "
+                SELECT
+                    COALESCE(lv.nome, CONCAT('CPF: ', l.lavador_cpf)) AS lavador,
+                    COALESCE(l.categoria_nome, 'Lavagem') AS servico,
+                    TRIM(CONCAT(
+                        COALESCE(l.modelo, ''),
+                        CASE WHEN COALESCE(l.cor, '') <> '' THEN CONCAT(' / ', l.cor) ELSE '' END,
+                        CASE WHEN COALESCE(l.placa, '') <> '' THEN CONCAT(' - ', l.placa) ELSE '' END
+                    )) AS veiculo,
+                    l.valor,
+                    DATE_FORMAT(COALESCE(l.checkin_at, l.criado_em), '%d/%m/%Y %H:%i') AS quando,
+                    l.status
+                FROM lavagens_peca l
+                LEFT JOIN lavadores_peca lv
+                  ON REPLACE(REPLACE(REPLACE(lv.empresa_cnpj,'.',''),'-',''),'/','') = REPLACE(REPLACE(REPLACE(l.empresa_cnpj,'.',''),'-',''),'/','')
+                 AND REPLACE(REPLACE(lv.cpf,'.',''),'-','') = REPLACE(REPLACE(l.lavador_cpf,'.',''),'-','')
+                WHERE REPLACE(REPLACE(REPLACE(l.empresa_cnpj,'.',''),'-',''),'/','') = :c
+                ORDER BY COALESCE(l.checkin_at, l.criado_em) DESC
+                LIMIT 30
+            ";
+            $stL = $pdo->prepare($sqlLavagens);
+            $stL->execute([':c' => $cnpjSess]);
+            $lavagens = $stL->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
     }
 } catch (Throwable $e) {
-    error_log('ERRO DASH GRAFICO: ' . $e->getMessage());
+    error_log('ERRO DASHBOARD LAVAJATO: ' . $e->getMessage());
 }
 
 /* ===========================================================
-   Cards (mantém variáveis do controller quando existirem)
+   Valores finais dos cards
    =========================================================== */
-$vendasPct       = $vendasPct       ?? 0;
-$vendasQtde      = $vendasQtde      ?? 0;
-$estoquePct      = $estoquePct      ?? 0;
-$itensEstoque    = $itensEstoque    ?? 0;
-$faturamentoPct  = $faturamentoPct  ?? 0;
+$vendasPct      = $vendasPct      ?? $lavagensPctCalc;
+$vendasQtde     = $vendasQtde     ?? $lavagensHoje;
 
-/* Card faturamento usa o valor calculado acima
-   (mesma base do gráfico) */
-$faturamento30d  = $faturamento30d_calc;
+$estoquePct     = $estoquePct     ?? $lavadoresPctCalc;
+$itensEstoque   = $itensEstoque   ?? $lavadoresAtivosCalc;
 
-$despesasPct     = $despesasPct     ?? 0;
-$despesas30d     = $despesas30d     ?? 0.0;
+$faturamentoPct = $faturamentoPct ?? $faturamentoPctCalc;
+$faturamento30d = $faturamento30d_calc;
 
-// Lavagens (se o controller já preencheu, mantém)
-$lavagens = $lavagens ?? [];
+$despesasPct    = $despesasPct    ?? $valesPctCalc;
+$despesas30d    = $despesas30d    ?? $vales30d_calc;
+
+// Visual compacto faturamento
+$fat_full      = 'R$ ' . number_format((float)$faturamento30d, 2, ',', '.');
+$fat_compact   = fmt_compacto_brl((float)$faturamento30d);
+$usa_compacto  = (mb_strlen($fat_full) > 12);
+
+// Visual compacto vales
+$vales_full     = 'R$ ' . number_format((float)$despesas30d, 2, ',', '.');
+$vales_compact  = fmt_compacto_brl((float)$despesas30d);
+$usa_compacto_vales = (mb_strlen($vales_full) > 12);
 ?>
 <!doctype html>
 <html lang="pt-BR" dir="ltr">
@@ -222,43 +347,22 @@ $lavagens = $lavagens ?? [];
     <link rel="stylesheet" href="./assets/css/rtl.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
-        .btn-range.active {
-            pointer-events: none
+        .btn-range.active { pointer-events: none; }
+
+        .fat-valor {
+            display: inline-block;
+            max-width: 100%;
+            font-weight: 700;
+            line-height: 1.1;
+            font-size: clamp(0.95rem, 2.4vw, 1.25rem);
+            white-space: nowrap;
+        }
+
+        .fat-valor--normal {
+            font-size: clamp(1.1rem, 2.8vw, 1.35rem);
         }
     </style>
 </head>
-<?php
-function fmt_compacto_brl(float $v): string
-{
-    $abs = abs($v);
-    if ($abs >= 1_000_000_000) return 'R$ ' . number_format($v / 1_000_000_000, 1, ',', '.') . 'B';
-    if ($abs >= 1_000_000)     return 'R$ ' . number_format($v / 1_000_000,     1, ',', '.') . 'M';
-    if ($abs >= 1_000)         return 'R$ ' . number_format($v / 1_000,         1, ',', '.') . 'K';
-    return 'R$ ' . number_format($v, 2, ',', '.');
-}
-
-// Decide se usa compacto
-$fat_full    = 'R$ ' . number_format((float)$faturamento30d, 2, ',', '.');
-$fat_compact = fmt_compacto_brl((float)$faturamento30d);
-$usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
-?>
-<style>
-    /* encolhe suavemente se mesmo abreviado ficar grande */
-    .fat-valor {
-        display: inline-block;
-        max-width: 100%;
-        font-weight: 700;
-        line-height: 1.1;
-        /* reduz se precisar, mas mantém legível */
-        font-size: clamp(0.95rem, 2.4vw, 1.25rem);
-        white-space: nowrap;
-    }
-
-    /* versão “normal” um pouco maior quando couber */
-    .fat-valor--normal {
-        font-size: clamp(1.1rem, 2.8vw, 1.35rem);
-    }
-</style>
 
 <body>
     <?php
@@ -266,6 +370,7 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
     $menuAtivo = 'dashboard';
     include './layouts/dashboard.php';
     ?>
+
     <main class="main-content">
         <?php if (!empty($empresaPendente)): ?>
             <div class="modal fade" id="modalEmpresaIncompleta" tabindex="-1" aria-labelledby="modalEmpresaIncompletaLabel" aria-hidden="true">
@@ -343,30 +448,32 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
             <div class="row">
                 <div class="col-md-12 col-lg-12">
                     <div class="row">
-                        <div class="overflow-hidden d-slider1 ">
+                        <div class="overflow-hidden d-slider1">
                             <ul class="p-0 m-0 mb-2 swiper-wrapper list-inline" style="gap:6px;">
                                 <li class="swiper-slide card card-slide col-lg-3" data-aos="fade-up" data-aos-delay="700">
                                     <div class="card-body">
                                         <div class="progress-widget">
                                             <div id="circle-progress-01" class="text-center circle-progress-01 circle-progress circle-progress-primary" data-min-value="0" data-max-value="100" data-value="<?= (int)$vendasPct ?>" data-type="percent"></div>
                                             <div class="progress-detail">
-                                                <p class="mb-2">Vendas</p>
+                                                <p class="mb-2">Lavagens Hoje</p>
                                                 <h4 class="counter"><?= number_format((float)$vendasQtde, 0, ',', '.') ?></h4>
                                             </div>
                                         </div>
                                     </div>
                                 </li>
+
                                 <li class="swiper-slide card card-slide col-lg-3" data-aos="fade-up" data-aos-delay="800">
                                     <div class="card-body">
                                         <div class="progress-widget">
                                             <div id="circle-progress-02" class="text-center circle-progress-01 circle-progress circle-progress-info" data-min-value="0" data-max-value="100" data-value="<?= (int)$estoquePct ?>" data-type="percent"></div>
                                             <div class="progress-detail">
-                                                <p class="mb-2">Itens em Estoque</p>
+                                                <p class="mb-2">Lavadores Ativos</p>
                                                 <h4 class="counter"><?= number_format((float)$itensEstoque, 0, ',', '.') ?></h4>
                                             </div>
                                         </div>
                                     </div>
                                 </li>
+
                                 <li class="swiper-slide card card-slide col-lg-3" data-aos="fade-up" data-aos-delay="900">
                                     <div class="card-body">
                                         <div class="progress-widget">
@@ -376,11 +483,10 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                                                 data-value="<?= (int)$faturamentoPct ?>" data-type="percent"></div>
 
                                             <div class="progress-detail">
-                                                <p class="mb-2">Faturamento</p>
+                                                <p class="mb-2">Faturamento 30 dias</p>
                                                 <h4 class="counter">
                                                     <span class="fat-valor <?= $usa_compacto ? '' : 'fat-valor--normal' ?>">
-                                                        <?= $usa_compacto ? htmlspecialchars($fat_compact, ENT_QUOTES, 'UTF-8')
-                                                            : htmlspecialchars($fat_full, ENT_QUOTES, 'UTF-8') ?>
+                                                        <?= $usa_compacto ? htmlspecialchars($fat_compact, ENT_QUOTES, 'UTF-8') : htmlspecialchars($fat_full, ENT_QUOTES, 'UTF-8') ?>
                                                     </span>
                                                 </h4>
                                             </div>
@@ -393,8 +499,12 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                                         <div class="progress-widget">
                                             <div id="circle-progress-04" class="text-center circle-progress-01 circle-progress circle-progress-primary" data-min-value="0" data-max-value="100" data-value="<?= (int)$despesasPct ?>" data-type="percent"></div>
                                             <div class="progress-detail">
-                                                <p class="mb-2">Despesas</p>
-                                                <h4 class="counter">R$ <?= number_format((float)$despesas30d, 2, ',', '.') ?></h4>
+                                                <p class="mb-2">Vales 30 dias</p>
+                                                <h4 class="counter">
+                                                    <span class="fat-valor <?= $usa_compacto_vales ? '' : 'fat-valor--normal' ?>">
+                                                        <?= $usa_compacto_vales ? htmlspecialchars($vales_compact, ENT_QUOTES, 'UTF-8') : htmlspecialchars($vales_full, ENT_QUOTES, 'UTF-8') ?>
+                                                    </span>
+                                                </h4>
                                             </div>
                                         </div>
                                     </div>
@@ -411,8 +521,8 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                     <div class="card" data-aos="fade-up" data-aos-delay="800">
                         <div class="flex-wrap card-header d-flex justify-content-between align-items-center">
                             <div class="header-title">
-                                <h4 class="card-title">Gráfico de Vendas</h4>
-                                <p class="mb-0">Tendência diária / mensal (acumulado)</p>
+                                <h4 class="card-title">Gráfico de Faturamento</h4>
+                                <p class="mb-0">Tendência diária / mensal (acumulado das lavagens)</p>
                             </div>
                             <div class="d-none d-md-block text-muted small">Use os filtros</div>
                         </div>
@@ -428,8 +538,8 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                     </div>
                 </div>
             </div>
+
             <script>
-                // Se seu controller já limita para a semana, use $lavagens (ou renomeie para o que você usa)
                 window.LAVAGENS_SEMANA = <?= json_encode($lavagens ?? [], JSON_UNESCAPED_UNICODE) ?>;
             </script>
 
@@ -437,7 +547,6 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
             <div class="row">
                 <div class="col-md-12 col-lg-12">
                     <div class="overflow-hidden card" data-aos="fade-up" data-aos-delay="600">
-                        <!-- Cabeçalho do card atualizado -->
                         <div class="flex-wrap card-header d-flex justify-content-between align-items-center">
                             <div class="header-title">
                                 <h4 class="mb-1 card-title">Lavagens Recentes</h4>
@@ -468,7 +577,7 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                                                 <td colspan="6" class="text-center text-muted py-4">Sem registros.</td>
                                             </tr>
                                         <?php else: ?>
-                                            <?php foreach ($lavagens as $L): /* fallback se JS off */ ?>
+                                            <?php foreach ($lavagens as $L): ?>
                                                 <tr>
                                                     <td><?= htmlspecialchars($L['lavador'] ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
                                                     <td><?= htmlspecialchars($L['servico'] ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
@@ -490,24 +599,22 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                                 </table>
                             </div>
 
-                            <!-- Paginação -->
                             <div class="mt-3 d-flex justify-content-end mb-3">
                                 <nav aria-label="Paginação lavagens">
-                                    <ul id="lavPager" class="pagination pagination-sm mb-0"><!-- via JS --></ul>
+                                    <ul id="lavPager" class="pagination pagination-sm mb-0"></ul>
                                 </nav>
                             </div>
                         </div>
 
                         <script>
-                            // Dados da semana (controller sem LIMIT)
                             window.LAVAGENS_SEMANA = <?= json_encode($lavagens ?? [], JSON_UNESCAPED_UNICODE) ?>;
                         </script>
 
                         <script>
                             (function() {
                                 const DATA = Array.isArray(window.LAVAGENS_SEMANA) ? window.LAVAGENS_SEMANA : [];
-                                const PER = 6; // 6 por página
-                                let page = 1; // página atual
+                                const PER = 6;
+                                let page = 1;
                                 const tbody = document.getElementById('tbLavagens');
                                 const pager = document.getElementById('lavPager');
                                 const infoEl = document.getElementById('lavInfo');
@@ -516,6 +623,7 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2
                                 });
+
                                 const statusBadge = (st) => {
                                     const s = String(st || 'aberta');
                                     if (s === 'concluida') return ['success', 'Concluída'];
@@ -552,13 +660,13 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                                         const [cls, rot] = statusBadge(L.status);
                                         const tr = document.createElement('tr');
                                         tr.innerHTML = `
-        <td>${(L.lavador ?? '-').toString().replace(/</g,'&lt;')}</td>
-        <td>${(L.servico ?? '-').toString().replace(/</g,'&lt;')}</td>
-        <td>${(L.veiculo ?? '-').toString().replace(/</g,'&lt;')}</td>
-        <td class="text-end">${fmtBRL(L.valor)}</td>
-        <td>${(L.quando ?? '-').toString().replace(/</g,'&lt;')}</td>
-        <td><span class="badge bg-${cls}">${rot}</span></td>
-      `;
+                                            <td>${(L.lavador ?? '-').toString().replace(/</g,'&lt;')}</td>
+                                            <td>${(L.servico ?? '-').toString().replace(/</g,'&lt;')}</td>
+                                            <td>${(L.veiculo ?? '-').toString().replace(/</g,'&lt;')}</td>
+                                            <td class="text-end">${fmtBRL(L.valor)}</td>
+                                            <td>${(L.quando ?? '-').toString().replace(/</g,'&lt;')}</td>
+                                            <td><span class="badge bg-${cls}">${rot}</span></td>
+                                        `;
                                         tbody.appendChild(tr);
                                     });
 
@@ -577,24 +685,27 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                                         a.className = 'page-link';
                                         a.href = '#';
                                         a.textContent = label;
-                                        if (!disabled && go) a.addEventListener('click', (ev) => {
-                                            ev.preventDefault();
-                                            go();
-                                        });
+                                        if (!disabled && go) {
+                                            a.addEventListener('click', (ev) => {
+                                                ev.preventDefault();
+                                                go();
+                                            });
+                                        }
                                         li.appendChild(a);
                                         return li;
                                     };
 
                                     pager.appendChild(mk('Anterior', current <= 1, false, () => renderPage(current - 1)));
 
-                                    // janela de 5 páginas
                                     const span = 2;
                                     let start = Math.max(1, current - span);
                                     let end = Math.min(pages, current + span);
+
                                     if (end - start < span * 2) {
                                         start = Math.max(1, end - span * 2);
                                         end = Math.min(pages, start + span * 2);
                                     }
+
                                     for (let p = start; p <= end; p++) {
                                         pager.appendChild(mk(String(p), false, p === current, () => renderPage(p)));
                                     }
@@ -602,25 +713,22 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
                                     pager.appendChild(mk('Próxima', current >= pages, false, () => renderPage(current + 1)));
                                 }
 
-                                // Inicializa
                                 renderPage(1);
                             })();
                         </script>
-
-
                     </div>
 
                     <footer class="footer">
                         <div class="footer-body d-flex justify-content-between align-items-center">
-                            <div class="left-panel">© <script>
-                                    document.write(new Date().getFullYear())
-                                </script> <?= htmlspecialchars($empresaNome, ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="right-panel">Desenvolvido por Lucas de S. Correa.</div>
+                            <div class="left-panel">© <script>document.write(new Date().getFullYear())</script> <?= htmlspecialchars($empresaNome, ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="right-panel">Desenvolvido por L&J Soluções Tecnológicas.</div>
                         </div>
                     </footer>
+                </div>
+            </div>
+        </div>
     </main>
 
-    <!-- LIBS -->
     <script src="./assets/js/core/libs.min.js"></script>
     <script src="./assets/js/core/external.min.js"></script>
     <script src="./assets/js/charts/widgetcharts.js"></script>
@@ -631,19 +739,15 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
     <script src="./assets/js/plugins/form-wizard.js"></script>
     <script src="./assets/vendor/aos/dist/aos.js"></script>
     <script src="./assets/js/hope-ui.js" defer></script>
-
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Dados do PHP para JS -->
     <script>
-        window.CHART_DAILY_LABELS = <?= json_encode($dailyLabels,   JSON_UNESCAPED_UNICODE) ?>;
-        window.CHART_DAILY_SERIES = <?= json_encode($dailySeries,   JSON_UNESCAPED_UNICODE) ?>;
+        window.CHART_DAILY_LABELS = <?= json_encode($dailyLabels, JSON_UNESCAPED_UNICODE) ?>;
+        window.CHART_DAILY_SERIES = <?= json_encode($dailySeries, JSON_UNESCAPED_UNICODE) ?>;
         window.CHART_MONTHLY_LABELS = <?= json_encode($monthlyLabels, JSON_UNESCAPED_UNICODE) ?>;
         window.CHART_MONTHLY_SERIES = <?= json_encode($monthlySeries, JSON_UNESCAPED_UNICODE) ?>;
     </script>
 
-    <!-- Gráfico + filtros -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const canvas = document.getElementById("graficoVendas");
@@ -773,5 +877,4 @@ $usa_compacto = (mb_strlen($fat_full) > 12); // limiar ajustável
         });
     </script>
 </body>
-
 </html>

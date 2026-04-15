@@ -9,7 +9,7 @@ error_reporting(E_ALL);
 date_default_timezone_set('America/Manaus');
 
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+  session_start();
 }
 
 require_once __DIR__ . '/../../../lib/auth_guard.php';
@@ -19,11 +19,11 @@ guard_empresa_user(['dono', 'administrativo', 'caixa', 'estoque']);
 $pdo = null;
 $pathCon = realpath(__DIR__ . '/../../../conexao/conexao.php');
 if ($pathCon && file_exists($pathCon)) {
-    require_once $pathCon;
+  require_once $pathCon;
 }
 if (!isset($pdo) || !($pdo instanceof PDO)) {
-    http_response_code(500);
-    die('Conexão indisponível.');
+  http_response_code(500);
+  die('Conexão indisponível.');
 }
 
 require_once __DIR__ . '/../../../lib/util.php';
@@ -32,8 +32,8 @@ $empresaNome = empresa_nome_logada($pdo);
 /* ==== Controller semanal real ==== */
 $ctrlSemana = __DIR__ . '/../controllers/lavagensSemanaController.php';
 if (!file_exists($ctrlSemana)) {
-    http_response_code(500);
-    die('Controller semanal não encontrado.');
+  http_response_code(500);
+  die('Controller semanal não encontrado.');
 }
 require_once $ctrlSemana;
 
@@ -45,82 +45,82 @@ $q       = trim((string)($_GET['q'] ?? ''));
 $lav     = trim((string)($_GET['lav'] ?? ''));
 
 if ($lav === '' || ($weekRef === '' && ($iniGet === '' || $fimGet === ''))) {
-    header('Location: lavagens.php?msg=Par%C3%A2metros%20inv%C3%A1lidos.&err=1');
-    exit;
+  header('Location: lavagens.php?msg=Par%C3%A2metros%20inv%C3%A1lidos.&err=1');
+  exit;
 }
 
 /* ==== Helpers ==== */
 function h($s): string
 {
-    return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+  return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
 function money($v): string
 {
-    return 'R$ ' . number_format((float)$v, 2, ',', '.');
+  return 'R$ ' . number_format((float)$v, 2, ',', '.');
 }
 
 function pct($p): string
 {
-    $p = (float)$p;
-    $s = number_format($p, 2, ',', '.');
-    $s = rtrim(rtrim($s, '0'), ',');
-    return $s . '%';
+  $p = (float)$p;
+  $s = number_format($p, 2, ',', '.');
+  $s = rtrim(rtrim($s, '0'), ',');
+  return $s . '%';
 }
 
 function only_time(string $dt): string
 {
-    $ts = strtotime($dt);
-    return $ts ? date('H:i', $ts) : $dt;
+  $ts = strtotime($dt);
+  return $ts ? date('H:i', $ts) : $dt;
 }
 
 /* ==== ViewModel da semana ==== */
 try {
-    if (!function_exists('lavagens_semana_por_lavador_viewmodel')) {
-        throw new RuntimeException('Função lavagens_semana_por_lavador_viewmodel() não encontrada.');
-    }
+  if (!function_exists('lavagens_semana_por_lavador_viewmodel')) {
+    throw new RuntimeException('Função lavagens_semana_por_lavador_viewmodel() não encontrada.');
+  }
 
-    $args = [
-        'lav' => $lav,
-        'q'   => $q,
-    ];
+  $args = [
+    'lav' => $lav,
+    'q'   => $q,
+  ];
 
-    if ($weekRef !== '') {
-        $args['week_ref'] = $weekRef;
-    } else {
-        $args['ini'] = $iniGet;
-        $args['fim'] = $fimGet;
-    }
+  if ($weekRef !== '') {
+    $args['week_ref'] = $weekRef;
+  } else {
+    $args['ini'] = $iniGet;
+    $args['fim'] = $fimGet;
+  }
 
-    $vmBase = lavagens_semana_por_lavador_viewmodel($pdo, $args);
+  $vmBase = lavagens_semana_por_lavador_viewmodel($pdo, $args);
 
-    if (empty($vmBase['detalhe'])) {
-        throw new RuntimeException('Lavador não encontrado para esta semana.');
-    }
+  if (empty($vmBase['detalhe'])) {
+    throw new RuntimeException('Lavador não encontrado para esta semana.');
+  }
 
-    $det = $vmBase['detalhe'];
-    $period = (string)($vmBase['periodo_label'] ?? '');
-    $weekRefOut = (string)($vmBase['week_ref'] ?? $weekRef);
-    $ini = (string)($vmBase['periodo_ini'] ?? '');
-    $fim = (string)($vmBase['periodo_fim'] ?? '');
-    $iniDate = (string)($vmBase['ini'] ?? '');
-    $fimDate = (string)($vmBase['fim'] ?? '');
+  $det = $vmBase['detalhe'];
+  $period = (string)($vmBase['periodo_label'] ?? '');
+  $weekRefOut = (string)($vmBase['week_ref'] ?? $weekRef);
+  $ini = (string)($vmBase['periodo_ini'] ?? '');
+  $fim = (string)($vmBase['periodo_fim'] ?? '');
+  $iniDate = (string)($vmBase['ini'] ?? '');
+  $fimDate = (string)($vmBase['fim'] ?? '');
 } catch (Throwable $e) {
-    $vmBase = ['ok' => false, 'err' => true, 'msg' => 'Erro: ' . $e->getMessage()];
-    $det = ['lavador' => '—', 'qtd' => 0, 'total' => 0.0, 'items' => []];
-    $period = '';
-    $weekRefOut = $weekRef;
-    $ini = '';
-    $fim = '';
-    $iniDate = $iniGet;
-    $fimDate = $fimGet;
+  $vmBase = ['ok' => false, 'err' => true, 'msg' => 'Erro: ' . $e->getMessage()];
+  $det = ['lavador' => '—', 'qtd' => 0, 'total' => 0.0, 'items' => []];
+  $period = '';
+  $weekRefOut = $weekRef;
+  $ini = '';
+  $fim = '';
+  $iniDate = $iniGet;
+  $fimDate = $fimGet;
 }
 
 /* ==== Empresa ==== */
 $cnpj = preg_replace('/\D+/', '', (string)($_SESSION['user_empresa_cnpj'] ?? $_SESSION['empresa_cnpj'] ?? ''));
 if (!preg_match('/^\d{14}$/', $cnpj)) {
-    http_response_code(403);
-    die('Empresa inválida.');
+  http_response_code(403);
+  die('Empresa inválida.');
 }
 
 /* ==== Resolver lavador ==== */
@@ -130,78 +130,78 @@ $lavCpf = '';
 $lavKey = (string)($det['lav_key'] ?? $lav);
 
 try {
-    if (stripos($lavKey, 'CPF:') === 0) {
-        $lavCpf = preg_replace('/\D+/', '', substr($lavKey, 4));
-    } elseif (stripos($lavKey, 'N:') === 0) {
-        $lavadorNome = trim(substr($lavKey, 2));
-    }
+  if (stripos($lavKey, 'CPF:') === 0) {
+    $lavCpf = preg_replace('/\D+/', '', substr($lavKey, 4));
+  } elseif (stripos($lavKey, 'N:') === 0) {
+    $lavadorNome = trim(substr($lavKey, 2));
+  }
 
-    if ($lavCpf !== '') {
-        $st = $pdo->prepare("
+  if ($lavCpf !== '') {
+    $st = $pdo->prepare("
             SELECT id, nome, cpf
               FROM lavadores_peca
              WHERE empresa_cnpj = :c
                AND REPLACE(REPLACE(REPLACE(cpf,'.',''),'-',''),'/','') = :cpf
              LIMIT 1
         ");
-        $st->execute([':c' => $cnpj, ':cpf' => $lavCpf]);
+    $st->execute([':c' => $cnpj, ':cpf' => $lavCpf]);
 
-        if ($r = $st->fetch(PDO::FETCH_ASSOC)) {
-            $lavadorId = (int)$r['id'];
-            if (!empty($r['nome'])) {
-                $lavadorNome = (string)$r['nome'];
-            }
-        }
+    if ($r = $st->fetch(PDO::FETCH_ASSOC)) {
+      $lavadorId = (int)$r['id'];
+      if (!empty($r['nome'])) {
+        $lavadorNome = (string)$r['nome'];
+      }
     }
+  }
 
-    if ($lavadorId <= 0 && $lavadorNome !== '' && $lavadorNome !== '—') {
-        $st = $pdo->prepare("
+  if ($lavadorId <= 0 && $lavadorNome !== '' && $lavadorNome !== '—') {
+    $st = $pdo->prepare("
             SELECT id, nome, cpf
               FROM lavadores_peca
              WHERE empresa_cnpj = :c
                AND nome = :n
              LIMIT 1
         ");
-        $st->execute([':c' => $cnpj, ':n' => $lavadorNome]);
+    $st->execute([':c' => $cnpj, ':n' => $lavadorNome]);
 
-        if ($r = $st->fetch(PDO::FETCH_ASSOC)) {
-            $lavadorId = (int)$r['id'];
-            if (!empty($r['cpf']) && $lavCpf === '') {
-                $lavCpf = preg_replace('/\D+/', '', (string)$r['cpf']);
-            }
-        }
+    if ($r = $st->fetch(PDO::FETCH_ASSOC)) {
+      $lavadorId = (int)$r['id'];
+      if (!empty($r['cpf']) && $lavCpf === '') {
+        $lavCpf = preg_replace('/\D+/', '', (string)$r['cpf']);
+      }
     }
+  }
 } catch (Throwable $e) {
-    // segue sem vale
+  // segue sem vale
 }
 
 /* ==== Config ==== */
 $cfg = [
-    'utilidades_pct'         => 0.00,
-    'comissao_lavador_pct'   => 0.00,
-    'permitir_publico_qr'    => 1,
-    'imprimir_auto'          => 0,
-    'forma_pagamento_padrao' => 'dinheiro',
-    'obs'                    => '',
+  'utilidades_pct'         => 0.00,
+  'comissao_lavador_pct'   => 0.00,
+  'permitir_publico_qr'    => 1,
+  'imprimir_auto'          => 0,
+  'forma_pagamento_padrao' => 'dinheiro',
+  'obs'                    => '',
 ];
 
 try {
-    $stCfg = $pdo->prepare("
+  $stCfg = $pdo->prepare("
         SELECT utilidades_pct, comissao_lavador_pct, permitir_publico_qr, imprimir_auto, forma_pagamento_padrao, obs
           FROM lavjato_config_peca
          WHERE REPLACE(REPLACE(REPLACE(empresa_cnpj,'.',''),'-',''),'/','') = :c
          LIMIT 1
     ");
-    $stCfg->execute([':c' => $cnpj]);
+  $stCfg->execute([':c' => $cnpj]);
 
-    if ($rowCfg = $stCfg->fetch(PDO::FETCH_ASSOC)) {
-        $cfg['utilidades_pct']         = (float)($rowCfg['utilidades_pct'] ?? 0);
-        $cfg['comissao_lavador_pct']   = (float)($rowCfg['comissao_lavador_pct'] ?? 0);
-        $cfg['permitir_publico_qr']    = (int)($rowCfg['permitir_publico_qr'] ?? 1);
-        $cfg['imprimir_auto']          = (int)($rowCfg['imprimir_auto'] ?? 0);
-        $cfg['forma_pagamento_padrao'] = (string)($rowCfg['forma_pagamento_padrao'] ?? 'dinheiro');
-        $cfg['obs']                    = (string)($rowCfg['obs'] ?? '');
-    }
+  if ($rowCfg = $stCfg->fetch(PDO::FETCH_ASSOC)) {
+    $cfg['utilidades_pct']         = (float)($rowCfg['utilidades_pct'] ?? 0);
+    $cfg['comissao_lavador_pct']   = (float)($rowCfg['comissao_lavador_pct'] ?? 0);
+    $cfg['permitir_publico_qr']    = (int)($rowCfg['permitir_publico_qr'] ?? 1);
+    $cfg['imprimir_auto']          = (int)($rowCfg['imprimir_auto'] ?? 0);
+    $cfg['forma_pagamento_padrao'] = (string)($rowCfg['forma_pagamento_padrao'] ?? 'dinheiro');
+    $cfg['obs']                    = (string)($rowCfg['obs'] ?? '');
+  }
 } catch (Throwable $e) {
 }
 
@@ -220,8 +220,8 @@ $vales = [];
 $valesTotal = 0.0;
 
 try {
-    if ($lavadorId > 0 && $ini !== '' && $fim !== '') {
-        $sqlV = "
+  if ($lavadorId > 0 && $ini !== '' && $fim !== '') {
+    $sqlV = "
             SELECT id, valor, motivo, forma_pagamento, criado_em, criado_por_cpf
               FROM vales_lavadores_peca
              WHERE empresa_cnpj = :c
@@ -230,30 +230,30 @@ try {
              ORDER BY criado_em DESC, id DESC
              LIMIT 200
         ";
-        $st = $pdo->prepare($sqlV);
-        $st->execute([
-            ':c'   => $cnpj,
-            ':l'   => $lavadorId,
-            ':ini' => $ini,
-            ':fim' => $fim,
-        ]);
+    $st = $pdo->prepare($sqlV);
+    $st->execute([
+      ':c'   => $cnpj,
+      ':l'   => $lavadorId,
+      ':ini' => $ini,
+      ':fim' => $fim,
+    ]);
 
-        $vales = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        foreach ($vales as $vv) {
-            $valesTotal += (float)($vv['valor'] ?? 0);
-        }
-        $valesTotal = round($valesTotal, 2);
+    $vales = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($vales as $vv) {
+      $valesTotal += (float)($vv['valor'] ?? 0);
     }
+    $valesTotal = round($valesTotal, 2);
+  }
 } catch (Throwable $e) {
-    $vales = [];
-    $valesTotal = 0.0;
+  $vales = [];
+  $valesTotal = 0.0;
 }
 
 $saldoARepasse = round($aPagarLav - $valesTotal, 2);
 
 /* ==== CSRF ==== */
 if (empty($_SESSION['csrf_vale_lavador'])) {
-    $_SESSION['csrf_vale_lavador'] = bin2hex(random_bytes(32));
+  $_SESSION['csrf_vale_lavador'] = bin2hex(random_bytes(32));
 }
 $csrfVale = $_SESSION['csrf_vale_lavador'];
 
@@ -264,95 +264,95 @@ $msg = (string)($_GET['msg'] ?? '');
 
 /* ==== URLs ==== */
 $backSemana = function () use ($weekRefOut, $iniDate, $fimDate, $q) {
-    $args = [];
-    if ($weekRefOut !== '') {
-        $args['week_ref'] = $weekRefOut;
-    } else {
-        $args['ini'] = $iniDate;
-        $args['fim'] = $fimDate;
-    }
-    if ($q !== '') {
-        $args['q'] = $q;
-    }
-    return 'lavagensSemana.php?' . http_build_query($args);
+  $args = [];
+  if ($weekRefOut !== '') {
+    $args['week_ref'] = $weekRefOut;
+  } else {
+    $args['ini'] = $iniDate;
+    $args['fim'] = $fimDate;
+  }
+  if ($q !== '') {
+    $args['q'] = $q;
+  }
+  return 'lavagensSemana.php?' . http_build_query($args);
 };
 
 $notaArgs = ['lav' => $lav];
 if ($weekRefOut !== '') {
-    $notaArgs['week_ref'] = $weekRefOut;
+  $notaArgs['week_ref'] = $weekRefOut;
 } else {
-    $notaArgs['ini'] = $iniDate;
-    $notaArgs['fim'] = $fimDate;
+  $notaArgs['ini'] = $iniDate;
+  $notaArgs['fim'] = $fimDate;
 }
 if ($q !== '') {
-    $notaArgs['q'] = $q;
+  $notaArgs['q'] = $q;
 }
 $notaUrl = 'lavagensNota.php?' . http_build_query($notaArgs);
 
 /* ==== Agrupamento por dia dentro da semana ==== */
 $valesPorDia = [];
 if (!empty($vales)) {
-    foreach ($vales as $v) {
-        $criadoEm = (string)($v['criado_em'] ?? '');
-        $ts = strtotime($criadoEm);
-        if ($ts === false) {
-            continue;
-        }
-        $diaKey = date('Y-m-d', $ts);
-        if (!isset($valesPorDia[$diaKey])) {
-            $valesPorDia[$diaKey] = [
-                'total' => 0.0,
-                'items' => [],
-            ];
-        }
-        $valesPorDia[$diaKey]['items'][] = $v;
-        $valesPorDia[$diaKey]['total'] += (float)($v['valor'] ?? 0);
+  foreach ($vales as $v) {
+    $criadoEm = (string)($v['criado_em'] ?? '');
+    $ts = strtotime($criadoEm);
+    if ($ts === false) {
+      continue;
     }
+    $diaKey = date('Y-m-d', $ts);
+    if (!isset($valesPorDia[$diaKey])) {
+      $valesPorDia[$diaKey] = [
+        'total' => 0.0,
+        'items' => [],
+      ];
+    }
+    $valesPorDia[$diaKey]['items'][] = $v;
+    $valesPorDia[$diaKey]['total'] += (float)($v['valor'] ?? 0);
+  }
 }
 
 $porDia = [];
 $diasPt = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 foreach ((array)($det['items'] ?? []) as $r) {
-    $quandoStr = (string)($r['quando'] ?? '');
-    $dt = DateTimeImmutable::createFromFormat('d/m/Y H:i', $quandoStr);
-    if (!$dt) {
-        $ts = strtotime($quandoStr);
-        $dt = $ts ? (new DateTimeImmutable())->setTimestamp($ts) : null;
-    }
+  $quandoStr = (string)($r['quando'] ?? '');
+  $dt = DateTimeImmutable::createFromFormat('d/m/Y H:i', $quandoStr);
+  if (!$dt) {
+    $ts = strtotime($quandoStr);
+    $dt = $ts ? (new DateTimeImmutable())->setTimestamp($ts) : null;
+  }
 
-    if (!$dt) {
-        $diaKey = '0000-00-00';
-        $diaLabel = '—';
-    } else {
-        $diaKey = $dt->format('Y-m-d');
-        $dow = (int)$dt->format('w');
-        $diaLabel = ($diasPt[$dow] ?? '') . ', ' . $dt->format('d/m/Y');
-    }
+  if (!$dt) {
+    $diaKey = '0000-00-00';
+    $diaLabel = '—';
+  } else {
+    $diaKey = $dt->format('Y-m-d');
+    $dow = (int)$dt->format('w');
+    $diaLabel = ($diasPt[$dow] ?? '') . ', ' . $dt->format('d/m/Y');
+  }
 
-    if (!isset($porDia[$diaKey])) {
-        $porDia[$diaKey] = [
-            'label'         => $diaLabel,
-            'items'         => [],
-            'total'         => 0.0,
-            'qtd'           => 0,
-            'abertas_total' => 0.0,
-            'abertas_qtd'   => 0,
-        ];
-    }
+  if (!isset($porDia[$diaKey])) {
+    $porDia[$diaKey] = [
+      'label'         => $diaLabel,
+      'items'         => [],
+      'total'         => 0.0,
+      'qtd'           => 0,
+      'abertas_total' => 0.0,
+      'abertas_qtd'   => 0,
+    ];
+  }
 
-    $valor = (float)($r['valor'] ?? 0);
-    $st = strtolower(trim((string)($r['status'] ?? '')));
-    $isAberta = ($st !== 'concluida' && $st !== 'cancelada');
+  $valor = (float)($r['valor'] ?? 0);
+  $st = strtolower(trim((string)($r['status'] ?? '')));
+  $isAberta = ($st !== 'concluida' && $st !== 'cancelada');
 
-    $porDia[$diaKey]['items'][] = $r;
-    $porDia[$diaKey]['qtd']++;
-    $porDia[$diaKey]['total'] += $valor;
+  $porDia[$diaKey]['items'][] = $r;
+  $porDia[$diaKey]['qtd']++;
+  $porDia[$diaKey]['total'] += $valor;
 
-    if ($isAberta) {
-        $porDia[$diaKey]['abertas_qtd']++;
-        $porDia[$diaKey]['abertas_total'] += $valor;
-    }
+  if ($isAberta) {
+    $porDia[$diaKey]['abertas_qtd']++;
+    $porDia[$diaKey]['abertas_total'] += $valor;
+  }
 }
 
 ksort($porDia);
@@ -811,8 +811,10 @@ ksort($porDia);
 
     <footer class="footer">
       <div class="footer-body d-flex justify-content-between align-items-center">
-        <div class="left-panel">© <script>document.write(new Date().getFullYear())</script> <?= h((string)$empresaNome) ?></div>
-        <div class="right-panel">Desenvolvido por Lucas de S. Correa.</div>
+        <div class="left-panel">© <script>
+            document.write(new Date().getFullYear())
+          </script> <?= htmlspecialchars((string)$empresaNome, ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="right-panel">Desenvolvido por L&J Soluções Tecnológicas.</div>
       </div>
     </footer>
   </main>

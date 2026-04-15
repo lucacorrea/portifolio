@@ -113,9 +113,53 @@
         </div>
     </div>
 
+    <!-- ERP Offline Bridge: Session Data Injection -->
+    <script>
+        window.__ERP_SESSION = {
+            usuario_id: <?= json_encode($_SESSION['usuario_id'] ?? null) ?>,
+            usuario_nome: <?= json_encode($_SESSION['usuario_nome'] ?? 'Desconhecido') ?>,
+            filial_id: <?= json_encode($_SESSION['filial_id'] ?? 1) ?>,
+            is_matriz: <?= json_encode($_SESSION['is_matriz'] ?? false) ?>,
+            usuario_nivel: <?= json_encode($_SESSION['usuario_nivel'] ?? 'operador') ?>
+        };
+    </script>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- ERP Offline Bridge (MUST load before other scripts to intercept fetch) -->
+    <script src="public/js/offline-bridge.js?v=<?= time() ?>"></script>
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
+    
+    <!-- Service Worker: Registro v6 (cache persistente) -->
+    <script>
+        (async function() {
+            if (!('serviceWorker' in navigator)) return;
+            
+            try {
+                // Registrar SW v6 — NÃO limpa caches existentes (eles devem persistir!)
+                const reg = await navigator.serviceWorker.register('sw.js');
+                console.log('[ERP] SW v6 registrado:', reg.scope);
+                
+                // Forçar ativação imediata se houver update
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+                reg.addEventListener('updatefound', () => {
+                    const newSW = reg.installing;
+                    if (newSW) {
+                        newSW.addEventListener('statechange', () => {
+                            if (newSW.state === 'activated') {
+                                console.log('[ERP] SW v6 ativado com sucesso!');
+                            }
+                        });
+                    }
+                });
+            } catch (err) {
+                console.warn('[ERP] Erro no setup do SW:', err);
+            }
+        })();
+    </script>
+
 </body>
 </html>
