@@ -1,16 +1,20 @@
 /**
  * =============================================================================
- * ERP Elétrica — Offline Bridge v2 (Modo Híbrido)
+ * ERP Elétrica — Offline Bridge v3 (Modo Híbrido)
  * =============================================================================
  * 
  * PRINCÍPIO FUNDAMENTAL:
  *   Quando ONLINE  → 100% pass-through, ZERO interferência nos fetch()
  *   Quando OFFLINE → Intercepta e usa IndexedDB como fallback
  * 
- * Este módulo NÃO altera nenhum comportamento quando a internet está funcionando.
- * Ele só entra em ação quando detecta que a rede caiu.
+ * MUDANÇAS v3:
+ *   - Inclui estoque.php como página crítica
+ *   - Cache de produtos/clientes é carregado IMEDIATAMENTE na primeira visita
+ *   - Busca offline funciona consultando IndexedDB local
+ *   - Notificações detalhadas ao sincronizar vendas pendentes
+ *   - Dados ficam salvos PERMANENTEMENTE no IndexedDB (não expira)
  * 
- * @version 2.0.0
+ * @version 3.0.0
  * =============================================================================
  */
 
@@ -22,9 +26,9 @@
     // =========================================================================
     const CONFIG = {
         DB_NAME: 'erp_eletrica_offline',
-        DB_VERSION: 2,
+        DB_VERSION: 3,
         HEARTBEAT_INTERVAL: 15000,
-        CACHE_REFRESH_INTERVAL: 300000,
+        CACHE_REFRESH_INTERVAL: 300000, // 5 min
         SYNC_INTERVAL: 10000,
         SYNC_ENDPOINT: 'api_sync.php',
         HEARTBEAT_ENDPOINT: 'api_sync.php?action=heartbeat',
@@ -36,19 +40,16 @@
     const _rawFetch = window.fetch.bind(window);
 
     // =========================================================================
-    // Detectar se estamos numa página relevante (PDV ou Pré-Venda)
-    // Se NÃO estamos, o bridge NÃO inicializa (zero overhead em outras páginas)
+    // Detectar se estamos numa página relevante
     // =========================================================================
     const currentPath = window.location.pathname + window.location.search;
     const isRelevantPage = currentPath.includes('vendas.php') || 
                            currentPath.includes('pre_vendas.php') ||
-                           currentPath.includes('caixa.php');
+                           currentPath.includes('caixa.php') ||
+                           currentPath.includes('estoque.php');
 
     if (!isRelevantPage) {
-        // Página não relevante — NÃO inicializa nada
-        // Apenas inicia o cache em background silenciosamente
         console.log('[ERP-OFFLINE] Página não crítica — bridge inativo');
-        
         // Mesmo em páginas não relevantes, popular o cache silenciosamente
         if (navigator.onLine) {
             setTimeout(() => {
@@ -59,7 +60,7 @@
         return;
     }
 
-    console.log('[ERP-OFFLINE] Página crítica detectada — inicializando bridge');
+    console.log('[ERP-OFFLINE] Página crítica detectada — inicializando bridge v3');
 
     // =========================================================================
     // LOGGER
@@ -107,7 +108,7 @@
                 req.onupgradeneeded = (e) => {
                     const db = e.target.result;
                     
-                    // Limpar stores antigos se existirem (upgrade de v1 para v2)
+                    // Limpar stores antigos se existirem
                     const storeNames = Array.from(db.objectStoreNames);
                     storeNames.forEach(name => db.deleteObjectStore(name));
 
@@ -117,6 +118,7 @@
 
                     const p = db.createObjectStore('cached_products', { keyPath: 'id' });
                     p.createIndex('nome', 'nome');
+                    p.createIndex('codigo', 'codigo');
 
                     const c = db.createObjectStore('cached_clients', { keyPath: 'id' });
                     c.createIndex('nome', 'nome');
@@ -126,6 +128,7 @@
 
                     db.createObjectStore('sync_log', { keyPath: 'id', autoIncrement: true });
                     db.createObjectStore('session_data', { keyPath: 'key' });
+                    db.createObjectStore('cache_meta', { keyPath: 'key' });
                 };
 
                 req.onsuccess = (e) => { this._db = e.target.result; resolve(this._db); };
@@ -200,19 +203,24 @@
         async searchProducts(term) {
             const all = await this.getAll('cached_products');
             const t = term.toLowerCase().trim();
-            return all
+            Logger.log('SEARCH', `Buscando "${t}" em ${all.length} produtos cacheados`);
+            
+            const results = all
                 .filter(p => {
                     const nome = (p.nome || '').toLowerCase();
                     const codigo = (p.codigo || '').toLowerCase();
                     return nome.includes(t) || codigo.includes(t) || String(p.id) === t;
                 })
-                .slice(0, 15)
+                .slice(0, 20)
                 .map(p => ({
                     id: p.id, nome: p.nome, preco_venda: p.preco_venda,
                     unidade: p.unidade || 'UN', imagens: p.imagens || '',
                     codigo: p.codigo || '', type: 'product',
                     stock_qty: p.stock_qty || 0, _offline: true
                 }));
+
+            Logger.log('SEARCH', `Encontrados: ${results.length} resultados para "${t}"`);
+            return results;
         },
 
         async searchClients(term) {
@@ -299,7 +307,6 @@
             window.addEventListener('online', () => this._setOnline());
             window.addEventListener('offline', () => this._setOffline());
 
-            // Heartbeat com delay para não atrapalhar carregamento
             setTimeout(() => {
                 this._heartbeat();
                 setInterval(() => this._heartbeat(), CONFIG.HEARTBEAT_INTERVAL);
@@ -323,7 +330,7 @@
 
         _fail() {
             this._failures++;
-            if (this._failures >= 3 && this._isOnline) this._setOffline();
+            if (this._failures >= 2 && this._isOnline) this._setOffline();
         },
 
         _setOnline() {
@@ -343,249 +350,297 @@
     };
 
     // =========================================================================
-    // NOTIFICATION MANAGER — Indicador visual discreto
+    // NOTIFICATION MANAGER — Indicador visual e Avisos Detalhados
     // =========================================================================
-346:     // =========================================================================
-347:     // NOTIFICATION MANAGER — Indicador visual e Avisos Detalhados
-348:     // =========================================================================
-349:     const NotificationUI = {
-350:         _el: null,
-351: 
-352:         init() {
-353:             const el = document.createElement('div');
-354:             el.id = 'erp-offline-indicator';
-355:             el.style.cssText = `
-356:                 position:fixed; bottom:20px; right:20px; z-index:99999;
-357:                 padding:12px 20px; border-radius:12px; font-size:13px;
-358:                 font-weight:600; font-family:'Inter',sans-serif;
-359:                 display:flex; flex-direction:column; gap:8px;
-360:                 transition:all .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-361:                 pointer-events:auto; opacity:0; transform:translateY(20px);
-362:                 box-shadow:0 10px 25px rgba(0,0,0,0.2); max-width: 320px;
-363:             `;
-364:             document.body.appendChild(el);
-365:             this._el = el;
-366: 
-367:             ConnectionMonitor.onChange(status => {
-368:                 if (status === 'online') {
-369:                     this._show('#10b981', '🟢 Conexão Estabelecida', 'O sistema está online.');
-370:                     setTimeout(() => this._hide(), 4000);
-371:                 } else {
-372:                     this._show('#ef4444', '🔴 Modo Offline Ativado', 'Vendas serão salvas localmente.');
-373:                 }
-374:             });
-375:         },
-376: 
-377:         _show(bg, title, text) {
-378:             if (!this._el) return;
-379:             this._el.style.background = bg;
-380:             this._el.style.color = '#fff';
-381:             this._el.innerHTML = `
-382:                 <div style="display:flex; align-items:center; gap:8px;">
-383:                     <strong>${title}</strong>
-384:                 </div>
-385:                 <div style="font-size:11px; opacity:0.9; font-weight:400;">${text}</div>
-386:             `;
-387:             this._el.style.opacity = '1';
-388:             this._el.style.transform = 'translateY(0)';
-389:         },
-390: 
-391:         _hide() {
-392:             if (!this._el) return;
-393:             this._el.style.opacity = '0';
-394:             this._el.style.transform = 'translateY(20px)';
-395:         },
-396: 
-397:         showSyncProgress(count) {
-398:             this._show('#3b82f6', '🔄 Sincronizando', `Enviando ${count} operação(ões) pendente(s)...`);
-399:         },
-400: 
-401:         showSyncResult(results) {
-402:             const ok = results.filter(r => r.success);
-403:             if (ok.length === 0) return;
-404: 
-405:             let details = ok.map(r => {
-406:                 const icon = r.type === 'sale' ? '💰' : '📝';
-407:                 const label = r.type === 'sale' ? 'Venda' : 'P-Venda';
-408:                 const valor = r.total ? ` (R$ ${parseFloat(r.total).toFixed(2)})` : '';
-409:                 return `<div>${icon} ${label} #${r.real_id || r.real_code}${valor}</div>`;
-410:             }).join('');
-411: 
-412:             this._show('#10b981', '✅ Sincronizado com Sucesso', `
-413:                 <div style="margin-bottom:5px;">${ok.length} operação(ões) enviada(s):</div>
-414:                 <div style="max-height:100px; overflow-y:auto; font-size:10px; background:rgba(0,0,0,0.1); padding:5px; border-radius:4px;">
-415:                     ${details}
-416:                 </div>
-417:             `);
-418:             
-419:             // Som de sucesso (opcional, discreto)
-420:             try { 
-421:                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
-422:                 const osc = ctx.createOscillator();
-423:                 const gain = ctx.createGain();
-424:                 osc.connect(gain); gain.connect(ctx.destination);
-425:                 osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
-426:                 gain.gain.setValueAtTime(0.1, ctx.currentTime);
-427:                 osc.start(); osc.stop(ctx.currentTime + 0.1);
-428:             } catch(e){}
-429: 
-430:             setTimeout(() => this._hide(), 8000);
-431:         },
-432: 
-433:         showPending(count) {
-434:             if (count > 0 && !ConnectionMonitor.isOnline) {
-435:                 this._show('#ef4444', '🔴 Modo Offline', `${count} venda(s) aguardando conexão.`);
-436:             }
-437:         }
-438:     };
-439: 
-440:     // =========================================================================
-441:     // CACHE MANAGER
-442:     // =========================================================================
-443:     const CacheManager = {
-444:         async init() {
-445:             if (ConnectionMonitor.isOnline) {
-446:                 this.refreshAll().catch(() => {});
-447:             }
-448:             setInterval(() => {
-449:                 if (ConnectionMonitor.isOnline) this.refreshAll().catch(() => {});
-450:             }, CONFIG.CACHE_REFRESH_INTERVAL);
-451:         },
-445: 
-446:         async refreshAll() {
-447:             await Promise.allSettled([
-448:                 this._cacheEndpoint(CONFIG.CACHE_PRODUCTS_ENDPOINT, 'cached_products'),
-449:                 this._cacheEndpoint(CONFIG.CACHE_CLIENTS_ENDPOINT, 'cached_clients'),
-450:                 this._cachePreSales()
-451:             ]);
-452:         },
-453: 
-454:         async _cacheEndpoint(url, storeName) {
-455:             try {
-456:                 const res = await _rawFetch(url, { cache: 'no-store' });
-457:                 if (!res.ok) return;
-458:                 const data = await res.json();
-459:                 if (!Array.isArray(data)) return;
-460:                 await OfflineDB.clear(storeName);
-461:                 for (const item of data) await OfflineDB.put(storeName, item);
-462:                 Logger.log('CACHE', `${storeName}: ${data.length} itens cacheados`);
-463:             } catch (e) {
-464:                 Logger.warn('CACHE', `Falha ao cachear ${storeName}`, e);
-465:             }
-466:         },
-467: 
-468:         async _cachePreSales() {
-469:             try {
-470:                 const res = await _rawFetch('pre_vendas.php?action=list_pending', { cache: 'no-store' });
-471:                 if (!res.ok) return;
-472:                 const data = await res.json();
-473:                 if (!Array.isArray(data)) return;
-474:                 await OfflineDB.clear('cached_presales');
-475:                 for (const pv of data) await OfflineDB.put('cached_presales', pv);
-476:                 Logger.log('CACHE', `Pré-vendas: ${data.length} itens cacheados`);
-477:             } catch (e) {
-478:                 Logger.warn('CACHE', 'Falha ao cachear pré-vendas', e);
-479:             }
-480:         },
-481: 
-482:         async cacheSearchResults(products) {
-483:             try {
-484:                 for (const p of products) {
-485:                     if (p.type !== 'pre_sale' && p.id) {
-486:                         await OfflineDB.put('cached_products', p);
-487:                     }
-488:                 }
-489:             } catch (e) { /* silêncio */ }
-490:         }
-491:     };
-492: 
-493:     // =========================================================================
-494:     // SYNC MANAGER
-495:     // =========================================================================
-496:     const SyncManager = {
-497:         _busy: false,
-498: 
-499:         init() {
-500:             ConnectionMonitor.onChange(status => {
-501:                 if (status === 'online') setTimeout(() => this.sync(), 2000);
-502:             });
-503:             setInterval(() => {
-504:                 if (ConnectionMonitor.isOnline && !this._busy) this.sync();
-505:             }, CONFIG.SYNC_INTERVAL);
-506:         },
-507: 
-508:         async sync() {
-509:             if (this._busy || !ConnectionMonitor.isOnline) return;
-510: 
-511:             const all = await OfflineDB.getAll('offline_queue');
-512:             const pending = all.filter(o => o.status === 'pending');
-513:             if (pending.length === 0) return;
-514: 
-515:             this._busy = true;
-516:             Logger.log('SYNC', `Iniciando sincronização de ${pending.length} itens`);
-517:             NotificationUI.showSyncProgress(pending.length);
-518: 
-519:             pending.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-520: 
-521:             const syncResults = [];
-522: 
-523:             for (const op of pending) {
-524:                 try {
-525:                     const res = await _rawFetch(CONFIG.SYNC_ENDPOINT, {
-526:                         method: 'POST',
-527:                         headers: { 'Content-Type': 'application/json' },
-528:                         body: JSON.stringify({
-529:                             action: 'sync_batch',
-530:                             operations: [{
-531:                                 type: op.type, temp_id: op.temp_id,
-532:                                 temp_code: op.temp_code || null,
-533:                                 data: op.data, session: op.session,
-534:                                 created_at: op.created_at,
-535:                                 is_contingencia: op.is_contingencia || false
-536:                             }]
-537:                         })
-538:                     });
-539:                     const result = await res.json();
-540:                     if (result.success && result.results?.[0]?.success) {
-541:                         await OfflineDB.delete('offline_queue', op.id);
-542:                         const serverOp = result.results[0];
-543:                         syncResults.push({
-544:                             success: true,
-545:                             type: op.type,
-546:                             real_id: serverOp.real_id,
-547:                             real_code: serverOp.real_code,
-548:                             total: op.data.total || op.data.valor_total
-549:                         });
-550:                         Logger.log('SYNC', `✅ Sincronizado: ${op.temp_id}`);
-551:                     } else {
-552:                         throw new Error(result.error || result.results?.[0]?.error || 'Erro no servidor');
-553:                     }
-554:                 } catch (err) {
-555:                     op.retry_count = (op.retry_count || 0) + 1;
-556:                     if (op.retry_count >= 5) {
-557:                         op.status = 'error';
-558:                         op.error_message = err.message;
-559:                     }
-560:                     await OfflineDB.put('offline_queue', op);
-561:                     Logger.error('SYNC', `❌ Erro ao sincronizar ${op.temp_id}: ${err.message}`);
-562:                 }
-563:             }
-564: 
-565:             this._busy = false;
-566:             if (syncResults.length > 0) {
-567:                 NotificationUI.showSyncResult(syncResults);
-568:                 CacheManager.refreshAll().catch(() => {});
-569:             } else {
-570:                 const remaining = (await OfflineDB.getAll('offline_queue')).filter(o => o.status === 'pending');
-571:                 if (remaining.length === 0) NotificationUI._hide();
-572:                 else NotificationUI.showPending(remaining.length);
-573:             }
-574:         }
-575:     };
+    const NotificationUI = {
+        _el: null,
 
+        init() {
+            const el = document.createElement('div');
+            el.id = 'erp-offline-indicator';
+            el.style.cssText = `
+                position:fixed; bottom:20px; right:20px; z-index:99999;
+                padding:12px 20px; border-radius:12px; font-size:13px;
+                font-weight:600; font-family:'Inter',sans-serif;
+                display:flex; flex-direction:column; gap:8px;
+                transition:all .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                pointer-events:auto; opacity:0; transform:translateY(20px);
+                box-shadow:0 10px 25px rgba(0,0,0,0.2); max-width:340px;
+            `;
+            document.body.appendChild(el);
+            this._el = el;
+
+            ConnectionMonitor.onChange(status => {
+                if (status === 'online') {
+                    this._show('#10b981', '🟢 Conexão Restabelecida', 'Sincronizando dados pendentes...');
+                    setTimeout(() => this._hide(), 5000);
+                } else {
+                    this._show('#ef4444', '🔴 Modo Offline Ativado', 'Vendas serão salvas localmente e sincronizadas quando a internet voltar.');
+                }
+            });
+        },
+
+        _show(bg, title, text) {
+            if (!this._el) return;
+            this._el.style.background = bg;
+            this._el.style.color = '#fff';
+            this._el.innerHTML = `
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <strong>${title}</strong>
+                </div>
+                <div style="font-size:11px;opacity:0.9;font-weight:400;">${text || ''}</div>
+            `;
+            this._el.style.opacity = '1';
+            this._el.style.transform = 'translateY(0)';
+        },
+
+        _hide() {
+            if (!this._el) return;
+            this._el.style.opacity = '0';
+            this._el.style.transform = 'translateY(20px)';
+        },
+
+        showSyncProgress(count) {
+            this._show('#3b82f6', '🔄 Sincronizando...', `Enviando ${count} operação(ões) pendente(s) ao servidor...`);
+        },
+
+        showSyncResult(results) {
+            const ok = results.filter(r => r.success);
+            if (ok.length === 0) return;
+
+            let totalValor = 0;
+            let details = ok.map(r => {
+                const icon = r.type === 'sale' ? '💰' : '📝';
+                const label = r.type === 'sale' ? 'Venda' : 'Pré-Venda';
+                const valor = parseFloat(r.total || 0);
+                totalValor += valor;
+                return `<div style="padding:2px 0;">${icon} ${label} <b>#${r.real_id || r.real_code}</b> — R$ ${valor.toFixed(2)}</div>`;
+            }).join('');
+
+            this._show('#10b981', `✅ ${ok.length} Operação(ões) Sincronizada(s)`, `
+                <div style="margin-bottom:6px;font-size:12px;">Total: <b>R$ ${totalValor.toFixed(2)}</b></div>
+                <div style="max-height:120px;overflow-y:auto;font-size:11px;background:rgba(0,0,0,0.15);padding:8px;border-radius:6px;">
+                    ${details}
+                </div>
+            `);
+            
+            // Som de notificação discreto
+            try { 
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                osc.start(); osc.stop(ctx.currentTime + 0.3);
+            } catch(e){}
+
+            setTimeout(() => this._hide(), 10000);
+        },
+
+        showPending(count) {
+            if (count > 0 && !ConnectionMonitor.isOnline) {
+                this._show('#ef4444', '🔴 Modo Offline', `${count} operação(ões) aguardando conexão para sincronizar.`);
+            }
+        }
+    };
 
     // =========================================================================
-    // OFFLINE QUEUE — Enfileira operações
+    // CACHE MANAGER — Garante que produtos/clientes estejam no IndexedDB
+    // =========================================================================
+    const CacheManager = {
+        _initialLoadDone: false,
+
+        async init() {
+            // Verificar se já temos dados cacheados
+            const productCount = await OfflineDB.count('cached_products');
+            const clientCount = await OfflineDB.count('cached_clients');
+            
+            Logger.log('CACHE', `Estado inicial: ${productCount} produtos, ${clientCount} clientes no IndexedDB`);
+
+            if (ConnectionMonitor.isOnline) {
+                // Se o cache está vazio OU já se passaram 5min da última atualização,
+                // fazer refresh IMEDIATO (não esperar)
+                if (productCount === 0 || clientCount === 0) {
+                    Logger.log('CACHE', 'Cache vazio — carregando dados AGORA');
+                    await this.refreshAll();
+                } else {
+                    // Cache já tem dados — atualizar em background
+                    this.refreshAll().catch(() => {});
+                }
+                this._initialLoadDone = true;
+            }
+
+            // Refresh periódico
+            setInterval(() => {
+                if (ConnectionMonitor.isOnline) this.refreshAll().catch(() => {});
+            }, CONFIG.CACHE_REFRESH_INTERVAL);
+
+            // Quando voltar online, forçar refresh imediato
+            ConnectionMonitor.onChange(status => {
+                if (status === 'online') {
+                    setTimeout(() => this.refreshAll().catch(() => {}), 3000);
+                }
+            });
+        },
+
+        async refreshAll() {
+            await Promise.allSettled([
+                this._cacheEndpoint(CONFIG.CACHE_PRODUCTS_ENDPOINT, 'cached_products'),
+                this._cacheEndpoint(CONFIG.CACHE_CLIENTS_ENDPOINT, 'cached_clients'),
+                this._cachePreSales()
+            ]);
+        },
+
+        async _cacheEndpoint(url, storeName) {
+            try {
+                const res = await _rawFetch(url, { cache: 'no-store' });
+                if (!res.ok) {
+                    Logger.warn('CACHE', `Resposta não-OK para ${storeName}: ${res.status}`);
+                    return;
+                }
+                const data = await res.json();
+                if (!Array.isArray(data)) {
+                    Logger.warn('CACHE', `Dados inválidos para ${storeName}: não é um array`);
+                    return;
+                }
+                
+                // NÃO limpar se não recebemos dados (evita perder cache)
+                if (data.length === 0) {
+                    Logger.warn('CACHE', `${storeName}: servidor retornou 0 itens, mantendo cache atual`);
+                    return;
+                }
+                
+                await OfflineDB.clear(storeName);
+                for (const item of data) await OfflineDB.put(storeName, item);
+                
+                // Salvar metadados
+                await OfflineDB.put('cache_meta', {
+                    key: storeName + '_last_update',
+                    timestamp: new Date().toISOString(),
+                    count: data.length
+                });
+                
+                Logger.log('CACHE', `✅ ${storeName}: ${data.length} itens cacheados com sucesso`);
+            } catch (e) {
+                Logger.warn('CACHE', `Falha ao cachear ${storeName}: ${e.message}`);
+            }
+        },
+
+        async _cachePreSales() {
+            try {
+                const res = await _rawFetch('pre_vendas.php?action=list_pending', { cache: 'no-store' });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!Array.isArray(data)) return;
+                if (data.length === 0) return;
+                await OfflineDB.clear('cached_presales');
+                for (const pv of data) await OfflineDB.put('cached_presales', pv);
+                Logger.log('CACHE', `Pré-vendas: ${data.length} itens cacheados`);
+            } catch (e) {
+                Logger.warn('CACHE', 'Falha ao cachear pré-vendas', e.message);
+            }
+        },
+
+        async cacheSearchResults(products) {
+            try {
+                for (const p of products) {
+                    if (p.type !== 'pre_sale' && p.id) {
+                        await OfflineDB.put('cached_products', p);
+                    }
+                }
+            } catch (e) { /* silêncio */ }
+        }
+    };
+
+    // =========================================================================
+    // SYNC MANAGER — Sincroniza operações pendentes quando online
+    // =========================================================================
+    const SyncManager = {
+        _busy: false,
+
+        init() {
+            ConnectionMonitor.onChange(status => {
+                if (status === 'online') setTimeout(() => this.sync(), 2000);
+            });
+            setInterval(() => {
+                if (ConnectionMonitor.isOnline && !this._busy) this.sync();
+            }, CONFIG.SYNC_INTERVAL);
+        },
+
+        async sync() {
+            if (this._busy || !ConnectionMonitor.isOnline) return;
+
+            const all = await OfflineDB.getAll('offline_queue');
+            const pending = all.filter(o => o.status === 'pending');
+            if (pending.length === 0) return;
+
+            this._busy = true;
+            Logger.log('SYNC', `Iniciando sincronização de ${pending.length} operação(ões)`);
+            NotificationUI.showSyncProgress(pending.length);
+
+            pending.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+            const syncResults = [];
+
+            for (const op of pending) {
+                try {
+                    const res = await _rawFetch(CONFIG.SYNC_ENDPOINT, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'sync_batch',
+                            operations: [{
+                                type: op.type, temp_id: op.temp_id,
+                                temp_code: op.temp_code || null,
+                                data: op.data, session: op.session,
+                                created_at: op.created_at,
+                                is_contingencia: op.is_contingencia || false
+                            }]
+                        })
+                    });
+                    const result = await res.json();
+                    if (result.success && result.results?.[0]?.success) {
+                        await OfflineDB.delete('offline_queue', op.id);
+                        const serverResult = result.results[0];
+                        syncResults.push({
+                            success: true,
+                            type: op.type,
+                            real_id: serverResult.real_id,
+                            real_code: serverResult.real_code,
+                            total: op.data.total || op.data.valor_total
+                        });
+                        Logger.log('SYNC', `✅ ${op.type} sincronizado: ${op.temp_id} → #${serverResult.real_id || serverResult.real_code}`);
+                    } else {
+                        throw new Error(result.error || result.results?.[0]?.error || 'Erro no servidor');
+                    }
+                } catch (err) {
+                    op.retry_count = (op.retry_count || 0) + 1;
+                    if (op.retry_count >= 5) {
+                        op.status = 'error';
+                        op.error_message = err.message;
+                    }
+                    await OfflineDB.put('offline_queue', op);
+                    Logger.error('SYNC', `❌ Falha ao sincronizar ${op.temp_id}: ${err.message}`);
+                }
+            }
+
+            this._busy = false;
+            
+            if (syncResults.length > 0) {
+                NotificationUI.showSyncResult(syncResults);
+                CacheManager.refreshAll().catch(() => {});
+            } else {
+                const remaining = (await OfflineDB.getAll('offline_queue')).filter(o => o.status === 'pending');
+                if (remaining.length === 0) NotificationUI._hide();
+                else NotificationUI.showPending(remaining.length);
+            }
+        }
+    };
+
+    // =========================================================================
+    // OFFLINE QUEUE — Enfileira operações para sync posterior
     // =========================================================================
     const OfflineQueue = {
         _counter: 0,
@@ -621,7 +676,7 @@
                 retry_count: 0, is_contingencia: isContingencia
             });
 
-            Logger.log('QUEUE', `Venda enfileirada: ${tempId}, R$${data.total}`);
+            Logger.log('QUEUE', `Venda enfileirada: ${tempId}, R$ ${data.total}`);
             const count = (await OfflineDB.getAll('offline_queue')).filter(o => o.status === 'pending').length;
             NotificationUI.showPending(count);
 
@@ -658,8 +713,8 @@
                 const url = typeof input === 'string' ? input : (input?.url || String(input));
                 const method = (init?.method || 'GET').toUpperCase();
 
-                // REGRA 1: Só intercepta vendas.php e pre_vendas.php
-                if (!url.includes('vendas.php') && !url.includes('pre_vendas.php')) {
+                // REGRA 1: Só intercepta vendas.php, pre_vendas.php e estoque.php
+                if (!url.includes('vendas.php') && !url.includes('pre_vendas.php') && !url.includes('estoque.php')) {
                     return _rawFetch(input, init);
                 }
 
@@ -670,10 +725,9 @@
 
                 // REGRA 3: Se ONLINE → 100% pass-through, ZERO modificação
                 if (ConnectionMonitor.isOnline) {
-                    // Chama o fetch ORIGINAL com os argumentos ORIGINAIS, sem nenhuma alteração
                     const result = _rawFetch(input, init);
 
-                    // Em background: cachear resultados de busca (não afeta a resposta)
+                    // Em background: cachear resultados de busca
                     if (method === 'GET' && url.includes('action=search') && !url.includes('search_clients')) {
                         result.then(res => {
                             res.clone().json().then(data => {
@@ -689,7 +743,7 @@
                 return self._handleOffline(url, method, init);
             };
 
-            Logger.log('INTERCEPT', 'Interceptor ativo (pass-through quando online)');
+            Logger.log('INTERCEPT', 'Interceptor v3 ativo (pass-through quando online)');
         },
 
         async _handleOffline(url, method, init) {
@@ -709,6 +763,7 @@
                 case 'search': {
                     const term = urlObj.searchParams.get('term') || '';
                     if (term.length < 2) return this._json([]);
+                    
                     const products = await OfflineDB.searchProducts(term);
                     const pvs = await OfflineDB.getPreSales(term);
                     const pvResults = pvs.map(pv => ({
@@ -716,7 +771,10 @@
                         preco_venda: pv.valor_total, unidade: 'UN', imagens: '',
                         codigo: pv.codigo, type: 'pre_sale', _offline: true
                     }));
-                    return this._json([...pvResults, ...products].slice(0, 15));
+                    
+                    const combined = [...pvResults, ...products].slice(0, 20);
+                    Logger.log('INTERCEPT', `Search offline: "${term}" → ${combined.length} resultados`);
+                    return this._json(combined);
                 }
                 case 'search_clients': {
                     const term = urlObj.searchParams.get('term') || '';
@@ -738,12 +796,18 @@
                 case 'check_client_completeness':
                     return this._json({ is_complete: true, missing: [] });
                 default:
+                    Logger.warn('INTERCEPT', `Ação GET não suportada offline: ${action}`);
                     return this._json({ error: 'offline', message: `'${action}' indisponível offline` }, 503);
             }
         },
 
         async _offlinePOST(url, action, init) {
-            const body = init?.body ? JSON.parse(init.body) : {};
+            let body = {};
+            try {
+                body = init?.body ? JSON.parse(init.body) : {};
+            } catch (e) {
+                Logger.error('INTERCEPT', 'Erro ao parsear body do POST:', e.message);
+            }
 
             switch (action) {
                 case 'checkout':
@@ -816,7 +880,10 @@
                 if (ConnectionMonitor.isOnline) setTimeout(() => SyncManager.sync(), 3000);
             }
 
-            Logger.log('INIT', `✅ Bridge v2 ativo | ${ConnectionMonitor.isOnline ? 'ONLINE' : 'OFFLINE'}`);
+            // Log status do cache
+            const pCount = await OfflineDB.count('cached_products');
+            const cCount = await OfflineDB.count('cached_clients');
+            Logger.log('INIT', `✅ Bridge v3 ativo | ${ConnectionMonitor.isOnline ? 'ONLINE' : 'OFFLINE'} | ${pCount} produtos | ${cCount} clientes`);
         } catch (err) {
             console.error('[ERP-OFFLINE] ERRO na inicialização:', err);
         }
@@ -828,6 +895,7 @@
         getLogs: (n = 50) => OfflineDB.getAll('sync_log').then(l => l.slice(-n)),
         productCount: () => OfflineDB.count('cached_products'),
         clientCount: () => OfflineDB.count('cached_clients'),
+        searchProducts: (term) => OfflineDB.searchProducts(term),
         forceSync: () => SyncManager.sync(),
         forceCache: () => CacheManager.refreshAll(),
         isOnline: () => ConnectionMonitor.isOnline,
@@ -840,7 +908,7 @@
             await OfflineDB.clear('sync_log');
             console.log('[ERP-OFFLINE] Tudo limpo');
         },
-        version: '2.0.0'
+        version: '3.0.0'
     };
 
     if (document.readyState === 'loading') {
