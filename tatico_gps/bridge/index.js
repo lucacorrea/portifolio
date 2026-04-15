@@ -44,12 +44,15 @@ async function connectToWhatsApp() {
 
         if (connection === 'close') {
             const shouldReconnect = (lastDisconnect.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Conexão fechada devido a ', lastDisconnect.error, ', tentando reconectar: ', shouldReconnect);
+            console.log('Conexão fechada. Tentando reconectar:', shouldReconnect);
+            
             connectionStatus = 'disconnected';
             qrCodeBase64 = null;
-            if (shouldReconnect) {
-                connectToWhatsApp();
-            }
+            connectedNumber = null;
+
+            // Mesmo que tenha sido logout proposital, reiniciamos o loop 
+            // para que um NOVO QR Code seja gerado para a página.
+            connectToWhatsApp();
         } else if (connection === 'open') {
             console.log('Conexão aberta com sucesso!');
             connectionStatus = 'connected';
