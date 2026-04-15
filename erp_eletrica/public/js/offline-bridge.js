@@ -30,7 +30,7 @@
         HEARTBEAT_INTERVAL: 15000,
         CACHE_REFRESH_INTERVAL: 300000, // 5 min
         SYNC_INTERVAL: 10000,
-        SYNC_ENDPOINT: 'api_sync.php',
+        SYNC_ENDPOINT: 'api_sync.php?action=sync_batch',
         HEARTBEAT_ENDPOINT: 'api_sync.php?action=heartbeat',
         CACHE_PRODUCTS_ENDPOINT: 'api_sync.php?action=cache_products',
         CACHE_CLIENTS_ENDPOINT: 'api_sync.php?action=cache_clients',
@@ -600,6 +600,14 @@
                             }]
                         })
                     });
+
+                    // Validar se a resposta é JSON (evita erros se a sessão expirou e o servidor retornou HTML)
+                    const contentType = res.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        Logger.error('SYNC', 'Resposta inválida do servidor (sessão expirada?)');
+                        throw new Error('Erro na sincronização: Sessão expirada ou erro no servidor. Por favor, recarregue a página.');
+                    }
+
                     const result = await res.json();
                     if (result.success && result.results?.[0]?.success) {
                         await OfflineDB.delete('offline_queue', op.id);
