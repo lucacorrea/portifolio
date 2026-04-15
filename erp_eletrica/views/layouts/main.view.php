@@ -120,7 +120,14 @@
             usuario_nome: <?= json_encode($_SESSION['usuario_nome'] ?? 'Desconhecido') ?>,
             filial_id: <?= json_encode($_SESSION['filial_id'] ?? 1) ?>,
             is_matriz: <?= json_encode($_SESSION['is_matriz'] ?? false) ?>,
-            usuario_nivel: <?= json_encode($_SESSION['usuario_nivel'] ?? 'operador') ?>
+            usuario_nivel: <?= json_encode($_SESSION['usuario_nivel'] ?? 'operador') ?>,
+            local_server_url: <?= json_encode(defined('LOCAL_SERVER_URL') ? LOCAL_SERVER_URL : null) ?>,
+            is_local_server: <?= json_encode(defined('IS_LOCAL_SERVER') && IS_LOCAL_SERVER) ?>,
+            db_connection: <?= json_encode(
+                class_exists('\App\Config\Database') 
+                    ? \App\Config\Database::getInstance()->getConnectionType() 
+                    : 'remote'
+            ) ?>
         };
     </script>
 
