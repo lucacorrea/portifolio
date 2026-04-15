@@ -182,7 +182,12 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
                                                 <td><span class="badge <?= $badgeClass ?>"><?= ucfirst(h($env['status_envio'])) ?></span></td>
                                                 <td>R$ <?= number_format((float)($env['mensalidade'] ?? 0), 2, ',', '.') ?></td>
                                                 <td class="text-center">
-                                                    <button class="btn btn-sm btn-outline-primary">Ver</button>
+                                                    <button class="btn btn-sm btn-outline-primary btn-ver-msg" 
+                                                        data-msg="<?= h($env['mensagem']) ?>"
+                                                        data-cliente="<?= h($env['cliente_nome'] ?? $env['telefone']) ?>"
+                                                        data-data="<?= date('d/m/Y H:i', strtotime($env['criado_em'])) ?>">
+                                                        Ver
+                                                    </button>
                                                 </td>
                                             </tr>
                                             <?php 
@@ -208,35 +213,73 @@ function h($str) { return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8'); }
         <div class="layout-overlay layout-menu-toggle"></div>
     </div>
 
+    <!-- Modal Enviar Mensagem -->
     <div class="modal fade" id="modalMensagem" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
+                <form id="formEnviarManual">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Enviar Mensagem Manual</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Cliente</label>
+                                <select name="cliente_id" id="manual_cliente_id" class="form-select" required>
+                                    <option value="">Selecione um cliente...</option>
+                                    <?php
+                                    $stmtCl = $pdo->query("SELECT id, nome, telefone, whatsapp_principal FROM clientes WHERE status = 'Ativo' ORDER BY nome ASC");
+                                    while($cl = $stmtCl->fetch()):
+                                        $tel = $cl['whatsapp_principal'] ?: $cl['telefone'];
+                                    ?>
+                                        <option value="<?= $cl['id'] ?>" data-tel="<?= h($tel) ?>"><?= h($cl['nome']) ?> (<?= h($tel) ?>)</option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo de Mensagem</label>
+                                <select name="tipo" id="manual_tipo" class="form-select">
+                                    <option value="manual">Manual / Livre</option>
+                                    <option value="cobranca">Cobrança Direta</option>
+                                    <option value="aviso">Aviso Geral</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Mensagem</label>
+                                <textarea name="mensagem" id="manual_mensagem" class="form-control" rows="5" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnEnviarManual">
+                            <i class="bx bx-send me-1"></i> Enviar Agora
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ver Detalhes -->
+    <div class="modal fade" id="modalVer" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Enviar Mensagem</h5><button class="btn-close"
-                        data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title">Conteúdo da Mensagem</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label">Cliente</label><select class="form-select">
-                                <option>João da Silva</option>
-                                <option>Maria Oliveira</option>
-                            </select></div>
-                        <div class="col-md-6"><label class="form-label">Tipo</label><select class="form-select">
-                                <option>10 dias antes</option>
-                                <option>7 dias antes</option>
-                                <option>5 dias antes</option>
-                                <option>3 dias antes</option>
-                                <option>Bloqueio</option>
-                                <option>Manual</option>
-                            </select></div>
-                        <div class="col-12"><label class="form-label">Mensagem</label><textarea class="form-control"
-                                rows="5">Olá, sua mensalidade do Tático GPS está próxima do vencimento. Segue a chave PIX para pagamento.</textarea>
-                        </div>
+                    <div class="mb-3">
+                        <strong>Cliente:</strong> <span id="ver_cliente">-</span><br>
+                        <strong>Data:</strong> <span id="ver_data">-</span>
+                    </div>
+                    <div class="p-3 bg-light rounded border" id="ver_texto" style="white-space: pre-wrap;">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button class="btn btn-primary">Enviar Agora</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
