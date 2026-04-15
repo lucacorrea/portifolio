@@ -131,21 +131,50 @@
     <script src="public/js/corporate.js?v=<?= time() ?>"></script>
     <script src="script.js?v=<?= time() ?>"></script>
     
-    <!-- Service Worker: Limpa caches antigos -->
+    <!-- Service Worker: Limpeza nuclear + registro v4 -->
     <script>
-        if ('serviceWorker' in navigator) {
-            // Registrar SW v3 (auto-limpeza) para substituir versões antigas
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => { reg.update(); })
-                .catch(() => {});
+        (async function() {
+            if (!('serviceWorker' in navigator)) return;
             
-            // Safety net: limpar caches diretamente do main thread
-            if ('caches' in window) {
-                caches.keys().then(names => {
-                    names.forEach(name => caches.delete(name));
+            try {
+                // PASSO 1: Desregistrar TODOS os service workers antigos
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const reg of registrations) {
+                    await reg.unregister();
+                    console.log('[ERP] SW antigo removido:', reg.scope);
+                }
+
+                // PASSO 2: Limpar TODOS os caches
+                if ('caches' in window) {
+                    const names = await caches.keys();
+                    for (const name of names) {
+                        await caches.delete(name);
+                    }
+                    if (names.length > 0) console.log('[ERP] Caches limpos:', names.length);
+                }
+
+                // PASSO 3: Registrar o novo SW v4
+                const reg = await navigator.serviceWorker.register('sw.js');
+                console.log('[ERP] SW v4 registrado:', reg.scope);
+                
+                // Forçar ativação imediata
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+                reg.addEventListener('updatefound', () => {
+                    const newSW = reg.installing;
+                    if (newSW) {
+                        newSW.addEventListener('statechange', () => {
+                            if (newSW.state === 'activated') {
+                                console.log('[ERP] SW v4 ativado com sucesso!');
+                            }
+                        });
+                    }
                 });
+            } catch (err) {
+                console.warn('[ERP] Erro no setup do SW:', err);
             }
-        }
+        })();
     </script>
 </body>
 </html>

@@ -207,3 +207,10 @@ async function cacheFirstAsset(request) {
         return new Response('', { status: 503 });
     }
 }
+
+// ===== MENSAGENS =====
+self.addEventListener('message', (event) => {
+    if (event.data?.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
