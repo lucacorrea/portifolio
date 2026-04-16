@@ -478,6 +478,43 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Cadastro Rápido de Cliente -->
+<div class="modal fade" id="modalQuickClient" tabindex="-1" style="z-index: 1080;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-black border-0">
+                <h6 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i>Cadastro Rápido de Cliente</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Nome Completo / Razão Social</label>
+                    <input type="text" id="qc_nome" class="form-control" placeholder="Ex: João da Silva">
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">CPF / CNPJ</label>
+                        <input type="text" id="qc_cpf_cnpj" class="form-control" placeholder="000.000.000-00">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Telefone</label>
+                        <input type="text" id="qc_telefone" class="form-control" placeholder="(00) 00000-0000">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Endereço (Opcional, mas recomendado)</label>
+                    <input type="text" id="qc_endereco" class="form-control" placeholder="Rua, Número, Bairro...">
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-primary fw-bold py-3 shadow-sm" onclick="salvarQuickClient()">
+                        CADASTRAR E SELECIONAR
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
             </div>
         </div>
     </div>
@@ -840,6 +877,7 @@ function abrirModalQuickClient() {
     document.getElementById('qc_nome').value = '';
     document.getElementById('qc_cpf_cnpj').value = '';
     document.getElementById('qc_telefone').value = '';
+    document.getElementById('qc_endereco').value = '';
     new bootstrap.Modal(document.getElementById('modalQuickClient')).show();
 }
 
@@ -847,6 +885,21 @@ async function salvarQuickClient() {
     const nome = document.getElementById('qc_nome').value;
     const cpf_cnpj = document.getElementById('qc_cpf_cnpj').value;
     const telefone = document.getElementById('qc_telefone').value;
+    const endereco = document.getElementById('qc_endereco').value;
+
+    if (!nome) return alert('O nome é obrigatório.');
+
+    const btn = event.currentTarget || document.querySelector('button[onclick="salvarQuickClient()"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+
+    try {
+        const res = await fetch('vendas.php?action=quick_register_client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, cpf_cnpj, telefone, endereco })
+        });
 
     if (!nome) return alert('O nome é obrigatório.');
 
