@@ -366,10 +366,11 @@ class Product extends BaseModel {
         }
     }
 
-        // Busca o maior código numérico, mas limita a 10000 para ignorar códigos de barras ou lixos
+    public function getNextCode() {
+        // Ignora códigos com mais de 6 dígitos para não pegar códigos de barras como sequência
         $sql = "SELECT codigo FROM {$this->table} 
                 WHERE codigo REGEXP '^[0-9]+$' 
-                AND CAST(codigo AS UNSIGNED) < 10000
+                AND LENGTH(codigo) <= 6
                 ORDER BY CAST(codigo AS UNSIGNED) DESC LIMIT 1";
         try {
             $stmt = $this->db->query($sql);
