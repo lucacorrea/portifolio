@@ -1,0 +1,7 @@
+Acesso do admin:
+
+URL de login: /saas/admin/login
+URL do dashboard: /saas/admin/dashboard
+URL de logout: /saas/logout
+
+O arquivo index.html da landing page foi mantido sem alteração.

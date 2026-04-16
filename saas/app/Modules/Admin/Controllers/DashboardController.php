@@ -11,7 +11,7 @@ final class DashboardController
             $_SESSION['auth']['guard'] !== 'admin'
         ) {
             flash_set('error', 'Faça login para acessar o painel.');
-            redirect('/');
+            redirect('/admin/login');
         }
 
         $admin = $_SESSION['auth'];

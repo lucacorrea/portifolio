@@ -452,7 +452,7 @@ function e(string $value): string
         </div>
 
         <nav class="nav">
-            <a href="/admin/dashboard" class="nav-item active">Dashboard</a>
+            <a href="<?= e(url('/admin/dashboard')) ?>" class="nav-item active">Dashboard</a>
             <a href="#" class="nav-item">Contadores</a>
             <a href="#" class="nav-item">Planos</a>
             <a href="#" class="nav-item">Assinaturas</a>
@@ -462,7 +462,7 @@ function e(string $value): string
         </nav>
 
         <div class="sidebar-footer">
-            <a class="logout-link" href="/logout">Sair</a>
+            <a class="logout-link" href="<?= e(url('/logout')) ?>">Sair</a>
         </div>
     </aside>
 

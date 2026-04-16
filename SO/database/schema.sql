@@ -109,3 +109,4 @@ INSERT INTO usuarios (nome, usuario, senha, nivel) VALUES
 ('Suporte Técnico', 'suporte', '$2y$10$0Aw4ie.N1y1atk5dLMohYOVQGOKS04fQK95ggn6HN2AGMhvGqbv2O', 'SUPORTE'),
 ('Prefeito Administrativo', 'admin', '$2y$10$0Aw4ie.N1y1atk5dLMohYOVQGOKS04fQK95ggn6HN2AGMhvGqbv2O', 'ADMIN'),
 ('Recepcionista Central', 'func', '$2y$10$0Aw4ie.N1y1atk5dLMohYOVQGOKS04fQK95ggn6HN2AGMhvGqbv2O', 'FUNCIONARIO');
+INSERT INTO itens_aquisicao (aquisicao_id, produto, quantidade, valor_unitario) VALUES

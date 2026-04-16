@@ -65,12 +65,35 @@ final class Router
     private function extractPath(string $uri): string
     {
         $path = parse_url($uri, PHP_URL_PATH) ?: '/';
+        $base = $this->detectBasePath();
+
+        if ($base !== '' && str_starts_with($path, $base)) {
+            $path = substr($path, strlen($base)) ?: '/';
+        }
+
         return $this->normalize($path);
+    }
+
+    private function detectBasePath(): string
+    {
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $scriptDir = str_replace('\\', '/', dirname($scriptName));
+        $scriptDir = rtrim($scriptDir, '/');
+
+        if ($scriptDir === '' || $scriptDir === '.') {
+            return '';
+        }
+
+        if (str_ends_with($scriptDir, '/public')) {
+            $scriptDir = substr($scriptDir, 0, -7);
+        }
+
+        return rtrim($scriptDir, '/');
     }
 
     private function normalize(string $path): string
     {
-        if ($path === '') {
+        if ($path === '' || $path === '/') {
             return '/';
         }
 

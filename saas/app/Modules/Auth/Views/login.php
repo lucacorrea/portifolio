@@ -411,7 +411,7 @@ declare(strict_types=1);
                     </div>
                 <?php endif; ?>
 
-                <form action="<?= htmlspecialchars(url('/login'), ENT_QUOTES, 'UTF-8') ?>" method="POST">
+                <form action="<?= htmlspecialchars(url('/admin/login'), ENT_QUOTES, 'UTF-8') ?>" method="POST">
                     <div class="form-group">
                         <label class="form-label" for="email">E-mail</label>
                         <input
