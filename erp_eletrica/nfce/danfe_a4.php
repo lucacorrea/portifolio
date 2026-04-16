@@ -243,7 +243,7 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
         /* Header Fix */
         .header-main { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 2px; }
         .header-main td { border: 1px solid #000; vertical-align: top; padding: 2px; overflow: hidden; }
-        .emit-logo { width: 85px; text-align: center; vertical-align: middle !important; }
+        .emit-logo { width: 85px; text-align: center; vertical-align: middle !important; background: #222; padding: 5px !important; border-radius: 2px; }
         .emit-info { font-size: 8px; line-height: 1.1; }
         .danfe-box { width: 85px; text-align: center; }
         .barcode-box { width: 220px; text-align: center; vertical-align: middle !important; }
