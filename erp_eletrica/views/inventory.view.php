@@ -243,6 +243,21 @@
                         <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
                         <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome">
                     </div>
+                    
+                    <!-- Campo de Foto -->
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold">Foto do Produto</label>
+                        <div class="d-flex align-items-center gap-3 p-3 border rounded bg-light border-dashed">
+                            <div id="image-preview-container" class="bg-white rounded border d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; overflow: hidden;">
+                                <img id="edit_preview" src="" class="img-fluid d-none">
+                                <i id="preview-icon" class="fas fa-image text-muted opacity-50 fa-2x"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <input type="file" name="foto" id="edit_foto" class="form-control form-control-sm" accept="image/*" onchange="previewImage(this)">
+                                <small class="text-muted extra-small">Formatos aceitos: JPG, PNG. Tamanho máx: 2MB.</small>
+                            </div>
+                        </div>
+                    </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Unidade de Medida *</label>
                         <select name="unidade" class="form-select shadow-sm" id="edit_unidade" required onchange="updateFormVisibility()">
@@ -471,9 +486,36 @@ function editProduct(product) {
     document.getElementById('edit_cfop_interno').value = product.cfop_interno || '5102';
     document.getElementById('edit_cfop_externo').value = product.cfop_externo || '6102';
     document.getElementById('edit_icms').value = product.aliquota_icms || 0;
+    
+    // Preview da Imagem
+    const preview = document.getElementById('edit_preview');
+    const icon = document.getElementById('preview-icon');
+    if (product.imagens) {
+        preview.src = 'public/uploads/produtos/' + product.imagens;
+        preview.classList.remove('d-none');
+        icon.classList.add('d-none');
+    } else {
+        preview.src = '';
+        preview.classList.add('d-none');
+        icon.classList.remove('d-none');
+    }
 
     document.querySelector('#newProductModal .modal-title').innerText = 'Editar Material';
     modal.show();
+}
+
+function previewImage(input) {
+    const preview = document.getElementById('edit_preview');
+    const icon = document.getElementById('preview-icon');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.remove('d-none');
+            icon.classList.add('d-none');
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
 }
 
 function deleteProduct(id) {
