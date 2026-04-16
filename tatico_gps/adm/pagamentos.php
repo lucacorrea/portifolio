@@ -1,4 +1,11 @@
 <?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/php/auth/authGuard.php';
+exigir_login();
+
+$usuario = usuario_logado();
+
 require_once __DIR__ . '/php/conexao.php';
 
 function h($str)

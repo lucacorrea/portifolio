@@ -1,3 +1,12 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/php/auth/authGuard.php';
+exigir_login();
+
+$usuario = usuario_logado();
+
+?>
 <!doctype html>
 <html lang="pt-BR" class="layout-menu-fixed layout-compact" data-assets-path="../assets/"
   data-template="vertical-menu-template-free">

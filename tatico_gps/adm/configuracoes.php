@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/php/auth/authGuard.php';
+exigir_login();
+
+$usuario = usuario_logado();
+
 session_start();
 
 ini_set('display_errors', '1');
