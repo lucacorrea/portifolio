@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/php/auth/authGuard.php';
@@ -285,11 +286,13 @@ function h($str)
             </div>
           </div>
 
-          <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
         </div>
       </div>
     </div>
+
+    <?php require_once __DIR__ . '/includes/footer.php'; ?>
 
     <div class="layout-overlay layout-menu-toggle"></div>
   </div>
