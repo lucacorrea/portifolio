@@ -524,67 +524,75 @@ class SalesController extends BaseController {
             // --- NOVO: Lógica de Cancelamento Fiscal (SEFAZ) ---
             $isFiscal = ($sale['tipo_nota'] === 'fiscal');
             if ($isFiscal) {
-                // Prepara ambiente para carregar as bibliotecas de NF-e
-                $nfceDir = dirname(__DIR__, 3) . '/nfce';
-                if (file_exists($nfceDir . '/vendor/autoload.php')) {
-                    require_once $nfceDir . '/vendor/autoload.php';
-                }
-                
-                // Define venda_id globalmente para que o config.php da NF-e carregue a filial correta
-                $_REQUEST['venda_id'] = $id;
-                require_once $nfceDir . '/config.php';
-                $configNFe = require $nfceDir . '/nfce_config.php';
-                
-                // Carrega certificado
-                $pfx = file_get_contents(PFX_PATH);
-                $cert = \NFePHP\Common\Certificate::readPfx($pfx, PFX_PASSWORD);
-                
-                $tools = new \NFePHP\NFe\Tools(json_encode($configNFe), $cert);
-                $tools->model('65');
-
-                // Busca protocolo da emissão original
-                $stP = $db->prepare("SELECT protocolo, chave FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') ORDER BY id DESC LIMIT 1");
-                $stP->execute([$id]);
-                $nfceEmitida = $stP->fetch(\PDO::FETCH_ASSOC);
-
-                if ($nfceEmitida) {
-                    $chave = trim((string)$nfceEmitida['chave']);
-                    $protocolo = trim((string)$nfceEmitida['protocolo']);
-                    $xJust = trim($motivo ?: 'Cancelamento de venda por solicitacao do cliente');
-
-                    // Validações antes de enviar para SEFAZ
-                    if (empty($chave) || strlen($chave) !== 44) {
-                        throw new \Exception("Chave de acesso inválida ou ausente ({$chave}).");
+                try {
+                    // Prepara ambiente para carregar as bibliotecas de NF-e
+                    $nfceDir = dirname(__DIR__, 3) . '/nfce';
+                    if (file_exists($nfceDir . '/vendor/autoload.php')) {
+                        require_once $nfceDir . '/vendor/autoload.php';
                     }
-                    if (empty($protocolo)) {
-                        throw new \Exception("Número de protocolo de autorização ausente.");
+                    
+                    // Define venda_id globalmente para que o config.php da NF-e carregue a filial correta
+                    $_REQUEST['venda_id'] = $id;
+                    if (file_exists($nfceDir . '/config.php')) {
+                        require_once $nfceDir . '/config.php';
                     }
-                    if (strlen($xJust) < 15) {
-                        $xJust = str_pad($xJust, 15, '.');
+                    
+                    $configNFe = require $nfceDir . '/nfce_config.php';
+                    
+                    // Validação do Certificado
+                    if (!defined('PFX_PATH') || !is_file(PFX_PATH)) {
+                        throw new \Exception("Certificado digital não configurado ou não encontrado.");
                     }
 
-                    // Envia evento de cancelamento para a SEFAZ
-                    try {
+                    // Carrega certificado
+                    $pfx = file_get_contents(PFX_PATH);
+                    $cert = \NFePHP\Common\Certificate::readPfx($pfx, PFX_PASSWORD);
+                    
+                    $tools = new \NFePHP\NFe\Tools(json_encode($configNFe), $cert);
+                    $tools->model('65');
+
+                    // Busca protocolo da emissão original
+                    $stP = $db->prepare("SELECT protocolo, chave FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') ORDER BY id DESC LIMIT 1");
+                    $stP->execute([$id]);
+                    $nfceEmitida = $stP->fetch(\PDO::FETCH_ASSOC);
+
+                    if ($nfceEmitida) {
+                        $chave = trim((string)$nfceEmitida['chave']);
+                        $protocolo = trim((string)$nfceEmitida['protocolo']);
+                        $xJust = trim($motivo ?: 'Cancelamento de venda por solicitacao do cliente');
+
+                        // Validações antes de enviar para SEFAZ
+                        if (empty($chave) || strlen($chave) !== 44) {
+                            throw new \Exception("Chave de acesso inválida para cancelamento ({$chave}).");
+                        }
+                        if (empty($protocolo)) {
+                            throw new \Exception("Venda autorizada mas sem número de protocolo no banco local.");
+                        }
+                        if (mb_strlen($xJust) < 15) {
+                            $xJust = str_pad($xJust, 15, '.');
+                        }
+
+                        // Envia evento de cancelamento para a SEFAZ
                         $response = $tools->sefazCancela($chave, $xJust, $protocolo);
                         $std = new \NFePHP\NFe\Common\Standardize();
                         $res = $std->toStd($response);
                         
                         $cStat = (string)($res->retEvento->infEvento->cStat ?? $res->cStat ?? '');
+                        $xMotivo = (string)($res->retEvento->infEvento->xMotivo ?? $res->xMotivo ?? 'Erro desconhecido na SEFAZ');
                         
-                        // 135: Evento registrado e vinculado a NF-e, 136: Evento registrado mas não vinculado, 155: Cancelamento homologado fora de prazo
-                        $approved = in_array($cStat, ['135', '136', '155']);
+                        // 135/136: Evento registrado, 101: Cancelado, 128: Lote processado, 155: Fora do prazo
+                        $approved = in_array($cStat, ['135', '136', '101', '128', '155']);
                         
                         if (!$approved) {
-                            $errorMsg = $res->retEvento->infEvento->xMotivo ?? $res->xMotivo ?? 'Erro desconhecido na SEFAZ';
-                            throw new \Exception("SEFAZ Rejeitou o cancelamento: " . $errorMsg);
+                            throw new \Exception("SEFAZ ({$cStat}): " . $xMotivo);
                         }
-                    } catch (\Exception $sefazError) {
-                        throw new \Exception("Erro na comunicação SEFAZ: " . $sefazError->getMessage());
-                    }
 
-                    // Atualiza status da NFC-e na nossa tabela
-                    $stN = $db->prepare("UPDATE nfce_emitidas SET status_sefaz = '101', mensagem = 'Cancelamento homologado (Evento 135)' WHERE venda_id = ?");
-                    $stN->execute([$id]);
+                        // Atualiza status da NFC-e na nossa tabela
+                        $stN = $db->prepare("UPDATE nfce_emitidas SET status_sefaz = '101', mensagem = 'Cancelamento homologado ({$cStat})' WHERE venda_id = ?");
+                        $stN->execute([$id]);
+                    }
+                } catch (\Throwable $sefazError) {
+                    throw new \Exception("Falha na SEFAZ: " . $sefazError->getMessage());
                 }
             }
 
