@@ -168,7 +168,7 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap');
         
-        body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; padding: 10px; background: #f0f0f0; }
+        body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; padding: 10px; background: #f0f0f0; color: #000; }
         .page { width: 19cm; min-height: 27cm; padding: 0.5cm; background: #fff; margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
         .box { border: 1px solid #000; margin-bottom: 2px; padding: 2px; overflow: hidden; }
         .no-top { border-top: none; }
@@ -180,21 +180,21 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
         .center { text-align: center; }
         .right { text-align: right; }
         .bold { font-weight: bold; }
-        .title { font-size: 6px; text-transform: uppercase; margin-bottom: 1px; color: #000; font-weight: bold; }
-        .val { font-size: 9px; min-height: 11px; text-transform: uppercase; }
+        .title { font-size: 7px; text-transform: uppercase; margin-bottom: 2px; color: #000; font-weight: bold; }
+        .val { font-size: 10px; min-height: 12px; text-transform: uppercase; }
         
-        .header-main { height: 110px; }
-        .emit-logo { width: 2.5cm; border-right: 1px solid #000; display: flex; align-items: center; justify-content: center; padding: 5px; }
-        .emit-info { flex: 3.5; padding: 2px; font-size: 9px; }
-        .danfe-box { width: 3.5cm; border-left: 1px solid #000; border-right: 1px solid #000; padding: 2px; }
-        .barcode-box { flex: 5; padding: 2px; }
+        .header-main { height: 110px; border-bottom: 2px solid #000; }
+        .emit-logo { width: 3.0cm; display: flex; align-items: center; justify-content: center; padding: 5px; }
+        .emit-info { flex: 6; padding: 5px; font-size: 10px; border-left: 1px solid #000; }
+        .danfe-box { width: 3.5cm; border-left: 1px solid #000; border-right: 1px solid #000; padding: 2px; display: flex; flex-direction: column; justify-content: space-between; }
+        .barcode-box { flex: 5; padding: 5px; display: flex; flex-direction: column; justify-content: center; }
         
         .table { width: 100%; border-collapse: collapse; margin-top: 2px; border: 1px solid #000; }
-        .table th { border: 1px solid #000; background: #fff; font-size: 6px; padding: 2px; font-weight: bold; }
-        .table td { border: 1px solid #000; padding: 1px 2px; font-size: 8px; }
+        .table th { border: 1px solid #000; background: #f9f9f9; font-size: 7px; padding: 3px; font-weight: bold; }
+        .table td { border: 1px solid #000; padding: 2px 3px; font-size: 9px; line-height: 1.2; }
         
-        .barcode { font-family: 'Libre Barcode 128', cursive; font-size: 40px; margin: 0; line-height: 40px; }
-        .qr-box { width: 3cm; height: 3cm; border: 1px solid #000; margin: 10px auto; padding: 5px; }
+        .barcode { font-family: 'Libre Barcode 128', cursive; font-size: 48px; margin: 0; line-height: 48px; }
+        .access-key { font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
         
         @media print {
             @page { size: A4; margin: 0.5cm; }
@@ -202,14 +202,14 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
             .page { 
                 box-shadow: none; margin: 0; width: 100%; padding: 0;
                 display: flex; flex-direction: column; 
-                height: 28cm; /* Explicit height for A4 print */
+                height: 28cm;
             }
             .no-print { display: none; }
         }
     </style>
 </head>
 <body>
-    <div class="no-print" style="text-align:center; padding: 15px; position: sticky; top: 0; z-index: 100;">
+    <div class="no-print" style="text-align:center; padding: 15px; position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
         <button onclick="window.print()" style="padding:10px 30px; font-weight:bold; cursor:pointer; background: #1a73e8; color: #fff; border: none; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">IMPRIMIR DANFE</button>
         <button onclick="window.close()" style="padding:10px 20px; margin-left:10px; cursor:pointer; border: 1px solid #ccc; border-radius: 5px;">Fechar</button>
     </div>
@@ -218,16 +218,15 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
         <!-- Recebemos de ... -->
         <div class="flex" style="margin-bottom: 5px;">
             <div class="box f1" style="border-right: none;">
-                <div class="val" style="font-size: 7px;">RECEBEMOS DE <?= $emit['xNome'] ?> OS PRODUTOS / SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADO AO LADO</div>
+                <div class="val" style="font-size: 8px;">RECEBEMOS DE <?= $emit['xNome'] ?> OS PRODUTOS / SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADO AO LADO</div>
             </div>
-            <div class="box center" style="width: 140px;">
-                <div class="bold" style="font-size: 11px;">NF-e</div>
-                <div class="bold">Nº <?= $ide['nNF'] ?></div>
-                <div class="bold">SÉRIE <?= $ide['serie'] ?></div>
+            <div class="box center" style="width: 150px;">
+                <div class="bold" style="font-size: 12px;">NF-e</div>
+                <div class="bold">Nº <?= $ide['nNF'] ?><br>SÉRIE <?= $ide['serie'] ?></div>
             </div>
         </div>
         <div class="flex" style="margin-top: -7px; margin-bottom: 10px;">
-            <div class="box" style="width: 100px; border-right: none;">
+            <div class="box" style="width: 120px; border-right: none;">
                 <div class="title">DATA DE RECEBIMENTO</div>
                 <div class="val"></div>
             </div>
@@ -237,15 +236,15 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
             </div>
         </div>
 
-        <!-- Header -->
-        <div class="box flex header-main">
+        <!-- Header Redesenhado -->
+        <div class="box flex header-main" style="padding: 0;">
             <div class="emit-logo">
-                <!-- Se tiver logo fixa no sistema, pode usar aqui -->
-                <img src="/assets/img/logo.png" style="max-width: 100%; max-height: 100%;" onerror="this.style.display='none'">
+                <img src="public/img/logo_premium.png" style="max-width: 100%; max-height: 100%;" onerror="this.src='logo_sistema_erp_eletrica.png'">
             </div>
             <div class="emit-info">
-                <div class="bold" style="font-size: 11px;"><?= $emit['xNome'] ?></div>
-                <div style="margin-top:5px;">
+                <div class="bold" style="font-size: 13px; margin-bottom: 3px;"><?= $emit['xNome'] ?></div>
+                <div class="bold text-muted" style="font-size: 10px; margin-bottom: 5px;"><?= $emit['xFant'] ?></div>
+                <div style="font-size: 10px; line-height: 1.4;">
                     <?= $emit['xLgr'] ?>, <?= $emit['nro'] ?> <?= $emit['xCpl'] ?><br>
                     <?= $emit['xBairro'] ?> - CEP: <?= $emit['CEP'] ?><br>
                     <?= $emit['xMun'] ?> - <?= $emit['UF'] ?><br>
@@ -253,16 +252,20 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
                 </div>
             </div>
             <div class="danfe-box center">
-                <div class="bold" style="font-size: 12px;">DANFE</div>
-                <div style="font-size: 6px; margin-bottom: 5px;">Documento Auxiliar da Nota Fiscal Eletrônica</div>
-                <div class="flex center" style="border: 1px solid #000; margin: 0 5px; height: 35px;">
-                    <div class="f1 center" style="border-right: 1px solid #000;">
-                        <span class="title">0 - ENTRADA</span><br>
-                        <span class="title">1 - SAÍDA</span><br>
-                        <span class="bold" style="font-size: 12px;"><?= $ide['tpNF'] ?></span>
+                <div class="bold" style="font-size: 14px; margin-top: 5px;">DANFE</div>
+                <div style="font-size: 7px; margin-bottom: 10px;">Documento Auxiliar da<br>Nota Fiscal Eletrônica</div>
+                
+                <div class="center" style="border: 1px solid #000; margin: 0 5px; height: 30px; display: flex;">
+                    <div style="width: 50%; font-size: 7px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: center;">
+                        <span>0-ENTRADA</span>
+                        <span>1-SAÍDA</span>
+                    </div>
+                    <div style="width: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">
+                        <?= $ide['tpNF'] ?>
                     </div>
                 </div>
-                <div class="bold" style="font-size: 10px; margin-top: 5px;">
+
+                <div class="bold" style="font-size: 11px; margin-bottom: 5px;">
                     Nº <?= $ide['nNF'] ?><br>
                     SÉRIE <?= $ide['serie'] ?><br>
                     FOLHA 1 / 1
@@ -272,14 +275,13 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
                 <div class="center barcode">
                     *<?= $ide['chave'] ?>*
                 </div>
-                <div class="center" style="margin-top: 2px;">
-                    <span class="title">CHAVE DE ACESSO</span><br>
-                    <span class="bold" style="font-size: 9px;"><?= $fmtChave($ide['chave']) ?></span>
+                <div class="center access-key">
+                    <span class="title" style="display:block; margin: 0;">CHAVE DE ACESSO</span>
+                    <span class="bold"><?= $fmtChave($ide['chave']) ?></span>
                 </div>
-                <div class="center" style="font-size: 7px; margin-top: 5px;">
+                <div class="center" style="font-size: 8px; margin-top: 8px; line-height: 1.2;">
                     Consulta de autenticidade no portal nacional da NF-e<br>
-                    <span class="bold">www.nfe.fazenda.gov.br/portal</span><br>
-                    ou no site da Sefaz Autorizada
+                    <b>www.nfe.fazenda.gov.br/portal</b> ou no site da Sefaz Autorizada
                 </div>
             </div>
         </div>
