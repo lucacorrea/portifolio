@@ -32,6 +32,22 @@ if (!function_exists('normalize_spaces')) {
     }
 }
 
+if (!function_exists('format_date_br')) {
+    function format_date_br($value): string
+    {
+        if (empty($value)) {
+            return '-';
+        }
+
+        $ts = strtotime((string)$value);
+        if ($ts === false) {
+            return '-';
+        }
+
+        return date('d/m/Y', $ts);
+    }
+}
+
 if (!function_exists('secretaria_sigla')) {
     function secretaria_sigla(string $nome): string
     {
@@ -168,13 +184,7 @@ $sql_secretarias = "
     SELECT
         s.id AS secretaria_id,
         s.nome AS secretaria_nome,
-        COALESCE(
-            GROUP_CONCAT(
-                DISTINCT NULLIF(TRIM(o.justificativa), '')
-                SEPARATOR ' | '
-            ),
-            ''
-        ) AS justificativa,
+        MAX(a.criado_em) AS data_referencia,
         COALESCE(SUM(ia.quantidade), 0) AS total_qtd,
         COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS total_valor
     FROM itens_aquisicao ia
@@ -375,10 +385,10 @@ if ($export === 'excel') {
     <body>
         <table class="sheet">
             <colgroup>
-                <col style="width: 38%;">
-                <col style="width: 27%;">
-                <col style="width: 15%;">
+                <col style="width: 40%;">
                 <col style="width: 20%;">
+                <col style="width: 15%;">
+                <col style="width: 25%;">
             </colgroup>
 
             <tr>
@@ -421,7 +431,7 @@ if ($export === 'excel') {
             </tr>
             <tr class="thead">
                 <th>Secretaria</th>
-                <th>Observação</th>
+                <th>Data</th>
                 <th>Qtd Itens</th>
                 <th>Valor Total</th>
             </tr>
@@ -430,9 +440,7 @@ if ($export === 'excel') {
                 <?php foreach ($relatorio_secretarias as $row): ?>
                     <tr>
                         <td class="left"><?php echo h($row['secretaria_nome']); ?></td>
-                        <td class="left">
-                            <?php echo !empty($row['justificativa']) ? h($row['justificativa']) : 'Sem justificativa'; ?>
-                        </td>
+                        <td class="center"><?php echo format_date_br($row['data_referencia']); ?></td>
                         <td class="center"><?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?></td>
                         <td class="right"><?php echo format_money($row['total_valor']); ?></td>
                     </tr>
