@@ -70,6 +70,7 @@ class ClientController extends BaseController {
                 'nome' => $data['nome'],
                 'cpf_cnpj' => $data['cpf_cnpj'] ?? null,
                 'telefone' => $data['telefone'] ?? null,
+                'endereco' => $data['endereco'] ?? null,
                 'filial_id' => $_SESSION['filial_id'] ?? 1
             ]);
 
