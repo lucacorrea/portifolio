@@ -256,6 +256,7 @@ if ($is_print) {
                         copiedAqPages.forEach(p => doc.addPage(p));
 
                         // 2. BUSCAR E MESCLAR OS ANEXOS (OFÍCIOS REAIS)
+                        let hasAnyAnexo = false;
                         if (rec.anexos && rec.anexos.length > 0) {
                             for (let j = 0; j < rec.anexos.length; j++) {
                                 let caminhoAnexo = rec.anexos[j];
@@ -271,6 +272,7 @@ if ($is_print) {
                                         const anexoDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
                                         const copiedAnexoPages = await doc.copyPages(anexoDoc, anexoDoc.getPageIndices());
                                         copiedAnexoPages.forEach(p => doc.addPage(p));
+                                        hasAnyAnexo = true;
                                     } else if(['jpg','jpeg','png'].includes(ext)) {
                                         let image;
                                         if (ext === 'png') {
@@ -292,12 +294,33 @@ if ($is_print) {
                                             width: imgDims.width,
                                             height: imgDims.height,
                                         });
+                                        hasAnyAnexo = true;
                                     }
                                 } catch(e) {
                                     console.log("Erro ao anexar arquivo", caminhoAnexo, e);
                                     // Ignora arquivo faltante e segue
                                 }
                             }
+                        }
+
+                        // Caso nenhum ofício tenha sido encontrado (não anexaram ou fetch falhou)
+                        if (!hasAnyAnexo) {
+                            const fontBold = await doc.embedFont(window.PDFLib.StandardFonts.HelveticaBold);
+                            const fontRegular = await doc.embedFont(window.PDFLib.StandardFonts.Helvetica);
+                            const pageFallback = doc.addPage([793, 1122]);
+                            
+                            // Y começa de baixo para cima no PDFLib
+                            pageFallback.drawText('ARQUIVO DO OFICIO NÃO LOCALIZADO NO SISTEMA', { 
+                                x: 100, y: 750, size: 18, font: fontBold, color: window.PDFLib.rgb(0.8, 0.1, 0.1) 
+                            });
+                            
+                            pageFallback.drawText('Não foi feito o upload do PDF deste Ofício, ou o arquivo foi excluído.', { 
+                                x: 100, y: 710, size: 14, font: fontRegular, color: window.PDFLib.rgb(0.3, 0.3, 0.3) 
+                            });
+                            
+                            pageFallback.drawText('Ref. Aquisição: ' + rec.numero, { 
+                                x: 100, y: 680, size: 12, font: fontRegular, color: window.PDFLib.rgb(0.5, 0.5, 0.5) 
+                            });
                         }
                     }
 
