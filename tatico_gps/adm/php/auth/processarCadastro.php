@@ -34,7 +34,7 @@ function limpar(string $valor): string
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    redirecionar('../../auth-register-basic.php', [
+    redirecionar('../../criarConta.php', [
         'erro' => 'metodo_invalido'
     ]);
 }
@@ -55,31 +55,31 @@ $terms    = isset($_POST['terms']);
 |--------------------------------------------------------------------------
 */
 if ($username === '' || $email === '' || $password === '') {
-    redirecionar('../../auth-register-basic.php', [
+    redirecionar('../../criarConta.php', [
         'erro' => 'preencha_todos_os_campos'
     ]);
 }
 
 if (mb_strlen($username) < 3 || mb_strlen($username) > 100) {
-    redirecionar('../../auth-register-basic.php', [
+    redirecionar('../../criarConta.php', [
         'erro' => 'username_invalido'
     ]);
 }
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    redirecionar('../../auth-register-basic.php', [
+    redirecionar('../../criarConta.php', [
         'erro' => 'email_invalido'
     ]);
 }
 
 if (strlen($password) < 6) {
-    redirecionar('../../auth-register-basic.php', [
+    redirecionar('../../criarConta.php', [
         'erro' => 'senha_fraca'
     ]);
 }
 
 if (!$terms) {
-    redirecionar('../../auth-register-basic.php', [
+    redirecionar('../../criarConta.php', [
         'erro' => 'aceite_os_termos'
     ]);
 }
@@ -97,7 +97,7 @@ try {
     ]);
 
     if ($stmtEmail->fetch()) {
-        redirecionar('../../auth-register-basic.php', [
+        redirecionar('../../criarConta.php', [
             'erro' => 'email_ja_cadastrado'
         ]);
     }
@@ -114,7 +114,7 @@ try {
     ]);
 
     if ($stmtUser->fetch()) {
-        redirecionar('../../auth-register-basic.php', [
+        redirecionar('../../criarConta.php', [
             'erro' => 'usuario_ja_cadastrado'
         ]);
     }
@@ -157,11 +157,11 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    redirecionar('../../auth-register-basic.php', [
+    redirecionar('../../criarConta.php', [
         'erro' => 'erro_banco'
     ]);
 } catch (Throwable $e) {
-    redirecionar('../../auth-register-basic.php', [
+    redirecionar('../../criarConta.php', [
         'erro' => 'erro_interno'
     ]);
 }
