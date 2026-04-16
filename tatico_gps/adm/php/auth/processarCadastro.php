@@ -3,14 +3,8 @@ declare(strict_types=1);
 
 session_start();
 
-
 require_once __DIR__ . '/../conexao.php';
 
-/*
-|--------------------------------------------------------------------------
-| FUNÇÕES AUXILIARES
-|--------------------------------------------------------------------------
-*/
 function redirecionar(string $destino, array $params = []): never
 {
     $url = $destino;
@@ -28,68 +22,51 @@ function limpar(string $valor): string
     return trim($valor);
 }
 
-/*
-|--------------------------------------------------------------------------
-| ACEITA SOMENTE POST
-|--------------------------------------------------------------------------
-*/
+$paginaCadastro = '../../criarConta.php';
+$paginaInicial  = '../../index.php';
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    redirecionar('../../criarConta.php', [
+    redirecionar($paginaCadastro, [
         'erro' => 'metodo_invalido'
     ]);
 }
 
-/*
-|--------------------------------------------------------------------------
-| RECEBENDO DADOS
-|--------------------------------------------------------------------------
-*/
 $username = limpar((string)($_POST['username'] ?? ''));
 $email    = limpar((string)($_POST['email'] ?? ''));
 $password = (string)($_POST['password'] ?? '');
 $terms    = isset($_POST['terms']);
 
-/*
-|--------------------------------------------------------------------------
-| VALIDAÇÕES
-|--------------------------------------------------------------------------
-*/
 if ($username === '' || $email === '' || $password === '') {
-    redirecionar('../../criarConta.php', [
+    redirecionar($paginaCadastro, [
         'erro' => 'preencha_todos_os_campos'
     ]);
 }
 
 if (mb_strlen($username) < 3 || mb_strlen($username) > 100) {
-    redirecionar('../../criarConta.php', [
+    redirecionar($paginaCadastro, [
         'erro' => 'username_invalido'
     ]);
 }
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    redirecionar('../../criarConta.php', [
+    redirecionar($paginaCadastro, [
         'erro' => 'email_invalido'
     ]);
 }
 
 if (strlen($password) < 6) {
-    redirecionar('../../criarConta.php', [
+    redirecionar($paginaCadastro, [
         'erro' => 'senha_fraca'
     ]);
 }
 
 if (!$terms) {
-    redirecionar('../../criarConta.php', [
+    redirecionar($paginaCadastro, [
         'erro' => 'aceite_os_termos'
     ]);
 }
 
 try {
-    /*
-    |--------------------------------------------------------------------------
-    | VERIFICA SE JÁ EXISTE USUÁRIO COM MESMO E-MAIL
-    |--------------------------------------------------------------------------
-    */
     $sqlEmail = "SELECT id FROM usuarios WHERE email = :email LIMIT 1";
     $stmtEmail = $pdo->prepare($sqlEmail);
     $stmtEmail->execute([
@@ -97,16 +74,11 @@ try {
     ]);
 
     if ($stmtEmail->fetch()) {
-        redirecionar('../../criarConta.php', [
+        redirecionar($paginaCadastro, [
             'erro' => 'email_ja_cadastrado'
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | VERIFICA SE JÁ EXISTE USUÁRIO COM MESMO USERNAME
-    |--------------------------------------------------------------------------
-    */
     $sqlUser = "SELECT id FROM usuarios WHERE username = :username LIMIT 1";
     $stmtUser = $pdo->prepare($sqlUser);
     $stmtUser->execute([
@@ -114,11 +86,10 @@ try {
     ]);
 
     if ($stmtUser->fetch()) {
-        redirecionar('../../criarConta.php', [
+        redirecionar($paginaCadastro, [
             'erro' => 'usuario_ja_cadastrado'
         ]);
     }
-
 
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
@@ -126,11 +97,6 @@ try {
         throw new RuntimeException('Falha ao gerar hash da senha.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | INSERE NO BANCO
-    |--------------------------------------------------------------------------
-    */
     $sqlInsert = "INSERT INTO usuarios (username, email, senha)
                   VALUES (:username, :email, :senha)";
 
@@ -143,25 +109,24 @@ try {
 
     $usuarioId = (int)$pdo->lastInsertId();
 
-    /*
-    |--------------------------------------------------------------------------
-    | SALVA SESSÃO APÓS CADASTRO
-    |--------------------------------------------------------------------------
-    */
+    session_regenerate_id(true);
+
     $_SESSION['usuario_id'] = $usuarioId;
     $_SESSION['username']   = $username;
     $_SESSION['email']      = $email;
 
-    redirecionar('../../index.php', [
+    redirecionar($paginaInicial, [
         'sucesso' => 'cadastro_realizado'
     ]);
 
 } catch (PDOException $e) {
-    redirecionar('../../criarConta.php', [
+    redirecionar($paginaCadastro, [
         'erro' => 'erro_banco'
     ]);
 } catch (Throwable $e) {
-    redirecionar('../../criarConta.php', [
+    redirecionar($paginaCadastro, [
         'erro' => 'erro_interno'
     ]);
 }
+
+?>

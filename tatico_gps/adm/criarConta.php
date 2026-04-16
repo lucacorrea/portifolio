@@ -1,5 +1,29 @@
-<!doctype html>
+<?php
+declare(strict_types=1);
 
+$erro = $_GET['erro'] ?? '';
+$sucesso = $_GET['sucesso'] ?? '';
+
+$mensagemErro = match ($erro) {
+    'metodo_invalido' => 'Método de envio inválido.',
+    'preencha_todos_os_campos' => 'Preencha todos os campos.',
+    'username_invalido' => 'O nome de usuário deve ter entre 3 e 100 caracteres.',
+    'email_invalido' => 'Digite um e-mail válido.',
+    'senha_fraca' => 'A senha deve ter no mínimo 6 caracteres.',
+    'aceite_os_termos' => 'Você precisa aceitar os termos.',
+    'email_ja_cadastrado' => 'Este e-mail já está cadastrado.',
+    'usuario_ja_cadastrado' => 'Este nome de usuário já está em uso.',
+    'erro_banco' => 'Erro ao salvar no banco de dados.',
+    'erro_interno' => 'Ocorreu um erro interno.',
+    default => ''
+};
+
+$mensagemSucesso = match ($sucesso) {
+    'cadastro_realizado' => 'Cadastro realizado com sucesso.',
+    default => ''
+};
+?>
+<!doctype html>
 <html
   lang="pt-BR"
   class="layout-wide customizer-hide"
@@ -16,10 +40,8 @@
 
   <meta name="description" content="Página de cadastro do sistema Tático GPS." />
 
-  <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href="../assets/img/favicon/favicon.ico" />
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -27,33 +49,23 @@
     rel="stylesheet" />
 
   <link rel="stylesheet" href="../assets/vendor/fonts/iconify-icons.css" />
-
-  <!-- Core CSS -->
   <link rel="stylesheet" href="../assets/vendor/css/core.css" />
   <link rel="stylesheet" href="../assets/css/demo.css" />
-
-  <!-- Vendors CSS -->
   <link rel="stylesheet" href="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
-
-  <!-- Page CSS -->
   <link rel="stylesheet" href="../assets/vendor/css/pages/page-auth.css" />
 
-  <!-- Helpers -->
   <script src="../assets/vendor/js/helpers.js"></script>
   <script src="../assets/js/config.js"></script>
 </head>
 
 <body>
-  <!-- Conteúdo -->
   <div class="container-xxl">
     <div class="authentication-wrapper authentication-basic container-p-y">
       <div class="authentication-inner">
-        <!-- Card de Cadastro -->
         <div class="card px-sm-6 px-0">
           <div class="card-body">
-            <!-- Logo -->
             <div class="app-brand justify-content-center mb-6">
-              <a href="index.html" class="app-brand-link gap-2">
+              <a href="./index.php" class="app-brand-link gap-2">
                 <span class="app-brand-logo demo">
                   <span class="text-primary">
                     <svg
@@ -108,12 +120,29 @@
                 <span class="app-brand-text demo text-heading fw-bold">Tático GPS</span>
               </a>
             </div>
-            <!-- /Logo -->
 
             <h4 class="mb-1">Crie sua conta</h4>
             <p class="mb-6">Gerencie rastreamentos, clientes e operações com mais praticidade.</p>
 
-            <form id="formAuthentication" class="mb-6" action="./php/auth/processarCadastro.php">
+            <?php if ($mensagemErro !== ''): ?>
+              <div class="alert alert-danger" role="alert">
+                <?= htmlspecialchars($mensagemErro, ENT_QUOTES, 'UTF-8') ?>
+              </div>
+            <?php endif; ?>
+
+            <?php if ($mensagemSucesso !== ''): ?>
+              <div class="alert alert-success" role="alert">
+                <?= htmlspecialchars($mensagemSucesso, ENT_QUOTES, 'UTF-8') ?>
+              </div>
+            <?php endif; ?>
+
+            <form
+              id="formAuthentication"
+              class="mb-6"
+              action="./php/auth/processarCadastro.php"
+              method="POST"
+              autocomplete="off">
+
               <div class="mb-6">
                 <label for="username" class="form-label">Nome de usuário</label>
                 <input
@@ -122,6 +151,7 @@
                   id="username"
                   name="username"
                   placeholder="Digite seu nome de usuário"
+                  required
                   autofocus />
               </div>
 
@@ -132,7 +162,8 @@
                   class="form-control"
                   id="email"
                   name="email"
-                  placeholder="Digite seu e-mail" />
+                  placeholder="Digite seu e-mail"
+                  required />
               </div>
 
               <div class="form-password-toggle">
@@ -144,6 +175,7 @@
                     class="form-control"
                     name="password"
                     placeholder="••••••••••••"
+                    required
                     aria-describedby="password" />
                   <span class="input-group-text cursor-pointer">
                     <i class="icon-base bx bx-hide"></i>
@@ -153,7 +185,13 @@
 
               <div class="my-7">
                 <div class="form-check mb-0">
-                  <input class="form-check-input" type="checkbox" id="terms-conditions" name="terms" />
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="terms-conditions"
+                    name="terms"
+                    value="1"
+                    required />
                   <label class="form-check-label" for="terms-conditions">
                     Concordo com a
                     <a href="javascript:void(0);">política de privacidade e os termos de uso</a>
@@ -166,18 +204,16 @@
 
             <p class="text-center">
               <span>Já tem uma conta?</span>
-              <a href="auth-login-basic.html">
+              <a href="./auth-login-basic.php">
                 <span>Entrar</span>
               </a>
             </p>
           </div>
         </div>
-        <!-- /Card de Cadastro -->
       </div>
     </div>
   </div>
 
-  <!-- Core JS -->
   <script src="../assets/vendor/libs/jquery/jquery.js"></script>
   <script src="../assets/vendor/libs/popper/popper.js"></script>
   <script src="../assets/vendor/js/bootstrap.js"></script>
@@ -185,5 +221,4 @@
   <script src="../assets/vendor/js/menu.js"></script>
   <script src="../assets/js/main.js"></script>
 </body>
-
 </html>
