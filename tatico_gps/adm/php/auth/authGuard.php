@@ -62,7 +62,7 @@ function exigir_login(): void
 | FUNÇÃO OPCIONAL: IMPEDIR ACESSO À TELA DE LOGIN QUANDO JÁ ESTIVER LOGADO
 |--------------------------------------------------------------------------
 */
-function impedir_login_se_logado(string $destino = '../../dashboard.php'): void
+function impedir_login_se_logado(string $destino = '../dashboard.php'): void
 {
     $usuarioId = $_SESSION['usuario_id'] ?? null;
     $logado    = $_SESSION['logado'] ?? false;
