@@ -298,9 +298,16 @@
                     </td>
                     <td class="fw-bold">R$ ${s.valor_formatado}</td>
                     <td>
-                        <span class="badge ${getStatusBadge(s.status)}">
-                            ${s.status.toUpperCase()}
-                        </span>
+                        <div class="d-flex flex-column align-items-start gap-1">
+                            <span class="badge ${getStatusBadge(s.status)}">
+                                ${s.status.toUpperCase()}
+                            </span>
+                            ${(s.status === 'cancelado' && s.tipo_nota === 'fiscal' && s.nf_status !== '101') ? 
+                                `<span class="badge bg-warning text-dark extra-small" title="Esta venda foi cancelada internamente mas a NFC-e ainda consta como ativa na SEFAZ.">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>ERRO SEFAZ
+                                 </span>` : ''
+                            }
+                        </div>
                     </td>
                     <td class="text-end">
                         <div class="dropdown">
