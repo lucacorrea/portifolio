@@ -503,7 +503,7 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
             <!-- Dados Adicionais -->
             <table class="table-footer" style="margin-bottom: 5px;">
                 <tr>
-                    <td style="width: 70%; height: 75px; vertical-align: top; border: 0.5pt solid #000;">
+                    <td style="width: 70%; height: 90px; vertical-align: top; border: 0.5pt solid #000;">
                         <span class="title">DADOS ADICIONAIS</span>
                         <div class="bold" style="font-size: 7px; margin-bottom: 2px;">INFORMAÇÕES COMPLEMENTARES</div>
                         <div style="font-size: 7px; line-height: 1.2; text-transform: none;">
@@ -511,7 +511,7 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
                             <?php if ($tot['vTrib'] !== '0,00'): ?><b>VALOR TOTAL ESTIMADO DOS TRIBUTOS (Lei 12.741/2012): R$ <?= $tot['vTrib'] ?></b><?php endif; ?>
                         </div>
                     </td>
-                    <td style="width: 30%; height: 75px; vertical-align: top; border: 0.5pt solid #000; border-left: none;">
+                    <td style="width: 30%; height: 90px; vertical-align: top; border: 0.5pt solid #000; border-left: none;">
                         <span class="title">RESERVADO AO FISCO</span>
                         <div class="val"></div>
                     </td>
@@ -519,7 +519,7 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
             </table>
 
             <!-- Canhoto / Comprovante de Recebimento -->
-            <div class="canhoto-container" style="border: 0.8pt solid #000; padding: 0; margin-top: 5px;">
+            <div class="canhoto-container" style="border: 1.2pt solid #000; padding: 0; margin-top: 5px;">
                 <table style="border: none; margin: 0; width: 100%;">
                     <tr style="border: none;">
                         <td style="border: none; width: 82%; padding: 4px; vertical-align: top;">
@@ -528,19 +528,22 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
                             </div>
                             <table style="border: none; width: 100%; margin: 0;">
                                 <tr style="border: none;">
-                                    <td style="border: 0.5pt solid #000; width: 25%; height: 32px; padding: 2px; vertical-align: top;">
+                                    <td style="border: 0.5pt solid #000; width: 25%; height: 45px; padding: 2px; vertical-align: top;">
                                         <span class="title">DATA DE RECEBIMENTO</span>
                                     </td>
-                                    <td style="border: 0.5pt solid #000; border-left: none; width: 75%; height: 32px; padding: 2px; vertical-align: top;">
+                                    <td style="border: 0.5pt solid #000; border-left: none; width: 75%; height: 45px; padding: 2px; vertical-align: top;">
                                         <span class="title">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</span>
-                                        <div class="bold" style="margin-top: 12px; font-size: 8px; color: #333;">
-                                            <?= $dest['xNome'] ?>
+                                        <div style="margin-top: 15px; text-align: center;">
+                                            <div style="border-bottom: 0.5pt dotted #000; width: 80%; margin: 0 auto 2px;"></div>
+                                            <div class="bold" style="font-size: 8px; color: #333; text-transform: uppercase;">
+                                                <?= $dest['xNome'] ?>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
                             </table>
                         </td>
-                        <td style="border: none; border-left: 0.8pt dashed #000; width: 18%; text-align: center; vertical-align: middle; padding: 0;">
+                        <td style="border: none; border-left: 1.2pt dashed #000; width: 18%; text-align: center; vertical-align: middle; padding: 0;">
                             <div class="bold" style="font-size: 11px; margin-bottom: 3px;">NF-e</div>
                             <div class="bold" style="font-size: 15px; margin-bottom: 3px;">Nº. <?= $ide['nNF'] ?></div>
                             <div class="bold" style="font-size: 11px;">SÉRIE <?= $ide['serie'] ?></div>
