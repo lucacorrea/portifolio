@@ -73,6 +73,8 @@ function get_pagination_url($page)
     return '?' . http_build_query($params);
 }
 
+$nivel_user = strtoupper($_SESSION['nivel'] ?? '');
+
 include 'views/layout/header.php';
 ?>
 
@@ -119,6 +121,30 @@ include 'views/layout/header.php';
         justify-content: flex-end;
     }
 
+    .btn-edit-inline {
+        height: 32px;
+        padding: 0 .85rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+        color: #0f172a;
+        font-size: .82rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all .2s ease;
+    }
+
+    .btn-edit-inline:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-light);
+        text-decoration: none;
+    }
+
     .paginacao-box {
         display: flex;
         justify-content: center;
@@ -137,6 +163,25 @@ include 'views/layout/header.php';
 
     .btn-limpar {
         width: 100%;
+    }
+
+    .alert-query {
+        padding: .95rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .alert-query.success {
+        background: #ecfdf3;
+        border: 1px solid #bbf7d0;
+        color: #166534;
+    }
+
+    .alert-query.error {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
     }
 
     @media (max-width: 768px) {
@@ -175,7 +220,6 @@ include 'views/layout/header.php';
         }
     }
 
-    /* Dropdown Actions Styles */
     .dropdown {
         position: relative;
         display: inline-block;
@@ -201,7 +245,6 @@ include 'views/layout/header.php';
         animation: dropdownFadeIn 0.2s ease-out;
     }
 
-    /* Versão Dropup */
     .dropdown-menu.dropup {
         top: auto !important;
         bottom: 100% !important;
@@ -211,13 +254,27 @@ include 'views/layout/header.php';
     }
 
     @keyframes dropdownFadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     @keyframes dropdownFadeUp {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .dropdown-item {
@@ -274,7 +331,6 @@ include 'views/layout/header.php';
         background: var(--primary-light);
     }
 
-    /* Fix table clipping */
     .lista-table-wrap {
         overflow-x: auto !important;
         padding-bottom: 0 !important;
@@ -344,6 +400,18 @@ include 'views/layout/header.php';
 
         <?php display_flash(); ?>
 
+        <?php if (!empty($_GET['sucesso'])): ?>
+            <div class="alert-query success">
+                <?php echo htmlspecialchars((string)$_GET['sucesso'], ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($_GET['erro'])): ?>
+            <div class="alert-query error">
+                <?php echo htmlspecialchars((string)$_GET['erro'], ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+        <?php endif; ?>
+
         <div class="table-responsive lista-table-wrap">
             <table class="table-vcenter text-nowrap lista-table">
                 <thead>
@@ -386,6 +454,12 @@ include 'views/layout/header.php';
                             </td>
                             <td style="text-align: right;">
                                 <div class="acoes-wrap">
+                                    <?php if ($aq['status'] === 'AGUARDANDO ENTREGA' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')): ?>
+                                        <a class="btn-edit-inline" href="editar_aquisicoes.php?id=<?php echo (int)$aq['id']; ?>">
+                                            <i class="fas fa-pen"></i> Editar
+                                        </a>
+                                    <?php endif; ?>
+
                                     <div class="dropdown">
                                         <button class="btn-three-dots" data-dropdown-toggle title="Ações">
                                             <i class="fas fa-ellipsis-v"></i>
@@ -394,11 +468,12 @@ include 'views/layout/header.php';
                                             <a class="dropdown-item" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
                                                 <i class="fas fa-eye"></i> Visualizar
                                             </a>
-                                            
-                                            <?php 
-                                                $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
-                                                if ($aq['status'] === 'AGUARDANDO ENTREGA' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')): 
-                                            ?>
+
+                                            <?php if ($aq['status'] === 'AGUARDANDO ENTREGA' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')): ?>
+                                                <a class="dropdown-item" href="editar_aquisicoes.php?id=<?php echo (int)$aq['id']; ?>">
+                                                    <i class="fas fa-pen"></i> Editar aquisição
+                                                </a>
+
                                                 <a class="dropdown-item" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" style="color: var(--status-finalized) !important;" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
                                                     <i class="fas fa-check-circle"></i> Marcar como Recebido
                                                 </a>
@@ -440,5 +515,49 @@ include 'views/layout/header.php';
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggles = document.querySelectorAll('[data-dropdown-toggle]');
+
+        function closeAllDropdowns() {
+            document.querySelectorAll('.dropdown-menu.show').forEach(function(menu) {
+                menu.classList.remove('show', 'dropup');
+            });
+        }
+
+        toggles.forEach(function(toggle) {
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const dropdown = this.closest('.dropdown');
+                const menu = dropdown.querySelector('.dropdown-menu');
+                const isOpen = menu.classList.contains('show');
+
+                closeAllDropdowns();
+
+                if (!isOpen) {
+                    menu.classList.add('show');
+
+                    const rect = menu.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+                    if (rect.bottom > viewportHeight - 10) {
+                        menu.classList.add('dropup');
+                    }
+                }
+            });
+        });
+
+        document.addEventListener('click', function() {
+            closeAllDropdowns();
+        });
+
+        window.addEventListener('resize', function() {
+            closeAllDropdowns();
+        });
+    });
+</script>
 
 <?php include 'views/layout/footer.php'; ?>
