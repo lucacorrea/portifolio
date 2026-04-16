@@ -197,17 +197,6 @@ if ($is_print) {
                             <?php endif; ?>
                         </tbody>
                     </table>
-
-                    <div class="assinaturas">
-                        <div>
-                            RECEBEDOR<br>
-                            <span style="font-weight: normal; font-size: 10px;">Autorização de Recebimento</span>
-                        </div>
-                        <div>
-                            CONFIRMAÇÃO DE RECEBIMENTO<br>
-                            <span style="font-weight: normal; font-size: 10px;">Assinatura e Carimbo</span>
-                        </div>
-                    </div>
                 </div>
             <?php endforeach; ?>
         </div>
