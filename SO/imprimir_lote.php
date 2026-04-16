@@ -197,17 +197,6 @@ if ($is_print) {
                             <?php endif; ?>
                         </tbody>
                     </table>
-
-                    <div class="assinaturas">
-                        <div>
-                            RECEBEDOR<br>
-                            <span style="font-weight: normal; font-size: 10px;">Autorização de Recebimento</span>
-                        </div>
-                        <div>
-                            CONFIRMAÇÃO DE RECEBIMENTO<br>
-                            <span style="font-weight: normal; font-size: 10px;">Assinatura e Carimbo</span>
-                        </div>
-                    </div>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -240,7 +229,7 @@ if ($is_print) {
                         const opt = {
                             margin: 0, 
                             filename: 'temp.pdf',
-                            pagebreak: { mode: 'css', avoid: ['tr', '.assinaturas'] },
+                            pagebreak: { mode: 'css', avoid: ['tr'] },
                             image: { type: 'jpeg', quality: 1 },
                             html2canvas: { scale: 2, logging: false, useCORS: true },
                             jsPDF: { unit: 'px', format: [793, 1122], orientation: 'portrait', hotfixes: ["px_scaling"] }
@@ -301,26 +290,6 @@ if ($is_print) {
                                     // Ignora arquivo faltante e segue
                                 }
                             }
-                        }
-
-                        // Caso nenhum ofício tenha sido encontrado (não anexaram ou fetch falhou)
-                        if (!hasAnyAnexo) {
-                            const fontBold = await doc.embedFont(window.PDFLib.StandardFonts.HelveticaBold);
-                            const fontRegular = await doc.embedFont(window.PDFLib.StandardFonts.Helvetica);
-                            const pageFallback = doc.addPage([793, 1122]);
-                            
-                            // Y começa de baixo para cima no PDFLib
-                            pageFallback.drawText('ARQUIVO DO OFICIO NÃO LOCALIZADO NO SISTEMA', { 
-                                x: 100, y: 750, size: 18, font: fontBold, color: window.PDFLib.rgb(0.8, 0.1, 0.1) 
-                            });
-                            
-                            pageFallback.drawText('Não foi feito o upload do PDF deste Ofício, ou o arquivo foi excluído.', { 
-                                x: 100, y: 710, size: 14, font: fontRegular, color: window.PDFLib.rgb(0.3, 0.3, 0.3) 
-                            });
-                            
-                            pageFallback.drawText('Ref. Aquisição: ' + rec.numero, { 
-                                x: 100, y: 680, size: 12, font: fontRegular, color: window.PDFLib.rgb(0.5, 0.5, 0.5) 
-                            });
                         }
                     }
 
