@@ -116,8 +116,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                     </button>
                     
                     <div id="loaderArea" class="mt-4 d-none">
-                        <div class="spinner-border text-success" role="status"></div>
-                        <h6 class="mt-2 fw-bold text-success" id="loadingText">Lendo abas do Excel...</h6>
+                        <div class="progress mb-3" style="height: 10px;">
+                            <div id="importProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 0%"></div>
+                        </div>
+                        <h6 class="fw-bold text-success" id="loadingText">Lendo abas do Excel...</h6>
+                    </div>
+
+                    <!-- Log de Processamento -->
+                    <div id="logArea" class="mt-4 d-none">
+                        <div class="text-start p-3 bg-dark text-light rounded shadow-sm" style="max-height: 200px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 11px;">
+                            <div id="logContent"></div>
+                        </div>
                     </div>
                 </div>
                 
@@ -154,21 +163,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                 let rowCount = 0;
 
                 // Percorrer TODAS as abas (Table 1, Table 2, etc...)
-                workbook.SheetNames.forEach(sheetName => {
-                    const sheet = workbook.Sheets[sheetName];
-                    // Ler toda a aba como Array de Arrays (A=0, B=1, C=2, etc)
-                    const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
+                const logContent = document.getElementById('logContent');
+                const progressBar = document.getElementById('importProgressBar');
+
+                for (let i = 0; i < workbook.SheetNames.length; i++) {
+                    const sheetName = workbook.SheetNames[i];
+                    addLog(`Processando <b>${sheetName}</b>...`);
                     
+                    const sheet = workbook.Sheets[sheetName];
+                    const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
+                    let sheetCount = 0;
+
                     rows.forEach(row => {
-                        // Ignorar cabeçalho, títulos ou linhas vazias (precisa ter no mínimo o nome do produto na coluna B)
-                        if (row.length < 5) return;
+                        // Relaxamos a regra: basta ter um nome na coluna B (index 1)
+                        if (!row || row.length < 2) return;
                         
                         const nome = row[1] ? row[1].toString().trim() : '';
                         const codigo = row[2] ? row[2].toString().trim() : '';
                         
-                        // Ignorar se contiver a palavra "Produto" ou "código" (cabeçalhos)
-                        if (nome.toLowerCase().includes('produto') && codigo.toLowerCase().includes('código')) return;
-                        if (!nome || nome === 'Produto') return;
+                        // Ignora se for cabeçalho
+                        if (!nome || nome.toLowerCase() === 'produto' || nome.toLowerCase().includes('tabela')) return;
+                        if (nome.toLowerCase().includes('código') || nome.toLowerCase().includes('venda')) return;
                         
                         // Limpa números formato PT-BR
                         const parseNumber = (val) => {
@@ -180,16 +195,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
 
                         todosOsProdutos.push({
                             nome: nome,
-                            codigo: codigo,
+                            codigo: codigo || 'IMP-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
                             categoria: row[3] ? row[3].toString().trim() : 'Diversos',
                             estoque: parseNumber(row[5]),
                             preco_custo: parseNumber(row[7]),
                             preco_venda: parseNumber(row[8]),
                             unidade: row[9] ? row[9].toString().trim() : 'UN'
                         });
+                        sheetCount++;
                         rowCount++;
                     });
-                });
+
+                    addLog(`> Encontrados <b>${sheetCount}</b> itens nesta aba.`);
+                    
+                    // Update progress bar
+                    const percent = Math.round(((i + 1) / workbook.SheetNames.length) * 100);
+                    progressBar.style.width = percent + '%';
+                }
 
                 if (todosOsProdutos.length === 0) {
                     throw new Error("Não conseguimos encontrar nenhum produto válido com preços nas abas. Verifique a planilha.");
@@ -224,8 +246,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
         reader.readAsArrayBuffer(file);
     }
 
+    function addLog(msg) {
+        const logArea = document.getElementById('logArea');
+        const logContent = document.getElementById('logContent');
+        logArea.classList.remove('d-none');
+        logContent.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+        logContent.parentElement.scrollTop = logContent.parentElement.scrollHeight;
+    }
+
     function showAlert(msg, type) {
-        document.getElementById('alertArea').innerHTML = `<div class="alert alert-${type} fw-bold">${msg}</div>`;
+        document.getElementById('alertArea').innerHTML = `<div class="alert alert-${type} fw-bold shadow-sm">${msg}</div>`;
     }
     </script>
 </body>

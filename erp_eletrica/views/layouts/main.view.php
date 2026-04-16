@@ -37,8 +37,8 @@
                         <i class="fas fa-bars"></i>
                     </button>
                     <div class="page-title-context">
-                        <h5 class="mb-0 fw-bold text-dark"><?= $pageTitle ?? 'Dashboard' ?></h5>
-                        <small class="text-muted extra-small d-block"><?= $title ?? 'ERP Elétrica SaaS' ?></small>
+                        <h5 class="mb-0 fw-bold text-dark"><?= $pageTitle ?? 'Painel de Controle' ?></h5>
+                        <small class="text-muted extra-small d-block"><?= $title ?? 'ERP Elétrica' ?></small>
                     </div>
                 </div>
                 
@@ -97,7 +97,7 @@
     <!-- Loader -->
     <div id="globalLoader" class="loader-wrapper">
         <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+            <span class="visually-hidden">Carregando...</span>
         </div>
     </div>
 
