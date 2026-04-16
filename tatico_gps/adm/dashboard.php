@@ -1,3 +1,25 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/php/auth/authGuard.php';
+exigir_login();
+
+$usuario = usuario_logado();
+
+require_once __DIR__ . '/php/conexao.php';
+$paginaAtiva = 'dashboard';
+require_once __DIR__ . '/includes/menu.php';
+
+// Buscar Métricas Reais
+$ativos = $pdo->query("SELECT COUNT(*) FROM clientes WHERE status = 'Ativo'")->fetchColumn();
+$pendentes = $pdo->query("SELECT COUNT(*) FROM clientes WHERE status = 'Pendente' OR status = 'Bloqueado'")->fetchColumn();
+
+$inicioSemana = date('Y-m-d', strtotime('monday this week'));
+$recebidoSemana = $pdo->query("SELECT SUM(valor) FROM pagamentos WHERE status = 'Confirmado' AND DATE(data_pagamento) >= '$inicioSemana'")->fetchColumn() ?: 0;
+
+$msgHj = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE DATE(criado_em) = CURDATE()")->fetchColumn();
+
+?>
 <!doctype html>
 <html lang="pt-BR" class="layout-menu-fixed layout-compact" data-assets-path="../assets/"
   data-template="vertical-menu-template-free">
@@ -168,21 +190,6 @@
 <body>
   <div class="layout-wrapper layout-content-navbar">
     <div class="layout-container">
-
-      <?php
-      require_once __DIR__ . '/php/conexao.php';
-      $paginaAtiva = 'dashboard';
-      require_once __DIR__ . '/includes/menu.php';
-
-      // Buscar Métricas Reais
-      $ativos = $pdo->query("SELECT COUNT(*) FROM clientes WHERE status = 'Ativo'")->fetchColumn();
-      $pendentes = $pdo->query("SELECT COUNT(*) FROM clientes WHERE status = 'Pendente' OR status = 'Bloqueado'")->fetchColumn();
-
-      $inicioSemana = date('Y-m-d', strtotime('monday this week'));
-      $recebidoSemana = $pdo->query("SELECT SUM(valor) FROM pagamentos WHERE status = 'Confirmado' AND DATE(data_pagamento) >= '$inicioSemana'")->fetchColumn() ?: 0;
-
-      $msgHj = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE DATE(criado_em) = CURDATE()")->fetchColumn();
-      ?>
 
       <div class="layout-page">
 
