@@ -543,6 +543,12 @@ const productPreviewName = document.getElementById('productPreviewName');
 document.addEventListener('DOMContentLoaded', () => {
     loadRecentSales();
     
+    // Check initial payment method
+    const initialPayment = document.querySelector('input[name="payment"]:checked');
+    if (initialPayment && initialPayment.value === 'dinheiro') {
+        document.getElementById('cashChangeContainer').classList.remove('d-none');
+    }
+    
     // Payment Options Handler
     document.querySelectorAll('input[name="payment"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
