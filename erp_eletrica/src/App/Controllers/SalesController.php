@@ -526,12 +526,10 @@ class SalesController extends BaseController {
             $hasFiscalRecord = (bool)$stF->fetch();
 
             $isAlreadyCancelled = ($sale['status'] === 'cancelado');
-            $isFiscal = ($sale['tipo_nota'] === 'fiscal' || $hasFiscalRecord);
+            $requestTipo = $data['tipo'] ?? $sale['tipo_nota'];
+            $isFiscal = ($requestTipo === 'fiscal' || $sale['tipo_nota'] === 'fiscal' || $hasFiscalRecord);
 
-            if ($isAlreadyCancelled && !$hasFiscalRecord) {
-                throw new \Exception("Esta venda já está cancelada e não possui pendência fiscal.");
-            }
-
+            // Permite prosseguir mesmo se já estiver cancelada, focado no fiscal.
             if ($isFiscal) {
                 try {
                     // Prepara ambiente para carregar as bibliotecas de NF-e

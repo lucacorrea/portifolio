@@ -454,93 +454,101 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
 
         <!-- Itens -->
         <div class="section-title">DADOS DO PRODUTO / SERVIÇOS</div>
-        <div style="flex: 1; overflow: hidden;">
-            <table class="table">
+        <div class="items-container">
+            <table class="table-items">
                 <thead>
                     <tr>
-                        <th style="width: 35px;">COD. PROD</th>
-                        <th>DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
-                        <th style="width: 25px;">CFOP</th>
-                        <th style="width: 40px;">NCM/SH</th>
-                        <th style="width: 25px;">CST</th>
-                        <th style="width: 16px;">UN</th>
-                        <th style="width: 35px;">QUANT.</th>
-                        <th style="width: 45px;">V. UNITÁRIO</th>
-                        <th style="width: 45px;">V. TOTAL</th>
-                        <th style="width: 40px;">V. DESC.</th>
-                        <th style="width: 45px;">V. LÍQUIDO</th>
-                        <th style="width: 40px;">BC ICMS</th>
-                        <th style="width: 35px;">VALOR ICMS</th>
-                        <th style="width: 30px;">VALOR IPI</th>
-                        <th style="width: 20px;">ALÍQ. ICMS</th>
-                        <th style="width: 20px;">ALÍQ. IPI</th>
+                        <th style="width: 7%;">CÓD. PROD.</th>
+                        <th style="width: 28%;">DESCRIÇÃO DOS PRODUTOS / SERVIÇOS</th>
+                        <th style="width: 8%;">NCM/SH</th>
+                        <th style="width: 5%;">CSOSN</th>
+                        <th style="width: 5%;">CFOP</th>
+                        <th style="width: 5%;">UNID.</th>
+                        <th style="width: 6%;">QUANT.</th>
+                        <th style="width: 8%;">V. UNIT.</th>
+                        <th style="width: 8%;">V. TOTAL</th>
+                        <th style="width: 5%;">BC ICMS</th>
+                        <th style="width: 5%;">V. ICMS</th>
+                        <th style="width: 5%;">V. IPI</th>
+                        <th style="width: 5%;">ALÍQ. ICMS</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($itens as $it): ?>
+                    <?php 
+                    $total_itens = count($itens);
+                    foreach ($itens as $it): 
+                    ?>
                     <tr>
                         <td class="center"><?= $it['cProd'] ?></td>
-                        <td><?= htmlspecialchars($it['xProd']) ?></td>
-                        <td class="center"><?= $it['CFOP'] ?></td>
+                        <td style="white-space: normal;"><?= $it['xProd'] ?></td>
                         <td class="center"><?= $it['NCM'] ?></td>
                         <td class="center"><?= $it['CST'] ?></td>
+                        <td class="center"><?= $it['CFOP'] ?></td>
                         <td class="center"><?= $it['uCom'] ?></td>
                         <td class="right"><?= $it['qCom'] ?></td>
                         <td class="right"><?= $it['vUn'] ?></td>
                         <td class="right"><?= $it['vTot'] ?></td>
-                        <td class="right"><?= $it['vDesc'] ?></td>
-                        <td class="right bold"><?= $it['vLiq'] ?></td>
                         <td class="right"><?= $it['vBC'] ?></td>
                         <td class="right"><?= $it['vICMS'] ?></td>
                         <td class="right"><?= $it['vIPI'] ?></td>
-                        <td class="right"><?= $it['pICMS'] ?></td>
-                        <td class="right"><?= $it['pIPI'] ?></td>
+                        <td class="center"><?= $it['pICMS'] ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
 
-        <!-- Adicionais -->
-        <div class="section-title">DADOS ADICIONAIS</div>
-        <div class="flex" style="min-height: 80px;">
-            <div class="box f5" style="padding: 2px;">
-                <span class="title">INFORMAÇÕES COMPLEMENTARES</span>
-                <div class="val" style="font-size: 7px; line-height: 1.2; text-transform: none;">
-                    <?= nl2br(htmlspecialchars($infAdic)) ?><br>
-                    <?php if ($tot['vTrib'] !== '0,00'): ?><b>VALOR TOTAL ESTIMADO DOS TRIBUTOS (Lei 12.741/2012): R$ <?= $tot['vTrib'] ?></b><?php endif; ?>
-                </div>
-                <?php if ($qrTxt): ?>
-                <div style="margin-top: 5px; display: flex; align-items: center; gap: 8px;">
-                    <div id="qrcode"></div>
-                    <span style="font-size: 6px;">Consulta via QR Code</span>
-                </div>
-                <?php endif; ?>
-            </div>
-            <div class="box f2">
-                <span class="title">RESERVADO AO FISCO</span>
-                <div class="val"></div>
-            </div>
-        </div>
+        <!-- Rodapé Pinned (DADOS ADICIONAIS e CANHOTO NO RODAPÉ) -->
+        <div class="footer-pinned">
+            <!-- Dados Adicionais -->
+            <table style="margin-bottom: 2px; table-layout: fixed;">
+                <tr>
+                    <td style="width: 70%; height: 65px; vertical-align: top;">
+                        <span class="title">DADOS ADICIONAIS</span>
+                        <div class="bold" style="font-size: 7px; margin-bottom: 2px;">INFORMAÇÕES COMPLEMENTARES</div>
+                        <div style="font-size: 7px; line-height: 1.2; text-transform: none;">
+                            <?= nl2br($infAdic) ?><br>
+                            <?php if ($tot['vTrib'] !== '0,00'): ?><b>VALOR TOTAL ESTIMADO DOS TRIBUTOS (Lei 12.741/2012): R$ <?= $tot['vTrib'] ?></b><?php endif; ?>
+                        </div>
+                    </td>
+                    <td style="width: 30%; height: 65px; vertical-align: top;">
+                        <span class="title">RESERVADO AO FISCO</span>
+                        <div class="val"></div>
+                    </td>
+                </tr>
+            </table>
 
-        <!-- Stub (Canhoto) -->
-        <div class="canhoto">
-            <div class="flex">
-                <div class="box f4" style="padding: 4px;">
-                    <div style="font-size: 7px;">RECEBEMOS DE <b><?= $emit['xNome'] ?></b> OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO</div>
-                    <div class="flex" style="margin-top: 8px;">
-                        <div style="flex: 1; border-top: 1px solid #000; margin-top: 12px; margin-right: 20px;">
-                            <span class="title center">DATA DE RECEBIMENTO</span>
-                        </div>
-                        <div style="flex: 2; border-top: 1px solid #000; margin-top: 12px;">
-                            <span class="title center">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="box center" style="width: 120px; display: flex; flex-direction: column; justify-content: center; border-left: none;">
-                    <b style="font-size: 14px;">NF-e</b>
-                    <b style="font-size: 9px;">Nº <?= $ide['nNF'] ?><br>SÉRIE <?= $ide['serie'] ?></b>
-                </div>
+            <!-- Stub / Canhoto (Fixo no pé da página) -->
+            <div class="canhoto" style="margin-top: 5px;">
+                <table style="border: none; margin-bottom: 0;">
+                    <tr style="border: none;">
+                        <td style="border: none; width: 82%; padding: 0;">
+                            <div style="border-bottom: 1px dashed #000; padding-bottom: 3px; margin-bottom: 5px; font-size: 7px;">
+                                RECEBEMOS DE <b><?= $emit['xNome'] ?></b> OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO
+                            </div>
+                            <div style="display: flex; gap: 15px;">
+                                <div style="flex: 1; border-right: 1px solid #000; border-bottom: 1px solid #000; min-height: 25px; padding: 1px;">
+                                    <span class="title">DATA DE RECEBIMENTO</span>
+                                </div>
+                                <div style="flex: 3; border-bottom: 1px solid #000; min-height: 25px; padding: 1px;">
+                                    <span class="title">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</span>
+                                    <div class="bold" style="margin-top: 10px; font-size: 7px; border-top: 0.5px solid #eee; width: 90%; text-align: left;">
+                                        <?= $dest['xNome'] ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="border: none; border-left: 1px dashed #000; width: 18%; text-align: center; vertical-align: middle; padding: 0;">
+                            <div class="bold" style="font-size: 11px;">NF-e</div>
+                            <div class="bold" style="font-size: 13px; margin: 2px 0;">Nº. <?= $ide['nNF'] ?></div>
+                            <div class="bold" style="font-size: 11px;">SÉRIE <?= $ide['serie'] ?></div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div style="text-align: right; font-size: 5px; margin-top: 2px; color: #888;">
+                Geração do DANFE A4 v2.0 - L&J Soluções
             </div>
         </div>
     </div>
