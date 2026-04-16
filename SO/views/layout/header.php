@@ -396,6 +396,12 @@ if (isset($pdo)) {
                                             <i class="fas fa-file-contract"></i> Relatórios
                                         </a>
                                     </li>
+                                    <!-- NOVO MENU DE IMPRESSAO EM LOTE -->
+                                    <li class="nav-item <?php echo isActive(['imprimir_lote.php']); ?>">
+                                        <a href="imprimir_lote.php" class="nav-link">
+                                            <i class="fas fa-print"></i> Impressão em Lote
+                                        </a>
+                                    </li>
                                 <?php endif; ?>
 
                                 <?php if ($nivel === 'SUPORTE'): ?>
