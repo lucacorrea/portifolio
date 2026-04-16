@@ -21,7 +21,7 @@ final class Router
     public function dispatch(string $method, string $uri): void
     {
         $method = strtoupper($method);
-        $path   = $this->extractPath($uri);
+        $path = $this->extractPath($uri);
 
         $handler = $this->routes[$method][$path] ?? null;
 
@@ -65,30 +65,17 @@ final class Router
     private function extractPath(string $uri): string
     {
         $path = parse_url($uri, PHP_URL_PATH) ?: '/';
-        $base = $this->detectBasePath();
 
-        if ($base !== '' && str_starts_with($path, $base)) {
-            $path = substr($path, strlen($base)) ?: '/';
+        $basePath = rtrim((string)($GLOBALS['app_config']['base_path'] ?? ''), '/');
+
+        if ($basePath !== '' && str_starts_with($path, $basePath)) {
+            $path = substr($path, strlen($basePath));
+            if ($path === '' || $path === false) {
+                $path = '/';
+            }
         }
 
         return $this->normalize($path);
-    }
-
-    private function detectBasePath(): string
-    {
-        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-        $scriptDir = str_replace('\\', '/', dirname($scriptName));
-        $scriptDir = rtrim($scriptDir, '/');
-
-        if ($scriptDir === '' || $scriptDir === '.') {
-            return '';
-        }
-
-        if (str_ends_with($scriptDir, '/public')) {
-            $scriptDir = substr($scriptDir, 0, -7);
-        }
-
-        return rtrim($scriptDir, '/');
     }
 
     private function normalize(string $path): string
@@ -97,7 +84,6 @@ final class Router
             return '/';
         }
 
-        $path = '/' . trim($path, '/');
-        return $path === '//' ? '/' : $path;
+        return '/' . trim($path, '/');
     }
 }
