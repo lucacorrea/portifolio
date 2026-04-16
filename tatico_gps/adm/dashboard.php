@@ -185,6 +185,7 @@
       ?>
 
       <div class="layout-page">
+
         <!-- Navbar -->
         <nav class="layout-navbar container-xxl navbar-detached navbar navbar-expand-xl align-items-center bg-navbar-theme"
           id="layout-navbar">
@@ -245,7 +246,7 @@
                     <div class="dropdown-divider my-1"></div>
                   </li>
                   <li>
-                    <a class="dropdown-item" href="#">
+                    <a class="dropdown-item" href="./php/auth/logout.php">
                       <i class="icon-base bx bx-power-off icon-md me-3"></i><span>Sair</span>
                     </a>
                   </li>
