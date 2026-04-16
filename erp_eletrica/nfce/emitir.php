@@ -540,6 +540,9 @@ $st->execute([
   ':valor_troco'  => isset($vTr) ? number_format((float)$vTr, 2, '.', '') : null,
   ':tpag_json'    => $tpagJsonStr
 ]);
+
+// --- NOVO: Atualiza a venda original para 'fiscal' ---
+$pdo->prepare("UPDATE vendas SET tipo_nota = 'fiscal' WHERE id = ?")->execute([$vendaId]);
 }
     } catch (Throwable $e) {
       // Não bloquear o fluxo por erro de log

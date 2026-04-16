@@ -521,8 +521,15 @@ class SalesController extends BaseController {
             if (!$sale) throw new \Exception("Venda não encontrada.");
             if ($sale['status'] === 'cancelado') throw new \Exception("Esta venda já está cancelada.");
 
-            // --- NOVO: Lógica de Cancelamento Fiscal (SEFAZ) ---
-            $isFiscal = ($sale['tipo_nota'] === 'fiscal');
+            // Verifica se existe registro de emissão fiscal para esta venda.
+            // Isso garante que mesmo que a tabela 'vendas' esteja desatualizada, 
+            // o cancelamento na SEFAZ seja processado obrigatoriamente.
+            $stF = $db->prepare("SELECT id FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') LIMIT 1");
+            $stF->execute([$id]);
+            $hasFiscalRecord = (bool)$stF->fetch();
+            
+            $isFiscal = ($sale['tipo_nota'] === 'fiscal' || $hasFiscalRecord);
+
             if ($isFiscal) {
                 try {
                     // Prepara ambiente para carregar as bibliotecas de NF-e
@@ -620,9 +627,6 @@ class SalesController extends BaseController {
 
             // 3. Atualizar Status
             $saleModel->updateStatus($id, 'cancelado');
-            if ($isFiscal) {
-                $db->prepare("UPDATE vendas SET tipo_nota = 'fiscal_cancelada' WHERE id = ?")->execute([$id]);
-            }
 
             // 4. Auditoria
             $audit = new \App\Services\AuditLogService();
