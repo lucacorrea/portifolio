@@ -46,6 +46,9 @@ switch($action) {
     case 'baixar_danfe':
         $controller->baixar_danfe();
         break;
+    case 'save_marker':
+        $controller->save_marker();
+        break;
     default:
         $controller->index();
         break;

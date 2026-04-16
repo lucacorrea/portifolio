@@ -71,10 +71,16 @@ class ImportacaoAutomaticaController extends BaseController {
         $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_last_sync_timestamp'");
         $stmt->execute();
         $lastSync = $stmt->fetchColumn();
+
+        // Buscar marcador manual do usuário
+        $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_user_marker_note'");
+        $stmt->execute();
+        $userMarker = $stmt->fetchColumn() ?: '';
         
         $this->render('importacao_automatica', [
             'notas' => $notas,
             'lastSync' => $lastSync,
+            'userMarker' => $userMarker,
             'filters' => [
                 'search' => $search,
                 'status' => $status,
@@ -638,6 +644,28 @@ class ImportacaoAutomaticaController extends BaseController {
             echo $pdf;
         } catch (\Exception $e) {
             die("Erro ao gerar DANFE: " . $e->getMessage());
+        }
+        exit;
+    }
+
+    public function save_marker() {
+        try {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new \Exception("Método inválido.");
+            
+            $data = json_decode(file_get_contents('php://input'), true);
+            $marker = sanitizeInput($data['marker'] ?? '');
+
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("
+                INSERT INTO configuracoes (chave, valor) 
+                VALUES ('nfe_user_marker_note', ?) 
+                ON DUPLICATE KEY UPDATE valor = ?
+            ");
+            $stmt->execute([$marker, $marker]);
+
+            echo json_encode(['success' => true]);
+        } catch (\Throwable $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;
     }

@@ -57,6 +57,32 @@
             </div>
         </div>
     </div>
+    
+    <!-- Marcador de Progresso (Pedido pelo Usuário) -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-light-subtle">
+                <div class="card-body p-2 d-flex align-items-center gap-3">
+                    <div class="bg-primary text-white p-2 rounded-circle" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-bookmark small"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <label class="small text-muted fw-bold d-block mb-0">Marcador de Progresso (Última Nota Conferida):</label>
+                        <div class="input-group input-group-sm mt-1" style="max-width: 250px;">
+                            <input type="text" id="userMarkerInput" class="form-control border-light-subtle" placeholder="Ex: 1234..." value="<?= htmlspecialchars($userMarker) ?>" onblur="saveNfeMarker(this.value)">
+                            <button class="btn btn-outline-primary border-light-subtle px-2" type="button" onclick="saveNfeMarker(document.getElementById('userMarkerInput').value)">
+                                <i class="fas fa-save"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-end d-none d-sm-block">
+                        <small class="text-muted extra-small d-block">Use este campo para anotar onde parou na SEFAZ.</small>
+                        <span id="markerStatus" class="badge bg-success-subtle text-success border border-success-subtle d-none">Salvo com sucesso!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Navegação por Abas -->
     <ul class="nav nav-tabs border-bottom-0 mb-3" id="importTabs" role="tablist">
@@ -684,4 +710,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+function saveNfeMarker(val) {
+    const status = document.getElementById('markerStatus');
+    fetch('importar_automatico.php?action=save_marker', {
+        method: 'POST',
+        body: JSON.stringify({ marker: val }),
+        headers: { 'Content-Type': 'application/json' }
+    }).then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            status.classList.remove('d-none');
+            setTimeout(() => status.classList.add('d-none'), 3000);
+        }
+    });
+}
 </script>
