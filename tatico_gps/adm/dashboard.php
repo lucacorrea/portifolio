@@ -240,16 +240,6 @@ $msgHj = $pdo->query("SELECT COUNT(*) FROM whatsapp_envios WHERE DATE(criado_em)
                     <div class="dropdown-divider my-1"></div>
                   </li>
                   <li>
-                    <a class="dropdown-item" href="#">
-                      <i class="icon-base bx bx-user icon-md me-3"></i><span>Meu Perfil</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="#">
-                      <i class="icon-base bx bx-cog icon-md me-3"></i><span>Configurações</span>
-                    </a>
-                  </li>
-                  <li>
                     <div class="dropdown-divider my-1"></div>
                   </li>
                   <li>
