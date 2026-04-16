@@ -159,16 +159,31 @@
                         </div>
                     </div>
                     
-                    <!-- Card Tax Input (appears only for card payments) -->
+                    <!-- Card Tax Input -->
                     <div id="cardTaxContainer" class="d-none mt-3 p-3 bg-info bg-opacity-10 border border-info border-opacity-10 rounded">
                         <label class="form-label extra-small fw-bold text-uppercase opacity-75">Taxa da Maquininha (%)</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0 text-info">
-                                <i class="fas fa-percent"></i>
-                            </span>
+                            <span class="input-group-text bg-white border-end-0 text-info"><i class="fas fa-percent"></i></span>
                             <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="renderCart()">
                         </div>
-                        <div class="extra-small text-info mt-1"><i class="fas fa-info-circle me-1"></i> Informe a taxa cobrada pela operadora.</div>
+                    </div>
+
+                    <!-- Cash Change Calculator (Dinheiro) -->
+                    <div id="cashChangeContainer" class="d-none mt-3 p-3 bg-success bg-opacity-10 border border-success border-opacity-10 rounded">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor Recebido (R$)</label>
+                                <input type="number" id="valor_recebido" class="form-control form-control-lg fw-bold text-success border-success" placeholder="0,00" step="0.01" min="0" oninput="calculateChange()">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label extra-small fw-bold text-uppercase opacity-75">Troco (R$)</label>
+                                <div id="troco_display" class="form-control form-control-lg fw-bold bg-white text-danger border-0 d-flex align-items-center justify-content-center" style="height: calc(1.5em + 1rem + 2px);">
+                                    R$ 0,00
+                                </div>
+                                <input type="hidden" id="troco_input" value="0">
+                            </div>
+                        </div>
+                        <div class="extra-small text-success mt-1"><i class="fas fa-calculator me-1"></i> O troco é calculado automaticamente.</div>
                     </div>
                 </div>
 
@@ -491,20 +506,52 @@ const productPreviewName = document.getElementById('productPreviewName');
 document.addEventListener('DOMContentLoaded', () => {
     loadRecentSales();
     
-    // Payment Card Tax Visibility
+    // Payment Options Handler
     document.querySelectorAll('input[name="payment"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
-            const container = document.getElementById('cardTaxContainer');
+            const cardContainer = document.getElementById('cardTaxContainer');
+            const cashContainer = document.getElementById('cashChangeContainer');
+            
+            // Toggle Card Tax
             if (e.target.value.includes('cartao')) {
-                container.classList.remove('d-none');
+                cardContainer.classList.remove('d-none');
                 document.getElementById('taxa_cartao').focus();
             } else {
-                container.classList.add('d-none');
+                cardContainer.classList.add('d-none');
             }
+
+            // Toggle Cash Change Calculator
+            if (e.target.value === 'dinheiro') {
+                cashContainer.classList.remove('d-none');
+                document.getElementById('valor_recebido').value = '';
+                document.getElementById('valor_recebido').focus();
+            } else {
+                cashContainer.classList.add('d-none');
+            }
+
             renderCart();
         });
     });
 });
+
+function calculateChange() {
+    const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(',', '.');
+    const total = parseFloat(finalTotalText) || 0;
+    const recebido = parseFloat(document.getElementById('valor_recebido').value) || 0;
+    
+    const troco = Math.max(0, recebido - total);
+    
+    document.getElementById('troco_display').innerText = `R$ ${troco.toFixed(2).replace('.', ',')}`;
+    document.getElementById('troco_input').value = troco.toFixed(2);
+
+    if (recebido > 0 && recebido < total) {
+        document.getElementById('troco_display').classList.add('text-muted');
+        document.getElementById('troco_display').classList.remove('text-danger');
+    } else {
+        document.getElementById('troco_display').classList.remove('text-muted');
+        document.getElementById('troco_display').classList.add('text-danger');
+    }
+}
 
 // Search functionality
 pdvSearch.addEventListener('input', async (e) => {
@@ -1395,10 +1442,10 @@ async function processarCheckout() {
     let valorRecebido = null;
     let troco = 0;
     if (payment === 'dinheiro') {
-        const valorRecebidoEl = document.getElementById('valorRecebidoDinheiro');
+        const valorRecebidoEl = document.getElementById('valor_recebido');
         valorRecebido = valorRecebidoEl ? (parseFloat(valorRecebidoEl.value) || total) : total;
         if (valorRecebido < total) valorRecebido = total; // ensure at least total
-        troco = valorRecebido - total;
+        troco = parseFloat(document.getElementById('troco_input').value) || (valorRecebido - total);
     }
 
     if (payment === 'fiado' && entrada >= total) {
