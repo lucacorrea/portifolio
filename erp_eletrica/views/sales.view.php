@@ -594,6 +594,27 @@ function calculateChange() {
         document.getElementById('troco_display').classList.remove('text-muted');
         document.getElementById('troco_display').classList.add('text-danger');
     }
+
+    // New: Trigger button state update on change calculation
+    updateCheckoutButtonState();
+}
+
+function updateCheckoutButtonState() {
+    if (cart.length === 0) {
+        btnCheckout.disabled = true;
+        return;
+    }
+
+    const payment = document.querySelector('input[name="payment"]:checked')?.value;
+    if (payment === 'dinheiro') {
+        const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace('.', '').replace(',', '.');
+        const total = parseFloat(finalTotalText) || 0;
+        const recebido = parseFloat(document.getElementById('valor_recebido').value) || 0;
+        
+        btnCheckout.disabled = (recebido < total || recebido === 0);
+    } else {
+        btnCheckout.disabled = false;
+    }
 }
 
 // Search functionality
@@ -741,6 +762,7 @@ function renderCart() {
 
     checkDiscountAuth();
     calculateChange();
+    updateCheckoutButtonState();
 }
 
 function updateQty(index, val) {
