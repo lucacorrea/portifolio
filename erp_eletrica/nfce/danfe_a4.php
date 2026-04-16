@@ -501,9 +501,9 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
         <!-- Rodapé Pinned (DADOS ADICIONAIS e CANHOTO NO RODAPÉ) -->
         <div class="footer-pinned">
             <!-- Dados Adicionais -->
-            <table style="margin-bottom: 2px; table-layout: fixed;">
+            <table class="table-footer" style="margin-bottom: 5px;">
                 <tr>
-                    <td style="width: 70%; height: 65px; vertical-align: top;">
+                    <td style="width: 70%; height: 75px; vertical-align: top; border: 0.5pt solid #000;">
                         <span class="title">DADOS ADICIONAIS</span>
                         <div class="bold" style="font-size: 7px; margin-bottom: 2px;">INFORMAÇÕES COMPLEMENTARES</div>
                         <div style="font-size: 7px; line-height: 1.2; text-transform: none;">
@@ -511,44 +511,46 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
                             <?php if ($tot['vTrib'] !== '0,00'): ?><b>VALOR TOTAL ESTIMADO DOS TRIBUTOS (Lei 12.741/2012): R$ <?= $tot['vTrib'] ?></b><?php endif; ?>
                         </div>
                     </td>
-                    <td style="width: 30%; height: 65px; vertical-align: top;">
+                    <td style="width: 30%; height: 75px; vertical-align: top; border: 0.5pt solid #000; border-left: none;">
                         <span class="title">RESERVADO AO FISCO</span>
                         <div class="val"></div>
                     </td>
                 </tr>
             </table>
 
-            <!-- Stub / Canhoto (Fixo no pé da página) -->
-            <div class="canhoto" style="margin-top: 5px;">
-                <table style="border: none; margin-bottom: 0;">
+            <!-- Canhoto / Comprovante de Recebimento -->
+            <div class="canhoto-container" style="border: 0.8pt solid #000; padding: 0; margin-top: 5px;">
+                <table style="border: none; margin: 0; width: 100%;">
                     <tr style="border: none;">
-                        <td style="border: none; width: 82%; padding: 0;">
-                            <div style="border-bottom: 1px dashed #000; padding-bottom: 3px; margin-bottom: 5px; font-size: 7px;">
+                        <td style="border: none; width: 82%; padding: 4px; vertical-align: top;">
+                            <div style="border-bottom: 0.5pt dashed #000; padding-bottom: 4px; margin-bottom: 6px; font-size: 8px;">
                                 RECEBEMOS DE <b><?= $emit['xNome'] ?></b> OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO
                             </div>
-                            <div style="display: flex; gap: 15px;">
-                                <div style="flex: 1; border-right: 1px solid #000; border-bottom: 1px solid #000; min-height: 25px; padding: 1px;">
-                                    <span class="title">DATA DE RECEBIMENTO</span>
-                                </div>
-                                <div style="flex: 3; border-bottom: 1px solid #000; min-height: 25px; padding: 1px;">
-                                    <span class="title">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</span>
-                                    <div class="bold" style="margin-top: 10px; font-size: 7px; border-top: 0.5px solid #eee; width: 90%; text-align: left;">
-                                        <?= $dest['xNome'] ?>
-                                    </div>
-                                </div>
-                            </div>
+                            <table style="border: none; width: 100%; margin: 0;">
+                                <tr style="border: none;">
+                                    <td style="border: 0.5pt solid #000; width: 25%; height: 32px; padding: 2px; vertical-align: top;">
+                                        <span class="title">DATA DE RECEBIMENTO</span>
+                                    </td>
+                                    <td style="border: 0.5pt solid #000; border-left: none; width: 75%; height: 32px; padding: 2px; vertical-align: top;">
+                                        <span class="title">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</span>
+                                        <div class="bold" style="margin-top: 12px; font-size: 8px; color: #333;">
+                                            <?= $dest['xNome'] ?>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
-                        <td style="border: none; border-left: 1px dashed #000; width: 18%; text-align: center; vertical-align: middle; padding: 0;">
-                            <div class="bold" style="font-size: 11px;">NF-e</div>
-                            <div class="bold" style="font-size: 13px; margin: 2px 0;">Nº. <?= $ide['nNF'] ?></div>
+                        <td style="border: none; border-left: 0.8pt dashed #000; width: 18%; text-align: center; vertical-align: middle; padding: 0;">
+                            <div class="bold" style="font-size: 11px; margin-bottom: 3px;">NF-e</div>
+                            <div class="bold" style="font-size: 15px; margin-bottom: 3px;">Nº. <?= $ide['nNF'] ?></div>
                             <div class="bold" style="font-size: 11px;">SÉRIE <?= $ide['serie'] ?></div>
                         </td>
                     </tr>
                 </table>
             </div>
             
-            <div style="text-align: right; font-size: 5px; margin-top: 2px; color: #888;">
-                Geração do DANFE A4 v2.0 - L&J Soluções
+            <div style="text-align: right; font-size: 5px; margin-top: 3px; color: #888;">
+                Geração do DANFE A4 v2.1 - Padrão SEFAZ Estendido
             </div>
         </div>
     </div>
