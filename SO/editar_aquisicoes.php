@@ -23,15 +23,6 @@ if (!function_exists('format_money')) {
     }
 }
 
-if (!function_exists('to_decimal')) {
-    function to_decimal($value): float
-    {
-        $value = trim((string)$value);
-        $value = str_replace(['.', ','], ['', '.'], preg_replace('/[^\d,.\-]/', '', $value));
-        return (float)$value;
-    }
-}
-
 if (!function_exists('number_input_value')) {
     function number_input_value($value, int $decimals = 2): string
     {
@@ -46,12 +37,23 @@ function redirect_list(string $type, string $message): never
     exit;
 }
 
+function get_logged_user_id(): ?int
+{
+    $possibleKeys = ['usuario_id', 'user_id', 'id'];
+    foreach ($possibleKeys as $key) {
+        if (isset($_SESSION[$key]) && is_numeric($_SESSION[$key])) {
+            return (int)$_SESSION[$key];
+        }
+    }
+    return null;
+}
+
 $id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
 if ($id <= 0) {
     redirect_list('erro', 'Aquisição inválida.');
 }
 
-$nivel_user = strtoupper($_SESSION['nivel'] ?? '');
+$nivel_user = strtoupper((string)($_SESSION['nivel'] ?? ''));
 if (!in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)) {
     redirect_list('erro', 'Você não tem permissão para editar aquisições.');
 }
@@ -60,7 +62,6 @@ $stmtAq = $pdo->prepare("
     SELECT
         a.*,
         o.numero AS oficio_num,
-        o.secretaria_id,
         s.nome AS secretaria_nome,
         f.nome AS fornecedor_nome
     FROM aquisicoes a
@@ -84,7 +85,7 @@ if (($aquisicao['status'] ?? '') === 'FINALIZADO') {
 $fornecedores = $pdo->query("SELECT id, nome FROM fornecedores ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 $stmtItens = $pdo->prepare("
-    SELECT id, produto, quantidade, unidade, valor_unitario
+    SELECT id, produto, quantidade, valor_unitario
     FROM itens_aquisicao
     WHERE aquisicao_id = :id
     ORDER BY id ASC
@@ -96,7 +97,6 @@ if (empty($itens)) {
     $itens = [[
         'produto' => '',
         'quantidade' => '1.00',
-        'unidade' => 'UN',
         'valor_unitario' => '0.00',
     ]];
 }
@@ -105,6 +105,7 @@ $erro = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fornecedor_id = (int)($_POST['fornecedor_id'] ?? 0);
+    $responsavel_entrega = trim((string)($_POST['responsavel_entrega'] ?? ''));
     $status = trim((string)($_POST['status'] ?? 'AGUARDANDO ENTREGA'));
 
     $statusPermitidos = ['AGUARDANDO ENTREGA', 'FINALIZADO'];
@@ -113,7 +114,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $produtos = $_POST['item_produto'] ?? [];
-    $unidades = $_POST['item_unidade'] ?? [];
     $quantidades = $_POST['item_quantidade'] ?? [];
     $valores = $_POST['item_valor_unitario'] ?? [];
 
@@ -133,22 +133,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $itensValidos = [];
     $valorTotal = 0.0;
 
-    $maxLinhas = max(count($produtos), count($unidades), count($quantidades), count($valores));
+    $maxLinhas = max(count($produtos), count($quantidades), count($valores));
 
     for ($i = 0; $i < $maxLinhas; $i++) {
         $produto = trim((string)($produtos[$i] ?? ''));
-        $unidade = trim((string)($unidades[$i] ?? 'UN'));
-        $quantidadeRaw = (string)($quantidades[$i] ?? '');
-        $valorRaw = (string)($valores[$i] ?? '');
+        $quantidadeRaw = trim((string)($quantidades[$i] ?? ''));
+        $valorRaw = trim((string)($valores[$i] ?? ''));
 
         $itensForm[] = [
             'produto' => $produto,
-            'unidade' => $unidade !== '' ? $unidade : 'UN',
             'quantidade' => $quantidadeRaw,
             'valor_unitario' => $valorRaw,
         ];
 
-        $linhaVazia = ($produto === '' && trim($quantidadeRaw) === '' && trim($valorRaw) === '');
+        $linhaVazia = ($produto === '' && $quantidadeRaw === '' && $valorRaw === '');
         if ($linhaVazia) {
             continue;
         }
@@ -173,7 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $itensValidos[] = [
             'produto' => $produto,
-            'unidade' => $unidade !== '' ? mb_strtoupper($unidade, 'UTF-8') : 'UN',
             'quantidade' => $quantidade,
             'valor_unitario' => $valorUnitario,
         ];
@@ -189,26 +186,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo->beginTransaction();
 
+            $usuarioFinalizou = null;
+            $dataFinalizacao = null;
+
+            if ($status === 'FINALIZADO') {
+                $usuarioFinalizou = get_logged_user_id();
+                $dataFinalizacao = date('Y-m-d H:i:s');
+            }
+
             $stmtUpdate = $pdo->prepare("
                 UPDATE aquisicoes
-                SET fornecedor_id = :fornecedor_id,
+                SET
+                    fornecedor_id = :fornecedor_id,
+                    responsavel_entrega = :responsavel_entrega,
                     status = :status,
-                    valor_total = :valor_total
+                    valor_total = :valor_total,
+                    data_finalizacao = :data_finalizacao,
+                    usuario_id_finalizou = :usuario_id_finalizou
                 WHERE id = :id
             ");
-            $stmtUpdate->execute([
-                ':fornecedor_id' => $fornecedor_id,
-                ':status' => $status,
-                ':valor_total' => $valorTotal,
-                ':id' => $id,
-            ]);
+
+            $stmtUpdate->bindValue(':fornecedor_id', $fornecedor_id, PDO::PARAM_INT);
+            $stmtUpdate->bindValue(':responsavel_entrega', $responsavel_entrega !== '' ? $responsavel_entrega : null, $responsavel_entrega !== '' ? PDO::PARAM_STR : PDO::PARAM_NULL);
+            $stmtUpdate->bindValue(':status', $status, PDO::PARAM_STR);
+            $stmtUpdate->bindValue(':valor_total', $valorTotal);
+            $stmtUpdate->bindValue(':data_finalizacao', $dataFinalizacao, $dataFinalizacao !== null ? PDO::PARAM_STR : PDO::PARAM_NULL);
+            $stmtUpdate->bindValue(':usuario_id_finalizou', $usuarioFinalizou, $usuarioFinalizou !== null ? PDO::PARAM_INT : PDO::PARAM_NULL);
+            $stmtUpdate->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmtUpdate->execute();
 
             $stmtDeleteItens = $pdo->prepare("DELETE FROM itens_aquisicao WHERE aquisicao_id = :id");
             $stmtDeleteItens->execute([':id' => $id]);
 
             $stmtInsertItem = $pdo->prepare("
-                INSERT INTO itens_aquisicao (aquisicao_id, produto, quantidade, unidade, valor_unitario)
-                VALUES (:aquisicao_id, :produto, :quantidade, :unidade, :valor_unitario)
+                INSERT INTO itens_aquisicao (
+                    aquisicao_id,
+                    produto,
+                    quantidade,
+                    valor_unitario
+                ) VALUES (
+                    :aquisicao_id,
+                    :produto,
+                    :quantidade,
+                    :valor_unitario
+                )
             ");
 
             foreach ($itensValidos as $item) {
@@ -216,7 +237,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':aquisicao_id' => $id,
                     ':produto' => $item['produto'],
                     ':quantidade' => $item['quantidade'],
-                    ':unidade' => $item['unidade'],
                     ':valor_unitario' => $item['valor_unitario'],
                 ]);
             }
@@ -232,6 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $aquisicao['fornecedor_id'] = $fornecedor_id;
+    $aquisicao['responsavel_entrega'] = $responsavel_entrega;
     $aquisicao['status'] = $status;
     $aquisicao['valor_total'] = $valorTotal;
     $itens = !empty($itensForm) ? $itensForm : $itens;
@@ -310,18 +331,6 @@ include 'views/layout/header.php';
         text-decoration: none;
     }
 
-    .btn-danger-light {
-        background: #fff1f2;
-        border-color: #fecdd3;
-        color: #be123c;
-    }
-
-    .btn-danger-light:hover {
-        background: #ffe4e6;
-        color: #9f1239;
-        text-decoration: none;
-    }
-
     .summary-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(180px, 1fr));
@@ -355,7 +364,7 @@ include 'views/layout/header.php';
 
     .form-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 1rem;
         margin-bottom: 1.5rem;
     }
@@ -397,7 +406,7 @@ include 'views/layout/header.php';
 
     .table-items {
         width: 100%;
-        min-width: 920px;
+        min-width: 820px;
         border-collapse: collapse;
     }
 
@@ -574,7 +583,7 @@ include 'views/layout/header.php';
             <div class="edit-topbar">
                 <div class="edit-title">
                     <h3><i class="fas fa-pen-to-square" style="margin-right: .45rem; color: #206bc4;"></i>Editar Aquisição</h3>
-                    <p>Altere fornecedor, status e os itens da aquisição. O valor total será recalculado automaticamente.</p>
+                    <p>Altere os dados da aquisição e seus itens. O valor total será recalculado automaticamente.</p>
                 </div>
 
                 <a href="aquisicoes_lista.php" class="btn-custom btn-outline-custom">
@@ -592,16 +601,16 @@ include 'views/layout/header.php';
                     <span class="value"><?php echo h($aquisicao['numero_aq'] ?? ''); ?></span>
                 </div>
                 <div class="summary-box">
+                    <span class="label">Código Entrega</span>
+                    <span class="value"><?php echo h($aquisicao['codigo_entrega'] ?? ''); ?></span>
+                </div>
+                <div class="summary-box">
                     <span class="label">Ofício</span>
                     <span class="value"><?php echo h($aquisicao['oficio_num'] ?? ''); ?></span>
                 </div>
                 <div class="summary-box">
                     <span class="label">Secretaria</span>
                     <span class="value"><?php echo h($aquisicao['secretaria_nome'] ?? ''); ?></span>
-                </div>
-                <div class="summary-box">
-                    <span class="label">Status Atual</span>
-                    <span class="value"><?php echo h($aquisicao['status'] ?? ''); ?></span>
                 </div>
             </div>
 
@@ -619,6 +628,17 @@ include 'views/layout/header.php';
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Responsável pela Entrega</label>
+                        <input
+                            type="text"
+                            name="responsavel_entrega"
+                            class="form-control"
+                            maxlength="255"
+                            value="<?php echo h($aquisicao['responsavel_entrega'] ?? ''); ?>"
+                            placeholder="Nome do responsável">
                     </div>
 
                     <div class="form-group">
@@ -645,10 +665,9 @@ include 'views/layout/header.php';
                     <table class="table-items" id="tableItens">
                         <thead>
                             <tr>
-                                <th style="width: 38%;">Produto</th>
-                                <th style="width: 12%;">Unidade</th>
-                                <th style="width: 14%;">Quantidade</th>
-                                <th style="width: 16%;">Valor Unitário</th>
+                                <th style="width: 44%;">Produto</th>
+                                <th style="width: 18%;">Quantidade</th>
+                                <th style="width: 18%;">Valor Unitário</th>
                                 <th style="width: 14%;" class="td-right">Total</th>
                                 <th style="width: 6%;" class="td-center">Ação</th>
                             </tr>
@@ -663,9 +682,6 @@ include 'views/layout/header.php';
                                 <tr class="item-row">
                                     <td>
                                         <input type="text" name="item_produto[]" class="form-control item-produto" value="<?php echo h($item['produto'] ?? ''); ?>" required>
-                                    </td>
-                                    <td>
-                                        <input type="text" name="item_unidade[]" class="form-control item-unidade" value="<?php echo h($item['unidade'] ?? 'UN'); ?>" maxlength="10">
                                     </td>
                                     <td>
                                         <input type="number" name="item_quantidade[]" class="form-control item-quantidade" value="<?php echo h(is_numeric($item['quantidade'] ?? null) ? number_input_value($item['quantidade'], 2) : $item['quantidade']); ?>" min="0.01" step="0.01" required>
@@ -709,88 +725,78 @@ include 'views/layout/header.php';
 </div>
 
 <script>
-(function () {
-    const tbody = document.getElementById('tbodyItens');
-    const btnAdicionar = document.getElementById('btnAdicionarItem');
-    const totalGeralView = document.getElementById('totalGeralView');
+    (function() {
+        const tbody = document.getElementById('tbodyItens');
+        const btnAdicionar = document.getElementById('btnAdicionarItem');
+        const totalGeralView = document.getElementById('totalGeralView');
 
-    function parseValue(value) {
-        const num = parseFloat(String(value).replace(',', '.'));
-        return isNaN(num) ? 0 : num;
-    }
+        function parseValue(value) {
+            const num = parseFloat(String(value).replace(',', '.'));
+            return isNaN(num) ? 0 : num;
+        }
 
-    function formatBRL(value) {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value || 0);
-    }
+        function formatBRL(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value || 0);
+        }
 
-    function updateRowTotal(row) {
-        const qtdInput = row.querySelector('.item-quantidade');
-        const valorInput = row.querySelector('.item-valor');
-        const totalText = row.querySelector('.item-total-text');
+        function updateRowTotal(row) {
+            const qtdInput = row.querySelector('.item-quantidade');
+            const valorInput = row.querySelector('.item-valor');
+            const totalText = row.querySelector('.item-total-text');
 
-        const qtd = parseValue(qtdInput.value);
-        const valor = parseValue(valorInput.value);
-        const total = qtd * valor;
+            const qtd = parseValue(qtdInput.value);
+            const valor = parseValue(valorInput.value);
+            const total = qtd * valor;
 
-        totalText.textContent = formatBRL(total);
-        return total;
-    }
+            totalText.textContent = formatBRL(total);
+            return total;
+        }
 
-    function updateGrandTotal() {
-        let total = 0;
+        function updateGrandTotal() {
+            let total = 0;
 
-        document.querySelectorAll('.item-row').forEach(function (row) {
-            total += updateRowTotal(row);
-        });
+            document.querySelectorAll('.item-row').forEach(function(row) {
+                total += updateRowTotal(row);
+            });
 
-        totalGeralView.textContent = formatBRL(total);
-    }
+            totalGeralView.textContent = formatBRL(total);
+        }
 
-    function bindRowEvents(row) {
-        const qtdInput = row.querySelector('.item-quantidade');
-        const valorInput = row.querySelector('.item-valor');
-        const removeBtn = row.querySelector('.btn-remove-item');
+        function bindRowEvents(row) {
+            const qtdInput = row.querySelector('.item-quantidade');
+            const valorInput = row.querySelector('.item-valor');
+            const removeBtn = row.querySelector('.btn-remove-item');
 
-        [qtdInput, valorInput].forEach(function (el) {
-            el.addEventListener('input', updateGrandTotal);
-            el.addEventListener('change', updateGrandTotal);
-        });
+            [qtdInput, valorInput].forEach(function(el) {
+                el.addEventListener('input', updateGrandTotal);
+                el.addEventListener('change', updateGrandTotal);
+            });
 
-        const produtoInput = row.querySelector('.item-produto');
-        const unidadeInput = row.querySelector('.item-unidade');
+            removeBtn.addEventListener('click', function() {
+                const rows = document.querySelectorAll('.item-row');
 
-        [produtoInput, unidadeInput].forEach(function (el) {
-            el.addEventListener('input', function () {});
-        });
+                if (rows.length <= 1) {
+                    row.querySelector('.item-produto').value = '';
+                    row.querySelector('.item-quantidade').value = '1.00';
+                    row.querySelector('.item-valor').value = '0.00';
+                    updateGrandTotal();
+                    return;
+                }
 
-        removeBtn.addEventListener('click', function () {
-            const rows = document.querySelectorAll('.item-row');
-            if (rows.length <= 1) {
-                row.querySelector('.item-produto').value = '';
-                row.querySelector('.item-unidade').value = 'UN';
-                row.querySelector('.item-quantidade').value = '1.00';
-                row.querySelector('.item-valor').value = '0.00';
+                row.remove();
                 updateGrandTotal();
-                return;
-            }
+            });
+        }
 
-            row.remove();
-            updateGrandTotal();
-        });
-    }
-
-    function createRow() {
-        const tr = document.createElement('tr');
-        tr.className = 'item-row';
-        tr.innerHTML = `
+        function createRow() {
+            const tr = document.createElement('tr');
+            tr.className = 'item-row';
+            tr.innerHTML = `
             <td>
                 <input type="text" name="item_produto[]" class="form-control item-produto" required>
-            </td>
-            <td>
-                <input type="text" name="item_unidade[]" class="form-control item-unidade" value="UN" maxlength="10">
             </td>
             <td>
                 <input type="number" name="item_quantidade[]" class="form-control item-quantidade" value="1.00" min="0.01" step="0.01" required>
@@ -808,21 +814,21 @@ include 'views/layout/header.php';
             </td>
         `;
 
-        tbody.appendChild(tr);
-        bindRowEvents(tr);
-        updateGrandTotal();
+            tbody.appendChild(tr);
+            bindRowEvents(tr);
+            updateGrandTotal();
 
-        const produto = tr.querySelector('.item-produto');
-        if (produto) {
-            produto.focus();
+            const produto = tr.querySelector('.item-produto');
+            if (produto) {
+                produto.focus();
+            }
         }
-    }
 
-    btnAdicionar.addEventListener('click', createRow);
+        btnAdicionar.addEventListener('click', createRow);
 
-    document.querySelectorAll('.item-row').forEach(bindRowEvents);
-    updateGrandTotal();
-})();
+        document.querySelectorAll('.item-row').forEach(bindRowEvents);
+        updateGrandTotal();
+    })();
 </script>
 
 <?php include 'views/layout/footer.php'; ?>
