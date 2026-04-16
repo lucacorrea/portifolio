@@ -256,7 +256,7 @@
         const filterForm = document.getElementById('filterForm');
         
         // --- Core Functions ---
-        async function loadSales(page = 1) {
+        window.loadSales = async function(page = 1) {
             currentPage = page;
             const formData = new FormData(filterForm);
             const params = new URLSearchParams(formData);
