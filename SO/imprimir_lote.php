@@ -24,6 +24,7 @@ if ($is_print) {
         JOIN oficios o ON a.oficio_id = o.id
         JOIN secretarias s ON o.secretaria_id = s.id
         JOIN fornecedores f ON a.fornecedor_id = f.id
+        WHERE o.status = 'APROVADO'
         ORDER BY a.criado_em ASC, a.id ASC
     ");
     $aquisicoes = $stmt_aq->fetchAll();
@@ -70,20 +71,24 @@ if ($is_print) {
             #status-text { font-weight: bold; color: #206bc4; }
 
             /* Estilos de impressão (Fora da tela) */
-            #render-container { position: absolute; left: -9999px; top: 0; width: 800px; background: #fff; }
-            .aq-folha { padding: 40px; background: #fff; color: #000; font-family: Arial, sans-serif; }
+            #render-container { position: absolute; left: -9999px; top: 0; width: 793px; background: #fff; }
+            .aq-folha { padding: 38px; box-sizing: border-box; background: #fff; color: #000; font-family: Arial, sans-serif; }
             .ordem-header { display: flex; align-items: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
-            .ordem-logo img { width: 150px; height: auto; }
-            .ordem-center { flex-grow: 1; text-align: center; }
+            .ordem-logo img { width: 140px; height: auto; display: block; }
+            .ordem-center { flex-grow: 1; text-align: center; padding: 0 10px; }
             .ordem-center h1 { font-size: 18px; margin: 0; font-weight: bold; }
             .ordem-center h2 { font-size: 14px; margin: 5px 0 0; }
             .ordem-right { text-align: right; }
             .ordem-right-box { border: 2px solid #000; padding: 5px 15px; display: inline-block; text-align: center; }
             .ordem-info-table, .ordem-items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
-            .ordem-info-table td, .ordem-items-table th, .ordem-items-table td { border: 1px solid #000; padding: 8px; }
+            .ordem-info-table td, .ordem-items-table th, .ordem-items-table td { border: 1px solid #000; padding: 8px; word-wrap: break-word; }
             .ordem-info-label { font-weight: bold; background: #f0f0f0; }
             .ordem-items-table th { background: #f0f0f0; font-weight: bold; text-align: center; }
-            .assinaturas { display: flex; justify-content: space-between; margin-top: 50px; text-align: center; }
+            
+            /* Previne quebra de linha feia cortando o texto ao meio */
+            .ordem-items-table tr { page-break-inside: avoid; }
+            td { page-break-inside: avoid; }
+            .assinaturas { display: flex; justify-content: space-between; margin-top: 50px; text-align: center; page-break-inside: avoid; }
             .assinaturas > div { width: 45%; border-top: 1px solid #000; padding-top: 5px; font-size: 12px; font-weight: bold; }
         </style>
     </head>
@@ -233,11 +238,12 @@ if ($is_print) {
                         // 1. GERAR HTML DA AQUISIÇÃO PARA PDF
                         const elem = document.getElementById('aq-html-' + rec.id);
                         const opt = {
-                            margin: 0,
+                            margin: 0, 
                             filename: 'temp.pdf',
-                            image: { type: 'jpeg', quality: 0.98 },
-                            html2canvas: { scale: 2, logging: false },
-                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                            pagebreak: { mode: 'css', avoid: ['tr', '.assinaturas'] },
+                            image: { type: 'jpeg', quality: 1 },
+                            html2canvas: { scale: 2, logging: false, useCORS: true },
+                            jsPDF: { unit: 'px', format: [793, 1122], orientation: 'portrait', hotfixes: ["px_scaling"] }
                         };
                         
                         const worker = html2pdf().set(opt).from(elem);
