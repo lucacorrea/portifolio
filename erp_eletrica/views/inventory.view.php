@@ -48,11 +48,11 @@
                 </span>
                 <input type="text" name="q" id="productSearch" class="form-control border-start-0" placeholder="Pesquisar material..." value="<?= htmlspecialchars($filters['q']) ?>" autocomplete="off">
             </div>
-            <select name="categoria" class="form-select w-100 w-sm-auto" id="filterCategory" onchange="this.form.submit()">
-                <option value="">Todas Categorias</option>
-                <?php foreach ($categories as $cat): ?>
-                    <option value="<?= $cat ?>" <?= $filters['categoria'] == $cat ? 'selected' : '' ?>><?= $cat ?></option>
-                <?php endforeach; ?>
+            <select name="ordem" class="form-select w-100 w-sm-auto fw-bold" onchange="this.form.submit()">
+                <option value="codigo_desc" <?= $filters['ordem'] == 'codigo_desc' ? 'selected' : '' ?>>Último Código (Maior → Menor)</option>
+                <option value="codigo_asc" <?= $filters['ordem'] == 'codigo_asc' ? 'selected' : '' ?>>Primeiro Código (Menor → Maior)</option>
+                <option value="nome_asc" <?= $filters['ordem'] == 'nome_asc' ? 'selected' : '' ?>>Nome (A-Z)</option>
+                <option value="categoria_asc" <?= $filters['ordem'] == 'categoria_asc' ? 'selected' : '' ?>>Categoria / Nome</option>
             </select>
         </form>
         <div class="d-flex gap-2 w-100 w-md-auto">
@@ -192,7 +192,7 @@
         <nav aria-label="Navegação de estoque">
             <ul class="pagination pagination-sm mb-0 justify-content-center">
                 <li class="page-item <?= $pagination['current'] <= 1 ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>" aria-label="Anterior">
+                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>&ordem=<?= urlencode($filters['ordem']) ?>" aria-label="Anterior">
                         <i class="fas fa-chevron-left small"></i>
                     </a>
                 </li>
@@ -203,11 +203,11 @@
                 for($i = $start; $i <= $end; $i++): 
                 ?>
                 <li class="page-item <?= $i == $pagination['current'] ? 'active' : '' ?>">
-                    <a class="page-link" href="?page=<?= $i ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>"><?= $i ?></a>
+                    <a class="page-link" href="?page=<?= $i ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>&ordem=<?= urlencode($filters['ordem']) ?>"><?= $i ?></a>
                 </li>
                 <?php endfor; ?>
                 <li class="page-item <?= $pagination['current'] >= $pagination['pages'] ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>" aria-label="Próximo">
+                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>&ordem=<?= urlencode($filters['ordem']) ?>" aria-label="Próximo">
                         <i class="fas fa-chevron-right small"></i>
                     </a>
                 </li>
