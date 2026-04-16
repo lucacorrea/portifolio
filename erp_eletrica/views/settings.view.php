@@ -105,6 +105,24 @@
                                 </div>
                             </div>
 
+                            <!-- Numbering & Series -->
+                            <div class="row g-2 mb-3">
+                                <div class="col-4">
+                                    <label class="form-label small fw-bold text-secondary mb-1">Série NFC-e</label>
+                                    <input type="number" name="serie_nfce_global" id="serie_nfce_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['serie_nfce'] ?? '1' ?>">
+                                </div>
+                                <div class="col-8">
+                                    <label class="form-label small fw-bold text-secondary mb-1">Último Nº NFC-e</label>
+                                    <div class="input-group">
+                                        <input type="number" name="ultimo_numero_nfce_global" id="ultimo_numero_nfce_global" class="form-control bg-light border-0 shadow-sm text-dark" value="<?= $sefaz['ultimo_numero_nfce'] ?? '0' ?>">
+                                        <button type="button" class="btn btn-warning btn-sm fw-bold px-3" onclick="syncNumberGlobal()" title="Sincronizar com histórico local">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                    </div>
+                                    <div class="extra-small text-muted mt-1">O próximo será: <span id="next_num_global" class="fw-bold text-primary"><?= ($sefaz['ultimo_numero_nfce'] ?? 0) + 1 ?></span></div>
+                                </div>
+                            </div>
+
                             <div class="mb-4">
                                 <label class="form-label small fw-bold text-secondary mb-1">Ambiente Sefaz</label>
                                 <select name="ambiente" class="form-select bg-light border-0 shadow-sm text-dark fw-bold">
@@ -327,7 +345,12 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">Último Nº NFC-e</label>
-                                    <input type="number" name="ultimo_numero_nfce" id="f_ultimo" class="form-control shadow-sm" value="0">
+                                    <div class="input-group">
+                                        <input type="number" name="ultimo_numero_nfce" id="f_ultimo" class="form-control shadow-sm" value="0">
+                                        <button type="button" class="btn btn-warning btn-sm fw-bold px-3" onclick="syncNumberFilial()" title="Sincronizar com histórico local">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -600,6 +623,63 @@ function atualizarCodigoUF() {
         if (codUfInput) codUfInput.value = codigo;
     }
 }
+
+async function syncNumberGlobal() {
+    const serie = document.getElementById('serie_nfce_global').value;
+    const ambiente = document.getElementsByName('ambiente')[0].value === 'producao' ? 1 : 2;
+    const btn = document.querySelector('[onclick="syncNumberGlobal()"]');
+    const icon = btn.querySelector('i');
+    
+    icon.classList.add('fa-spin');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`api/fiscal_sync.php?action=getMaxNumber&serie=${serie}&ambiente=${ambiente}`);
+        const data = await res.json();
+        if (data.ok) {
+            document.getElementById('ultimo_numero_nfce_global').value = data.max;
+            document.getElementById('next_num_global').innerText = parseInt(data.max) + 1;
+        } else {
+            alert('Erro ao sincronizar: ' + data.msg);
+        }
+    } catch (e) {
+        alert('Erro na requisição: ' + e.message);
+    } finally {
+        icon.classList.remove('fa-spin');
+        btn.disabled = false;
+    }
+}
+
+async function syncNumberFilial() {
+    const serie = document.getElementById('f_serie').value;
+    const ambiente = document.getElementById('f_ambiente').value;
+    const filialId = document.getElementById('f_id').value;
+    const btn = document.querySelector('[onclick="syncNumberFilial()"]');
+    const icon = btn.querySelector('i');
+    
+    icon.classList.add('fa-spin');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`api/fiscal_sync.php?action=getMaxNumber&serie=${serie}&ambiente=${ambiente}&filial_id=${filialId}`);
+        const data = await res.json();
+        if (data.ok) {
+            document.getElementById('f_ultimo').value = data.max;
+        } else {
+            alert('Erro ao sincronizar: ' + data.msg);
+        }
+    } catch (e) {
+        alert('Erro na requisição: ' + e.message);
+    } finally {
+        icon.classList.remove('fa-spin');
+        btn.disabled = false;
+    }
+}
+
+// Add listener to update "next number" label in global
+document.getElementById('ultimo_numero_nfce_global').addEventListener('input', function() {
+    document.getElementById('next_num_global').innerText = (parseInt(this.value) || 0) + 1;
+});
 </script>
 
 <style>
