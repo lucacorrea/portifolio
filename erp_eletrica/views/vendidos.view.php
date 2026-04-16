@@ -302,7 +302,7 @@
                             <span class="badge ${getStatusBadge(s.status)}">
                                 ${s.status.toUpperCase()}
                             </span>
-                            ${(s.status === 'cancelado' && s.nf_status && s.nf_status !== '101') ? 
+                            ${(s.status === 'cancelado' && (s.nf_status === '100' || s.nf_status === '150')) ? 
                                 `<span class="badge bg-warning text-dark extra-small" title="Esta venda foi cancelada internamente mas a NFC-e ainda consta como ativa na SEFAZ.">
                                     <i class="fas fa-exclamation-triangle me-1"></i>ERRO SEFAZ
                                  </span>` : ''
@@ -321,7 +321,7 @@
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="openCancelModal(${s.id}, '${s.tipo_nota}')"><i class="fas fa-times me-2"></i>Cancelar Venda</a></li>
                                 ` : ''}
-                                ${(s.status === 'cancelado' && s.nf_status && s.nf_status !== '101') ? `
+                                ${(s.status === 'cancelado' && (s.nf_status === '100' || s.nf_status === '150')) ? `
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item py-2 text-warning fw-bold" href="javascript:void(0)" onclick="openCancelModal(${s.id}, 'fiscal', true)"><i class="fas fa-cloud-upload-alt me-2"></i>Regularizar na SEFAZ</a></li>
                                 ` : ''}
