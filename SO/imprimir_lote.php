@@ -3,7 +3,7 @@ require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
 
-// Verifica se quer imprimir
+// Verifica se quer gerar PDF
 $is_print = isset($_GET['print']) && $_GET['print'] == 1;
 
 if ($is_print) {
@@ -11,315 +11,317 @@ if ($is_print) {
     $stmt_aq = $pdo->query("
         SELECT
             a.*,
+            o.id AS oficio_original_id,
             o.numero AS oficio_num,
             o.justificativa,
-            o.valor_orcamento,
+            o.arquivo_oficio,
             o.criado_em as oficio_criado_em,
-            o.status as oficio_status,
             s.nome AS secretaria,
             s.responsavel AS sec_responsavel,
             f.nome AS fornecedor,
-            f.cnpj AS fornecedor_cnpj,
-            f.contato AS fornecedor_contato,
-            u.nome AS oficio_usuario
+            f.cnpj AS fornecedor_cnpj
         FROM aquisicoes a
         JOIN oficios o ON a.oficio_id = o.id
         JOIN secretarias s ON o.secretaria_id = s.id
         JOIN fornecedores f ON a.fornecedor_id = f.id
-        JOIN usuarios u ON o.usuario_id = u.id
         ORDER BY a.criado_em ASC, a.id ASC
     ");
     $aquisicoes = $stmt_aq->fetchAll();
 
-    function h($value) {
-        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-    }
+    function h($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
+    function money_br($value) { return 'R$ ' . number_format((float) $value, 2, ',', '.'); }
 
-    function money_br($value) {
-        return 'R$ ' . number_format((float) $value, 2, ',', '.');
-    }
+    // Prepara dados para o JS
+    $records_js = [];
+    foreach ($aquisicoes as $aq) {
+        $stmt_anexos = $pdo->prepare("SELECT caminho FROM oficio_anexos WHERE oficio_id = ? AND tipo = 'OFICIO' ORDER BY id ASC");
+        $stmt_anexos->execute([$aq['oficio_original_id']]);
+        $anexos = $stmt_anexos->fetchAll(PDO::FETCH_COLUMN);
 
+        if (empty($anexos) && !empty($aq['arquivo_oficio'])) {
+            $anexos[] = $aq['arquivo_oficio'];
+        }
+
+        $records_js[] = [
+            'id' => $aq['id'],
+            'numero' => $aq['numero_aq'],
+            'anexos' => $anexos
+        ];
+    }
     ?>
     <!DOCTYPE html>
     <html lang="pt-br">
     <head>
         <meta charset="UTF-8">
-        <title>Imprimir Lote: Aquisições e Ofícios</title>
+        <title>Gerando PDF do Lote...</title>
         <link rel="stylesheet" href="assets/css/style.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
         <style>
-            .print-topbar { margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center; background: #f8f9fa; padding: 15px; border-radius: 8px; }
-            .print-topbar .spacer { flex-grow: 1; }
-            .print-doc { max-width: 1120px; margin: 0 auto; }
-            
-            .printable-page { margin-bottom: 2rem; border-radius: 12px; overflow: visible; background: #fff; border: 1px solid #ddd; padding: 2rem; }
-            
-            .ordem-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; border-bottom: 2px solid #000; padding-bottom: 1.25rem; margin-bottom: 2rem; gap: 1rem; }
-            .ordem-logo img { max-height: 80px; max-width: 200px; object-fit: contain; width: 100%; }
-            .ordem-center { text-align: center; }
-            .ordem-right { text-align: right; justify-self: end; width: 100%; }
-            .ordem-right-box { border: 1.5px solid #000; padding: 0.4rem 1rem; display: inline-block; text-align: center; }
-            
-            .ordem-info-table, .ordem-items-table { width: 100%; border-collapse: collapse; }
-            .ordem-info-wrap, .ordem-items-wrap { width: 100%; margin-bottom: 1.35rem; }
-            .ordem-info-table td, .ordem-items-table th, .ordem-items-table td { border: 1px solid #000; padding: 6px 8px; font-size: 0.8125rem; }
-            .ordem-items-table th { background: #f0f0f0; }
-            .ordem-info-label { background: #f0f0f0; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
-            
-            .ordem-section-title { font-size: 0.75rem; font-weight: 800; color: #333; text-transform: uppercase; margin: 1.85rem 0 0.5rem; }
-            
-            .rodape-documento { margin-top: 1.25rem; }
-            .assinaturas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; text-align: center; margin-top: 1.5rem; }
-            .assinatura-linha { border-top: 1.5px solid #000; padding-top: 0.75rem; }
+            body { background: #f8f9fa; font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+            .loading-container { text-align: center; background: #fff; padding: 3rem; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 500px; width: 100%; }
+            .spinner { border: 4px solid rgba(0,0,0,0.1); width: 60px; height: 60px; border-radius: 50%; border-left-color: #206bc4; animation: spin 1s linear infinite; margin: 0 auto 1.5rem auto; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            h2 { margin: 0 0 1rem 0; color: #333; }
+            p { color: #666; margin-bottom: 2rem; }
+            #progress-bar-container { background: #eef2f7; border-radius: 8px; height: 12px; overflow: hidden; margin-bottom: 10px; }
+            #progress-bar { background: #206bc4; height: 100%; width: 0%; transition: width 0.3s; }
+            #status-text { font-weight: bold; color: #206bc4; }
 
-            /* Estilos Oficio Específico */
-            .oficio-detalhes-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
-            .oficio-box { border: 1px solid #000; padding: 10px; border-radius: 4px; }
-            .oficio-box label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: #555; display: block; margin-bottom: 5px; }
-            .oficio-box div { font-weight: 700; font-size: 0.9rem; }
-            
-            .oficio-justificativa { border: 1px solid #000; padding: 10px; border-radius: 4px; margin-bottom: 1.5rem; }
-            .oficio-justificativa label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: #555; display: block; margin-bottom: 5px;}
-            .oficio-justificativa p { font-size: 0.85rem; margin: 0; line-height: 1.5; color: #000; }
-
-            /* Modo Impressao */
-            @media print {
-                @page { size: A4 portrait; margin: 6mm 6mm 7mm 6mm; }
-                html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
-                .no-print { display: none !important; }
-                .printable-page { border: none !important; margin: 0 0 4mm 0 !important; padding: 0 !important; page-break-after: always; break-after: page; box-shadow: none !important; border-radius: 0 !important;}
-                .printable-page:last-of-type { page-break-after: auto; break-after: auto; }
-            }
+            /* Estilos de impressão (Fora da tela) */
+            #render-container { position: absolute; left: -9999px; top: 0; width: 800px; background: #fff; }
+            .aq-folha { padding: 40px; background: #fff; color: #000; font-family: Arial, sans-serif; }
+            .ordem-header { display: flex; align-items: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
+            .ordem-logo img { width: 150px; height: auto; }
+            .ordem-center { flex-grow: 1; text-align: center; }
+            .ordem-center h1 { font-size: 18px; margin: 0; font-weight: bold; }
+            .ordem-center h2 { font-size: 14px; margin: 5px 0 0; }
+            .ordem-right { text-align: right; }
+            .ordem-right-box { border: 2px solid #000; padding: 5px 15px; display: inline-block; text-align: center; }
+            .ordem-info-table, .ordem-items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+            .ordem-info-table td, .ordem-items-table th, .ordem-items-table td { border: 1px solid #000; padding: 8px; }
+            .ordem-info-label { font-weight: bold; background: #f0f0f0; }
+            .ordem-items-table th { background: #f0f0f0; font-weight: bold; text-align: center; }
+            .assinaturas { display: flex; justify-content: space-between; margin-top: 50px; text-align: center; }
+            .assinaturas > div { width: 45%; border-top: 1px solid #000; padding-top: 5px; font-size: 12px; font-weight: bold; }
         </style>
     </head>
-    <body onload="setTimeout(window.print, 1000);">
-        <div class="no-print print-topbar">
-            <strong>Impressão em Lote (<?php echo count($aquisicoes); ?> registros)</strong>
-            <div class="spacer"></div>
-            <a href="imprimir_lote.php" class="btn btn-outline btn-sm">Voltar</a>
-            <button onclick="window.print()" class="btn btn-primary btn-sm">Imprimir Novamente</button>
+    <body>
+
+        <div class="loading-container" id="loading-box">
+            <div class="spinner"></div>
+            <h2>Montando Lote de Aquisições</h2>
+            <p>Por favor, não feche esta página. O sistema está mesclando o HTML das aquisições com os PDFs dos Ofícios anexados.</p>
+            <div id="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+            <div id="status-text">Iniciando...</div>
         </div>
 
-        <div class="print-doc">
+        <div class="loading-container" id="done-box" style="display: none;">
+            <i class="fas fa-check-circle" style="font-size: 60px; color: #28a745; margin-bottom: 1.5rem;"></i>
+            <h2>Lote Gerado com Sucesso!</h2>
+            <p>O download do PDF completo começará em instantes. Caso contrário, clique no botão abaixo.</p>
+            <a href="#" id="download-btn" class="btn btn-primary">Baixar Arquivo PDF</a>
+            <br><br>
+            <a href="imprimir_lote.php" class="btn btn-outline" style="text-decoration: none;">Voltar</a>
+        </div>
+
+        <!-- HTML oculto para renderização das Aquisições -->
+        <div id="render-container">
             <?php foreach ($aquisicoes as $aq): ?>
-                
                 <?php
-                // Buscar itens da Aquisicao
-                $stmt_items_aq = $pdo->prepare("SELECT * FROM itens_aquisicao WHERE aquisicao_id = ? ORDER BY id ASC");
-                $stmt_items_aq->execute([$aq['id']]);
-                $items_aq = $stmt_items_aq->fetchAll();
-
-                // Buscar itens do Oficio
-                $stmt_items_of = $pdo->prepare("SELECT * FROM itens_oficio WHERE oficio_id = ? ORDER BY id ASC");
-                $stmt_items_of->execute([$aq['oficio_id']]);
-                $items_of = $stmt_items_of->fetchAll();
+                    $stmt_items_aq = $pdo->prepare("SELECT * FROM itens_aquisicao WHERE aquisicao_id = ? ORDER BY id ASC");
+                    $stmt_items_aq->execute([$aq['id']]);
+                    $items_aq = $stmt_items_aq->fetchAll();
                 ?>
-
-                <!-- VIA AQUISIÇÃO -->
-                <div class="printable-page">
+                <div id="aq-html-<?= $aq['id'] ?>" class="aq-folha">
                     <div class="ordem-header">
                         <div class="ordem-logo">
-                            <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
+                            <img src="assets/img/prefeitura.jpg" alt="Logo">
                         </div>
                         <div class="ordem-center">
-                            <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                                PREFEITURA MUNICIPAL DE COARI
-                            </h1>
-                            <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                                Ordem de Aquisição e Suprimentos
-                            </h2>
-                            <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                                COARI - AM | CNPJ: 04.262.432/0001-21
-                            </div>
+                            <h1>PREFEITURA MUNICIPAL DE COARI</h1>
+                            <h2>Ordem de Aquisição e Suprimentos</h2>
+                            <div style="font-size: 10px; margin-top: 5px;">COARI - AM | CNPJ: 04.262.432/0001-21</div>
                         </div>
                         <div class="ordem-right">
-                            <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
-                                Via Administrativa
-                            </div>
+                            <div style="font-size: 10px; font-weight: bold; margin-bottom: 5px;">Via Administrativa</div>
                             <div class="ordem-right-box">
-                                <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
-                                <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">
-                                    <?= h(str_replace('AQ-', '', $aq['numero_aq'])) ?>
-                                </div>
+                                <span style="font-size: 10px;">Ordem Nº</span><br>
+                                <span style="font-size: 18px; font-weight: bold;"><?= h(str_replace('AQ-', '', $aq['numero_aq'])) ?></span>
                             </div>
-                            <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                                DATA: <?= date('d/m/Y', strtotime($aq['criado_em'])) ?>
-                            </div>
+                            <div style="font-size: 10px; margin-top: 5px;">DATA: <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></div>
                         </div>
                     </div>
 
-                    <div class="ordem-info-wrap">
-                        <table class="ordem-info-table">
-                            <tr>
-                                <td class="ordem-info-label" style="width: 15%;">Fornecedor:</td>
-                                <td style="font-weight: 700;"><?= h(strtoupper($aq['fornecedor'])) ?></td>
-                                <td class="ordem-info-label" style="width: 30%;">Local e Data de Emissão:</td>
-                                <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
-                            </tr>
-                            <tr>
-                                <td class="ordem-info-label">Para:</td>
-                                <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
-                                <td class="ordem-info-label">Referência:</td>
-                                <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
-                            </tr>
-                        </table>
-                    </div>
+                    <table class="ordem-info-table">
+                        <tr>
+                            <td class="ordem-info-label" style="width: 15%;">Fornecedor:</td>
+                            <td style="font-weight: bold;"><?= h(strtoupper($aq['fornecedor'])) ?></td>
+                            <td class="ordem-info-label" style="width: 25%;">Local e Data:</td>
+                            <td>COARI-AM, <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
+                        </tr>
+                        <tr>
+                            <td class="ordem-info-label">Para:</td>
+                            <td style="font-weight: bold;"><?= h(strtoupper($aq['secretaria'])) ?></td>
+                            <td class="ordem-info-label">Ref. Ofício:</td>
+                            <td style="font-weight: bold;"><?= h($aq['oficio_num']) ?></td>
+                        </tr>
+                    </table>
 
-                    <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
+                    <h3 style="font-size: 14px; text-transform: uppercase;">Autorização de Fornecimento - AF</h3>
 
-                    <div class="ordem-items-wrap">
-                        <table class="ordem-items-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 40px;">Item</th>
-                                    <th style="width: 50px;">Unid.</th>
-                                    <th style="width: 60px;">Qtd</th>
-                                    <th>Especificação Completa</th>
-                                    <th style="width: 110px;">Preço Unitário</th>
-                                    <th style="width: 110px;">Valor Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($items_aq)): ?>
-                                    <tr><td colspan="6" style="text-align: center; font-weight: 700;">Nenhum item.</td></tr>
-                                <?php else: ?>
-                                    <?php $i = 1; $valorTotalAquisicao = 0; ?>
-                                    <?php foreach ($items_aq as $item): ?>
-                                        <?php
-                                        $quantidade = (float) ($item['quantidade'] ?? 0);
-                                        $valorUnitario = (float) ($item['valor_unitario'] ?? 0);
-                                        $valorItem = $quantidade * $valorUnitario;
-                                        $valorTotalAquisicao += $valorItem;
-                                        ?>
-                                        <tr>
-                                            <td style="text-align: center; font-weight: 700;"><?= str_pad($i++, 2, '0', STR_PAD_LEFT) ?></td>
-                                            <td style="text-align: center; font-weight: 600;">UN</td>
-                                            <td style="text-align: center; font-weight: 700;"><?= number_format($quantidade, 0, ',', '.') ?></td>
-                                            <td style="font-weight: 600;"><?= h(strtoupper($item['produto'])) ?></td>
-                                            <td style="text-align: center;"><?= money_br($valorUnitario) ?></td>
-                                            <td style="text-align: center; font-weight: 700;"><?= money_br($valorItem) ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                    <tr style="background: #f0f0f0;">
-                                        <td colspan="5" style="text-align: right; font-weight: 800; font-size: 0.875rem; text-transform: uppercase;">Valor Total R$</td>
-                                        <td style="text-align: right; font-weight: 900; font-size: 0.9375rem;"><?= money_br($valorTotalAquisicao) ?></td>
+                    <table class="ordem-items-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30px;">Item</th>
+                                <th style="width: 40px;">Unid.</th>
+                                <th style="width: 50px;">Qtd</th>
+                                <th>Especificação</th>
+                                <th style="width: 90px;">Val. Unit</th>
+                                <th style="width: 90px;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($items_aq)): ?>
+                                <tr><td colspan="6" style="text-align: center;">Nenhum item.</td></tr>
+                            <?php else: ?>
+                                <?php $i = 1; $valorTotalAquisicao = 0; ?>
+                                <?php foreach ($items_aq as $item): ?>
+                                    <?php
+                                    $qtd = (float) $item['quantidade'];
+                                    $v_un = (float) $item['valor_unitario'];
+                                    $v_tot = $qtd * $v_un;
+                                    $valorTotalAquisicao += $v_tot;
+                                    ?>
+                                    <tr>
+                                        <td style="text-align: center;"><?= str_pad($i++, 2, '0', STR_PAD_LEFT) ?></td>
+                                        <td style="text-align: center;">UN</td>
+                                        <td style="text-align: center;"><?= number_format($qtd, 0, ',', '.') ?></td>
+                                        <td><?= h(strtoupper($item['produto'])) ?></td>
+                                        <td style="text-align: center;"><?= money_br($v_un) ?></td>
+                                        <td style="text-align: center; font-weight: bold;"><?= money_br($v_tot) ?></td>
                                     </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="rodape-documento">
-                        <div class="assinaturas-grid">
-                            <div>
-                                <div class="assinatura-linha">
-                                    <div style="font-weight: 800; font-size: 0.875rem;">RECEBEDOR</div>
-                                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Autorização de Recebimento</div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="assinatura-linha">
-                                    <div style="font-weight: 800; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Assinatura e Carimbo</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- VIA OFÍCIO -->
-                <div class="printable-page">
-                    <div class="ordem-header" style="grid-template-columns: 1fr auto 1fr;">
-                        <div class="ordem-logo">
-                             <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
-                        </div>
-                        <div class="ordem-center">
-                             <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                                 PREFEITURA MUNICIPAL DE COARI
-                             </h1>
-                             <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                                 Solicitação Interna (Ofício)
-                             </h2>
-                        </div>
-                        <div class="ordem-right">
-                             <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
-                                Via Solicitação
-                            </div>
-                             <div class="ordem-right-box">
-                                 <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Referência</div>
-                                 <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">
-                                     <?= h($aq['oficio_num']) ?>
-                                 </div>
-                             </div>
-                             <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                                 DATA: <?= date('d/m/Y H:i', strtotime($aq['oficio_criado_em'])) ?>
-                             </div>
-                        </div>
-                    </div>
-
-                    <div class="oficio-detalhes-grid">
-                        <div class="oficio-box">
-                            <label>Secretaria Solicitante</label>
-                            <div><?= h($aq['secretaria']) ?></div>
-                            <div style="font-size: 0.8rem; font-weight:normal; margin-top:5px; color:#444;">Resp: <?= h($aq['sec_responsavel']) ?></div>
-                        </div>
-                        <div class="oficio-box">
-                            <label>Cadastrado Por</label>
-                            <div><?= h($aq['oficio_usuario']) ?></div>
-                        </div>
-                        <div class="oficio-box">
-                            <label>Orçamento Previsto</label>
-                            <div style="font-weight: 900; color: #206bc4;"><?= !empty($aq['valor_orcamento']) ? money_br($aq['valor_orcamento']) : '---'; ?></div>
-                        </div>
-                    </div>
-
-                    <h3 class="ordem-section-title">ITENS SOLICITADOS NO OFÍCIO</h3>
-                    <div class="ordem-items-wrap">
-                        <table class="ordem-items-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 40px;">Item</th>
-                                    <th>Produto / Serviço</th>
-                                    <th style="width: 60px;">Qtd</th>
-                                    <th style="width: 50px;">Unid.</th>
+                                <?php endforeach; ?>
+                                <tr style="background: #f0f0f0;">
+                                    <td colspan="5" style="text-align: right; font-weight: bold;">TOTAL R$</td>
+                                    <td style="text-align: right; font-weight: bold;"><?= money_br($valorTotalAquisicao) ?></td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php if(empty($items_of)): ?>
-                                    <tr><td colspan="4" style="text-align: center; font-weight: 700;">Nenhum item no ofício.</td></tr>
-                                <?php else: ?>
-                                    <?php $j = 1; ?>
-                                    <?php foreach ($items_of as $itOf): ?>
-                                        <tr>
-                                            <td style="text-align: center; font-weight: 700;"><?= str_pad($j++, 2, '0', STR_PAD_LEFT) ?></td>
-                                            <td style="font-weight: 600;"><?= h($itOf['produto']) ?></td>
-                                            <td style="text-align: center; font-weight: 700;"><?= number_format($itOf['quantidade'], 2, ',', '.') ?></td>
-                                            <td style="text-align: center; font-weight: 600;"><?= h($itOf['unidade']) ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
 
-                    <div class="oficio-justificativa">
-                        <label>Justificativa e Finalidade</label>
-                        <p><?= nl2br(h($aq['justificativa'])) ?></p>
-                    </div>
-
-                    <div class="rodape-documento">
-                        <div class="assinaturas-grid" style="grid-template-columns: 1fr;">
-                            <div style="margin: 0 auto; width: 60%;">
-                                <div class="assinatura-linha" style="text-align:center;">
-                                    <div style="font-weight: 800; font-size: 0.875rem;"><?= h($aq['sec_responsavel']) ?></div>
-                                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Assinatura do Responsável</div>
-                                </div>
-                            </div>
+                    <div class="assinaturas">
+                        <div>
+                            RECEBEDOR<br>
+                            <span style="font-weight: normal; font-size: 10px;">Autorização de Recebimento</span>
+                        </div>
+                        <div>
+                            CONFIRMAÇÃO DE RECEBIMENTO<br>
+                            <span style="font-weight: normal; font-size: 10px;">Assinatura e Carimbo</span>
                         </div>
                     </div>
                 </div>
-
             <?php endforeach; ?>
         </div>
+
+        <script>
+            const records = <?= json_encode($records_js) ?>;
+            const statusText = document.getElementById('status-text');
+            const progressBar = document.getElementById('progress-bar');
+            const loadingBox = document.getElementById('loading-box');
+            const doneBox = document.getElementById('done-box');
+            const downloadBtn = document.getElementById('download-btn');
+
+            async function gerarPdfLote() {
+                const { PDFDocument } = window.PDFLib;
+                
+                try {
+                    // Create main document
+                    const doc = await PDFDocument.create();
+                    
+                    for (let i = 0; i < records.length; i++) {
+                        const rec = records[i];
+                        
+                        // Atualiza status
+                        const pct = Math.round(((i) / records.length) * 100);
+                        progressBar.style.width = pct + '%';
+                        statusText.innerText = `Processando Aquisição ${i+1} de ${records.length} (${rec.numero})...`;
+
+                        // 1. GERAR HTML DA AQUISIÇÃO PARA PDF
+                        const elem = document.getElementById('aq-html-' + rec.id);
+                        const opt = {
+                            margin: 0,
+                            filename: 'temp.pdf',
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: { scale: 2, logging: false },
+                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        };
+                        
+                        const worker = html2pdf().set(opt).from(elem);
+                        const aqPdfBlob = await worker.outputPdf('blob');
+                        const aqPdfBuffer = await aqPdfBlob.arrayBuffer();
+
+                        // Mescla pagina da Aquisição
+                        const aqDocLoaded = await PDFDocument.load(aqPdfBuffer);
+                        const copiedAqPages = await doc.copyPages(aqDocLoaded, aqDocLoaded.getPageIndices());
+                        copiedAqPages.forEach(p => doc.addPage(p));
+
+                        // 2. BUSCAR E MESCLAR OS ANEXOS (OFÍCIOS REAIS)
+                        if (rec.anexos && rec.anexos.length > 0) {
+                            for (let j = 0; j < rec.anexos.length; j++) {
+                                let caminhoAnexo = rec.anexos[j];
+                                
+                                try {
+                                    const resp = await fetch(caminhoAnexo);
+                                    if(!resp.ok) continue;
+                                    const buffer = await resp.arrayBuffer();
+                                    
+                                    const ext = caminhoAnexo.split('.').pop().toLowerCase();
+                                    
+                                    if(ext === 'pdf') {
+                                        const anexoDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+                                        const copiedAnexoPages = await doc.copyPages(anexoDoc, anexoDoc.getPageIndices());
+                                        copiedAnexoPages.forEach(p => doc.addPage(p));
+                                    } else if(['jpg','jpeg','png'].includes(ext)) {
+                                        let image;
+                                        if (ext === 'png') {
+                                            image = await doc.embedPng(buffer);
+                                        } else {
+                                            image = await doc.embedJpg(buffer);
+                                        }
+                                        
+                                        const page = doc.addPage();
+                                        const { width, height } = page.getSize();
+                                        
+                                        // Dimensiona a imagem para caber na A4 (com margem)
+                                        const margin = 30; // approx 1cm
+                                        const imgDims = image.scaleToFit(width - (margin*2), height - (margin*2));
+                                        
+                                        page.drawImage(image, {
+                                            x: (width - imgDims.width) / 2,
+                                            y: (height - imgDims.height) / 2,
+                                            width: imgDims.width,
+                                            height: imgDims.height,
+                                        });
+                                    }
+                                } catch(e) {
+                                    console.log("Erro ao anexar arquivo", caminhoAnexo, e);
+                                    // Ignora arquivo faltante e segue
+                                }
+                            }
+                        }
+                    }
+
+                    // Fim do Processo
+                    progressBar.style.width = '100%';
+                    statusText.innerText = "Finalizado! Preparando download...";
+
+                    const pdfBytes = await doc.save();
+                    const finalBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const finalUrl = URL.createObjectURL(finalBlob);
+
+                    loadingBox.style.display = 'none';
+                    doneBox.style.display = 'block';
+
+                    downloadBtn.href = finalUrl;
+                    downloadBtn.download = `Lote_Aquisicoes_Oficios_${new Date().getTime()}.pdf`;
+                    downloadBtn.click(); // Autoclick
+                    
+                } catch(error) {
+                    console.error("Erro fatal na geracao:", error);
+                    statusText.innerText = "Houve um erro ao gerar o PDF. Verifique o console.";
+                    progressBar.style.backgroundColor = 'red';
+                }
+            }
+
+            // Inicia assim que a página carregar
+            window.addEventListener('load', () => { // Ensure fonts/images are ready
+                setTimeout(gerarPdfLote, 500);
+            });
+        </script>
     </body>
     </html>
     <?php
@@ -338,15 +340,16 @@ include 'views/layout/header.php';
         </div>
         <h2 style="margin-bottom: 1rem; color: var(--text-dark);">Gerar Documento Unificado (PDF)</h2>
         <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto 2rem auto; font-size: 1.1rem; line-height: 1.6;">
-            Esta ferramenta gera um único arquivo pronto para impressão contendo <strong>todas as Aquisições</strong> e seus respectivos <strong>Ofícios de Solicitação</strong>, organizados na sequência de cadastro.
+            Esta ferramenta gera um único arquivo PDF contendo <strong>todas as Aquisições (Via Administrativa)</strong> 
+            e logo em seguida intercala com <strong>os arquivos originais em anexo (PDF/Fotos)</strong> dos respectivos Ofícios.
             <br><br>
-            A impressão será na seguinte ordem:
+            A montagem será nativa na seguinte ordem:
             <br>
-            <strong>Aquisição 1 &rarr; Ofício 1 &rarr; Aquisição 2 &rarr; Ofício 2 ...</strong>
+            <strong>Aquisição 1 (Sistema) &rarr; Arquivo Anexo do Ofício 1 &rarr; Aquisição 2 (Sistema) &rarr; Arquivo Anexo 2 ...</strong>
         </p>
 
         <a href="imprimir_lote.php?print=1" target="_blank" class="btn btn-primary" style="padding: 1rem 2.5rem; font-size: 1.15rem; border-radius: 50px; font-weight: 800;">
-            <i class="fas fa-print" style="margin-right: 8px;"></i> Gerar e Imprimir Lote Completo
+            <i class="fas fa-magic" style="margin-right: 8px;"></i> Processar e Baixar Lote Completo
         </a>
     </div>
 </div>
