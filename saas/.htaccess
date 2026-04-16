@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# Mantém landing page e arquivos reais
+RewriteCond %{REQUEST_URI} ^/saas/?$ [OR]
+RewriteCond %{REQUEST_URI} ^/saas/index\.html$ [NC,OR]
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Rotas do admin para os front controllers físicos
+RewriteRule ^admin/login$ admin/login/ [R=302,L]
+RewriteRule ^admin/dashboard$ admin/dashboard/ [R=302,L]
+RewriteRule ^logout$ logout/ [R=302,L]
