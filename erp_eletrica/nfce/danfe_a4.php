@@ -1,11 +1,10 @@
 <?php
-// danfe_a4.php — DANFE A4 (Modelo SEFAZ)
+// danfe_a4.php — DANFE A4 Premium (Total Standard)
 // Uso: danfe_a4.php?id=<emp_id>&venda_id=123&chave=...
 
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 if(session_status() === PHP_SESSION_NONE) session_start();
-
 header('Content-Type: text/html; charset=utf-8');
 
 require_once __DIR__ . '/config.php';
@@ -23,24 +22,22 @@ if ($arqReq) {
 } elseif ($chaveReq && strlen($chaveReq) === 44) {
     $file = __DIR__ . '/procNFCe_' . $chaveReq . '.xml';
     if (!is_file($file)) {
-        // Tenta no diretório superior
         $file = dirname(__DIR__) . '/nfce/procNFCe_' . $chaveReq . '.xml';
     }
 }
 
 if (!is_file($file)) {
-    // Tenta no banco
     try {
-        $st = $pdo->prepare("SELECT xml_nfeproc FROM nfce_emitidas WHERE chave = :ch OR venda_id = :v ORDER BY id DESC LIMIT 1");
+        $st = $pdo->prepare("SELECT xml_nfeproc FROM nfce_emitidas WHERE (chave = :ch OR venda_id = :v) AND xml_nfeproc IS NOT NULL ORDER BY id DESC LIMIT 1");
         $st->execute([':ch' => $chaveReq, ':v' => $vendaId]);
         $row = $st->fetch(PDO::FETCH_ASSOC);
-        if ($row && !empty($row['xml_nfeproc'])) $xmlRaw = $row['xml_nfeproc'];
+        if ($row) $xmlRaw = $row['xml_nfeproc'];
     } catch (Throwable $e) {}
 } else {
     $xmlRaw = file_get_contents($file);
 }
 
-if (!$xmlRaw) die('XML da nota não encontrado.');
+if (!$xmlRaw) die('XML da nota não encontrado ou ainda não processado.');
 
 $dom = new DOMDocument();
 libxml_use_internal_errors(true);
@@ -51,11 +48,14 @@ $nfeNS = 'http://www.portalfiscal.inf.br/nfe';
 $xpath = new DOMXPath($dom);
 $xpath->registerNamespace('n', $nfeNS);
 
-$val = fn($q) => ($n = $xpath->query($q)) && $n->length ? trim($n->item(0)->nodeValue) : '';
+$val = function($q, $node = null) use ($xpath) {
+    $n = $xpath->query($q, $node);
+    return ($n && $n->length) ? trim($n->item(0)->nodeValue) : '';
+};
 $br = fn($v) => number_format((float)$v, 2, ',', '.');
 $fmtChave = fn($ch) => trim(implode(' ', str_split(preg_replace('/\D+/', '', $ch), 4)));
 
-/* -------------------------- Dados -------------------------- */
+/* -------------------------- Dados Gerais -------------------------- */
 $emit = [
     'xNome' => $val('//n:emit/n:xNome'),
     'xFant' => $val('//n:emit/n:xFant'),
@@ -75,9 +75,9 @@ $emit = [
 $ide = [
     'nNF'    => $val('//n:ide/n:nNF'),
     'serie'  => $val('//n:ide/n:serie'),
-    'tpNF'   => $val('//n:ide/n:tpNF'), // 1=Saída
-    'dhEmi'  => $val('//n:ide/n:dhEmi') ?: $val('//n:ide/n:dhEmis'),
+    'tpNF'   => $val('//n:ide/n:tpNF'), 
     'natOp'  => $val('//n:ide/n:natOp'),
+    'dhEmi'  => $val('//n:ide/n:dhEmi') ?: $val('//n:ide/n:dhEmis'),
     'chave'  => preg_replace('/^NFe/', '', $dom->getElementsByTagName('infNFe')->item(0)->getAttribute('Id'))
 ];
 
@@ -94,7 +94,6 @@ $dest = [
     'UF'    => $val('//n:dest/n:enderDest/n:UF'),
     'CEP'   => $val('//n:dest/n:enderDest/n:CEP'),
     'fone'  => $val('//n:dest/n:enderDest/n:fone'),
-    'dhEmi' => $val('//n:ide/n:dhEmi') ?: $val('//n:ide/n:dhEmis')
 ];
 
 $tot = [
@@ -129,12 +128,26 @@ $transp = [
     'UFPlaca'  => $val('//n:transp/n:veicTransp/n:UF')
 ];
 
+// Duplicatas
+$dups = [];
+foreach($xpath->query('//n:cobr/n:dup') as $d) {
+    if (!$d) continue;
+    $dups[] = [
+        'nDup' => $val('n:nDup', $d),
+        'dVenc' => $val('n:dVenc', $d) ? date('d/m/Y', strtotime($val('n:dVenc', $d))) : '',
+        'vDup' => $br($val('n:vDup', $d))
+    ];
+}
+
 $itens = [];
 foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     $p = $det->getElementsByTagName('prod')->item(0);
     $i = $det->getElementsByTagName('imposto')->item(0);
     $icms = $i->getElementsByTagName('ICMS')->item(0);
-    $icmsX = $icms ? $icms->firstChild : null; // CST00, CST20, etc.
+    $icmsX = $icms ? $icms->firstChild : null;
+
+    $vProd = (float)$val('.//n:vProd', $p);
+    $vDesItem = (float)$val('.//n:vDesc', $p);
 
     $itens[] = [
         'cProd'  => $val('.//n:cProd', $p),
@@ -145,7 +158,9 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         'uCom'   => $val('.//n:uCom', $p),
         'qCom'   => number_format((float)$val('.//n:qCom', $p), 4, ',', '.'),
         'vUn'    => $br($val('.//n:vUnCom', $p)),
-        'vTot'   => $br($val('.//n:vProd', $p)),
+        'vTot'   => $br($vProd),
+        'vDesc'  => $br($vDesItem),
+        'vLiq'   => $br($vProd - $vDesItem),
         'vBC'    => $br($val('.//n:vBC', $icmsX)),
         'vICMS'  => $br($val('.//n:vICMS', $icmsX)),
         'vIPI'   => $br($val('.//n:vIPI', $i)),
@@ -155,9 +170,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 }
 
 $infAdic = $val('//n:infAdic/n:infCpl');
-
-// QR Code data
-$qrTxt = $val('//n:infNFeSupl/n:qrCode');
+$qrTxt   = $val('//n:infNFeSupl/n:qrCode');
 
 ?>
 <!DOCTYPE html>
@@ -167,278 +180,265 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
     <title>DANFE - <?= $ide['nNF'] ?></title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap');
+        body { font-family: 'Arial', sans-serif; margin: 0; padding: 0px; background: #e0e0e0; color: #000; font-size: 8px; }
+        .page { width: 21cm; min-height: 29.7cm; padding: 0.8cm; background: #fff; margin: 0.5cm auto; box-shadow: 0 0 15px rgba(0,0,0,0.2); position: relative; box-sizing: border-box; }
         
-        body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; padding: 10px; background: #f0f0f0; color: #000; }
-        .page { width: 19cm; min-height: 27cm; padding: 0.5cm; background: #fff; margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
-        .box { border: 1px solid #000; margin-bottom: 2px; padding: 2px; overflow: hidden; }
-        .no-top { border-top: none; }
-        .no-left { border-left: none; }
-        .flex { display: flex; }
-        .f1 { flex: 1; }
-        .f2 { flex: 2; }
-        .col { display: flex; flex-direction: column; }
-        .center { text-align: center; }
-        .right { text-align: right; }
-        .bold { font-weight: bold; }
-        .title { font-size: 7px; text-transform: uppercase; margin-bottom: 2px; color: #000; font-weight: bold; }
-        .val { font-size: 10px; min-height: 12px; text-transform: uppercase; }
+        .box { border: 1px solid #000; margin-bottom: -1px; margin-right: -1px; position: relative; }
+        .flex { display: flex; width: 100%; }
+        .f1 { flex: 1; } .f2 { flex: 2; } .f3 { flex: 3; } .f4 { flex: 4; } .f5 { flex: 5; }
+        .center { text-align: center; } .right { text-align: right; } .bold { font-weight: bold; }
+        .title { font-size: 6px; font-weight: bold; text-transform: uppercase; padding: 1px 3px; display: block; border-bottom: 0px; }
+        .val { font-size: 8px; padding: 1px 4px; min-height: 10px; text-transform: uppercase; word-break: break-all; }
+        .section-title { font-size: 8px; font-weight: bold; margin: 4px 0 2px 0; }
         
-        .header-main { height: 110px; border-bottom: 2px solid #000; }
-        .emit-logo { width: 3.0cm; display: flex; align-items: center; justify-content: center; padding: 5px; }
-        .emit-info { flex: 6; padding: 5px; font-size: 10px; border-left: 1px solid #000; }
-        .danfe-box { width: 3.5cm; border-left: 1px solid #000; border-right: 1px solid #000; padding: 2px; display: flex; flex-direction: column; justify-content: space-between; }
-        .barcode-box { flex: 5; padding: 5px; display: flex; flex-direction: column; justify-content: center; }
+        /* Header */
+        .header-main { height: 110px; }
+        .emit-logo { width: 3.5cm; display: flex; align-items: center; justify-content: center; padding: 5px; border-right: 1px solid #000; }
+        .emit-info { flex: 4; padding: 4px; font-size: 9px; }
+        .danfe-box { width: 3.2cm; border-left: 1px solid #000; border-right: 1px solid #000; padding: 2px; }
+        .barcode-box { flex: 4; padding: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .barcode { font-family: 'Libre Barcode 128', cursive; font-size: 42px; margin: 0; line-height: 42px; }
         
-        .table { width: 100%; border-collapse: collapse; margin-top: 2px; border: 1px solid #000; }
-        .table th { border: 1px solid #000; background: #f9f9f9; font-size: 7px; padding: 3px; font-weight: bold; }
-        .table td { border: 1px solid #000; padding: 2px 3px; font-size: 9px; line-height: 1.2; }
-        
-        .barcode { font-family: 'Libre Barcode 128', cursive; font-size: 48px; margin: 0; line-height: 48px; }
-        .access-key { font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
-        
+        /* Tables */
+        .table { width: 100%; border-collapse: collapse; margin-top: 0px; margin-bottom: 5px; }
+        .table th { border: 1px solid #000; font-size: 6px; padding: 1px; background: #f2f2f2; }
+        .table td { border: 1px solid #000; font-size: 7px; padding: 1px 2px; line-height: 1.1; vertical-align: middle; }
+
+        /* Stub (Canhoto) */
+        .canhoto { margin-top: 20px; border-top: 1px dashed #000; padding-top: 10px; }
+
         @media print {
-            @page { size: A4; margin: 0.5cm; }
-            body { background: none; padding: 0; display: block; margin: 0; }
-            .page { 
-                box-shadow: none; margin: 0; width: 100%; padding: 0;
-                display: flex; flex-direction: column; 
-                height: 28cm;
-            }
+            body { background: #fff; padding: 0; }
+            .page { margin: 0; box-shadow: none; width: 21cm; height: 100%; padding: 0.8cm; }
             .no-print { display: none; }
         }
     </style>
 </head>
 <body>
-    <div class="no-print" style="text-align:center; padding: 15px; position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
-        <button onclick="window.print()" style="padding:10px 30px; font-weight:bold; cursor:pointer; background: #1a73e8; color: #fff; border: none; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">IMPRIMIR DANFE</button>
-        <button onclick="window.close()" style="padding:10px 20px; margin-left:10px; cursor:pointer; border: 1px solid #ccc; border-radius: 5px;">Fechar</button>
+    <div class="no-print" style="text-align:center; padding: 15px; background: #fff; border-bottom: 1px solid #ccc; position: sticky; top: 0; z-index: 999;">
+        <button onclick="window.print()" style="padding:10px 40px; font-weight:bold; cursor:pointer; background:#1a73e8; color:#fff; border:none; border-radius:4px;">IMPRIMIR DANFE</button>
+        <button onclick="window.close()" style="padding:10px 20px; margin-left:10px; cursor:pointer; border:1px solid #ccc; background:#fff;">Fechar</button>
     </div>
 
     <div class="page">
-        <!-- Recebemos de ... -->
-        <div class="flex" style="margin-bottom: 5px;">
-            <div class="box f1" style="border-right: none;">
-                <div class="val" style="font-size: 8px;">RECEBEMOS DE <?= $emit['xNome'] ?> OS PRODUTOS / SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADO AO LADO</div>
-            </div>
-            <div class="box center" style="width: 150px;">
-                <div class="bold" style="font-size: 12px;">NF-e</div>
-                <div class="bold">Nº <?= $ide['nNF'] ?><br>SÉRIE <?= $ide['serie'] ?></div>
-            </div>
-        </div>
-        <div class="flex" style="margin-top: -7px; margin-bottom: 10px;">
-            <div class="box" style="width: 120px; border-right: none;">
-                <div class="title">DATA DE RECEBIMENTO</div>
-                <div class="val"></div>
-            </div>
-            <div class="box f1">
-                <div class="title">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</div>
-                <div class="val"></div>
-            </div>
-        </div>
-
-        <!-- Header Redesenhado -->
-        <div class="box flex header-main" style="padding: 0;">
+        <!-- Header Structure -->
+        <div class="box flex header-main">
             <div class="emit-logo">
-                <img src="public/img/logo_premium.png" style="max-width: 100%; max-height: 100%;" onerror="this.src='logo_sistema_erp_eletrica.png'">
+                <img src="public/img/logo_premium.png" style="max-width: 90%; max-height: 90%;" onerror="this.src='logo_sistema_erp_eletrica.png'">
             </div>
             <div class="emit-info">
-                <div class="bold" style="font-size: 13px; margin-bottom: 3px;"><?= $emit['xNome'] ?></div>
-                <div class="bold text-muted" style="font-size: 10px; margin-bottom: 5px;"><?= $emit['xFant'] ?></div>
-                <div style="font-size: 10px; line-height: 1.4;">
+                <div class="bold" style="font-size: 11px;"><?= $emit['xNome'] ?></div>
+                <div class="bold" style="font-size: 8px; margin-top: 2px; color: #555;"><?= $emit['xFant'] ?></div>
+                <div style="margin-top: 6px; line-height: 1.2; font-size: 8px;">
                     <?= $emit['xLgr'] ?>, <?= $emit['nro'] ?> <?= $emit['xCpl'] ?><br>
                     <?= $emit['xBairro'] ?> - CEP: <?= $emit['CEP'] ?><br>
                     <?= $emit['xMun'] ?> - <?= $emit['UF'] ?><br>
-                    Fone/Fax: <?= $emit['fone'] ?>
+                    FONE: <?= $emit['fone'] ?>
                 </div>
             </div>
             <div class="danfe-box center">
-                <div class="bold" style="font-size: 14px; margin-top: 5px;">DANFE</div>
-                <div style="font-size: 7px; margin-bottom: 10px;">Documento Auxiliar da<br>Nota Fiscal Eletrônica</div>
-                
-                <div class="center" style="border: 1px solid #000; margin: 0 5px; height: 30px; display: flex;">
-                    <div style="width: 50%; font-size: 7px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: center;">
-                        <span>0-ENTRADA</span>
-                        <span>1-SAÍDA</span>
+                <div class="bold" style="font-size: 12px; margin-top: 5px;">DANFE</div>
+                <div style="font-size: 7px;">Documento Auxiliar da<br>Nota Fiscal Eletrônica</div>
+                <div class="flex" style="margin: 5px 0; border: 1px solid #000;">
+                    <div style="width: 50%; font-size: 6px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: center; padding: 2px 0;">
+                        <span>0 - ENTRADA</span>
+                        <span>1 - SAÍDA</span>
                     </div>
                     <div style="width: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">
                         <?= $ide['tpNF'] ?>
                     </div>
                 </div>
-
-                <div class="bold" style="font-size: 11px; margin-bottom: 5px;">
+                <div class="bold" style="font-size: 9px;">
                     Nº <?= $ide['nNF'] ?><br>
                     SÉRIE <?= $ide['serie'] ?><br>
                     FOLHA 1 / 1
                 </div>
             </div>
             <div class="barcode-box">
-                <div class="center barcode">
-                    *<?= $ide['chave'] ?>*
+                <div class="barcode">*<?= $ide['chave'] ?>*</div>
+                <div style="width: 100%; border-top: 1px solid #000; margin-top: 2px; padding-top: 2px;">
+                    <span class="title" style="text-align: center;">CHAVE DE ACESSO</span>
+                    <div class="bold center" style="font-size: 8px;"><?= $fmtChave($ide['chave']) ?></div>
                 </div>
-                <div class="center access-key">
-                    <span class="title" style="display:block; margin: 0;">CHAVE DE ACESSO</span>
-                    <span class="bold"><?= $fmtChave($ide['chave']) ?></span>
-                </div>
-                <div class="center" style="font-size: 8px; margin-top: 8px; line-height: 1.2;">
+                <div class="center" style="font-size: 7px; margin-top: 6px;">
                     Consulta de autenticidade no portal nacional da NF-e<br>
                     <b>www.nfe.fazenda.gov.br/portal</b> ou no site da Sefaz Autorizada
                 </div>
             </div>
         </div>
 
-        <!-- Natureza Op / Protocolo -->
-        <div class="flex" style="margin-top: -2px;">
-            <div class="box f1" style="border-right: none;">
-                <div class="title">NATUREZA DA OPERAÇÃO</div>
-                <div class="val"><?= $ide['natOp'] ?></div>
+        <!-- Nat Op / Protocolo -->
+        <div class="flex">
+            <div class="box f1">
+                <span class="title">NATUREZA DA OPERAÇÃO</span>
+                <div class="val text-truncate" style="max-height: 12px;"><?= $ide['natOp'] ?></div>
             </div>
             <div class="box" style="width: 250px;">
-                <div class="title">PROTOCOLO DE AUTORIZAÇÃO DE USO</div>
-                <div class="val bold center" style="font-size: 10px;"><?= $prot['nProt'] ?> <?= $prot['dhRec'] ? date('d/m/Y H:i:s', strtotime($prot['dhRec'])) : '' ?></div>
+                <span class="title">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
+                <div class="val bold center"><?= $prot['nProt'] ?> - <?= $prot['dhRec'] ? date('d/m/Y H:i:s', strtotime($prot['dhRec'])) : '' ?></div>
             </div>
         </div>
 
-        <div class="flex" style="margin-top: -2px;">
-            <div class="box f1" style="border-right: none;">
-                <div class="title">INSCRIÇÃO ESTADUAL</div>
+        <!-- IE / CNPJ -->
+        <div class="flex">
+            <div class="box f1">
+                <span class="title">INSCRIÇÃO ESTADUAL</span>
                 <div class="val"><?= $emit['IE'] ?></div>
             </div>
-            <div class="box f1" style="border-right: none;">
-                <div class="title">INSCRIÇÃO ESTADUAL DO SUBST. TRIB.</div>
+            <div class="box f1">
+                <span class="title">INSCRIÇÃO ESTADUAL DO SUBST. TRIB.</span>
                 <div class="val"><?= $emit['IEST'] ?></div>
             </div>
             <div class="box f1">
-                <div class="title">CNPJ</div>
+                <span class="title">CNPJ</span>
                 <div class="val"><?= $emit['CNPJ'] ?></div>
             </div>
         </div>
 
         <!-- Destinatário -->
-        <div class="bold" style="margin-top: 5px; font-size: 8px;">DESTINATÁRIO / REMETENTE</div>
+        <div class="section-title">DESTINATÁRIO / REMETENTE</div>
         <div class="flex">
-            <div class="box f1" style="border-right: none;">
-                <div class="title">NOME / RAZÃO SOCIAL</div>
+            <div class="box f3">
+                <span class="title">NOME / RAZÃO SOCIAL</span>
                 <div class="val bold"><?= $dest['xNome'] ?></div>
             </div>
-            <div class="box" style="width: 150px; border-right: none;">
-                <div class="title"><?= $dest['docT'] ?> / CPF</div>
+            <div class="box f1">
+                <span class="title"><?= $dest['docT'] ?> / CPF</span>
                 <div class="val bold"><?= $dest['doc'] ?></div>
             </div>
             <div class="box" style="width: 100px;">
-                <div class="title">DATA DA EMISSÃO</div>
-                <div class="val center"><?= $dest['dhEmi'] ? date('d/m/Y', strtotime($dest['dhEmi'])) : '' ?></div>
+                <span class="title">DATA DA EMISSÃO</span>
+                <div class="val center"><?= $ide['dhEmi'] ? date('d/m/Y', strtotime($ide['dhEmi'])) : '' ?></div>
             </div>
         </div>
-        <div class="flex" style="margin-top: -2px;">
-            <div class="box f1" style="border-right: none;">
-                <div class="title">ENDEREÇO</div>
+        <div class="flex">
+            <div class="box f2">
+                <span class="title">ENDEREÇO</span>
                 <div class="val"><?= $dest['xLgr'] ?>, <?= $dest['nro'] ?> <?= $dest['xCpl'] ?></div>
             </div>
-            <div class="box f1" style="border-right: none;">
-                <div class="title">BAIRRO / DISTRITO</div>
+            <div class="box f1">
+                <span class="title">BAIRRO / DISTRITO</span>
                 <div class="val"><?= $dest['xBairro'] ?></div>
             </div>
-            <div class="box" style="width: 100px; border-right: none;">
-                <div class="title">CEP</div>
+            <div class="box" style="width: 100px;">
+                <span class="title">CEP</span>
                 <div class="val center"><?= $dest['CEP'] ?></div>
             </div>
             <div class="box" style="width: 100px;">
-                <div class="title">DATA DA SAÍDA / ENTRADA</div>
-                <div class="val center"><?= $dest['dhEmi'] ? date('d/m/Y', strtotime($dest['dhEmi'])) : '' ?></div>
+                <span class="title">DATA DA SAÍDA</span>
+                <div class="val center"><?= $ide['dhEmi'] ? date('d/m/Y', strtotime($ide['dhEmi'])) : '' ?></div>
             </div>
         </div>
-        <div class="flex" style="margin-top: -2px;">
-            <div class="box f1" style="border-right: none;">
-                <div class="title">MUNICÍPIO</div>
+        <div class="flex">
+            <div class="box f2">
+                <span class="title">MUNICÍPIO</span>
                 <div class="val"><?= $dest['xMun'] ?></div>
             </div>
-            <div class="box" style="width: 50px; border-right: none;">
-                <div class="title">UF</div>
+            <div class="box" style="width: 40px;">
+                <span class="title">UF</span>
                 <div class="val center"><?= $dest['UF'] ?></div>
             </div>
-            <div class="box" style="width: 120px; border-right: none;">
-                <div class="title">FONE / FAX</div>
+            <div class="box" style="width: 110px;">
+                <span class="title">FONE / FAX</span>
                 <div class="val"><?= $dest['fone'] ?></div>
             </div>
-            <div class="box" style="width: 150px; border-right: none;">
-                <div class="title">INSCRIÇÃO ESTADUAL</div>
+            <div class="box" style="width: 140px;">
+                <span class="title">INSCRIÇÃO ESTADUAL</span>
                 <div class="val"><?= $dest['IE'] ?></div>
             </div>
             <div class="box" style="width: 100px;">
-                <div class="title">HORA DA SAÍDA</div>
-                <div class="val center"><?= $dest['dhEmi'] ? date('H:i:s', strtotime($dest['dhEmi'])) : '' ?></div>
+                <span class="title">HORA DA SAÍDA</span>
+                <div class="val center"><?= $ide['dhEmi'] ? date('H:i:s', strtotime($ide['dhEmi'])) : '' ?></div>
             </div>
         </div>
 
-        <!-- Impostos -->
-        <div class="bold" style="margin-top: 5px; font-size: 8px;">CÁLCULO DO IMPOSTO</div>
-        <div class="flex">
-            <div class="box f1" style="border-right: none;"><div class="title">BASE DE CÁLCULO DO ICMS</div><div class="val right"><?= $tot['vBC'] ?></div></div>
-            <div class="box f1" style="border-right: none;"><div class="title">VALOR DO ICMS</div><div class="val right"><?= $tot['vICMS'] ?></div></div>
-            <div class="box f1" style="border-right: none;"><div class="title">BASE DE CÁLCULO DO ICMS ST</div><div class="val right"><?= $tot['vBCST'] ?></div></div>
-            <div class="box f1" style="border-right: none;"><div class="title">VALOR DO ICMS ST</div><div class="val right"><?= $tot['vST'] ?></div></div>
-            <div class="box f1"><div class="title">VALOR TOTAL DOS PRODUTOS</div><div class="val right"><?= $tot['vProd'] ?></div></div>
+        <!-- Faturas / Duplicatas -->
+        <div class="section-title">FATURAS / DUPLICATAS</div>
+        <div class="box flex" style="min-height: 22px; padding: 2px;">
+            <?php if (empty($dups)): ?>
+                <div class="val" style="color: #666; font-style: italic; font-size: 7px;">PAGAMENTO À VISTA</div>
+            <?php else: ?>
+                <?php foreach($dups as $d): ?>
+                    <div style="border: 1px solid #ccc; margin-right: 4px; padding: 1px 3px; font-size: 7px; min-width: 60px;">
+                        <b>Dupl:</b> <?= $d['nDup'] ?> - <b>Venc:</b> <?= $d['dVenc'] ?> - <b>Valor:</b> R$ <?= $d['vDup'] ?>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
-        <div class="flex" style="margin-top: -2px;">
-            <div class="box f1" style="border-right: none;"><div class="title">VALOR DO FRETE</div><div class="val right"><?= $tot['vFrete'] ?></div></div>
-            <div class="box f1" style="border-right: none;"><div class="title">VALOR DO SEGURO</div><div class="val right"><?= $tot['vSeg'] ?></div></div>
-            <div class="box f1" style="border-right: none;"><div class="title">DESCONTO</div><div class="val right"><?= $tot['vDesc'] ?></div></div>
-            <div class="box f1" style="border-right: none;"><div class="title">OUTRAS DESPESAS ACESS.</div><div class="val right"><?= $tot['vOutro'] ?></div></div>
-            <div class="box f1" style="border-right: none;"><div class="title">VALOR DO IPI</div><div class="val right"><?= $tot['vIPI'] ?></div></div>
-            <div class="box f1"><div class="title">VALOR TOTAL DA NOTA</div><div class="val right bold" style="font-size: 11px;"><?= $tot['vNF'] ?></div></div>
+
+        <!-- Impostos -->
+        <div class="section-title">CÁLCULO DO IMPOSTO</div>
+        <div class="flex">
+            <div class="box f1"><span class="title">BASE DE CÁLCULO DO ICMS</span><div class="val right"><?= $tot['vBC'] ?></div></div>
+            <div class="box f1"><span class="title">VALOR DO ICMS</span><div class="val right"><?= $tot['vICMS'] ?></div></div>
+            <div class="box f1"><span class="title">BASE DE CÁLCULO DO ICMS ST</span><div class="val right"><?= $tot['vBCST'] ?></div></div>
+            <div class="box f1"><span class="title">VALOR DO ICMS ST</span><div class="val right"><?= $tot['vST'] ?></div></div>
+            <div class="box f1"><span class="title">VALOR TOTAL DOS PRODUTOS</span><div class="val right"><?= $tot['vProd'] ?></div></div>
+        </div>
+        <div class="flex">
+            <div class="box f1"><span class="title">VALOR DO FRETE</span><div class="val right"><?= $tot['vFrete'] ?></div></div>
+            <div class="box f1"><span class="title">VALOR DO SEGURO</span><div class="val right"><?= $tot['vSeg'] ?></div></div>
+            <div class="box f1"><span class="title">DESCONTO</span><div class="val right"><?= $tot['vDesc'] ?></div></div>
+            <div class="box f1"><span class="title">OUTRAS DESPESAS ACESS.</span><div class="val right"><?= $tot['vOutro'] ?></div></div>
+            <div class="box f1"><span class="title">VALOR DO IPI</span><div class="val right"><?= $tot['vIPI'] ?></div></div>
+            <div class="box f1"><span class="title">VALOR TOTAL DA NOTA</span><div class="val right bold" style="font-size: 10px;"><?= $tot['vNF'] ?></div></div>
         </div>
 
         <!-- Transportador -->
-        <div class="bold" style="margin-top: 5px; font-size: 8px;">TRANSPORTADOR / VOLUMES TRANSPORTADOS</div>
+        <div class="section-title">TRANSPORTADOR / VOLUMES TRANSPORTADOS</div>
         <div class="flex">
-            <div class="box f1" style="border-right: none;"><div class="title">RAZÃO SOCIAL</div><div class="val"><?= $transp['xNome'] ?></div></div>
-            <div class="box" style="width: 100px; border-right: none;"><div class="title">FRETE POR CONTA</div><div class="val center"><?= $transp['modFrete'] ?></div></div>
-            <div class="box" style="width: 100px; border-right: none;"><div class="title">CÓDIGO ANTT</div><div class="val"></div></div>
-            <div class="box" style="width: 100px; border-right: none;"><div class="title">PLACA DO VEÍCULO</div><div class="val center"><?= $transp['placa'] ?></div></div>
-            <div class="box" style="width: 40px; border-right: none;"><div class="title">UF</div><div class="val center"><?= $transp['UFPlaca'] ?></div></div>
-            <div class="box" style="width: 130px;"><div class="title">CNPJ / CPF</div><div class="val center"><?= $transp['doc'] ?></div></div>
+            <div class="box f3"><span class="title">RAZÃO SOCIAL</span><div class="val text-truncate"><?= $transp['xNome'] ?></div></div>
+            <div class="box" style="width: 100px;"><span class="title">FRETE POR CONTA</span><div class="val center"><?= $transp['modFrete'] ?></div></div>
+            <div class="box" style="width: 90px;"><span class="title">CÓDIGO ANTT</span><div class="val"></div></div>
+            <div class="box" style="width: 100px;"><span class="title">PLACA DO VEÍCULO</span><div class="val center"><?= $transp['placa'] ?></div></div>
+            <div class="box" style="width: 30px;"><span class="title">UF</span><div class="val center"><?= $transp['UFPlaca'] ?></div></div>
+            <div class="box" style="width: 130px;"><span class="title">CNPJ / CPF</span><div class="val center"><?= $transp['doc'] ?></div></div>
         </div>
-        <div class="flex" style="margin-top: -2px;">
-            <div class="box f1" style="border-right: none;"><div class="title">ENDEREÇO</div><div class="val"><?= $transp['xEnder'] ?></div></div>
-            <div class="box f1" style="border-right: none;"><div class="title">MUNICÍPIO</div><div class="val"><?= $transp['xMun'] ?></div></div>
-            <div class="box" style="width: 40px; border-right: none;"><div class="title">UF</div><div class="val center"><?= $transp['UF'] ?></div></div>
-            <div class="box" style="width: 150px;"><div class="title">INSCRIÇÃO ESTADUAL</div><div class="val"></div></div>
+        <div class="flex">
+            <div class="box f3"><span class="title">ENDEREÇO</span><div class="val text-truncate"><?= $transp['xEnder'] ?></div></div>
+            <div class="box f2"><span class="title">MUNICÍPIO</span><div class="val"><?= $transp['xMun'] ?></div></div>
+            <div class="box" style="width: 30px;"><span class="title">UF</span><div class="val center"><?= $transp['UF'] ?></div></div>
+            <div class="box f2"><span class="title">INSCRIÇÃO ESTADUAL</span><div class="val"></div></div>
         </div>
 
         <!-- Itens -->
-        <div class="bold" style="margin-top: 5px; font-size: 8px;">DADOS DO PRODUTO / SERVIÇOS</div>
-        <div style="flex: 1;">
+        <div class="section-title">DADOS DO PRODUTO / SERVIÇOS</div>
+        <div style="flex: 1; overflow: hidden;">
             <table class="table">
                 <thead>
                     <tr>
-                        <th style="width: 35px;">CÓDIGO</th>
+                        <th style="width: 35px;">COD. PROD</th>
                         <th>DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
-                        <th style="width: 35px;">NCM/SH</th>
-                        <th style="width: 25px;">CST</th>
                         <th style="width: 25px;">CFOP</th>
-                        <th style="width: 20px;">UNID.</th>
+                        <th style="width: 40px;">NCM/SH</th>
+                        <th style="width: 25px;">CST</th>
+                        <th style="width: 16px;">UN</th>
                         <th style="width: 35px;">QUANT.</th>
-                        <th style="width: 45px;">VALOR UNIT.</th>
-                        <th style="width: 45px;">VALOR TOTAL</th>
-                        <th style="width: 45px;">BC ICMS</th>
+                        <th style="width: 45px;">V. UNITÁRIO</th>
+                        <th style="width: 45px;">V. TOTAL</th>
+                        <th style="width: 40px;">V. DESC.</th>
+                        <th style="width: 45px;">V. LÍQUIDO</th>
+                        <th style="width: 40px;">BC ICMS</th>
                         <th style="width: 35px;">VALOR ICMS</th>
-                        <th style="width: 35px;">VALOR IPI</th>
-                        <th style="width: 25px;">ALÍQ. ICMS</th>
-                        <th style="width: 25px;">ALÍQ. IPI</th>
+                        <th style="width: 30px;">VALOR IPI</th>
+                        <th style="width: 20px;">ALÍQ. ICMS</th>
+                        <th style="width: 20px;">ALÍQ. IPI</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($itens as $it): ?>
                     <tr>
-                        <td><?= $it['cProd'] ?></td>
+                        <td class="center"><?= $it['cProd'] ?></td>
                         <td><?= htmlspecialchars($it['xProd']) ?></td>
+                        <td class="center"><?= $it['CFOP'] ?></td>
                         <td class="center"><?= $it['NCM'] ?></td>
                         <td class="center"><?= $it['CST'] ?></td>
-                        <td class="center"><?= $it['CFOP'] ?></td>
                         <td class="center"><?= $it['uCom'] ?></td>
                         <td class="right"><?= $it['qCom'] ?></td>
                         <td class="right"><?= $it['vUn'] ?></td>
                         <td class="right"><?= $it['vTot'] ?></td>
+                        <td class="right"><?= $it['vDesc'] ?></td>
+                        <td class="right bold"><?= $it['vLiq'] ?></td>
                         <td class="right"><?= $it['vBC'] ?></td>
                         <td class="right"><?= $it['vICMS'] ?></td>
                         <td class="right"><?= $it['vIPI'] ?></td>
@@ -450,37 +450,54 @@ $qrTxt = $val('//n:infNFeSupl/n:qrCode');
             </table>
         </div>
 
-        <!-- Dados Adicionais -->
-        <div class="bold" style="margin-top: 10px; font-size: 8px;">DADOS ADICIONAIS</div>
-        <div class="flex" style="min-height: 100px;">
-            <div class="box f2" style="border-right: none;">
-                <div class="title">INFORMAÇÕES COMPLEMENTARES</div>
-                <div class="val" style="font-size: 7px; text-transform: none;">
+        <!-- Adicionais -->
+        <div class="section-title">DADOS ADICIONAIS</div>
+        <div class="flex" style="min-height: 80px;">
+            <div class="box f5" style="padding: 2px;">
+                <span class="title">INFORMAÇÕES COMPLEMENTARES</span>
+                <div class="val" style="font-size: 7px; line-height: 1.2; text-transform: none;">
                     <?= nl2br(htmlspecialchars($infAdic)) ?><br>
                     <?php if ($tot['vTrib'] !== '0,00'): ?><b>VALOR TOTAL ESTIMADO DOS TRIBUTOS (Lei 12.741/2012): R$ <?= $tot['vTrib'] ?></b><?php endif; ?>
                 </div>
                 <?php if ($qrTxt): ?>
-                <div style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px;">
-                    <div class="title center">QR Code para consulta</div>
-                    <div id="qrcode" class="center" style="margin: 0 auto; width: 80px; height: 80px;"></div>
+                <div style="margin-top: 5px; display: flex; align-items: center; gap: 8px;">
+                    <div id="qrcode"></div>
+                    <span style="font-size: 6px;">Consulta via QR Code</span>
                 </div>
                 <?php endif; ?>
             </div>
-            <div class="box f1">
-                <div class="title">RESERVADO AO FISCO</div>
+            <div class="box f2">
+                <span class="title">RESERVADO AO FISCO</span>
                 <div class="val"></div>
             </div>
         </div>
-        
-        <div class="center" style="margin-top: 20px; font-size: 7px; color: #888;">
-            Gerado por ERP Elétrica - Inteligência em Gestão
+
+        <!-- Stub (Canhoto) -->
+        <div class="canhoto">
+            <div class="flex">
+                <div class="box f4" style="padding: 4px;">
+                    <div style="font-size: 7px;">RECEBEMOS DE <b><?= $emit['xNome'] ?></b> OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO</div>
+                    <div class="flex" style="margin-top: 8px;">
+                        <div style="flex: 1; border-top: 1px solid #000; margin-top: 12px; margin-right: 20px;">
+                            <span class="title center">DATA DE RECEBIMENTO</span>
+                        </div>
+                        <div style="flex: 2; border-top: 1px solid #000; margin-top: 12px;">
+                            <span class="title center">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="box center" style="width: 120px; display: flex; flex-direction: column; justify-content: center; border-left: none;">
+                    <b style="font-size: 14px;">NF-e</b>
+                    <b style="font-size: 9px;">Nº <?= $ide['nNF'] ?><br>SÉRIE <?= $ide['serie'] ?></b>
+                </div>
+            </div>
         </div>
     </div>
 
     <?php if ($qrTxt): ?>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
-        new QRCode(document.getElementById("qrcode"), { text: <?= json_encode($qrTxt) ?>, width: 80, height: 80 });
+        new QRCode(document.getElementById("qrcode"), { text: <?= json_encode($qrTxt) ?>, width: 50, height: 50 });
     </script>
     <?php endif; ?>
 </body>
