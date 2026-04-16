@@ -520,13 +520,13 @@ class SalesController extends BaseController {
             $sale = $saleModel->findById($id);
             if (!$sale) throw new \Exception("Venda não encontrada.");
             
-            // Verifica se existe registro de emissão fiscal para esta venda.
-            $stF = $db->prepare("SELECT id FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') LIMIT 1");
+            // 2. Busca qualquer rastro de autorização (100 ou 150) na tabela de notas
+            $stF = $db->prepare("SELECT id FROM nfce_emitidas WHERE venda_id = ? AND TRIM(status_sefaz) IN ('100', '150') LIMIT 1");
             $stF->execute([$id]);
             $hasFiscalRecord = (bool)$stF->fetch();
 
-            $isFiscal = ($sale['tipo_nota'] === 'fiscal' || $hasFiscalRecord);
             $isAlreadyCancelled = ($sale['status'] === 'cancelado');
+            $isFiscal = ($sale['tipo_nota'] === 'fiscal' || $hasFiscalRecord);
 
             if ($isAlreadyCancelled && !$hasFiscalRecord) {
                 throw new \Exception("Esta venda já está cancelada e não possui pendência fiscal.");
