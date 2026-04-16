@@ -221,51 +221,53 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
     </div>
 
     <div class="page">
-        <!-- Header Structure -->
-        <div class="box flex header-main">
-            <div class="emit-logo">
-                <img src="public/img/logo_premium.png" style="max-width: 90%; max-height: 90%;" onerror="this.src='logo_sistema_erp_eletrica.png'">
-            </div>
-            <div class="emit-info">
-                <div class="bold" style="font-size: 11px;"><?= $emit['xNome'] ?></div>
-                <div class="bold" style="font-size: 8px; margin-top: 2px; color: #555;"><?= $emit['xFant'] ?></div>
-                <div style="margin-top: 6px; line-height: 1.2; font-size: 8px;">
-                    <?= $emit['xLgr'] ?>, <?= $emit['nro'] ?> <?= $emit['xCpl'] ?><br>
-                    <?= $emit['xBairro'] ?> - CEP: <?= $emit['CEP'] ?><br>
-                    <?= $emit['xMun'] ?> - <?= $emit['UF'] ?><br>
-                    FONE: <?= $emit['fone'] ?>
-                </div>
-            </div>
-            <div class="danfe-box center">
-                <div class="bold" style="font-size: 12px; margin-top: 5px;">DANFE</div>
-                <div style="font-size: 7px;">Documento Auxiliar da<br>Nota Fiscal Eletrônica</div>
-                <div class="flex" style="margin: 5px 0; border: 1px solid #000;">
-                    <div style="width: 50%; font-size: 6px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: center; padding: 2px 0;">
-                        <span>0 - ENTRADA</span>
-                        <span>1 - SAÍDA</span>
+        <!-- Header Redesenhado com Tabela de Largura Fixa para Estabilidade -->
+        <table class="header-main">
+            <tr>
+                <td class="emit-logo">
+                    <img src="public/img/logo_premium.png" style="max-width: 80px; max-height: 80px;" onerror="this.src='logo_sistema_erp_eletrica.png'">
+                </td>
+                <td class="emit-info">
+                    <div class="bold" style="font-size: 10px;"><?= $emit['xNome'] ?></div>
+                    <div class="bold" style="font-size: 8px; color: #444; margin-bottom: 4px;"><?= $emit['xFant'] ?></div>
+                    <div style="line-height: 1.2;">
+                        <?= $emit['xLgr'] ?>, <?= $emit['nro'] ?> <?= $emit['xCpl'] ?><br>
+                        <?= $emit['xBairro'] ?> - CEP: <?= $emit['CEP'] ?><br>
+                        <?= $emit['xMun'] ?> - <?= $emit['UF'] ?><br>
+                        FONE: <?= $emit['fone'] ?>
                     </div>
-                    <div style="width: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">
-                        <?= $ide['tpNF'] ?>
+                </td>
+                <td class="danfe-box">
+                    <div class="bold" style="font-size: 11px; margin-top: 2px;">DANFE</div>
+                    <div style="font-size: 6px;">Documento Auxiliar da<br>Nota Fiscal Eletrônica</div>
+                    <div style="border: 1px solid #000; margin: 3px 5px; height: 24px; display: flex;">
+                        <div style="width: 55%; font-size: 5px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: center; text-align: left; padding-left: 2px;">
+                            <span>0-ENTRADA</span>
+                            <span>1-SAÍDA</span>
+                        </div>
+                        <div style="width: 45%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">
+                            <?= $ide['tpNF'] ?>
+                        </div>
                     </div>
-                </div>
-                <div class="bold" style="font-size: 9px;">
-                    Nº <?= $ide['nNF'] ?><br>
-                    SÉRIE <?= $ide['serie'] ?><br>
-                    FOLHA 1 / 1
-                </div>
-            </div>
-            <div class="barcode-box">
-                <div class="barcode">*<?= $ide['chave'] ?>*</div>
-                <div style="width: 100%; border-top: 1px solid #000; margin-top: 2px; padding-top: 2px;">
-                    <span class="title" style="text-align: center;">CHAVE DE ACESSO</span>
-                    <div class="bold center" style="font-size: 8px;"><?= $fmtChave($ide['chave']) ?></div>
-                </div>
-                <div class="center" style="font-size: 7px; margin-top: 6px;">
-                    Consulta de autenticidade no portal nacional da NF-e<br>
-                    <b>www.nfe.fazenda.gov.br/portal</b> ou no site da Sefaz Autorizada
-                </div>
-            </div>
-        </div>
+                    <div class="bold" style="font-size: 9px;">
+                        Nº <?= $ide['nNF'] ?><br>
+                        SÉRIE <?= $ide['serie'] ?><br>
+                        FOLHA 1 / 1
+                    </div>
+                </td>
+                <td class="barcode-box">
+                    <div class="barcode">*<?= $ide['chave'] ?>*</div>
+                    <div style="border-top: 1px solid #000; padding-top: 1px;">
+                        <span class="title" style="font-size: 6px;">CHAVE DE ACESSO</span>
+                        <div class="bold" style="font-size: 8px;"><?= $fmtChave($ide['chave']) ?></div>
+                    </div>
+                    <div style="font-size: 6px; margin-top: 4px;">
+                        Consulta de autenticidade no portal nacional da NF-e<br>
+                        <b>www.nfe.fazenda.gov.br/portal</b> ou no site da Sefaz Autorizada
+                    </div>
+                </td>
+            </tr>
+        </table>
 
         <!-- Nat Op / Protocolo -->
         <div class="flex">
