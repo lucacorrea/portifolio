@@ -95,7 +95,7 @@ function barcode128($text) {
 
 /* -------------------------- Dados Gerais -------------------------- */
 // Busca logo do banco
-$logoPath = 'logo_sistema_erp_eletrica.png';
+$logoPath = '../logo_sistema_erp_eletrica.png';
 try {
     $stL = $pdo->prepare("SELECT logo_path FROM filiais WHERE principal = 1 LIMIT 1");
     $stL->execute();
@@ -258,9 +258,9 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
         }
         
         /* Tables */
-        .table { width: 100%; border-collapse: collapse; margin-top: 0px; margin-bottom: 5px; table-layout: fixed; }
-        .table th { border: 1px solid #000; font-size: 6px; padding: 2px; background: #f2f2f2; text-align: center; }
-        .table td { border: 1px solid #000; font-size: 7px; padding: 1px 2px; line-height: 1; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .table, .table-items { width: 100%; border-collapse: collapse; margin-top: 0px; margin-bottom: 5px; table-layout: fixed; border: 1px solid #000; }
+        .table th, .table-items th { border: 1px solid #000; font-size: 6px; padding: 2px; background: #f2f2f2; text-align: center; }
+        .table td, .table-items td { border: 1px solid #000; font-size: 7px; padding: 1px 2px; line-height: 1; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         @media print {
             body { background: #fff; padding: 0; min-width: 0; }
@@ -280,7 +280,7 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
         <table class="header-main">
             <tr>
                 <td class="emit-logo">
-                    <img src="<?= $logoPath ?>" style="max-width: 80px; max-height: 80px;" onerror="this.src='logo_sistema_erp_eletrica.png'">
+                    <img src="<?= $logoPath ?>" style="max-width: 80px; max-height: 80px;" onerror="this.src='../logo_sistema_erp_eletrica.png'">
                 </td>
                 <td class="emit-info">
                     <div class="bold" style="font-size: 10px;"><?= $emit['xNome'] ?></div>
