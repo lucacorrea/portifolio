@@ -367,14 +367,17 @@ class Product extends BaseModel {
     }
 
     public function getNextCode() {
-        $sql = "SELECT codigo FROM {$this->table} WHERE codigo REGEXP '^[0-9]+$' ORDER BY CAST(codigo AS UNSIGNED) DESC LIMIT 1";
+        // Ignora códigos com mais de 6 dígitos para não pegar códigos de barras como sequência
+        $sql = "SELECT codigo FROM {$this->table} 
+                WHERE codigo REGEXP '^[0-9]+$' 
+                AND LENGTH(codigo) <= 6
+                ORDER BY CAST(codigo AS UNSIGNED) DESC LIMIT 1";
         try {
             $stmt = $this->db->query($sql);
             $lastCode = $stmt->fetchColumn();
-            if (!$lastCode) return "1001";
+            if (!$lastCode) return "3000"; // Reinicia em 3000 se não achar nada curto
             return (int)$lastCode + 1;
         } catch (\Exception $e) {
-            // Fallback se REGEXP não for suportado ou outro erro
             $stmt = $this->db->query("SELECT MAX(id) FROM {$this->table}");
             return (int)$stmt->fetchColumn() + 3000; 
         }
