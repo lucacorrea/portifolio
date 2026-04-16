@@ -207,17 +207,41 @@ $toolsConfig = [
 $tools = new Tools(json_encode($toolsConfig), $cert);
 $tools->model('65');
 
-/* nNF transacional - Atualizado para sefaz_config no banco u784961086_pdv */
+/* nNF transacional - Prioriza numeração da Filial, fallback para Global */
 $nNF = null;
+$serie = (int)(defined('NFC_SERIE') ? NFC_SERIE : 1);
+$empresaId = defined('NFCE_EMPRESA_ID') ? NFCE_EMPRESA_ID : null;
+
 try {
     $pdo->beginTransaction();
-    $st = $pdo->prepare("SELECT ultimo_numero_nfce FROM sefaz_config LIMIT 1 FOR UPDATE");
-    $st->execute();
-    $res = $st->fetch();
+    
+    $res = false;
+    $targetTable = 'sefaz_config';
+    $targetId = null;
+
+    if ($empresaId) {
+        $st = $pdo->prepare("SELECT id, ultimo_numero_nfce FROM filiais WHERE id = :id FOR UPDATE");
+        $st->execute([':id' => $empresaId]);
+        $res = $st->fetch();
+        if ($res) {
+            $targetTable = 'filiais';
+            $targetId = $res['id'];
+        }
+    }
+
+    if (!$res) {
+        $st = $pdo->prepare("SELECT id, ultimo_numero_nfce FROM sefaz_config LIMIT 1 FOR UPDATE");
+        $st->execute();
+        $res = $st->fetch();
+        if ($res) {
+            $targetId = $res['id'];
+        }
+    }
     
     if ($res !== false) {
         $nNF = (int)$res['ultimo_numero_nfce'] + 1;
-        $pdo->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = :n")->execute([':n'=>$nNF]);
+        $pdo->prepare("UPDATE $targetTable SET ultimo_numero_nfce = :n WHERE id = :id")
+            ->execute([':n' => $nNF, ':id' => $targetId]);
     } else {
         $nNF = mt_rand(100, 999999);
     }
@@ -516,6 +540,9 @@ $st->execute([
   ':valor_troco'  => isset($vTr) ? number_format((float)$vTr, 2, '.', '') : null,
   ':tpag_json'    => $tpagJsonStr
 ]);
+
+// --- NOVO: Atualiza a venda original para 'fiscal' ---
+$pdo->prepare("UPDATE vendas SET tipo_nota = 'fiscal' WHERE id = ?")->execute([$vendaId]);
 }
     } catch (Throwable $e) {
       // Não bloquear o fluxo por erro de log

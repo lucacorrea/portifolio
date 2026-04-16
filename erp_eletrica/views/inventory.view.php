@@ -54,6 +54,12 @@
                     <option value="<?= $cat ?>" <?= $filters['categoria'] == $cat ? 'selected' : '' ?>><?= $cat ?></option>
                 <?php endforeach; ?>
             </select>
+            <select name="ordem" class="form-select w-100 w-sm-auto fw-bold" onchange="this.form.submit()">
+                <option value="codigo_desc" <?= $filters['ordem'] == 'codigo_desc' ? 'selected' : '' ?>>Último Código (Maior → Menor)</option>
+                <option value="codigo_asc" <?= $filters['ordem'] == 'codigo_asc' ? 'selected' : '' ?>>Primeiro Código (Menor → Maior)</option>
+                <option value="nome_asc" <?= $filters['ordem'] == 'nome_asc' ? 'selected' : '' ?>>Nome (A-Z)</option>
+                <option value="categoria_asc" <?= $filters['ordem'] == 'categoria_asc' ? 'selected' : '' ?>>Categoria / Nome</option>
+            </select>
         </form>
         <div class="d-flex gap-2 w-100 w-md-auto">
             <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
@@ -125,7 +131,9 @@
                         <td>
                             <div class="d-flex align-items-center">
                                 <?php if ($p['imagens']): ?>
-                                    <img src="public/uploads/produtos/<?= $p['imagens'] ?>" class="rounded me-3 border" width="40" height="40" style="object-fit: cover;">
+                                    <div class="product-zoom-container rounded me-3 border" style="cursor: zoom-in; width: 40px; height: 40px; flex-shrink: 0;">
+                                        <img src="public/uploads/produtos/<?= $p['imagens'] ?>" width="40" height="40" style="object-fit: cover;">
+                                    </div>
                                 <?php else: ?>
                                     <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center border" width="40" height="40" style="min-width: 40px; min-height: 40px;">
                                         <i class="fas fa-bolt text-muted opacity-25"></i>
@@ -192,7 +200,7 @@
         <nav aria-label="Navegação de estoque">
             <ul class="pagination pagination-sm mb-0 justify-content-center">
                 <li class="page-item <?= $pagination['current'] <= 1 ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>" aria-label="Anterior">
+                    <a class="page-link" href="?page=<?= $pagination['current'] - 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>&ordem=<?= urlencode($filters['ordem']) ?>" aria-label="Anterior">
                         <i class="fas fa-chevron-left small"></i>
                     </a>
                 </li>
@@ -203,11 +211,11 @@
                 for($i = $start; $i <= $end; $i++): 
                 ?>
                 <li class="page-item <?= $i == $pagination['current'] ? 'active' : '' ?>">
-                    <a class="page-link" href="?page=<?= $i ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>"><?= $i ?></a>
+                    <a class="page-link" href="?page=<?= $i ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>&ordem=<?= urlencode($filters['ordem']) ?>"><?= $i ?></a>
                 </li>
                 <?php endfor; ?>
                 <li class="page-item <?= $pagination['current'] >= $pagination['pages'] ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>" aria-label="Próximo">
+                    <a class="page-link" href="?page=<?= $pagination['current'] + 1 ?>&q=<?= urlencode($filters['q']) ?>&categoria=<?= urlencode($filters['categoria']) ?>&ordem=<?= urlencode($filters['ordem']) ?>" aria-label="Próximo">
                         <i class="fas fa-chevron-right small"></i>
                     </a>
                 </li>
@@ -231,11 +239,26 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Código Interno</label>
-                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" value="<?php echo 'PRD' . str_pad((int)(\App\Config\Database::getInstance()->getConnection())->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>" readonly>
+                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" value="<?= (new \App\Models\Product())->getNextCode() ?>" readonly>
                     </div>
                     <div class="col-md-8">
                         <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
                         <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome">
+                    </div>
+                    
+                    <!-- Campo de Foto -->
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold">Foto do Produto</label>
+                        <div class="d-flex align-items-center gap-3 p-3 border rounded bg-light border-dashed">
+                            <div id="image-preview-container" class="bg-white rounded border d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; overflow: hidden;">
+                                <img id="edit_preview" src="" class="img-fluid d-none">
+                                <i id="preview-icon" class="fas fa-image text-muted opacity-50 fa-2x"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <input type="file" name="foto" id="edit_foto" class="form-control form-control-sm" accept="image/*" onchange="previewImage(this)">
+                                <small class="text-muted extra-small">Formatos aceitos: JPG, PNG. Tamanho máx: 2MB.</small>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Unidade de Medida *</label>
@@ -465,9 +488,36 @@ function editProduct(product) {
     document.getElementById('edit_cfop_interno').value = product.cfop_interno || '5102';
     document.getElementById('edit_cfop_externo').value = product.cfop_externo || '6102';
     document.getElementById('edit_icms').value = product.aliquota_icms || 0;
+    
+    // Preview da Imagem
+    const preview = document.getElementById('edit_preview');
+    const icon = document.getElementById('preview-icon');
+    if (product.imagens) {
+        preview.src = 'public/uploads/produtos/' + product.imagens;
+        preview.classList.remove('d-none');
+        icon.classList.add('d-none');
+    } else {
+        preview.src = '';
+        preview.classList.add('d-none');
+        icon.classList.remove('d-none');
+    }
 
     document.querySelector('#newProductModal .modal-title').innerText = 'Editar Material';
     modal.show();
+}
+
+function previewImage(input) {
+    const preview = document.getElementById('edit_preview');
+    const icon = document.getElementById('preview-icon');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.remove('d-none');
+            icon.classList.add('d-none');
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
 }
 
 function deleteProduct(id) {

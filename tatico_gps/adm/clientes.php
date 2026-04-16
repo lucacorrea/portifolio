@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/php/auth/authGuard.php';
+exigir_login();
+
+$usuario = usuario_logado();
+
 session_start();
 
 ini_set('display_errors', '1');
@@ -298,6 +303,7 @@ try {
 
       <div class="layout-page">
 
+        <!-- Navbar -->
         <nav class="layout-navbar container-xxl navbar-detached navbar navbar-expand-xl align-items-center bg-navbar-theme"
           id="layout-navbar">
           <div class="layout-menu-toggle navbar-nav align-items-xl-center me-4 me-xl-0 d-xl-none">
@@ -309,10 +315,12 @@ try {
           <div class="navbar-nav-right d-flex align-items-center justify-content-end w-100">
             <div class="navbar-nav align-items-center me-auto">
               <div class="nav-item d-flex align-items-center">
+
               </div>
             </div>
 
             <ul class="navbar-nav flex-row align-items-center ms-md-auto">
+
               <li class="nav-item navbar-dropdown dropdown-user dropdown">
                 <a class="nav-link dropdown-toggle hide-arrow p-0" href="javascript:void(0);"
                   data-bs-toggle="dropdown">
@@ -342,20 +350,10 @@ try {
                     <div class="dropdown-divider my-1"></div>
                   </li>
                   <li>
-                    <a class="dropdown-item" href="#">
-                      <i class="icon-base bx bx-user icon-md me-3"></i><span>Meu Perfil</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="#">
-                      <i class="icon-base bx bx-cog icon-md me-3"></i><span>Configurações</span>
-                    </a>
-                  </li>
-                  <li>
                     <div class="dropdown-divider my-1"></div>
                   </li>
                   <li>
-                    <a class="dropdown-item" href="#">
+                    <a class="dropdown-item" href="./php/auth/logout.php">
                       <i class="icon-base bx bx-power-off icon-md me-3"></i><span>Sair</span>
                     </a>
                   </li>
@@ -363,7 +361,10 @@ try {
               </li>
             </ul>
           </div>
+
         </nav>
+        <!-- / Navbar -->
+
 
         <div class="content-wrapper">
           <div class="container-xxl flex-grow-1 container-p-y">
@@ -658,18 +659,7 @@ try {
             </div>
           </div>
 
-          <footer class="content-footer footer bg-footer-theme">
-            <div class="container-xxl">
-              <div
-                class="footer-container d-flex align-items-center justify-content-between py-4 flex-md-row flex-column">
-                <div class="mb-2 mb-md-0">
-                  © <script>
-                    document.write(new Date().getFullYear());
-                  </script> - Tático GPS. Todos os direitos reservados.
-                </div>
-              </div>
-            </div>
-          </footer>
+          <?php require_once __DIR__ . '/includes/footer.php'; ?>
 
           <div class="content-backdrop fade"></div>
         </div>

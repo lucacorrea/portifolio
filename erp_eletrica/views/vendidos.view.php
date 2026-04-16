@@ -256,7 +256,7 @@
         const filterForm = document.getElementById('filterForm');
         
         // --- Core Functions ---
-        async function loadSales(page = 1) {
+        window.loadSales = async function(page = 1) {
             currentPage = page;
             const formData = new FormData(filterForm);
             const params = new URLSearchParams(formData);
@@ -298,9 +298,16 @@
                     </td>
                     <td class="fw-bold">R$ ${s.valor_formatado}</td>
                     <td>
-                        <span class="badge ${getStatusBadge(s.status)}">
-                            ${s.status.toUpperCase()}
-                        </span>
+                        <div class="d-flex flex-column align-items-start gap-1">
+                            <span class="badge ${getStatusBadge(s.status)}">
+                                ${s.status.toUpperCase()}
+                            </span>
+                            ${(s.status === 'cancelado' && s.nf_status && s.nf_status !== '101') ? 
+                                `<span class="badge bg-warning text-dark extra-small" title="Esta venda foi cancelada internamente mas a NFC-e ainda consta como ativa na SEFAZ.">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>ERRO SEFAZ
+                                 </span>` : ''
+                            }
+                        </div>
                     </td>
                     <td class="text-end">
                         <div class="dropdown">
@@ -313,6 +320,10 @@
                                 ${s.status === 'concluido' ? `
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item py-2 text-danger" href="javascript:void(0)" onclick="openCancelModal(${s.id}, '${s.tipo_nota}')"><i class="fas fa-times me-2"></i>Cancelar Venda</a></li>
+                                ` : ''}
+                                ${(s.status === 'cancelado' && s.nf_status && s.nf_status !== '101') ? `
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item py-2 text-warning fw-bold" href="javascript:void(0)" onclick="openCancelModal(${s.id}, 'fiscal', true)"><i class="fas fa-cloud-upload-alt me-2"></i>Regularizar na SEFAZ</a></li>
                                 ` : ''}
                             </ul>
                         </div>
@@ -453,33 +464,38 @@
 
         let currentCancelId = null;
         let currentCancelTipo = null;
-        window.openCancelModal = function(id, tipo) {
+        window.openCancelModal = function(id, tipo, isRetry = false) {
             currentCancelId = id;
             currentCancelTipo = tipo;
             
             const labelEl = document.getElementById('cancel-id-label');
             const alertEl = document.getElementById('fiscal-alert');
             const motiveInput = document.getElementById('cancel-motivo');
+            const titleEl = document.querySelector('#modalCancel .modal-title');
             
+            if (titleEl) titleEl.textContent = isRetry ? 'Regularização Fiscal SEFAZ' : 'Cancelar Venda';
             if (labelEl) labelEl.textContent = id;
             if (motiveInput) {
-                motiveInput.value = '';
+                motiveInput.value = isRetry ? 'Regularização de nota pendente na SEFAZ' : '';
                 motiveInput.placeholder = (tipo === 'fiscal') 
                     ? "Descreva o motivo (mínimo 15 caracteres)..." 
                     : "Obrigatório descrever o motivo...";
             }
             
             if (alertEl) {
-                if (tipo === 'fiscal') alertEl.classList.remove('d-none');
-                else alertEl.classList.add('d-none');
+                if (tipo === 'fiscal' || isRetry) {
+                    alertEl.classList.remove('d-none');
+                    alertEl.innerHTML = isRetry 
+                        ? '<i class="fas fa-info-circle me-2"></i><strong>Modo Regularização:</strong> Esta venda já foi cancelada no sistema. A ação abaixo apenas tentará homologar o cancelamento na SEFAZ.'
+                        : '<i class="fas fa-exclamation-triangle me-2"></i>O cancelamento fiscal é irreversível e exige um motivo claro para a SEFAZ.';
+                } else {
+                    alertEl.classList.add('d-none');
+                }
             }
             
             const modalEl = document.getElementById('modalCancel');
             if (modalEl) {
                 bootstrap.Modal.getOrCreateInstance(modalEl).show();
-            } else {
-                console.error("Modal #modalCancel não encontrado no DOM");
-                alert("Erro: Modal de cancelamento não encontrado.");
             }
         };
 
@@ -508,7 +524,14 @@
                 if (data.success) {
                     const modalEl = document.getElementById('modalCancel');
                     bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-                    alert(currentCancelTipo === 'fiscal' ? 'Venda e NFC-e canceladas com sucesso!' : 'Venda cancelada com sucesso!');
+                    
+                    const isRegularization = document.querySelector('#modalCancel .modal-title').textContent.includes('Regularização');
+                    
+                    if (isRegularization) {
+                        alert('Nota Fiscal cancelada na SEFAZ com sucesso! A situação foi regularizada.');
+                    } else {
+                        alert(currentCancelTipo === 'fiscal' ? 'Venda e NFC-e canceladas com sucesso!' : 'Venda cancelada com sucesso!');
+                    }
                     loadSales(currentPage);
                 } else {
                     alert('Erro: ' + data.error);

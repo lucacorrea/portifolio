@@ -519,106 +519,108 @@ class SalesController extends BaseController {
 
             $sale = $saleModel->findById($id);
             if (!$sale) throw new \Exception("Venda não encontrada.");
-            if ($sale['status'] === 'cancelado') throw new \Exception("Esta venda já está cancelada.");
+            
+            // Verifica se existe registro de emissão fiscal para esta venda.
+            $stF = $db->prepare("SELECT id FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') LIMIT 1");
+            $stF->execute([$id]);
+            $hasFiscalRecord = (bool)$stF->fetch();
 
-            // --- NOVO: Lógica de Cancelamento Fiscal (SEFAZ) ---
-            $isFiscal = ($sale['tipo_nota'] === 'fiscal');
+            $isFiscal = ($sale['tipo_nota'] === 'fiscal' || $hasFiscalRecord);
+            $isAlreadyCancelled = ($sale['status'] === 'cancelado');
+
+            if ($isAlreadyCancelled && !$hasFiscalRecord) {
+                throw new \Exception("Esta venda já está cancelada e não possui pendência fiscal.");
+            }
+
             if ($isFiscal) {
-                // Prepara ambiente para carregar as bibliotecas de NF-e
-                $nfceDir = dirname(__DIR__, 3) . '/nfce';
-                if (file_exists($nfceDir . '/vendor/autoload.php')) {
-                    require_once $nfceDir . '/vendor/autoload.php';
-                }
-                
-                // Define venda_id globalmente para que o config.php da NF-e carregue a filial correta
-                $_REQUEST['venda_id'] = $id;
-                require_once $nfceDir . '/config.php';
-                $configNFe = require $nfceDir . '/nfce_config.php';
-                
-                // Carrega certificado
-                $pfx = file_get_contents(PFX_PATH);
-                $cert = \NFePHP\Common\Certificate::readPfx($pfx, PFX_PASSWORD);
-                
-                $tools = new \NFePHP\NFe\Tools(json_encode($configNFe), $cert);
-                $tools->model('65');
-
-                // Busca protocolo da emissão original
-                $stP = $db->prepare("SELECT protocolo, chave FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') ORDER BY id DESC LIMIT 1");
-                $stP->execute([$id]);
-                $nfceEmitida = $stP->fetch(\PDO::FETCH_ASSOC);
-
-                if ($nfceEmitida) {
-                    $chave = trim((string)$nfceEmitida['chave']);
-                    $protocolo = trim((string)$nfceEmitida['protocolo']);
-                    $xJust = trim($motivo ?: 'Cancelamento de venda por solicitacao do cliente');
-
-                    // Validações antes de enviar para SEFAZ
-                    if (empty($chave) || strlen($chave) !== 44) {
-                        throw new \Exception("Chave de acesso inválida ou ausente ({$chave}).");
+                try {
+                    // Prepara ambiente para carregar as bibliotecas de NF-e
+                    $nfceDir = dirname(__DIR__, 3) . '/nfce';
+                    $_REQUEST['venda_id'] = $id;
+                    if (file_exists($nfceDir . '/config.php')) {
+                        require_once $nfceDir . '/config.php';
                     }
-                    if (empty($protocolo)) {
-                        throw new \Exception("Número de protocolo de autorização ausente.");
-                    }
-                    if (strlen($xJust) < 15) {
-                        $xJust = str_pad($xJust, 15, '.');
+                    
+                    // Validação do Certificado
+                    if (!defined('PFX_PATH') || !is_file(PFX_PATH)) {
+                        throw new \Exception("Certificado digital não configurado.");
                     }
 
-                    // Envia evento de cancelamento para a SEFAZ
-                    try {
+                    // Busca protocolo da emissão original
+                    $stP = $db->prepare("SELECT * FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') ORDER BY id DESC LIMIT 1");
+                    $stP->execute([$id]);
+                    $nfceEmitida = $stP->fetch(\PDO::FETCH_ASSOC);
+
+                    if ($nfceEmitida) {
+                        $chave = $nfceEmitida['chave'];
+                        $protocolo = $nfceEmitida['protocolo'];
+                        $xJust = (strlen($motivo) < 15) ? $motivo . " para cancelamento" : $motivo;
+                        
+                        $configJson = json_encode([
+                            'atualizacao' => date('Y-m-d H:i:s'),
+                            'tpAmb'       => (int)TP_AMB,
+                            'razao'       => EMIT_XNOME,
+                            'siglaUF'     => EMIT_UF,
+                            'cnpj'        => EMIT_CNPJ,
+                            'schemes'     => 'PL_009_V4',
+                            'versao'      => '4.00'
+                        ]);
+                        
+                        $cert = file_get_contents(PFX_PATH);
+                        $tools = new \NFePHP\NFe\Tools($configJson, \NFePHP\Common\Certificate::readPfx($cert, PFX_PASSWORD));
+                        $tools->model('65');
+                        
                         $response = $tools->sefazCancela($chave, $xJust, $protocolo);
-                        $std = new \NFePHP\NFe\Common\Standardize();
-                        $res = $std->toStd($response);
-                        
-                        $cStat = (string)($res->retEvento->infEvento->cStat ?? $res->cStat ?? '');
-                        
-                        // 135: Evento registrado e vinculado a NF-e, 136: Evento registrado mas não vinculado, 155: Cancelamento homologado fora de prazo
-                        $approved = in_array($cStat, ['135', '136', '155']);
-                        
-                        if (!$approved) {
-                            $errorMsg = $res->retEvento->infEvento->xMotivo ?? $res->xMotivo ?? 'Erro desconhecido na SEFAZ';
-                            throw new \Exception("SEFAZ Rejeitou o cancelamento: " . $errorMsg);
+                        $dom = new \DOMDocument();
+                        $dom->loadXML($response);
+                        $cStat = $dom->getElementsByTagName('cStat')->item(0)->nodeValue;
+                        $xMotivo = $dom->getElementsByTagName('xMotivo')->item(0)->nodeValue;
+
+                        $sucessoSefaz = in_array($cStat, ['135', '136', '101', '128', '155']);
+                        if (!$sucessoSefaz) {
+                            throw new \Exception("SEFAZ Rejeitou: ($cStat) $xMotivo");
                         }
-                    } catch (\Exception $sefazError) {
-                        throw new \Exception("Erro na comunicação SEFAZ: " . $sefazError->getMessage());
+
+                        $stN = $db->prepare("UPDATE nfce_emitidas SET status_sefaz = '101', mensagem = 'Cancelamento homologado ({$cStat})' WHERE venda_id = ?");
+                        $stN->execute([$id]);
                     }
-
-                    // Atualiza status da NFC-e na nossa tabela
-                    $stN = $db->prepare("UPDATE nfce_emitidas SET status_sefaz = '101', mensagem = 'Cancelamento homologado (Evento 135)' WHERE venda_id = ?");
-                    $stN->execute([$id]);
+                } catch (\Throwable $sefazError) {
+                    throw new \Exception("Erro SEFAZ: " . $sefazError->getMessage());
                 }
             }
 
-            // 1. Reverter Estoque
-            foreach ($sale['itens'] as $item) {
-                $productModel->updateStock($item['produto_id'], $item['quantidade'], 'entrada');
-            }
-
-            // 2. Financeiro (Estorno de Caixa)
-            if ($sale['forma_pagamento'] !== 'fiado') {
-                $caixaAberto = $cashierModel->getOpenForFilial($sale['filial_id']);
-                if ($caixaAberto) {
-                    $movementModel->create([
-                        'caixa_id' => $caixaAberto['id'],
-                        'tipo' => 'saida',
-                        'valor' => $sale['valor_total'],
-                        'motivo' => "Estorno Venda #{$id} - Motivo: {$motivo}",
-                        'operador_id' => $_SESSION['usuario_id']
-                    ]);
+            // --- REVERSÃO DE ESTOQUE E FINANCEIRO ---
+            // SÓ executa se a venda ainda estava 'concluido' (evita duplicidade no re-cancelamento fiscal)
+            if (!$isAlreadyCancelled) {
+                // 1. Reverter Estoque
+                foreach ($sale['itens'] as $item) {
+                    $productModel->updateStock($item['produto_id'], $item['quantidade'], 'entrada');
                 }
-            } else {
-                // Se for fiado, precisamos cancelar o registro de contas a receber
-                $db->prepare("UPDATE contas_receber SET status = 'cancelado' WHERE venda_id = ?")->execute([$id]);
-            }
 
-            // 3. Atualizar Status
-            $saleModel->updateStatus($id, 'cancelado');
-            if ($isFiscal) {
-                $db->prepare("UPDATE vendas SET tipo_nota = 'fiscal_cancelada' WHERE id = ?")->execute([$id]);
+                // 2. Financeiro (Estorno de Caixa)
+                if ($sale['forma_pagamento'] !== 'fiado') {
+                    $caixaAberto = $cashierModel->getOpenForFilial($sale['filial_id']);
+                    if ($caixaAberto) {
+                        $movementModel->create([
+                            'caixa_id' => $caixaAberto['id'],
+                            'tipo' => 'saida',
+                            'valor' => $sale['valor_total'],
+                            'motivo' => "Estorno Venda #{$id} - Motivo: {$motivo}",
+                            'operador_id' => $_SESSION['usuario_id']
+                        ]);
+                    }
+                } else {
+                    $db->prepare("UPDATE contas_receber SET status = 'cancelado' WHERE venda_id = ?")->execute([$id]);
+                }
+
+                // 3. Atualizar Status Interno
+                $saleModel->updateStatus($id, 'cancelado');
             }
 
             // 4. Auditoria
             $audit = new \App\Services\AuditLogService();
-            $audit->record('Cancelamento de venda', 'vendas', $id, null, $motivo . ($isFiscal ? " (Cancelado na SEFAZ)" : ""));
+            $auditText = $isAlreadyCancelled ? "Regularização Fiscal (Cancelamento SEFAZ)" : $motivo;
+            $audit->record('Cancelamento de venda', 'vendas', $id, null, $auditText . ($isFiscal ? " (Sincronizado SEFAZ)" : ""));
 
             $db->commit();
             echo json_encode(['success' => true]);

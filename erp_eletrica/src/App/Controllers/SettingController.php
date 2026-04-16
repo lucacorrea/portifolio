@@ -55,12 +55,16 @@ class SettingController extends BaseController {
             $senha = $_POST['certificado_senha'] ?? '';
             $csc_id = $_POST['csc_id_global'] ?? '';
             $csc_token = $_POST['csc_token_global'] ?? '';
+            $serie_nfce = $_POST['serie_nfce_global'] ?? '1';
+            $ultimo_numero = $_POST['ultimo_numero_nfce_global'] ?? '0';
             
             $dataSefaz = [
                 'ambiente' => ($isMatriz ? $ambiente : ($ambiente === 'producao' ? 1 : 2)),
                 'certificado_senha' => $senha,
                 'csc_id' => $csc_id,
-                'csc' => $csc_token
+                'csc' => $csc_token,
+                'serie_nfce' => $serie_nfce,
+                'ultimo_numero_nfce' => $ultimo_numero
             ];
             
             // Map keys for Branch table vs Global table
@@ -90,18 +94,24 @@ class SettingController extends BaseController {
 
             if ($isMatriz) {
                 // Save to Global Config
-                // Safety: Ensure csc columns exist
+                // Safety: Ensure csc and numbering columns exist
                 try {
                     $db->exec("ALTER TABLE sefaz_config ADD COLUMN csc_id VARCHAR(10) NULL");
                 } catch (\Exception $e) { /* Column already exists */ }
                 try {
                     $db->exec("ALTER TABLE sefaz_config ADD COLUMN csc VARCHAR(255) NULL");
                 } catch (\Exception $e) { /* Column already exists */ }
+                try {
+                    $db->exec("ALTER TABLE sefaz_config ADD COLUMN serie_nfce INT DEFAULT 1");
+                } catch (\Exception $e) { /* Column already exists */ }
+                try {
+                    $db->exec("ALTER TABLE sefaz_config ADD COLUMN ultimo_numero_nfce INT DEFAULT 0");
+                } catch (\Exception $e) { /* Column already exists */ }
 
                 $existing = $db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch();
                 if ($existing) {
-                    $sql = "UPDATE sefaz_config SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc = ?";
-                    $params = [$dataSefaz['ambiente'], $dataSefaz['certificado_senha'], $dataSefaz['csc_id'], $dataSefaz['csc']];
+                    $sql = "UPDATE sefaz_config SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc = ?, serie_nfce = ?, ultimo_numero_nfce = ?";
+                    $params = [$dataSefaz['ambiente'], $dataSefaz['certificado_senha'], $dataSefaz['csc_id'], $dataSefaz['csc'], $dataSefaz['serie_nfce'], $dataSefaz['ultimo_numero_nfce']];
                     if (isset($dataSefaz['certificado_path'])) {
                         $sql .= ", certificado_path = ?";
                         $params[] = $dataSefaz['certificado_path'];
@@ -114,8 +124,8 @@ class SettingController extends BaseController {
                         $this->redirect('importar_automatico.php?action=config&msg=Erro: Certificado obrigatório no primeiro cadastro');
                         return;
                     }
-                    $db->prepare("INSERT INTO sefaz_config (certificado_path, certificado_senha, ambiente, csc_id, csc) VALUES (?, ?, ?, ?, ?)")
-                       ->execute([$dataSefaz['certificado_path'], $dataSefaz['certificado_senha'], $dataSefaz['ambiente'], $dataSefaz['csc_id'], $dataSefaz['csc']]);
+                    $db->prepare("INSERT INTO sefaz_config (certificado_path, certificado_senha, ambiente, csc_id, csc, serie_nfce, ultimo_numero_nfce) VALUES (?, ?, ?, ?, ?, ?, ?)")
+                       ->execute([$dataSefaz['certificado_path'], $dataSefaz['certificado_senha'], $dataSefaz['ambiente'], $dataSefaz['csc_id'], $dataSefaz['csc'], $dataSefaz['serie_nfce'], $dataSefaz['ultimo_numero_nfce']]);
                 }
                 $audit->record('Configurações Globais de Certificado Atualizadas', 'configuracoes');
             } else {

@@ -40,7 +40,7 @@
             <div class="card-body text-center">
                 <div class="text-muted small fw-bold text-uppercase mb-2"><i class="fas fa-chart-line me-2 text-primary"></i>Vendido (Total)</div>
                 <h3 class="mb-0 fw-bold text-primary" id="val-vendido-total"><?= formatarMoeda($cashierSummary['total_bruto'] ?? 0) ?></h3>
-                <div class="extra-small text-muted mt-2">Cash + Digital</div>
+                <div class="extra-small text-muted mt-2">Dinheiro + Digital</div>
             </div>
         </div>
     </div>

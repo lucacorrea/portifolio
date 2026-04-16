@@ -25,14 +25,29 @@ switch($action) {
     case 'visualizar_produtos':
         $controller->visualizar_produtos();
         break;
-    case 'processar_entrada':
-        $controller->processar_entrada();
+    case 'iniciar_analise':
+        $controller->iniciar_analise();
+        break;
+    case 'listar_analise':
+        $controller->listar_analise();
+        break;
+    case 'vincular_item':
+        $controller->vincular_item();
+        break;
+    case 'cadastrar_e_vincular':
+        $controller->cadastrar_e_vincular();
+        break;
+    case 'finalizar_importacao':
+        $controller->finalizar_importacao();
         break;
     case 'baixar_xml':
         $controller->baixar_xml();
         break;
     case 'baixar_danfe':
         $controller->baixar_danfe();
+        break;
+    case 'save_marker':
+        $controller->save_marker();
         break;
     default:
         $controller->index();

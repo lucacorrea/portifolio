@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Services\InventoryService;
 
 class InventoryController extends BaseController {
+    // [/] Ajustar `InventoryController.php` para processar parâmetro `ordem`
     private $service;
 
     public function __construct() {
@@ -27,10 +28,17 @@ class InventoryController extends BaseController {
         $page = (int)($_GET['page'] ?? 1);
         $filters = [
             'q' => $_GET['q'] ?? '',
-            'categoria' => $_GET['categoria'] ?? ''
+            'categoria' => $_GET['categoria'] ?? '',
+            'ordem' => $_GET['ordem'] ?? 'codigo_desc'
         ];
         
-        $pagination = $productModel->paginate(15, $page, "categoria ASC, nome ASC", $filters);
+        // Mapeamento de Ordenação
+        $orderSql = "categoria ASC, nome ASC"; // Default
+        if ($filters['ordem'] === 'codigo_desc') $orderSql = "CAST(codigo AS UNSIGNED) DESC";
+        if ($filters['ordem'] === 'codigo_asc') $orderSql = "CAST(codigo AS UNSIGNED) ASC";
+        if ($filters['ordem'] === 'nome_asc') $orderSql = "nome ASC";
+        
+        $pagination = $productModel->paginate(15, $page, $orderSql, $filters);
         $products = $pagination['data'];
         $allProducts = $productModel->all("nome ASC");
         $movements = $movementModel->getHistory(null, 20);

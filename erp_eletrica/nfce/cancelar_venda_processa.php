@@ -189,8 +189,13 @@ if ($modelo === 'por_chave') {
     redirVendaRapida($empresa_id, false, $modelo ?: 'desconhecido', 'Modelo de cancelamento inválido.');
 }
 
-/* ========= Integração SEFAZ (placeholder) ========= */
-function runCancel($modelo, $empresa_id, $chave, $motivo, $chaveSubstituta)
+/* ========= Autoloader ========= */
+if (is_file(dirname(__DIR__) . '/autoloader.php')) {
+    require_once dirname(__DIR__) . '/autoloader.php';
+}
+
+/* ========= Integração SEFAZ ========= */
+function runCancel($modelo, $empresa_id, $chave, $motivo, $chaveSubstituta, $pdo)
 {
     try {
         if (file_exists(__DIR__ . '/vendor/autoload.php')) require_once __DIR__ . '/vendor/autoload.php';
@@ -202,6 +207,10 @@ function runCancel($modelo, $empresa_id, $chave, $motivo, $chaveSubstituta)
         $config = require __DIR__ . '/nfce_config.php';
         $configJson = json_encode($config);
         
+        if (!defined('PFX_PATH') || !is_file(PFX_PATH)) {
+            throw new Exception("Arquivo de certificado não encontrado em: " . (defined('PFX_PATH') ? PFX_PATH : 'indefinido'));
+        }
+
         $pfxContent = file_get_contents(PFX_PATH);
         $certificate = \NFePHP\Common\Certificate::readPfx($pfxContent, PFX_PASSWORD);
         
@@ -209,44 +218,52 @@ function runCancel($modelo, $empresa_id, $chave, $motivo, $chaveSubstituta)
         $tools->model('65');
 
         $xJust = $motivo ?: 'Cancelamento de venda por solicitacao do cliente';
-        if (strlen($xJust) < 15) $xJust = str_pad($xJust, 15, '.');
+        if (mb_strlen($xJust) < 15) $xJust = str_pad($xJust, 15, '.');
 
         if ($modelo === 'por_substituicao') {
-            $nProt = ''; // Will try to find protocol from database if not provided
-            $db = \App\Config\Database::getInstance()->getConnection();
-            $st = $db->prepare("SELECT protocolo FROM nfce_emitidas WHERE chave = ? LIMIT 1");
+            $nProt = ''; 
+            $st = $pdo->prepare("SELECT protocolo FROM nfce_emitidas WHERE chave = ? LIMIT 1");
             $st->execute([$chave]);
             $nProt = $st->fetchColumn() ?: '';
             
+            if (!$nProt) throw new Exception("Protocolo de autorização original não encontrado no banco.");
+
             $response = $tools->sefazCancelSubst($chave, $nProt, $chaveSubstituta, $xJust);
         } else if ($modelo === 'por_chave') {
             $nProt = '';
-            $db = \App\Config\Database::getInstance()->getConnection();
-            $st = $db->prepare("SELECT protocolo FROM nfce_emitidas WHERE chave = ? LIMIT 1");
+            $st = $pdo->prepare("SELECT protocolo FROM nfce_emitidas WHERE chave = ? LIMIT 1");
             $st->execute([$chave]);
             $nProt = $st->fetchColumn() ?: '';
             
+            if (!$nProt) throw new Exception("Protocolo de autorização não encontrado no banco.");
+
             $response = $tools->sefazCancela($chave, $xJust, $nProt);
         } else {
             // Interno
-            return true;
+            return ['ok' => true, 'msg' => 'Cancelado apenas internamente'];
         }
 
         $std = new \NFePHP\NFe\Common\Standardize();
         $res = $std->toStd($response);
         
         $cStat = (string)($res->retEvento->infEvento->cStat ?? $res->cStat ?? '');
-        // 135: Evento registrado e vinculado a NF-e, 136: Evento registrado, mas nao vinculado a NF-e
-        return in_array($cStat, ['135', '136', '155']); 
+        $xMotivo = (string)($res->retEvento->infEvento->xMotivo ?? $res->xMotivo ?? 'Erro desconhecido na SEFAZ');
         
-    } catch (\Exception $e) {
+        // 135/136: Evento registrado, 101: Cancelado, 128: Lote processado (verificar sub-status), 155: Fora do prazo
+        if (in_array($cStat, ['135', '136', '101', '128', '155'])) {
+            return ['ok' => true, 'msg' => $xMotivo, 'cStat' => $cStat];
+        }
+        
+        return ['ok' => false, 'msg' => "SEFAZ ($cStat): $xMotivo"];
+        
+    } catch (\Throwable $e) {
         error_log("Erro no cancelamento SEFAZ: " . $e->getMessage());
-        return false;
+        return ['ok' => false, 'msg' => $e->getMessage()];
     }
 }
-$ok = runCancel($modelo, $empresa_id, $chave, $motivo, $chaveSubstituta);
-if (!$ok) {
-    redirVendaRapida($empresa_id, false, $modelo, 'Falha ao cancelar na SEFAZ.');
+$cancelRes = runCancel($modelo, $empresa_id, $chave, $motivo, $chaveSubstituta, $pdo);
+if (!$cancelRes['ok']) {
+    redirVendaRapida($empresa_id, false, $modelo, 'Erro SEFAZ: ' . $cancelRes['msg']);
 }
 
 /* ========= Cancelar: repor estoque + ajustar abertura + remover venda ========= */

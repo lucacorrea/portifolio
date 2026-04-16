@@ -76,6 +76,18 @@ class DashboardController extends BaseController {
             $stmt_history->execute($params);
             $faturamento_historico = $stmt_history->fetchAll();
 
+            // Traduzir meses para o gráfico
+            $monthMap = [
+                'Jan' => 'Jan', 'Feb' => 'Fev', 'Mar' => 'Mar', 'Apr' => 'Abr',
+                'May' => 'Mai', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Ago',
+                'Sep' => 'Set', 'Oct' => 'Out', 'Nov' => 'Nov', 'Dec' => 'Dez'
+            ];
+            foreach ($faturamento_historico as &$h) {
+                if (isset($monthMap[$h['mes']])) {
+                    $h['mes'] = $monthMap[$h['mes']];
+                }
+            }
+
             // Top Vendas
             $sql_top = "
                 SELECT p.nome, SUM(vi.quantidade) as total_vendido, SUM(vi.quantidade * vi.preco_unitario) as receita

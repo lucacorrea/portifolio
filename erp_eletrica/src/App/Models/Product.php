@@ -47,11 +47,11 @@ class Product extends BaseModel {
         
         $pages = ceil($total / $perPage);
         
-        // Handle $order carefully - it might contain multiple columns
+        // Handle $order carefully - only add prefix if it's a plain column name (no dots, no functions)
         $orderParts = explode(',', $order);
         foreach ($orderParts as &$part) {
             $part = trim($part);
-            if (!str_contains($part, '.')) {
+            if (!str_contains($part, '.') && !str_contains($part, '(')) {
                 $part = "p." . $part;
             }
         }
@@ -363,6 +363,31 @@ class Product extends BaseModel {
                           [$newId, $filialId, $data['quantidade'] ?? 0, $data['estoque_minimo']]);
 
             return $newId;
+        }
+    }
+
+    public function getNextCode() {
+        // Ignora códigos longos (barras) e lixos antigos (acima de 9999) para seguir a sequência manual real
+        $sql = "SELECT codigo FROM {$this->table} 
+                WHERE codigo REGEXP '^[0-9]+$' 
+                AND CAST(codigo AS UNSIGNED) < 10000 
+                ORDER BY CAST(codigo AS UNSIGNED) DESC LIMIT 1";
+        try {
+            $stmt = $this->db->query($sql);
+            $lastCode = $stmt->fetchColumn();
+            
+            // Se encontrou um código numérico baixo, segue a sequência
+            if ($lastCode && (int)$lastCode > 0) {
+                return (int)$lastCode + 1;
+            }
+            
+            // Se não encontrou nada na faixa < 10000, tenta ver o maior ID como fallback (segurança)
+            $stmt = $this->db->query("SELECT MAX(id) FROM {$this->table}");
+            $maxId = (int)$stmt->fetchColumn();
+            return $maxId > 0 ? $maxId + 1000 : 3000;
+            
+        } catch (\Exception $e) {
+            return 3000; 
         }
     }
 }

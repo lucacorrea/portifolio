@@ -71,10 +71,16 @@ class ImportacaoAutomaticaController extends BaseController {
         $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_last_sync_timestamp'");
         $stmt->execute();
         $lastSync = $stmt->fetchColumn();
+
+        // Buscar marcador manual do usuário
+        $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE chave = 'nfe_user_marker_note'");
+        $stmt->execute();
+        $userMarker = $stmt->fetchColumn() ?: '';
         
         $this->render('importacao_automatica', [
             'notas' => $notas,
             'lastSync' => $lastSync,
+            'userMarker' => $userMarker,
             'filters' => [
                 'search' => $search,
                 'status' => $status,
@@ -227,6 +233,232 @@ class ImportacaoAutomaticaController extends BaseController {
         exit;
     }
 
+    public function iniciar_analise() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) exit;
+
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT * FROM nfe_importadas WHERE id = ? AND filial_id = ?");
+            $stmt->execute([$id, $_SESSION['filial_id'] ?? 1]);
+            $nota = $stmt->fetch();
+
+            if (!$nota || empty($nota['xml'])) {
+                throw new \Exception('XML não encontrado no banco de dados. Manifeste a nota primeiro.');
+            }
+
+            // AUTO-REGISTRO DO FORNECEDOR
+            $this->autoRegisterSupplier($nota);
+
+            $xml = simplexml_load_string($nota['xml'], 'SimpleXMLElement', LIBXML_PARSEHUGE);
+            $xml->registerXPathNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+            $detalhes = $xml->xpath('//nfe:det');
+
+            if (!$detalhes) {
+                throw new \Exception('A nota não possui itens ou o XML está incompleto.');
+            }
+
+            $db->beginTransaction();
+
+            // Limpar análise anterior se existir (re-start)
+            $db->prepare("DELETE FROM nfe_analise_itens WHERE nfe_id = ?")->execute([$id]);
+
+            foreach ($detalhes as $det) {
+                $prod = $det->prod;
+                $codigoForn = (string)$prod->cProd;
+                $nomeForn = (string)$prod->xProd;
+                $cnpjForn = preg_replace('/\D/', '', $nota['fornecedor_cnpj']);
+
+                // Tentar encontrar mapping prévio
+                $stmtMap = $db->prepare("SELECT produto_id FROM produto_fornecedor_map WHERE fornecedor_cnpj = ? AND codigo_fornecedor = ?");
+                $stmtMap->execute([$cnpjForn, $codigoForn]);
+                $map = $stmtMap->fetch();
+                $produtoId = $map['produto_id'] ?? null;
+
+                // Tentar encontrar por EAN/GTIN se não houver mapping
+                if (!$produtoId && !empty($prod->cEAN) && (string)$prod->cEAN !== 'SEM GTIN') {
+                    $stmtEan = $db->prepare("SELECT id FROM produtos WHERE cean = ?");
+                    $stmtEan->execute([(string)$prod->cEAN]);
+                    $produtoId = $stmtEan->fetchColumn() ?: null;
+                }
+
+                // Tentar encontrar por Código Exato se não houver mapping
+                if (!$produtoId) {
+                    $stmtCod = $db->prepare("SELECT id FROM produtos WHERE codigo = ?");
+                    $stmtCod->execute([$codigoForn]);
+                    $produtoId = $stmtCod->fetchColumn() ?: null;
+                }
+
+                $stmtIns = $db->prepare("
+                    INSERT INTO nfe_analise_itens (nfe_id, codigo_fornecedor, nome_item, unidade, quantidade, valor_unitario, ncm, ean, produto_id, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmtIns->execute([
+                    $id, $codigoForn, $nomeForn, (string)$prod->uCom, (float)$prod->qCom, (float)$prod->vUnCom, (string)$prod->NCM, (string)$prod->cEAN,
+                    $produtoId, $produtoId ? 'vinculado' : 'pendente'
+                ]);
+            }
+
+            $db->prepare("UPDATE nfe_importadas SET status = 'em_analise' WHERE id = ?")->execute([$id]);
+            $db->commit();
+
+            echo json_encode(['success' => true]);
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    private function autoRegisterSupplier($nota) {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $cnpj = preg_replace('/\D/', '', $nota['fornecedor_cnpj']);
+        
+        $stmt = $db->prepare("SELECT id FROM fornecedores WHERE cnpj = ?");
+        $stmt->execute([$cnpj]);
+        if ($stmt->fetch()) return; // Já existe
+
+        $endereco = ''; $telefone = ''; $email = '';
+        
+        try {
+            $xml = simplexml_load_string($nota['xml']);
+            if ($xml) {
+                $xml->registerXPathNamespace('n', 'http://www.portalfiscal.inf.br/nfe');
+                $emit = $xml->xpath('//n:emit')[0] ?? null;
+                if ($emit) {
+                    $ender = $emit->enderEmit;
+                    if ($ender) {
+                        $endereco = "{$ender->xLgr}, {$ender->nro}" . ($ender->xCpl ? " - {$ender->xCpl}" : "") . ", {$ender->xBairro}, {$ender->xMun} - {$ender->UF}";
+                        $telefone = (string)$ender->fone;
+                    }
+                }
+            }
+        } catch(\Exception $e) {}
+
+        $supplier = new \App\Models\Supplier();
+        $supplier->save([
+            'nome_fantasia' => $nota['fornecedor_nome'],
+            'cnpj' => $cnpj,
+            'email' => $email,
+            'telefone' => $telefone,
+            'endereco' => $endereco
+        ]);
+    }
+
+    public function listar_analise() {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $id = $_GET['id'] ?? null;
+        if (!$id) exit;
+
+        $sql = "SELECT a.*, p.nome as sistema_nome, p.codigo as sistema_codigo 
+                FROM nfe_analise_itens a
+                LEFT JOIN produtos p ON a.produto_id = p.id
+                WHERE a.nfe_id = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$id]);
+        $itens = $stmt->fetchAll();
+
+        // Para cada item pendente, buscar sugestões
+        foreach ($itens as &$item) {
+            if ($item['status'] === 'pendente') {
+                $stmtSug = $db->prepare("SELECT id, nome, codigo FROM produtos WHERE nome LIKE ? OR codigo = ? LIMIT 5");
+                $stmtSug->execute(['%' . $item['nome_item'] . '%', $item['codigo_fornecedor']]);
+                $item['sugestoes'] = $stmtSug->fetchAll();
+            }
+        }
+
+        echo json_encode(['success' => true, 'itens' => $itens]);
+        exit;
+    }
+
+    public function vincular_item() {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $analiseId = $data['analise_id'] ?? null;
+        $produtoId = $data['produto_id'] ?? null;
+        $updatePermanently = $data['update_code'] ?? false;
+
+        if (!$analiseId || !$produtoId) {
+            echo json_encode(['success' => false, 'error' => 'Dados inválidos.']);
+            exit;
+        }
+
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $db->beginTransaction();
+
+            $stmt = $db->prepare("SELECT * FROM nfe_analise_itens WHERE id = ?");
+            $stmt->execute([$analiseId]);
+            $analise = $stmt->fetch();
+            $nfeId = $analise['nfe_id'];
+
+            // Buscar CNPJ do fornecedor da nota
+            $stmtNfe = $db->prepare("SELECT fornecedor_cnpj FROM nfe_importadas WHERE id = ?");
+            $stmtNfe->execute([$nfeId]);
+            $cnpjForn = $stmtNfe->fetchColumn();
+
+            // Salvar no mapping histórico
+            $db->prepare("INSERT INTO produto_fornecedor_map (fornecedor_cnpj, codigo_fornecedor, produto_id) 
+                          VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE produto_id = ?")
+               ->execute([$cnpjForn, $analise['codigo_fornecedor'], $produtoId, $produtoId]);
+
+            // Atualizar item da análise
+            $db->prepare("UPDATE nfe_analise_itens SET produto_id = ?, status = 'vinculado' WHERE id = ?")
+               ->execute([$produtoId, $analiseId]);
+
+            // Se solicitado, atualizar o código interno do produto permanentemente
+            if ($updatePermanently) {
+                $db->prepare("UPDATE produtos SET codigo = ? WHERE id = ?")
+                   ->execute([$analise['codigo_fornecedor'], $produtoId]);
+            }
+
+            $db->commit();
+            echo json_encode(['success' => true]);
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    public function cadastrar_e_vincular() {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $analiseId = $data['analise_id'] ?? null;
+
+        if (!$analiseId) exit;
+
+        try {
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $db->beginTransaction();
+
+            $stmt = $db->prepare("SELECT * FROM nfe_analise_itens WHERE id = ?");
+            $stmt->execute([$analiseId]);
+            $analise = $stmt->fetch();
+
+            $productModel = new \App\Models\Product();
+            $produtoId = $productModel->save([
+                'codigo' => $analise['codigo_fornecedor'],
+                'nome' => $analise['nome_item'],
+                'ncm' => $analise['ncm'],
+                'unidade' => $analise['unidade'],
+                'preco_custo' => $analise['valor_unitario'],
+                'preco_venda' => $analise['valor_unitario'] * 1.5,
+                'estoque_minimo' => 0,
+                'categoria' => 'Lançamentos'
+            ]);
+
+            // Vincular
+            $db->prepare("UPDATE nfe_analise_itens SET produto_id = ?, status = 'novo' WHERE id = ?")
+               ->execute([$produtoId, $analiseId]);
+
+            $db->commit();
+            echo json_encode(['success' => true, 'produto_id' => $produtoId]);
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     public function visualizar_produtos() {
         $id = $_GET['id'] ?? null;
         if (!$id) exit;
@@ -239,6 +471,11 @@ class ImportacaoAutomaticaController extends BaseController {
 
             if (!$nota || empty($nota['xml'])) {
                 echo json_encode(['success' => false, 'error' => 'XML não encontrado no banco de dados.']);
+                exit;
+            }
+
+            if ($nota['status'] === 'em_analise') {
+                echo json_encode(['success' => true, 'em_analise' => true]);
                 exit;
             }
 
@@ -290,79 +527,63 @@ class ImportacaoAutomaticaController extends BaseController {
                 }
             }
 
-            echo json_encode(['success' => true, 'produtos' => $produtos]);
+            echo json_encode(['success' => true, 'produtos' => $produtos, 'em_analise' => false]);
         } catch (\Throwable $e) {
             echo json_encode(['success' => false, 'error' => 'Erro interno ao processar: ' . $e->getMessage()]);
         }
         exit;
     }
 
-    public function processar_entrada() {
+    public function finalizar_importacao() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = json_decode(file_get_contents('php://input'), true);
             $id = $data['nota_id'] ?? null;
-            $items = $data['items'] ?? [];
             
-            if (!$id || empty($items)) {
-                echo json_encode(['success' => false, 'error' => 'Dados incompletos para importação.']);
+            if (!$id) {
+                echo json_encode(['success' => false, 'error' => 'ID da nota não fornecido.']);
                 exit;
             }
 
-            $db = \App\Config\Database::getInstance()->getConnection();
-            $productModel = new \App\Models\Product();
-            $stockModel = new \App\Models\StockMovement();
-            $audit = new \App\Services\AuditLogService();
-
             try {
+                $db = \App\Config\Database::getInstance()->getConnection();
                 $db->beginTransaction();
 
-                // Verificar status atual
-                $stmt = $db->prepare("SELECT status FROM nfe_importadas WHERE id = ?");
-                $stmt->execute([$id]);
-                if ($stmt->fetchColumn() === 'importada') {
-                    throw new \Exception("Esta nota já foi importada anteriormente.");
+                // Verificar se todos os itens estão vinculados
+                $stmtPend = $db->prepare("SELECT COUNT(*) FROM nfe_analise_itens WHERE nfe_id = ? AND produto_id IS NULL");
+                $stmtPend->execute([$id]);
+                if ($stmtPend->fetchColumn() > 0) {
+                    throw new \Exception("Ainda existem itens pendentes de vínculo nesta nota.");
                 }
 
-                foreach ($items as $item) {
-                    $stmt = $db->prepare("SELECT id FROM produtos WHERE nome = ? OR codigo = ?");
-                    $stmt->execute([$item['nome'], $item['codigo']]);
-                    $p = $stmt->fetch();
+                $stmtItens = $db->prepare("SELECT * FROM nfe_analise_itens WHERE nfe_id = ?");
+                $stmtItens->execute([$id]);
+                $itens = $stmtItens->fetchAll();
 
-                    if ($p) {
-                        $productId = $p['id'];
-                        $productModel->updateStock($productId, $item['qCom'], 'entrada');
-                    } else {
-                        // Cadastro rápido
-                        $productId = $productModel->create([
-                            'nome' => $item['nome'],
-                            'codigo' => $item['codigo'],
-                            'ncm' => $item['ncm'],
-                            'unidade' => 'UN',
-                            'preco_venda' => $item['vUnCom'] * 1.5,
-                            'estoque_atual' => $item['qCom'],
-                            'filial_id' => $_SESSION['filial_id'] ?? 1
-                        ]);
-                    }
+                $productModel = new \App\Models\Product();
+                $stockModel = new \App\Models\StockMovement();
+
+                foreach ($itens as $item) {
+                    $productModel->updateStock($item['produto_id'], $item['quantidade'], 'entrada');
 
                     $stockModel->create([
-                        'produto_id' => $productId,
-                        'quantidade' => $item['qCom'],
+                        'produto_id' => $item['produto_id'],
+                        'quantidade' => $item['quantidade'],
                         'tipo' => 'entrada',
-                        'motivo' => 'Importação Automática SEFAZ #' . $id,
+                        'motivo' => 'Importação Revisada SEFAZ #' . $id,
                         'usuario_id' => $_SESSION['usuario_id'],
                         'filial_id' => $_SESSION['filial_id'] ?? 1
                     ]);
                 }
 
-                $stmt = $db->prepare("UPDATE nfe_importadas SET status = 'importada' WHERE id = ?");
-                $stmt->execute([$id]);
+                $db->prepare("UPDATE nfe_importadas SET status = 'importada' WHERE id = ?")->execute([$id]);
 
-                $audit->record('Entrada de Estoque via SEFAZ Automática', 'nfe_importadas', $id, null, count($items) . " itens processados");
-                
+                $audit = new \App\Services\AuditLogService();
+                $audit->record('Entrada de Estoque via SEFAZ Analisada', 'nfe_importadas', $id, null, count($itens) . " itens processados");
+
                 $db->commit();
                 echo json_encode(['success' => true]);
             } catch (\Throwable $e) {
-                $db->rollBack();
+                if ($db->inTransaction()) $db->rollBack();
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
             exit;
@@ -423,6 +644,28 @@ class ImportacaoAutomaticaController extends BaseController {
             echo $pdf;
         } catch (\Exception $e) {
             die("Erro ao gerar DANFE: " . $e->getMessage());
+        }
+        exit;
+    }
+
+    public function save_marker() {
+        try {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new \Exception("Método inválido.");
+            
+            $data = json_decode(file_get_contents('php://input'), true);
+            $marker = sanitizeInput($data['marker'] ?? '');
+
+            $db = \App\Config\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("
+                INSERT INTO configuracoes (chave, valor) 
+                VALUES ('nfe_user_marker_note', ?) 
+                ON DUPLICATE KEY UPDATE valor = ?
+            ");
+            $stmt->execute([$marker, $marker]);
+
+            echo json_encode(['success' => true]);
+        } catch (\Throwable $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;
     }
