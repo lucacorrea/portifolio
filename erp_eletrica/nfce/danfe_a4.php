@@ -179,37 +179,34 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
     <meta charset="UTF-8">
     <title>DANFE - <?= $ide['nNF'] ?></title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap');
-        body { font-family: 'Arial', sans-serif; margin: 0; padding: 0px; background: #e0e0e0; color: #000; font-size: 8px; }
-        .page { width: 21cm; min-height: 29.7cm; padding: 0.8cm; background: #fff; margin: 0.5cm auto; box-shadow: 0 0 15px rgba(0,0,0,0.2); position: relative; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; margin: 0; padding: 0px; background: #e0e0e0; color: #000; font-size: 8px; min-width: 21cm; }
+        .page { width: 21cm; height: 29.7cm; padding: 10mm; background: #fff; margin: 10px auto; box-shadow: 0 0 15px rgba(0,0,0,0.2); position: relative; box-sizing: border-box; overflow: hidden; }
         
         .box { border: 1px solid #000; margin-bottom: -1px; margin-right: -1px; position: relative; }
         .flex { display: flex; width: 100%; }
         .f1 { flex: 1; } .f2 { flex: 2; } .f3 { flex: 3; } .f4 { flex: 4; } .f5 { flex: 5; }
         .center { text-align: center; } .right { text-align: right; } .bold { font-weight: bold; }
-        .title { font-size: 6px; font-weight: bold; text-transform: uppercase; padding: 1px 3px; display: block; border-bottom: 0px; }
+        .title { font-size: 6px; font-weight: bold; text-transform: uppercase; padding: 1px 3px; display: block; border-bottom: 0px; line-height: 1; }
         .val { font-size: 8px; padding: 1px 4px; min-height: 10px; text-transform: uppercase; word-break: break-all; }
-        .section-title { font-size: 8px; font-weight: bold; margin: 4px 0 2px 0; }
+        .section-title { font-size: 8px; font-weight: bold; margin: 5px 0 2px 0; border-bottom: 1px solid #000; padding-bottom: 2px; }
         
-        /* Header */
-        .header-main { height: 110px; }
-        .emit-logo { width: 3.5cm; display: flex; align-items: center; justify-content: center; padding: 5px; border-right: 1px solid #000; }
-        .emit-info { flex: 4; padding: 4px; font-size: 9px; }
-        .danfe-box { width: 3.2cm; border-left: 1px solid #000; border-right: 1px solid #000; padding: 2px; }
-        .barcode-box { flex: 4; padding: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .barcode { font-family: 'Libre Barcode 128', cursive; font-size: 42px; margin: 0; line-height: 42px; }
+        /* Header Fix */
+        .header-main { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 2px; }
+        .header-main td { border: 1px solid #000; vertical-align: top; padding: 2px; overflow: hidden; }
+        .emit-logo { width: 85px; text-align: center; vertical-align: middle !important; }
+        .emit-info { font-size: 8px; line-height: 1.1; }
+        .danfe-box { width: 85px; text-align: center; }
+        .barcode-box { width: 220px; text-align: center; vertical-align: middle !important; }
+        .barcode { font-size: 28px; letter-spacing: 2px; display: block; margin: 5px 0; font-weight: normal; border: 1px dashed #ccc; padding: 5px; }
         
         /* Tables */
-        .table { width: 100%; border-collapse: collapse; margin-top: 0px; margin-bottom: 5px; }
-        .table th { border: 1px solid #000; font-size: 6px; padding: 1px; background: #f2f2f2; }
-        .table td { border: 1px solid #000; font-size: 7px; padding: 1px 2px; line-height: 1.1; vertical-align: middle; }
-
-        /* Stub (Canhoto) */
-        .canhoto { margin-top: 20px; border-top: 1px dashed #000; padding-top: 10px; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 0px; margin-bottom: 5px; table-layout: fixed; }
+        .table th { border: 1px solid #000; font-size: 6px; padding: 2px; background: #f2f2f2; text-align: center; }
+        .table td { border: 1px solid #000; font-size: 7px; padding: 1px 2px; line-height: 1; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         @media print {
-            body { background: #fff; padding: 0; }
-            .page { margin: 0; box-shadow: none; width: 21cm; height: 100%; padding: 0.8cm; }
+            body { background: #fff; padding: 0; min-width: 0; }
+            .page { margin: 0; box-shadow: none; border: none; width: 21cm; height: 29.7cm; padding: 10mm; }
             .no-print { display: none; }
         }
     </style>
