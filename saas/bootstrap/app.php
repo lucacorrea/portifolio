@@ -13,7 +13,7 @@ define('STORAGE_PATH', BASE_PATH . '/storage');
 $GLOBALS['app_config'] = require APP_PATH . '/Config/app.php';
 
 if (!is_array($GLOBALS['app_config'])) {
-    throw new RuntimeException('O arquivo app/Config/app.php deve retornar um array.');
+    throw new RuntimeException('O arquivo app/Config/app.php');
 }
 
 require_once APP_PATH . '/Core/Router.php';
