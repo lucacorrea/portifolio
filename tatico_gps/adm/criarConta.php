@@ -113,7 +113,7 @@
             <h4 class="mb-1">Crie sua conta</h4>
             <p class="mb-6">Gerencie rastreamentos, clientes e operações com mais praticidade.</p>
 
-            <form id="formAuthentication" class="mb-6" action="index.html">
+            <form id="formAuthentication" class="mb-6" action="./php/auth/processarCadastro.php">
               <div class="mb-6">
                 <label for="username" class="form-label">Nome de usuário</label>
                 <input
