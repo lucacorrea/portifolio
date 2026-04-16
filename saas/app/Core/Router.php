@@ -21,7 +21,7 @@ final class Router
     public function dispatch(string $method, string $uri): void
     {
         $method = strtoupper($method);
-        $path = $this->extractPath($uri);
+        $path   = $this->extractPath($uri);
 
         $handler = $this->routes[$method][$path] ?? null;
 

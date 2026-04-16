@@ -44,7 +44,12 @@ final class LoginController
             redirect('/admin/login');
         }
 
-        if (!$admin || !password_verify($senha, (string)$admin['senha_hash'])) {
+        if (!$admin) {
+            flash_set('error', 'E-mail ou senha inválidos.');
+            redirect('/admin/login');
+        }
+
+        if (!password_verify($senha, (string)$admin['senha_hash'])) {
             flash_set('error', 'E-mail ou senha inválidos.');
             redirect('/admin/login');
         }
@@ -73,15 +78,8 @@ final class LoginController
 
     public function logout(): void
     {
-        $_SESSION = [];
+        unset($_SESSION['auth']);
 
-        if (ini_get('session.use_cookies')) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], (bool) $params['secure'], (bool) $params['httponly']);
-        }
-
-        session_destroy();
-        session_start();
         session_regenerate_id(true);
 
         flash_set('success', 'Logout realizado com sucesso.');
