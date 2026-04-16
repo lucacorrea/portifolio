@@ -890,9 +890,11 @@ async function salvarQuickClient() {
     if (!nome) return alert('O nome é obrigatório.');
 
     const btn = event.currentTarget || document.querySelector('button[onclick="salvarQuickClient()"]');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+    const originalText = btn?.innerHTML || 'SALVAR';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+    }
 
     try {
         const res = await fetch('vendas.php?action=quick_register_client', {
@@ -901,24 +903,21 @@ async function salvarQuickClient() {
             body: JSON.stringify({ nome, cpf_cnpj, telefone, endereco })
         });
 
-    if (!nome) return alert('O nome é obrigatório.');
-
-    try {
-        const res = await fetch('vendas.php?action=quick_register_client', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, cpf_cnpj, telefone })
-        });
-
         const result = await res.json();
         if (result.success) {
             selectCustomer(result.client_id, nome, cpf_cnpj);
-            bootstrap.Modal.getInstance(document.getElementById('modalQuickClient')).hide();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalQuickClient'));
+            if (modal) modal.hide();
         } else {
             alert('Erro ao cadastrar: ' + result.error);
         }
     } catch (err) {
         alert('Erro de conexão: ' + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
 }
 
