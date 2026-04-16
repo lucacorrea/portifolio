@@ -248,6 +248,14 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
         .danfe-box { width: 85px; text-align: center; }
         .barcode-box { width: 220px; text-align: center; vertical-align: middle !important; }
         .barcode { font-size: 28px; letter-spacing: 2px; display: block; margin: 5px 0; font-weight: normal; border: 1px dashed #ccc; padding: 5px; }
+
+        .footer-pinned {
+            position: absolute;
+            bottom: 10mm;
+            left: 10mm;
+            right: 10mm;
+            z-index: 10;
+        }
         
         /* Tables */
         .table { width: 100%; border-collapse: collapse; margin-top: 0px; margin-bottom: 5px; table-layout: fixed; }
