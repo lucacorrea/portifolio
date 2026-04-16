@@ -483,9 +483,9 @@
 <div class="modal fade" id="modalQuickClient" tabindex="-1" style="z-index: 1080;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-black border-0">
+            <div class="modal-header bg-primary text-white border-0">
                 <h6 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i>Cadastro Rápido de Cliente</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="mb-3">
