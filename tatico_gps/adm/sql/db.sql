@@ -104,3 +104,12 @@ CREATE TABLE IF NOT EXISTS cobrancas (
     INDEX idx_status (status),
     INDEX idx_vencimento (data_vencimento)
 );
+
+
+CREATE TABLE IF NOT EXISTS usuarios (
+    id                                      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username                                VARCHAR(100) NOT NULL UNIQUE,
+    email                                   VARCHAR(150) NOT NULL UNIQUE,
+    senha                                   VARCHAR(255) NOT NULL,
+    criado_em                               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

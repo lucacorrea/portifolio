@@ -3,11 +3,17 @@ require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
 
-$id = $_GET['id'] ?? 0;
+$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
 $stmt = $pdo->prepare("
-    SELECT a.*, o.numero as oficio_num, s.nome as secretaria, s.responsavel as sec_responsavel, 
-           f.nome as fornecedor, f.cnpj as fornecedor_cnpj, f.contato as fornecedor_contato
+    SELECT
+        a.*,
+        o.numero AS oficio_num,
+        s.nome AS secretaria,
+        s.responsavel AS sec_responsavel,
+        f.nome AS fornecedor,
+        f.cnpj AS fornecedor_cnpj,
+        f.contato AS fornecedor_contato
     FROM aquisicoes a
     JOIN oficios o ON a.oficio_id = o.id
     JOIN secretarias s ON o.secretaria_id = s.id
@@ -18,17 +24,94 @@ $stmt->execute([$id]);
 $aq = $stmt->fetch();
 
 if (!$aq) {
-    die("Aquisição não encontrada.");
+    die('Aquisição não encontrada.');
 }
 
-$stmt_items = $pdo->prepare("SELECT * FROM itens_aquisicao WHERE aquisicao_id = ?");
+$stmt_items = $pdo->prepare("
+    SELECT *
+    FROM itens_aquisicao
+    WHERE aquisicao_id = ?
+    ORDER BY id ASC
+");
 $stmt_items->execute([$id]);
 $items = $stmt_items->fetchAll();
 
-$page_title = "Aquisição: " . $aq['numero_aq'];
+$page_title = 'Aquisição: ' . $aq['numero_aq'];
+
+function h($value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
+function money_br($value): string
+{
+    return 'R$ ' . number_format((float) $value, 2, ',', '.');
+}
+
+function render_itens_aquisicao_table(array $items, float $valorTotal): void
+{
+    ?>
+    <div class="ordem-items-wrap">
+        <table class="ordem-items-table">
+            <thead>
+                <tr>
+                    <th style="text-align: center; width: 40px;">Item</th>
+                    <th style="text-align: center; width: 50px;">Unid.</th>
+                    <th style="text-align: center; width: 60px;">Qtd</th>
+                    <th style="text-align: center;">Especificação Completa</th>
+                    <th style="text-align: center; width: 110px;">Preço Unitário</th>
+                    <th style="text-align: center; width: 110px;">Valor Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($items)): ?>
+                    <tr>
+                        <td colspan="6" style="text-align: center; font-weight: 700;">Nenhum item cadastrado.</td>
+                    </tr>
+                <?php else: ?>
+                    <?php $i = 1; ?>
+                    <?php foreach ($items as $item): ?>
+                        <?php
+                        $quantidade = (float) ($item['quantidade'] ?? 0);
+                        $valorUnitario = (float) ($item['valor_unitario'] ?? 0);
+                        $valorItem = $quantidade * $valorUnitario;
+                        ?>
+                        <tr>
+                            <td style="text-align: center; font-weight: 700; color: #333;">
+                                <?= str_pad((string) $i++, 2, '0', STR_PAD_LEFT) ?>
+                            </td>
+                            <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
+                            <td style="text-align: center; font-weight: 700;">
+                                <?= number_format($quantidade, 0, ',', '.') ?>
+                            </td>
+                            <td style="font-weight: 600;">
+                                <?= h(strtoupper((string) ($item['produto'] ?? ''))) ?>
+                            </td>
+                            <td style="text-align: center;">
+                                <?= money_br($valorUnitario) ?>
+                            </td>
+                            <td style="text-align: center; font-weight: 700;">
+                                <?= money_br($valorItem) ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+
+                    <tr class="ordem-total-row">
+                        <td colspan="5" style="text-align: right; font-weight: 800; font-size: 0.875rem; text-transform: uppercase;">
+                            Valor Total R$
+                        </td>
+                        <td style="text-align: right; font-weight: 900; font-size: 0.9375rem;">
+                            <?= money_br($valorTotal) ?>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php
+}
 
 include 'views/layout/header.php';
-
 ?>
 
 <style>
@@ -53,7 +136,6 @@ include 'views/layout/header.php';
         margin-bottom: 2rem;
         border-radius: 12px;
         overflow: visible;
-        /* corrigido para não cortar borda inferior */
         background: #fff;
     }
 
@@ -73,7 +155,6 @@ include 'views/layout/header.php';
 
     .ordem-logo {
         text-align: left;
-
     }
 
     .ordem-logo img {
@@ -83,7 +164,7 @@ include 'views/layout/header.php';
         width: 100%;
     }
 
-    .ordem-center{
+    .ordem-center {
         text-align: center;
     }
 
@@ -117,7 +198,6 @@ include 'views/layout/header.php';
 
     .ordem-info-wrap {
         margin-bottom: 1.35rem;
-        /* afastou mais do título abaixo */
     }
 
     .ordem-info-table {
@@ -128,7 +208,6 @@ include 'views/layout/header.php';
     .ordem-items-table {
         font-size: 0.8125rem;
         border: 1px solid #000;
-        /* reforça a borda completa */
     }
 
     .ordem-info-table td,
@@ -139,15 +218,13 @@ include 'views/layout/header.php';
     }
 
     .ordem-items-table thead tr,
-    .ordem-items-table tfoot tr,
+    .ordem-total-row,
     .ordem-info-label {
         background: #f0f0f0;
     }
 
-    .ordem-items-table tbody tr:last-child td,
-    .ordem-items-table tfoot td {
+    .ordem-total-row td {
         border-bottom: 1px solid #000 !important;
-        /* garante borda inferior visível */
     }
 
     .ordem-section-title {
@@ -156,28 +233,30 @@ include 'views/layout/header.php';
         color: #333;
         text-transform: uppercase;
         margin: 1.85rem 0 0.5rem;
-        /* desce mais o título */
     }
 
-    .assinaturas-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4rem;
-        text-align: center;
-        margin-top: 5rem;
-    }
-
-    .assinatura-linha {
-        border-top: 1.5px solid #000;
-        padding-top: 0.75rem;
+    .rodape-documento {
+        margin-top: 1.25rem;
     }
 
     .texto-entrega {
         font-size: 0.75rem;
         color: #555;
-        margin-top: 1.5rem;
-        margin-bottom: 4rem;
+        margin: 0 0 1.25rem 0;
         line-height: 1.5;
+    }
+
+    .assinaturas-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        text-align: center;
+        margin-top: 1.5rem;
+    }
+
+    .assinatura-linha {
+        border-top: 1.5px solid #000;
+        padding-top: 0.75rem;
     }
 
     @media (max-width: 768px) {
@@ -203,7 +282,7 @@ include 'views/layout/header.php';
 
         .ordem-right,
         .ordem-logo,
-        .ordem-header>div:first-child {
+        .ordem-header > div:first-child {
             text-align: center;
             justify-self: center;
             margin-right: 0;
@@ -216,7 +295,7 @@ include 'views/layout/header.php';
         .assinaturas-grid {
             grid-template-columns: 1fr;
             gap: 2rem;
-            margin-top: 3rem;
+            margin-top: 1.25rem;
         }
 
         .ordem-info-table,
@@ -279,8 +358,6 @@ include 'views/layout/header.php';
             max-width: 100% !important;
             margin: 0 0 4mm 0 !important;
             padding: 0 !important;
-
-            /* borda completa na impressão */
             box-shadow: none !important;
             background: #fff !important;
             page-break-after: always;
@@ -305,7 +382,7 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr auto 1fr !important;
         }
 
-        .ordem-logo{
+        .ordem-logo {
             margin-left: -70px !important;
         }
 
@@ -328,8 +405,7 @@ include 'views/layout/header.php';
         }
 
         .ordem-info-wrap {
-            margin-bottom: 12px !important;
-            /* mais espaço antes do título */
+            margin-bottom: 10px !important;
         }
 
         .ordem-info-table,
@@ -343,6 +419,10 @@ include 'views/layout/header.php';
             border: 1px solid #000 !important;
         }
 
+        .ordem-items-table thead {
+            display: table-header-group !important;
+        }
+
         .ordem-info-table td,
         .ordem-items-table th,
         .ordem-items-table td {
@@ -350,35 +430,46 @@ include 'views/layout/header.php';
             border: 1px solid #000 !important;
         }
 
-        .ordem-items-table tbody tr:last-child td,
-        .ordem-items-table tfoot td {
-            border-bottom: 1px solid #000 !important;
-        }
-
         .ordem-section-title {
-            margin: 14px 0 4px !important;
+            margin: 12px 0 4px !important;
             font-size: 10px !important;
         }
 
-        /* mantém as assinaturas do jeito que estavam */
+        .ordem-total-row,
+        .ordem-total-row td {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        .rodape-documento {
+            margin-top: 8px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        .texto-entrega {
+            margin: 8px 0 10px !important;
+            font-size: 10px !important;
+            line-height: 1.35 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            orphans: 3;
+            widows: 3;
+        }
+
         .assinaturas-grid {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
-            gap: 4rem !important;
+            gap: 2rem !important;
             text-align: center !important;
-            margin-top: 5rem !important;
+            margin-top: 70px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
 
         .assinatura-linha {
             border-top: 1.5px solid #000 !important;
-            padding-top: 0.75rem !important;
-        }
-
-        .texto-entrega {
-            margin-top: 1.5rem !important;
-            margin-bottom: 4rem !important;
-            font-size: 0.75rem !important;
-            line-height: 1.5 !important;
+            padding-top: 6px !important;
         }
     }
 </style>
@@ -402,25 +493,34 @@ include 'views/layout/header.php';
         <div class="card-body">
 
             <div class="ordem-header">
-
                 <div class="ordem-logo">
                     <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
                 </div>
 
                 <div class="ordem-center">
-                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL DE COARI</h1>
-                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Aquisição e Suprimentos</h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 04.262.432/0001-21</div>
+                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                        PREFEITURA MUNICIPAL DE COARI
+                    </h1>
+                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                        Ordem de Aquisição e Suprimentos
+                    </h2>
+                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
+                        COARI - AM | CNPJ: 04.262.432/0001-21
+                    </div>
                 </div>
 
                 <div class="ordem-right">
-                    <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">Via Administrativa</div>
+                    <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
+                        Via Administrativa
+                    </div>
                     <div class="ordem-right-box">
                         <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
-                        <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;"><?php echo str_replace('AQ-', '', $aq['numero_aq']); ?></div>
+                        <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">
+                            <?= h(str_replace('AQ-', '', $aq['numero_aq'])) ?>
+                        </div>
                     </div>
                     <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                        DATA: <?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?> | <?php echo date('H:i', strtotime($aq['criado_em'])); ?>
+                        DATA: <?= date('d/m/Y', strtotime($aq['criado_em'])) ?> | <?= date('H:i', strtotime($aq['criado_em'])) ?>
                     </div>
                 </div>
             </div>
@@ -429,66 +529,40 @@ include 'views/layout/header.php';
                 <table class="ordem-info-table">
                     <tr>
                         <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
-                        <td style="font-weight: 700;"><?php echo strtoupper($aq['fornecedor']); ?></td>
+                        <td style="font-weight: 700;"><?= h(strtoupper($aq['fornecedor'])) ?></td>
                         <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
+                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
                     </tr>
                     <tr>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
-                        <td style="font-weight: 700;"><?php echo strtoupper($aq['secretaria']); ?></td>
+                        <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
-                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?php echo $aq['oficio_num']; ?></td>
+                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
                     </tr>
                 </table>
             </div>
 
             <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
 
-            <div class="ordem-items-wrap">
-                <table class="ordem-items-table">
-                    <thead>
-                        <tr>
-                            <th style="text-align: center; width: 40px;">Item</th>
-                            <th style="text-align: center; width: 50px;">Unid.</th>
-                            <th style="text-align: center; width: 60px;">Qtd</th>
-                            <th style="text-align: center;">Especificação Completa</th>
-                            <th style="text-align: center; width: 110px;">Preço Unitário</th>
-                            <th style="text-align: center; width: 110px;">Valor Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php $i = 1;
-                        foreach ($items as $item): ?>
-                            <tr>
-                                <td style="text-align: center; font-weight: 700; color: #333;"><?php echo str_pad($i++, 2, '0', STR_PAD_LEFT); ?></td>
-                                <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
-                                <td style="text-align: center; font-weight: 700;"><?php echo number_format($item['quantidade'], 0, ',', '.'); ?></td>
-                                <td style="font-weight: 600;"><?php echo strtoupper($item['produto']); ?></td>
-                                <td style="text-align: center;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
-                                <td style="text-align: center; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="5" style="text-align: right; font-weight: 800; font-size: 0.875rem; text-transform: uppercase;">Valor Total R$</td>
-                            <td style="text-align: right; font-weight: 900; font-size: 0.9375rem;">R$ <?php echo number_format($aq['valor_total'], 2, ',', '.'); ?></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+            <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
 
-            <div class="assinaturas-grid">
-                <div>
-                    <div class="assinatura-linha">
-                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Autorização de </div>
+            <div class="rodape-documento">
+                <div class="assinaturas-grid">
+                    <div>
+                        <div class="assinatura-linha">
+                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
+                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                Autorização de Recebimento
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <div class="assinatura-linha">
-                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Assinatura e Carimbo</div>
+                    <div>
+                        <div class="assinatura-linha">
+                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                Assinatura e Carimbo
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -501,25 +575,34 @@ include 'views/layout/header.php';
         <div class="card-body">
 
             <div class="ordem-header">
-                
                 <div class="ordem-logo">
                     <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
                 </div>
 
                 <div class="ordem-center">
-                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">PREFEITURA MUNICIPAL DE COARI</h1>
-                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">Ordem de Fornecimento</h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">COARI - AM | CNPJ: 04.262.432/0001-21</div>
+                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                        PREFEITURA MUNICIPAL DE COARI
+                    </h1>
+                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                        Ordem de Fornecimento
+                    </h2>
+                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
+                        COARI - AM | CNPJ: 04.262.432/0001-21
+                    </div>
                 </div>
 
                 <div class="ordem-right">
-                    <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">Via Fornecedor</div>
+                    <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
+                        Via Fornecedor
+                    </div>
                     <div class="ordem-right-box">
                         <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
-                        <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;"><?php echo str_replace('AQ-', '', $aq['numero_aq']); ?></div>
+                        <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">
+                            <?= h(str_replace('AQ-', '', $aq['numero_aq'])) ?>
+                        </div>
                     </div>
                     <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                        DATA: <?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?> | <?php echo date('H:i', strtotime($aq['criado_em'])); ?>
+                        DATA: <?= date('d/m/Y', strtotime($aq['criado_em'])) ?> | <?= date('H:i', strtotime($aq['criado_em'])) ?>
                     </div>
                 </div>
             </div>
@@ -528,71 +611,41 @@ include 'views/layout/header.php';
                 <table class="ordem-info-table">
                     <tr>
                         <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
-                        <td style="font-weight: 700;"><?php echo strtoupper($aq['fornecedor']); ?></td>
+                        <td style="font-weight: 700;"><?= h(strtoupper($aq['fornecedor'])) ?></td>
                         <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?php echo date('d/m/Y', strtotime($aq['criado_em'])); ?></td>
+                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
                     </tr>
                     <tr>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
-                        <td style="font-weight: 700;"><?php echo strtoupper($aq['secretaria']); ?></td>
+                        <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
-                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?php echo $aq['oficio_num']; ?></td>
+                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
                     </tr>
                 </table>
             </div>
 
             <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
 
-            <div class="ordem-items-wrap">
-                <table class="ordem-items-table">
-                    <thead>
-                        <tr>
-                            <th style="text-align: center; width: 40px;">Item</th>
-                            <th style="text-align: center; width: 50px;">Unid.</th>
-                            <th style="text-align: center; width: 60px;">Qtd</th>
-                            <th style="text-align: center;">Especificação Completa</th>
-                            <th style="text-align: center; width: 110px;">Preço Unitário</th>
-                            <th style="text-align: center; width: 110px;">Valor Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php $j = 1;
-                        foreach ($items as $item): ?>
-                            <tr>
-                                <td style="text-align: center; font-weight: 700; color: #333;"><?php echo str_pad($j++, 2, '0', STR_PAD_LEFT); ?></td>
-                                <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
-                                <td style="text-align: center; font-weight: 700;"><?php echo number_format($item['quantidade'], 0, ',', '.'); ?></td>
-                                <td style="font-weight: 600;"><?php echo strtoupper($item['produto']); ?></td>
-                                <td style="text-align: center;">R$ <?php echo number_format($item['valor_unitario'], 2, ',', '.'); ?></td>
-                                <td style="text-align: center; font-weight: 700;">R$ <?php echo number_format($item['quantidade'] * $item['valor_unitario'], 2, ',', '.'); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="5" style="text-align: right; font-weight: 800; font-size: 0.875rem; text-transform: uppercase;">Valor Total R$</td>
-                            <td style="text-align: right; font-weight: 900; font-size: 0.9375rem;">R$ <?php echo number_format($aq['valor_total'], 2, ',', '.'); ?></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+            <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
 
-            <p class="texto-entrega">
-                No ato da entrega, esta via deverá ser carimbada e assinada pelo responsável.
-                Para fins de pagamento, o fornecedor deve apresentar esta ordem devidamente assinada no setor administrativo/financeiro.
-            </p>
+            <div class="rodape-documento">
 
-            <div class="assinaturas-grid" style="margin-top: 4rem;">
-                <div>
-                    <div class="assinatura-linha">
-                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Autorização de Saída</div>
+                <div class="assinaturas-grid">
+                    <div>
+                        <div class="assinatura-linha">
+                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
+                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                Autorização de Saída
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <div class="assinatura-linha">
-                        <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                        <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">Assinatura e Carimbo</div>
+                    <div>
+                        <div class="assinatura-linha">
+                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                                Assinatura e Carimbo
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
