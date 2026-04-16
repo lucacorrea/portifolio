@@ -365,4 +365,18 @@ class Product extends BaseModel {
             return $newId;
         }
     }
+
+    public function getNextCode() {
+        $sql = "SELECT codigo FROM {$this->table} WHERE codigo REGEXP '^[0-9]+$' ORDER BY CAST(codigo AS UNSIGNED) DESC LIMIT 1";
+        try {
+            $stmt = $this->db->query($sql);
+            $lastCode = $stmt->fetchColumn();
+            if (!$lastCode) return "1001";
+            return (int)$lastCode + 1;
+        } catch (\Exception $e) {
+            // Fallback se REGEXP não for suportado ou outro erro
+            $stmt = $this->db->query("SELECT MAX(id) FROM {$this->table}");
+            return (int)$stmt->fetchColumn() + 3000; 
+        }
+    }
 }
