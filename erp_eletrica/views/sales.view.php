@@ -734,6 +734,7 @@ function renderCart() {
     finalTotal.innerText = `R$ ${finalTotalVal.toFixed(2).replace('.', ',')}`;
 
     checkDiscountAuth();
+    calculateChange();
 }
 
 function updateQty(index, val) {
