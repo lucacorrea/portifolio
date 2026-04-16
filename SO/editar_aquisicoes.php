@@ -40,11 +40,13 @@ function redirect_list(string $type, string $message): never
 function get_logged_user_id(): ?int
 {
     $possibleKeys = ['usuario_id', 'user_id', 'id'];
+
     foreach ($possibleKeys as $key) {
         if (isset($_SESSION[$key]) && is_numeric($_SESSION[$key])) {
             return (int)$_SESSION[$key];
         }
     }
+
     return null;
 }
 
@@ -58,10 +60,22 @@ if (!in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)) {
     redirect_list('erro', 'Você não tem permissão para editar aquisições.');
 }
 
+/*
+|--------------------------------------------------------------------------
+| CARREGA AQUISIÇÃO
+|--------------------------------------------------------------------------
+| Aqui usa a tabela oficios correta:
+| - oficios.numero
+| - oficios.secretaria_id
+| e NÃO usa itens_oficio para editar aquisição.
+*/
 $stmtAq = $pdo->prepare("
     SELECT
         a.*,
         o.numero AS oficio_num,
+        o.justificativa AS oficio_justificativa,
+        o.status AS oficio_status,
+        o.criado_em AS oficio_criado_em,
         s.nome AS secretaria_nome,
         f.nome AS fornecedor_nome
     FROM aquisicoes a
@@ -82,10 +96,30 @@ if (($aquisicao['status'] ?? '') === 'FINALIZADO') {
     redirect_list('erro', 'Aquisição finalizada não pode ser editada.');
 }
 
-$fornecedores = $pdo->query("SELECT id, nome FROM fornecedores ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
+/*
+|--------------------------------------------------------------------------
+| FORNECEDORES
+|--------------------------------------------------------------------------
+*/
+$fornecedores = $pdo->query("
+    SELECT id, nome
+    FROM fornecedores
+    ORDER BY nome ASC
+")->fetchAll(PDO::FETCH_ASSOC);
 
+/*
+|--------------------------------------------------------------------------
+| ITENS DA AQUISIÇÃO
+|--------------------------------------------------------------------------
+| Aqui sim usa a tabela correta da edição:
+| itens_aquisicao
+*/
 $stmtItens = $pdo->prepare("
-    SELECT id, produto, quantidade, valor_unitario
+    SELECT
+        id,
+        produto,
+        quantidade,
+        valor_unitario
     FROM itens_aquisicao
     WHERE aquisicao_id = :id
     ORDER BY id ASC
@@ -103,6 +137,11 @@ if (empty($itens)) {
 
 $erro = '';
 
+/*
+|--------------------------------------------------------------------------
+| PROCESSA EDIÇÃO
+|--------------------------------------------------------------------------
+*/
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fornecedor_id = (int)($_POST['fornecedor_id'] ?? 0);
     $responsavel_entrega = trim((string)($_POST['responsavel_entrega'] ?? ''));
@@ -207,15 +246,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
 
             $stmtUpdate->bindValue(':fornecedor_id', $fornecedor_id, PDO::PARAM_INT);
-            $stmtUpdate->bindValue(':responsavel_entrega', $responsavel_entrega !== '' ? $responsavel_entrega : null, $responsavel_entrega !== '' ? PDO::PARAM_STR : PDO::PARAM_NULL);
+            $stmtUpdate->bindValue(
+                ':responsavel_entrega',
+                $responsavel_entrega !== '' ? $responsavel_entrega : null,
+                $responsavel_entrega !== '' ? PDO::PARAM_STR : PDO::PARAM_NULL
+            );
             $stmtUpdate->bindValue(':status', $status, PDO::PARAM_STR);
             $stmtUpdate->bindValue(':valor_total', $valorTotal);
-            $stmtUpdate->bindValue(':data_finalizacao', $dataFinalizacao, $dataFinalizacao !== null ? PDO::PARAM_STR : PDO::PARAM_NULL);
-            $stmtUpdate->bindValue(':usuario_id_finalizou', $usuarioFinalizou, $usuarioFinalizou !== null ? PDO::PARAM_INT : PDO::PARAM_NULL);
+            $stmtUpdate->bindValue(
+                ':data_finalizacao',
+                $dataFinalizacao,
+                $dataFinalizacao !== null ? PDO::PARAM_STR : PDO::PARAM_NULL
+            );
+            $stmtUpdate->bindValue(
+                ':usuario_id_finalizou',
+                $usuarioFinalizou,
+                $usuarioFinalizou !== null ? PDO::PARAM_INT : PDO::PARAM_NULL
+            );
             $stmtUpdate->bindValue(':id', $id, PDO::PARAM_INT);
             $stmtUpdate->execute();
 
-            $stmtDeleteItens = $pdo->prepare("DELETE FROM itens_aquisicao WHERE aquisicao_id = :id");
+            $stmtDeleteItens = $pdo->prepare("
+                DELETE FROM itens_aquisicao
+                WHERE aquisicao_id = :id
+            ");
             $stmtDeleteItens->execute([':id' => $id]);
 
             $stmtInsertItem = $pdo->prepare("
@@ -653,7 +707,7 @@ include 'views/layout/header.php';
                 <div class="toolbar-itens">
                     <div>
                         <h4>Itens da Aquisição</h4>
-                        <p>Você pode editar, remover e adicionar novos itens.</p>
+                        <p>Esses itens são da tabela <strong>itens_aquisicao</strong>, não de <strong>itens_oficio</strong>.</p>
                     </div>
 
                     <button type="button" class="btn-custom btn-outline-custom" id="btnAdicionarItem">
