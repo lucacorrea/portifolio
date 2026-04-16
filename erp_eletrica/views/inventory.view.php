@@ -48,6 +48,12 @@
                 </span>
                 <input type="text" name="q" id="productSearch" class="form-control border-start-0" placeholder="Pesquisar material..." value="<?= htmlspecialchars($filters['q']) ?>" autocomplete="off">
             </div>
+            <select name="categoria" class="form-select w-100 w-sm-auto" id="filterCategory" onchange="this.form.submit()">
+                <option value="">Todas Categorias</option>
+                <?php foreach ($categories as $cat): ?>
+                    <option value="<?= $cat ?>" <?= $filters['categoria'] == $cat ? 'selected' : '' ?>><?= $cat ?></option>
+                <?php endforeach; ?>
+            </select>
             <select name="ordem" class="form-select w-100 w-sm-auto fw-bold" onchange="this.form.submit()">
                 <option value="codigo_desc" <?= $filters['ordem'] == 'codigo_desc' ? 'selected' : '' ?>>Último Código (Maior → Menor)</option>
                 <option value="codigo_asc" <?= $filters['ordem'] == 'codigo_asc' ? 'selected' : '' ?>>Primeiro Código (Menor → Maior)</option>
