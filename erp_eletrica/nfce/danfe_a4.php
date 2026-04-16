@@ -272,7 +272,7 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
         <table class="header-main">
             <tr>
                 <td class="emit-logo">
-                    <img src="public/img/logo_premium.png" style="max-width: 80px; max-height: 80px;" onerror="this.src='logo_sistema_erp_eletrica.png'">
+                    <img src="<?= $logoPath ?>" style="max-width: 80px; max-height: 80px;" onerror="this.src='logo_sistema_erp_eletrica.png'">
                 </td>
                 <td class="emit-info">
                     <div class="bold" style="font-size: 10px;"><?= $emit['xNome'] ?></div>
@@ -303,7 +303,9 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
                     </div>
                 </td>
                 <td class="barcode-box">
-                    <div class="barcode">*<?= $ide['chave'] ?>*</div>
+                    <div class="barcode" style="border:none;">
+                        <?= barcode128($ide['chave']) ?>
+                    </div>
                     <div style="border-top: 1px solid #000; padding-top: 1px;">
                         <span class="title" style="font-size: 6px;">CHAVE DE ACESSO</span>
                         <div class="bold" style="font-size: 8px;"><?= $fmtChave($ide['chave']) ?></div>
