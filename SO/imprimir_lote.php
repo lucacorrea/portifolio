@@ -71,11 +71,11 @@ if ($is_print) {
             #status-text { font-weight: bold; color: #206bc4; }
 
             /* Estilos de impressão (Fora da tela) */
-            #render-container { position: absolute; left: -9999px; top: 0; width: 790px; background: #fff; }
-            .aq-folha { padding: 40px; background: #fff; color: #000; font-family: Arial, sans-serif; }
+            #render-container { position: absolute; left: -9999px; top: 0; width: 793px; background: #fff; }
+            .aq-folha { padding: 38px; box-sizing: border-box; background: #fff; color: #000; font-family: Arial, sans-serif; }
             .ordem-header { display: flex; align-items: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
-            .ordem-logo img { width: 140px; height: auto; }
-            .ordem-center { flex-grow: 1; text-align: center; }
+            .ordem-logo img { width: 140px; height: auto; display: block; }
+            .ordem-center { flex-grow: 1; text-align: center; padding: 0 10px; }
             .ordem-center h1 { font-size: 18px; margin: 0; font-weight: bold; }
             .ordem-center h2 { font-size: 14px; margin: 5px 0 0; }
             .ordem-right { text-align: right; }
@@ -87,6 +87,7 @@ if ($is_print) {
             
             /* Previne quebra de linha feia cortando o texto ao meio */
             .ordem-items-table tr { page-break-inside: avoid; }
+            td { page-break-inside: avoid; }
             .assinaturas { display: flex; justify-content: space-between; margin-top: 50px; text-align: center; page-break-inside: avoid; }
             .assinaturas > div { width: 45%; border-top: 1px solid #000; padding-top: 5px; font-size: 12px; font-weight: bold; }
         </style>
@@ -237,12 +238,12 @@ if ($is_print) {
                         // 1. GERAR HTML DA AQUISIÇÃO PARA PDF
                         const elem = document.getElementById('aq-html-' + rec.id);
                         const opt = {
-                            margin: [10, 0, 10, 0], // Top, Left, Bottom, Right em mm
+                            margin: 0, 
                             filename: 'temp.pdf',
-                            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+                            pagebreak: { mode: 'css', avoid: ['tr', '.assinaturas'] },
                             image: { type: 'jpeg', quality: 1 },
-                            html2canvas: { scale: 2, logging: false, windowWidth: 800 },
-                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                            html2canvas: { scale: 2, logging: false, useCORS: true },
+                            jsPDF: { unit: 'px', format: [793, 1122], orientation: 'portrait', hotfixes: ["px_scaling"] }
                         };
                         
                         const worker = html2pdf().set(opt).from(elem);
