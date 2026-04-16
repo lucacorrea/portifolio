@@ -131,8 +131,8 @@
                         <td>
                             <div class="d-flex align-items-center">
                                 <?php if ($p['imagens']): ?>
-                                    <div class="product-zoom-container" style="cursor: zoom-in;">
-                                        <img src="public/uploads/produtos/<?= $p['imagens'] ?>" class="rounded me-3 border" width="40" height="40" style="object-fit: cover;">
+                                    <div class="product-zoom-container rounded me-3 border" style="cursor: zoom-in; width: 40px; height: 40px; flex-shrink: 0;">
+                                        <img src="public/uploads/produtos/<?= $p['imagens'] ?>" width="40" height="40" style="object-fit: cover;">
                                     </div>
                                 <?php else: ?>
                                     <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center border" width="40" height="40" style="min-width: 40px; min-height: 40px;">
