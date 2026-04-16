@@ -47,11 +47,11 @@ class Product extends BaseModel {
         
         $pages = ceil($total / $perPage);
         
-        // Handle $order carefully - it might contain multiple columns
+        // Handle $order carefully - only add prefix if it's a plain column name (no dots, no functions)
         $orderParts = explode(',', $order);
         foreach ($orderParts as &$part) {
             $part = trim($part);
-            if (!str_contains($part, '.')) {
+            if (!str_contains($part, '.') && !str_contains($part, '(')) {
                 $part = "p." . $part;
             }
         }
