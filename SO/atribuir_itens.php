@@ -297,7 +297,7 @@ include 'views/layout/header.php';
                                 class="form-control item-valor"
                                 required
                                 placeholder="0,00"
-                                value="<?php echo number_format($valor_unit_item, 2, ',', '.'); ?>">
+                               >
                         </div>
 
                         <div class="form-group" style="margin:0;">
@@ -429,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <div class="form-group" style="margin:0;">
                 <label class="form-label">Quantidade</label>
-                <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control item-qtd" required value="1.00">
+                <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control item-qtd" required value="1">
             </div>
 
             <div class="form-group" style="margin:0;">
@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <div class="form-group" style="margin:0;">
                 <label class="form-label">Valor Unitário</label>
-                <input type="text" name="produtos[${index}][valor]" class="form-control item-valor" required placeholder="0,00" value="0,00">
+                <input type="text" name="produtos[${index}][valor]" class="form-control item-valor" required placeholder="0,00" >
             </div>
 
             <div class="form-group" style="margin:0;">
