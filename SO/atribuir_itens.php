@@ -277,7 +277,7 @@ include 'views/layout/header.php';
                                 name="produtos[<?php echo $idx; ?>][qtd]"
                                 class="form-control item-qtd"
                                 required
-                               >
+                               value="1">
                         </div>
 
                         <div class="form-group" style="margin:0;">
