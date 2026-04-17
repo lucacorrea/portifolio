@@ -13,7 +13,7 @@ $stmt = $pdo->prepare("
     WHERE o.id = ?
 ");
 $stmt->execute([$id]);
-$oficio = $stmt->fetch();
+$oficio = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$oficio) {
     die("Solicitação não encontrada.");
@@ -51,8 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         foreach ($produtos as $p) {
             if (!empty($p['nome'])) {
-                $val = (float)str_replace(',', '.', $p['valor']);
-                $qtd = (float)$p['qtd'];
+                $valorLimpo = str_replace('.', '', (string)($p['valor'] ?? '0'));
+                $valorLimpo = str_replace(',', '.', $valorLimpo);
+                $val = (float)$valorLimpo;
+                $qtd = (float)($p['qtd'] ?? 0);
                 $total_calculado += ($val * $qtd);
             }
         }
@@ -70,13 +72,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         foreach ($produtos as $p) {
             if (!empty($p['nome'])) {
-                $val = str_replace(',', '.', $p['valor']);
+                $valorLimpo = str_replace('.', '', (string)($p['valor'] ?? '0'));
+                $valorLimpo = str_replace(',', '.', $valorLimpo);
+
                 $stmt_ins->execute([
                     $id,
-                    $p['nome'],
-                    $p['qtd'],
-                    $p['unidade'] ?: 'UN',
-                    $val
+                    trim((string)$p['nome']),
+                    (float)($p['qtd'] ?? 0),
+                    !empty($p['unidade']) ? trim((string)$p['unidade']) : 'UN',
+                    (float)$valorLimpo
                 ]);
             }
         }
@@ -90,7 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: oficios_lista_sefaz.php");
         exit();
     } catch (Exception $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         $error = "Erro ao salvar itens: " . $e->getMessage();
     }
 }
@@ -102,7 +108,7 @@ include 'views/layout/header.php';
 <style>
     .item-row {
         display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr auto;
+        grid-template-columns: 80px 2fr 1fr 1fr 1fr 1.2fr auto;
         gap: 1rem;
         margin-bottom: 1rem;
         align-items: end;
@@ -135,6 +141,25 @@ include 'views/layout/header.php';
         color: #198754;
     }
 
+    .item-seq {
+        text-align: center;
+        font-weight: 800;
+        background: #f8fafc;
+    }
+
+    .item-total {
+        background: #f8fafc;
+        font-weight: 800;
+        color: #198754;
+        text-align: right;
+    }
+
+    @media (max-width: 1200px) {
+        .item-row {
+            grid-template-columns: 70px 1.8fr 1fr 1fr 1fr 1fr auto;
+        }
+    }
+
     @media (max-width: 992px) {
         .item-row {
             grid-template-columns: 1fr;
@@ -145,22 +170,25 @@ include 'views/layout/header.php';
 <div class="card">
     <div class="card-body">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3><i class="fas fa-box-open"></i> Atribuição de Itens - <?php echo $oficio['numero']; ?></h3>
+            <h3><i class="fas fa-box-open"></i> Atribuição de Itens - <?php echo htmlspecialchars($oficio['numero']); ?></h3>
             <a href="oficios_lista_sefaz.php" class="btn btn-outline btn-sm">Voltar</a>
         </div>
 
         <?php if (isset($error)): ?>
-            <div class="alert alert-danger"><?php echo $error; ?></div>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <div class="budget-info">
             <div>
-                <span class="text-muted">Secretaria:</span> <strong><?php echo htmlspecialchars($oficio['secretaria']); ?></strong><br>
+                <span class="text-muted">Secretaria:</span>
+                <strong><?php echo htmlspecialchars($oficio['secretaria']); ?></strong><br>
+
                 <span class="text-muted">Orçamento Previsto:</span>
-                <strong id="orcamento-previsto" data-valor="<?php echo $oficio['valor_orcamento'] ?? 0; ?>">
-                    <?php echo $oficio['valor_orcamento'] ? format_money($oficio['valor_orcamento']) : 'Não informado'; ?>
+                <strong id="orcamento-previsto" data-valor="<?php echo (float)($oficio['valor_orcamento'] ?? 0); ?>">
+                    <?php echo !empty($oficio['valor_orcamento']) ? format_money($oficio['valor_orcamento']) : 'Não informado'; ?>
                 </strong>
             </div>
+
             <div style="text-align: right;">
                 <span class="text-muted">Total Atual dos Itens:</span><br>
                 <span id="total-itens" class="total-calc">R$ 0,00</span>
@@ -215,28 +243,76 @@ include 'views/layout/header.php';
         <form action="" method="POST" id="items-form">
             <div id="items-container">
                 <?php
-                $items = !empty($items_existentes) ? $items_existentes : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]];
+                $items = !empty($items_existentes)
+                    ? $items_existentes
+                    : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]];
+
                 foreach ($items as $idx => $it):
+                    $qtd_item = (float)($it['quantidade'] ?? 0);
+                    $valor_unit_item = (float)($it['valor_unitario'] ?? 0);
+                    $valor_total_item = $qtd_item * $valor_unit_item;
                 ?>
                     <div class="item-row">
                         <div class="form-group" style="margin:0;">
-                            <label class="form-label">Nome do Item</label>
-                            <input type="text" name="produtos[<?php echo $idx; ?>][nome]" class="form-control" required placeholder="Ex: Papel A4" value="<?php echo htmlspecialchars($it['produto']); ?>">
+                            <label class="form-label">Nº</label>
+                            <input type="text" class="form-control item-seq" value="<?php echo $idx + 1; ?>" readonly>
                         </div>
+
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Nome do Item</label>
+                            <input
+                                type="text"
+                                name="produtos[<?php echo $idx; ?>][nome]"
+                                class="form-control"
+                                required
+                                placeholder="Ex: Papel A4"
+                                value="<?php echo htmlspecialchars($it['produto']); ?>">
+                        </div>
+
                         <div class="form-group" style="margin:0;">
                             <label class="form-label">Quantidade</label>
-                            <input type="number" step="0.01" name="produtos[<?php echo $idx; ?>][qtd]" class="form-control item-qtd" required value="<?php echo (float)$it['quantidade']; ?>">
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="produtos[<?php echo $idx; ?>][qtd]"
+                                class="form-control item-qtd"
+                                required
+                                value="<?php echo number_format($qtd_item, 2, '.', ''); ?>">
                         </div>
+
                         <div class="form-group" style="margin:0;">
                             <label class="form-label">Unidade</label>
-                            <input type="text" name="produtos[<?php echo $idx; ?>][unidade]" class="form-control" value="<?php echo htmlspecialchars($it['unidade']); ?>">
+                            <input
+                                type="text"
+                                name="produtos[<?php echo $idx; ?>][unidade]"
+                                class="form-control"
+                                value="<?php echo htmlspecialchars($it['unidade'] ?? 'UN'); ?>">
                         </div>
+
                         <div class="form-group" style="margin:0;">
                             <label class="form-label">Valor Unitário</label>
-                            <input type="text" name="produtos[<?php echo $idx; ?>][valor]" class="form-control item-valor" required placeholder="0,00" value="<?php echo number_format($it['valor_unitario'], 2, ',', ''); ?>">
+                            <input
+                                type="text"
+                                name="produtos[<?php echo $idx; ?>][valor]"
+                                class="form-control item-valor"
+                                required
+                                placeholder="0,00"
+                                value="<?php echo number_format($valor_unit_item, 2, ',', '.'); ?>">
                         </div>
+
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Total do Item</label>
+                            <input
+                                type="text"
+                                class="form-control item-total"
+                                value="R$ <?php echo number_format($valor_total_item, 2, ',', '.'); ?>"
+                                readonly>
+                        </div>
+
                         <div style="margin-bottom: 5px;">
-                            <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;"><i class="fas fa-trash"></i></button>
+                            <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -256,100 +332,167 @@ include 'views/layout/header.php';
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const container = document.getElementById('items-container');
-        const totalDisplay = document.getElementById('total-itens');
-        const orcamentoPrevisto = parseFloat(document.getElementById('orcamento-previsto').dataset.valor) || 0;
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('items-container');
+    const totalDisplay = document.getElementById('total-itens');
+    const orcamentoPrevisto = parseFloat(document.getElementById('orcamento-previsto').dataset.valor) || 0;
 
-        function calculateTotal() {
-            let total = 0;
-            document.querySelectorAll('.item-row').forEach(row => {
-                const qtd = parseFloat(row.querySelector('.item-qtd').value) || 0;
-                const valStr = row.querySelector('.item-valor').value.replace(',', '.');
-                const val = parseFloat(valStr) || 0;
-                total += (qtd * val);
+    function parseValorBR(valor) {
+        if (!valor) return 0;
+        let v = String(valor).trim();
+        v = v.replace(/\s/g, '');
+        v = v.replace(/\./g, '');
+        v = v.replace(',', '.');
+        return parseFloat(v) || 0;
+    }
+
+    function formatMoneyBR(valor) {
+        return 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function renumberItems() {
+        const rows = container.querySelectorAll('.item-row');
+        rows.forEach((row, index) => {
+            const seqInput = row.querySelector('.item-seq');
+            if (seqInput) {
+                seqInput.value = index + 1;
+            }
+
+            row.querySelectorAll('input[name^="produtos["]').forEach(input => {
+                input.name = input.name.replace(/produtos\[\d+\]/, `produtos[${index}]`);
             });
+        });
+    }
 
-            totalDisplay.textContent = 'R$ ' + total.toLocaleString('pt-BR', {
-                minimumFractionDigits: 2
-            });
+    function updateItemTotals() {
+        container.querySelectorAll('.item-row').forEach(row => {
+            const qtd = parseFloat(row.querySelector('.item-qtd')?.value) || 0;
+            const valorUnit = parseValorBR(row.querySelector('.item-valor')?.value);
+            const totalItem = qtd * valorUnit;
 
-            if (orcamentoPrevisto > 0) {
-                if (Math.abs(total - orcamentoPrevisto) > 0.02) {
-                    totalDisplay.classList.add('diff-warning');
-                    totalDisplay.classList.remove('diff-ok');
-                } else {
-                    totalDisplay.classList.add('diff-ok');
-                    totalDisplay.classList.remove('diff-warning');
-                }
+            const totalField = row.querySelector('.item-total');
+            if (totalField) {
+                totalField.value = formatMoneyBR(totalItem);
+            }
+        });
+    }
+
+    function calculateTotal() {
+        let total = 0;
+
+        container.querySelectorAll('.item-row').forEach(row => {
+            const qtd = parseFloat(row.querySelector('.item-qtd')?.value) || 0;
+            const valorUnit = parseValorBR(row.querySelector('.item-valor')?.value);
+            total += (qtd * valorUnit);
+        });
+
+        totalDisplay.textContent = formatMoneyBR(total);
+
+        if (orcamentoPrevisto > 0) {
+            if (Math.abs(total - orcamentoPrevisto) > 0.02) {
+                totalDisplay.classList.add('diff-warning');
+                totalDisplay.classList.remove('diff-ok');
+            } else {
+                totalDisplay.classList.add('diff-ok');
+                totalDisplay.classList.remove('diff-warning');
             }
         }
 
-        container.addEventListener('input', calculateTotal);
+        updateItemTotals();
+    }
 
-        document.getElementById('add-item').addEventListener('click', function() {
-            const index = document.querySelectorAll('.item-row').length;
-            const row = document.createElement('div');
-            row.className = 'item-row';
-            row.innerHTML = `
+    container.addEventListener('input', function(e) {
+        if (e.target.classList.contains('item-valor')) {
+            e.target.value = e.target.value.replace(/[^\d,.\s]/g, '');
+        }
+        calculateTotal();
+    });
+
+    document.getElementById('add-item').addEventListener('click', function() {
+        const index = container.querySelectorAll('.item-row').length;
+
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Nº</label>
+                <input type="text" class="form-control item-seq" value="${index + 1}" readonly>
+            </div>
+
             <div class="form-group" style="margin:0;">
                 <label class="form-label">Nome do Item</label>
-                <input type="text" name="produtos[${index}][nome]" class="form-control" required>
+                <input type="text" name="produtos[${index}][nome]" class="form-control" required placeholder="Ex: Papel A4">
             </div>
+
             <div class="form-group" style="margin:0;">
                 <label class="form-label">Quantidade</label>
-                <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control item-qtd" required value="1">
+                <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control item-qtd" required value="1.00">
             </div>
+
             <div class="form-group" style="margin:0;">
                 <label class="form-label">Unidade</label>
                 <input type="text" name="produtos[${index}][unidade]" class="form-control" value="UN">
             </div>
+
             <div class="form-group" style="margin:0;">
                 <label class="form-label">Valor Unitário</label>
-                <input type="text" name="produtos[${index}][valor]" class="form-control item-valor" required placeholder="0,00">
+                <input type="text" name="produtos[${index}][valor]" class="form-control item-valor" required placeholder="0,00" value="0,00">
             </div>
+
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Total do Item</label>
+                <input type="text" class="form-control item-total" value="R$ 0,00" readonly>
+            </div>
+
             <div style="margin-bottom: 5px;">
-                <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;"><i class="fas fa-trash"></i></button>
+                <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         `;
-            container.appendChild(row);
-            calculateTotal();
-        });
 
-        container.addEventListener('click', function(e) {
-            if (e.target.closest('.remove-item')) {
-                if (document.querySelectorAll('.item-row').length > 1) {
-                    e.target.closest('.item-row').remove();
-                    calculateTotal();
-                }
-            }
-        });
-
-        container.addEventListener('keyup', function(e) {
-            if (e.target.classList.contains('item-valor')) {
-                e.target.value = e.target.value.replace(/[^\d,]/g, '');
-            }
-        });
-
+        container.appendChild(row);
+        renumberItems();
         calculateTotal();
-
-        document.getElementById('items-form').addEventListener('submit', function(e) {
-            if (orcamentoPrevisto > 0) {
-                let total = 0;
-                document.querySelectorAll('.item-row').forEach(row => {
-                    const qtd = parseFloat(row.querySelector('.item-qtd').value) || 0;
-                    const valStr = row.querySelector('.item-valor').value.replace(',', '.');
-                    const val = parseFloat(valStr) || 0;
-                    total += (qtd * val);
-                });
-
-                if (Math.abs(total - orcamentoPrevisto) > 0.02) {
-                    e.preventDefault();
-                    alert("Bloqueado: O valor total atual dos itens não corresponde ao Valor do Orçamento Previsto!\nPor favor, faça a correção das quantidades ou valores.");
-                }
-            }
-        });
     });
+
+    container.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-item')) {
+            const rows = container.querySelectorAll('.item-row');
+            if (rows.length > 1) {
+                e.target.closest('.item-row').remove();
+                renumberItems();
+                calculateTotal();
+            }
+        }
+    });
+
+    document.getElementById('items-form').addEventListener('submit', function(e) {
+        renumberItems();
+
+        if (orcamentoPrevisto > 0) {
+            let total = 0;
+
+            container.querySelectorAll('.item-row').forEach(row => {
+                const qtd = parseFloat(row.querySelector('.item-qtd')?.value) || 0;
+                const valorUnit = parseValorBR(row.querySelector('.item-valor')?.value);
+                total += (qtd * valorUnit);
+            });
+
+            if (Math.abs(total - orcamentoPrevisto) > 0.02) {
+                e.preventDefault();
+                alert("Bloqueado: O valor total atual dos itens não corresponde ao Valor do Orçamento Previsto!\nPor favor, faça a correção das quantidades ou valores.");
+                return false;
+            }
+        }
+    });
+
+    renumberItems();
+    calculateTotal();
+});
 </script>
 
 <?php include 'views/layout/footer.php'; ?>
