@@ -19,14 +19,30 @@ if (!$oficio) {
     die("Solicitação não encontrada.");
 }
 
-// Buscar itens existentes se houver
-$stmt_items = $pdo->prepare("SELECT * FROM itens_oficio WHERE oficio_id = ?");
+// Buscar itens existentes
+$stmt_items = $pdo->prepare("SELECT * FROM itens_oficio WHERE oficio_id = ? ORDER BY id ASC");
 $stmt_items->execute([$id]);
-$items_existentes = $stmt_items->fetchAll();
+$items_existentes = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
+
+// Resumo por produto
+$stmt_resumo = $pdo->prepare("
+    SELECT
+        TRIM(produto) AS produto,
+        COALESCE(NULLIF(TRIM(unidade), ''), 'UN') AS unidade,
+        COUNT(*) AS total_registros,
+        SUM(quantidade) AS quantidade_total,
+        SUM(quantidade * valor_unitario) AS valor_total_produto
+    FROM itens_oficio
+    WHERE oficio_id = ?
+    GROUP BY TRIM(produto), COALESCE(NULLIF(TRIM(unidade), ''), 'UN')
+    ORDER BY produto ASC
+");
+$stmt_resumo->execute([$id]);
+$resumo_produtos = $stmt_resumo->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $produtos = $_POST['produtos'] ?? [];
-    
+
     try {
         $pdo->beginTransaction();
 
@@ -45,19 +61,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("O valor total dos itens deve ser exatamente igual ao orçamento previsto de R$ " . number_format($orcamento_esperado, 2, ',', '.'));
         }
 
-        // Limpar itens antigos se estiver reatribuindo
         $pdo->prepare("DELETE FROM itens_oficio WHERE oficio_id = ?")->execute([$id]);
 
-        $stmt_ins = $pdo->prepare("INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade, valor_unitario) VALUES (?, ?, ?, ?, ?)");
-        
+        $stmt_ins = $pdo->prepare("
+            INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade, valor_unitario)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+
         foreach ($produtos as $p) {
             if (!empty($p['nome'])) {
                 $val = str_replace(',', '.', $p['valor']);
-                $stmt_ins->execute([$id, $p['nome'], $p['qtd'], $p['unidade'] ?: 'UN', $val]);
+                $stmt_ins->execute([
+                    $id,
+                    $p['nome'],
+                    $p['qtd'],
+                    $p['unidade'] ?: 'UN',
+                    $val
+                ]);
             }
         }
 
-        // Atualizar status para ENVIADO
         $pdo->prepare("UPDATE oficios SET status = 'ENVIADO' WHERE id = ?")->execute([$id]);
 
         log_action($pdo, "ATRIBUIR_ITENS", "Itens atribuídos ao ofício {$oficio['numero']}");
@@ -66,7 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash_message('success', "Itens atribuídos com sucesso à solicitação {$oficio['numero']}!");
         header("Location: oficios_lista_sefaz.php");
         exit();
-
     } catch (Exception $e) {
         $pdo->rollBack();
         $error = "Erro ao salvar itens: " . $e->getMessage();
@@ -89,6 +111,7 @@ include 'views/layout/header.php';
         border-radius: 12px;
         background: #fff;
     }
+
     .budget-info {
         background: #f1f5f9;
         padding: 1.5rem;
@@ -98,15 +121,24 @@ include 'views/layout/header.php';
         justify-content: space-between;
         align-items: center;
     }
+
     .total-calc {
         font-size: 1.25rem;
         font-weight: 700;
     }
-    .diff-warning { color: #dc3545; }
-    .diff-ok { color: #198754; }
+
+    .diff-warning {
+        color: #dc3545;
+    }
+
+    .diff-ok {
+        color: #198754;
+    }
 
     @media (max-width: 992px) {
-        .item-row { grid-template-columns: 1fr; }
+        .item-row {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
@@ -124,7 +156,7 @@ include 'views/layout/header.php';
         <div class="budget-info">
             <div>
                 <span class="text-muted">Secretaria:</span> <strong><?php echo htmlspecialchars($oficio['secretaria']); ?></strong><br>
-                <span class="text-muted">Orçamento Previsto:</span> 
+                <span class="text-muted">Orçamento Previsto:</span>
                 <strong id="orcamento-previsto" data-valor="<?php echo $oficio['valor_orcamento'] ?? 0; ?>">
                     <?php echo $oficio['valor_orcamento'] ? format_money($oficio['valor_orcamento']) : 'Não informado'; ?>
                 </strong>
@@ -135,33 +167,78 @@ include 'views/layout/header.php';
             </div>
         </div>
 
-        <form action="" method="POST" id="items-form">
-            <div id="items-container">
-                <?php 
-                $items = !empty($items_existentes) ? $items_existentes : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]];
-                foreach ($items as $idx => $it): 
-                ?>
-                <div class="item-row">
-                    <div class="form-group" style="margin:0;">
-                        <label class="form-label">Nome do Item</label>
-                        <input type="text" name="produtos[<?php echo $idx; ?>][nome]" class="form-control" required placeholder="Ex: Papel A4" value="<?php echo htmlspecialchars($it['produto']); ?>">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label class="form-label">Quantidade</label>
-                        <input type="number" step="0.01" name="produtos[<?php echo $idx; ?>][qtd]" class="form-control item-qtd" required value="<?php echo (float)$it['quantidade']; ?>">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label class="form-label">Unidade</label>
-                        <input type="text" name="produtos[<?php echo $idx; ?>][unidade]" class="form-control" value="<?php echo htmlspecialchars($it['unidade']); ?>">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label class="form-label">Valor Unitário</label>
-                        <input type="text" name="produtos[<?php echo $idx; ?>][valor]" class="form-control item-valor" required placeholder="0,00" value="<?php echo number_format($it['valor_unitario'], 2, ',', ''); ?>">
-                    </div>
-                    <div style="margin-bottom: 5px;">
-                        <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;"><i class="fas fa-trash"></i></button>
+        <?php if (!empty($resumo_produtos)): ?>
+            <div class="card" style="margin-bottom: 1.5rem; border: 1px solid var(--border-color);">
+                <div class="card-body">
+                    <h4 style="margin-bottom: 1rem;">
+                        <i class="fas fa-chart-bar"></i> Resumo dos Produtos
+                    </h4>
+
+                    <div style="overflow-x:auto;">
+                        <table class="table" style="width:100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background:#f8fafc;">
+                                    <th style="padding: 12px; text-align:left;">Produto</th>
+                                    <th style="padding: 12px; text-align:center;">Unidade</th>
+                                    <th style="padding: 12px; text-align:center;">Qtd. de Lançamentos</th>
+                                    <th style="padding: 12px; text-align:center;">Quantidade Total</th>
+                                    <th style="padding: 12px; text-align:right;">Valor Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($resumo_produtos as $rp): ?>
+                                    <tr style="border-top:1px solid #e5e7eb;">
+                                        <td style="padding: 12px; font-weight:600;">
+                                            <?php echo htmlspecialchars($rp['produto']); ?>
+                                        </td>
+                                        <td style="padding: 12px; text-align:center;">
+                                            <?php echo htmlspecialchars($rp['unidade']); ?>
+                                        </td>
+                                        <td style="padding: 12px; text-align:center; font-weight:700;">
+                                            <?php echo (int)$rp['total_registros']; ?>
+                                        </td>
+                                        <td style="padding: 12px; text-align:center; font-weight:700;">
+                                            <?php echo number_format((float)$rp['quantidade_total'], 2, ',', '.'); ?>
+                                        </td>
+                                        <td style="padding: 12px; text-align:right; font-weight:700; color:#198754;">
+                                            <?php echo format_money((float)$rp['valor_total_produto']); ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+            </div>
+        <?php endif; ?>
+
+        <form action="" method="POST" id="items-form">
+            <div id="items-container">
+                <?php
+                $items = !empty($items_existentes) ? $items_existentes : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]];
+                foreach ($items as $idx => $it):
+                ?>
+                    <div class="item-row">
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Nome do Item</label>
+                            <input type="text" name="produtos[<?php echo $idx; ?>][nome]" class="form-control" required placeholder="Ex: Papel A4" value="<?php echo htmlspecialchars($it['produto']); ?>">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Quantidade</label>
+                            <input type="number" step="0.01" name="produtos[<?php echo $idx; ?>][qtd]" class="form-control item-qtd" required value="<?php echo (float)$it['quantidade']; ?>">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Unidade</label>
+                            <input type="text" name="produtos[<?php echo $idx; ?>][unidade]" class="form-control" value="<?php echo htmlspecialchars($it['unidade']); ?>">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Valor Unitário</label>
+                            <input type="text" name="produtos[<?php echo $idx; ?>][valor]" class="form-control item-valor" required placeholder="0,00" value="<?php echo number_format($it['valor_unitario'], 2, ',', ''); ?>">
+                        </div>
+                        <div style="margin-bottom: 5px;">
+                            <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
                 <?php endforeach; ?>
             </div>
 
@@ -179,40 +256,42 @@ include 'views/layout/header.php';
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const container = document.getElementById('items-container');
-    const totalDisplay = document.getElementById('total-itens');
-    const orcamentoPrevisto = parseFloat(document.getElementById('orcamento-previsto').dataset.valor) || 0;
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('items-container');
+        const totalDisplay = document.getElementById('total-itens');
+        const orcamentoPrevisto = parseFloat(document.getElementById('orcamento-previsto').dataset.valor) || 0;
 
-    function calculateTotal() {
-        let total = 0;
-        document.querySelectorAll('.item-row').forEach(row => {
-            const qtd = parseFloat(row.querySelector('.item-qtd').value) || 0;
-            const valStr = row.querySelector('.item-valor').value.replace(',', '.');
-            const val = parseFloat(valStr) || 0;
-            total += (qtd * val);
-        });
-        
-        totalDisplay.textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-        
-        if (orcamentoPrevisto > 0) {
-            if (Math.abs(total - orcamentoPrevisto) > 0.02) {
-                totalDisplay.classList.add('diff-warning');
-                totalDisplay.classList.remove('diff-ok');
-            } else {
-                totalDisplay.classList.add('diff-ok');
-                totalDisplay.classList.remove('diff-warning');
+        function calculateTotal() {
+            let total = 0;
+            document.querySelectorAll('.item-row').forEach(row => {
+                const qtd = parseFloat(row.querySelector('.item-qtd').value) || 0;
+                const valStr = row.querySelector('.item-valor').value.replace(',', '.');
+                const val = parseFloat(valStr) || 0;
+                total += (qtd * val);
+            });
+
+            totalDisplay.textContent = 'R$ ' + total.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2
+            });
+
+            if (orcamentoPrevisto > 0) {
+                if (Math.abs(total - orcamentoPrevisto) > 0.02) {
+                    totalDisplay.classList.add('diff-warning');
+                    totalDisplay.classList.remove('diff-ok');
+                } else {
+                    totalDisplay.classList.add('diff-ok');
+                    totalDisplay.classList.remove('diff-warning');
+                }
             }
         }
-    }
 
-    container.addEventListener('input', calculateTotal);
+        container.addEventListener('input', calculateTotal);
 
-    document.getElementById('add-item').addEventListener('click', function() {
-        const index = document.querySelectorAll('.item-row').length;
-        const row = document.createElement('div');
-        row.className = 'item-row';
-        row.innerHTML = `
+        document.getElementById('add-item').addEventListener('click', function() {
+            const index = document.querySelectorAll('.item-row').length;
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            row.innerHTML = `
             <div class="form-group" style="margin:0;">
                 <label class="form-label">Nome do Item</label>
                 <input type="text" name="produtos[${index}][nome]" class="form-control" required>
@@ -233,46 +312,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;"><i class="fas fa-trash"></i></button>
             </div>
         `;
-        container.appendChild(row);
+            container.appendChild(row);
+            calculateTotal();
+        });
+
+        container.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-item')) {
+                if (document.querySelectorAll('.item-row').length > 1) {
+                    e.target.closest('.item-row').remove();
+                    calculateTotal();
+                }
+            }
+        });
+
+        container.addEventListener('keyup', function(e) {
+            if (e.target.classList.contains('item-valor')) {
+                e.target.value = e.target.value.replace(/[^\d,]/g, '');
+            }
+        });
+
         calculateTotal();
-    });
 
-    container.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-item')) {
-            if (document.querySelectorAll('.item-row').length > 1) {
-                e.target.closest('.item-row').remove();
-                calculateTotal();
+        document.getElementById('items-form').addEventListener('submit', function(e) {
+            if (orcamentoPrevisto > 0) {
+                let total = 0;
+                document.querySelectorAll('.item-row').forEach(row => {
+                    const qtd = parseFloat(row.querySelector('.item-qtd').value) || 0;
+                    const valStr = row.querySelector('.item-valor').value.replace(',', '.');
+                    const val = parseFloat(valStr) || 0;
+                    total += (qtd * val);
+                });
+
+                if (Math.abs(total - orcamentoPrevisto) > 0.02) {
+                    e.preventDefault();
+                    alert("Bloqueado: O valor total atual dos itens não corresponde ao Valor do Orçamento Previsto!\nPor favor, faça a correção das quantidades ou valores.");
+                }
             }
-        }
+        });
     });
-
-    // Validar formato de moeda nas inputs
-    container.addEventListener('keyup', function(e) {
-        if (e.target.classList.contains('item-valor')) {
-            e.target.value = e.target.value.replace(/[^\d,]/g, '');
-        }
-    });
-
-    calculateTotal();
-
-    document.getElementById('items-form').addEventListener('submit', function(e) {
-        if (orcamentoPrevisto > 0) {
-            let total = 0;
-            document.querySelectorAll('.item-row').forEach(row => {
-                const qtd = parseFloat(row.querySelector('.item-qtd').value) || 0;
-                const valStr = row.querySelector('.item-valor').value.replace(',', '.');
-                const val = parseFloat(valStr) || 0;
-                total += (qtd * val);
-            });
-            
-            if (Math.abs(total - orcamentoPrevisto) > 0.02) {
-                e.preventDefault();
-                alert("Bloqueado: O valor total atual dos itens não corresponde ao Valor do Orçamento Previsto!\\nPor favor, faça a correção das quantidades ou valores.");
-            }
-        }
-    });
-
-});
 </script>
 
 <?php include 'views/layout/footer.php'; ?>
