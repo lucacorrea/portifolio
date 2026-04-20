@@ -1,22 +1,26 @@
 <?php
 // danfe_nfce.php — visualização/print do DANFE NFC-e (80mm)
-// Uso: danfe_nfce.php?chave=NNNN...&venda_id=123&id=principal_1  OU  danfe_nfce.php?arq=procNFCe_...xml
+// Uso: danfe_nfce.php?chave=NNNN...&venda_id=123&id=principal_1
+//   ou: danfe_nfce.php?arq=procNFCe_...xml
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
-if (session_status() === PHP_SESSION_NONE) session_start();
+
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
 header('Content-Type: text/html; charset=utf-8');
 
 /* ===================== Atualiza venda (chave/status) ===================== */
+$vendaIdUrl   = isset($_GET['venda_id']) ? (int)$_GET['venda_id'] : (int)($_SESSION['venda_id'] ?? 0);
+$empresaIdUrl = isset($_GET['id']) ? trim((string)$_GET['id']) : (string)($_SESSION['empresa_id'] ?? '');
+
 try {
   require_once __DIR__ . '/config.php';
 
-  // Empresa/venda vindos da URL ou sessão
-  $empresaIdUrl = isset($_GET['id']) ? trim((string)$_GET['id']) : (string)($_SESSION['empresa_id'] ?? '');
-  $vendaIdUrl   = isset($_GET['venda_id']) ? (int)$_GET['venda_id'] : (int)($_SESSION['venda_id'] ?? 0);
-
-  // Descobre a chave informada
   $chaveReq = null;
+
   if (!empty($_GET['chave'])) {
     $chaveReq = preg_replace('/\D+/', '', (string)$_GET['chave']);
   } elseif (!empty($_GET['arq'])) {
@@ -24,13 +28,15 @@ try {
     if (preg_match('/^[\w.\-\/]+$/', $arq) && is_file($arq)) {
       $xmlTmp = @file_get_contents($arq);
       if ($xmlTmp) {
-        if (preg_match('/Id="NFe(\d{44})"/', $xmlTmp, $m))             $chaveReq = $m[1];
-        elseif (preg_match('/<chNFe>(\d{44})<\/chNFe>/', $xmlTmp, $m)) $chaveReq = $m[1];
+        if (preg_match('/Id="NFe(\d{44})"/', $xmlTmp, $m)) {
+          $chaveReq = $m[1];
+        } elseif (preg_match('/<chNFe>(\d{44})<\/chNFe>/', $xmlTmp, $m)) {
+          $chaveReq = $m[1];
+        }
       }
     }
   }
 
-  // Atualiza a venda quando já sabemos tudo (Apenas colunas existentes)
   if ($vendaIdUrl > 0 && $chaveReq && strlen($chaveReq) === 44) {
     try {
       $stV = $pdo->prepare("UPDATE vendas SET tipo_nota = 'fiscal' WHERE id = :id");
@@ -44,43 +50,75 @@ try {
 }
 /* ======================================================================== */
 
-function br($v)
+function br($v): string
 {
   return number_format((float)$v, 2, ',', '.');
 }
-function limpar($s)
+
+function limpar($s): string
 {
   return trim((string)$s);
 }
-function fmtChave($ch)
+
+function fmtChave($ch): string
 {
-  $ch = preg_replace('/\D+/', '', $ch);
+  $ch = preg_replace('/\D+/', '', (string)$ch);
   return trim(implode(' ', str_split($ch, 4)));
 }
-function mapTPag($t)
+
+function mapTPag($t): string
 {
   $k = str_pad(preg_replace('/\D+/', '', (string)$t), 2, '0', STR_PAD_LEFT);
-  $m = ['01' => 'Dinheiro', '02' => 'Cheque', '03' => 'Cartão de Crédito', '04' => 'Cartão de Débito', '05' => 'Crédito Loja', '10' => 'Vale Alimentação', '11' => 'Vale Refeição', '12' => 'Vale Presente', '13' => 'Vale Combustível', '15' => 'Boleto', '16' => 'Depósito', '17' => 'PIX', '20' => 'PIX', '18' => 'Transferência/Carteira', '19' => 'Programa de Fidelidade', '90' => 'Sem Pagamento', '99' => 'Outros'];
+
+  $m = [
+    '01' => 'Dinheiro',
+    '02' => 'Cheque',
+    '03' => 'Cartão de Crédito',
+    '04' => 'Cartão de Débito',
+    '05' => 'Crédito Loja',
+    '10' => 'Vale Alimentação',
+    '11' => 'Vale Refeição',
+    '12' => 'Vale Presente',
+    '13' => 'Vale Combustível',
+    '15' => 'Boleto',
+    '16' => 'Depósito',
+    '17' => 'PIX',
+    '18' => 'Transferência/Carteira',
+    '19' => 'Programa de Fidelidade',
+    '20' => 'PIX',
+    '90' => 'Sem Pagamento',
+    '99' => 'Outros',
+  ];
+
   return $m[$k] ?? 'Outros';
 }
 
 /* =========================== Carrega XML procNFe ========================== */
-$base = __DIR__ . DIRECTORY_SEPARATOR;
+$base  = __DIR__ . DIRECTORY_SEPARATOR;
 $chave = null;
 $error = null;
+$file  = null;
 
 if (!empty($_GET['arq'])) {
   $file = $base . basename((string)$_GET['arq']);
 } elseif (!empty($_GET['chave'])) {
   $chave = preg_replace('/\D+/', '', (string)$_GET['chave']);
-  $file = $base . 'procNFCe_' . $chave . '.xml';
+  $file  = $base . 'procNFCe_' . $chave . '.xml';
 } elseif ($vendaIdUrl > 0) {
-  // Busca a chave no banco se não veio na URL
   try {
-    $stNF = $pdo->prepare("SELECT chave FROM nfce_emitidas WHERE venda_id = ? AND status_sefaz IN ('100', '150') ORDER BY id DESC LIMIT 1");
+    $stNF = $pdo->prepare("
+      SELECT chave
+      FROM nfce_emitidas
+      WHERE venda_id = ?
+        AND status_sefaz IN ('100', '150')
+      ORDER BY id DESC
+      LIMIT 1
+    ");
     $stNF->execute([$vendaIdUrl]);
-    $chave = $stNF->fetchColumn();
-    if ($chave) {
+
+    $chave = (string)$stNF->fetchColumn();
+
+    if ($chave !== '') {
       $file = $base . 'procNFCe_' . $chave . '.xml';
     } else {
       $error = "Nenhuma nota fiscal autorizada foi encontrada para a venda #{$vendaIdUrl}.";
@@ -92,8 +130,10 @@ if (!empty($_GET['arq'])) {
   $error = "Parâmetros de visualização ausentes.";
 }
 
-if ($error || !isset($file) || !is_file($file)) {
-  if (!$error) $error = "O arquivo XML da nota não foi localizado no servidor.";
+if ($error || !$file || !is_file($file)) {
+  if (!$error) {
+    $error = "O arquivo XML da nota não foi localizado no servidor.";
+  }
 ?>
   <!DOCTYPE html>
   <html lang="pt-BR">
@@ -168,7 +208,7 @@ if ($error || !isset($file) || !is_file($file)) {
   <body>
     <div class="card">
       <h2>⚠️ Nota não localizada</h2>
-      <p><?php echo htmlspecialchars($error); ?></p>
+      <p><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
       <p>Apesar da venda ser fiscal, o documento oficial não pôde ser gerado ou encontrado. Você deseja imprimir o recibo comum em vez disso?</p>
       <div class="actions">
         <a href="javascript:window.close()" class="btn btn-secondary">Fechar</a>
@@ -185,92 +225,182 @@ if ($error || !isset($file) || !is_file($file)) {
 }
 
 $xml = file_get_contents($file);
+
+libxml_use_internal_errors(true);
 $dom = new DOMDocument();
 $dom->loadXML($xml);
 
 $nfeNS  = 'http://www.portalfiscal.inf.br/nfe';
 $infNFe = $dom->getElementsByTagNameNS($nfeNS, 'infNFe')->item(0);
-$nfe    = $dom->getElementsByTagNameNS($nfeNS, 'NFe')->item(0);
 $supl   = $dom->getElementsByTagNameNS($nfeNS, 'infNFeSupl')->item(0);
 $prot   = $dom->getElementsByTagNameNS($nfeNS, 'protNFe')->item(0);
 
 /* ============================== Emitente ================================ */
-$emit = $dom->getElementsByTagNameNS($nfeNS, 'emit')->item(0);
+$emit      = $dom->getElementsByTagNameNS($nfeNS, 'emit')->item(0);
 $enderEmit = $emit ? $emit->getElementsByTagNameNS($nfeNS, 'enderEmit')->item(0) : null;
-$emit_xNome = $emit ? limpar($emit->getElementsByTagName('xNome')->item(0)->nodeValue) : '';
-$emit_xFant = $emit ? limpar(($emit->getElementsByTagName('xFant')->item(0)->nodeValue ?? '')) : '';
-$emit_CNPJ  = $emit ? limpar($emit->getElementsByTagName('CNPJ')->item(0)->nodeValue) : '';
-$emit_IE    = $emit ? limpar($emit->getElementsByTagName('IE')->item(0)->nodeValue) : '';
-$end_txt = '';
+
+$emit_xNome = '';
+$emit_xFant = '';
+$emit_CNPJ  = '';
+$emit_IE    = '';
+$end_txt    = '';
+
+if ($emit) {
+  $node = $emit->getElementsByTagName('xNome')->item(0);
+  $emit_xNome = $node ? limpar($node->nodeValue) : '';
+
+  $node = $emit->getElementsByTagName('xFant')->item(0);
+  $emit_xFant = $node ? limpar($node->nodeValue) : '';
+
+  $node = $emit->getElementsByTagName('CNPJ')->item(0);
+  $emit_CNPJ = $node ? limpar($node->nodeValue) : '';
+
+  $node = $emit->getElementsByTagName('IE')->item(0);
+  $emit_IE = $node ? limpar($node->nodeValue) : '';
+}
+
 if ($enderEmit) {
-  $end_txt = limpar($enderEmit->getElementsByTagName('xLgr')->item(0)->nodeValue) . ' ' .
-    limpar($enderEmit->getElementsByTagName('nro')->item(0)->nodeValue) . ', ' .
-    limpar($enderEmit->getElementsByTagName('xBairro')->item(0)->nodeValue) . ', ' .
-    limpar($enderEmit->getElementsByTagName('xMun')->item(0)->nodeValue) . ' - ' .
-    limpar($enderEmit->getElementsByTagName('UF')->item(0)->nodeValue);
+  $xLgr    = $enderEmit->getElementsByTagName('xLgr')->item(0);
+  $nro     = $enderEmit->getElementsByTagName('nro')->item(0);
+  $xBairro = $enderEmit->getElementsByTagName('xBairro')->item(0);
+  $xMun    = $enderEmit->getElementsByTagName('xMun')->item(0);
+  $UF      = $enderEmit->getElementsByTagName('UF')->item(0);
+
+  $end_txt =
+    limpar($xLgr ? $xLgr->nodeValue : '') . ' ' .
+    limpar($nro ? $nro->nodeValue : '') . ', ' .
+    limpar($xBairro ? $xBairro->nodeValue : '') . ', ' .
+    limpar($xMun ? $xMun->nodeValue : '') . ' - ' .
+    limpar($UF ? $UF->nodeValue : '');
 }
 
 /* ================================ IDE ================================== */
 $ide    = $dom->getElementsByTagNameNS($nfeNS, 'ide')->item(0);
-$serie  = $ide ? limpar($ide->getElementsByTagName('serie')->item(0)->nodeValue) : '';
-$nNF    = $ide ? limpar($ide->getElementsByTagName('nNF')->item(0)->nodeValue) : '';
-$dhEmi  = $ide ? limpar($ide->getElementsByTagName('dhEmi')->item(0)->nodeValue) : '';
+$serie  = '';
+$nNF    = '';
+$dhEmi  = '';
+
+if ($ide) {
+  $node = $ide->getElementsByTagName('serie')->item(0);
+  $serie = $node ? limpar($node->nodeValue) : '';
+
+  $node = $ide->getElementsByTagName('nNF')->item(0);
+  $nNF = $node ? limpar($node->nodeValue) : '';
+
+  $node = $ide->getElementsByTagName('dhEmi')->item(0);
+  $dhEmi = $node ? limpar($node->nodeValue) : '';
+}
+
 $idAttr = $infNFe ? $infNFe->getAttribute('Id') : '';
 $chave  = preg_replace('/^NFe/', '', $idAttr);
 
 /* =============================== Totais ================================ */
-$tot    = $dom->getElementsByTagNameNS($nfeNS, 'ICMSTot')->item(0);
-$vProd  = $tot ? br($tot->getElementsByTagName('vProd')->item(0)->nodeValue) : '0,00';
-$vDesc  = $tot ? br($tot->getElementsByTagName('vDesc')->item(0)->nodeValue) : '0,00';
-$vNF    = $tot ? br($tot->getElementsByTagName('vNF')->item(0)->nodeValue) : '0,00';
-$vTrib  = $tot ? br(($tot->getElementsByTagName('vTotTrib')->item(0)->nodeValue ?? 0)) : '0,00';
+$tot   = $dom->getElementsByTagNameNS($nfeNS, 'ICMSTot')->item(0);
+$vProd = '0,00';
+$vDesc = '0,00';
+$vNF   = '0,00';
+$vTrib = '0,00';
+
+if ($tot) {
+  $node = $tot->getElementsByTagName('vProd')->item(0);
+  $vProd = $node ? br($node->nodeValue) : '0,00';
+
+  $node = $tot->getElementsByTagName('vDesc')->item(0);
+  $vDesc = $node ? br($node->nodeValue) : '0,00';
+
+  $node = $tot->getElementsByTagName('vNF')->item(0);
+  $vNF = $node ? br($node->nodeValue) : '0,00';
+
+  $node = $tot->getElementsByTagName('vTotTrib')->item(0);
+  $vTrib = $node ? br($node->nodeValue) : '0,00';
+}
 
 /* ============================== Pagamento ============================== */
 $detPag = $dom->getElementsByTagNameNS($nfeNS, 'detPag')->item(0);
-$tPag   = $detPag ? limpar($detPag->getElementsByTagName('tPag')->item(0)->nodeValue) : '';
-$vPag   = $detPag ? br($detPag->getElementsByTagName('vPag')->item(0)->nodeValue) : '0,00';
+$tPag   = '';
+$vPag   = '0,00';
 $vTroco = $dom->getElementsByTagNameNS($nfeNS, 'vTroco')->item(0);
+
+if ($detPag) {
+  $node = $detPag->getElementsByTagName('tPag')->item(0);
+  $tPag = $node ? limpar($node->nodeValue) : '';
+
+  $node = $detPag->getElementsByTagName('vPag')->item(0);
+  $vPag = $node ? br($node->nodeValue) : '0,00';
+}
+
 $vTroco = $vTroco ? br($vTroco->nodeValue) : '0,00';
 
 /* ============================== Destinatário =========================== */
-$dest     = $dom->getElementsByTagNameNS($nfeNS, 'dest')->item(0);
-$dest_doc = '';
+$dest      = $dom->getElementsByTagNameNS($nfeNS, 'dest')->item(0);
+$dest_doc  = '';
 $dest_nome = '';
+
 if ($dest) {
   $dCNPJ = $dest->getElementsByTagName('CNPJ')->item(0);
   $dCPF  = $dest->getElementsByTagName('CPF')->item(0);
   $dXN   = $dest->getElementsByTagName('xNome')->item(0);
-  $dest_doc = $dCNPJ ? 'CNPJ: ' . limpar($dCNPJ->nodeValue) : ($dCPF ? 'CPF: ' . limpar($dCPF->nodeValue) : '');
+
+  $dest_doc  = $dCNPJ ? 'CNPJ: ' . limpar($dCNPJ->nodeValue) : ($dCPF ? 'CPF: ' . limpar($dCPF->nodeValue) : '');
   $dest_nome = $dXN ? limpar($dXN->nodeValue) : '';
 }
 
 /* ============================ Protocolo ================================ */
 $protInfo = '';
+
 if ($prot) {
   $infProt = $prot->getElementsByTagName('infProt')->item(0);
-  $cStat   = $infProt ? limpar($infProt->getElementsByTagName('cStat')->item(0)->nodeValue) : '';
-  $xMotivo = $infProt ? limpar($infProt->getElementsByTagName('xMotivo')->item(0)->nodeValue) : '';
-  $nProt   = $infProt ? limpar(($infProt->getElementsByTagName('nProt')->item(0)->nodeValue ?? '')) : '';
-  $dhRec   = $infProt ? limpar($infProt->getElementsByTagName('dhRecbto')->item(0)->nodeValue) : '';
-  $protInfo = $nProt ? "Protocolo de Autorização: $nProt — $dhRec" : "Status: $cStat — $xMotivo";
+
+  if ($infProt) {
+    $cStatNode = $infProt->getElementsByTagName('cStat')->item(0);
+    $xMotivoNode = $infProt->getElementsByTagName('xMotivo')->item(0);
+    $nProtNode = $infProt->getElementsByTagName('nProt')->item(0);
+    $dhRecNode = $infProt->getElementsByTagName('dhRecbto')->item(0);
+
+    $cStat   = $cStatNode ? limpar($cStatNode->nodeValue) : '';
+    $xMotivo = $xMotivoNode ? limpar($xMotivoNode->nodeValue) : '';
+    $nProt   = $nProtNode ? limpar($nProtNode->nodeValue) : '';
+    $dhRec   = $dhRecNode ? limpar($dhRecNode->nodeValue) : '';
+
+    $protInfo = $nProt ? "Protocolo de Autorização: $nProt — $dhRec" : "Status: $cStat — $xMotivo";
+  }
 }
 
 /* ============================== QR Code ================================ */
-$qrTxt   = $supl ? limpar($supl->getElementsByTagName('qrCode')->item(0)->nodeValue) : '';
-$urlChave = $supl ? limpar($supl->getElementsByTagName('urlChave')->item(0)->nodeValue) : '';
+$qrTxt    = '';
+$urlChave = '';
+
+if ($supl) {
+  $node = $supl->getElementsByTagName('qrCode')->item(0);
+  $qrTxt = $node ? limpar($node->nodeValue) : '';
+
+  $node = $supl->getElementsByTagName('urlChave')->item(0);
+  $urlChave = $node ? limpar($node->nodeValue) : '';
+}
 
 /* ================================ Itens ================================ */
 $itens = [];
+
 foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
   $prod = $det->getElementsByTagNameNS($nfeNS, 'prod')->item(0);
-  if (!$prod) continue;
+  if (!$prod) {
+    continue;
+  }
+
+  $cProdNode = $prod->getElementsByTagName('cProd')->item(0);
+  $xProdNode = $prod->getElementsByTagName('xProd')->item(0);
+  $qComNode  = $prod->getElementsByTagName('qCom')->item(0);
+  $uComNode  = $prod->getElementsByTagName('uCom')->item(0);
+  $vUnNode   = $prod->getElementsByTagName('vUnCom')->item(0);
+  $vTotNode  = $prod->getElementsByTagName('vProd')->item(0);
+
   $itens[] = [
-    'cProd' => limpar($prod->getElementsByTagName('cProd')->item(0)->nodeValue),
-    'xProd' => limpar($prod->getElementsByTagName('xProd')->item(0)->nodeValue),
-    'qCom'  => number_format((float)$prod->getElementsByTagName('qCom')->item(0)->nodeValue, 3, ',', '.'),
-    'uCom'  => limpar($prod->getElementsByTagName('uCom')->item(0)->nodeValue),
-    'vUn'   => br($prod->getElementsByTagName('vUnCom')->item(0)->nodeValue),
-    'vTot'  => br($prod->getElementsByTagName('vProd')->item(0)->nodeValue),
+    'cProd' => $cProdNode ? limpar($cProdNode->nodeValue) : '',
+    'xProd' => $xProdNode ? limpar($xProdNode->nodeValue) : '',
+    'qCom'  => number_format((float)($qComNode ? $qComNode->nodeValue : 0), 3, ',', '.'),
+    'uCom'  => $uComNode ? limpar($uComNode->nodeValue) : '',
+    'vUn'   => br($vUnNode ? $vUnNode->nodeValue : 0),
+    'vTot'  => br($vTotNode ? $vTotNode->nodeValue : 0),
   ];
 }
 ?>
@@ -283,68 +413,84 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
   <title>DANFE NFC-e</title>
   <style>
     :root {
-      --ticket-max: 384px;
-      --pad: 12px;
-      --qr: 210px;
+      --ticket-screen-max: 384px;
+      --ticket-print-width: 80mm;
+      --pad: 10px;
+      --qr: 190px;
       --accent: #1a73e8;
       --ink: #111;
       --paper: #fff;
-      --bg: #f5f7fb
+      --bg: #f5f7fb;
     }
 
     * {
-      box-sizing: border-box
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
 
+    html,
     body {
       margin: 0;
       padding: 0;
       background: var(--bg);
       color: var(--ink);
-      font: 13px/1.45 monospace
+      font: 13px/1.35 monospace;
+    }
+
+    body {
+      min-height: 100vh;
     }
 
     .wrapper {
       width: 100%;
-      max-width: var(--ticket-max);
-      margin: 10px auto 92px;
+      max-width: var(--ticket-screen-max);
+      margin: 10px auto 92px auto;
       background: var(--paper);
       border-radius: 12px;
       box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
-      padding: var(--pad)
+      padding: var(--pad);
+      display: block;
     }
 
     .center {
-      text-align: center
+      text-align: center;
+    }
+
+    .left {
+      text-align: left;
     }
 
     .right {
-      text-align: right
+      text-align: right;
     }
 
     .small {
-      font-size: 11px
+      font-size: 11px;
     }
 
     .hr {
       border-top: 1px dashed #000;
-      margin: 8px 0
+      margin: 6px 0;
+      height: 0;
     }
 
     .tbl {
       width: 100%;
       border-collapse: collapse;
-      table-layout: fixed
+      table-layout: fixed;
     }
 
     .tbl th {
       border-bottom: 1px dashed #000;
-      padding: 4px 0
+      padding: 4px 0;
     }
 
     .tbl td {
       padding: 3px 0;
-      vertical-align: top
+      vertical-align: top;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
     .badge {
@@ -353,7 +499,14 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
       color: #1f2937;
       padding: 3px 6px;
       border-radius: 6px;
-      font-size: 10px
+      font-size: 10px;
+    }
+
+    .nome_empresa {
+      margin: 0 0 4px 0;
+      font-size: 15px;
+      line-height: 1.25;
+      word-break: break-word;
     }
 
     .actions {
@@ -366,7 +519,8 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
       border-top: 1px solid #e5e7eb;
       display: flex;
       gap: 10px;
-      justify-content: center
+      justify-content: center;
+      z-index: 999;
     }
 
     .btn {
@@ -374,55 +528,119 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
       border-radius: 10px;
       padding: 11px 16px;
       font-weight: 600;
-      cursor: pointer
+      cursor: pointer;
+      text-decoration: none;
+      font-family: inherit;
+      font-size: 13px;
     }
 
     .btn-primary {
       background: var(--accent);
-      color: #fff
+      color: #fff;
     }
 
     .btn-secondary {
       background: #e5e7eb;
-      color: #111
+      color: #111;
     }
 
     #qrcode {
-      display: block;
-      margin: 8px auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 6px auto;
       width: var(--qr);
-      height: var(--qr)
+      min-height: var(--qr);
+    }
+
+    #qrcode img,
+    #qrcode canvas {
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* ============================= IMPRESSÃO ============================= */
+
+    @page {
+      size: 80mm auto;
+      margin: 0;
     }
 
     @media print {
+
+      html,
+      body {
+        width: 80mm !important;
+        min-width: 80mm !important;
+        max-width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        overflow: visible !important;
+      }
+
+      body {
+        display: block !important;
+      }
+
       .actions {
-        display: none
+        display: none !important;
       }
 
       .wrapper {
-        zoom: 110% !important;
-        padding: 0 !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        margin: 0 !important;
+        padding: 3mm 2mm 1mm 2mm !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        page-break-after: avoid !important;
+        break-after: avoid-page !important;
       }
 
       .nome_empresa {
         font-size: 13px !important;
       }
 
-      .wrapper {
-        box-shadow: none;
-        border-radius: 0;
-        margin: 0;
-        width: 75mm
+      #qrcode {
+        width: 180px !important;
+        min-height: 180px !important;
+        margin: 4px auto !important;
+      }
+
+      .hr {
+        margin: 4px 0 !important;
+      }
+
+      .tbl th,
+      .tbl td {
+        padding: 2px 0 !important;
+      }
+
+      /* evita sobra visual no final */
+      body::after,
+      .wrapper::after {
+        content: none !important;
+        display: none !important;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="wrapper">
+  <div class="wrapper" id="ticket">
     <header class="center">
-      <h2 class="nome_empresa"><?= htmlspecialchars($emit_xFant ?: $emit_xNome) ?></h2>
-      <div class="small">CNPJ: <?= htmlspecialchars($emit_CNPJ) ?> &middot; IE: <?= htmlspecialchars($emit_IE) ?><br><?= htmlspecialchars($end_txt) ?></div>
+      <h2 class="nome_empresa"><?= htmlspecialchars($emit_xFant ?: $emit_xNome, ENT_QUOTES, 'UTF-8') ?></h2>
+      <div class="small">
+        CNPJ: <?= htmlspecialchars($emit_CNPJ, ENT_QUOTES, 'UTF-8') ?>
+        &middot;
+        IE: <?= htmlspecialchars($emit_IE, ENT_QUOTES, 'UTF-8') ?>
+        <br>
+        <?= htmlspecialchars($end_txt, ENT_QUOTES, 'UTF-8') ?>
+      </div>
+
       <div class="hr"></div>
       <div class="small badge">NFC-e não permite aproveitamento de crédito de ICMS</div>
       <div class="hr"></div>
@@ -440,8 +658,8 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
       <tbody>
         <?php foreach ($itens as $it): ?>
           <tr>
-            <td><?= htmlspecialchars($it['xProd']) ?></td>
-            <td class="right"><?= $it['qCom'] ?><br><?= $it['uCom'] ?></td>
+            <td><?= htmlspecialchars($it['xProd'], ENT_QUOTES, 'UTF-8') ?></td>
+            <td class="right"><?= $it['qCom'] ?><br><?= htmlspecialchars($it['uCom'], ENT_QUOTES, 'UTF-8') ?></td>
             <td class="right"><?= $it['vUn'] ?></td>
             <td class="right"><?= $it['vTot'] ?></td>
           </tr>
@@ -450,6 +668,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     </table>
 
     <div class="hr"></div>
+
     <table class="tbl small">
       <tbody>
         <tr>
@@ -457,62 +676,121 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
           <td class="right"><?= count($itens) ?></td>
         </tr>
         <tr>
+          <td><b>VALOR PRODUTOS R$</b></td>
+          <td class="right"><?= $vProd ?></td>
+        </tr>
+        <?php if ($vDesc !== '0,00'): ?>
+          <tr>
+            <td><b>DESCONTO R$</b></td>
+            <td class="right"><?= $vDesc ?></td>
+          </tr>
+        <?php endif; ?>
+        <tr>
           <td><b>VALOR TOTAL R$</b></td>
           <td class="right"><?= $vNF ?></td>
         </tr>
         <tr>
           <td><b>FORMA PAGAMENTO</b></td>
-          <td class="right"><?= htmlspecialchars(mapTPag($tPag)) ?></td>
+          <td class="right"><?= htmlspecialchars(mapTPag($tPag), ENT_QUOTES, 'UTF-8') ?></td>
         </tr>
         <tr>
           <td><b>VALOR PAGO R$</b></td>
           <td class="right"><?= $vPag ?></td>
         </tr>
-        <?php if ($vTroco != '0,00'): ?><tr>
+        <?php if ($vTroco !== '0,00'): ?>
+          <tr>
             <td><b>TROCO R$</b></td>
             <td class="right"><?= $vTroco ?></td>
-          </tr><?php endif; ?>
+          </tr>
+        <?php endif; ?>
+        <?php if ($vTrib !== '0,00'): ?>
+          <tr>
+            <td><b>TRIBUTOS APROX. R$</b></td>
+            <td class="right"><?= $vTrib ?></td>
+          </tr>
+        <?php endif; ?>
       </tbody>
     </table>
 
     <div class="hr"></div>
-    <div class="small">Nº: <?= $nNF ?> Série: <?= $serie ?> Emissão: <?= $dhEmi ?></div>
-    <div class="center small"><b>CHAVE DE ACESSO</b><br><?= fmtChave($chave) ?></div>
+
+    <div class="small">
+      Nº: <?= htmlspecialchars($nNF, ENT_QUOTES, 'UTF-8') ?>
+      &nbsp; Série: <?= htmlspecialchars($serie, ENT_QUOTES, 'UTF-8') ?>
+      &nbsp; Emissão: <?= htmlspecialchars($dhEmi, ENT_QUOTES, 'UTF-8') ?>
+    </div>
+
+    <div class="center small">
+      <b>CHAVE DE ACESSO</b><br>
+      <?= htmlspecialchars(fmtChave($chave), ENT_QUOTES, 'UTF-8') ?>
+    </div>
 
     <div class="hr"></div>
+
     <div class="center small">
       <b>CONSUMIDOR</b><br>
       <?php
       $dN = strtoupper(trim($dest_nome));
-      if ($dN !== '' && $dN !== 'CONSUMIDOR FINAL' && $dN !== 'CONSUMIDOR AVULSO' && $dN !== 'CONSUMIDOR NÃO IDENTIFICADO'): ?>
-        <?= htmlspecialchars($dest_nome) ?><br>
-        <?= htmlspecialchars($dest_doc) ?>
+      if (
+        $dN !== '' &&
+        $dN !== 'CONSUMIDOR FINAL' &&
+        $dN !== 'CONSUMIDOR AVULSO' &&
+        $dN !== 'CONSUMIDOR NÃO IDENTIFICADO'
+      ):
+      ?>
+        <?= htmlspecialchars($dest_nome, ENT_QUOTES, 'UTF-8') ?><br>
+        <?= htmlspecialchars($dest_doc, ENT_QUOTES, 'UTF-8') ?>
       <?php else: ?>
-        <?= htmlspecialchars($dest_doc ?: 'CONSUMIDOR FINAL') ?>
+        <?= htmlspecialchars($dest_doc ?: 'CONSUMIDOR FINAL', ENT_QUOTES, 'UTF-8') ?>
       <?php endif; ?>
     </div>
 
     <div class="hr"></div>
+
     <div class="center small">Consulta via leitor de QR Code</div>
     <div id="qrcode"></div>
 
     <div class="hr"></div>
-    <?php if ($protInfo): ?><div class="small center"><?= htmlspecialchars($protInfo) ?></div><?php endif; ?>
+
+    <?php if ($protInfo): ?>
+      <div class="small center"><?= htmlspecialchars($protInfo, ENT_QUOTES, 'UTF-8') ?></div>
+    <?php endif; ?>
   </div>
 
   <div class="actions">
-    <button class="btn btn-secondary" onclick="if(window.history.length > 1) { window.history.back(); } else { window.close(); }">Voltar / Fechar</button>
-    <a class="btn btn-secondary" href="danfe_a4.php?id=<?= urlencode($empresaIdUrl) ?>&venda_id=<?= (int)$vendaIdUrl ?>&chave=<?= urlencode($chave) ?>" target="_blank">Modelo SEFAZ (A4)</a>
-    <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+    <button
+      class="btn btn-secondary"
+      onclick="if (window.history.length > 1) { window.history.back(); } else { window.close(); }"
+      type="button">
+      Voltar / Fechar
+    </button>
+
+    <a
+      class="btn btn-secondary"
+      href="danfe_a4.php?id=<?= urlencode($empresaIdUrl) ?>&venda_id=<?= (int)$vendaIdUrl ?>&chave=<?= urlencode((string)$chave) ?>"
+      target="_blank">
+      Modelo SEFAZ (A4)
+    </a>
+
+    <button class="btn btn-primary" type="button" onclick="window.print()">
+      Imprimir
+    </button>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
-    new QRCode(document.getElementById("qrcode"), {
-      text: <?= json_encode($qrTxt) ?>,
-      width: 210,
-      height: 210
-    });
+    (function() {
+      var qrTarget = document.getElementById('qrcode');
+      var qrText = <?= json_encode($qrTxt ?: $urlChave, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+      if (qrTarget && qrText) {
+        new QRCode(qrTarget, {
+          text: qrText,
+          width: 180,
+          height: 180
+        });
+      }
+    })();
   </script>
 </body>
 
