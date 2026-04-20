@@ -7,8 +7,20 @@ declare(strict_types=1);
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Produto - Centro do Eletricista</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Consulta de Produto — ERP Elétrica</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#19335a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Consultar ERP">
+    <link rel="apple-touch-icon" href="public/img/app-icon.png">
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Styles -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
 
     <style>
         :root {
@@ -541,6 +553,11 @@ declare(strict_types=1);
                                 <span class="meta-label">Unidade</span>
                                 <span class="meta-value" id="produtoUnidade">-</span>
                             </div>
+
+                            <div class="meta-item">
+                                <span class="meta-label">Estoque Total</span>
+                                <span class="meta-value text-primary" id="produtoEstoque">-</span>
+                            </div>
                         </div>
 
                         <div class="price-box">
@@ -557,8 +574,21 @@ declare(strict_types=1);
         </main>
     </div>
 
+    <div id="erp-toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11000;"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="public/js/corporate.js"></script>
     <script src="https://unpkg.com/html5-qrcode" defer></script>
     <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(reg => {
+                    console.log('SW Registered for PWA');
+                }).catch(err => console.log('SW Registration failed', err));
+            });
+        }
+
         const apiUrl = 'api/consultar_produto.php';
 
         const codigoInput = document.getElementById('codigoManual');
@@ -611,13 +641,14 @@ declare(strict_types=1);
         }
 
         function preencherProduto(produto) {
-            document.getElementById('produtoImagem').src = produto.imagem || '';
+            document.getElementById('produtoImagem').src = produto.imagem || 'public/img/no-image.png';
             document.getElementById('produtoImagem').alt = produto.nome || 'Produto';
             document.getElementById('produtoNome').textContent = produto.nome || '-';
             document.getElementById('produtoCodigo').textContent = produto.codigo || '-';
             document.getElementById('produtoCean').textContent = produto.cean || '-';
             document.getElementById('produtoCategoria').textContent = produto.categoria || '-';
             document.getElementById('produtoUnidade').textContent = produto.unidade || '-';
+            document.getElementById('produtoEstoque').textContent = produto.estoque || '0';
             document.getElementById('produtoValor').textContent = produto.preco_venda_formatado || 'R$ 0,00';
 
             emptyState.classList.add('hidden');
@@ -628,36 +659,28 @@ declare(strict_types=1);
             const codigoFinal = normalizarCodigo(codigo);
 
             if (!codigoFinal) {
-                mostrarStatus('Informe ou leia um código de barras para consultar.', 'error');
+                erpNotify('warning', 'Informe ou leia um código de barras.');
                 limparResultado();
                 return;
             }
-
-            mostrarStatus('Consultando produto...', 'info');
 
             try {
                 const formData = new FormData();
                 formData.append('codigo', codigoFinal);
 
-                const response = await fetch(apiUrl, {
+                const data = await erpFetch(apiUrl, {
                     method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    body: formData
                 });
 
-                const data = await response.json();
-
-                if (!response.ok || !data.ok) {
-                    throw new Error(data.message || 'Produto não encontrado.');
+                if (data && data.success) {
+                    preencherProduto(data.data.produto);
+                } else {
+                    limparResultado();
                 }
-
-                preencherProduto(data.produto);
-                mostrarStatus('Produto localizado com sucesso.', 'success');
             } catch (error) {
                 limparResultado();
-                mostrarStatus(error.message || 'Não foi possível consultar o produto.', 'error');
+                // erpFetch already notifies for server/network errors
             }
         }
 
