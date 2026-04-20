@@ -356,6 +356,79 @@
     </div>
 </div>
 
+<!-- Modal Cancelamento Triplo (PDV) -->
+<div class="modal fade" id="modalTripleCancel" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg overflow-hidden">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Cancelar Venda #<span id="cancel-id-label"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Passo 1: Escolha do Modelo -->
+                <div id="cancel-step-1">
+                    <p class="text-muted mb-4 uppercase small fw-bold">Como deseja cancelar esta venda?</p>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="cancel-choice-card p-3 border rounded text-center h-100 cursor-pointer hover-shadow" onclick="selectCancelMode('por_chave')">
+                                <div class="icon mb-2 text-danger"><i class="fas fa-file-invoice-dollar fa-2x"></i></div>
+                                <div class="fw-bold small">Padrão (110111)</div>
+                                <p class="extra-small text-muted mb-0 mt-1">Cancela a nota autorizada normalmente na SEFAZ.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="cancel-choice-card p-3 border rounded text-center h-100 cursor-pointer hover-shadow" onclick="selectCancelMode('por_substituicao')">
+                                <div class="icon mb-2 text-primary"><i class="fas fa-sync-alt fa-2x"></i></div>
+                                <div class="fw-bold small">Substituição (110112)</div>
+                                <p class="extra-small text-muted mb-0 mt-1">Cancela vinculando a uma nota de contingência.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="cancel-choice-card p-3 border rounded text-center h-100 cursor-pointer hover-shadow" onclick="selectCancelMode('por_motivo')">
+                                <div class="icon mb-2 text-secondary"><i class="fas fa-database fa-2x"></i></div>
+                                <div class="fw-bold small">Apenas Sistema</div>
+                                <p class="extra-small text-muted mb-0 mt-1">Cancela internamente sem comunicar a SEFAZ.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Passo 2: Formulário -->
+                <div id="cancel-step-2" class="d-none">
+                    <button type="button" class="btn btn-link btn-sm p-0 mb-3 text-muted text-decoration-none" onclick="backToCancelChoices()">
+                        <i class="fas fa-arrow-left me-1"></i> Voltar para opções
+                    </button>
+                    
+                    <div class="mb-3 d-none" id="field-chave-substituta">
+                        <label class="form-label fw-bold small">Chave da Nota Substituta (44 dígitos)</label>
+                        <input type="text" id="cancel-chave-subst" class="form-control fw-bold" maxlength="44" placeholder="0000 0000 0000 0000 0000...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small" id="label-motivo">Motivo do Cancelamento</label>
+                        <textarea id="cancel-motivo" class="form-control" rows="3" placeholder="Descreva o motivo..."></textarea>
+                    </div>
+
+                    <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'admin'): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-danger"><i class="fas fa-lock me-1"></i>Código de Autorização (Admin)</label>
+                        <input type="text" id="cancel-auth-code" class="form-control fw-bold text-center" placeholder="Ex: 123456" maxlength="6" style="font-size: 1.2rem; letter-spacing: 2px;">
+                    </div>
+                    <?php endif; ?>
+
+                    <div id="fiscal-alert" class="alert alert-info small d-none">
+                        <i class="fas fa-info-circle me-1"></i> <b>Nota Fiscal:</b> Este modelo exige validação da SEFAZ. O motivo deve ter 15+ caracteres.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0 d-none" id="cancel-footer-btns">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" id="confirmCancelBtn" class="btn btn-danger px-4 rounded-pill">Confirmar Cancelamento</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Exchange Flow -->
 <div class="modal fade" id="modalExchangeFlow" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -1137,24 +1210,113 @@ function manageSale(sale) {
     new bootstrap.Modal(document.getElementById('modalSaleManager')).show();
 }
 
-async function cancelSaleAction() {
-    if (!confirm('Deseja realmente cancelar esta venda? O estoque será devolvido e o valor sairá do caixa.')) return;
+let currentCancelModelo = 'por_chave';
+
+function selectCancelMode(mode) {
+    currentCancelModelo = mode;
+    document.getElementById('cancel-step-1').classList.add('d-none');
+    document.getElementById('cancel-step-2').classList.remove('d-none');
+    document.getElementById('cancel-footer-btns').classList.remove('d-none');
     
-    const res = await fetch('vendas.php?action=cancel_sale', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: activeManageId })
-    });
+    const fieldSubst = document.getElementById('field-chave-substituta');
+    const alertFiscal = document.getElementById('fiscal-alert');
+    const labelMotivo = document.getElementById('label-motivo');
     
-    const result = await res.json();
-    if (result.success) {
-        alert('Venda cancelada com sucesso!');
-        loadRecentSales();
-        bootstrap.Modal.getInstance(document.getElementById('modalSaleManager')).hide();
+    if (mode === 'por_substituicao') {
+        fieldSubst.classList.remove('d-none');
+        alertFiscal.classList.remove('d-none');
+        labelMotivo.textContent = 'Motivo (Substituição)';
+    } else if (mode === 'por_chave') {
+        fieldSubst.classList.add('d-none');
+        alertFiscal.classList.remove('d-none');
+        labelMotivo.textContent = 'Motivo do Cancelamento';
     } else {
-        alert('Erro ao cancelar venda: ' + result.error);
+        fieldSubst.classList.add('d-none');
+        alertFiscal.classList.add('d-none');
+        labelMotivo.textContent = 'Motivo do Cancelamento (Interno)';
     }
 }
+
+function backToCancelChoices() {
+    document.getElementById('cancel-step-1').classList.remove('d-none');
+    document.getElementById('cancel-step-2').classList.add('d-none');
+    document.getElementById('cancel-footer-btns').classList.add('d-none');
+}
+
+async function cancelSaleAction() {
+    document.getElementById('cancel-id-label').textContent = activeManageId;
+    document.getElementById('cancel-motivo').value = '';
+    document.getElementById('cancel-chave-subst').value = '';
+    
+    const authInput = document.getElementById('cancel-auth-code');
+    if (authInput) authInput.value = '';
+    
+    backToCancelChoices();
+    bootstrap.Modal.getInstance(document.getElementById('modalSaleManager')).hide();
+    bootstrap.Modal.getOrCreateInstance('#modalTripleCancel').show();
+}
+
+// Handler for the confirm button inside the triple cancel modal
+document.addEventListener('DOMContentLoaded', () => {
+    const confirmBtn = document.getElementById('confirmCancelBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async function() {
+            const motivo = document.getElementById('cancel-motivo').value.trim();
+            const chaveSubst = document.getElementById('cancel-chave-subst').value.replace(/\D+/g, '');
+            const authCodeEl = document.getElementById('cancel-auth-code');
+            const authCode = authCodeEl ? authCodeEl.value.trim() : null;
+            
+            if (authCodeEl && !authCode) {
+                alert('É necessário inserir o Código de Autorização fornecido pelo administrador.');
+                return;
+            }
+            
+            if (currentCancelModelo === 'por_substituicao' && chaveSubst.length !== 44) {
+                alert('A chave substituta deve ter 44 dígitos.');
+                return;
+            }
+
+            if (currentCancelModelo !== 'por_motivo' && motivo.length < 15) {
+                alert('Para cancelamentos na SEFAZ, o motivo deve ter no mínimo 15 caracteres.');
+                return;
+            } else if (motivo.length < 5) {
+                alert('Por favor, descreva o motivo do cancelamento.');
+                return;
+            }
+
+            this.disabled = true;
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processando...';
+
+            try {
+                const res = await fetch('vendas.php?action=cancel_sale', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        id: activeManageId, 
+                        motivo, 
+                        modelo: currentCancelModelo,
+                        chave_substituta: chaveSubst,
+                        auth_code: authCode 
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    bootstrap.Modal.getOrCreateInstance('#modalTripleCancel').hide();
+                    alert('Cancelamento processado com sucesso!');
+                    loadRecentSales();
+                } else {
+                    alert('Erro: ' + data.error);
+                }
+            } catch (err) {
+                alert('Erro de conexão ao cancelar venda.');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = originalText;
+            }
+        });
+    }
+});
 
 // --- LOGICA DE TROCA DE ITENS ---
 let exchangeState = {
