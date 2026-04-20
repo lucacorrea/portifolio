@@ -184,6 +184,12 @@
                     <label class="form-label fw-bold">Motivo do Cancelamento</label>
                     <textarea id="cancel-motivo" class="form-control" rows="3" placeholder="Obrigatório descrever o motivo..."></textarea>
                 </div>
+                <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'admin'): ?>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-danger"><i class="fas fa-lock me-1"></i>Código de Autorização (Admin)</label>
+                    <input type="text" id="cancel-auth-code" class="form-control fw-bold text-center" placeholder="Ex: 123456" maxlength="6" style="font-size: 1.2rem; letter-spacing: 2px;">
+                </div>
+                <?php endif; ?>
                 <div id="fiscal-alert" class="alert alert-info small d-none">
                     <i class="fas fa-file-invoice-dollar"></i> <b>NFC-e Fiscal:</b> Esta venda será cancelada automaticamente na SEFAZ. O motivo deve ter pelo menos 15 caracteres.
                 </div>
@@ -482,6 +488,9 @@
                     : "Obrigatório descrever o motivo...";
             }
             
+            const authInput = document.getElementById('cancel-auth-code');
+            if (authInput) authInput.value = '';
+            
             if (alertEl) {
                 if (tipo === 'fiscal' || isRetry) {
                     alertEl.classList.remove('d-none');
@@ -501,6 +510,13 @@
 
         document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
             const motivo = document.getElementById('cancel-motivo').value.trim();
+            const authCodeEl = document.getElementById('cancel-auth-code');
+            const authCode = authCodeEl ? authCodeEl.value.trim() : null;
+            
+            if (authCodeEl && !authCode) {
+                alert('É necessário inserir o Código de Autorização fornecido pelo administrador.');
+                return;
+            }
             
             if (currentCancelTipo === 'fiscal' && motivo.length < 15) {
                 alert('Para cancelamento fiscal, o motivo deve ter no mínimo 15 caracteres.');
@@ -518,7 +534,7 @@
                 const res = await fetch('vendidos.php?action=cancel_sale', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ id: currentCancelId, motivo, tipo: currentCancelTipo })
+                    body: JSON.stringify({ id: currentCancelId, motivo, tipo: currentCancelTipo, auth_code: authCode })
                 });
                 const data = await res.json();
                 if (data.success) {

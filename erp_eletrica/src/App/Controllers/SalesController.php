@@ -508,6 +508,19 @@ class SalesController extends BaseController {
             exit;
         }
 
+        $authCode = $data['auth_code'] ?? null;
+        if (($_SESSION['usuario_nivel'] ?? '') !== 'admin') {
+            if (!$authCode) {
+                echo json_encode(['success' => false, 'error' => 'Código de autorização de cancelamento é obrigatório.']);
+                exit;
+            }
+            $authService = new \App\Services\AuthorizationService();
+            if (!$authService->validateAndUse($authCode, 'cancelamento', $_SESSION['filial_id'] ?? 1)) {
+                echo json_encode(['success' => false, 'error' => 'Código de autorização inválido, expirado ou já utilizado. Verifica se o tipo é "Cancelamento".']);
+                exit;
+            }
+        }
+
         $db = \App\Config\Database::getInstance()->getConnection();
         $saleModel = new Sale();
         $productModel = new Product();
