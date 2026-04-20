@@ -8,7 +8,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 date_default_timezone_set('America/Manaus');
 
-require_once dirname(__DIR__) . '/conexao.php';
+require_once dirname(__DIR__) . '/../../src/App/Config/Database.php';
 
 if (!isset($pdo) || !($pdo instanceof PDO)) {
     throw new RuntimeException('A variável $pdo não foi carregada a partir de conexao.php.');
