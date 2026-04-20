@@ -62,14 +62,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (loader) loader.style.display = 'none';
     };
 
-    // Auto-hide alerts
+    // Auto-hide Top Flash Alerts ONLY (to avoid closing alerts inside modals or details)
     setTimeout(() => {
-        const alerts = document.querySelectorAll('.alert');
+        const alerts = document.querySelectorAll('.content-body > .alert, .top-flash-alert');
         alerts.forEach(alert => {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
+            if (bootstrap.Alert.getInstance(alert) || new bootstrap.Alert(alert)) {
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                bsAlert.close();
+            }
         });
-    }, 5000);
+    }, 8000); // Increased to 8s for better readability
 
 });
 
