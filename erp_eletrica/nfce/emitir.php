@@ -207,48 +207,29 @@ $toolsConfig = [
 $tools = new Tools(json_encode($toolsConfig), $cert);
 $tools->model('65');
 
-/* nNF transacional - Prioriza numeração da Filial, fallback para Global */
-$nNF = null;
-$serie = (int)(defined('NFC_SERIE') ? NFC_SERIE : 1);
-$empresaId = defined('NFCE_EMPRESA_ID') ? NFCE_EMPRESA_ID : null;
+/* nNF transacional - Prioriza numeração resolvida em config.php */
+$nNF = (int)($fiscal['ultimo_numero_nfce'] ?? 0) + 1;
+$serie = (int)NFC_SERIE;
+$empresaId = defined('NFCE_EMPRESA_ID') ? NFCE_EMPRESA_ID : 1;
 
 try {
     $pdo->beginTransaction();
     
-    $res = false;
-    $targetTable = 'sefaz_config';
-    $targetId = null;
-
-    if ($empresaId) {
-        $st = $pdo->prepare("SELECT id, ultimo_numero_nfce FROM filiais WHERE id = :id FOR UPDATE");
-        $st->execute([':id' => $empresaId]);
-        $res = $st->fetch();
-        if ($res) {
-            $targetTable = 'filiais';
-            $targetId = $res['id'];
-        }
-    }
-
-    if (!$res) {
-        $st = $pdo->prepare("SELECT id, ultimo_numero_nfce FROM sefaz_config LIMIT 1 FOR UPDATE");
-        $st->execute();
-        $res = $st->fetch();
-        if ($res) {
-            $targetId = $res['id'];
-        }
+    // Incrementa na tabela de origem (sefaz_config se for global, ou filiais se for específico)
+    // A lógica de config.php já resolveu qual tem prioridade, aqui apenas persistimos
+    $isGlobal = ($empresaId == 1 && !empty($global));
+    if ($isGlobal) {
+        $pdo->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = :n WHERE id = :id")
+            ->execute([':n' => $nNF, ':id' => $global['id']]);
+    } else {
+        $pdo->prepare("UPDATE filiais SET ultimo_numero_nfce = :n WHERE id = :id")
+            ->execute([':n' => $nNF, ':id' => $empresaId]);
     }
     
-    if ($res !== false) {
-        $nNF = (int)$res['ultimo_numero_nfce'] + 1;
-        $pdo->prepare("UPDATE $targetTable SET ultimo_numero_nfce = :n WHERE id = :id")
-            ->execute([':n' => $nNF, ':id' => $targetId]);
-    } else {
-        $nNF = mt_rand(100, 999999);
-    }
     $pdo->commit();
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    $nNF = mt_rand(100, 999999);
+    // Fallback: use o gerado mas registre o erro se necessário
 }
 
 /* Chave e Identificação */
