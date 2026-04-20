@@ -99,6 +99,7 @@
     </div>
 </div>
 
+<?php if (($_SESSION['usuario_nivel'] ?? '') === 'admin'): ?>
 <!-- Dashboard -->
 <div class="fi-dashboard">
     <div class="fi-card">
@@ -118,6 +119,7 @@
         <div class="fi-card-value" id="tot-qtd">0</div>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Filtros -->
 <div class="fi-filters">
@@ -331,10 +333,10 @@
                 renderTable(currentPageRows);
                 renderPagination(data.pagination);
                 
-                document.getElementById('tot-total').innerText = fmtBRL(data.totais.total_venda);
-                document.getElementById('tot-pago').innerText = fmtBRL(data.totais.total_pago);
-                document.getElementById('tot-restante').innerText = fmtBRL(data.totais.total_restante);
-                document.getElementById('tot-qtd').innerText = data.totais.qtd;
+                if (document.getElementById('tot-total')) document.getElementById('tot-total').innerText = fmtBRL(data.totais.total_venda);
+                if (document.getElementById('tot-pago')) document.getElementById('tot-pago').innerText = fmtBRL(data.totais.total_pago);
+                if (document.getElementById('tot-restante')) document.getElementById('tot-restante').innerText = fmtBRL(data.totais.total_restante);
+                if (document.getElementById('tot-qtd')) document.getElementById('tot-qtd').innerText = data.totais.qtd;
                 
                 document.getElementById('pag-showing').innerText = data.rows.length;
                 document.getElementById('pag-total').innerText = data.pagination.total_records;
