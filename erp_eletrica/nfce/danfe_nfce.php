@@ -401,6 +401,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 
       .wrapper{
         zoom: 110% !important;
+        padding: 0 !important;
       }
 
       .nome_empresa{
