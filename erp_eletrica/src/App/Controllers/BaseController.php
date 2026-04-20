@@ -40,8 +40,22 @@ abstract class BaseController {
         }
     }
 
-    protected function redirect($url) {
-        header("Location: {$url}");
-        exit;
+    protected function jsonResponse($success, $message, $data = [], $code = 200) {
+        return jsonResponse($success, $message, $data, $code);
+    }
+
+    protected function executeSafe(callable $action, $isAjax = true) {
+        try {
+            return $action();
+        } catch (\Exception $e) {
+            error_log("Controller Error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+            
+            if ($isAjax || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
+                $this->jsonResponse(false, $e->getMessage(), [], 500);
+            } else {
+                setFlash('danger', 'Ocorreu um erro: ' . $e->getMessage());
+                $this->redirect($_SERVER['HTTP_REFERER'] ?? 'index.php');
+            }
+        }
     }
 }
