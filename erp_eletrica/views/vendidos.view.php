@@ -148,7 +148,11 @@
                     <div class="col-md-8">
                         <div class="p-3 bg-light rounded">
                             <p class="mb-1 small"><b>Forma de Pagamento:</b> <span id="det-pgto"></span></p>
-                            <p class="mb-0 small"><b>Tipo de Nota:</b> <span id="det-tipo-nota"></span></p>
+                            <p class="mb-1 small"><b>Tipo de Nota:</b> <span id="det-tipo-nota"></span></p>
+                            <div id="det-sefaz-status" class="mt-2 d-none">
+                                <p class="mb-0 small text-primary fw-bold"><i class="fas fa-info-circle me-1"></i>Retorno SEFAZ:</p>
+                                <p class="mb-0 extra-small" id="det-sefaz-msg"></p>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-4 text-end">
@@ -452,6 +456,15 @@
                 document.getElementById('det-vendedor').textContent = s.vendedor_nome || '—';
                 document.getElementById('det-pgto').textContent = s.forma_pagamento.replace('_', ' ').toUpperCase();
                 document.getElementById('det-tipo-nota').textContent = s.tipo_nota === 'fiscal' ? 'FISCAL (NFC-e)' : 'NÃO FISCAL';
+                
+                const sefazArea = document.getElementById('det-sefaz-status');
+                if (s.nf_mensagem) {
+                    sefazArea.classList.remove('d-none');
+                    document.getElementById('det-sefaz-msg').textContent = s.nf_mensagem;
+                } else {
+                    sefazArea.classList.add('d-none');
+                }
+
                 document.getElementById('det-desconto').textContent = 'R$ ' + parseFloat(s.desconto_total).toLocaleString('pt-BR', {minimumFractionDigits:2});
                 document.getElementById('det-total').textContent = 'R$ ' + parseFloat(s.valor_total).toLocaleString('pt-BR', {minimumFractionDigits:2});
                 

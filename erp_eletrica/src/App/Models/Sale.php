@@ -110,6 +110,7 @@ class Sale extends BaseModel {
         $sale = $this->query("
             SELECT v.*, IFNULL(c.nome, $nameField) as cliente_nome, u.nome as vendedor_nome,
                    (SELECT status_sefaz FROM nfce_emitidas WHERE venda_id = v.id ORDER BY id DESC LIMIT 1) as nf_status,
+                   (SELECT mensagem FROM nfce_emitidas WHERE venda_id = v.id ORDER BY id DESC LIMIT 1) as nf_mensagem,
                    (SELECT chave FROM nfce_emitidas WHERE venda_id = v.id ORDER BY id DESC LIMIT 1) as chave_acesso
             FROM {$this->table} v 
             LEFT JOIN clientes c ON v.cliente_id = c.id 
