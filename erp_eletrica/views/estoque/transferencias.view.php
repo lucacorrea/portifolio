@@ -690,6 +690,10 @@ function abrirModalRelato(id, codigo) {
                                     <div class="col-12 mt-1">
                                         <input type="text" name="ocorrencias[${item.produto_id}][descricao]" class="form-control form-control-sm" placeholder="Observação curta sobre este item...">
                                     </div>
+                                    <div class="col-12 mt-1">
+                                        <label class="extra-small text-muted d-block"><i class="fas fa-camera me-1"></i>Foto do Item com Defeito</label>
+                                        <input type="file" name="ocorrencias_${item.produto_id}_foto" class="form-control form-control-sm" accept="image/*">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -845,6 +849,13 @@ function abrirDetalhesTransferencia(id) {
                         </div>
                         <div class="extra-small mt-1 text-uppercase fw-bold opacity-75">${oc.motivo}</div>
                         <div class="mt-1">"${oc.descricao}"</div>
+                        ${oc.foto ? `
+                            <div class="mt-2 text-center">
+                                <div class="product-zoom-container d-inline-block rounded border overflow-hidden bg-white shadow-sm" style="width: 100px; height: 100px; cursor: pointer;">
+                                    <img src="${oc.foto}" style="width: 100%; height: 100%; object-fit: contain;">
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 `).join('');
             } else {
@@ -1028,7 +1039,7 @@ function abrirProcessarRecebimento(id) {
 <div class="modal fade" id="modalRelato" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
-            <form action="transferencias.php?action=relatar_problema" method="POST">
+            <form action="transferencias.php?action=relatar_problema" method="POST" enctype="multipart/form-data">
                 <div class="modal-header bg-danger text-white border-0">
                     <h6 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Relatar Problema na Entrega</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
