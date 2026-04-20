@@ -169,37 +169,73 @@
     </div>
 </div>
 
-<!-- Modal Cancelamento -->
+<!-- Modal Cancelamento Triplo (Estilo Açaidinhos) -->
 <div class="modal fade" id="modalCancel" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg overflow-hidden">
             <div class="modal-header bg-danger text-white border-0 py-3">
                 <h5 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Cancelar Venda #<span id="cancel-id-label"></span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <p class="text-muted">Tem certeza que deseja cancelar esta venda? Esta ação irá:</p>
-                <ul class="small text-muted mb-4">
-                    <li>Devolver todos os itens ao estoque automaticamente.</li>
-                    <li>Estornar o valor no caixa (se concluída em dinheiro/cartão).</li>
-                    <li>Cancelar títulos de "Fiado" vinculados.</li>
-                </ul>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Motivo do Cancelamento</label>
-                    <textarea id="cancel-motivo" class="form-control" rows="3" placeholder="Obrigatório descrever o motivo..."></textarea>
+                <!-- Passo 1: Escolha do Modelo -->
+                <div id="cancel-step-1">
+                    <p class="text-muted mb-4 uppercase small fw-bold">Como deseja cancelar esta venda?</p>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="cancel-choice-card p-3 border rounded text-center h-100 cursor-pointer hover-shadow" onclick="selectCancelMode('por_chave')">
+                                <div class="icon mb-2 text-danger"><i class="fas fa-file-invoice-dollar fa-2x"></i></div>
+                                <div class="fw-bold small">Padrão (110111)</div>
+                                <p class="extra-small text-muted mb-0 mt-1">Cancela a nota autorizada normalmente na SEFAZ.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="cancel-choice-card p-3 border rounded text-center h-100 cursor-pointer hover-shadow" onclick="selectCancelMode('por_substituicao')">
+                                <div class="icon mb-2 text-primary"><i class="fas fa-sync-alt fa-2x"></i></div>
+                                <div class="fw-bold small">Substituição (110112)</div>
+                                <p class="extra-small text-muted mb-0 mt-1">Cancela vinculando a uma nota de contingência.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="cancel-choice-card p-3 border rounded text-center h-100 cursor-pointer hover-shadow" onclick="selectCancelMode('por_motivo')">
+                                <div class="icon mb-2 text-secondary"><i class="fas fa-database fa-2x"></i></div>
+                                <div class="fw-bold small">Apenas Sistema</div>
+                                <p class="extra-small text-muted mb-0 mt-1">Cancela internamente sem comunicar a SEFAZ.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'admin'): ?>
-                <div class="mb-3">
-                    <label class="form-label fw-bold text-danger"><i class="fas fa-lock me-1"></i>Código de Autorização (Admin)</label>
-                    <input type="text" id="cancel-auth-code" class="form-control fw-bold text-center" placeholder="Ex: 123456" maxlength="6" style="font-size: 1.2rem; letter-spacing: 2px;">
-                </div>
-                <?php endif; ?>
-                <div id="fiscal-alert" class="alert alert-info small d-none">
-                    <i class="fas fa-file-invoice-dollar"></i> <b>NFC-e Fiscal:</b> Esta venda será cancelada automaticamente na SEFAZ. O motivo deve ter pelo menos 15 caracteres.
+
+                <!-- Passo 2: Formulário -->
+                <div id="cancel-step-2" class="d-none">
+                    <button type="button" class="btn btn-link btn-sm p-0 mb-3 text-muted text-decoration-none" onclick="backToCancelChoices()">
+                        <i class="fas fa-arrow-left me-1"></i> Voltar para opções
+                    </button>
+                    
+                    <div class="mb-3" id="field-chave-substituta">
+                        <label class="form-label fw-bold small">Chave da Nota Substituta (44 dígitos)</label>
+                        <input type="text" id="cancel-chave-subst" class="form-control fw-bold" maxlength="44" placeholder="0000 0000 0000 0000 0000...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small" id="label-motivo">Motivo do Cancelamento</label>
+                        <textarea id="cancel-motivo" class="form-control" rows="3" placeholder="Descreva o motivo..."></textarea>
+                    </div>
+
+                    <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'admin'): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-danger"><i class="fas fa-lock me-1"></i>Código de Autorização (Admin)</label>
+                        <input type="text" id="cancel-auth-code" class="form-control fw-bold text-center" placeholder="Ex: 123456" maxlength="6" style="font-size: 1.2rem; letter-spacing: 2px;">
+                    </div>
+                    <?php endif; ?>
+
+                    <div id="fiscal-alert" class="alert alert-info small d-none">
+                        <i class="fas fa-info-circle me-1"></i> <b>Nota Fiscal:</b> Este modelo exige validação da SEFAZ. O motivo deve ter 15+ caracteres.
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light border-0">
-                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Manter Venda</button>
+            <div class="modal-footer bg-light border-0 d-none" id="cancel-footer-btns">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Fechar</button>
                 <button type="button" id="confirmCancelBtn" class="btn btn-danger px-4 rounded-pill">Confirmar Cancelamento</button>
             </div>
         </div>
@@ -494,46 +530,57 @@
 
         let currentCancelId = null;
         let currentCancelTipo = null;
-        window.openCancelModal = function(id, tipo, isRetry = false) {
+        let currentCancelModelo = 'por_chave';
+
+        window.selectCancelMode = function(mode) {
+            currentCancelModelo = mode;
+            document.getElementById('cancel-step-1').classList.add('d-none');
+            document.getElementById('cancel-step-2').classList.remove('d-none');
+            document.getElementById('cancel-footer-btns').classList.remove('d-none');
+            
+            const fieldSubst = document.getElementById('field-chave-substituta');
+            const alertFiscal = document.getElementById('fiscal-alert');
+            const labelMotivo = document.getElementById('label-motivo');
+            
+            if (mode === 'por_substituicao') {
+                fieldSubst.classList.remove('d-none');
+                alertFiscal.classList.remove('d-none');
+                labelMotivo.textContent = 'Motivo (Substituição)';
+            } else if (mode === 'por_chave') {
+                fieldSubst.classList.add('d-none');
+                alertFiscal.classList.remove('d-none');
+                labelMotivo.textContent = 'Motivo do Cancelamento';
+            } else {
+                fieldSubst.classList.add('d-none');
+                alertFiscal.classList.add('d-none');
+                labelMotivo.textContent = 'Motivo do Cancelamento (Interno)';
+            }
+        };
+
+        window.backToCancelChoices = function() {
+            document.getElementById('cancel-step-1').classList.remove('d-none');
+            document.getElementById('cancel-step-2').classList.add('d-none');
+            document.getElementById('cancel-footer-btns').classList.add('d-none');
+        };
+
+        window.openCancelModal = function(id, tipo) {
             currentCancelId = id;
             currentCancelTipo = tipo;
             
-            const labelEl = document.getElementById('cancel-id-label');
-            const alertEl = document.getElementById('fiscal-alert');
-            const motiveInput = document.getElementById('cancel-motivo');
-            const titleEl = document.querySelector('#modalCancel .modal-title');
-            
-            if (titleEl) titleEl.textContent = isRetry ? 'Regularização Fiscal SEFAZ' : 'Cancelar Venda';
-            if (labelEl) labelEl.textContent = id;
-            if (motiveInput) {
-                motiveInput.value = isRetry ? 'Regularização de nota pendente na SEFAZ' : '';
-                motiveInput.placeholder = (tipo === 'fiscal') 
-                    ? "Descreva o motivo (mínimo 15 caracteres)..." 
-                    : "Obrigatório descrever o motivo...";
-            }
+            document.getElementById('cancel-id-label').textContent = id;
+            document.getElementById('cancel-motivo').value = '';
+            document.getElementById('cancel-chave-subst').value = '';
             
             const authInput = document.getElementById('cancel-auth-code');
             if (authInput) authInput.value = '';
             
-            if (alertEl) {
-                if (tipo === 'fiscal' || isRetry) {
-                    alertEl.classList.remove('d-none');
-                    alertEl.innerHTML = isRetry 
-                        ? '<i class="fas fa-info-circle me-2"></i><strong>Modo Regularização:</strong> Esta venda já foi cancelada no sistema. A ação abaixo apenas tentará homologar o cancelamento na SEFAZ.'
-                        : '<i class="fas fa-exclamation-triangle me-2"></i>O cancelamento fiscal é irreversível e exige um motivo claro para a SEFAZ.';
-                } else {
-                    alertEl.classList.add('d-none');
-                }
-            }
-            
-            const modalEl = document.getElementById('modalCancel');
-            if (modalEl) {
-                bootstrap.Modal.getOrCreateInstance(modalEl).show();
-            }
+            backToCancelChoices();
+            bootstrap.Modal.getOrCreateInstance('#modalCancel').show();
         };
 
         document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
             const motivo = document.getElementById('cancel-motivo').value.trim();
+            const chaveSubst = document.getElementById('cancel-chave-subst').value.replace(/\D+/g, '');
             const authCodeEl = document.getElementById('cancel-auth-code');
             const authCode = authCodeEl ? authCodeEl.value.trim() : null;
             
@@ -542,8 +589,13 @@
                 return;
             }
             
-            if (currentCancelTipo === 'fiscal' && motivo.length < 15) {
-                alert('Para cancelamento fiscal, o motivo deve ter no mínimo 15 caracteres.');
+            if (currentCancelModelo === 'por_substituicao' && chaveSubst.length !== 44) {
+                alert('A chave substituta deve ter 44 dígitos.');
+                return;
+            }
+
+            if (currentCancelModelo !== 'por_motivo' && currentCancelTipo === 'fiscal' && motivo.length < 15) {
+                alert('Para cancelamento fiscal (SEFAZ), o motivo deve ter no mínimo 15 caracteres.');
                 return;
             } else if (motivo.length < 5) {
                 alert('Por favor, descreva o motivo do cancelamento.');
@@ -558,20 +610,19 @@
                 const res = await fetch('vendidos.php?action=cancel_sale', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ id: currentCancelId, motivo, tipo: currentCancelTipo, auth_code: authCode })
+                    body: JSON.stringify({ 
+                        id: currentCancelId, 
+                        motivo, 
+                        tipo: currentCancelTipo, 
+                        modelo: currentCancelModelo,
+                        chave_substituta: chaveSubst,
+                        auth_code: authCode 
+                    })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    const modalEl = document.getElementById('modalCancel');
-                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-                    
-                    const isRegularization = document.querySelector('#modalCancel .modal-title').textContent.includes('Regularização');
-                    
-                    if (isRegularization) {
-                        alert('Nota Fiscal cancelada na SEFAZ com sucesso! A situação foi regularizada.');
-                    } else {
-                        alert(currentCancelTipo === 'fiscal' ? 'Venda e NFC-e canceladas com sucesso!' : 'Venda cancelada com sucesso!');
-                    }
+                    bootstrap.Modal.getOrCreateInstance('#modalCancel').hide();
+                    alert('Cancelamento processado com sucesso!');
                     loadSales(currentPage);
                 } else {
                     alert('Erro: ' + data.error);
@@ -707,4 +758,15 @@
         border-color: var(--erp-primary);
     }
     .list-group-item-action:hover { background-color: var(--erp-primary); color: #fff; }
+    
+    .cancel-choice-card {
+        transition: all 0.2s ease;
+        border-width: 2px !important;
+    }
+    .cancel-choice-card:hover {
+        border-color: var(--erp-primary) !important;
+        background-color: #f8faff;
+        transform: translateY(-3px);
+    }
+    .cursor-pointer { cursor: pointer; }
 </style>
