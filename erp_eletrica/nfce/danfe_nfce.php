@@ -4,7 +4,7 @@
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
-if(session_status() === PHP_SESSION_NONE) session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: text/html; charset=utf-8');
 
 /* ===================== Atualiza venda (chave/status) ===================== */
@@ -93,40 +93,95 @@ if (!empty($_GET['arq'])) {
 }
 
 if ($error || !isset($file) || !is_file($file)) {
-    if (!$error) $error = "O arquivo XML da nota não foi localizado no servidor.";
-    ?>
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8"><title>Nota não encontrada</title>
-        <style>
-            body { font-family: sans-serif; background: #f4f7f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-            .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; max-width: 450px; }
-            h2 { color: #d32f2f; margin-top: 0; }
-            p { color: #555; line-height: 1.5; }
-            .actions { margin-top: 30px; display: flex; gap: 10px; justify-content: center; }
-            .btn { text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-            .btn-primary { background: #2b4c7d; color: white; border: none; }
-            .btn-secondary { background: #e0e0e0; color: #333; border: none; }
-            .btn:hover { filter: brightness(1.1); }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h2>⚠️ Nota não localizada</h2>
-            <p><?php echo htmlspecialchars($error); ?></p>
-            <p>Apesar da venda ser fiscal, o documento oficial não pôde ser gerado ou encontrado. Você deseja imprimir o recibo comum em vez disso?</p>
-            <div class="actions">
-                <a href="javascript:window.close()" class="btn btn-secondary">Fechar</a>
-                <?php if ($vendaIdUrl > 0): ?>
-                    <a href="../recibo_venda.php?id=<?php echo $vendaIdUrl; ?>" class="btn btn-primary">Imprimir Recibo</a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </body>
-    </html>
-    <?php
-    exit;
+  if (!$error) $error = "O arquivo XML da nota não foi localizado no servidor.";
+?>
+  <!DOCTYPE html>
+  <html lang="pt-BR">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Nota não encontrada</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #f4f7f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+      }
+
+      .card {
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        text-align: center;
+        max-width: 450px;
+      }
+
+      h2 {
+        color: #d32f2f;
+        margin-top: 0;
+      }
+
+      p {
+        color: #555;
+        line-height: 1.5;
+      }
+
+      .actions {
+        margin-top: 30px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      .btn {
+        text-decoration: none;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .btn-primary {
+        background: #2b4c7d;
+        color: white;
+        border: none;
+      }
+
+      .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+        border: none;
+      }
+
+      .btn:hover {
+        filter: brightness(1.1);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <h2>⚠️ Nota não localizada</h2>
+      <p><?php echo htmlspecialchars($error); ?></p>
+      <p>Apesar da venda ser fiscal, o documento oficial não pôde ser gerado ou encontrado. Você deseja imprimir o recibo comum em vez disso?</p>
+      <div class="actions">
+        <a href="javascript:window.close()" class="btn btn-secondary">Fechar</a>
+        <?php if ($vendaIdUrl > 0): ?>
+          <a href="../recibo_venda.php?id=<?php echo $vendaIdUrl; ?>" class="btn btn-primary">Imprimir Recibo</a>
+        <?php endif; ?>
+      </div>
+    </div>
+  </body>
+
+  </html>
+<?php
+  exit;
 }
 
 $xml = file_get_contents($file);
@@ -221,31 +276,147 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 ?>
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>DANFE NFC-e</title>
   <style>
-    :root { --ticket-max: 384px; --pad: 12px; --qr: 210px; --accent: #1a73e8; --ink: #111; --paper: #fff; --bg: #f5f7fb }
-    *{box-sizing:border-box}
-    body{margin:0; padding:0; background:var(--bg); color:var(--ink); font: 13px/1.45 monospace}
-    .wrapper{width:100%; max-width:var(--ticket-max); margin:10px auto 92px; background:var(--paper); border-radius:12px; box-shadow:0 10px 28px rgba(0,0,0,.08); padding:var(--pad)}
-    .center{text-align:center} .right{text-align:right} .small{font-size:11px}
-    .hr{border-top:1px dashed #000; margin:8px 0}
-    .tbl{width:100%; border-collapse:collapse; table-layout:fixed}
-    .tbl th{border-bottom:1px dashed #000; padding:4px 0} .tbl td{padding:3px 0; vertical-align:top}
-    .badge{display:inline-block; background:#eef2ff; color:#1f2937; padding:3px 6px; border-radius:6px; font-size:10px}
-    .actions{position:fixed; left:0; right:0; bottom:0; padding:10px; background:#fff; border-top:1px solid #e5e7eb; display:flex; gap:10px; justify-content:center}
-    .btn{border:0; border-radius:10px; padding:11px 16px; font-weight:600; cursor:pointer}
-    .btn-primary{background:var(--accent); color:#fff} .btn-secondary{background:#e5e7eb; color:#111}
-    #qrcode{display:block; margin:8px auto; width:var(--qr); height:var(--qr)}
-    @media print{.actions{display:none} .wrapper{box-shadow:none; border-radius:0; margin:0; width:75mm}}
+    :root {
+      --ticket-max: 384px;
+      --pad: 12px;
+      --qr: 210px;
+      --accent: #1a73e8;
+      --ink: #111;
+      --paper: #fff;
+      --bg: #f5f7fb
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 13px/1.45 monospace
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: var(--ticket-max);
+      margin: 10px auto 92px;
+      background: var(--paper);
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
+      padding: var(--pad)
+    }
+
+    .center {
+      text-align: center
+    }
+
+    .right {
+      text-align: right
+    }
+
+    .small {
+      font-size: 11px
+    }
+
+    .hr {
+      border-top: 1px dashed #000;
+      margin: 8px 0
+    }
+
+    .tbl {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed
+    }
+
+    .tbl th {
+      border-bottom: 1px dashed #000;
+      padding: 4px 0
+    }
+
+    .tbl td {
+      padding: 3px 0;
+      vertical-align: top
+    }
+
+    .badge {
+      display: inline-block;
+      background: #eef2ff;
+      color: #1f2937;
+      padding: 3px 6px;
+      border-radius: 6px;
+      font-size: 10px
+    }
+
+    .actions {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 10px;
+      background: #fff;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 10px;
+      justify-content: center
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-weight: 600;
+      cursor: pointer
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111
+    }
+
+    #qrcode {
+      display: block;
+      margin: 8px auto;
+      width: var(--qr);
+      height: var(--qr)
+    }
+
+    @media print {
+      .actions {
+        display: none
+      }
+
+      .wrapper {
+        box-shadow: none;
+        border-radius: 0;
+        margin: 0;
+        width: 75mm
+      }
+
+      .nome_empresa{
+        font-size: 10px !important;
+      }
+    }
   </style>
 </head>
+
 <body>
-<div class="wrapper">
+  <div class="wrapper">
     <header class="center">
-      <h2><?= htmlspecialchars($emit_xFant ?: $emit_xNome) ?></h2>
+      <h2 class="nome_empresa"><?= htmlspecialchars($emit_xFant ?: $emit_xNome) ?></h2>
       <div class="small">CNPJ: <?= htmlspecialchars($emit_CNPJ) ?> &middot; IE: <?= htmlspecialchars($emit_IE) ?><br><?= htmlspecialchars($end_txt) ?></div>
       <div class="hr"></div>
       <div class="small badge">NFC-e não permite aproveitamento de crédito de ICMS</div>
@@ -253,10 +424,22 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     </header>
 
     <table class="tbl small">
-      <thead><tr><th class="left">Descrição</th><th class="right">Qtde</th><th class="right">V.Unit</th><th class="right">V.Total</th></tr></thead>
+      <thead>
+        <tr>
+          <th class="left">Descrição</th>
+          <th class="right">Qtde</th>
+          <th class="right">V.Unit</th>
+          <th class="right">V.Total</th>
+        </tr>
+      </thead>
       <tbody>
         <?php foreach ($itens as $it): ?>
-          <tr><td><?= htmlspecialchars($it['xProd']) ?></td><td class="right"><?= $it['qCom'] ?><br><?= $it['uCom'] ?></td><td class="right"><?= $it['vUn'] ?></td><td class="right"><?= $it['vTot'] ?></td></tr>
+          <tr>
+            <td><?= htmlspecialchars($it['xProd']) ?></td>
+            <td class="right"><?= $it['qCom'] ?><br><?= $it['uCom'] ?></td>
+            <td class="right"><?= $it['vUn'] ?></td>
+            <td class="right"><?= $it['vTot'] ?></td>
+          </tr>
         <?php endforeach; ?>
       </tbody>
     </table>
@@ -264,11 +447,26 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     <div class="hr"></div>
     <table class="tbl small">
       <tbody>
-        <tr><td><b>QTDE TOTAL DE ITENS</b></td><td class="right"><?= count($itens) ?></td></tr>
-        <tr><td><b>VALOR TOTAL R$</b></td><td class="right"><?= $vNF ?></td></tr>
-        <tr><td><b>FORMA PAGAMENTO</b></td><td class="right"><?= htmlspecialchars(mapTPag($tPag)) ?></td></tr>
-        <tr><td><b>VALOR PAGO R$</b></td><td class="right"><?= $vPag ?></td></tr>
-        <?php if($vTroco != '0,00'): ?><tr><td><b>TROCO R$</b></td><td class="right"><?= $vTroco ?></td></tr><?php endif; ?>
+        <tr>
+          <td><b>QTDE TOTAL DE ITENS</b></td>
+          <td class="right"><?= count($itens) ?></td>
+        </tr>
+        <tr>
+          <td><b>VALOR TOTAL R$</b></td>
+          <td class="right"><?= $vNF ?></td>
+        </tr>
+        <tr>
+          <td><b>FORMA PAGAMENTO</b></td>
+          <td class="right"><?= htmlspecialchars(mapTPag($tPag)) ?></td>
+        </tr>
+        <tr>
+          <td><b>VALOR PAGO R$</b></td>
+          <td class="right"><?= $vPag ?></td>
+        </tr>
+        <?php if ($vTroco != '0,00'): ?><tr>
+            <td><b>TROCO R$</b></td>
+            <td class="right"><?= $vTroco ?></td>
+          </tr><?php endif; ?>
       </tbody>
     </table>
 
@@ -279,7 +477,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     <div class="hr"></div>
     <div class="center small">
       <b>CONSUMIDOR</b><br>
-      <?php 
+      <?php
       $dN = strtoupper(trim($dest_nome));
       if ($dN !== '' && $dN !== 'CONSUMIDOR FINAL' && $dN !== 'CONSUMIDOR AVULSO' && $dN !== 'CONSUMIDOR NÃO IDENTIFICADO'): ?>
         <?= htmlspecialchars($dest_nome) ?><br>
@@ -292,20 +490,25 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     <div class="hr"></div>
     <div class="center small">Consulta via leitor de QR Code</div>
     <div id="qrcode"></div>
-    
+
     <div class="hr"></div>
     <?php if ($protInfo): ?><div class="small center"><?= htmlspecialchars($protInfo) ?></div><?php endif; ?>
-</div>
+  </div>
 
-<div class="actions">
+  <div class="actions">
     <button class="btn btn-secondary" onclick="if(window.history.length > 1) { window.history.back(); } else { window.close(); }">Voltar / Fechar</button>
     <a class="btn btn-secondary" href="danfe_a4.php?id=<?= urlencode($empresaIdUrl) ?>&venda_id=<?= (int)$vendaIdUrl ?>&chave=<?= urlencode($chave) ?>" target="_blank">Modelo SEFAZ (A4)</a>
     <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
-</div>
+  </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script>
-    new QRCode(document.getElementById("qrcode"), { text: <?= json_encode($qrTxt) ?>, width: 210, height: 210 });
-</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    new QRCode(document.getElementById("qrcode"), {
+      text: <?= json_encode($qrTxt) ?>,
+      width: 210,
+      height: 210
+    });
+  </script>
 </body>
+
 </html>
