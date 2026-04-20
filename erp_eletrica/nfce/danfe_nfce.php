@@ -412,221 +412,235 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>DANFE NFC-e</title>
   <style>
-    :root {
-      --ticket-screen-max: 384px;
-      --ticket-print-width: 80mm;
-      --pad: 10px;
-      --qr: 190px;
-      --accent: #1a73e8;
-      --ink: #111;
-      --paper: #fff;
-      --bg: #f5f7fb;
-    }
+  :root {
+    --ticket-screen-max: 384px;
+    --ticket-print-width: 80mm;
+    --pad: 10px;
+    --qr: 190px;
+    --accent: #1a73e8;
+    --ink: #111;
+    --paper: #fff;
+    --bg: #f5f7fb;
+  }
 
-    * {
-      box-sizing: border-box;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 13px/1.35 monospace;
+    height: auto;
+    min-height: 0;
+  }
+
+  body {
+    display: block;
+  }
+
+  .wrapper {
+    width: 100%;
+    max-width: var(--ticket-screen-max);
+    margin: 10px auto 92px auto;
+    background: var(--paper);
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
+    padding: var(--pad);
+    display: block;
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  .left {
+    text-align: left;
+  }
+
+  .right {
+    text-align: right;
+  }
+
+  .small {
+    font-size: 11px;
+  }
+
+  .hr {
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+    height: 0;
+  }
+
+  .tbl {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .tbl th {
+    border-bottom: 1px dashed #000;
+    padding: 4px 0;
+  }
+
+  .tbl td {
+    padding: 3px 0;
+    vertical-align: top;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .badge {
+    display: inline-block;
+    background: #eef2ff;
+    color: #1f2937;
+    padding: 3px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+  }
+
+  .nome_empresa {
+    margin: 0 0 4px 0;
+    font-size: 15px;
+    line-height: 1.25;
+    word-break: break-word;
+  }
+
+  .actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 10px;
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    z-index: 999;
+  }
+
+  .btn {
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+    font-size: 13px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .btn-secondary {
+    background: #e5e7eb;
+    color: #111;
+  }
+
+  #qrcode {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 6px auto;
+    width: var(--qr);
+    min-height: var(--qr);
+  }
+
+  #qrcode img,
+  #qrcode canvas {
+    display: block;
+    margin: 0 auto;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  @media print {
     html,
     body {
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      color: var(--ink);
-      font: 13px/1.35 monospace;
+      width: 80mm !important;
+      min-width: 80mm !important;
+      max-width: 80mm !important;
+      height: auto !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
+      overflow: hidden !important;
     }
 
     body {
-      min-height: 100vh;
+      display: inline-block !important;
+    }
+
+    body * {
+      visibility: hidden !important;
+    }
+
+    .wrapper,
+    .wrapper * {
+      visibility: visible !important;
     }
 
     .wrapper {
-      width: 100%;
-      max-width: var(--ticket-screen-max);
-      margin: 10px auto 92px auto;
-      background: var(--paper);
-      border-radius: 12px;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
-      padding: var(--pad);
-      display: block;
-    }
-
-    .center {
-      text-align: center;
-    }
-
-    .left {
-      text-align: left;
-    }
-
-    .right {
-      text-align: right;
-    }
-
-    .small {
-      font-size: 11px;
-    }
-
-    .hr {
-      border-top: 1px dashed #000;
-      margin: 6px 0;
-      height: 0;
-    }
-
-    .tbl {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-    }
-
-    .tbl th {
-      border-bottom: 1px dashed #000;
-      padding: 4px 0;
-    }
-
-    .tbl td {
-      padding: 3px 0;
-      vertical-align: top;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-    }
-
-    .badge {
-      display: inline-block;
-      background: #eef2ff;
-      color: #1f2937;
-      padding: 3px 6px;
-      border-radius: 6px;
-      font-size: 10px;
-    }
-
-    .nome_empresa {
-      margin: 0 0 4px 0;
-      font-size: 15px;
-      line-height: 1.25;
-      word-break: break-word;
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 80mm !important;
+      max-width: 80mm !important;
+      margin: 0 !important;
+      padding: 3mm 2mm 0 2mm !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      background: #fff !important;
+      display: block !important;
+      page-break-after: avoid !important;
+      break-after: avoid-page !important;
     }
 
     .actions {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      padding: 10px;
-      background: #fff;
-      border-top: 1px solid #e5e7eb;
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      z-index: 999;
+      display: none !important;
     }
 
-    .btn {
-      border: 0;
-      border-radius: 10px;
-      padding: 11px 16px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      font-family: inherit;
-      font-size: 13px;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-
-    .btn-secondary {
-      background: #e5e7eb;
-      color: #111;
+    .nome_empresa {
+      font-size: 13px !important;
     }
 
     #qrcode {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 6px auto;
-      width: var(--qr);
-      min-height: var(--qr);
+      width: 180px !important;
+      min-height: 180px !important;
+      margin: 4px auto !important;
     }
 
-    #qrcode img,
-    #qrcode canvas {
-      display: block;
-      margin: 0 auto;
+    .hr {
+      margin: 4px 0 !important;
     }
 
-    /* ============================= IMPRESSÃO ============================= */
-
-    @page {
-      size: 80mm auto;
-      margin: 0;
+    .tbl th,
+    .tbl td {
+      padding: 2px 0 !important;
     }
 
-    @media print {
-
-      html,
-      body {
-        width: 80mm !important;
-        min-width: 80mm !important;
-        max-width: 80mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff !important;
-        overflow: visible !important;
-      }
-
-      body {
-        display: block !important;
-      }
-
-      .actions {
-        display: none !important;
-      }
-
-      .wrapper {
-        width: 80mm !important;
-        max-width: 80mm !important;
-        margin: 0 !important;
-        padding: 3mm 2mm 1mm 2mm !important;
-        border: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        background: #fff !important;
-        page-break-after: avoid !important;
-        break-after: avoid-page !important;
-      }
-
-      .nome_empresa {
-        font-size: 13px !important;
-      }
-
-      #qrcode {
-        width: 180px !important;
-        min-height: 180px !important;
-        margin: 4px auto !important;
-      }
-
-      .hr {
-        margin: 4px 0 !important;
-      }
-
-      .tbl th,
-      .tbl td {
-        padding: 2px 0 !important;
-      }
-
-      /* evita sobra visual no final */
-      body::after,
-      .wrapper::after {
-        content: none !important;
-        display: none !important;
-      }
+    body::after,
+    .wrapper::after {
+      content: none !important;
+      display: none !important;
+      height: 0 !important;
     }
-  </style>
+  }
+</style>
 </head>
 
 <body>
