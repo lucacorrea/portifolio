@@ -399,12 +399,12 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         display: none
       }
 
-      .wrapper{
+      .wrapper {
         zoom: 110% !important;
         padding: 0 !important;
       }
 
-      .nome_empresa{
+      .nome_empresa {
         font-size: 13px !important;
       }
 
