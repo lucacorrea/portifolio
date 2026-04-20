@@ -8,43 +8,43 @@ declare(strict_types=1);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Produto - Centro do Eletricista</title>
+    <title>Leitor de Código de Barras</title>
 
     <style>
         :root {
-            --azul-principal: #294f87;
-            --azul-escuro: #19335a;
-            --azul-claro-bg: #bac5d4;
-            --amarelo: #f0c21b;
+            --azul: #294f87;
+            --azul-escuro: #18365f;
+            --azul-fundo: #b9c4d3;
+            --amarelo: #f2c318;
             --branco: #ffffff;
-            --cinza-borda: #d8dee7;
-            --cinza-texto: #62708a;
-            --cinza-suave: #eef3f9;
-            --verde: #1f9d55;
-            --vermelho: #d64545;
-            --sombra: 0 18px 45px rgba(20, 39, 71, 0.18);
-            --radius-lg: 22px;
-            --radius-md: 14px;
-            --radius-sm: 10px;
+            --texto: #243a5a;
+            --texto-suave: #687892;
+            --borda: #d7dfeb;
+            --cinza: #f5f8fc;
+            --sombra: 0 18px 45px rgba(17, 38, 70, .18);
         }
 
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            min-height: 100%;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: var(--azul-fundo);
+            color: var(--texto);
         }
 
         body {
-            font-family: "Segoe UI", Arial, sans-serif;
-            background: var(--azul-claro-bg);
-            color: var(--azul-escuro);
-            min-height: 100vh;
-            padding: 24px 16px;
+            padding: 20px 14px;
         }
 
-        .page-wrap {
-            width: 100%;
-            min-height: calc(100vh - 48px);
+        .page {
+            min-height: calc(100vh - 40px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -52,60 +52,59 @@ declare(strict_types=1);
 
         .card {
             width: 100%;
-            max-width: 720px;
+            max-width: 680px;
             background: var(--branco);
-            border-radius: var(--radius-lg);
+            border-radius: 24px;
             overflow: hidden;
             box-shadow: var(--sombra);
         }
 
-        .card-top {
-            background: var(--azul-principal);
-            padding: 30px 24px 26px;
+        .top {
+            background: var(--azul);
+            padding: 32px 20px 26px;
             text-align: center;
         }
 
-        .brand-box {
+        .logo-wrap {
+            min-height: 110px;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 110px;
         }
 
-        .brand-box img {
+        .logo-wrap img {
             max-width: 280px;
             width: 100%;
             height: auto;
             object-fit: contain;
         }
 
-        .brand-fallback {
+        .logo-fallback {
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             color: #fff;
-            gap: 8px;
         }
 
-        .brand-fallback .brand-main {
-            font-size: 1.9rem;
-            font-weight: 800;
-            letter-spacing: 0.5px;
+        .logo-fallback strong {
+            font-size: 1.7rem;
+            line-height: 1.1;
         }
 
-        .brand-fallback .brand-sub {
-            font-size: 0.92rem;
-            opacity: 0.9;
+        .logo-fallback span {
+            margin-top: 8px;
+            opacity: .9;
+            font-size: .95rem;
         }
 
-        .yellow-line {
+        .bar {
             height: 6px;
             background: var(--amarelo);
         }
 
-        .card-body {
-            padding: 34px 34px 30px;
+        .content {
+            padding: 34px 28px 28px;
         }
 
         .title {
@@ -118,9 +117,8 @@ declare(strict_types=1);
 
         .subtitle {
             text-align: center;
-            color: var(--cinza-texto);
-            font-size: 1rem;
-            line-height: 1.5;
+            color: var(--texto-suave);
+            line-height: 1.55;
             margin-bottom: 28px;
         }
 
@@ -130,646 +128,561 @@ declare(strict_types=1);
 
         .field label {
             display: block;
-            font-size: 0.94rem;
-            font-weight: 800;
-            color: var(--azul-escuro);
             margin-bottom: 8px;
+            font-size: .92rem;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.7px;
+            letter-spacing: .7px;
+            color: var(--azul-escuro);
         }
 
         .field input {
             width: 100%;
-            height: 58px;
-            border: 1px solid var(--cinza-borda);
-            border-radius: var(--radius-sm);
+            height: 60px;
+            border: 1px solid var(--borda);
+            border-radius: 14px;
             background: #f7f9fc;
-            padding: 0 16px;
-            font-size: 1.15rem;
-            color: var(--azul-escuro);
+            padding: 0 18px;
+            font-size: 1.12rem;
+            color: var(--texto);
             outline: none;
             transition: .2s ease;
         }
 
         .field input:focus {
-            border-color: var(--azul-principal);
-            box-shadow: 0 0 0 4px rgba(41, 79, 135, 0.12);
+            border-color: var(--azul);
             background: #fff;
+            box-shadow: 0 0 0 4px rgba(41, 79, 135, .12);
         }
 
-        .actions {
+        .buttons {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: 1fr 1fr;
             gap: 12px;
-            margin: 12px 0 20px;
+            margin-top: 8px;
         }
 
         .btn {
-            height: 56px;
-            border: 0;
-            border-radius: 12px;
-            font-size: 1.02rem;
+            height: 58px;
+            border: none;
+            border-radius: 14px;
+            font-size: 1rem;
             font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .4px;
             cursor: pointer;
             transition: .2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
         }
 
         .btn-primary {
-            background: var(--azul-principal);
+            background: var(--azul);
             color: #fff;
         }
 
         .btn-primary:hover {
-            background: #234273;
-            transform: translateY(-1px);
+            background: #214273;
         }
 
         .btn-secondary {
-            background: #e9eef5;
+            background: #e8eef6;
             color: var(--azul-escuro);
         }
 
         .btn-secondary:hover {
-            background: #dde6f1;
-            transform: translateY(-1px);
+            background: #dce6f1;
         }
 
-        .btn:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        .camera-panel {
-            border: 1px solid var(--cinza-borda);
-            border-radius: 16px;
+        .tip-box {
+            margin-top: 20px;
             background: #f8fbff;
-            padding: 14px;
-            margin-bottom: 18px;
+            border: 1px solid #e1e9f2;
+            border-radius: 16px;
+            padding: 16px 18px;
         }
 
-        .camera-panel.hidden {
-            display: none;
-        }
-
-        #reader {
-            width: 100%;
-            overflow: hidden;
-            border-radius: 14px;
-            background: #000;
-            min-height: 260px;
-        }
-
-        .camera-tip {
-            margin-top: 10px;
-            text-align: center;
-            color: var(--cinza-texto);
-            font-size: 0.92rem;
-        }
-
-        .status-box {
-            display: none;
-            border-radius: 12px;
-            padding: 14px 16px;
-            margin-bottom: 18px;
-            font-weight: 700;
-            line-height: 1.45;
-        }
-
-        .status-box.show {
-            display: block;
-        }
-
-        .status-info {
-            background: #eef4ff;
-            color: #2d4f85;
-            border: 1px solid #d6e3ff;
-        }
-
-        .status-success {
-            background: #edf9f1;
-            color: #167a42;
-            border: 1px solid #c9efd5;
-        }
-
-        .status-error {
-            background: #fff1f1;
-            color: #b73636;
-            border: 1px solid #ffd0d0;
-        }
-
-        .empty-state {
-            border: 1px dashed #cfd8e4;
-            border-radius: 18px;
-            padding: 26px 20px;
-            text-align: center;
-            background: #fafcff;
-        }
-
-        .empty-state.hidden {
-            display: none;
-        }
-
-        .empty-icon {
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            background: #edf3fa;
-            color: var(--azul-principal);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 14px;
-            font-size: 2rem;
-            font-weight: 900;
-        }
-
-        .empty-state h3 {
-            font-size: 1.15rem;
+        .tip-box h3 {
+            font-size: 1rem;
+            color: var(--azul-escuro);
             margin-bottom: 6px;
         }
 
-        .empty-state p {
-            color: var(--cinza-texto);
+        .tip-box p {
+            color: var(--texto-suave);
+            line-height: 1.55;
+            font-size: .95rem;
+        }
+
+        .status {
+            margin-top: 16px;
+            display: none;
+            border-radius: 14px;
+            padding: 14px 16px;
+            font-weight: 700;
             line-height: 1.5;
         }
 
-        .product-card {
+        .status.show {
+            display: block;
+        }
+
+        .status.info {
+            background: #eef4ff;
+            border: 1px solid #d7e4ff;
+            color: #2c4f86;
+        }
+
+        .status.error {
+            background: #fff2f2;
+            border: 1px solid #ffd7d7;
+            color: #b33a3a;
+        }
+
+        .camera-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #000;
             display: none;
-            grid-template-columns: 220px 1fr;
-            gap: 22px;
-            align-items: stretch;
-            border: 1px solid var(--cinza-borda);
-            border-radius: 18px;
-            padding: 20px;
-            background: #fff;
-            box-shadow: 0 10px 30px rgba(31, 56, 98, 0.08);
         }
 
-        .product-card.show {
-            display: grid;
+        .camera-overlay.show {
+            display: block;
         }
 
-        .product-image-wrap {
-            background: #f7f9fc;
-            border: 1px solid #e4eaf2;
-            border-radius: 16px;
-            padding: 12px;
-            min-height: 220px;
+        .camera-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
             display: flex;
             align-items: center;
-            justify-content: center;
-        }
-
-        .product-image-wrap img {
-            max-width: 100%;
-            max-height: 200px;
-            object-fit: contain;
-            display: block;
-        }
-
-        .product-info {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .badge-found {
-            align-self: flex-start;
-            background: #e9f8ee;
-            color: var(--verde);
-            border: 1px solid #c7ecd5;
-            border-radius: 999px;
-            padding: 8px 12px;
-            font-size: 0.82rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-        }
-
-        .product-name {
-            font-size: 1.65rem;
-            line-height: 1.25;
-            color: var(--azul-escuro);
-            font-weight: 800;
-        }
-
-        .meta-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            justify-content: space-between;
             gap: 12px;
+            padding: 16px 14px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, .75), rgba(0, 0, 0, 0));
         }
 
-        .meta-item {
-            background: #f6f9fd;
-            border: 1px solid #e4ebf3;
-            border-radius: 12px;
-            padding: 12px 14px;
+        .camera-title {
+            color: #fff;
         }
 
-        .meta-label {
+        .camera-title strong {
             display: block;
-            color: var(--cinza-texto);
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            margin-bottom: 4px;
-            font-weight: 700;
-        }
-
-        .meta-value {
             font-size: 1rem;
-            color: var(--azul-escuro);
-            font-weight: 800;
-            word-break: break-word;
+            margin-bottom: 2px;
         }
 
-        .price-box {
-            margin-top: 2px;
-            background: linear-gradient(135deg, #294f87 0%, #1d3d6b 100%);
-            border-radius: 16px;
-            padding: 18px 20px;
+        .camera-title span {
+            font-size: .88rem;
+            opacity: .92;
+        }
+
+        .camera-close {
+            border: none;
+            background: rgba(255, 255, 255, .18);
             color: #fff;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            font-size: 1.4rem;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
         }
 
-        .price-label {
-            display: block;
-            font-size: 0.84rem;
-            opacity: 0.88;
-            text-transform: uppercase;
-            letter-spacing: 0.9px;
-            margin-bottom: 4px;
-            font-weight: 700;
+        #reader {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
         }
 
-        .price-value {
-            font-size: 2rem;
-            font-weight: 900;
+        #reader video,
+        #reader canvas {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+
+        .scan-guide {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: min(88vw, 760px);
+            height: min(28vw, 180px);
+            max-height: 180px;
+            transform: translate(-50%, -50%);
+            border: 3px solid rgba(255, 255, 255, .92);
+            border-radius: 18px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, .30);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            top: 50%;
+            height: 2px;
+            background: #ff3b3b;
+            box-shadow: 0 0 12px rgba(255, 59, 59, .9);
+            animation: scanLine 2.2s linear infinite;
+        }
+
+        @keyframes scanLine {
+            0% {
+                transform: translateY(-70px);
+            }
+
+            50% {
+                transform: translateY(70px);
+            }
+
+            100% {
+                transform: translateY(-70px);
+            }
+        }
+
+        .camera-footer {
+            position: absolute;
+            left: 14px;
+            right: 14px;
+            bottom: 18px;
+            z-index: 20;
+            background: rgba(0, 0, 0, .52);
             color: #fff;
-        }
-
-        .footer-note {
+            border-radius: 18px;
+            padding: 14px 16px;
             text-align: center;
-            margin-top: 22px;
-            color: var(--cinza-texto);
-            font-size: 0.92rem;
+            font-size: .94rem;
+            line-height: 1.45;
+            backdrop-filter: blur(8px);
         }
 
         @media (max-width: 768px) {
-            .card-body {
+            .content {
                 padding: 26px 18px 22px;
             }
 
             .title {
-                font-size: 1.6rem;
+                font-size: 1.55rem;
             }
 
-            .actions {
+            .buttons {
                 grid-template-columns: 1fr;
             }
 
-            .product-card {
-                grid-template-columns: 1fr;
+            .scan-guide {
+                height: 110px;
+                width: 90vw;
             }
 
-            .meta-grid {
-                grid-template-columns: 1fr;
-            }
+            @keyframes scanLine {
+                0% {
+                    transform: translateY(-42px);
+                }
 
-            .product-image-wrap {
-                min-height: 200px;
-            }
+                50% {
+                    transform: translateY(42px);
+                }
 
-            .price-value {
-                font-size: 1.7rem;
+                100% {
+                    transform: translateY(-42px);
+                }
             }
         }
     </style>
 </head>
 
 <body>
-    <div class="page-wrap">
+    <div class="page">
         <main class="card">
-            <div class="card-top">
-                <div class="brand-box">
+            <div class="top">
+                <div class="logo-wrap">
                     <img
                         src="assets/img/logo-centro-eletricista.png"
                         alt="Centro do Eletricista"
-                        onerror="this.style.display='none'; document.getElementById('brandFallback').style.display='flex';">
-                    <div class="brand-fallback" id="brandFallback">
-                        <div class="brand-main">CENTRO DO ELETRICISTA</div>
-                        <div class="brand-sub">Consulta rápida de produtos</div>
+                        onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
+                    <div class="logo-fallback" id="logoFallback">
+                        <strong>CENTRO DO ELETRICISTA</strong>
+                        <span>Consulta rápida de produtos</span>
                     </div>
                 </div>
             </div>
 
-            <div class="yellow-line"></div>
+            <div class="bar"></div>
 
-            <div class="card-body">
-                <h1 class="title">CONSULTA DE PRODUTO</h1>
+            <div class="content">
+                <h1 class="title">LEITOR DE CÓDIGO</h1>
                 <p class="subtitle">
-                    Aponte a câmera para o código de barras do produto ou digite o código manualmente.
+                    Leia o código de barras com a câmera ou digite o código do produto.
+                    Assim que o sistema identificar o código, a consulta abre automaticamente.
                 </p>
 
                 <div class="field">
-                    <label for="codigoManual">Código de barras</label>
+                    <label for="codigo">Código do produto</label>
                     <input
                         type="text"
-                        id="codigoManual"
+                        id="codigo"
                         inputmode="numeric"
                         autocomplete="off"
-                        placeholder="Leia ou digite o código do produto">
+                        placeholder="Digite ou escaneie o código">
                 </div>
 
-                <div class="actions">
-                    <button class="btn btn-primary" id="btnAbrirCamera" type="button">Abrir leitor</button>
-                    <button class="btn btn-secondary" id="btnPararCamera" type="button" disabled>Parar leitor</button>
-                    <button class="btn btn-primary" id="btnConsultar" type="button">Consultar produto</button>
-                    <button class="btn btn-secondary" id="btnLimpar" type="button">Limpar</button>
+                <div class="buttons">
+                    <button class="btn btn-primary" id="btnCamera" type="button">Ler com câmera</button>
+                    <button class="btn btn-secondary" id="btnLimpar" type="button">Limpar código</button>
                 </div>
 
-                <div class="camera-panel hidden" id="cameraPanel">
-                    <div id="reader"></div>
-                    <div class="camera-tip">
-                        Posicione o código de barras dentro da área de leitura.
-                    </div>
-                </div>
+                <div class="status info" id="statusBox"></div>
 
-                <div class="status-box" id="statusBox"></div>
-
-                <div class="empty-state" id="emptyState">
-                    <div class="empty-icon">📦</div>
-                    <h3>Aguardando consulta</h3>
+                <div class="tip-box">
+                    <h3>Como funciona</h3>
                     <p>
-                        Assim que o código for lido, o sistema mostrará aqui o nome, valor e imagem do produto.
+                        Ao tocar em <strong>Ler com câmera</strong>, a câmera abre em tela cheia.
+                        Quando o código for reconhecido, a página do produto abre automaticamente.
+                        Ao digitar manualmente, o sistema também redireciona sozinho após a digitação parar.
                     </p>
-                </div>
-
-                <div class="product-card" id="productCard">
-                    <div class="product-image-wrap">
-                        <img id="produtoImagem" src="" alt="Imagem do produto">
-                    </div>
-
-                    <div class="product-info">
-                        <span class="badge-found">Produto encontrado</span>
-
-                        <h2 class="product-name" id="produtoNome">-</h2>
-
-                        <div class="meta-grid">
-                            <div class="meta-item">
-                                <span class="meta-label">Código interno</span>
-                                <span class="meta-value" id="produtoCodigo">-</span>
-                            </div>
-
-                            <div class="meta-item">
-                                <span class="meta-label">Código de barras</span>
-                                <span class="meta-value" id="produtoCean">-</span>
-                            </div>
-
-                            <div class="meta-item">
-                                <span class="meta-label">Categoria</span>
-                                <span class="meta-value" id="produtoCategoria">-</span>
-                            </div>
-
-                            <div class="meta-item">
-                                <span class="meta-label">Unidade</span>
-                                <span class="meta-value" id="produtoUnidade">-</span>
-                            </div>
-                        </div>
-
-                        <div class="price-box">
-                            <span class="price-label">Valor de venda</span>
-                            <div class="price-value" id="produtoValor">R$ 0,00</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="footer-note">
-                    Centro do Eletricista • Consulta rápida no ambiente da loja
                 </div>
             </div>
         </main>
     </div>
 
-    <script src="https://unpkg.com/html5-qrcode" defer></script>
-    <script>
-        const apiUrl = 'api/consultar_produto.php';
+    <div class="camera-overlay" id="cameraOverlay">
+        <div class="camera-header">
+            <div class="camera-title">
+                <strong>Leitor ativo</strong>
+                <span>Aponte a câmera para o código de barras</span>
+            </div>
 
-        const codigoInput = document.getElementById('codigoManual');
-        const btnAbrir = document.getElementById('btnAbrirCamera');
-        const btnParar = document.getElementById('btnPararCamera');
-        const btnConsultar = document.getElementById('btnConsultar');
+            <button type="button" class="camera-close" id="btnFecharCamera" aria-label="Fechar câmera">×</button>
+        </div>
+
+        <div id="reader"></div>
+
+        <div class="scan-guide">
+            <div class="scan-line"></div>
+        </div>
+
+        <div class="camera-footer">
+            Posicione o código dentro da área destacada. Ao reconhecer, a consulta será aberta automaticamente.
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        const inputCodigo = document.getElementById('codigo');
+        const btnCamera = document.getElementById('btnCamera');
         const btnLimpar = document.getElementById('btnLimpar');
-        const cameraPanel = document.getElementById('cameraPanel');
+        const btnFecharCamera = document.getElementById('btnFecharCamera');
+        const cameraOverlay = document.getElementById('cameraOverlay');
         const statusBox = document.getElementById('statusBox');
-        const emptyState = document.getElementById('emptyState');
-        const productCard = document.getElementById('productCard');
 
         let html5QrCode = null;
         let cameraAtiva = false;
-        let ultimoCodigo = '';
-        let ultimoTempo = 0;
-
-        function normalizarCodigo(valor) {
-            return String(valor || '').trim();
-        }
+        let redirecionando = false;
+        let timerDigitacao = null;
+        let ultimoCodigoLido = '';
+        let ultimoTempoLeitura = 0;
 
         function mostrarStatus(texto, tipo = 'info') {
-            statusBox.className = 'status-box show';
+            statusBox.className = 'status show ' + tipo;
             statusBox.textContent = texto;
-
-            if (tipo === 'success') {
-                statusBox.classList.add('status-success');
-            } else if (tipo === 'error') {
-                statusBox.classList.add('status-error');
-            } else {
-                statusBox.classList.add('status-info');
-            }
         }
 
-        function ocultarStatus() {
-            statusBox.className = 'status-box';
+        function esconderStatus() {
+            statusBox.className = 'status';
             statusBox.textContent = '';
         }
 
-        function limparResultado() {
-            productCard.classList.remove('show');
-            emptyState.classList.remove('hidden');
-            document.getElementById('produtoImagem').src = '';
-            document.getElementById('produtoNome').textContent = '-';
-            document.getElementById('produtoCodigo').textContent = '-';
-            document.getElementById('produtoCean').textContent = '-';
-            document.getElementById('produtoCategoria').textContent = '-';
-            document.getElementById('produtoUnidade').textContent = '-';
-            document.getElementById('produtoValor').textContent = 'R$ 0,00';
+        function normalizarCodigo(valor) {
+            return String(valor || '').trim().replace(/\s+/g, '');
         }
 
-        function preencherProduto(produto) {
-            document.getElementById('produtoImagem').src = produto.imagem || '';
-            document.getElementById('produtoImagem').alt = produto.nome || 'Produto';
-            document.getElementById('produtoNome').textContent = produto.nome || '-';
-            document.getElementById('produtoCodigo').textContent = produto.codigo || '-';
-            document.getElementById('produtoCean').textContent = produto.cean || '-';
-            document.getElementById('produtoCategoria').textContent = produto.categoria || '-';
-            document.getElementById('produtoUnidade').textContent = produto.unidade || '-';
-            document.getElementById('produtoValor').textContent = produto.preco_venda_formatado || 'R$ 0,00';
+        function irParaProduto(codigo) {
+            if (redirecionando) return;
 
-            emptyState.classList.add('hidden');
-            productCard.classList.add('show');
-        }
-
-        async function consultarProduto(codigo) {
             const codigoFinal = normalizarCodigo(codigo);
 
-            if (!codigoFinal) {
-                mostrarStatus('Informe ou leia um código de barras para consultar.', 'error');
-                limparResultado();
+            if (!codigoFinal || codigoFinal.length < 3) {
                 return;
             }
 
-            mostrarStatus('Consultando produto...', 'info');
-
-            try {
-                const formData = new FormData();
-                formData.append('codigo', codigoFinal);
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                const data = await response.json();
-
-                if (!response.ok || !data.ok) {
-                    throw new Error(data.message || 'Produto não encontrado.');
-                }
-
-                preencherProduto(data.produto);
-                mostrarStatus('Produto localizado com sucesso.', 'success');
-            } catch (error) {
-                limparResultado();
-                mostrarStatus(error.message || 'Não foi possível consultar o produto.', 'error');
-            }
+            redirecionando = true;
+            window.location.href = 'produto_consulta.php?codigo=' + encodeURIComponent(codigoFinal);
         }
 
-        async function iniciarCamera() {
-            if (cameraAtiva) return;
+        async function abrirCamera() {
+            if (cameraAtiva || redirecionando) return;
 
             if (typeof Html5Qrcode === 'undefined') {
-                mostrarStatus('O leitor de código ainda não carregou. Recarregue a página.', 'error');
+                mostrarStatus('O leitor não carregou corretamente. Atualize a página.', 'error');
                 return;
             }
 
-            cameraPanel.classList.remove('hidden');
-            ocultarStatus();
+            esconderStatus();
+            cameraOverlay.classList.add('show');
 
             try {
                 html5QrCode = new Html5Qrcode('reader');
 
                 await html5QrCode.start({
-                        facingMode: 'environment'
+                        facingMode: {
+                            exact: "environment"
+                        }
                     }, {
                         fps: 10,
-                        qrbox: {
-                            width: 280,
-                            height: 140
-                        },
-                        aspectRatio: 1.7,
+                        aspectRatio: 1.777,
+                        disableFlip: false,
                         rememberLastUsedCamera: true,
-                        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-                        formatsToSupport: [
-                            Html5QrcodeSupportedFormats.EAN_13,
-                            Html5QrcodeSupportedFormats.EAN_8,
-                            Html5QrcodeSupportedFormats.UPC_A,
-                            Html5QrcodeSupportedFormats.UPC_E,
-                            Html5QrcodeSupportedFormats.CODE_128,
-                            Html5QrcodeSupportedFormats.CODE_39
-                        ]
+                        qrbox: (viewfinderWidth, viewfinderHeight) => {
+                            const largura = Math.min(viewfinderWidth * 0.88, 760);
+                            const altura = Math.min(viewfinderHeight * 0.22, 180);
+                            return {
+                                width: largura,
+                                height: altura
+                            };
+                        }
                     },
                     (decodedText) => {
-                        const codigoLido = normalizarCodigo(decodedText);
+                        const codigo = normalizarCodigo(decodedText);
                         const agora = Date.now();
 
-                        if (!codigoLido) return;
+                        if (!codigo) return;
 
-                        if (codigoLido === ultimoCodigo && (agora - ultimoTempo) < 2500) {
+                        if (codigo === ultimoCodigoLido && (agora - ultimoTempoLeitura) < 2000) {
                             return;
                         }
 
-                        ultimoCodigo = codigoLido;
-                        ultimoTempo = agora;
-
-                        codigoInput.value = codigoLido;
+                        ultimoCodigoLido = codigo;
+                        ultimoTempoLeitura = agora;
+                        inputCodigo.value = codigo;
 
                         if (navigator.vibrate) {
                             navigator.vibrate(120);
                         }
 
-                        consultarProduto(codigoLido);
+                        irParaProduto(codigo);
                     },
                     () => {}
                 );
 
                 cameraAtiva = true;
-                btnAbrir.disabled = true;
-                btnParar.disabled = false;
-                mostrarStatus('Leitor de código ativo. Aponte para o produto.', 'info');
-            } catch (error) {
-                cameraPanel.classList.add('hidden');
-                mostrarStatus('Não foi possível acessar a câmera do aparelho.', 'error');
+            } catch (erro1) {
+                try {
+                    html5QrCode = new Html5Qrcode('reader');
+
+                    await html5QrCode.start({
+                            facingMode: "environment"
+                        }, {
+                            fps: 10,
+                            aspectRatio: 1.777,
+                            disableFlip: false,
+                            rememberLastUsedCamera: true,
+                            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                                const largura = Math.min(viewfinderWidth * 0.88, 760);
+                                const altura = Math.min(viewfinderHeight * 0.22, 180);
+                                return {
+                                    width: largura,
+                                    height: altura
+                                };
+                            }
+                        },
+                        (decodedText) => {
+                            const codigo = normalizarCodigo(decodedText);
+                            const agora = Date.now();
+
+                            if (!codigo) return;
+
+                            if (codigo === ultimoCodigoLido && (agora - ultimoTempoLeitura) < 2000) {
+                                return;
+                            }
+
+                            ultimoCodigoLido = codigo;
+                            ultimoTempoLeitura = agora;
+                            inputCodigo.value = codigo;
+
+                            if (navigator.vibrate) {
+                                navigator.vibrate(120);
+                            }
+
+                            irParaProduto(codigo);
+                        },
+                        () => {}
+                    );
+
+                    cameraAtiva = true;
+                } catch (erro2) {
+                    cameraOverlay.classList.remove('show');
+                    mostrarStatus('Não foi possível acessar a câmera deste aparelho.', 'error');
+                }
             }
         }
 
-        async function pararCamera() {
-            if (!html5QrCode || !cameraAtiva) return;
+        async function fecharCamera() {
+            cameraOverlay.classList.remove('show');
 
-            try {
-                await html5QrCode.stop();
-                await html5QrCode.clear();
-            } catch (e) {
-                // ignora
+            if (html5QrCode && cameraAtiva) {
+                try {
+                    await html5QrCode.stop();
+                } catch (e) {}
+
+                try {
+                    await html5QrCode.clear();
+                } catch (e) {}
             }
 
             html5QrCode = null;
             cameraAtiva = false;
-            cameraPanel.classList.add('hidden');
-            btnAbrir.disabled = false;
-            btnParar.disabled = true;
-            mostrarStatus('Leitor de código parado.', 'info');
         }
 
-        btnAbrir.addEventListener('click', iniciarCamera);
-        btnParar.addEventListener('click', pararCamera);
+        function agendarConsultaAutomatica() {
+            if (redirecionando) return;
 
-        btnConsultar.addEventListener('click', () => {
-            consultarProduto(codigoInput.value);
+            clearTimeout(timerDigitacao);
+
+            timerDigitacao = setTimeout(() => {
+                const codigo = normalizarCodigo(inputCodigo.value);
+
+                if (codigo.length >= 3) {
+                    irParaProduto(codigo);
+                }
+            }, 900);
+        }
+
+        btnCamera.addEventListener('click', abrirCamera);
+        btnFecharCamera.addEventListener('click', fecharCamera);
+
+        btnLimpar.addEventListener('click', () => {
+            inputCodigo.value = '';
+            esconderStatus();
+            inputCodigo.focus();
         });
 
-        btnLimpar.addEventListener('click', async () => {
-            codigoInput.value = '';
-            limparResultado();
-            ocultarStatus();
-            ultimoCodigo = '';
-            ultimoTempo = 0;
+        inputCodigo.addEventListener('input', () => {
+            agendarConsultaAutomatica();
         });
 
-        codigoInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                consultarProduto(codigoInput.value);
+        inputCodigo.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(timerDigitacao);
+                irParaProduto(inputCodigo.value);
             }
         });
 
-        limparResultado();
+        window.addEventListener('beforeunload', () => {
+            if (html5QrCode && cameraAtiva) {
+                try {
+                    html5QrCode.stop();
+                } catch (e) {}
+            }
+        });
+
+        inputCodigo.focus();
     </script>
 </body>
 
