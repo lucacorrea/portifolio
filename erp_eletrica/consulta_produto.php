@@ -8,7 +8,7 @@ declare(strict_types=1);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Produto - Centro do Eletricista</title>
+    <title>Leitor de Código de Barras</title>
 
     <style>
         :root {
@@ -447,61 +447,35 @@ declare(strict_types=1);
                         Ao digitar manualmente, o sistema também redireciona sozinho após a digitação parar.
                     </p>
                 </div>
-
-                <div class="product-card" id="productCard">
-                    <div class="product-image-wrap">
-                        <img id="produtoImagem" src="" alt="Imagem do produto">
-                    </div>
-
-                    <div class="product-info">
-                        <span class="badge-found">Produto encontrado</span>
-
-                        <h2 class="product-name" id="produtoNome">-</h2>
-
-                        <div class="meta-grid">
-                            <div class="meta-item">
-                                <span class="meta-label">Código interno</span>
-                                <span class="meta-value" id="produtoCodigo">-</span>
-                            </div>
-
-                            <div class="meta-item">
-                                <span class="meta-label">Código de barras</span>
-                                <span class="meta-value" id="produtoCean">-</span>
-                            </div>
-
-                            <div class="meta-item">
-                                <span class="meta-label">Categoria</span>
-                                <span class="meta-value" id="produtoCategoria">-</span>
-                            </div>
-
-                            <div class="meta-item">
-                                <span class="meta-label">Unidade</span>
-                                <span class="meta-value" id="produtoUnidade">-</span>
-                            </div>
-                        </div>
-
-                        <div class="price-box">
-                            <span class="price-label">Valor de venda</span>
-                            <div class="price-value" id="produtoValor">R$ 0,00</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="footer-note">
-                    Centro do Eletricista • Consulta rápida no ambiente da loja
-                </div>
             </div>
         </main>
     </div>
 
-    <script src="https://unpkg.com/html5-qrcode" defer></script>
-    <script>
-        const apiUrl = 'api/consultar_produto.php';
+    <div class="camera-overlay" id="cameraOverlay">
+        <div class="camera-header">
+            <div class="camera-title">
+                <strong>Leitor ativo</strong>
+                <span>Aponte a câmera para o código de barras</span>
+            </div>
 
-        const codigoInput = document.getElementById('codigoManual');
-        const btnAbrir = document.getElementById('btnAbrirCamera');
-        const btnParar = document.getElementById('btnPararCamera');
-        const btnConsultar = document.getElementById('btnConsultar');
+            <button type="button" class="camera-close" id="btnFecharCamera" aria-label="Fechar câmera">×</button>
+        </div>
+
+        <div id="reader"></div>
+
+        <div class="scan-guide">
+            <div class="scan-line"></div>
+        </div>
+
+        <div class="camera-footer">
+            Posicione o código dentro da área destacada. Ao reconhecer, a consulta será aberta automaticamente.
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        const inputCodigo = document.getElementById('codigo');
+        const btnCamera = document.getElementById('btnCamera');
         const btnLimpar = document.getElementById('btnLimpar');
         const btnFecharCamera = document.getElementById('btnFecharCamera');
         const cameraOverlay = document.getElementById('cameraOverlay');
@@ -528,55 +502,17 @@ declare(strict_types=1);
             return String(valor || '').trim().replace(/\s+/g, '');
         }
 
-        function preencherProduto(produto) {
-            document.getElementById('produtoImagem').src = produto.imagem || '';
-            document.getElementById('produtoImagem').alt = produto.nome || 'Produto';
-            document.getElementById('produtoNome').textContent = produto.nome || '-';
-            document.getElementById('produtoCodigo').textContent = produto.codigo || '-';
-            document.getElementById('produtoCean').textContent = produto.cean || '-';
-            document.getElementById('produtoCategoria').textContent = produto.categoria || '-';
-            document.getElementById('produtoUnidade').textContent = produto.unidade || '-';
-            document.getElementById('produtoValor').textContent = produto.preco_venda_formatado || 'R$ 0,00';
+        function irParaProduto(codigo) {
+            if (redirecionando) return;
 
-            emptyState.classList.add('hidden');
-            productCard.classList.add('show');
-        }
-
-        async function consultarProduto(codigo) {
             const codigoFinal = normalizarCodigo(codigo);
 
-            if (!codigoFinal) {
-                mostrarStatus('Informe ou leia um código de barras para consultar.', 'error');
-                limparResultado();
+            if (!codigoFinal || codigoFinal.length < 3) {
                 return;
             }
 
-            mostrarStatus('Consultando produto...', 'info');
-
-            try {
-                const formData = new FormData();
-                formData.append('codigo', codigoFinal);
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                const data = await response.json();
-
-                if (!response.ok || !data.ok) {
-                    throw new Error(data.message || 'Produto não encontrado.');
-                }
-
-                preencherProduto(data.produto);
-                mostrarStatus('Produto localizado com sucesso.', 'success');
-            } catch (error) {
-                limparResultado();
-                mostrarStatus(error.message || 'Não foi possível consultar o produto.', 'error');
-            }
+            redirecionando = true;
+            window.location.href = 'produto.php?codigo=' + encodeURIComponent(codigoFinal);
         }
 
         async function abrirCamera() {
