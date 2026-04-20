@@ -62,14 +62,12 @@
             </select>
         </form>
         <div class="d-flex gap-2 w-100 w-md-auto">
-            <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
             <button class="btn btn-primary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#newProductModal">
                 <i class="fas fa-plus me-2"></i>Novo
             </button>
             <button class="btn btn-outline-secondary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#movementModal">
                 <i class="fas fa-right-left me-2"></i>Movimentar
             </button>
-            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -116,9 +114,7 @@
                         <th>Categoria</th>
                         <th class="text-center">Quantidade</th>
                         <th>Preços (C / V)</th>
-                        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
                         <th class="text-end pe-4">Ações</th>
-                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -162,7 +158,6 @@
                             <div class="text-muted small">C: <?= formatarMoeda($p['preco_custo']) ?></div>
                             <div class="fw-bold text-success">V: <?= formatarMoeda($p['preco_venda']) ?></div>
                         </td>
-                        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
                         <td class="text-end pe-4">
                             <div class="dropstart">
                                 <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -187,7 +182,6 @@
                                 </ul>
                             </div>
                         </td>
-                        <?php endif; ?>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
