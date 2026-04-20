@@ -43,7 +43,10 @@ class TransferenciasController extends BaseController {
             // check erp_transferencias_ocorrencias columns
             $colsOc = $this->pdo->query("DESCRIBE erp_transferencias_ocorrencias")->fetchAll(\PDO::FETCH_COLUMN);
             if (!in_array('foto', $colsOc)) {
-                $this->pdo->exec("ALTER TABLE erp_transferencias_ocorrencias ADD COLUMN foto VARCHAR(255) DEFAULT NULL");
+                $this->pdo->exec("ALTER TABLE erp_transferencias_ocorrencias ADD COLUMN foto TEXT DEFAULT NULL");
+            } else {
+                // Se já existe, garante que seja TEXT para suportar JSON de múltiplas fotos
+                $this->pdo->exec("ALTER TABLE erp_transferencias_ocorrencias MODIFY COLUMN foto TEXT DEFAULT NULL");
             }
         } catch (\Exception $e) {
             // Tabela erp_transferencias não existe, cria do zero
@@ -88,7 +91,7 @@ class TransferenciasController extends BaseController {
                 quantidade_problema DECIMAL(10,3) NOT NULL,
                 motivo VARCHAR(100) DEFAULT 'defeito',
                 descricao TEXT,
-                foto VARCHAR(255) DEFAULT NULL,
+                foto TEXT DEFAULT NULL,
                 data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 KEY idx_transf (transferencia_id)
             );
@@ -530,17 +533,23 @@ class TransferenciasController extends BaseController {
 
             foreach ($itens_problema as $produto_id => $oc) {
                 if (!empty($oc['selecionado']) && $oc['quantidade'] > 0) {
-                    $fotoPath = null;
+                    $fotosArray = [];
                     
-                    // Tenta capturar foto específica deste produto
-                    $fileKey = "ocorrencias_{$produto_id}_foto";
-                    if (isset($_FILES[$fileKey]) && $_FILES[$fileKey]['error'] === UPLOAD_ERR_OK) {
-                        $ext = pathinfo($_FILES[$fileKey]['name'], PATHINFO_EXTENSION);
-                        $newName = "prob_" . $transf_id . "_" . $produto_id . "_" . time() . "." . $ext;
-                        $dest = $uploadDir . $newName;
-                        
-                        if (move_uploaded_file($_FILES[$fileKey]['tmp_name'], $dest)) {
-                            $fotoPath = $dest;
+                    // Tenta capturar fotos (múltiplas) deste produto
+                    // Como usamos name="ocorrencias_ID_fotos[]", o PHP agrupa no $_FILES
+                    $fileKey = "ocorrencias_{$produto_id}_fotos";
+                    
+                    if (isset($_FILES[$fileKey]) && is_array($_FILES[$fileKey]['name'])) {
+                        foreach ($_FILES[$fileKey]['name'] as $idx => $name) {
+                            if ($_FILES[$fileKey]['error'][$idx] === UPLOAD_ERR_OK) {
+                                $ext = pathinfo($name, PATHINFO_EXTENSION);
+                                $newName = "prob_" . $transf_id . "_" . $produto_id . "_" . time() . "_" . $idx . "." . $ext;
+                                $dest = $uploadDir . $newName;
+                                
+                                if (move_uploaded_file($_FILES[$fileKey]['tmp_name'][$idx], $dest)) {
+                                    $fotosArray[] = $dest;
+                                }
+                            }
                         }
                     }
 
@@ -550,7 +559,7 @@ class TransferenciasController extends BaseController {
                         $oc['quantidade'], 
                         $oc['motivo'] ?? 'defeito', 
                         $oc['descricao'] ?? '',
-                        $fotoPath
+                        !empty($fotosArray) ? json_encode($fotosArray) : null
                     ]);
                 }
             }

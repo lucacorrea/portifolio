@@ -691,8 +691,8 @@ function abrirModalRelato(id, codigo) {
                                         <input type="text" name="ocorrencias[${item.produto_id}][descricao]" class="form-control form-control-sm" placeholder="Observação curta sobre este item...">
                                     </div>
                                     <div class="col-12 mt-1">
-                                        <label class="extra-small text-muted d-block"><i class="fas fa-camera me-1"></i>Foto do Item com Defeito</label>
-                                        <input type="file" name="ocorrencias_${item.produto_id}_foto" class="form-control form-control-sm" accept="image/*">
+                                        <label class="extra-small text-muted d-block"><i class="fas fa-camera me-1"></i>Fotos do Item com Defeito (Selecionar uma ou mais)</label>
+                                        <input type="file" name="ocorrencias_${item.produto_id}_fotos[]" class="form-control form-control-sm" accept="image/*" multiple>
                                     </div>
                                 </div>
                             </div>
@@ -887,12 +887,30 @@ function abrirDetalhesTransferencia(id) {
                                 </div>
                             </div>
                             <div class="col-4 text-end">
-                                ${oc.foto ? `
-                                    <div class="extra-small text-muted text-uppercase fw-bold mb-1">Evidência</div>
-                                    <div class="product-zoom-container d-inline-block rounded border overflow-hidden bg-white shadow-sm" style="width: 80px; height: 80px; cursor: pointer;" title="Clique para expandir">
-                                        <img src="${oc.foto}" style="width: 100%; height: 100%; object-fit: contain;">
-                                    </div>
-                                ` : ''}
+                                ${oc.foto ? (() => {
+                                    try {
+                                        const fotos = JSON.parse(oc.foto);
+                                        if (Array.isArray(fotos)) {
+                                            return `
+                                                <div class="extra-small text-muted text-uppercase fw-bold mb-1">Evidências (${fotos.length})</div>
+                                                <div class="d-flex flex-wrap justify-content-end gap-1">
+                                                    ${fotos.map(f => `
+                                                        <div class="product-zoom-container d-inline-block rounded border overflow-hidden bg-white shadow-sm" style="width: 50px; height: 50px; cursor: pointer;" title="Clique para expandir">
+                                                            <img src="${f}" style="width: 100%; height: 100%; object-fit: contain;">
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                            `;
+                                        }
+                                    } catch(e) {}
+                                    // Fallback para uma única foto (legado)
+                                    return `
+                                        <div class="extra-small text-muted text-uppercase fw-bold mb-1">Evidência</div>
+                                        <div class="product-zoom-container d-inline-block rounded border overflow-hidden bg-white shadow-sm" style="width: 80px; height: 80px; cursor: pointer;" title="Clique para expandir">
+                                            <img src="${oc.foto}" style="width: 100%; height: 100%; object-fit: contain;">
+                                        </div>
+                                    `;
+                                })() : ''}
                             </div>
                         </div>
                     </div>
