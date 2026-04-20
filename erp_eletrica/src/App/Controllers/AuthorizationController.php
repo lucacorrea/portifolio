@@ -16,7 +16,7 @@ class AuthorizationController extends BaseController {
             $data = json_decode(file_get_contents('php://input'), true);
             $tipo = $data['tipo'] ?? 'desconto';
             
-            if (!in_array($tipo, ['desconto', 'sangria'])) {
+            if (!in_array($tipo, ['desconto', 'sangria', 'suprimento', 'cancelamento'])) {
                 echo json_encode(['success' => false, 'error' => 'Tipo de autorização inválido.']);
                 exit;
             }
