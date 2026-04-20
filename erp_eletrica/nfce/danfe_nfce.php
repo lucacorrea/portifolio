@@ -399,7 +399,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
       }
 
       .wrapper{
-        zoom: 116% !important;
+        zoom: 110% !important;
       }
 
       .nome_empresa{
