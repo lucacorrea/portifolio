@@ -307,7 +307,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     .wrapper {
       width: 100%;
       max-width: var(--ticket-max);
-      margin: 10px auto 92px;
+      margin: 3px auto 92px;
       background: var(--paper);
       border-radius: 12px;
       box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
