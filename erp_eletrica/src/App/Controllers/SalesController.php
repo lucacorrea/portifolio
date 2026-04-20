@@ -533,6 +533,10 @@ class SalesController extends BaseController {
             $sale = $saleModel->findById($id);
             if (!$sale) throw new \Exception("Venda não encontrada.");
             
+            // Modelo de cancelamento: 'por_chave' (Padrão), 'por_substituicao', 'por_motivo' (Interno)
+            $modelo = $data['modelo'] ?? 'por_chave'; 
+            $chaveSubst = $data['chave_substituta'] ?? null;
+
             // 2. Busca qualquer rastro de autorização (100 ou 150) na tabela de notas
             $stF = $db->prepare("SELECT id FROM nfce_emitidas WHERE venda_id = ? AND TRIM(status_sefaz) IN ('100', '150') LIMIT 1");
             $stF->execute([$id]);
@@ -540,10 +544,10 @@ class SalesController extends BaseController {
 
             $isAlreadyCancelled = ($sale['status'] === 'cancelado');
             $requestTipo = $data['tipo'] ?? $sale['tipo_nota'];
-            $isFiscal = ($requestTipo === 'fiscal' || $sale['tipo_nota'] === 'fiscal' || $hasFiscalRecord);
+            $isFiscalMode = ($modelo !== 'por_motivo' && ($requestTipo === 'fiscal' || $sale['tipo_nota'] === 'fiscal' || $hasFiscalRecord));
 
-            // Permite prosseguir mesmo se já estiver cancelada, focado no fiscal.
-            if ($isFiscal) {
+            // Fluxo Fiscal (SEFAZ)
+            if ($isFiscalMode) {
                 try {
                     // Prepara ambiente para carregar as bibliotecas de NF-e
                     $nfceDir = dirname(__DIR__, 3) . '/nfce';
@@ -565,7 +569,7 @@ class SalesController extends BaseController {
                     if ($nfceEmitida) {
                         $chave = $nfceEmitida['chave'];
                         $protocolo = $nfceEmitida['protocolo'];
-                        $xJust = (strlen($motivo) < 15) ? $motivo . " para cancelamento" : $motivo;
+                        $xJust = (mb_strlen($motivo) < 15) ? str_pad($motivo, 15, '.') : $motivo;
                         
                         $configJson = json_encode([
                             'atualizacao' => date('Y-m-d H:i:s'),
@@ -581,11 +585,20 @@ class SalesController extends BaseController {
                         $tools = new \NFePHP\NFe\Tools($configJson, \NFePHP\Common\Certificate::readPfx($cert, PFX_PASSWORD));
                         $tools->model('65');
                         
-                        $response = $tools->sefazCancela($chave, $xJust, $protocolo);
-                        $dom = new \DOMDocument();
-                        $dom->loadXML($response);
-                        $cStat = $dom->getElementsByTagName('cStat')->item(0)->nodeValue;
-                        $xMotivo = $dom->getElementsByTagName('xMotivo')->item(0)->nodeValue;
+                        if ($modelo === 'por_substituicao') {
+                            if (!$chaveSubst || strlen($chaveSubst) !== 44) {
+                                throw new \Exception("Chave substituta inválida ou não informada.");
+                            }
+                            $response = $tools->sefazCancelSubst($chave, $protocolo, $chaveSubst, $xJust);
+                        } else {
+                            $response = $tools->sefazCancela($chave, $xJust, $protocolo);
+                        }
+
+                        $std = new \NFePHP\NFe\Common\Standardize();
+                        $res = $std->toStd($response);
+                        
+                        $cStat = (string)($res->retEvento->infEvento->cStat ?? $res->cStat ?? '');
+                        $xMotivo = (string)($res->retEvento->infEvento->xMotivo ?? $res->xMotivo ?? 'Erro desconhecido na SEFAZ');
 
                         $sucessoSefaz = in_array($cStat, ['135', '136', '101', '128', '155']);
                         if (!$sucessoSefaz) {
