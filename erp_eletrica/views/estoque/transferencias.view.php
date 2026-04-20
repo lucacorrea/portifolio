@@ -690,6 +690,10 @@ function abrirModalRelato(id, codigo) {
                                     <div class="col-12 mt-1">
                                         <input type="text" name="ocorrencias[${item.produto_id}][descricao]" class="form-control form-control-sm" placeholder="Observação curta sobre este item...">
                                     </div>
+                                    <div class="col-12 mt-1">
+                                        <label class="extra-small text-muted d-block"><i class="fas fa-camera me-1"></i>Fotos do Item com Defeito (Selecionar uma ou mais)</label>
+                                        <input type="file" name="ocorrencias_${item.produto_id}_fotos[]" class="form-control form-control-sm" accept="image/*" multiple>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -816,6 +820,29 @@ function abrirDetalhesTransferencia(id) {
             badge.innerText = t.status.toUpperCase().replace('_', ' ');
             badge.className = 'badge bg-' + (t.status === 'concluida' ? 'success' : (t.status === 'em_transito' ? 'warning text-dark' : 'primary'));
 
+            // Timeline items
+            const timeline = document.getElementById('det_timeline');
+            const steps = [
+                { label: 'Solicitado', date: t.data_solicitacao, icon: 'file-invoice' },
+                { label: 'Aprovado', date: t.data_aprovacao, icon: 'check-double' },
+                { label: 'Despachado', date: t.data_envio, icon: 'truck-loading' },
+                { label: 'Finalizado', date: t.data_recebimento, icon: 'box-open' }
+            ];
+
+            timeline.innerHTML = steps.map((s, idx) => {
+                const isActive = s.date !== null;
+                const isLast = idx === steps.length - 1;
+                return `
+                    <div class="flex-grow-1 text-center position-relative ${!isLast ? 'border-end' : ''}" style="z-index: 2;">
+                        <div class="mb-1">
+                            <i class="fas fa-${s.icon} ${isActive ? 'text-primary' : 'text-muted opacity-25'} fs-5"></i>
+                        </div>
+                        <div class="extra-small fw-bold ${isActive ? 'text-dark' : 'text-muted opacity-50'}">${s.label}</div>
+                        <div class="extra-small text-muted" style="font-size: 9px;">${s.date ? new Date(s.date).toLocaleDateString() : '---'}</div>
+                    </div>
+                `;
+            }).join('');
+
             // Itens
             const tbody = document.getElementById('det_tbody_items');
             tbody.innerHTML = res.items.map(it => `
@@ -838,13 +865,54 @@ function abrirDetalhesTransferencia(id) {
             if (res.ocorrencias && res.ocorrencias.length > 0) {
                 secaoOc.classList.remove('d-none');
                 document.getElementById('det_lista_ocorrencias').innerHTML = res.ocorrencias.map(oc => `
-                    <div class="alert alert-danger bg-opacity-10 border-danger border-opacity-25 p-2 mb-2 small">
-                        <div class="d-flex justify-content-between">
-                            <strong>${oc.nome}</strong>
-                            <span class="badge bg-danger">${parseFloat(oc.quantidade_problema)} UN</span>
+                    <div class="border rounded-3 p-3 mb-3 bg-white shadow-sm border-danger-subtle">
+                        <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px; font-size: 10px;">
+                                    <i class="fas fa-exclamation"></i>
+                                </div>
+                                <strong class="text-dark small">${oc.nome}</strong>
+                            </div>
+                            <span class="badge bg-danger rounded-pill px-3">${parseFloat(oc.quantidade_problema)} UN</span>
                         </div>
-                        <div class="extra-small mt-1 text-uppercase fw-bold opacity-75">${oc.motivo}</div>
-                        <div class="mt-1">"${oc.descricao}"</div>
+                        
+                        <div class="row g-2">
+                            <div class="col-8">
+                                <div class="extra-small text-muted text-uppercase fw-bold mb-1">Motivo do Relato</div>
+                                <div class="small fw-bold text-danger text-uppercase mb-2">${oc.motivo}</div>
+                                
+                                <div class="extra-small text-muted text-uppercase fw-bold mb-1">Descrição Detalhada</div>
+                                <div class="small text-dark bg-light p-2 rounded border-start border-3 border-danger">
+                                    ${oc.descricao || '<em class="text-muted">Sem descrição detalhada.</em>'}
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                ${oc.foto ? (() => {
+                                    try {
+                                        const fotos = JSON.parse(oc.foto);
+                                        if (Array.isArray(fotos)) {
+                                            return `
+                                                <div class="extra-small text-muted text-uppercase fw-bold mb-1">Evidências (${fotos.length})</div>
+                                                <div class="d-flex flex-wrap justify-content-end gap-1">
+                                                    ${fotos.map(f => `
+                                                        <div class="product-zoom-container d-inline-block rounded border overflow-hidden bg-white shadow-sm" style="width: 50px; height: 50px; cursor: pointer;" title="Clique para expandir">
+                                                            <img src="${f}" style="width: 100%; height: 100%; object-fit: contain;">
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                            `;
+                                        }
+                                    } catch(e) {}
+                                    // Fallback para uma única foto (legado)
+                                    return `
+                                        <div class="extra-small text-muted text-uppercase fw-bold mb-1">Evidência</div>
+                                        <div class="product-zoom-container d-inline-block rounded border overflow-hidden bg-white shadow-sm" style="width: 80px; height: 80px; cursor: pointer;" title="Clique para expandir">
+                                            <img src="${oc.foto}" style="width: 100%; height: 100%; object-fit: contain;">
+                                        </div>
+                                    `;
+                                })() : ''}
+                            </div>
+                        </div>
                     </div>
                 `).join('');
             } else {
@@ -1028,7 +1096,7 @@ function abrirProcessarRecebimento(id) {
 <div class="modal fade" id="modalRelato" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
-            <form action="transferencias.php?action=relatar_problema" method="POST">
+            <form action="transferencias.php?action=relatar_problema" method="POST" enctype="multipart/form-data">
                 <div class="modal-header bg-danger text-white border-0">
                     <h6 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Relatar Problema na Entrega</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -1116,12 +1184,22 @@ function abrirProcessarRecebimento(id) {
                     <!-- Resumo Status -->
                     <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded shadow-sm border">
                         <div>
-                            <span class="extra-small text-muted d-block text-uppercase fw-bold">Status Atual</span>
-                            <span id="det_status_badge" class="badge">---</span>
+                            <span class="extra-small text-muted d-block text-uppercase fw-bold text-primary">Status do Pedido</span>
+                            <span id="det_status_badge" class="badge p-2 px-3 fs-6">---</span>
                         </div>
                         <div class="text-end">
-                            <span class="extra-small text-muted d-block text-uppercase fw-bold">Data da Solicitação</span>
-                            <span id="det_data" class="small fw-bold">---</span>
+                            <span class="extra-small text-muted d-block text-uppercase fw-bold text-primary">Data de Abertura</span>
+                            <span id="det_data" class="small fw-bold text-dark">---</span>
+                        </div>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-3 extra-small text-muted text-uppercase d-flex align-items-center">
+                            <i class="fas fa-clock-rotate-left me-2 text-primary"></i>Rastro da Operação
+                        </h6>
+                        <div id="det_timeline" class="d-flex justify-content-between align-items-center position-relative px-2 py-3 bg-white border rounded">
+                            <!-- Timeline steps will be injected here -->
                         </div>
                     </div>
 
