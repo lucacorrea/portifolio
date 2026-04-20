@@ -311,7 +311,6 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
       background: var(--paper);
       border-radius: 12px;
       box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
-      padding: var(--pad)
     }
 
     .center {
