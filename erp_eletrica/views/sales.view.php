@@ -1936,3 +1936,19 @@ pdvSearch.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') handleBarcode(pdvSearch.value);
 });
 </script>
+
+<style>
+    .cancel-choice-card {
+        transition: all 0.2s ease;
+        border-width: 2px !important;
+        cursor: pointer;
+    }
+    .cancel-choice-card:hover {
+        border-color: var(--erp-primary) !important;
+        background-color: #f8faff;
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .extra-small { font-size: 0.75rem; }
+    .uppercase { text-transform: uppercase; }
+</style>
