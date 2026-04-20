@@ -229,7 +229,7 @@ class VendaFiadoController extends BaseController {
                 exit;
             }
 
-            try {
+            $this->executeSafe(function() use ($id, $valorPago, $metodo, $model, $debito) {
                 $db = \App\Config\Database::getInstance()->getConnection();
                 $db->beginTransaction();
 
@@ -241,7 +241,7 @@ class VendaFiadoController extends BaseController {
                     'metodo' => $metodo
                 ]);
 
-                // Register in cashier movement if payment is in cash and there is an open box for the branch
+                // Register in cashier movement
                 if ($metodo === 'DINHEIRO') {
                     $cashierModel = new \App\Models\Cashier();
                     $caixaAberto = $cashierModel->getOpenForFilial($_SESSION['filial_id'] ?? 1);
@@ -268,7 +268,6 @@ class VendaFiadoController extends BaseController {
                     'data_pagamento' => ($status === 'pago') ? date('Y-m-d') : null
                 ]);
 
-                // Record audit log
                 $audit = new AuditLogService();
                 $audit->record('Pagamento fiado', 'contas_receber', $id, json_encode($debito), json_encode([
                     'valor_pago_agora' => $valorPago,
@@ -278,15 +277,8 @@ class VendaFiadoController extends BaseController {
                 ]));
 
                 $db->commit();
-                header('Content-Type: application/json');
-                if (ob_get_length()) ob_clean();
-                echo json_encode(['ok' => true, 'msg' => 'Pagamento registrado com sucesso.']);
-            } catch (\Exception $e) {
-                if ($db->inTransaction()) $db->rollBack();
-                header('Content-Type: application/json');
-                if (ob_get_length()) ob_clean();
-                echo json_encode(['ok' => false, 'msg' => 'Erro ao processar pagamento: ' . $e->getMessage()]);
-            }
+                $this->jsonResponse(true, 'Pagamento registrado com sucesso.');
+            });
             exit;
         }
     }

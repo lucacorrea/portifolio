@@ -124,6 +124,9 @@
         };
     </script>
 
+    <!-- ERP Service Notifications Container (Toasts) -->
+    <div id="erp-toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11000;"></div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- ERP Offline Bridge (MUST load before other scripts to intercept fetch) -->

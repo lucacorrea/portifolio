@@ -352,46 +352,52 @@
                 return;
             }
 
-            let html = '<nav><ul class="pagination pagination-sm mb-0 justify-content-center">';
+            const current = data.page;
+            const total = data.totalPages;
+
+            let html = '<div class="d-flex flex-column flex-md-row align-items-center justify-content-center gap-3">';
+            html += '<ul class="pagination pagination-sm mb-0">';
             
             // Botão Anterior
-            html += `<li class="page-item ${data.page === 1 ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="loadSales(${data.page - 1}); return false;"><i class="fas fa-chevron-left small"></i></a>
+            html += `<li class="page-item ${current === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadSales(${current - 1}); return false;"><i class="fas fa-chevron-left small"></i></a>
             </li>`;
 
-            const maxVisible = 5;
-            let start = Math.max(1, data.page - 2);
-            let end = Math.min(data.totalPages, start + maxVisible - 1);
-
-            if (end - start < maxVisible - 1) {
-                start = Math.max(1, end - maxVisible + 1);
+            // Smart Numbers
+            let links = [];
+            links.push(1);
+            if (current > 4) links.push('...');
+            for (let i = Math.max(2, current - 2); i <= Math.min(total - 1, current + 2); i++) {
+                links.push(i);
             }
+            if (current < total - 3) links.push('...');
+            if (total > 1) links.push(total);
 
-            // Primeira página + ...
-            if (start > 1) {
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadSales(1); return false;">1</a></li>`;
-                if (start > 2) html += '<li class="page-item disabled"><span class="page-link border-0">...</span></li>';
-            }
-
-            // Páginas numéricas
-            for (let i = start; i <= end; i++) {
-                html += `<li class="page-item ${i === data.page ? 'active' : ''}">
-                    <a class="page-link fw-bold" href="#" onclick="loadSales(${i}); return false;">${i}</a>
-                </li>`;
-            }
-
-            // ... + Última página
-            if (end < data.totalPages) {
-                if (end < data.totalPages - 1) html += '<li class="page-item disabled"><span class="page-link border-0">...</span></li>';
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadSales(${data.totalPages}); return false;">${data.totalPages}</a></li>`;
-            }
+            links.forEach(link => {
+                if (link === '...') {
+                    html += '<li class="page-item disabled"><span class="page-link border-0">...</span></li>';
+                } else {
+                    html += `<li class="page-item ${link === current ? 'active' : ''}">
+                        <a class="page-link fw-bold" href="#" onclick="loadSales(${link}); return false;">${link}</a>
+                    </li>`;
+                }
+            });
 
             // Botão Próximo
-            html += `<li class="page-item ${data.page === data.totalPages ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="loadSales(${data.page + 1}); return false;"><i class="fas fa-chevron-right small"></i></a>
+            html += `<li class=\"page-item ${current === total ? 'disabled' : ''}">
+                <a class=\"page-link\" href=\"#\" onclick=\"loadSales(${current + 1}); return false;\"><i class=\"fas fa-chevron-right small\"></i></a>
             </li>`;
+            html += '</ul>';
 
-            html += '</ul></nav>';
+            // Go to Page Input
+            html += '<div class="d-flex align-items-center gap-2">';
+            html += '<span class="text-muted small text-nowrap">Ir para:</span>';
+            html += `<input type="number" class="form-control form-control-sm text-center" style="width: 60px;" min="1" max="${total}" value="${current}" 
+                        onkeydown="if(event.key==='Enter') loadSales(this.value)">`;
+            html += `<button class="btn btn-sm btn-outline-secondary" onclick="loadSales(this.previousElementSibling.value)"><i class="fas fa-arrow-right"></i></button>`;
+            html += '</div>';
+
+            html += '</div>';
             paginationArea.innerHTML = html;
         }
 

@@ -120,3 +120,84 @@ window.togglePasswordVisibility = function(button) {
         icon.classList.add('fa-eye');
     }
 };
+
+/**
+ * ERP Global Notification System (Toasts)
+ */
+window.erpNotify = function(type, message) {
+    const container = document.getElementById('erp-toast-container');
+    if (!container) return;
+
+    const id = 'toast-' + Date.now();
+    const config = {
+        success: { icon: 'fa-check-circle', class: 'bg-success' },
+        danger:  { icon: 'fa-exclamation-circle', class: 'bg-danger' },
+        warning: { icon: 'fa-exclamation-triangle', class: 'bg-warning text-dark' },
+        info:    { icon: 'fa-info-circle', class: 'bg-info text-white' }
+    };
+    
+    const style = config[type] || config.info;
+    
+    const html = `
+        <div id="${id}" class="toast align-items-center text-white ${style.class} border-0 shadow-lg mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center">
+                    <i class="fas ${style.icon} me-2 fs-5"></i>
+                    <div>${message}</div>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', html);
+    const toastEl = document.getElementById(id);
+    const bsToast = new bootstrap.Toast(toastEl, { delay: 6000 });
+    bsToast.show();
+    
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+};
+
+/**
+ * Robust fetch wrapper with automatic error handling
+ */
+window.erpFetch = async function(url, options = {}) {
+    const defaultOptions = {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    };
+    
+    const mergedOptions = { ...defaultOptions, ...options };
+    mergedOptions.headers = { ...defaultOptions.headers, ...options.headers };
+
+    try {
+        const response = await fetch(url, mergedOptions);
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            const errorMsg = (data && data.message) ? data.message : `Erro no servidor (${response.status})`;
+            erpNotify('danger', errorMsg);
+            throw new Error(errorMsg);
+        }
+
+        if (data && data.success === false) {
+            erpNotify('warning', data.message || 'Operação não concluída.');
+        }
+
+        return data;
+    } catch (error) {
+        if (!navigator.onLine) {
+            erpNotify('danger', 'Você está offline. Verifique sua conexão.');
+        } else if (error.name === 'AbortError') {
+            console.warn('Requisição abortada');
+        } else {
+            console.error('Fetch error:', error);
+            if (!error.message.includes('Erro no servidor')) {
+                erpNotify('danger', 'Falha de comunicação com o servidor.');
+            }
+        }
+        throw error;
+    }
+};

@@ -18,7 +18,8 @@ const CRITICAL_PAGES = [
     'vendas.php',
     'pre_vendas.php',
     'caixa.php',
-    'estoque.php'
+    'estoque.php',
+    'consulta_produto.php'
 ];
 
 // Assets estáticos essenciais para pré-cachear
@@ -26,6 +27,8 @@ const CRITICAL_ASSETS = [
     'public/css/corporate.css',
     'public/js/offline-bridge.js',
     'public/js/corporate.js',
+    'public/img/app-icon.png',
+    'manifest.json',
     'script.js',
     'style.css'
 ];
@@ -38,7 +41,8 @@ function isCriticalPage(url) {
         return path.endsWith('vendas.php') || 
                path.endsWith('pre_vendas.php') || 
                path.endsWith('caixa.php') ||
-               path.endsWith('estoque.php');
+               path.endsWith('estoque.php') ||
+               path.endsWith('consulta_produto.php');
     } catch(e) { return false; }
 }
 
