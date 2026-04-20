@@ -21,20 +21,47 @@ $stmt = $pdo->prepare("
     WHERE a.id = ?
 ");
 $stmt->execute([$id]);
-$aq = $stmt->fetch();
+$aq = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$aq) {
     die('Aquisição não encontrada.');
 }
 
+/*
+|--------------------------------------------------------------------------
+| ITENS DA AQUISIÇÃO COM UNIDADE VINDO DE itens_oficio
+|--------------------------------------------------------------------------
+| Como itens_aquisicao não possui coluna unidade, buscamos a unidade
+| correspondente em itens_oficio usando:
+| - o mesmo oficio_id da aquisição
+| - o mesmo produto
+|
+| Se não encontrar, assume 'UN'.
+|--------------------------------------------------------------------------
+*/
 $stmt_items = $pdo->prepare("
-    SELECT *
-    FROM itens_aquisicao
-    WHERE aquisicao_id = ?
-    ORDER BY id ASC
+    SELECT
+        ia.*,
+        COALESCE(
+            (
+                SELECT io.unidade
+                FROM itens_oficio io
+                WHERE io.oficio_id = :oficio_id
+                  AND TRIM(UPPER(io.produto)) = TRIM(UPPER(ia.produto))
+                ORDER BY io.id ASC
+                LIMIT 1
+            ),
+            'UN'
+        ) AS unidade
+    FROM itens_aquisicao ia
+    WHERE ia.aquisicao_id = :aquisicao_id
+    ORDER BY ia.id ASC
 ");
-$stmt_items->execute([$id]);
-$items = $stmt_items->fetchAll();
+$stmt_items->execute([
+    ':oficio_id'    => (int) $aq['oficio_id'],
+    ':aquisicao_id' => $id
+]);
+$items = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
 
 $page_title = 'Aquisição: ' . $aq['numero_aq'];
 
@@ -50,14 +77,14 @@ function money_br($value): string
 
 function render_itens_aquisicao_table(array $items, float $valorTotal): void
 {
-    ?>
+?>
     <div class="ordem-items-wrap">
         <table class="ordem-items-table">
             <thead>
                 <tr>
                     <th style="text-align: center; width: 40px;">Item</th>
-                    <th style="text-align: center; width: 50px;">Unid.</th>
-                    <th style="text-align: center; width: 60px;">Qtd</th>
+                    <th style="text-align: center; width: 70px;">Unid.</th>
+                    <th style="text-align: center; width: 70px;">Qtd</th>
                     <th style="text-align: center;">Especificação Completa</th>
                     <th style="text-align: center; width: 110px;">Preço Unitário</th>
                     <th style="text-align: center; width: 110px;">Valor Total</th>
@@ -72,24 +99,36 @@ function render_itens_aquisicao_table(array $items, float $valorTotal): void
                     <?php $i = 1; ?>
                     <?php foreach ($items as $item): ?>
                         <?php
-                        $quantidade = (float) ($item['quantidade'] ?? 0);
+                        $quantidade    = (float) ($item['quantidade'] ?? 0);
                         $valorUnitario = (float) ($item['valor_unitario'] ?? 0);
-                        $valorItem = $quantidade * $valorUnitario;
+                        $valorItem     = $quantidade * $valorUnitario;
+                        $unidade       = trim((string) ($item['unidade'] ?? 'UN'));
+
+                        if ($unidade === '') {
+                            $unidade = 'UN';
+                        }
                         ?>
                         <tr>
                             <td style="text-align: center; font-weight: 700; color: #333;">
                                 <?= str_pad((string) $i++, 2, '0', STR_PAD_LEFT) ?>
                             </td>
-                            <td style="text-align: center; font-weight: 600; color: #555;">UN</td>
+
+                            <td style="text-align: center; font-weight: 600; color: #555;">
+                                <?= h(strtoupper($unidade)) ?>
+                            </td>
+
                             <td style="text-align: center; font-weight: 700;">
                                 <?= number_format($quantidade, 0, ',', '.') ?>
                             </td>
+
                             <td style="font-weight: 600;">
                                 <?= h(strtoupper((string) ($item['produto'] ?? ''))) ?>
                             </td>
+
                             <td style="text-align: center;">
                                 <?= money_br($valorUnitario) ?>
                             </td>
+
                             <td style="text-align: center; font-weight: 700;">
                                 <?= money_br($valorItem) ?>
                             </td>
@@ -108,12 +147,11 @@ function render_itens_aquisicao_table(array $items, float $valorTotal): void
             </tbody>
         </table>
     </div>
-    <?php
+<?php
 }
 
 include 'views/layout/header.php';
 ?>
-
 <style>
     .print-topbar {
         margin-bottom: 2rem;
@@ -282,7 +320,7 @@ include 'views/layout/header.php';
 
         .ordem-right,
         .ordem-logo,
-        .ordem-header > div:first-child {
+        .ordem-header>div:first-child {
             text-align: center;
             justify-self: center;
             margin-right: 0;
