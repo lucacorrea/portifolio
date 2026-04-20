@@ -842,22 +842,41 @@ function abrirDetalhesTransferencia(id) {
             if (res.ocorrencias && res.ocorrencias.length > 0) {
                 secaoOc.classList.remove('d-none');
                 document.getElementById('det_lista_ocorrencias').innerHTML = res.ocorrencias.map(oc => `
-                    <div class="alert alert-danger bg-opacity-10 border-danger border-opacity-25 p-2 mb-2 small">
-                        <div class="d-flex justify-content-between">
-                            <strong>${oc.nome}</strong>
-                            <span class="badge bg-danger">${parseFloat(oc.quantidade_problema)} UN</span>
+                    <div class="border rounded-3 p-3 mb-3 bg-white shadow-sm border-danger-subtle">
+                        <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px; font-size: 10px;">
+                                    <i class="fas fa-exclamation"></i>
+                                </div>
+                                <strong class="text-dark small">${oc.nome}</strong>
+                            </div>
+                            <span class="badge bg-danger rounded-pill px-3">${parseFloat(oc.quantidade_problema)} UN</span>
                         </div>
-                        <div class="extra-small mt-1 text-uppercase fw-bold opacity-75">${oc.motivo}</div>
-                        <div class="mt-1">"${oc.descricao}"</div>
-                        ${oc.foto ? `
-                            <div class="mt-2 text-center">
-                                <div class="product-zoom-container d-inline-block rounded border overflow-hidden bg-white shadow-sm" style="width: 100px; height: 100px; cursor: pointer;">
-                                    <img src="${oc.foto}" style="width: 100%; height: 100%; object-fit: contain;">
+                        
+                        <div class="row g-2">
+                            <div class="col-8">
+                                <div class="extra-small text-muted text-uppercase fw-bold mb-1">Motivo do Relato</div>
+                                <div class="small fw-bold text-danger text-uppercase mb-2">${oc.motivo}</div>
+                                
+                                <div class="extra-small text-muted text-uppercase fw-bold mb-1">Descrição Detalhada</div>
+                                <div class="small text-dark bg-light p-2 rounded border-start border-3 border-danger">
+                                    ${oc.descricao || '<em class="text-muted">Sem descrição detalhada.</em>'}
                                 </div>
                             </div>
-                        ` : ''}
+                            <div class="col-4 text-end">
+                                ${oc.foto ? `
+                                    <div class="extra-small text-muted text-uppercase fw-bold mb-1">Evidência</div>
+                                    <div class="product-zoom-container d-inline-block rounded border overflow-hidden bg-white shadow-sm" style="width: 80px; height: 80px; cursor: pointer;" title="Clique para expandir">
+                                        <img src="${oc.foto}" style="width: 100%; height: 100%; object-fit: contain;">
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
                     </div>
                 `).join('');
+            } else {
+                secaoOc.classList.add('d-none');
+            }
             } else {
                 secaoOc.classList.add('d-none');
             }
