@@ -512,7 +512,7 @@ declare(strict_types=1);
             }
 
             redirecionando = true;
-            window.location.href = 'produto.php?codigo=' + encodeURIComponent(codigoFinal);
+            window.location.href = 'produto_consulta.php?codigo=' + encodeURIComponent(codigoFinal);
         }
 
         async function abrirCamera() {
