@@ -130,8 +130,15 @@ class SettingController extends BaseController {
                 $audit->record('Configurações Globais de Certificado Atualizadas', 'configuracoes');
             } else {
                 // Save to Branch Config
-                $sql = "UPDATE filiais SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc_token = ?";
-                $params = [(string)$dataSefaz['ambiente'], $dataSefaz['certificado_senha'], $dataSefaz['csc_id'], $dataSefaz['csc_token']];
+                $sql = "UPDATE filiais SET ambiente = ?, certificado_senha = ?, csc_id = ?, csc_token = ?, serie_nfce = ?, ultimo_numero_nfce = ?";
+                $params = [
+                    (string)$dataSefaz['ambiente'], 
+                    $dataSefaz['certificado_senha'], 
+                    $dataSefaz['csc_id'], 
+                    $dataSefaz['csc_token'],
+                    $dataSefaz['serie_nfce'],
+                    $dataSefaz['ultimo_numero_nfce']
+                ];
                 if (isset($dataSefaz['certificado_pfx'])) {
                     $sql .= ", certificado_pfx = ?";
                     $params[] = $dataSefaz['certificado_pfx'];
