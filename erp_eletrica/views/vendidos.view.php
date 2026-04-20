@@ -313,6 +313,11 @@
                                     <i class="fas fa-exclamation-triangle me-1"></i>ERRO SEFAZ
                                  </span>` : ''
                             }
+                            ${(s.status === 'cancelado' && s.nf_status === '101') ? 
+                                `<span class="badge bg-success bg-opacity-10 text-success extra-small border border-success border-opacity-25" title="O cancelamento desta nota foi homologado com sucesso na SEFAZ.">
+                                    <i class="fas fa-check-circle me-1"></i>SEFAZ CANCELADA
+                                 </span>` : ''
+                            }
                         </div>
                     </td>
                     <td class="text-end">

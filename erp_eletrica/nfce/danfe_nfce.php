@@ -107,21 +107,23 @@ if (!empty($_GET['arq'])) {
 } elseif ($vendaIdUrl > 0) {
   try {
     $stNF = $pdo->prepare("
-      SELECT chave
+      SELECT chave, status_sefaz
       FROM nfce_emitidas
       WHERE venda_id = ?
-        AND status_sefaz IN ('100', '150')
+        AND status_sefaz IN ('100', '150', '101')
       ORDER BY id DESC
       LIMIT 1
     ");
     $stNF->execute([$vendaIdUrl]);
 
-    $chave = (string)$stNF->fetchColumn();
+    $nfData = $stNF->fetch(PDO::FETCH_ASSOC);
+    $chave = (string)($nfData['chave'] ?? '');
+    $isCancelada = ($nfData['status_sefaz'] ?? '') == '101';
 
     if ($chave !== '') {
       $file = $base . 'procNFCe_' . $chave . '.xml';
     } else {
-      $error = "Nenhuma nota fiscal autorizada foi encontrada para a venda #{$vendaIdUrl}.";
+      $error = "Nenhuma nota fiscal autorizada ou cancelada foi encontrada para a venda #{$vendaIdUrl}.";
     }
   } catch (Throwable $e) {
     $error = "Erro ao buscar dados da nota: " . $e->getMessage();
@@ -546,6 +548,21 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     color: #111;
   }
 
+  .banner-cancelada {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 2px solid #b91c1c;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 16px;
+    text-transform: uppercase;
+    display: block;
+    width: 100%;
+  }
+
   #qrcode {
     display: flex;
     justify-content: center;
@@ -645,6 +662,11 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 
 <body>
   <div class="wrapper" id="ticket">
+    <?php if (isset($isCancelada) && $isCancelada): ?>
+      <div class="banner-cancelada">
+        ⚠️ ESTA NOTA FOI CANCELADA NA SEFAZ ⚠️
+      </div>
+    <?php endif; ?>
     <header class="center">
       <h2 class="nome_empresa"><?= htmlspecialchars($emit_xFant ?: $emit_xNome, ENT_QUOTES, 'UTF-8') ?></h2>
       <div class="small">
