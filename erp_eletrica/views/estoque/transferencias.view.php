@@ -877,9 +877,6 @@ function abrirDetalhesTransferencia(id) {
             } else {
                 secaoOc.classList.add('d-none');
             }
-            } else {
-                secaoOc.classList.add('d-none');
-            }
 
             // Obs
             document.getElementById('det_observacao').innerText = t.observacoes || 'Nenhuma observação registrada.';
