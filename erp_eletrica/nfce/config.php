@@ -108,11 +108,16 @@ if (empty($global) && empty($filial)) {
     die();
 }
 
-// Mescla as configurações (Herança Inteligente: Filial só sobrescreve se tiver valor)
+// Mescla as configurações (Herança Inteligente: Filial sobrescreve Básico, mas Global tem prioridade fiscal)
 $fiscal = $global ?: [];
 if (!empty($filial)) {
     foreach ($filial as $key => $value) {
         if ($value !== null && trim((string)$value) !== '') {
+            // Se for um campo fiscal crítico e já existir no Global, o Global tem prioridade (Centralizado)
+            $globalPrimacy = ['ultimo_numero_nfce', 'serie_nfce', 'ambiente', 'csc', 'csc_id', 'csc_token', 'certificado_path', 'certificado_pfx'];
+            if (in_array($key, $globalPrimacy) && !empty($global[$key === 'csc_token' ? 'csc' : ($key === 'certificado_pfx' ? 'certificado_path' : $key)])) {
+                continue; 
+            }
             $fiscal[$key] = $value;
         }
     }
