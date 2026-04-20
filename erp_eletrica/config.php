@@ -65,10 +65,34 @@ try {
 // Global Exception Handler
 set_exception_handler(function($e) {
     error_log("Uncaught Exception: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    
+    $isAjax = (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+              (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
+
+    if ($isAjax) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+        }
+        echo json_encode([
+            'success' => false,
+            'message' => 'Erro interno do servidor. Por favor, tente novamente.',
+            'error'   => (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Internal Server Error',
+            'trace'   => (defined('DEBUG') && DEBUG) ? $e->getTraceAsString() : null
+        ]);
+        exit;
+    }
+
     if (defined('DEBUG') && DEBUG) {
-        echo "<h1>Erro Crítico</h1><pre>" . $e->getMessage() . "\n" . $e->getTraceAsString() . "</pre>";
+        echo "<div style='padding: 20px; font-family: sans-serif; background: #fff5f5; border: 1px solid #feb2b2; border-radius: 8px; margin: 20px;'>
+                <h1 style='color: #c53030; margin-top: 0;'>Erro Crítico (DEBUG)</h1>
+                <p><strong>Mensagem:</strong> " . $e->getMessage() . "</p>
+                <p><strong>Arquivo:</strong> " . $e->getFile() . " (Linha " . $e->getLine() . ")</p>
+                <pre style='background: #fff; padding: 10px; border-radius: 4px; overflow: auto;'>" . $e->getTraceAsString() . "</pre>
+              </div>";
     } else {
-        echo "<h1>Desculpe, ocorreu um erro interno.</h1><p>Por favor, tente novamente mais tarde.</p>";
+        // Friendly Error Page
+        include_once __DIR__ . '/views/errors/fatal.view.php';
     }
 });
 
