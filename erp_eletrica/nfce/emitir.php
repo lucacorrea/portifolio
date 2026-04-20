@@ -215,16 +215,14 @@ $empresaId = defined('NFCE_EMPRESA_ID') ? NFCE_EMPRESA_ID : 1;
 try {
     $pdo->beginTransaction();
     
-    // Incrementa na tabela de origem (sefaz_config se for global, ou filiais se for específico)
-    // A lógica de config.php já resolveu qual tem prioridade, aqui apenas persistimos
-    $isGlobal = ($empresaId == 1 && !empty($global));
-    if ($isGlobal) {
-        $pdo->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = :n WHERE id = :id")
-            ->execute([':n' => $nNF, ':id' => $global['id']]);
-    } else {
-        $pdo->prepare("UPDATE filiais SET ultimo_numero_nfce = :n WHERE id = :id")
-            ->execute([':n' => $nNF, ':id' => $empresaId]);
-    }
+    // Incrementa em AMBOS para manter o Painel Central Sincronizado
+    // 1. No Painel Global (sefaz_config) - O que o usuário vê nas configurações agora
+    $pdo->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = :n WHERE 1")
+        ->execute([':n' => $nNF]);
+    
+    // 2. Na Filial específica (filiais) - Histórico individual
+    $pdo->prepare("UPDATE filiais SET ultimo_numero_nfce = :n WHERE id = :id")
+        ->execute([':n' => $nNF, ':id' => $empresaId]);
     
     $pdo->commit();
 } catch (Throwable $e) {

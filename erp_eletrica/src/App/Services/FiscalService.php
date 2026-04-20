@@ -269,13 +269,9 @@ class FiscalService extends BaseService {
             'Nota autorizada com sucesso'
         ]);
 
-        // Increment counter in database
-        $isGlobal = ($filialId == 1 && !empty($this->db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch()));
-        if ($isGlobal) {
-            $this->db->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = ? WHERE id = (SELECT id FROM sefaz_config LIMIT 1)")->execute([$numero]);
-        } else {
-            $this->db->prepare("UPDATE filiais SET ultimo_numero_nfce = ? WHERE id = ?")->execute([$numero, $filialId]);
-        }
+        // Increment counter in database - Update BOTH to keep Centralized Panel synced
+        $this->db->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = ? WHERE 1")->execute([$numero]);
+        $this->db->prepare("UPDATE filiais SET ultimo_numero_nfce = ? WHERE id = ?")->execute([$numero, $filialId]);
         
         // Update sales table status
         $this->db->prepare("UPDATE vendas SET chave_nfce = ?, status_nfce = 'autorizada' WHERE id = ?")->execute([$response['chave'], $vendaId]);
