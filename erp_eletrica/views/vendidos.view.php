@@ -530,46 +530,57 @@
 
         let currentCancelId = null;
         let currentCancelTipo = null;
-        window.openCancelModal = function(id, tipo, isRetry = false) {
+        let currentCancelModelo = 'por_chave';
+
+        window.selectCancelMode = function(mode) {
+            currentCancelModelo = mode;
+            document.getElementById('cancel-step-1').classList.add('d-none');
+            document.getElementById('cancel-step-2').classList.remove('d-none');
+            document.getElementById('cancel-footer-btns').classList.remove('d-none');
+            
+            const fieldSubst = document.getElementById('field-chave-substituta');
+            const alertFiscal = document.getElementById('fiscal-alert');
+            const labelMotivo = document.getElementById('label-motivo');
+            
+            if (mode === 'por_substituicao') {
+                fieldSubst.classList.remove('d-none');
+                alertFiscal.classList.remove('d-none');
+                labelMotivo.textContent = 'Motivo (Substituição)';
+            } else if (mode === 'por_chave') {
+                fieldSubst.classList.add('d-none');
+                alertFiscal.classList.remove('d-none');
+                labelMotivo.textContent = 'Motivo do Cancelamento';
+            } else {
+                fieldSubst.classList.add('d-none');
+                alertFiscal.classList.add('d-none');
+                labelMotivo.textContent = 'Motivo do Cancelamento (Interno)';
+            }
+        };
+
+        window.backToCancelChoices = function() {
+            document.getElementById('cancel-step-1').classList.remove('d-none');
+            document.getElementById('cancel-step-2').classList.add('d-none');
+            document.getElementById('cancel-footer-btns').classList.add('d-none');
+        };
+
+        window.openCancelModal = function(id, tipo) {
             currentCancelId = id;
             currentCancelTipo = tipo;
             
-            const labelEl = document.getElementById('cancel-id-label');
-            const alertEl = document.getElementById('fiscal-alert');
-            const motiveInput = document.getElementById('cancel-motivo');
-            const titleEl = document.querySelector('#modalCancel .modal-title');
-            
-            if (titleEl) titleEl.textContent = isRetry ? 'Regularização Fiscal SEFAZ' : 'Cancelar Venda';
-            if (labelEl) labelEl.textContent = id;
-            if (motiveInput) {
-                motiveInput.value = isRetry ? 'Regularização de nota pendente na SEFAZ' : '';
-                motiveInput.placeholder = (tipo === 'fiscal') 
-                    ? "Descreva o motivo (mínimo 15 caracteres)..." 
-                    : "Obrigatório descrever o motivo...";
-            }
+            document.getElementById('cancel-id-label').textContent = id;
+            document.getElementById('cancel-motivo').value = '';
+            document.getElementById('cancel-chave-subst').value = '';
             
             const authInput = document.getElementById('cancel-auth-code');
             if (authInput) authInput.value = '';
             
-            if (alertEl) {
-                if (tipo === 'fiscal' || isRetry) {
-                    alertEl.classList.remove('d-none');
-                    alertEl.innerHTML = isRetry 
-                        ? '<i class="fas fa-info-circle me-2"></i><strong>Modo Regularização:</strong> Esta venda já foi cancelada no sistema. A ação abaixo apenas tentará homologar o cancelamento na SEFAZ.'
-                        : '<i class="fas fa-exclamation-triangle me-2"></i>O cancelamento fiscal é irreversível e exige um motivo claro para a SEFAZ.';
-                } else {
-                    alertEl.classList.add('d-none');
-                }
-            }
-            
-            const modalEl = document.getElementById('modalCancel');
-            if (modalEl) {
-                bootstrap.Modal.getOrCreateInstance(modalEl).show();
-            }
+            backToCancelChoices();
+            bootstrap.Modal.getOrCreateInstance('#modalCancel').show();
         };
 
         document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
             const motivo = document.getElementById('cancel-motivo').value.trim();
+            const chaveSubst = document.getElementById('cancel-chave-subst').value.replace(/\D+/g, '');
             const authCodeEl = document.getElementById('cancel-auth-code');
             const authCode = authCodeEl ? authCodeEl.value.trim() : null;
             
@@ -578,8 +589,13 @@
                 return;
             }
             
-            if (currentCancelTipo === 'fiscal' && motivo.length < 15) {
-                alert('Para cancelamento fiscal, o motivo deve ter no mínimo 15 caracteres.');
+            if (currentCancelModelo === 'por_substituicao' && chaveSubst.length !== 44) {
+                alert('A chave substituta deve ter 44 dígitos.');
+                return;
+            }
+
+            if (currentCancelModelo !== 'por_motivo' && currentCancelTipo === 'fiscal' && motivo.length < 15) {
+                alert('Para cancelamento fiscal (SEFAZ), o motivo deve ter no mínimo 15 caracteres.');
                 return;
             } else if (motivo.length < 5) {
                 alert('Por favor, descreva o motivo do cancelamento.');
@@ -594,20 +610,19 @@
                 const res = await fetch('vendidos.php?action=cancel_sale', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ id: currentCancelId, motivo, tipo: currentCancelTipo, auth_code: authCode })
+                    body: JSON.stringify({ 
+                        id: currentCancelId, 
+                        motivo, 
+                        tipo: currentCancelTipo, 
+                        modelo: currentCancelModelo,
+                        chave_substituta: chaveSubst,
+                        auth_code: authCode 
+                    })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    const modalEl = document.getElementById('modalCancel');
-                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-                    
-                    const isRegularization = document.querySelector('#modalCancel .modal-title').textContent.includes('Regularização');
-                    
-                    if (isRegularization) {
-                        alert('Nota Fiscal cancelada na SEFAZ com sucesso! A situação foi regularizada.');
-                    } else {
-                        alert(currentCancelTipo === 'fiscal' ? 'Venda e NFC-e canceladas com sucesso!' : 'Venda cancelada com sucesso!');
-                    }
+                    bootstrap.Modal.getOrCreateInstance('#modalCancel').hide();
+                    alert('Cancelamento processado com sucesso!');
                     loadSales(currentPage);
                 } else {
                     alert('Erro: ' + data.error);
@@ -743,4 +758,15 @@
         border-color: var(--erp-primary);
     }
     .list-group-item-action:hover { background-color: var(--erp-primary); color: #fff; }
+    
+    .cancel-choice-card {
+        transition: all 0.2s ease;
+        border-width: 2px !important;
+    }
+    .cancel-choice-card:hover {
+        border-color: var(--erp-primary) !important;
+        background-color: #f8faff;
+        transform: translateY(-3px);
+    }
+    .cursor-pointer { cursor: pointer; }
 </style>
