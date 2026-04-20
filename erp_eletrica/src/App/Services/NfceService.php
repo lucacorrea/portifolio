@@ -295,13 +295,9 @@ class NfceService extends BaseService {
             ':troco' => $venda['troco'] ?? 0
         ]);
 
-        // Increment the counter in the config table
-        $isGlobal = ($empresaId == 1 && !empty($this->db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch()));
-        if ($isGlobal) {
-            $this->db->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = ? WHERE id = (SELECT id FROM sefaz_config LIMIT 1)")->execute([$numero]);
-        } else {
-            $this->db->prepare("UPDATE filiais SET ultimo_numero_nfce = ? WHERE id = ?")->execute([$numero, $empresaId]);
-        }
+        // Increment counter in database - Synchronize BOTH Global and Branch for UI sync
+        $this->db->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = ? WHERE 1")->execute([$numero]);
+        $this->db->prepare("UPDATE filiais SET ultimo_numero_nfce = ? WHERE id = ?")->execute([$numero, $empresaId]);
         
         // Update sales table
         $up = $this->db->prepare("UPDATE vendas SET chave_nfce = ?, status_nfce = 'autorizada' WHERE id = ?");
