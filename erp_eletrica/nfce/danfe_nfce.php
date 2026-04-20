@@ -307,7 +307,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     .wrapper {
       width: 100%;
       max-width: var(--ticket-max);
-      margin: 3px auto 92px;
+      margin: 10px auto 92px;
       background: var(--paper);
       border-radius: 12px;
       box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
@@ -400,6 +400,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 
       .wrapper{
         zoom: 116% !important;
+        margin-left: -20px !important;
       }
 
       .nome_empresa{
