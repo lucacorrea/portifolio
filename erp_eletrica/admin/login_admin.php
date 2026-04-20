@@ -1,12 +1,13 @@
 <?php
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
 
 // seu código abaixo
 
 declare(strict_types=1);
 require_once __DIR__ . '/_bootstrap.php';
+
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 
 expire_temp_users();
 
