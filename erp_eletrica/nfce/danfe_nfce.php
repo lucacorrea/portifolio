@@ -399,15 +399,15 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         display: none
       }
 
+      .nome_empresa{
+        font-size: 13px !important;
+      }
+
       .wrapper {
         box-shadow: none;
         border-radius: 0;
         margin: 0;
         width: 75mm
-      }
-
-      .nome_empresa{
-        font-size: 10px !important;
       }
     }
   </style>
