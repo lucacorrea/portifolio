@@ -82,42 +82,41 @@ class CaixaController extends BaseController {
             $valorAbertura = $_POST['valor_abertura'] ?? 0;
             $cashierModel = new Cashier();
             
-            // Valida se já existe aberto
-            $existente = $cashierModel->getOpenForFilial($_SESSION['filial_id']);
-            if ($existente) {
-                header('Location: caixa.php?error=Você já possui um caixa aberto.');
-                exit;
-            }
+            $this->executeSafe(function() use ($valorAbertura, $cashierModel) {
+                // Valida se já existe aberto
+                $existente = $cashierModel->getOpenForFilial($_SESSION['filial_id']);
+                if ($existente) {
+                    throw new \Exception("Você já possui um caixa aberto.");
+                }
 
-            $caixaId = $cashierModel->create([
-                'filial_id' => $_SESSION['filial_id'],
-                'operador_id' => $_SESSION['usuario_id'],
-                'valor_abertura' => $valorAbertura,
-                'status' => 'aberto',
-                'data_abertura' => date('Y-m-d H:i:s')
-            ]);
-
-            if ($valorAbertura > 0) {
-                try {
-                    // Fix database column constraint directly if it's an ENUM
-                    $db = \App\Config\Database::getInstance()->getConnection();
-                    $db->exec("ALTER TABLE caixa_movimentacoes MODIFY tipo VARCHAR(50)");
-                    // Also fix any badly inserted row from today that got the default empty enum string
-                    $db->exec("UPDATE caixa_movimentacoes SET tipo = 'entrada' WHERE (tipo = '' OR tipo IS NULL) AND motivo = 'Abertura de Caixa'");
-                } catch (\Exception $e) {}
-
-                $movementModel = new CashierMovement();
-                $movementModel->create([
-                    'caixa_id' => $caixaId,
-                    'tipo' => 'entrada',
-                    'valor' => $valorAbertura,
-                    'motivo' => 'Abertura de Caixa',
-                    'operador_id' => $_SESSION['usuario_id']
+                $caixaId = $cashierModel->create([
+                    'filial_id' => $_SESSION['filial_id'],
+                    'operador_id' => $_SESSION['usuario_id'],
+                    'valor_abertura' => $valorAbertura,
+                    'status' => 'aberto',
+                    'data_abertura' => date('Y-m-d H:i:s')
                 ]);
-            }
 
-            $this->logAction('abertura_caixa', 'caixas', null, null, ['valor' => $valorAbertura]);
-            header('Location: caixa.php?success=Caixa aberto com sucesso.');
+                if ($valorAbertura > 0) {
+                    try {
+                        $db = \App\Config\Database::getInstance()->getConnection();
+                        $db->exec("ALTER TABLE caixa_movimentacoes MODIFY tipo VARCHAR(50)");
+                    } catch (\Exception $e) {}
+
+                    $movementModel = new CashierMovement();
+                    $movementModel->create([
+                        'caixa_id' => $caixaId,
+                        'tipo' => 'entrada',
+                        'valor' => $valorAbertura,
+                        'motivo' => 'Abertura de Caixa',
+                        'operador_id' => $_SESSION['usuario_id']
+                    ]);
+                }
+
+                $this->logAction('abertura_caixa', 'caixas', null, null, ['valor' => $valorAbertura]);
+                setFlash('success', 'Caixa aberto com sucesso.');
+                $this->redirect('caixa.php');
+            }, false); // Not AJAX, use redirects
             exit;
         }
     }
