@@ -394,29 +394,52 @@
             return;
         }
 
-        let html = '';
+        const current = p.current_page;
+        const total = p.total_pages;
+
+        let html = '<div class="d-flex flex-column flex-md-row align-items-center justify-content-center gap-3 w-100">';
+        html += '<ul class="pagination pagination-sm mb-0">';
         
         // Botão Anterior
-        html += `<li class="page-item ${p.current_page === 1 ? 'disabled' : ''}">
-            <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${p.current_page - 1})"><i class="fas fa-chevron-left"></i></a>
+        html += `<li class="page-item ${current === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${current - 1})"><i class="fas fa-chevron-left"></i></a>
         </li>`;
 
-        // Páginas
-        for (let i = 1; i <= p.total_pages; i++) {
-            if (i === 1 || i === p.total_pages || (i >= p.current_page - 2 && i <= p.current_page + 2)) {
-                html += `<li class="page-item ${i === p.current_page ? 'active' : ''}">
-                    <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${i})">${i}</a>
-                </li>`;
-            } else if (i === p.current_page - 3 || i === p.current_page + 3) {
-                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-            }
+        // Smart Numbers
+        let links = [];
+        links.push(1);
+        if (current > 4) links.push('...');
+        for (let i = Math.max(2, current - 2); i <= Math.min(total - 1, current + 2); i++) {
+            links.push(i);
         }
+        if (current < total - 3) links.push('...');
+        if (total > 1) links.push(total);
+
+        links.forEach(link => {
+            if (link === '...') {
+                html += '<li class="page-item disabled"><span class="page-link border-0">...</span></li>';
+            } else {
+                html += `<li class="page-item ${link === current ? 'active' : ''}">
+                    <a class="page-link fw-bold" href="javascript:void(0)" onclick="loadFiados(${link})">${link}</a>
+                </li>`;
+            }
+        });
 
         // Próximo
-        html += `<li class="page-item ${p.current_page === p.total_pages ? 'disabled' : ''}">
-            <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${p.current_page + 1})"><i class="fas fa-chevron-right"></i></a>
+        html += `<li class="page-item ${current === total ? 'disabled' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="loadFiados(${current + 1})"><i class="fas fa-chevron-right"></i></a>
         </li>`;
+        html += '</ul>';
 
+        // Go to Page Input
+        html += '<div class="d-flex align-items-center gap-2">';
+        html += '<span class="text-muted small text-nowrap">Ir para:</span>';
+        html += `<input type="number" class="form-control form-control-sm text-center" style="width: 60px;" min="1" max="${total}" value="${current}" 
+                    onkeydown="if(event.key==='Enter') loadFiados(this.value)">`;
+        html += `<button class="btn btn-sm btn-outline-secondary" onclick="loadFiados(this.previousElementSibling.value)"><i class="fas fa-arrow-right"></i></button>`;
+        html += '</div>';
+
+        html += '</div>';
         pag.innerHTML = html;
     }
 
