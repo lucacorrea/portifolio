@@ -820,6 +820,29 @@ function abrirDetalhesTransferencia(id) {
             badge.innerText = t.status.toUpperCase().replace('_', ' ');
             badge.className = 'badge bg-' + (t.status === 'concluida' ? 'success' : (t.status === 'em_transito' ? 'warning text-dark' : 'primary'));
 
+            // Timeline items
+            const timeline = document.getElementById('det_timeline');
+            const steps = [
+                { label: 'Solicitado', date: t.data_solicitacao, icon: 'file-invoice' },
+                { label: 'Aprovado', date: t.data_aprovacao, icon: 'check-double' },
+                { label: 'Despachado', date: t.data_envio, icon: 'truck-loading' },
+                { label: 'Finalizado', date: t.data_recebimento, icon: 'box-open' }
+            ];
+
+            timeline.innerHTML = steps.map((s, idx) => {
+                const isActive = s.date !== null;
+                const isLast = idx === steps.length - 1;
+                return `
+                    <div class="flex-grow-1 text-center position-relative ${!isLast ? 'border-end' : ''}" style="z-index: 2;">
+                        <div class="mb-1">
+                            <i class="fas fa-${s.icon} ${isActive ? 'text-primary' : 'text-muted opacity-25'} fs-5"></i>
+                        </div>
+                        <div class="extra-small fw-bold ${isActive ? 'text-dark' : 'text-muted opacity-50'}">${s.label}</div>
+                        <div class="extra-small text-muted" style="font-size: 9px;">${s.date ? new Date(s.date).toLocaleDateString() : '---'}</div>
+                    </div>
+                `;
+            }).join('');
+
             // Itens
             const tbody = document.getElementById('det_tbody_items');
             tbody.innerHTML = res.items.map(it => `
@@ -1143,12 +1166,22 @@ function abrirProcessarRecebimento(id) {
                     <!-- Resumo Status -->
                     <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded shadow-sm border">
                         <div>
-                            <span class="extra-small text-muted d-block text-uppercase fw-bold">Status Atual</span>
-                            <span id="det_status_badge" class="badge">---</span>
+                            <span class="extra-small text-muted d-block text-uppercase fw-bold text-primary">Status do Pedido</span>
+                            <span id="det_status_badge" class="badge p-2 px-3 fs-6">---</span>
                         </div>
                         <div class="text-end">
-                            <span class="extra-small text-muted d-block text-uppercase fw-bold">Data da Solicitação</span>
-                            <span id="det_data" class="small fw-bold">---</span>
+                            <span class="extra-small text-muted d-block text-uppercase fw-bold text-primary">Data de Abertura</span>
+                            <span id="det_data" class="small fw-bold text-dark">---</span>
+                        </div>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-3 extra-small text-muted text-uppercase d-flex align-items-center">
+                            <i class="fas fa-clock-rotate-left me-2 text-primary"></i>Rastro da Operação
+                        </h6>
+                        <div id="det_timeline" class="d-flex justify-content-between align-items-center position-relative px-2 py-3 bg-white border rounded">
+                            <!-- Timeline steps will be injected here -->
                         </div>
                     </div>
 
