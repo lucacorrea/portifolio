@@ -1,0 +1,18 @@
+{
+  "name": "ERP Elétrica — Consulta",
+  "short_name": "Consultar",
+  "description": "Consulta rápida de produtos e estoque",
+  "start_url": "consulta_produto.php",
+  "display": "standalone",
+  "background_color": "#19335a",
+  "theme_color": "#19335a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "public/img/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
