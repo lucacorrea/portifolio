@@ -399,6 +399,10 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         display: none
       }
 
+      .wrapper{
+        zoom: 116% !important;
+      }
+
       .nome_empresa{
         font-size: 13px !important;
       }
