@@ -24,27 +24,26 @@ class FiscalService extends BaseService {
         $global = $stmt->fetch();
 
         // Unificação: Prioriza Configuração Global da Matriz
-        if ($global && !empty($global['certificado_path'])) {
-            return [
-                'cnpj' => $branch['cnpj'],
-                'certificado_pfx' => $global['certificado_path'],
-                'certificado_senha' => $global['certificado_senha'],
-                'ambiente' => $global['ambiente'] == 'producao' ? 1 : 2,
-                'csc_id' => $global['csc_id'] ?: ($branch['csc_id'] ?? ''),
-                'csc_token' => $global['csc'] ?: ($branch['csc_token'] ?? ''),
-                'nome' => $branch['nome']
-            ];
-        }
-
-        // Fallback para campos da filial (legado/específico)
         return [
             'cnpj' => $branch['cnpj'],
-            'certificado_pfx' => $branch['certificado_pfx'] ?? null,
-            'certificado_senha' => $branch['certificado_senha'] ?? '',
-            'ambiente' => $branch['ambiente'] ?? 2,
-            'csc_id' => $branch['csc_id'] ?? '',
-            'csc_token' => $branch['csc_token'] ?? '',
-            'nome' => $branch['nome']
+            'certificado_pfx' => (!empty($global['certificado_path'])) ? $global['certificado_path'] : ($branch['certificado_pfx'] ?? null),
+            'certificado_senha' => (!empty($global['certificado_senha'])) ? $global['certificado_senha'] : ($branch['certificado_senha'] ?? ''),
+            'ambiente' => (!empty($global['ambiente'])) ? ($global['ambiente'] == 'producao' ? 1 : 2) : ($branch['ambiente'] ?? 2),
+            'csc_id' => (!empty($global['csc_id'])) ? $global['csc_id'] : ($branch['csc_id'] ?? ''),
+            'csc_token' => (!empty($global['csc'])) ? $global['csc'] : ($branch['csc_token'] ?? ''),
+            'serie_nfce' => (!empty($global['serie_nfce'])) ? $global['serie_nfce'] : ($branch['serie_nfce'] ?? 1),
+            'ultimo_numero_nfce' => (!empty($global['ultimo_numero_nfce'])) ? $global['ultimo_numero_nfce'] : ($branch['ultimo_numero_nfce'] ?? 0),
+            'nome' => $branch['nome'],
+            'codigo_uf' => $branch['codigo_uf'] ?? '35',
+            'codigo_municipio' => $branch['codigo_municipio'] ?? '3550308',
+            'uf' => $branch['uf'] ?? 'SP',
+            'municipio' => $branch['municipio'] ?? 'SAO PAULO',
+            'logradouro' => $branch['logradouro'] ?? '',
+            'numero' => $branch['numero'] ?? '',
+            'bairro' => $branch['bairro'] ?? '',
+            'cep' => $branch['cep'] ?? '',
+            'inscricao_estadual' => $branch['inscricao_estadual'] ?? '',
+            'crt' => $branch['crt'] ?? '1'
         ];
     }
 
@@ -56,6 +55,10 @@ class FiscalService extends BaseService {
             // 1. Fetch sale data with items and branch info
             $sale = $this->getSaleData($vendaId);
             $fiscal = $this->getFiscalConfig($sale['filial_id']);
+            $proximoNumero = (int)($fiscal['ultimo_numero_nfce'] ?? 0) + 1;
+            
+            // Inject correct number for XML generation
+            $sale['numero_nfce'] = $proximoNumero;
 
             if (empty($fiscal['cnpj']) || empty($fiscal['certificado_pfx'])) {
                 throw new Exception("Configuração fiscal incompleta (CNPJ ou Certificado ausente).");
@@ -71,7 +74,7 @@ class FiscalService extends BaseService {
             $response = $this->transmitToSEFAZ($signedXml, $fiscal, 'nfce');
 
             // 5. Save record in database
-            $this->saveFiscalRecord($vendaId, 'nfce', $response);
+            $this->saveFiscalRecord($vendaId, 'nfce', $response, $sale['filial_id'], $proximoNumero);
 
             return [
                 'success' => true,
@@ -244,18 +247,37 @@ class FiscalService extends BaseService {
         }
     }
 
-    private function saveFiscalRecord($vendaId, $type, $response) {
+    private function saveFiscalRecord($vendaId, $type, $response, $filialId, $numero) {
         $stmt = $this->db->prepare("
-            INSERT INTO notas_fiscais (venda_id, tipo, chave_acesso, status, protocolo, mensagem_sefaz)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO nfce_emitidas (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
+        
+        $env = \App\Config\Database::getInstance()->getConnection()->query("SELECT ambiente FROM sefaz_config LIMIT 1")->fetchColumn();
+        $amb = ($env == 'producao') ? 1 : 2;
+        $serie = $this->db->query("SELECT serie_nfce FROM sefaz_config LIMIT 1")->fetchColumn() ?: 1;
+
         $stmt->execute([
+            $filialId,
             $vendaId, 
-            $type, 
+            $amb,
+            $serie,
+            $numero,
             $response['chave'], 
-            $response['status'], 
             $response['protocolo'],
-            'Nota autorizada em ambiente de homologação'
+            '100', // Autorizada
+            'Nota autorizada com sucesso'
         ]);
+
+        // Increment counter in database
+        $isGlobal = ($filialId == 1 && !empty($this->db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch()));
+        if ($isGlobal) {
+            $this->db->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = ? WHERE id = (SELECT id FROM sefaz_config LIMIT 1)")->execute([$numero]);
+        } else {
+            $this->db->prepare("UPDATE filiais SET ultimo_numero_nfce = ? WHERE id = ?")->execute([$numero, $filialId]);
+        }
+        
+        // Update sales table status
+        $this->db->prepare("UPDATE vendas SET chave_nfce = ?, status_nfce = 'autorizada' WHERE id = ?")->execute([$response['chave'], $vendaId]);
     }
 }
