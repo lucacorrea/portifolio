@@ -99,13 +99,14 @@
     </div>
 </div>
 
-<?php if (($_SESSION['usuario_nivel'] ?? '') === 'admin'): ?>
 <!-- Dashboard -->
 <div class="fi-dashboard">
+    <?php if (($_SESSION['usuario_nivel'] ?? '') === 'admin'): ?>
     <div class="fi-card">
         <div class="fi-card-label">Total em Fiados</div>
         <div class="fi-card-value" id="tot-total">R$ 0,00</div>
     </div>
+    <?php endif; ?>
     <div class="fi-card">
         <div class="fi-card-label">Total Recebido</div>
         <div class="fi-card-value text-success" id="tot-pago">R$ 0,00</div>
@@ -119,7 +120,6 @@
         <div class="fi-card-value" id="tot-qtd">0</div>
     </div>
 </div>
-<?php endif; ?>
 
 <!-- Filtros -->
 <div class="fi-filters">
