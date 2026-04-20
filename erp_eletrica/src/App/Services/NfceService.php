@@ -33,7 +33,7 @@ class NfceService extends BaseService {
         // Define which fields MUST be global (Centralized Fiscal)
         $globalFields = [
             'certificado_path', 'certificado_senha', 'ambiente', 
-            'csc', 'csc_id', 'cnpj', 'razao_social'
+            'csc', 'csc_id', 'cnpj', 'razao_social', 'serie_nfce', 'ultimo_numero_nfce'
         ];
 
         $fields = [
@@ -112,6 +112,7 @@ class NfceService extends BaseService {
         try {
             // 1. Load Fiscal Config
             $fiscal = $this->getConfig($empresaId);
+            $proximoNumero = (int)($fiscal['ultimo_numero_nfce'] ?? 0) + 1;
             
             // 2. Load Sale Data
             $stV = $this->db->prepare("SELECT * FROM vendas WHERE id = ?");
@@ -168,6 +169,7 @@ class NfceService extends BaseService {
             
             $saleData = [
                 'id'                  => $vendaId,
+                'numero_nfce'         => $proximoNumero,
                 'items'               => $mappedItems,
                 'valor_total'         => $venda['valor_total'],
                 'desconto_total'      => $venda['desconto_total'] ?? 0,
@@ -205,9 +207,9 @@ class NfceService extends BaseService {
                     $proc = '<?xml version="1.0" encoding="UTF-8"?><nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">' . preg_replace('/<\?xml.*?\?>/','', $nfeAss) . $mProt[1] . '</nfeProc>';
                     
                     // Save to nfce_emitidas
-                    $this->saveEmission($vendaId, $empresaId, $fiscal, $resXml['chave'], $stdEnv, $proc, $nfeAss, $respEnv, $venda);
+                    $this->saveEmission($vendaId, $empresaId, $fiscal, $resXml['chave'], $stdEnv, $proc, $nfeAss, $respEnv, $venda, $proximoNumero);
                     
-                    return ['success' => true, 'chave' => $resXml['chave'], 'protocolo' => $stdEnv->protNFe->infProt->nProt ?? null];
+                    return ['success' => true, 'chave' => $resXml['chave'], 'numero' => $proximoNumero, 'protocolo' => $stdEnv->protNFe->infProt->nProt ?? null];
                  }
             }
 
@@ -264,7 +266,7 @@ class NfceService extends BaseService {
         }
     }
 
-    private function saveEmission($vendaId, $empresaId, $fiscal, $chave, $std, $xmlProc, $xmlEnv, $xmlRet, $venda) {
+    private function saveEmission($vendaId, $empresaId, $fiscal, $chave, $std, $xmlProc, $xmlEnv, $xmlRet, $venda, $numero) {
         $st = $this->db->prepare("
             INSERT INTO nfce_emitidas
               (empresa_id, venda_id, ambiente, serie, numero, chave, protocolo, status_sefaz, mensagem,
@@ -281,7 +283,7 @@ class NfceService extends BaseService {
             ':venda' => $vendaId,
             ':amb' => $fiscal['ambiente'] ?? 2,
             ':serie' => $fiscal['serie_nfce'] ?? 1,
-            ':num' => $vendaId, // Simplification: using vendaId as number for now
+            ':num' => $numero,
             ':chave' => $chave,
             ':prot' => $std->protNFe->infProt->nProt ?? null,
             ':stat' => $std->cStat,
@@ -292,6 +294,14 @@ class NfceService extends BaseService {
             ':total' => $venda['valor_total'],
             ':troco' => $venda['troco'] ?? 0
         ]);
+
+        // Increment the counter in the config table
+        $isGlobal = ($empresaId == 1 && !empty($this->db->query("SELECT id FROM sefaz_config LIMIT 1")->fetch()));
+        if ($isGlobal) {
+            $this->db->prepare("UPDATE sefaz_config SET ultimo_numero_nfce = ? WHERE id = (SELECT id FROM sefaz_config LIMIT 1)")->execute([$numero]);
+        } else {
+            $this->db->prepare("UPDATE filiais SET ultimo_numero_nfce = ? WHERE id = ?")->execute([$numero, $empresaId]);
+        }
         
         // Update sales table
         $up = $this->db->prepare("UPDATE vendas SET chave_nfce = ?, status_nfce = 'autorizada' WHERE id = ?");

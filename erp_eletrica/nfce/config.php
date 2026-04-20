@@ -108,20 +108,30 @@ if (empty($global) && empty($filial)) {
     die();
 }
 
-// Mescla as configurações (Herança Inteligente: Filial só sobrescreve se tiver valor)
+// Mescla as configurações (Herança Inteligente: Filial sobrescreve Básico, mas Global tem prioridade fiscal)
 $fiscal = $global ?: [];
 if (!empty($filial)) {
     foreach ($filial as $key => $value) {
         if ($value !== null && trim((string)$value) !== '') {
+            // Se for um campo fiscal crítico e já existir no Global, o Global tem prioridade (Centralizado)
+            $globalPrimacy = ['ultimo_numero_nfce', 'serie_nfce', 'ambiente', 'csc', 'csc_id', 'csc_token', 'certificado_path', 'certificado_pfx'];
+            if (in_array($key, $globalPrimacy) && !empty($global[$key === 'csc_token' ? 'csc' : ($key === 'certificado_pfx' ? 'certificado_path' : $key)])) {
+                continue; 
+            }
             $fiscal[$key] = $value;
         }
     }
 }
 
 // ========== Mapeamento de Campos (27 campos) ==========
-define('TP_AMB',     (string)($fiscal['ambiente'] ?? '2'));
-define('ID_TOKEN',   (string)($fiscal['csc_id'] ?? ''));
-define('CSC',        (string)($fiscal['csc'] ?? $fiscal['csc_token'] ?? ''));
+// 1. Ambiente (Converte 'producao'/'homologacao' em 1/2)
+$ambRaw = trim(mb_strtolower((string)($fiscal['ambiente'] ?? '2')));
+$tpAmb = ($ambRaw === 'producao' || $ambRaw === '1') ? '1' : '2';
+define('TP_AMB', $tpAmb);
+
+// 2. Token CSC
+define('ID_TOKEN',   str_pad(trim((string)($fiscal['csc_id'] ?? '')), 6, '0', STR_PAD_LEFT));
+define('CSC',        trim((string)($fiscal['csc'] ?? $fiscal['csc_token'] ?? '')));
 define('NFC_SERIE',  (string)($fiscal['serie_nfce'] ?? '1'));
 
 define('EMIT_CNPJ',  so_digitos($fiscal['cnpj']));
@@ -134,9 +144,9 @@ define('EMIT_XLGR',    trim((string)($fiscal['logradouro'] ?? '')));
 define('EMIT_NRO',     trim((string)($fiscal['numero_endereco'] ?? $fiscal['numero'] ?? '')));
 define('EMIT_XBAIRRO', trim((string)($fiscal['bairro'] ?? '')));
 define('EMIT_XMUN',    trim((string)($fiscal['cidade'] ?? $fiscal['municipio'] ?? '')));
-define('EMIT_UF',      trim((string)($fiscal['uf'] ?? '')));
+define('EMIT_UF',      trim((string)($fiscal['uf'] ?? 'AM'))); // Default AM if missing
 define('EMIT_CEP',     so_digitos($fiscal['cep']));
-define('EMIT_CMUN',    (string)($fiscal['codigo_municipio'] ?? ''));
+define('EMIT_CMUN',    (string)($fiscal['codigo_municipio'] ?? '1301209')); // Default Coari if missing
 define('EMIT_FONE',    so_digitos($fiscal['fone'] ?? $fiscal['telefone'] ?? ''));
 define('COD_MUN',      EMIT_CMUN);
 define('COD_UF',       substr(EMIT_CMUN, 0, 2));
@@ -145,16 +155,17 @@ $PFX_PASSWORD = (string)($fiscal['certificado_senha'] ?? '');
 $PFX_PATH     = resolve_cert_path($fiscal['certificado_pfx'] ?? $fiscal['certificado_path'] ?? null);
 
 if (!$PFX_PATH) {
-    // Se não achou arquivo, mas tem nome no banco, avisa onde procurou
-    die("Certificado NFC-e não encontrado. Verifique se o arquivo .pfx existe na pasta /storage/certificados/ ou /assets/img/certificado/");
+    die("Certificado NFC-e não encontrado. Verifique se o arquivo .pfx existe na pasta /storage/certificados/");
 }
 
 define('PFX_PATH',     $PFX_PATH);
 define('PFX_PASSWORD', $PFX_PASSWORD);
 define('NFCE_EMPRESA_ID', $empresaId);
 
+// URLs de Consulta (conforme SEFAZ AM e RN)
 $URL_QR = (EMIT_UF == 'AM') 
-    ? (TP_AMB == '1' ? 'https://nfce.sefaz.am.gov.br/nfceweb/consultarNFCe.jsp' : 'https://homnfce.sefaz.am.gov.br/nfceweb/consultarNFCe.jsp')
+    ? (TP_AMB == '1' ? 'https://sistemas.sefaz.am.gov.br/nfceweb/consultarNFCe.jsp' : 'https://sistemas.sefaz.am.gov.br/nfceweb-hom/consultarNFCe.jsp')
     : (TP_AMB == '1' ? 'https://nfce.set.rn.gov.br/portalDFE/NFCe/ConsultaNFCe.aspx' : 'https://hom.nfce.set.rn.gov.br/portalDFE/NFCe/ConsultaNFCe.aspx');
+
 define('URL_QR', $URL_QR);
 define('URL_CHAVE', $URL_QR);

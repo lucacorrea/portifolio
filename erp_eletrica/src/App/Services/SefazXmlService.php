@@ -31,7 +31,7 @@ class SefazXmlService extends BaseService {
         $tpAmb = ($fiscal['ambiente'] == 1) ? '1' : '2';
         $mod = "65"; // NFC-e
         $serie = str_pad($fiscal['serie_nfce'] ?? '1', 3, '0', STR_PAD_LEFT);
-        $nNF = str_pad($sale['id'], 9, '0', STR_PAD_LEFT);
+        $nNF = str_pad($sale['numero_nfce'] ?? $sale['id'], 9, '0', STR_PAD_LEFT);
         $tpEmis = "1"; // Normal
         $cNF = str_pad(rand(1, 99999999), 8, '0', STR_PAD_LEFT);
         $dhEmi = date('Y-m-d\TH:i:sP');
