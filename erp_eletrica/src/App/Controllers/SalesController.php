@@ -48,12 +48,30 @@ class SalesController extends BaseController {
         $paramsProd[] = $term;
         $paramsProd[] = "$term%";
 
-        $stmtProd = $db->prepare($sqlProd);
-        $stmtProd->execute($paramsProd);
-        $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
-        foreach ($products as $p) $results[] = $p;
+        try {
+            $stmtProd = $db->prepare($sqlProd);
+            $stmtProd->execute($paramsProd);
+            $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
+            foreach ($products as $p) $results[] = $p;
+        } catch (\PDOException $e) {
+            // Fallback: If preco_venda_2 or 3 are missing, try without them
+            if (str_contains($e->getMessage(), 'Unknown column')) {
+                $sqlProdFallback = "SELECT p.id, p.nome, p.preco_venda, 0 as preco_venda_2, 0 as preco_venda_3, p.unidade, p.imagens, p.codigo, 'product' as type,
+                            COALESCE(ef.quantidade, 0) as stock_qty
+                            FROM produtos p
+                            $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                            WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ?)
+                            ORDER BY (CASE WHEN p.codigo = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
+                $stmtProd = $db->prepare($sqlProdFallback);
+                $stmtProd->execute($paramsProd);
+                $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
+                foreach ($products as $p) $results[] = $p;
+            } else {
+                throw $e;
+            }
+        }
 
-        // 2. Search Pre-Sales (Pending)
+        // 2. Search Pre-Sales (Pending) - continues normally
         $modelPV = new \App\Models\PreSale();
         $avulsoCol = $modelPV->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
         
@@ -96,6 +114,7 @@ class SalesController extends BaseController {
             return 0;
         });
 
+        header('Content-Type: application/json');
         echo json_encode(array_slice($results, 0, 15));
         exit;
     }

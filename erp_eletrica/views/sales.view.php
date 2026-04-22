@@ -755,6 +755,12 @@ function highlightPdvSearchResult(items) {
 
 function renderSearchResults(products) {
     searchResults.innerHTML = '';
+    // Safety check: ensure products is an array
+    if (!Array.isArray(products)) {
+        console.error("PDV Search: Expected array but received:", products);
+        searchResults.classList.add('d-none');
+        return;
+    }
     currentSearchResults = products;
     pdvSearchIndex = -1;
 
@@ -976,6 +982,13 @@ if (customerSearch) {
 
 function renderCustomerSearchResults(clients, term = '') {
     customerResults.innerHTML = '';
+    
+    // Safety check: ensure clients is an array
+    if (!Array.isArray(clients)) {
+        console.error("PDV Client Search: Expected array but received:", clients);
+        customerResults.style.display = 'none';
+        return;
+    }
     
     // Check if term looks like a CPF or CNPJ
     const cleanTerm = term.replace(/\D/g, '');
@@ -2010,6 +2023,12 @@ async function handleBarcode(val) {
 pdvSearch.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') handleBarcode(pdvSearch.value);
 });
+
+// Missing intercepter to prevent default browser behavior for numeric/percentage inputs
+function interceptDiscount(e) {
+    // Only prevents scroll or other unwanted interactions if needed, but here ensures focus
+    if (e.type === 'focus') e.target.select();
+}
 </script>
 
 <style>
