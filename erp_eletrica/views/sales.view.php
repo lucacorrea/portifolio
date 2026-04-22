@@ -601,6 +601,8 @@ let activeManageId = null;
 let selectedCustomerId = null;
 let selectedCustomerName = null;
 let selectedCustomerCPF = null;
+let pdvSearchIndex = -1;
+let currentSearchResults = [];
 const currentUserLevel = '<?= $_SESSION['usuario_id'] ? ($_SESSION['usuario_nivel'] ?? 'vendedor') : 'vendedor' ?>';
 
 const pdvSearch = document.getElementById('pdvSearch');
@@ -695,6 +697,8 @@ pdvSearch.addEventListener('input', async (e) => {
     const term = e.target.value;
     if (term.length < 2) {
         searchResults.classList.add('d-none');
+        currentSearchResults = [];
+        pdvSearchIndex = -1;
         return;
     }
 
@@ -703,8 +707,57 @@ pdvSearch.addEventListener('input', async (e) => {
     renderSearchResults(products);
 });
 
+pdvSearch.addEventListener('keydown', (e) => {
+    const items = searchResults.querySelectorAll('.list-group-item');
+    if (items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        pdvSearchIndex = Math.min(pdvSearchIndex + 1, items.length - 1);
+        highlightPdvSearchResult(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        pdvSearchIndex = Math.max(pdvSearchIndex - 1, -1);
+        highlightPdvSearchResult(items);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (pdvSearchIndex === -1 && items.length > 0) {
+            pdvSearchIndex = 0;
+        }
+        if (pdvSearchIndex >= 0) {
+            items[pdvSearchIndex].click();
+        }
+    } else if (e.key === 'Escape') {
+        searchResults.classList.add('d-none');
+        pdvSearchIndex = -1;
+    }
+});
+
+function highlightPdvSearchResult(items) {
+    items.forEach((item, idx) => {
+        if (idx === pdvSearchIndex) {
+            item.classList.add('active');
+            item.scrollIntoView({ block: 'nearest' });
+            // Show preview for the selected item
+            if (currentSearchResults[idx]) {
+                showPreview(currentSearchResults[idx]);
+            }
+        } else {
+            item.classList.remove('active');
+        }
+    });
+
+    if (pdvSearchIndex === -1) {
+        productPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
+        productPreviewName.innerText = 'Aguardando...';
+    }
+}
+
 function renderSearchResults(products) {
     searchResults.innerHTML = '';
+    currentSearchResults = products;
+    pdvSearchIndex = -1;
+
     if (products.length === 0) {
         searchResults.classList.add('d-none');
         return;
