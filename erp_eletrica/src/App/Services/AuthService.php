@@ -96,6 +96,22 @@ class AuthService extends BaseService {
 
     public static function hasPermission($modulo, $acao) {
         if (!isset($_SESSION['usuario_id'])) return false;
+        
+        $isTemporary = $_SESSION['is_temporary'] ?? false;
+        
+        // Boundaries for Temporary Logins
+        if ($isTemporary) {
+            $allowedModules = [
+                'caixa', 'vendas', 'vendidos', 'fiado', 'pre_vendas', 
+                'estoque', 'transferencias', 'estoque_baixo', 
+                'clientes', 'fornecedores', 'importar_automatico'
+            ];
+            
+            if (!in_array($modulo, $allowedModules)) {
+                return false;
+            }
+        }
+
         if (($_SESSION['usuario_nivel'] ?? '') === 'admin') return true;
 
         $nivel = $_SESSION['usuario_nivel'];
