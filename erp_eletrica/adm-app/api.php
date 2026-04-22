@@ -69,6 +69,48 @@ try {
             $authService->logout();
             $response = ['success' => true];
             break;
+
+        case 'get_webauthn_challenge':
+            $webauthn = new \App\Services\WebAuthnService();
+            $challenge = $webauthn->generateChallenge();
+            $response = ['success' => true, 'challenge' => base64_encode($challenge)];
+            break;
+
+        case 'webauthn_register':
+            $webauthn = new \App\Services\WebAuthnService();
+            $parsedData = json_decode($_POST['result'] ?? '', true);
+            if ($webauthn->verifyRegistration($_SESSION['usuario_id'], $_POST['clientDataJSON'], $_POST['attestationObject'], $parsedData)) {
+                $response = ['success' => true, 'message' => 'Biometria vinculada com sucesso!'];
+            } else {
+                $response = ['success' => false, 'message' => 'Erro ao vincular biometria.'];
+            }
+            break;
+
+        case 'webauthn_login':
+            $webauthn = new \App\Services\WebAuthnService();
+            $userId = $webauthn->verifyAuthentication(
+                $_POST['credentialId'],
+                $_POST['clientDataJSON'],
+                $_POST['authenticatorData'],
+                $_POST['signature']
+            );
+            
+            if ($userId) {
+                // Log in user
+                $db = \App\Config\Database::getInstance()->getConnection();
+                $user = $db->query("SELECT * FROM usuarios WHERE id = " . (int)$userId)->fetch();
+                if ($user) {
+                    $_SESSION['usuario_id'] = $user['id'];
+                    $_SESSION['usuario_nome'] = $user['nome'];
+                    $_SESSION['usuario_nivel'] = $user['nivel'];
+                    $_SESSION['filial_id'] = $user['filial_id'];
+                    $_SESSION['is_temporary'] = false;
+                    $response = ['success' => true, 'message' => 'Login biométrico realizado!'];
+                }
+            } else {
+                $response = ['success' => false, 'message' => 'Falha na autenticação biométrica.'];
+            }
+            break;
     }
 } catch (Exception $e) {
     $response = ['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()];

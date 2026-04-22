@@ -95,7 +95,10 @@ $isLoggedIn = isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] != -1 &&
                             <div id="code-result" class="generated-area" style="display: none;">
                                 <p class="small text-uppercase opacity-50 mb-0">Código Gerado</p>
                                 <div class="code-display" id="display-code">------</div>
-                                <button class="btn btn-sm btn-outline-info" onclick="copyToClipboard('display-code')">COPIAR</button>
+                                <div class="d-flex gap-2 justify-content-center mt-2">
+                                    <button class="btn btn-sm btn-outline-info flex-fill" onclick="copyToClipboard('display-code')"><i class="fas fa-copy me-1"></i> COPIAR</button>
+                                    <button class="btn btn-sm btn-success flex-fill" onclick="shareToWhatsApp('code')"><i class="fab fa-whatsapp me-1"></i> ENVIAR</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -140,7 +143,10 @@ $isLoggedIn = isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] != -1 &&
                                     <label class="small text-uppercase opacity-50">Válido até:</label>
                                     <div class="small fw-bold text-info" id="display-time">-</div>
                                 </div>
-                                <button class="btn btn-sm btn-outline-info w-100 mt-3" onclick="copyLogin()">COPIAR TUDO</button>
+                                <div class="d-flex gap-2 mt-3">
+                                    <button class="btn btn-sm btn-outline-info flex-fill" onclick="copyLogin()"><i class="fas fa-copy me-1"></i> COPIAR TUDO</button>
+                                    <button class="btn btn-sm btn-success flex-fill" onclick="shareToWhatsApp('login')"><i class="fab fa-whatsapp me-1"></i> ENVIAR WHATSAPP</button>
+                                </div>
                             </div>
                         </div>
                     </div>
