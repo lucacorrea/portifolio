@@ -1,247 +1,384 @@
-<?php
-$pageTitle = 'Dashboard da Recepção | Sistema de Protocolo';
-$cssPath = '../public/assets/css/recepcao-dashboard.css';
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recepção | Sistema de Protocolo</title>
 
-$kpis = [
-    ['icon' => '🧾', 'iconClass' => 'icon-primary', 'value' => '38', 'label' => 'protocolos abertos hoje', 'trend' => '12 novos nesta manhã', 'trendClass' => 'success'],
-    ['icon' => '👥', 'iconClass' => 'icon-teal', 'value' => '14', 'label' => 'clientes aguardando cadastro', 'trend' => 'fila sob controle', 'trendClass' => 'success'],
-    ['icon' => '📨', 'iconClass' => 'icon-warning', 'value' => '9', 'label' => 'envios ao administrativo', 'trend' => '3 aguardando conferência', 'trendClass' => 'warning'],
-    ['icon' => '⚠️', 'iconClass' => 'icon-danger', 'value' => '4', 'label' => 'cadastros com pendência', 'trend' => 'revisar documentos', 'trendClass' => 'danger'],
-];
-
-$protocolos = [
-    ['cliente' => 'Maria Oliveira', 'servico' => 'Regularização documental', 'protocolo' => 'PROTO-2026-041', 'hora' => '08:10', 'status' => 'Novo cadastro', 'statusClass' => 'status-new'],
-    ['cliente' => 'Carlos Mendes', 'servico' => 'Solicitação de orçamento técnico', 'protocolo' => 'PROTO-2026-042', 'hora' => '08:42', 'status' => 'Em triagem', 'statusClass' => 'status-progress'],
-    ['cliente' => 'Raimunda Souza', 'servico' => 'Acompanhamento de serviço', 'protocolo' => 'PROTO-2026-043', 'hora' => '09:05', 'status' => 'Enviado ao adm.', 'statusClass' => 'status-sent'],
-    ['cliente' => 'João Batista', 'servico' => 'Pedido de orçamento completo', 'protocolo' => 'PROTO-2026-044', 'hora' => '09:26', 'status' => 'Novo cadastro', 'statusClass' => 'status-new'],
-];
-
-$fluxos = [
-    ['titulo' => 'Cadastros completos', 'percentual' => 86, 'descricao' => 'Atendimentos já registrados com dados principais, documentos e tipo de serviço.'],
-    ['titulo' => 'Protocolos encaminhados', 'percentual' => 64, 'descricao' => 'Itens enviados para o administrativo seguir com análise e orçamento.'],
-    ['titulo' => 'Retorno do orçamento', 'percentual' => 48, 'descricao' => 'Processos aguardando retorno do setor administrativo para posição ao cliente.'],
-];
-
-$timeline = [
-    ['hora' => '08:15', 'periodo' => 'Hoje', 'titulo' => 'Abertura do protocolo PROTO-2026-041', 'descricao' => 'Cliente atendido na recepção com serviço de regularização documental.'],
-    ['hora' => '08:50', 'periodo' => 'Hoje', 'titulo' => 'Envio ao administrativo', 'descricao' => 'Processo PROTO-2026-039 encaminhado para orçamento com prioridade média.'],
-    ['hora' => '09:20', 'periodo' => 'Hoje', 'titulo' => 'Pendência identificada', 'descricao' => 'Cadastro sem documento principal anexado; contato solicitado ao cliente.'],
-];
-
-$pendencias = [
-    ['titulo' => 'Documentos ausentes', 'texto' => '4 protocolos precisam de anexos ou conferência de CPF/CNPJ antes do envio.'],
-    ['titulo' => 'Retorno do administrativo', 'texto' => '7 processos aguardam orçamento para devolutiva ao cliente na recepção.'],
-    ['titulo' => 'Atendimento prioritário', 'texto' => '2 clientes marcados com urgência operacional para hoje à tarde.'],
-];
-
-require __DIR__ . '/../layouts/header.php';
-?>
-<div class="layout">
-  <?php require __DIR__ . '/../layouts/sidebar-recepcao.php'; ?>
-
-  <main class="main">
-    <header class="topbar">
-      <div class="search-box">
-        <span class="search-icon">🔎</span>
-        <input type="text" placeholder="Buscar cliente, protocolo, documento ou serviço...">
-      </div>
-
-      <div class="topbar-actions">
-        <div class="badge-button">Recepção</div>
-        <div class="badge-button">22/04/2026</div>
-        <button class="primary-button" type="button">+ Novo protocolo</button>
-      </div>
-    </header>
-
-    <section class="hero card">
-      <div class="hero-grid">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge">RP</div>
         <div>
-          <span class="hero-label">Fluxo de atendimento e protocolo</span>
-          <h1>Dashboard da recepção com foco em cadastro, triagem e encaminhamento</h1>
-          <p>
-            Esta área foi pensada para a recepção trabalhar com agilidade e controle. Aqui entra o cliente, registra o tipo de serviço, valida os dados iniciais e encaminha o protocolo para o setor administrativo elaborar o orçamento. O dono poderá visualizar tudo em uma visão mais ampla com permissões totais.
-          </p>
-
-          <div class="hero-highlights">
-            <div class="hero-highlight">
-              <small>Atendimentos do dia</small>
-              <strong>38</strong>
-            </div>
-            <div class="hero-highlight">
-              <small>Encaminhados ao adm.</small>
-              <strong>24</strong>
-            </div>
-            <div class="hero-highlight">
-              <small>Tempo médio</small>
-              <strong>11 min</strong>
-            </div>
-          </div>
-        </div>
-
-        <div class="hero-side">
-          <h3>Prioridades da manhã</h3>
-          <div class="hero-side-list">
-            <div class="hero-side-item">
-              <div>
-                <strong>Conferir cadastros pendentes</strong>
-                <small>4 protocolos aguardando documento ou ajuste cadastral.</small>
-              </div>
-              <span class="mini-status">Atenção</span>
-            </div>
-            <div class="hero-side-item">
-              <div>
-                <strong>Enviar novos protocolos</strong>
-                <small>9 solicitações prontas para seguir ao administrativo.</small>
-              </div>
-              <span class="mini-status">Fila</span>
-            </div>
-            <div class="hero-side-item">
-              <div>
-                <strong>Atualizar clientes</strong>
-                <small>7 processos já podem receber retorno de orçamento.</small>
-              </div>
-              <span class="mini-status">Retorno</span>
-            </div>
-          </div>
+          <small>Sistema de Protocolo</small>
+          <strong>Recepção</strong>
         </div>
       </div>
-    </section>
 
-    <section class="kpi-grid">
-      <?php foreach ($kpis as $kpi): ?>
-        <article class="card kpi-card">
-          <div class="kpi-top">
-            <div class="kpi-icon <?= htmlspecialchars($kpi['iconClass'], ENT_QUOTES, 'UTF-8') ?>">
-              <?= htmlspecialchars($kpi['icon'], ENT_QUOTES, 'UTF-8') ?>
-            </div>
-            <span class="trend <?= htmlspecialchars($kpi['trendClass'], ENT_QUOTES, 'UTF-8') ?>">
-              <?= htmlspecialchars($kpi['trend'], ENT_QUOTES, 'UTF-8') ?>
-            </span>
-          </div>
-          <h3><?= htmlspecialchars($kpi['value'], ENT_QUOTES, 'UTF-8') ?></h3>
-          <p><?= htmlspecialchars($kpi['label'], ENT_QUOTES, 'UTF-8') ?></p>
-        </article>
-      <?php endforeach; ?>
-    </section>
+      <div class="menu-title">Principal</div>
+      <nav class="nav-list">
+        <a href="#" class="nav-link active">
+          <span class="nav-icon">🏠</span>
+          Dashboard
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">📝</span>
+          Novo Protocolo
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">👥</span>
+          Clientes
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">📂</span>
+          Protocolos
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">📎</span>
+          Documentos
+        </a>
+      </nav>
 
-    <section class="content-grid">
-      <article class="card section-card">
-        <div class="section-header">
-          <div>
-            <h2>Protocolos recentes</h2>
-            <p>Últimos atendimentos registrados pela recepção</p>
-          </div>
-          <a class="badge-button" href="#">Ver fila completa</a>
+      <div class="menu-title">Operação</div>
+      <nav class="nav-list">
+        <a href="#" class="nav-link">
+          <span class="nav-icon">📤</span>
+          Encaminhar
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">⏳</span>
+          Pendências
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">📊</span>
+          Relatórios
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">⚙️</span>
+          Configurações
+        </a>
+      </nav>
+
+      <div class="sidebar-card">
+        <strong>Resumo da recepção</strong>
+        <p>
+          A recepção cadastra o cliente, identifica o tipo de serviço, gera o protocolo
+          e encaminha para o administrativo realizar o orçamento.
+        </p>
+        <button type="button">+ Abrir novo protocolo</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <div class="search-wrap">
+          <span>🔎</span>
+          <input type="text" placeholder="Buscar cliente, protocolo, telefone ou serviço..." />
         </div>
 
-        <div class="table-wrap">
+        <div class="top-actions">
+          <div class="chip">22 Abril 2026</div>
+          <div class="chip">Recepcionista: Maria</div>
+          <button class="btn btn-primary">Novo Atendimento</button>
+        </div>
+      </div>
+
+      <section class="hero">
+        <div class="hero-grid">
+          <div>
+            <span class="eyebrow">Painel operacional da recepção</span>
+            <h1>Controle de entrada, triagem e encaminhamento de protocolos</h1>
+            <p>
+              Este painel foi pensado para a recepção operar com rapidez e organização:
+              receber os dados do cliente, registrar o serviço solicitado, anexar documentos
+              e enviar tudo para o setor administrativo dar sequência no orçamento.
+            </p>
+
+            <div class="hero-stats">
+              <div class="hero-pill">
+                <small>Atendimentos hoje</small>
+                <strong>28</strong>
+              </div>
+              <div class="hero-pill">
+                <small>Protocolos abertos</small>
+                <strong>14</strong>
+              </div>
+              <div class="hero-pill">
+                <small>Encaminhados</small>
+                <strong>09</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-aside">
+            <h3>Foco do turno</h3>
+            <div class="mini-list">
+              <div class="mini-item">
+                <div>
+                  <strong>Triagem prioritária</strong>
+                  <small>3 atendimentos com urgência aguardando cadastro final.</small>
+                </div>
+                <span class="mini-badge">Alta</span>
+              </div>
+
+              <div class="mini-item">
+                <div>
+                  <strong>Encaminhamento</strong>
+                  <small>5 protocolos prontos para envio ao administrativo.</small>
+                </div>
+                <span class="mini-badge">Hoje</span>
+              </div>
+
+              <div class="mini-item">
+                <div>
+                  <strong>Documentos incompletos</strong>
+                  <small>2 clientes precisam complementar anexos do atendimento.</small>
+                </div>
+                <span class="mini-badge">Atenção</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats-grid">
+        <article class="card stat-card">
+          <div class="stat-top">
+            <div class="stat-icon soft-primary">📂</div>
+            <span class="trend up">+6 hoje</span>
+          </div>
+          <h3>14</h3>
+          <p>Protocolos abertos na recepção</p>
+        </article>
+
+        <article class="card stat-card">
+          <div class="stat-top">
+            <div class="stat-icon soft-secondary">📤</div>
+            <span class="trend up">9 enviados</span>
+          </div>
+          <h3>09</h3>
+          <p>Encaminhados ao administrativo</p>
+        </article>
+
+        <article class="card stat-card">
+          <div class="stat-top">
+            <div class="stat-icon soft-accent">📎</div>
+            <span class="trend warn">4 revisão</span>
+          </div>
+          <h3>04</h3>
+          <p>Cadastros aguardando documentos</p>
+        </article>
+
+        <article class="card stat-card">
+          <div class="stat-top">
+            <div class="stat-icon soft-danger">⚠️</div>
+            <span class="trend down">3 urgentes</span>
+          </div>
+          <h3>03</h3>
+          <p>Atendimentos com prioridade alta</p>
+        </article>
+      </section>
+
+      <section class="main-grid">
+        <article class="card panel">
+          <div class="panel-header">
+            <div>
+              <h2>Protocolos recentes</h2>
+              <p>Últimos atendimentos registrados na recepção</p>
+            </div>
+            <a href="#" class="chip">Ver todos</a>
+          </div>
+
           <table>
             <thead>
               <tr>
                 <th>Cliente</th>
                 <th>Serviço</th>
                 <th>Protocolo</th>
-                <th>Hora</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              <?php foreach ($protocolos as $item): ?>
-                <tr>
-                  <td>
-                    <div class="client-name"><?= htmlspecialchars($item['cliente'], ENT_QUOTES, 'UTF-8') ?></div>
-                    <div class="client-meta">Cadastro inicial validado na recepção</div>
-                  </td>
-                  <td><?= htmlspecialchars($item['servico'], ENT_QUOTES, 'UTF-8') ?></td>
-                  <td><?= htmlspecialchars($item['protocolo'], ENT_QUOTES, 'UTF-8') ?></td>
-                  <td><?= htmlspecialchars($item['hora'], ENT_QUOTES, 'UTF-8') ?></td>
-                  <td>
-                    <span class="status-badge <?= htmlspecialchars($item['statusClass'], ENT_QUOTES, 'UTF-8') ?>">
-                      <?= htmlspecialchars($item['status'], ENT_QUOTES, 'UTF-8') ?>
-                    </span>
-                  </td>
-                </tr>
-              <?php endforeach; ?>
+              <tr>
+                <td>
+                  <div class="client-name">Carlos Henrique</div>
+                  <div class="client-sub">(92) 99999-1020</div>
+                </td>
+                <td>Solicitação de orçamento</td>
+                <td>PRT-2026-0418</td>
+                <td><span class="status ok">Encaminhado</span></td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="client-name">Ana Beatriz Costa</div>
+                  <div class="client-sub">(92) 98888-2451</div>
+                </td>
+                <td>Análise documental</td>
+                <td>PRT-2026-0419</td>
+                <td><span class="status pending">Aguardando anexo</span></td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="client-name">João Pedro Silva</div>
+                  <div class="client-sub">(92) 99777-8874</div>
+                </td>
+                <td>Cadastro de serviço</td>
+                <td>PRT-2026-0420</td>
+                <td><span class="status progress">Em triagem</span></td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="client-name">Fernanda Martins</div>
+                  <div class="client-sub">(92) 99123-4088</div>
+                </td>
+                <td>Orçamento prioritário</td>
+                <td>PRT-2026-0421</td>
+                <td><span class="status high">Urgente</span></td>
+              </tr>
+
+              <tr>
+                <td>
+                  <div class="client-name">Raimundo Lopes</div>
+                  <div class="client-sub">(92) 99456-7721</div>
+                </td>
+                <td>Revisão de solicitação</td>
+                <td>PRT-2026-0422</td>
+                <td><span class="status ok">Encaminhado</span></td>
+              </tr>
             </tbody>
           </table>
-        </div>
-      </article>
+        </article>
 
-      <article class="card section-card">
-        <div class="section-header">
-          <div>
-            <h3>Andamento do fluxo</h3>
-            <p>Visão operacional da recepção</p>
-          </div>
-        </div>
-
-        <div class="workflow-list">
-          <?php foreach ($fluxos as $fluxo): ?>
-            <div class="workflow-item">
-              <div class="progress-row">
-                <strong><?= htmlspecialchars($fluxo['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
-                <span><?= (int) $fluxo['percentual'] ?>%</span>
-              </div>
-              <div class="progress-bar">
-                <span style="width: <?= (int) $fluxo['percentual'] ?>%"></span>
-              </div>
-              <p class="note"><?= htmlspecialchars($fluxo['descricao'], ENT_QUOTES, 'UTF-8') ?></p>
+        <article class="card panel">
+          <div class="panel-header">
+            <div>
+              <h3>Fluxo da recepção</h3>
+              <p>Etapas operacionais do atendimento</p>
             </div>
-          <?php endforeach; ?>
-        </div>
-      </article>
-    </section>
-
-    <section class="bottom-grid">
-      <article class="card section-card">
-        <div class="section-header">
-          <div>
-            <h3>Movimentações do dia</h3>
-            <p>Eventos recentes no setor de recepção</p>
           </div>
-        </div>
 
-        <div class="timeline-list">
-          <?php foreach ($timeline as $evento): ?>
-            <div class="timeline-item">
-              <div class="timeline-time">
-                <strong><?= htmlspecialchars($evento['hora'], ENT_QUOTES, 'UTF-8') ?></strong>
-                <small><?= htmlspecialchars($evento['periodo'], ENT_QUOTES, 'UTF-8') ?></small>
-              </div>
+          <div class="flow-list">
+            <div class="flow-item">
+              <div class="flow-step">1</div>
               <div>
-                <h4><?= htmlspecialchars($evento['titulo'], ENT_QUOTES, 'UTF-8') ?></h4>
-                <p><?= htmlspecialchars($evento['descricao'], ENT_QUOTES, 'UTF-8') ?></p>
+                <h4>Receber cliente</h4>
+                <p>Registrar nome, contato, documento principal e motivo do atendimento.</p>
               </div>
             </div>
-          <?php endforeach; ?>
-        </div>
-      </article>
 
-      <article class="card section-card">
-        <div class="section-header">
-          <div>
-            <h3>Pontos de atenção</h3>
-            <p>O que precisa de ação na recepção</p>
-          </div>
-        </div>
-
-        <div class="list-clean">
-          <?php foreach ($pendencias as $pendencia): ?>
-            <div class="list-clean-item">
+            <div class="flow-item">
+              <div class="flow-step">2</div>
               <div>
-                <strong><?= htmlspecialchars($pendencia['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
-                <small><?= htmlspecialchars($pendencia['texto'], ENT_QUOTES, 'UTF-8') ?></small>
+                <h4>Selecionar tipo de serviço</h4>
+                <p>Definir corretamente o serviço solicitado para evitar erro no orçamento.</p>
               </div>
-              <span class="mini-status">Revisar</span>
             </div>
-          <?php endforeach; ?>
-        </div>
-      </article>
-    </section>
 
-    <div class="footer-note">
-      Estrutura inicial do dashboard da recepção para o sistema de protocolo em PHP.
-    </div>
-  </main>
-</div>
-<?php require __DIR__ . '/../layouts/footer.php'; ?>
+            <div class="flow-item">
+              <div class="flow-step">3</div>
+              <div>
+                <h4>Gerar protocolo</h4>
+                <p>Criar número único do atendimento e anexar observações da recepção.</p>
+              </div>
+            </div>
+
+            <div class="flow-item">
+              <div class="flow-step">4</div>
+              <div>
+                <h4>Encaminhar ao administrativo</h4>
+                <p>Enviar o protocolo completo para o setor responsável elaborar o orçamento.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="card panel">
+          <div class="panel-header">
+            <div>
+              <h3>Pontos de atenção</h3>
+              <p>O que precisa ser resolvido ainda hoje</p>
+            </div>
+          </div>
+
+          <div class="alert-list">
+            <div class="alert-item">
+              <strong>Cliente com documento pendente</strong>
+              <p>O protocolo PRT-2026-0419 não pode seguir para orçamento sem o comprovante solicitado.</p>
+              <span class="alert-tag attention">Aguardando cliente</span>
+            </div>
+
+            <div class="alert-item">
+              <strong>Atendimento prioritário</strong>
+              <p>Há 3 protocolos marcados como urgentes que devem ser enviados primeiro ao administrativo.</p>
+              <span class="alert-tag urgent">Prioridade alta</span>
+            </div>
+
+            <div class="alert-item">
+              <strong>Revisar cadastro do turno da manhã</strong>
+              <p>Dois atendimentos foram salvos com observação incompleta e precisam de conferência.</p>
+              <span class="alert-tag info">Revisão interna</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-header">
+            <div>
+              <h3>Resumo operacional</h3>
+              <p>Indicadores rápidos da recepção</p>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Indicador</th>
+                <th>Resultado</th>
+                <th>Observação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Tempo médio de cadastro</td>
+                <td>08 min</td>
+                <td>Bom ritmo no turno atual</td>
+              </tr>
+              <tr>
+                <td>Cadastros completos</td>
+                <td>91%</td>
+                <td>Meta mínima: 95%</td>
+              </tr>
+              <tr>
+                <td>Envios ao administrativo</td>
+                <td>09</td>
+                <td>Acima da média do dia</td>
+              </tr>
+              <tr>
+                <td>Pendências abertas</td>
+                <td>04</td>
+                <td>Exigem retorno ao cliente</td>
+              </tr>
+              <tr>
+                <td>Atendimentos urgentes</td>
+                <td>03</td>
+                <td>Encaminhar primeiro</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+      </section>
+
+      <div class="footer-note">
+        Dashboard da recepção • modelo HTML inicial para sistema de protocolo com níveis de usuário
+      </div>
+    </main>
+  </div>
+</body>
+</html>
