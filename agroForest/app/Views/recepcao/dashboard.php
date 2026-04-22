@@ -1,6 +1,6 @@
 <?php
 $pageTitle = 'Dashboard da Recepção | Sistema de Protocolo';
-$cssPath = '/assets/css/recepcao-dashboard.css';
+$cssPath = 'public/assets/css/recepcao-dashboard.css';
 
 $kpis = [
     ['icon' => '🧾', 'iconClass' => 'icon-primary', 'value' => '38', 'label' => 'protocolos abertos hoje', 'trend' => '12 novos nesta manhã', 'trendClass' => 'success'],
