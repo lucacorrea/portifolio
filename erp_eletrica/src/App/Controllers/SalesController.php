@@ -539,12 +539,29 @@ class SalesController extends BaseController {
         $authCode = $data['auth_code'] ?? null;
         if (($_SESSION['usuario_nivel'] ?? '') !== 'admin') {
             if (!$authCode) {
-                echo json_encode(['success' => false, 'error' => 'Código de autorização de cancelamento é obrigatório.']);
+                echo json_encode(['success' => false, 'error' => 'Código ou Senha de autorização é obrigatório.']);
                 exit;
             }
+
+            $isValid = false;
+            // 1. Try as a 6-digit code
             $authService = new \App\Services\AuthorizationService();
-            if (!$authService->validateAndUse($authCode, 'cancelamento', $_SESSION['filial_id'] ?? 1)) {
-                echo json_encode(['success' => false, 'error' => 'Código de autorização inválido, expirado ou já utilizado. Verifica se o tipo é "Cancelamento".']);
+            if ($authService->validateAndUse($authCode, 'cancelamento', $_SESSION['filial_id'] ?? 1)) {
+                $isValid = true;
+            } else {
+                // 2. Try as an admin password/PIN (checking all admins of the branch)
+                $userModel = new \App\Models\User();
+                $admins = $userModel->findAdmins();
+                foreach ($admins as $admin) {
+                    if ($userModel->validateAuth($admin['id'], $authCode)) {
+                        $isValid = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$isValid) {
+                echo json_encode(['success' => false, 'error' => 'Código ou Senha de autorização inválido ou expirado.']);
                 exit;
             }
         }
@@ -803,7 +820,13 @@ class SalesController extends BaseController {
             if ($userModel->validateAuth($userId, $credential)) {
                 echo json_encode(['success' => true]);
             } else {
-                echo json_encode(['success' => false, 'error' => 'Credencial inválida para este Administrador. Verifique se digitou a senha ou PIN correto.']);
+                // Fallback: Check if it's a 6-digit code for "desconto"
+                $authService = new \App\Services\AuthorizationService();
+                if ($authService->validateAndUse($credential, 'desconto', $_SESSION['filial_id'] ?? 1)) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Senha ou Código de autorização inválido/expirado.']);
+                }
             }
             exit;
         }

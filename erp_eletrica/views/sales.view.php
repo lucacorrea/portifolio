@@ -309,8 +309,8 @@
                 </div>
                 
                 <div class="mb-4 text-start">
-                    <label class="form-label small fw-bold text-uppercase opacity-75" id="authLabel">Senha de Autorização</label>
-                    <input type="password" id="authCredential" class="form-control form-control-lg text-center shadow-sm border-2" placeholder="Digite a senha..." autofocus>
+                    <label class="form-label small fw-bold text-uppercase opacity-75" id="authLabel">Senha ou Código de Autorização</label>
+                    <input type="text" id="authCredential" class="form-control form-control-lg text-center shadow-sm border-2" placeholder="Digite a senha ou código..." autofocus>
                 </div>
 
                 <div class="d-grid">
@@ -411,8 +411,8 @@
 
                     <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'admin'): ?>
                     <div class="mb-3">
-                        <label class="form-label fw-bold small text-danger"><i class="fas fa-lock me-1"></i>Código de Autorização (Admin)</label>
-                        <input type="text" id="cancel-auth-code" class="form-control fw-bold text-center" placeholder="Ex: 123456" maxlength="6" style="font-size: 1.2rem; letter-spacing: 2px;">
+                        <label class="form-label fw-bold small text-danger"><i class="fas fa-lock me-1"></i>Senha ou Código de Autorização</label>
+                        <input type="text" id="cancel-auth-code" class="form-control fw-bold text-center" placeholder="Senha ou Código (Ex: 123456)" maxlength="20" style="font-size: 1.1rem;">
                     </div>
                     <?php endif; ?>
 
@@ -1622,15 +1622,12 @@ async function loadAdmins() {
         const input = document.getElementById('authCredential');
         const label = document.getElementById('authLabel');
         
-        if (admin.auth_type === 'pin') {
-            input.type = 'number';
-            input.placeholder = 'Digite o PIN...';
-            label.innerText = 'PIN DE AUTORIZAÇÃO';
-        } else {
-            input.type = 'password';
-            input.placeholder = 'Digite a senha...';
-            label.innerText = 'SENHA DE AUTORIZAÇÃO';
-        }
+        const input = document.getElementById('authCredential');
+        const label = document.getElementById('authLabel');
+        
+        input.type = 'text'; // Allow both password (text) and numeric codes
+        input.placeholder = 'Senha ou Código (Ex: 123456)';
+        label.innerText = 'SENHA OU CÓDIGO DE AUTORIZAÇÃO';
     }
 }
 
