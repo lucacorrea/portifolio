@@ -1,10 +1,50 @@
-<!-- Productivity & Audit View -->
+<!-- Filters Bar -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+        <form action="inteligencia.php" method="GET" class="row g-3 align-items-end">
+            <input type="hidden" name="action" value="productivity">
+            
+            <div class="col-md-3">
+                <label class="extra-small text-muted fw-bold text-uppercase mb-1">Período De</label>
+                <input type="date" name="from" class="form-control form-control-sm" value="<?= $filters['from'] ?>">
+            </div>
+            
+            <div class="col-md-3">
+                <label class="extra-small text-muted fw-bold text-uppercase mb-1">Até</label>
+                <input type="date" name="to" class="form-control form-control-sm" value="<?= $filters['to'] ?>">
+            </div>
+            
+            <div class="col-md-3">
+                <label class="extra-small text-muted fw-bold text-uppercase mb-1">Colaborador / Autor</label>
+                <select name="user_id" class="form-select form-select-sm">
+                    <option value="">Todos os Colaboradores</option>
+                    <?php foreach ($users as $u): ?>
+                        <option value="<?= $u['id'] ?>" <?= $filters['user_id'] == $u['id'] ? 'selected' : '' ?>><?= $u['nome'] ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                    <i class="fas fa-filter me-2"></i>Filtrar
+                </button>
+                <a href="inteligencia.php?action=productivity" class="btn btn-sm btn-light border">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="row g-4 mb-4">
     <!-- Sales x Commission Chart -->
     <div class="col-lg-8">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-chart-area me-2"></i>Desempenho Comercial (Últimos 7 Dias)</h6>
+                <h6 class="mb-0 fw-bold text-secondary">
+                    <i class="fas fa-chart-area me-2"></i>Desempenho Comercial 
+                    <span class="small text-muted fw-normal ms-2">(<?= date('d/m', strtotime($filters['from'])) ?> a <?= date('d/m', strtotime($filters['to'])) ?>)</span>
+                </h6>
                 <div class="badge bg-primary bg-opacity-10 text-primary px-3">Tempo Real</div>
             </div>
             <div class="card-body">
@@ -22,7 +62,7 @@
                 <div class="card border-0 shadow-sm bg-primary text-white overflow-hidden position-relative">
                     <div class="card-body p-4">
                         <div class="position-relative z-index-1">
-                            <h6 class="extra-small text-uppercase opacity-75 fw-bold mb-1">Total Comissões a Pagar</h6>
+                            <h6 class="extra-small text-uppercase opacity-75 fw-bold mb-1">Total Comissões Período</h6>
                             <h3 class="fw-bold mb-0">R$ <?= number_format(array_sum(array_column($rankings, 'comissao_montante')), 2, ',', '.') ?></h3>
                         </div>
                         <i class="fas fa-hand-holding-dollar position-absolute end-0 bottom-0 mb-n4 me-n4 opacity-25" style="font-size: 8rem;"></i>
@@ -33,18 +73,18 @@
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body p-4">
                         <h6 class="extra-small text-uppercase text-muted fw-bold mb-3">Líder de Vendas</h6>
-                        <?php if (!empty($rankings)): ?>
+                        <?php if (!empty($rankings) && $rankings[0]['vendas_montante'] > 0): ?>
                             <div class="d-flex align-items-center">
                                 <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
                                     <i class="fas fa-crown fa-lg"></i>
                                 </div>
                                 <div>
-                                    <div class="fw-bold fs-5"><?= $rankings[0]['nome'] ?></div>
+                                    <div class="fw-bold fs-5 text-truncate" style="max-width: 140px;"><?= $rankings[0]['nome'] ?></div>
                                     <div class="text-success small fw-bold">R$ <?= number_format($rankings[0]['vendas_montante'], 2, ',', '.') ?></div>
                                 </div>
                             </div>
                         <?php else: ?>
-                            <div class="text-muted small">Nenhuma venda registrada ainda.</div>
+                            <div class="text-muted small">Nenhuma venda registrada no período.</div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -108,7 +148,7 @@
                 <thead class="bg-light">
                     <tr>
                         <th class="ps-4" width="180">Data / Hora</th>
-                        <th width="150">Autor</th>
+                        <th width="200">Autor</th>
                         <th width="150">Ação</th>
                         <th>Detalhes da Alteração</th>
                     </tr>
@@ -117,7 +157,7 @@
                     <?php foreach ($auditLogs as $a): ?>
                     <tr>
                         <td class="ps-4 text-muted"><?= date('d/m/Y H:i:s', strtotime($a['created_at'])) ?></td>
-                        <td class="fw-bold"><?= $a['usuario_nome'] ?: 'SISTEMA' ?></td>
+                        <td class="fw-bold text-truncate" style="max-width: 200px;"><?= $a['usuario_nome'] ?: 'SISTEMA' ?></td>
                         <td>
                             <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2">
                                 <?= strtoupper($a['acao']) ?>
@@ -138,7 +178,10 @@
         </div>
     </div>
     <div class="card-footer bg-white border-top py-3">
-        <?= renderPagination($pagination, 'inteligencia.php?action=productivity') ?>
+        <?php 
+            $queryString = "&from={$filters['from']}&to={$filters['to']}&user_id={$filters['user_id']}";
+            echo renderPagination($pagination, "inteligencia.php?action=productivity{$queryString}") 
+        ?>
     </div>
 </div>
 
