@@ -237,9 +237,9 @@
 <div class="modal fade" id="modalPagamento" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Receber Pagamento (AVS)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Receber Pagamento (AVS)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <!-- Info Box -->
@@ -250,32 +250,55 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Valor a Receber (R$)</label>
-                    <input type="number" id="pay-valor" class="form-control form-control-lg text-center fw-bold" step="0.01" placeholder="0.00" required>
+                    <label class="form-label fw-bold small text-uppercase opacity-75">Valor a Receber (R$)</label>
+                    <input type="number" id="pay-valor" class="form-control form-control-lg text-center fw-bold text-primary" step="0.01" placeholder="0.00" oninput="updatePayTotal()" required>
                 </div>
 
                 <div class="mb-4">
-                    <label class="form-label fw-bold">Forma de Recebimento</label>
+                    <label class="form-label fw-bold small text-uppercase opacity-75">Forma de Recebimento</label>
                     <div class="row g-2">
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_dinheiro" value="DINHEIRO" checked>
+                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_dinheiro" value="DINHEIRO" checked onchange="updatePayTotal()">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_met_dinheiro">
                                 <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro
                             </label>
                         </div>
                         <div class="col-6">
-                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_pix" value="PIX">
+                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_pix" value="PIX" onchange="updatePayTotal()">
                             <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_met_pix">
                                 <i class="fa-brands fa-pix me-2 text-info"></i> Pix
                             </label>
                         </div>
-                        <div class="col-12">
-                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_cartao" value="CARTAO">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_met_cartao">
-                                <i class="fas fa-credit-card me-2 text-primary"></i> Cartão
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_credito" value="CARTAO_CREDITO" onchange="updatePayTotal()">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_met_credito">
+                                <i class="fas fa-credit-card me-2 text-primary"></i> Crédito
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="pay_metodo_radio" id="pay_met_debito" value="CARTAO_DEBITO" onchange="updatePayTotal()">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_met_debito">
+                                <i class="fas fa-credit-card me-2 text-info"></i> Débito
                             </label>
                         </div>
                     </div>
+                </div>
+
+                <!-- Fee Container -->
+                <div id="pay-tax-container" class="d-none mt-3 p-3 bg-info bg-opacity-10 border border-info border-opacity-10 rounded">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Taxa da Maquininha (%)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-info"><i class="fas fa-percent"></i></span>
+                        <input type="number" id="pay-taxa" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="updatePayTotal()">
+                    </div>
+                </div>
+
+                <div id="pay-total-row" class="d-none mt-3 p-3 bg-light border rounded">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-uppercase small opacity-75">Total a Cobrar:</span>
+                        <span class="h4 mb-0 fw-bold text-primary" id="pay-total-final">R$ 0,00</span>
+                    </div>
+                    <div class="extra-small text-muted mt-1 text-center">Valor original + taxa da maquininha</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -550,30 +573,70 @@
         document.getElementById('pay-saldo-display').innerText = `Saldo em aberto: ${fmtBRL(fiado.saldo)}`;
         document.getElementById('pay-valor').value = parseFloat(fiado.saldo).toFixed(2);
         
+        // Reset tax fields
+        document.getElementById('pay-taxa').value = '';
+        document.getElementById('pay_met_dinheiro').checked = true;
+        updatePayTotal();
+
         const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPagamento'));
         modal.show();
     }
 
+    function updatePayTotal() {
+        const valorBase = parseFloat(document.getElementById('pay-valor').value) || 0;
+        const metodo = document.querySelector('input[name="pay_metodo_radio"]:checked').value;
+        const taxContainer = document.getElementById('pay-tax-container');
+        const totalRow = document.getElementById('pay-total-row');
+        const totalFinalDisplay = document.getElementById('pay-total-final');
+
+        if (metodo.includes('CARTAO')) {
+            taxContainer.classList.remove('d-none');
+            totalRow.classList.remove('d-none');
+            
+            const taxa = parseFloat(document.getElementById('pay-taxa').value) || 0;
+            const totalComTaxa = valorBase * (1 + (taxa / 100));
+            
+            totalFinalDisplay.innerText = fmtBRL(totalComTaxa);
+        } else {
+            taxContainer.classList.add('d-none');
+            totalRow.classList.add('d-none');
+        }
+    }
+
     async function confirmarPagamento() {
         const valor = document.getElementById('pay-valor').value;
-        const metodo = document.querySelector('input[name="pay_metodo_radio"]:checked').value;
+        const radioChecked = document.querySelector('input[name="pay_metodo_radio"]:checked');
+        const metodo = radioChecked ? radioChecked.value : 'DINHEIRO';
 
         if (!valor || valor <= 0) return alert('Valor inválido.');
 
-        const res = await fetch('fiado.php?action=pagar', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({id: currentId, valor: valor, metodo: metodo})
-        });
+        const btn = event.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processando...';
 
-        const data = await res.json();
-        if (data.ok) {
-            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPagamento'));
-            modal.hide();
-            await loadFiados();
-            alert(data.msg);
-        } else {
-            alert(data.msg);
+        try {
+            const res = await fetch('fiado.php?action=pagar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id: currentId, valor: valor, metodo: metodo})
+            });
+
+            const data = await res.json();
+            if (data.ok) {
+                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPagamento'));
+                modal.hide();
+                await loadFiados();
+                alert(data.msg);
+            } else {
+                alert(data.msg);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao processar pagamento.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
     }
 

@@ -62,8 +62,8 @@
                 <div class="card border-0 shadow-sm bg-primary text-white overflow-hidden position-relative">
                     <div class="card-body p-4">
                         <div class="position-relative z-index-1">
-                            <h6 class="extra-small text-uppercase opacity-75 fw-bold mb-1">Total Comissões Período</h6>
-                            <h3 class="fw-bold mb-0">R$ <?= number_format(array_sum(array_column($rankings, 'comissao_montante')), 2, ',', '.') ?></h3>
+                            <h6 class="extra-small text-uppercase text-white fw-bold mb-1">Total Comissões Período</h6>
+                            <h3 class="fw-bold mb-0 text-white">R$ <?= number_format(array_sum(array_column($rankings, 'comissao_montante')), 2, ',', '.') ?></h3>
                         </div>
                         <i class="fas fa-hand-holding-dollar position-absolute end-0 bottom-0 mb-n4 me-n4 opacity-25" style="font-size: 8rem;"></i>
                     </div>
