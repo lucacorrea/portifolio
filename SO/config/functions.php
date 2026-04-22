@@ -23,7 +23,7 @@ function admin_check() {
 function view_check() {
     $nivel = strtoupper($_SESSION['nivel'] ?? '');
     $allowed = ['ADMIN', 'SUPORTE', 'SECRETARIO', 'CASA_CIVIL', 'SEFAZ'];
-    if (!in_array($nivel, $allowed)) {
+    if (!in_array($nivel, $allowed, true)) {
         header("Location: dashboard.php?error=access_denied");
         exit();
     }
@@ -54,55 +54,154 @@ function suporte_check() {
 }
 
 function log_action($pdo, $acao, $detalhes = null) {
-    global $pdo;
     $usuario_id = $_SESSION['user_id'] ?? null;
     $secretaria_id = $_SESSION['secretaria_id'] ?? null;
-    $ip = $_SERVER['REMOTE_ADDR'];
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-    $stmt = $pdo->prepare("INSERT INTO logs (usuario_id, secretaria_id, acao, detalhes, ip) VALUES (?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("
+        INSERT INTO logs (usuario_id, secretaria_id, acao, detalhes, ip)
+        VALUES (?, ?, ?, ?, ?)
+    ");
     $stmt->execute([$usuario_id, $secretaria_id, $acao, $detalhes, $ip]);
 }
 
 function flash_message($type, $msg) {
-    $_SESSION['flash'] = ['type' => $type, 'msg' => $msg];
+    $_SESSION['flash'] = [
+        'type' => $type,
+        'msg'  => $msg
+    ];
 }
 
 function display_flash() {
     if (isset($_SESSION['flash'])) {
         $f = $_SESSION['flash'];
-        echo "<div class='alert alert-{$f['type']} no-print'>{$f['msg']}</div>";
+        $type = htmlspecialchars($f['type'] ?? 'info', ENT_QUOTES, 'UTF-8');
+        $msg  = htmlspecialchars($f['msg'] ?? '', ENT_QUOTES, 'UTF-8');
+
+        echo "<div class='alert alert-{$type} no-print'>{$msg}</div>";
         unset($_SESSION['flash']);
     }
 }
 
 function format_money($val) {
-    return "R$ " . number_format($val, 2, ',', '.');
+    return "R$ " . number_format((float)$val, 2, ',', '.');
 }
 
 function format_date($date) {
-    return date('d/m/Y H:i', strtotime($date));
+    if (empty($date)) {
+        return '';
+    }
+
+    $timestamp = strtotime($date);
+    if ($timestamp === false) {
+        return '';
+    }
+
+    return date('d/m/Y H:i', $timestamp);
 }
 
 function generate_oficio_number($pdo) {
     $year = date('Y');
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM oficios WHERE numero LIKE 'OF-$year-%'");
-    $count = $stmt->fetch()['total'] + 1;
-    return "OF-$year-" . str_pad($count, 4, '0', STR_PAD_LEFT);
+
+    $stmt = $pdo->query("
+        SELECT numero
+        FROM oficios
+        WHERE numero IS NOT NULL
+          AND numero <> ''
+          AND numero LIKE 'OF-$year-%'
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+
+    $ultimoNumero = $stmt->fetchColumn();
+
+    if (!$ultimoNumero) {
+        return "OF-$year-0001";
+    }
+
+    if (preg_match('/^OF\-(\d{4})\-(\d+)$/', $ultimoNumero, $matches)) {
+        $anoUltimo = $matches[1];
+        $sequenciaUltima = (int)$matches[2];
+
+        if ($anoUltimo !== $year) {
+            return "OF-$year-0001";
+        }
+
+        $novaSequencia = $sequenciaUltima + 1;
+        return "OF-$year-" . str_pad((string)$novaSequencia, 4, '0', STR_PAD_LEFT);
+    }
+
+    return "OF-$year-0001";
 }
 
 function generate_aquisicao_number($pdo) {
     $year = date('Y');
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM aquisicoes WHERE numero_aq LIKE 'AQ-$year-%'");
-    $count = $stmt->fetch()['total'] + 1;
-    return "AQ-$year-" . str_pad($count, 4, '0', STR_PAD_LEFT);
+
+    /*
+     * Regras:
+     * - NÃO conta quantidade de registros
+     * - pega o último numero_aq salvo no banco
+     * - se o último for 2026-0026, o próximo será 2026-0027
+     * - aceita também formato antigo AQ-2026-0026
+     */
+
+    $stmt = $pdo->query("
+        SELECT numero_aq
+        FROM aquisicoes
+        WHERE numero_aq IS NOT NULL
+          AND numero_aq <> ''
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+
+    $ultimoNumero = $stmt->fetchColumn();
+
+    if (!$ultimoNumero) {
+        return $year . '-0001';
+    }
+
+    $ultimoNumero = trim((string)$ultimoNumero);
+
+    // Formato novo: 2026-0026
+    if (preg_match('/^(\d{4})-(\d+)$/', $ultimoNumero, $matches)) {
+        $anoUltimo = $matches[1];
+        $sequenciaUltima = (int)$matches[2];
+
+        if ($anoUltimo !== $year) {
+            return $year . '-0001';
+        }
+
+        $novaSequencia = $sequenciaUltima + 1;
+        return $year . '-' . str_pad((string)$novaSequencia, 4, '0', STR_PAD_LEFT);
+    }
+
+    // Formato antigo: AQ-2026-0026
+    if (preg_match('/^AQ-(\d{4})-(\d+)$/', $ultimoNumero, $matches)) {
+        $anoUltimo = $matches[1];
+        $sequenciaUltima = (int)$matches[2];
+
+        if ($anoUltimo !== $year) {
+            return $year . '-0001';
+        }
+
+        $novaSequencia = $sequenciaUltima + 1;
+        return $year . '-' . str_pad((string)$novaSequencia, 4, '0', STR_PAD_LEFT);
+    }
+
+    // Se estiver fora do padrão, reinicia com segurança
+    return $year . '-0001';
 }
 
 function generate_unique_code($pdo) {
     $year = date('Y');
+
     do {
-        $code = "ENT-$year-" . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 5));
+        $code = "ENT-$year-" . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 5));
+
         $stmt = $pdo->prepare("SELECT id FROM aquisicoes WHERE codigo_entrega = ?");
         $stmt->execute([$code]);
+
     } while ($stmt->fetch());
+
     return $code;
 }
