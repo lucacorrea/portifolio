@@ -31,7 +31,7 @@ $isLoggedIn = isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] != -1 &&
                     <form id="login-form">
                         <div class="mb-3">
                             <label class="form-label small text-uppercase fw-bold opacity-75">Email Administrativo</label>
-                            <input type="email" id="email" class="form-control" placeholder="seu-email@adm.com" required autocomplete="username">
+                            <input type="email" id="email" class="form-control" placeholder="seu-email@adm.com" required autocomplete="username webauthn">
                         </div>
                         <div class="mb-4">
                             <label class="form-label small text-uppercase fw-bold opacity-75">Senha Mestra</label>

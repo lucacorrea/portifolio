@@ -8,6 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
         checkBiometricSupport();
+        
+        // Automation: Try to trigger Conditional UI (Passkeys)
+        if (localStorage.getItem('webauthn_registered') === 'true') {
+            tryBiometricLogin(true); // Auto-attempt with conditional mediation
+        }
     }
     
     if (document.getElementById('dashboard-screen')) {
@@ -152,7 +157,7 @@ async function tryBiometricLogin(isAuto = false) {
     try {
         const resChallenge = await apiCall('get_webauthn_challenge');
         const challengeBase64 = resChallenge.challenge || (resChallenge.data && resChallenge.data.challenge);
-        if (!challengeBase64) throw new Error('Desafio não encontrado.');
+        if (!challengeBase64) return;
         
         const challenge = base64ToBinary(challengeBase64);
 
@@ -162,7 +167,13 @@ async function tryBiometricLogin(isAuto = false) {
             userVerification: "required"
         };
 
+        // If isAuto is true, use 'conditional' mediation for modern browser automation
+        if (isAuto) {
+            publicKeyCredentialRequestOptions.mediation = 'conditional';
+        }
+
         const assertion = await navigator.credentials.get({ publicKey: publicKeyCredentialRequestOptions });
+        if (!assertion) return;
 
         const res = await apiCall('webauthn_login', {
             credentialId: binaryToBase64(new Uint8Array(assertion.rawId)),
@@ -177,8 +188,13 @@ async function tryBiometricLogin(isAuto = false) {
             if (!isAuto) alert(res.message);
         }
     } catch (e) {
+        if (isAuto) {
+            console.log('Conditional UI not available or not supported:', e.message);
+            // Fallback for automation: if conditional fails, we still have the manual button.
+            return;
+        }
         console.warn('Biometric attempt:', e);
-        if (!isAuto) alert('Erro na biometria: ' + e.message);
+        alert('Erro na biometria: ' + e.message);
     }
 }
 
@@ -197,7 +213,14 @@ function updateBiometricsUI() {
 // --- Helpers ---
 
 function base64ToBinary(base64) {
-    return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    // Robust decoding: remove whitespace and handle non-standard Base64URL characters if any
+    const cleanBase64 = base64.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
+    try {
+        return Uint8Array.from(atob(cleanBase64), c => c.charCodeAt(0));
+    } catch (e) {
+        console.error('atob error for string:', cleanBase64);
+        throw e;
+    }
 }
 
 function binaryToBase64(binary) {
