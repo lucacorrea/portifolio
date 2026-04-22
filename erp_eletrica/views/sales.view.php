@@ -266,7 +266,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white border-0 shadow-sm">
-                <h5 class="modal-title fw-bold"><i class="fas fa-file-import me-2"></i>Pré-Vendas Pendentes</h5>
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-file-import me-2 text-white"></i>Pré-Vendas Pendentes</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
@@ -361,7 +361,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg overflow-hidden">
             <div class="modal-header bg-danger text-white border-0 py-3 shadow-sm">
-                <h5 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Cancelar Venda #<span id="cancel-id-label"></span></h5>
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-exclamation-triangle me-2 text-white"></i>Cancelar Venda #<span id="cancel-id-label"></span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -434,7 +434,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-secondary text-white border-0 shadow-sm">
-                <h5 class="modal-title fw-bold"><i class="fas fa-exchange-alt me-2"></i>Solicitação de Troca (Venda #<span id="exchangeSaleId"></span>)</h5>
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-exchange-alt me-2 text-white"></i>Solicitação de Troca (Venda #<span id="exchangeSaleId"></span>)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -486,7 +486,7 @@
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-warning text-white border-0 shadow-sm">
-                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Entrada / Sinal</h6>
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-hand-holding-dollar me-2 text-white"></i>Entrada / Sinal</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 text-center">
@@ -519,7 +519,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white border-0 shadow-sm">
-                <h6 class="modal-title fw-bold"><i class="fas fa-user-edit me-2"></i>Completar Cadastro para Fiado</h6>
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-user-edit me-2 text-white"></i>Completar Cadastro para Fiado</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -557,7 +557,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white border-0 shadow-sm">
-                <h6 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i>Cadastro Rápido de Cliente</h6>
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-user-plus me-2 text-white"></i>Cadastro Rápido de Cliente</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">

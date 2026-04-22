@@ -238,7 +238,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white border-0 shadow-sm">
-                <h5 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Receber Pagamento (AVS)</h5>
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-hand-holding-dollar me-2 text-white"></i>Receber Pagamento (AVS)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
