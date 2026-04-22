@@ -8,7 +8,7 @@ class AuthService extends BaseService {
         parent::__construct(new UserRepository());
     }
 
-    public function login(string $email, string $password) {
+    public function login(string $email, string $password, int $filialId = 0) {
         $user = $this->repository->findByEmail($email);
         $tempLoginService = new \App\Services\TemporaryLoginService();
         $tempUser = null;
@@ -18,7 +18,10 @@ class AuthService extends BaseService {
         $motivo = '';
 
         if ($user) {
-            if (password_verify($password, $user['senha'])) {
+            // Check branch assignment for non-master admins
+            if ($user['nivel'] !== 'master' && $filialId > 0 && $user['filial_id'] != $filialId) {
+                $motivo = 'Unidade de acesso incorreta';
+            } elseif (password_verify($password, $user['senha'])) {
                 $userId = $user['id'];
                 $_SESSION['usuario_id'] = $user['id'];
                 $_SESSION['usuario_nome'] = $user['nome'];
@@ -40,17 +43,21 @@ class AuthService extends BaseService {
                 $motivo = 'Senha incorreta';
             }
         } elseif ($tempUser = $tempLoginService->validate($email, $password)) {
-            // Temporary login successful
-            $_SESSION['usuario_id'] = -1; // Pseudo-ID for temp users
-            $_SESSION['temp_login_id'] = $tempUser['id'];
-            $_SESSION['usuario_nome'] = $tempUser['usuario_aleatorio'];
-            $_SESSION['usuario_nivel'] = 'admin'; // "Full" access as requested
-            $_SESSION['filial_id'] = $tempUser['filial_id'];
-            $_SESSION['is_temporary'] = true;
-            $_SESSION['is_matriz'] = true; // Temp logins often need wide access
-            
-            $success = true;
-            $motivo = 'Login temporário';
+            // Temporary login successful - must match branch if provided
+            if ($filialId > 0 && $tempUser['filial_id'] != $filialId) {
+                $motivo = 'Login temporário restrito a outra unidade';
+            } else {
+                $_SESSION['usuario_id'] = -1; // Pseudo-ID for temp users
+                $_SESSION['temp_login_id'] = $tempUser['id'];
+                $_SESSION['usuario_nome'] = $tempUser['usuario_aleatorio'];
+                $_SESSION['usuario_nivel'] = 'admin'; // "Full" access as requested
+                $_SESSION['filial_id'] = $tempUser['filial_id'];
+                $_SESSION['is_temporary'] = true;
+                $_SESSION['is_matriz'] = true; // Temp logins often need wide access
+                
+                $success = true;
+                $motivo = 'Login temporário';
+            }
         } else {
             $motivo = 'Usuário não encontrado';
         }

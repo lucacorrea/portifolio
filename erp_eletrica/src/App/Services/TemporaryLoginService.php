@@ -30,8 +30,8 @@ class TemporaryLoginService extends BaseService {
     }
 
     public function generateLogin($adminId, $filialId, $durationMinutes = 60) {
-        $username = "ADM_" . strtoupper(bin2hex(random_bytes(3))); // e.g. ADM_A1B2C3
-        $password = bin2hex(random_bytes(4)); // e.g. a1b2c3d4 (8 chars)
+        $username = "ADM_" . str_pad(rand(100, 999), 3, '0', STR_PAD_LEFT); // Shorter numeric prefix like ADM_123
+        $password = str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT); // 6-digit numeric password
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $validade = date('Y-m-d H:i:s', strtotime("+$durationMinutes minutes"));
 

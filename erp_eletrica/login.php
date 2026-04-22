@@ -15,54 +15,15 @@ $branches = $pdo->query("SELECT id, nome FROM filiais ORDER BY principal DESC, n
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'] ?? '';
     $senha = $_POST['senha'] ?? '';
-    $selected_filial = $_POST['filial_id'] ?? '';
+    $selected_filial = (int)($_POST['filial_id'] ?? 0);
 
     if ($email && $senha && $selected_filial) {
-        $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ? AND filial_id = ? AND ativo = 1");
-        $stmt->execute([$email, $selected_filial]);
-        $user = $stmt->fetch();
-
-        if ($user && password_verify($senha, $user['senha'])) {
-            $_SESSION['usuario_id'] = $user['id'];
-            $_SESSION['usuario_nome'] = $user['nome'];
-            $_SESSION['usuario_nivel'] = $user['nivel'];
-            $_SESSION['usuario_avatar'] = $user['avatar'];
-            $_SESSION['filial_id'] = $user['filial_id'];
-            
-            // Check Matriz
-            $stmt = $pdo->prepare("SELECT principal FROM filiais WHERE id = ?");
-            $stmt->execute([$user['filial_id']]);
-            $filial = $stmt->fetch();
-            $_SESSION['is_matriz'] = ($filial && $filial['principal'] == 1);
-
-            // Update last login
-            $stmt = $pdo->prepare("UPDATE usuarios SET last_login = NOW() WHERE id = ?");
-            $stmt->execute([$user['id']]);
-
+        $authService = new \App\Services\AuthService();
+        if ($authService->login($email, $senha, $selected_filial)) {
             header('Location: index.php');
             exit;
         } else {
-            // Initial/Global Admin bypass or specific error
-            if ($email === 'admin@erp.com' && $senha === 'admin123') {
-                 // Check if it's the Matriz selected
-                 $matriz = $pdo->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1")->fetch();
-                 if ($matriz && $selected_filial == $matriz['id']) {
-                    $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ?");
-                    $stmt->execute([$email]);
-                    $admin = $stmt->fetch();
-                    if ($admin && password_verify($senha, $admin['senha'])) {
-                        // Correct credentials, proceed
-                        $_SESSION['usuario_id'] = $admin['id'];
-                        $_SESSION['usuario_nome'] = $admin['nome'];
-                        $_SESSION['usuario_nivel'] = $admin['nivel'];
-                        $_SESSION['filial_id'] = $admin['filial_id'];
-                        $_SESSION['is_matriz'] = true;
-                        header('Location: index.php');
-                        exit;
-                    }
-                 }
-            }
-            $error = 'Credenciais inválidas para esta unidade.';
+            $error = 'Credenciais inválidas para esta unidade ou usuário inativo.';
         }
     } else {
         $error = 'Por favor, selecione a unidade e informe suas credenciais.';
@@ -320,8 +281,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">E-mail Corporativo</label>
-                    <input type="email" name="email" class="form-control" placeholder="usuario@empresa.com" required>
+                    <label class="form-label">ID ou E-mail Corporativo</label>
+                    <input type="text" name="email" class="form-control" placeholder="000000 ou usuario@empresa.com" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Senha Técnica</label>
