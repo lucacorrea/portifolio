@@ -56,12 +56,21 @@ async function handleLogin(e) {
 
 async function checkBiometricSupport() {
     const btnBio = document.getElementById('biometric-login');
+    const loginForm = document.getElementById('login-form');
     if (!btnBio) return;
 
     if (window.PublicKeyCredential && 
         await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()) {
+        
         if (localStorage.getItem('webauthn_registered') === 'true') {
+            // Se já está registrado, vamos tornar a biometria o método principal
             btnBio.style.display = 'block';
+            
+            // Tenta disparar automaticamente (pode ser bloqueado pelo browser sem gesto inicial)
+            // Mas em muitos casos de "re-entry" no PWA funciona.
+            setTimeout(() => {
+                tryBiometricLogin(true); // pass true to indicate auto-attempt
+            }, 500);
         }
     }
 }
@@ -139,14 +148,17 @@ async function registerBiometrics() {
     }
 }
 
-async function tryBiometricLogin() {
+async function tryBiometricLogin(isAuto = false) {
     try {
         const resChallenge = await apiCall('get_webauthn_challenge');
-        const challenge = base64ToBinary(resChallenge.challenge);
+        const challengeBase64 = resChallenge.challenge || (resChallenge.data && resChallenge.data.challenge);
+        if (!challengeBase64) throw new Error('Desafio não encontrado.');
+        
+        const challenge = base64ToBinary(challengeBase64);
 
         const publicKeyCredentialRequestOptions = {
             challenge: challenge,
-            allowCredentials: [], // Allow any credential from this RP
+            allowCredentials: [], 
             userVerification: "required"
         };
 
@@ -162,11 +174,11 @@ async function tryBiometricLogin() {
         if (res.success) {
             location.reload();
         } else {
-            alert(res.message);
+            if (!isAuto) alert(res.message);
         }
     } catch (e) {
-        console.error('Login error:', e);
-        alert('Erro na biometria: ' + e.message);
+        console.warn('Biometric attempt:', e);
+        if (!isAuto) alert('Erro na biometria: ' + e.message);
     }
 }
 
