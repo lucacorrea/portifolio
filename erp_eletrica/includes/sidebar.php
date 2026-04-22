@@ -131,7 +131,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="custos.php" class="nav-link <?= $current_page == 'custos.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie"></i> <span>Centro de Custos</span>
         </a>
-        <a href="inteligencia.php" class="nav-link <?= $current_page == 'inteligencia.php' ? 'active' : '' ?>">
+        <a href="inteligencia.php?action=productivity" class="nav-link <?= ($current_page == 'inteligencia.php' && ($_GET['action'] ?? '') == 'productivity') ? 'active' : '' ?>">
+            <i class="fas fa-medal"></i> <span>Produtividade & Auditoria</span>
+        </a>
+        <a href="inteligencia.php" class="nav-link <?= ($current_page == 'inteligencia.php' && ($_GET['action'] ?? '') != 'productivity') ? 'active' : '' ?>">
             <i class="fas fa-brain"></i> <span>Inteligência BI</span>
         </a>
         <?php endif; ?>

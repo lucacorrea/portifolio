@@ -257,6 +257,13 @@ class SalesController extends BaseController {
                     'taxa_cartao'         => isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0,
                 ];
 
+                // Get Seller Commission Data
+                $stmtSeller = $db->prepare("SELECT comissao_ativa, comissao_porcentagem FROM usuarios WHERE id = ?");
+                $stmtSeller->execute([$_SESSION['usuario_id']]);
+                $seller = $stmtSeller->fetch(\PDO::FETCH_ASSOC);
+                $commActive = ($seller['comissao_ativa'] ?? 0) == 1;
+                $commRate = (float)($seller['comissao_porcentagem'] ?? 0);
+
                 $saleId = $saleModel->create($saleData);
 
                 // Automatic accounts receivable for 'fiado'
@@ -335,6 +342,13 @@ class SalesController extends BaseController {
                     $stmtProd->execute([$item['id']]);
                     $prod = $stmtProd->fetch(\PDO::FETCH_ASSOC) ?: [];
 
+                    // Calculate Commission for this item
+                    $itemPriceTier = (int)($item['price_tier'] ?? 1);
+                    $itemCommVal = 0;
+                    if ($commActive && ($itemPriceTier === 2 || $itemPriceTier === 3)) {
+                        $itemCommVal = ($item['price'] * $item['qty']) * ($commRate / 100);
+                    }
+
                     if ($tipoNota === 'fiscal' && $hasFiscalCols) {
                         $ncm = $saneNCM($prod['ncm']  ?? null);
                         $ean = $saneEAN($prod['cean'] ?? null);
@@ -343,28 +357,23 @@ class SalesController extends BaseController {
                         $csosn = $saneCSOSN($prod['csosn'] ?? null);
                         $unidade = $saneUN($prod['unidade'] ?? null);
 
-                        if ($hasCfop) {
-                            $cfop = $saneCFOP($prod['cfop'] ?? null);
-                            $db->prepare(
-                                "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, ncm, cean, cest, cfop, origem, csosn, unidade)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                            )->execute([
-                                $saleId, $item['id'], $item['qty'], $item['price'],
-                                $ncm, $ean, $cest, $cfop, $origem, $csosn, $unidade
-                            ]);
-                        } else {
-                            $db->prepare(
-                                "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, ncm, cean, cest, origem, csosn, unidade)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                            )->execute([
-                                $saleId, $item['id'], $item['qty'], $item['price'],
-                                $ncm, $ean, $cest, $origem, $csosn, $unidade
-                            ]);
-                        }
+                        $cfopSql = $hasCfop ? ", cfop" : "";
+                        $cfopPlace = $hasCfop ? ", ?" : "";
+                        $cfopVal = $hasCfop ? [$saneCFOP($prod['cfop'] ?? null)] : [];
+
+                        $sqlItem = "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, preco_tier, valor_comissao, comissao_percentual_aplicado, ncm, cean, cest $cfopSql, origem, csosn, unidade)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ? $cfopPlace, ?, ?, ?)";
+                        
+                        $paramsItem = array_merge([
+                            $saleId, $item['id'], $item['qty'], $item['price'], $itemPriceTier, $itemCommVal, $commRate,
+                            $ncm, $ean, $cest
+                        ], $cfopVal, [$origem, $csosn, $unidade]);
+
+                        $db->prepare($sqlItem)->execute($paramsItem);
                     } else {
-                        // Non-fiscal: simple insert (original behaviour)
-                        $db->prepare("INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)")
-                           ->execute([$saleId, $item['id'], $item['qty'], $item['price']]);
+                        // Non-fiscal: simple insert
+                        $db->prepare("INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, preco_tier, valor_comissao, comissao_percentual_aplicado) VALUES (?, ?, ?, ?, ?, ?, ?)")
+                           ->execute([$saleId, $item['id'], $item['qty'], $item['price'], $itemPriceTier, $itemCommVal, $commRate]);
                     }
 
                     $productModel->updateStock($item['id'], $item['qty'], 'saida', $_SESSION['filial_id'] ?? 1);

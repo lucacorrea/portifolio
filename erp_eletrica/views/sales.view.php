@@ -820,6 +820,10 @@ function addToCart(product) {
             id: product.id,
             nome: product.nome,
             price: parseFloat(product.preco_venda),
+            price1: parseFloat(product.preco_venda),
+            price2: parseFloat(product.preco_venda_2) || 0,
+            price3: parseFloat(product.preco_venda_3) || 0,
+            price_tier: 1,
             qty: 1,
             imagens: product.imagens
         });
@@ -851,7 +855,16 @@ function renderCart() {
         row.onmouseover = () => showPreview(item);
         row.innerHTML = `
             <td class="ps-4 fw-bold text-muted">#${item.id}</td>
-            <td>${item.nome}</td>
+            <td>
+                <div>${item.nome}</div>
+                <div class="mt-1">
+                    <select class="form-select form-select-sm d-inline-block w-auto py-0 extra-small border-primary border-opacity-25" onchange="updatePriceTier(${index}, this.value)">
+                        <option value="1" ${item.price_tier == 1 ? 'selected' : ''}>Preço 1 (R$ ${item.price1.toFixed(2).replace('.', ',')})</option>
+                        <option value="2" ${item.price_tier == 2 ? 'selected' : ''}>Preço 2 (R$ ${item.price2.toFixed(2).replace('.', ',')})</option>
+                        <option value="3" ${item.price_tier == 3 ? 'selected' : ''}>Preço 3 (R$ ${item.price3.toFixed(2).replace('.', ',')})</option>
+                    </select>
+                </div>
+            </td>
             <td class="text-center">
                 <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" onchange="updateQty(${index}, this.value)">
             </td>
@@ -889,6 +902,15 @@ function renderCart() {
     checkDiscountAuth();
     calculateChange();
     updateCheckoutButtonState();
+}
+
+function updatePriceTier(index, tier) {
+    const item = cart[index];
+    item.price_tier = parseInt(tier);
+    if (tier == 1) item.price = item.price1;
+    else if (tier == 2) item.price = item.price2;
+    else if (tier == 3) item.price = item.price3;
+    renderCart();
 }
 
 function updateQty(index, val) {
