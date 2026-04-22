@@ -37,8 +37,8 @@ class PreSale extends BaseModel {
 
         foreach ($data['items'] as $item) {
             $this->query(
-                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)",
-                [$preVendaId, $item['id'], $item['qty'], $item['price']]
+                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario, preco_tier) VALUES (?, ?, ?, ?, ?)",
+                [$preVendaId, $item['id'], $item['qty'], $item['price'], $item['price_tier'] ?? 1]
             );
         }
 
@@ -57,7 +57,8 @@ class PreSale extends BaseModel {
         
         if ($pv) {
             $pv['itens'] = $this->query("
-                SELECT i.*, p.nome as produto_nome, p.unidade, p.imagens 
+                SELECT i.*, p.nome as produto_nome, p.unidade, p.imagens,
+                       p.preco_venda, p.preco_venda_2, p.preco_venda_3
                 FROM pre_venda_itens i 
                 JOIN produtos p ON i.produto_id = p.id 
                 WHERE i.pre_venda_id = ?
@@ -118,8 +119,8 @@ class PreSale extends BaseModel {
         // Insert new items
         foreach ($data['items'] as $item) {
             $this->query(
-                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)",
-                [$id, $item['id'], $item['qty'], $item['price']]
+                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario, preco_tier) VALUES (?, ?, ?, ?, ?)",
+                [$id, $item['id'], $item['qty'], $item['price'], $item['price_tier'] ?? 1]
             );
         }
 

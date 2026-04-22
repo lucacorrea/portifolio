@@ -13,8 +13,8 @@
 <div class="row g-4 <?php echo !$caixaAberto ? 'opacity-50 select-none' : ''; ?>" style="<?php echo !$caixaAberto ? 'pointer-events: none;' : ''; ?>">
     <!-- Left Side: Product selection & Preview -->
     <div class="col-lg-7 d-flex flex-column">
-        <div class="row g-4 mb-4" style="position: relative; overflow: visible !important;">
-            <div class="col-md-8" style="position: relative; overflow: visible !important;">
+        <div class="row g-4 mb-4" style="position: relative; z-index: 1050; overflow: visible !important;">
+            <div class="col-md-8" style="position: relative; z-index: 1060; overflow: visible !important;">
                 <div class="card border-0 shadow-sm h-100" style="overflow: visible !important;">
                     <div class="card-body" style="overflow: visible !important;">
                         <div class="position-relative" style="overflow: visible !important;">
@@ -49,7 +49,7 @@
                     <div id="productPreviewImg" class="bg-light rounded mb-2 d-flex align-items-center justify-content-center border product-zoom-container" style="width: 120px; height: 120px; overflow: hidden;">
                         <i class="fas fa-image fs-1 text-muted opacity-25"></i>
                     </div>
-                    <div id="productPreviewName" class="small fw-bold text-uppercase text-muted">Aguardando...</div>
+                    <div id="productPreviewName" class="extra-small fw-bold text-uppercase text-muted" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em; line-height: 1.4em;">Aguardando...</div>
                 </div>
             </div>
         </div>
@@ -265,9 +265,9 @@
 <div class="modal fade" id="modalPendingPV" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-light border-0 d-flex justify-content-between align-items-center">
-                <h5 class="modal-title fw-bold"><i class="fas fa-file-import me-2"></i>Pré-Vendas Pendentes</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-file-import me-2 text-white"></i>Pré-Vendas Pendentes</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
                 <div class="table-responsive">
@@ -295,8 +295,8 @@
 <div class="modal fade" id="modalDiscountAuth" data-bs-backdrop="static" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-dark text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="fas fa-shield-halved me-2 text-primary"></i>Autorização de Administrador</h5>
+            <div class="modal-header bg-dark text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-shield-halved me-2 text-white"></i>Autorização de Administrador</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="resetDiscount()"></button>
             </div>
             <div class="modal-body p-4 text-center">
@@ -327,9 +327,9 @@
 <div class="modal fade" id="modalSaleManager" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold">Gestão de Venda #<span id="manageSaleId"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-cash-register me-2 text-white" style="color: #ffffff !important;"></i>Gestão de Venda <span class="text-white" style="color: #ffffff !important;">#</span><span id="manageSaleId" class="text-white" style="color: #ffffff !important;"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="bg-light p-3 rounded mb-3 border">
@@ -360,8 +360,8 @@
 <div class="modal fade" id="modalTripleCancel" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg overflow-hidden">
-            <div class="modal-header bg-danger text-white border-0 py-3">
-                <h5 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Cancelar Venda #<span id="cancel-id-label"></span></h5>
+            <div class="modal-header bg-danger text-white border-0 py-3 shadow-sm">
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-exclamation-triangle me-2 text-white" style="color: #ffffff !important;"></i>Cancelar Venda <span class="text-white" style="color: #ffffff !important;">#</span><span id="cancel-id-label" class="text-white" style="color: #ffffff !important;"></span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -433,8 +433,8 @@
 <div class="modal fade" id="modalExchangeFlow" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-secondary text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="fas fa-exchange-alt me-2"></i>Solicitação de Troca (Venda #<span id="exchangeSaleId"></span>)</h5>
+            <div class="modal-header bg-secondary text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-exchange-alt me-2 text-white" style="color: #ffffff !important;"></i>Solicitação de Troca (Venda <span class="text-white" style="color: #ffffff !important;">#</span><span id="exchangeSaleId" class="text-white" style="color: #ffffff !important;"></span>)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -485,9 +485,9 @@
 <div class="modal fade" id="modalEntrada" data-bs-backdrop="static" tabindex="-1" style="z-index: 1060;">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-warning text-dark border-0">
-                <h6 class="modal-title fw-bold"><i class="fas fa-hand-holding-dollar me-2"></i>Entrada / Sinal</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-warning text-white border-0 shadow-sm">
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-hand-holding-dollar me-2 text-white"></i>Entrada / Sinal</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 text-center">
                 <p class="text-muted small mb-3">Deseja registrar uma <strong>entrada / sinal</strong> para esta venda fiado?</p>
@@ -518,8 +518,8 @@
 <div class="modal fade" id="modalCompleteClient" data-bs-backdrop="static" tabindex="-1" style="z-index: 1070;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-black border-0">
-                <h6 class="modal-title fw-bold"><i class="fas fa-user-edit me-2"></i>Completar Cadastro para Fiado</h6>
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-user-edit me-2 text-white"></i>Completar Cadastro para Fiado</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -556,8 +556,8 @@
 <div class="modal fade" id="modalQuickClient" tabindex="-1" style="z-index: 1080;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white border-0">
-                <h6 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i>Cadastro Rápido de Cliente</h6>
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-user-plus me-2 text-white"></i>Cadastro Rápido de Cliente</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -601,6 +601,8 @@ let activeManageId = null;
 let selectedCustomerId = null;
 let selectedCustomerName = null;
 let selectedCustomerCPF = null;
+let pdvSearchIndex = -1;
+let currentSearchResults = [];
 const currentUserLevel = '<?= $_SESSION['usuario_id'] ? ($_SESSION['usuario_nivel'] ?? 'vendedor') : 'vendedor' ?>';
 
 const pdvSearch = document.getElementById('pdvSearch');
@@ -695,6 +697,8 @@ pdvSearch.addEventListener('input', async (e) => {
     const term = e.target.value;
     if (term.length < 2) {
         searchResults.classList.add('d-none');
+        currentSearchResults = [];
+        pdvSearchIndex = -1;
         return;
     }
 
@@ -703,8 +707,63 @@ pdvSearch.addEventListener('input', async (e) => {
     renderSearchResults(products);
 });
 
+pdvSearch.addEventListener('keydown', (e) => {
+    const items = searchResults.querySelectorAll('.list-group-item');
+    if (items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        pdvSearchIndex = Math.min(pdvSearchIndex + 1, items.length - 1);
+        highlightPdvSearchResult(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        pdvSearchIndex = Math.max(pdvSearchIndex - 1, -1);
+        highlightPdvSearchResult(items);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (pdvSearchIndex === -1 && items.length > 0) {
+            pdvSearchIndex = 0;
+        }
+        if (pdvSearchIndex >= 0) {
+            items[pdvSearchIndex].click();
+        }
+    } else if (e.key === 'Escape') {
+        searchResults.classList.add('d-none');
+        pdvSearchIndex = -1;
+    }
+});
+
+function highlightPdvSearchResult(items) {
+    items.forEach((item, idx) => {
+        if (idx === pdvSearchIndex) {
+            item.classList.add('active');
+            item.scrollIntoView({ block: 'nearest' });
+            // Show preview for the selected item
+            if (currentSearchResults[idx]) {
+                showPreview(currentSearchResults[idx]);
+            }
+        } else {
+            item.classList.remove('active');
+        }
+    });
+
+    if (pdvSearchIndex === -1) {
+        productPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
+        productPreviewName.innerText = 'Aguardando...';
+    }
+}
+
 function renderSearchResults(products) {
     searchResults.innerHTML = '';
+    // Safety check: ensure products is an array
+    if (!Array.isArray(products)) {
+        console.error("PDV Search: Expected array but received:", products);
+        searchResults.classList.add('d-none');
+        return;
+    }
+    currentSearchResults = products;
+    pdvSearchIndex = -1;
+
     if (products.length === 0) {
         searchResults.classList.add('d-none');
         return;
@@ -767,6 +826,10 @@ function addToCart(product) {
             id: product.id,
             nome: product.nome,
             price: parseFloat(product.preco_venda),
+            price1: parseFloat(product.preco_venda),
+            price2: parseFloat(product.preco_venda_2) || 0,
+            price3: parseFloat(product.preco_venda_3) || 0,
+            price_tier: 1,
             qty: 1,
             imagens: product.imagens
         });
@@ -798,7 +861,16 @@ function renderCart() {
         row.onmouseover = () => showPreview(item);
         row.innerHTML = `
             <td class="ps-4 fw-bold text-muted">#${item.id}</td>
-            <td>${item.nome}</td>
+            <td>
+                <div>${item.nome}</div>
+                <div class="mt-1">
+                    <select class="form-select form-select-sm d-inline-block w-auto py-0 extra-small border-primary border-opacity-25" onchange="updatePriceTier(${index}, this.value)">
+                        <option value="1" ${item.price_tier == 1 ? 'selected' : ''}>Preço 1 (R$ ${item.price1.toFixed(2).replace('.', ',')})</option>
+                        <option value="2" ${item.price_tier == 2 ? 'selected' : ''}>Preço 2 (R$ ${item.price2.toFixed(2).replace('.', ',')})</option>
+                        <option value="3" ${item.price_tier == 3 ? 'selected' : ''}>Preço 3 (R$ ${item.price3.toFixed(2).replace('.', ',')})</option>
+                    </select>
+                </div>
+            </td>
             <td class="text-center">
                 <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" onchange="updateQty(${index}, this.value)">
             </td>
@@ -836,6 +908,15 @@ function renderCart() {
     checkDiscountAuth();
     calculateChange();
     updateCheckoutButtonState();
+}
+
+function updatePriceTier(index, tier) {
+    const item = cart[index];
+    item.price_tier = parseInt(tier);
+    if (tier == 1) item.price = item.price1;
+    else if (tier == 2) item.price = item.price2;
+    else if (tier == 3) item.price = item.price3;
+    renderCart();
 }
 
 function updateQty(index, val) {
@@ -901,6 +982,13 @@ if (customerSearch) {
 
 function renderCustomerSearchResults(clients, term = '') {
     customerResults.innerHTML = '';
+    
+    // Safety check: ensure clients is an array
+    if (!Array.isArray(clients)) {
+        console.error("PDV Client Search: Expected array but received:", clients);
+        customerResults.style.display = 'none';
+        return;
+    }
     
     // Check if term looks like a CPF or CNPJ
     const cleanTerm = term.replace(/\D/g, '');
@@ -1031,11 +1119,22 @@ async function loadPendingPreSales() {
     try {
         const res = await fetch(`pre_vendas.php?action=list_pending&term=${encodeURIComponent(term)}`);
         if (!res.ok) throw new Error("Falha ao comunicar com pre_vendas.php");
-        const pvs = await res.json();
+        
+        const data = await res.json();
         const list = document.getElementById('listPendingPVs');
         if (!list) return;
         
         list.innerHTML = '';
+
+        // Handle error response from server
+        if (data.error) {
+            list.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">
+                <i class="fas fa-exclamation-circle me-1"></i> Erro no servidor: ${data.error}
+            </td></tr>`;
+            return;
+        }
+
+        const pvs = Array.isArray(data) ? data : [];
         
         if (pvs.length === 0) {
             list.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Nenhuma pré-venda encontrada.</td></tr>';
@@ -1075,6 +1174,10 @@ async function importPreSale(code) {
             id: i.produto_id,
             nome: i.produto_nome,
             price: parseFloat(i.preco_unitario),
+            price1: parseFloat(i.preco_venda || 0),
+            price2: parseFloat(i.preco_venda_2 || 0),
+            price3: parseFloat(i.preco_venda_3 || 0),
+            price_tier: parseInt(i.preco_tier || 1),
             qty: parseFloat(i.quantidade),
             imagens: i.imagens
         }));
@@ -1935,6 +2038,12 @@ async function handleBarcode(val) {
 pdvSearch.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') handleBarcode(pdvSearch.value);
 });
+
+// Missing intercepter to prevent default browser behavior for numeric/percentage inputs
+function interceptDiscount(e) {
+    // Only prevents scroll or other unwanted interactions if needed, but here ensures focus
+    if (e.type === 'focus') e.target.select();
+}
 </script>
 
 <style>

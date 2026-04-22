@@ -37,7 +37,7 @@ class SalesController extends BaseController {
         // 1. Search Products (Global catalog for Matriz, Branch-specific for others)
         $join = ((int)$filialId === 1) ? "LEFT JOIN" : "INNER JOIN";
 
-        $sqlProd = "SELECT p.id, p.nome, p.preco_venda, p.unidade, p.imagens, p.codigo, 'product' as type,
+        $sqlProd = "SELECT p.id, p.nome, p.preco_venda, p.preco_venda_2, p.preco_venda_3, p.unidade, p.imagens, p.codigo, 'product' as type,
                     COALESCE(ef.quantidade, 0) as stock_qty
                     FROM produtos p
                     $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
@@ -48,12 +48,30 @@ class SalesController extends BaseController {
         $paramsProd[] = $term;
         $paramsProd[] = "$term%";
 
-        $stmtProd = $db->prepare($sqlProd);
-        $stmtProd->execute($paramsProd);
-        $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
-        foreach ($products as $p) $results[] = $p;
+        try {
+            $stmtProd = $db->prepare($sqlProd);
+            $stmtProd->execute($paramsProd);
+            $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
+            foreach ($products as $p) $results[] = $p;
+        } catch (\PDOException $e) {
+            // Fallback: If preco_venda_2 or 3 are missing, try without them
+            if (str_contains($e->getMessage(), 'Unknown column')) {
+                $sqlProdFallback = "SELECT p.id, p.nome, p.preco_venda, 0 as preco_venda_2, 0 as preco_venda_3, p.unidade, p.imagens, p.codigo, 'product' as type,
+                            COALESCE(ef.quantidade, 0) as stock_qty
+                            FROM produtos p
+                            $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                            WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ?)
+                            ORDER BY (CASE WHEN p.codigo = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
+                $stmtProd = $db->prepare($sqlProdFallback);
+                $stmtProd->execute($paramsProd);
+                $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
+                foreach ($products as $p) $results[] = $p;
+            } else {
+                throw $e;
+            }
+        }
 
-        // 2. Search Pre-Sales (Pending)
+        // 2. Search Pre-Sales (Pending) - continues normally
         $modelPV = new \App\Models\PreSale();
         $avulsoCol = $modelPV->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
         
@@ -96,6 +114,7 @@ class SalesController extends BaseController {
             return 0;
         });
 
+        header('Content-Type: application/json');
         echo json_encode(array_slice($results, 0, 15));
         exit;
     }
@@ -257,6 +276,13 @@ class SalesController extends BaseController {
                     'taxa_cartao'         => isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0,
                 ];
 
+                // Get Seller Commission Data
+                $stmtSeller = $db->prepare("SELECT comissao_ativa, comissao_porcentagem FROM usuarios WHERE id = ?");
+                $stmtSeller->execute([$_SESSION['usuario_id']]);
+                $seller = $stmtSeller->fetch(\PDO::FETCH_ASSOC);
+                $commActive = ($seller['comissao_ativa'] ?? 0) == 1;
+                $commRate = (float)($seller['comissao_porcentagem'] ?? 0);
+
                 $saleId = $saleModel->create($saleData);
 
                 // Automatic accounts receivable for 'fiado'
@@ -335,6 +361,13 @@ class SalesController extends BaseController {
                     $stmtProd->execute([$item['id']]);
                     $prod = $stmtProd->fetch(\PDO::FETCH_ASSOC) ?: [];
 
+                    // Calculate Commission for this item
+                    $itemPriceTier = (int)($item['price_tier'] ?? 1);
+                    $itemCommVal = 0;
+                    if ($commActive && ($itemPriceTier === 2 || $itemPriceTier === 3)) {
+                        $itemCommVal = ($item['price'] * $item['qty']) * ($commRate / 100);
+                    }
+
                     if ($tipoNota === 'fiscal' && $hasFiscalCols) {
                         $ncm = $saneNCM($prod['ncm']  ?? null);
                         $ean = $saneEAN($prod['cean'] ?? null);
@@ -343,28 +376,23 @@ class SalesController extends BaseController {
                         $csosn = $saneCSOSN($prod['csosn'] ?? null);
                         $unidade = $saneUN($prod['unidade'] ?? null);
 
-                        if ($hasCfop) {
-                            $cfop = $saneCFOP($prod['cfop'] ?? null);
-                            $db->prepare(
-                                "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, ncm, cean, cest, cfop, origem, csosn, unidade)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                            )->execute([
-                                $saleId, $item['id'], $item['qty'], $item['price'],
-                                $ncm, $ean, $cest, $cfop, $origem, $csosn, $unidade
-                            ]);
-                        } else {
-                            $db->prepare(
-                                "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, ncm, cean, cest, origem, csosn, unidade)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                            )->execute([
-                                $saleId, $item['id'], $item['qty'], $item['price'],
-                                $ncm, $ean, $cest, $origem, $csosn, $unidade
-                            ]);
-                        }
+                        $cfopSql = $hasCfop ? ", cfop" : "";
+                        $cfopPlace = $hasCfop ? ", ?" : "";
+                        $cfopVal = $hasCfop ? [$saneCFOP($prod['cfop'] ?? null)] : [];
+
+                        $sqlItem = "INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, preco_tier, valor_comissao, comissao_percentual_aplicado, ncm, cean, cest $cfopSql, origem, csosn, unidade)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ? $cfopPlace, ?, ?, ?)";
+                        
+                        $paramsItem = array_merge([
+                            $saleId, $item['id'], $item['qty'], $item['price'], $itemPriceTier, $itemCommVal, $commRate,
+                            $ncm, $ean, $cest
+                        ], $cfopVal, [$origem, $csosn, $unidade]);
+
+                        $db->prepare($sqlItem)->execute($paramsItem);
                     } else {
-                        // Non-fiscal: simple insert (original behaviour)
-                        $db->prepare("INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)")
-                           ->execute([$saleId, $item['id'], $item['qty'], $item['price']]);
+                        // Non-fiscal: simple insert
+                        $db->prepare("INSERT INTO vendas_itens (venda_id, produto_id, quantidade, preco_unitario, preco_tier, valor_comissao, comissao_percentual_aplicado) VALUES (?, ?, ?, ?, ?, ?, ?)")
+                           ->execute([$saleId, $item['id'], $item['qty'], $item['price'], $itemPriceTier, $itemCommVal, $commRate]);
                     }
 
                     $productModel->updateStock($item['id'], $item['qty'], 'saida', $_SESSION['filial_id'] ?? 1);

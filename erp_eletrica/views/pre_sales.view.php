@@ -35,7 +35,7 @@
                     <div id="pvPreviewImg" class="bg-light rounded mb-2 d-flex align-items-center justify-content-center border product-zoom-container" style="width: 100px; height: 100px; overflow: hidden;">
                         <i class="fas fa-image fs-1 text-muted opacity-25"></i>
                     </div>
-                    <div id="pvPreviewName" class="extra-small fw-bold text-uppercase text-muted">Aguardando...</div>
+                    <div id="pvPreviewName" class="extra-small fw-bold text-uppercase text-muted" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em; line-height: 1.4em;">Aguardando...</div>
                 </div>
             </div>
         </div>
@@ -152,6 +152,8 @@
 
 <script>
 let pvCart = [];
+let pvSearchIndex = -1;
+let currentPvSearchResults = [];
 const pvSearchInput = document.getElementById('pv_product_search');
 const pvSearchResults = document.getElementById('pv_search_results');
 const pvCartTable = document.getElementById('pvCartTable').querySelector('tbody');
@@ -165,6 +167,8 @@ pvSearchInput.addEventListener('input', async (e) => {
     const term = e.target.value;
     if (term.length < 2) {
         pvSearchResults.classList.add('d-none');
+        currentPvSearchResults = [];
+        pvSearchIndex = -1;
         return;
     }
 
@@ -174,8 +178,57 @@ pvSearchInput.addEventListener('input', async (e) => {
     renderPVSearchResults(products);
 });
 
+pvSearchInput.addEventListener('keydown', (e) => {
+    const items = pvSearchResults.querySelectorAll('.list-group-item');
+    if (items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        pvSearchIndex = Math.min(pvSearchIndex + 1, items.length - 1);
+        highlightPvSearchResult(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        pvSearchIndex = Math.max(pvSearchIndex - 1, -1);
+        highlightPvSearchResult(items);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (pvSearchIndex === -1 && items.length > 0) {
+            pvSearchIndex = 0;
+        }
+        if (pvSearchIndex >= 0) {
+            items[pvSearchIndex].click();
+        }
+    } else if (e.key === 'Escape') {
+        pvSearchResults.classList.add('d-none');
+        pvSearchIndex = -1;
+    }
+});
+
+function highlightPvSearchResult(items) {
+    items.forEach((item, idx) => {
+        if (idx === pvSearchIndex) {
+            item.classList.add('active');
+            item.scrollIntoView({ block: 'nearest' });
+            // Show preview for the selected item
+            if (currentPvSearchResults[idx]) {
+                showPvPreview(currentPvSearchResults[idx]);
+            }
+        } else {
+            item.classList.remove('active');
+        }
+    });
+
+    if (pvSearchIndex === -1) {
+        pvPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
+        pvPreviewName.innerText = 'Aguardando...';
+    }
+}
+
 function renderPVSearchResults(products) {
     pvSearchResults.innerHTML = '';
+    currentPvSearchResults = products;
+    pvSearchIndex = -1;
+
     if (products.length === 0) {
         pvSearchResults.classList.add('d-none');
         return;
@@ -218,6 +271,10 @@ function addToPVCart(product) {
             id: product.id,
             nome: product.nome,
             price: parseFloat(product.preco_venda),
+            price1: parseFloat(product.preco_venda),
+            price2: parseFloat(product.preco_venda_2 || 0),
+            price3: parseFloat(product.preco_venda_3 || 0),
+            price_tier: 1,
             qty: 1,
             imagens: product.imagens
         });
@@ -246,7 +303,16 @@ function renderPVCart() {
         row.onmouseover = () => showPvPreview(item);
         row.innerHTML = `
             <td class="ps-4 fw-bold text-muted">#${item.id}</td>
-            <td>${item.nome}</td>
+            <td>
+                <div class="fw-bold">${item.nome}</div>
+                <div class="mt-1">
+                    <select class="form-select form-select-sm py-0 extra-small" style="width: auto; height: 24px; font-size: 0.75rem;" onchange="changePVPriceTier(${index}, this.value)">
+                        <option value="1" ${item.price_tier == 1 ? 'selected' : ''}>Preço 1 (R$ ${item.price1.toFixed(2).replace('.', ',')})</option>
+                        <option value="2" ${item.price_tier == 2 ? 'selected' : ''}>Preço 2 (R$ ${item.price2.toFixed(2).replace('.', ',')})</option>
+                        <option value="3" ${item.price_tier == 3 ? 'selected' : ''}>Preço 3 (R$ ${item.price3.toFixed(2).replace('.', ',')})</option>
+                    </select>
+                </div>
+            </td>
             <td class="text-center">
                 <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" onchange="updatePVQty(${index}, this.value)">
             </td>
@@ -266,6 +332,17 @@ function renderPVCart() {
 
 function updatePVQty(index, val) {
     pvCart[index].qty = Math.max(1, parseFloat(val));
+    renderPVCart();
+}
+
+function changePVPriceTier(index, tier) {
+    const item = pvCart[index];
+    item.price_tier = parseInt(tier);
+    
+    if (tier == 1) item.price = item.price1;
+    else if (tier == 2) item.price = item.price2;
+    else if (tier == 3) item.price = item.price3;
+    
     renderPVCart();
 }
 
