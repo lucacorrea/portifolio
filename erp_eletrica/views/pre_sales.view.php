@@ -274,7 +274,7 @@ function addToPVCart(product) {
             price1: parseFloat(product.preco_venda),
             price2: parseFloat(product.preco_venda_2 || 0),
             price3: parseFloat(product.preco_venda_3 || 0),
-            priceTier: 1,
+            price_tier: 1,
             qty: 1,
             imagens: product.imagens
         });
@@ -307,9 +307,9 @@ function renderPVCart() {
                 <div class="fw-bold">${item.nome}</div>
                 <div class="mt-1">
                     <select class="form-select form-select-sm py-0 extra-small" style="width: auto; height: 24px; font-size: 0.75rem;" onchange="changePVPriceTier(${index}, this.value)">
-                        <option value="1" ${item.priceTier == 1 ? 'selected' : ''}>Preço 1 (R$ ${item.price1.toFixed(2).replace('.', ',')})</option>
-                        <option value="2" ${item.priceTier == 2 ? 'selected' : ''}>Preço 2 (R$ ${item.price2.toFixed(2).replace('.', ',')})</option>
-                        <option value="3" ${item.priceTier == 3 ? 'selected' : ''}>Preço 3 (R$ ${item.price3.toFixed(2).replace('.', ',')})</option>
+                        <option value="1" ${item.price_tier == 1 ? 'selected' : ''}>Preço 1 (R$ ${item.price1.toFixed(2).replace('.', ',')})</option>
+                        <option value="2" ${item.price_tier == 2 ? 'selected' : ''}>Preço 2 (R$ ${item.price2.toFixed(2).replace('.', ',')})</option>
+                        <option value="3" ${item.price_tier == 3 ? 'selected' : ''}>Preço 3 (R$ ${item.price3.toFixed(2).replace('.', ',')})</option>
                     </select>
                 </div>
             </td>
@@ -337,7 +337,7 @@ function updatePVQty(index, val) {
 
 function changePVPriceTier(index, tier) {
     const item = pvCart[index];
-    item.priceTier = parseInt(tier);
+    item.price_tier = parseInt(tier);
     
     if (tier == 1) item.price = item.price1;
     else if (tier == 2) item.price = item.price2;
