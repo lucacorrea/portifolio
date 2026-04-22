@@ -1119,11 +1119,22 @@ async function loadPendingPreSales() {
     try {
         const res = await fetch(`pre_vendas.php?action=list_pending&term=${encodeURIComponent(term)}`);
         if (!res.ok) throw new Error("Falha ao comunicar com pre_vendas.php");
-        const pvs = await res.json();
+        
+        const data = await res.json();
         const list = document.getElementById('listPendingPVs');
         if (!list) return;
         
         list.innerHTML = '';
+
+        // Handle error response from server
+        if (data.error) {
+            list.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">
+                <i class="fas fa-exclamation-circle me-1"></i> Erro no servidor: ${data.error}
+            </td></tr>`;
+            return;
+        }
+
+        const pvs = Array.isArray(data) ? data : [];
         
         if (pvs.length === 0) {
             list.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Nenhuma pré-venda encontrada.</td></tr>';

@@ -105,9 +105,11 @@ class PreSaleController extends BaseController {
         $isMatriz = $_SESSION['is_matriz'] ?? false;
         
         $avulsoCol = $model->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
+        $cpfCol = $model->columnExists('cpf_cliente') ? 'pv.cpf_cliente' : "''";
 
         $sql = "
-            SELECT pv.id, pv.codigo, pv.valor_total, pv.status, pv.created_at, pv.cpf_cliente,
+            SELECT pv.id, pv.codigo, pv.valor_total, pv.status, pv.created_at, 
+                   $cpfCol as cpf_cliente,
                    COALESCE(c.nome, $avulsoCol, 'Consumidor') as cliente_nome, 
                    u.nome as vendedor_nome 
             FROM pre_vendas pv 
