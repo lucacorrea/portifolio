@@ -1,7 +1,7 @@
 <?php
-session_start();
-session_unset();
-session_destroy();
+require_once 'config.php';
+$authService = new \App\Services\AuthService();
+$authService->logout();
 header("Location: login.php?msg=Logout realizado com sucesso");
 exit;
 ?>
