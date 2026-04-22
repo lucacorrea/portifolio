@@ -58,24 +58,29 @@ async function handleLogin(e) {
 }
 
 // --- Native Biometrics (WebAuthn) ---
+let cachedWebAuthnChallenge = null;
+
+async function preFetchWebAuthnChallenge() {
+    try {
+        const res = await apiCall('get_webauthn_challenge');
+        if (res.success) {
+            cachedWebAuthnChallenge = res.challenge || (res.data && res.data.challenge);
+        }
+    } catch (e) {
+        console.warn('Falha pré-carregamento:', e);
+    }
+}
 
 async function checkBiometricSupport() {
     const btnBio = document.getElementById('biometric-login');
-    const loginForm = document.getElementById('login-form');
     if (!btnBio) return;
 
     if (window.PublicKeyCredential && 
         await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()) {
         
         if (localStorage.getItem('webauthn_registered') === 'true') {
-            // Se já está registrado, vamos tornar a biometria o método principal
             btnBio.style.display = 'block';
-            
-            // Tenta disparar automaticamente (pode ser bloqueado pelo browser sem gesto inicial)
-            // Mas em muitos casos de "re-entry" no PWA funciona.
-            setTimeout(() => {
-                tryBiometricLogin(true); // pass true to indicate auto-attempt
-            }, 500);
+            preFetchWebAuthnChallenge(); 
         }
     }
 }
@@ -155,10 +160,18 @@ async function registerBiometrics() {
 
 async function tryBiometricLogin(isAuto = false) {
     try {
-        const resChallenge = await apiCall('get_webauthn_challenge');
-        const challengeBase64 = resChallenge.challenge || (resChallenge.data && resChallenge.data.challenge);
-        if (!challengeBase64) return;
+        // Use cached challenge to preserve user gesture
+        let challengeBase64 = cachedWebAuthnChallenge;
         
+        if (!challengeBase64) {
+            if (isAuto) return; // Don't block auto-flow
+            
+            // If not cached, fetch it now (might lose gesture on some devices)
+            const resChallenge = await apiCall('get_webauthn_challenge');
+            challengeBase64 = resChallenge.challenge || (resChallenge.data && resChallenge.data.challenge);
+        }
+
+        if (!challengeBase64) return;
         const challenge = base64ToBinary(challengeBase64);
 
         const publicKeyCredentialRequestOptions = {
@@ -167,13 +180,16 @@ async function tryBiometricLogin(isAuto = false) {
             userVerification: "required"
         };
 
-        // If isAuto is true, use 'conditional' mediation for modern browser automation
         if (isAuto) {
             publicKeyCredentialRequestOptions.mediation = 'conditional';
         }
 
         const assertion = await navigator.credentials.get({ publicKey: publicKeyCredentialRequestOptions });
         if (!assertion) return;
+
+        // Clear cache for next attempt
+        cachedWebAuthnChallenge = null;
+        preFetchWebAuthnChallenge(); // Re-fetch for next time
 
         const res = await apiCall('webauthn_login', {
             credentialId: binaryToBase64(new Uint8Array(assertion.rawId)),
@@ -185,16 +201,19 @@ async function tryBiometricLogin(isAuto = false) {
         if (res.success) {
             location.reload();
         } else {
+            console.error('Login biometric error:', res.message);
             if (!isAuto) alert(res.message);
         }
     } catch (e) {
         if (isAuto) {
-            console.log('Conditional UI not available or not supported:', e.message);
-            // Fallback for automation: if conditional fails, we still have the manual button.
+            console.log('Passkey automation not ready:', e.message);
             return;
         }
-        console.warn('Biometric attempt:', e);
-        alert('Erro na biometria: ' + e.message);
+        console.warn('Falha na Biometria:', e);
+        // If it was a NotAllowedError, it's likely a timeout or cancelled
+        if (e.name !== 'NotAllowedError') {
+            alert('Erro: ' + e.message);
+        }
     }
 }
 
