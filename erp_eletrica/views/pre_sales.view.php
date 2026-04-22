@@ -152,6 +152,8 @@
 
 <script>
 let pvCart = [];
+let pvSearchIndex = -1;
+let currentPvSearchResults = [];
 const pvSearchInput = document.getElementById('pv_product_search');
 const pvSearchResults = document.getElementById('pv_search_results');
 const pvCartTable = document.getElementById('pvCartTable').querySelector('tbody');
@@ -165,6 +167,8 @@ pvSearchInput.addEventListener('input', async (e) => {
     const term = e.target.value;
     if (term.length < 2) {
         pvSearchResults.classList.add('d-none');
+        currentPvSearchResults = [];
+        pvSearchIndex = -1;
         return;
     }
 
@@ -174,8 +178,57 @@ pvSearchInput.addEventListener('input', async (e) => {
     renderPVSearchResults(products);
 });
 
+pvSearchInput.addEventListener('keydown', (e) => {
+    const items = pvSearchResults.querySelectorAll('.list-group-item');
+    if (items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        pvSearchIndex = Math.min(pvSearchIndex + 1, items.length - 1);
+        highlightPvSearchResult(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        pvSearchIndex = Math.max(pvSearchIndex - 1, -1);
+        highlightPvSearchResult(items);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (pvSearchIndex === -1 && items.length > 0) {
+            pvSearchIndex = 0;
+        }
+        if (pvSearchIndex >= 0) {
+            items[pvSearchIndex].click();
+        }
+    } else if (e.key === 'Escape') {
+        pvSearchResults.classList.add('d-none');
+        pvSearchIndex = -1;
+    }
+});
+
+function highlightPvSearchResult(items) {
+    items.forEach((item, idx) => {
+        if (idx === pvSearchIndex) {
+            item.classList.add('active');
+            item.scrollIntoView({ block: 'nearest' });
+            // Show preview for the selected item
+            if (currentPvSearchResults[idx]) {
+                showPvPreview(currentPvSearchResults[idx]);
+            }
+        } else {
+            item.classList.remove('active');
+        }
+    });
+
+    if (pvSearchIndex === -1) {
+        pvPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
+        pvPreviewName.innerText = 'Aguardando...';
+    }
+}
+
 function renderPVSearchResults(products) {
     pvSearchResults.innerHTML = '';
+    currentPvSearchResults = products;
+    pvSearchIndex = -1;
+
     if (products.length === 0) {
         pvSearchResults.classList.add('d-none');
         return;
