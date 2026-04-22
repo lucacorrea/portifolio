@@ -121,6 +121,20 @@
                             <label class="form-check-label small fw-bold" for="edit-user-ativo">Usuário Ativo</label>
                         </div>
                     </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="comissao_ativa" id="edit-user-comissao-ativa" onchange="toggleCommissionInput()">
+                            <label class="form-check-label small fw-bold" for="edit-user-comissao-ativa">Ativar Comissão</label>
+                        </div>
+                    </div>
+                    <div class="col-md-12 d-none" id="commission-input-container">
+                        <label class="form-label small fw-bold text-success"><i class="fas fa-hand-holding-dollar me-1"></i> Porcentagem de Comissão (%)</label>
+                        <div class="input-group shadow-sm">
+                            <input type="number" step="0.01" name="comissao_porcentagem" id="edit-user-comissao-porcentagem" class="form-control" value="0.00">
+                            <span class="input-group-text bg-success text-white border-0">%</span>
+                        </div>
+                        <div class="extra-small text-muted">Aplicada apenas nos Preços 2 e 3 dos produtos.</div>
+                    </div>
                     <div class="col-md-12">
                         <label class="form-label small fw-bold text-primary"><i class="fas fa-percentage me-1"></i> Desconto Máximo Permitido (%)</label>
                         <input type="number" step="0.1" name="desconto_maximo" id="edit-user-desconto" class="form-control shadow-sm" value="0.0">
@@ -227,6 +241,16 @@ function togglePinField() {
     document.getElementById('pin-field-container').style.display = (type === 'pin') ? 'block' : 'none';
 }
 
+function toggleCommissionInput() {
+    const isActive = document.getElementById('edit-user-comissao-ativa').checked;
+    const container = document.getElementById('commission-input-container');
+    if (isActive) {
+        container.classList.remove('d-none');
+    } else {
+        container.classList.add('d-none');
+    }
+}
+
 function openUserModal() {
     const modal = new bootstrap.Modal(document.getElementById('modal-user'));
     document.getElementById('user-modal-title').innerText = 'Novo Operador de Sistema';
@@ -236,6 +260,8 @@ function openUserModal() {
     document.getElementById('edit-user-filial').value = '';
     document.getElementById('edit-user-nivel').value = 'vendedor';
     document.getElementById('edit-user-ativo').checked = true;
+    document.getElementById('edit-user-comissao-ativa').checked = false;
+    document.getElementById('edit-user-comissao-porcentagem').value = '0.00';
     document.getElementById('edit-user-desconto').value = '0.0';
     document.getElementById('edit-user-auth-type').value = 'password';
     document.getElementById('edit-user-auth-pin').value = '';
@@ -243,6 +269,7 @@ function openUserModal() {
     document.getElementById('pwd-label').innerText = '(Obrigatória)';
     toggleAuthFields();
     togglePinField();
+    toggleCommissionInput();
     modal.show();
 }
 
@@ -255,6 +282,8 @@ function editUser(user) {
     document.getElementById('edit-user-filial').value = user.filial_id;
     document.getElementById('edit-user-nivel').value = user.nivel;
     document.getElementById('edit-user-ativo').checked = user.ativo == 1;
+    document.getElementById('edit-user-comissao-ativa').checked = user.comissao_ativa == 1;
+    document.getElementById('edit-user-comissao-porcentagem').value = user.comissao_porcentagem || '0.00';
     document.getElementById('edit-user-desconto').value = user.desconto_maximo || '0.0';
     document.getElementById('edit-user-auth-type').value = user.auth_type || 'password';
     document.getElementById('edit-user-auth-pin').value = user.auth_pin || '';
@@ -262,6 +291,7 @@ function editUser(user) {
     document.getElementById('pwd-label').innerText = '(Opcional)';
     toggleAuthFields();
     togglePinField();
+    toggleCommissionInput();
     modal.show();
 }
 </script>

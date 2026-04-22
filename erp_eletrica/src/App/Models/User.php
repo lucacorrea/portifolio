@@ -85,6 +85,12 @@ class User extends BaseModel {
                 $params[] = $data['auth_type'] ?? 'password';
             }
 
+            if ($this->columnExists('comissao_ativa')) {
+                $sql .= ", comissao_ativa = ?, comissao_porcentagem = ? ";
+                $params[] = isset($data['comissao_ativa']) ? 1 : 0;
+                $params[] = $data['comissao_porcentagem'] ?? 0;
+            }
+
             if (!empty($data['senha'])) {
                 $sql .= ", senha = ? ";
                 $params[] = password_hash($data['senha'], PASSWORD_DEFAULT);
@@ -105,12 +111,17 @@ class User extends BaseModel {
             }
 
             if ($hasAuthCols) {
-                $fields[] = "auth_pin";
-                $fields[] = "auth_type";
-                $placeholders[] = "?";
-                $placeholders[] = "?";
                 $params[] = !empty($data['auth_pin']) ? $data['auth_pin'] : null;
                 $params[] = $data['auth_type'] ?? 'password';
+            }
+
+            if ($this->columnExists('comissao_ativa')) {
+                $fields[] = "comissao_ativa";
+                $fields[] = "comissao_porcentagem";
+                $placeholders[] = "?";
+                $placeholders[] = "?";
+                $params[] = isset($data['comissao_ativa']) ? 1 : 0;
+                $params[] = $data['comissao_porcentagem'] ?? 0;
             }
 
             $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
