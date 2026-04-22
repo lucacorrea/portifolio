@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | Agro Forest Amazon</title>
+  <style>
+    :root {
+      --bg: #f4f0e6;
+      --panel: #ffffff;
+      --panel-soft: #f8f6ef;
+      --line: #e3dfd3;
+      --text: #1e2b25;
+      --muted: #68766f;
+      --green-900: #1f4d3a;
+      --green-800: #295c45;
+      --green-700: #3c6f56;
+      --green-500: #5e8b4a;
+      --green-100: #e7f0e8;
+      --acai: #5b2c6f;
+      --acai-soft: #f1e8f5;
+      --amber: #b8860b;
+      --amber-soft: #fff2cf;
+      --danger: #b23b3b;
+      --danger-soft: #fdecec;
+      --success: #1b7f46;
+      --success-soft: #eaf7ef;
+      --shadow: 0 18px 40px rgba(31, 77, 58, 0.10);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #f7f4ed 0%, #f1ecdf 100%);
+      color: var(--text);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 290px 1fr;
+    }
+
+    .sidebar {
+      background:
+        radial-gradient(circle at top right, rgba(94, 139, 74, 0.18), transparent 28%),
+        linear-gradient(180deg, var(--green-900) 0%, #173a2c 100%);
+      color: #eef4ef;
+      padding: 28px 22px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .brand-badge {
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #86b46f, #456e4b);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: #fff;
+      box-shadow: 0 14px 28px rgba(0,0,0,0.18);
+      letter-spacing: 0.5px;
+    }
+
+    .brand small {
+      display: block;
+      color: rgba(255,255,255,0.72);
+      margin-bottom: 4px;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .menu-title {
+      margin: 26px 0 12px;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.52);
+    }
+
+    .nav-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 14px;
+      border-radius: 14px;
+      color: rgba(255,255,255,0.85);
+      transition: 0.25s ease;
+      font-weight: 500;
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      background: rgba(255,255,255,0.10);
+      color: #fff;
+      transform: translateX(2px);
+    }
+
+    .nav-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,0.08);
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-card {
+      margin-top: 28px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 18px;
+      backdrop-filter: blur(8px);
+    }
+
+    .sidebar-card strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .sidebar-card p {
+      margin: 0 0 14px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: rgba(255,255,255,0.78);
+    }
+
+    .sidebar-card button {
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #8cc16f, #5e8b4a);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .content {
+      padding: 26px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+
+    .search-wrap {
+      flex: 1;
+      max-width: 500px;
+      position: relative;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.86);
+      border-radius: 16px;
+      padding: 15px 16px 15px 46px;
+      outline: none;
+      color: var(--text);
+      box-shadow: 0 10px 20px rgba(31,77,58,0.05);
+    }
+
+    .search-wrap span {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .chip,
+    .btn {
+      border-radius: 14px;
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.88);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--green-900), var(--green-700));
+      color: #fff;
+      border: 0;
+      box-shadow: 0 12px 25px rgba(31,77,58,0.18);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 28px;
+      padding: 28px;
+      background:
+        radial-gradient(circle at top right, rgba(91,44,111,0.18), transparent 24%),
+        radial-gradient(circle at bottom left, rgba(94,139,74,0.22), transparent 34%),
+        linear-gradient(135deg, #224634 0%, #355840 45%, #5b2c6f 120%);
+      color: #fff;
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -40px -100px auto;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(255,255,255,0.10), transparent 70%);
+      border-radius: 50%;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 0.9fr;
+      gap: 18px;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      color: #f4f7f5;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      margin: 0 0 12px;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.1;
+    }
+
+    .hero p {
+      margin: 0 0 18px;
+      max-width: 720px;
+      color: rgba(255,255,255,0.88);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    .hero-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .hero-pill {
+      min-width: 150px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .hero-pill small {
+      display: block;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 6px;
+    }
+
+    .hero-pill strong {
+      font-size: 21px;
+    }
+
+    .hero-aside {
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px;
+      padding: 22px;
+      backdrop-filter: blur(12px);
+    }
+
+    .hero-aside h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .hero-aside .list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .mini-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .mini-item:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .mini-item small {
+      display: block;
+      color: rgba(255,255,255,0.70);
+      margin-top: 4px;
+    }
+
+    .mini-badge {
+      white-space: nowrap;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(31,77,58,0.08);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card {
+      padding: 20px;
+    }
+
+    .stat-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .stat-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+    }
+
+    .soft-green { background: var(--green-100); color: var(--green-900); }
+    .soft-acai { background: var(--acai-soft); color: var(--acai); }
+    .soft-amber { background: var(--amber-soft); color: var(--amber); }
+    .soft-red { background: var(--danger-soft); color: var(--danger); }
+
+    .stat-card h3 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .stat-card p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .trend {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .trend.up {
+      background: var(--success-soft);
+      color: var(--success);
+    }
+
+    .trend.warn {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .trend.down {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.55fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .panel-header h2,
+    .panel-header h3 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .panel-header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .panel-body {
+      padding: 22px;
+    }
+
+    .chart-card {
+      padding: 22px;
+    }
+
+    .bars {
+      height: 320px;
+      display: flex;
+      align-items: end;
+      gap: 14px;
+      padding-top: 20px;
+    }
+
+    .bar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bar {
+      width: 100%;
+      max-width: 56px;
+      min-height: 36px;
+      border-radius: 18px 18px 8px 8px;
+      background: linear-gradient(180deg, #7ca864 0%, #2c6548 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+      position: relative;
+    }
+
+    .bar.acai {
+      background: linear-gradient(180deg, #9160a3 0%, #5b2c6f 100%);
+    }
+
+    .bar-value {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .bar-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .progress-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .progress-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+    }
+
+    .progress-item strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .progress-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    .meter {
+      height: 10px;
+      background: #e8e4d8;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .meter > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green-500), var(--green-900));
+    }
+
+    .meter.acai > span {
+      background: linear-gradient(90deg, #8b5aa0, var(--acai));
+    }
+
+    .meter.warn > span {
+      background: linear-gradient(90deg, #d7b03b, var(--amber));
+    }
+
+    .small-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 16px 0;
+      border-bottom: 1px solid #ece7da;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .project-name {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .project-sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status.ok { background: var(--success-soft); color: var(--success); }
+    .status.progress { background: var(--acai-soft); color: var(--acai); }
+    .status.pending { background: var(--amber-soft); color: var(--amber); }
+
+    .agenda-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .agenda-item {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel-soft);
+    }
+
+    .date-box {
+      border-radius: 16px;
+      background: linear-gradient(180deg, var(--green-900), var(--green-700));
+      color: #fff;
+      text-align: center;
+      padding: 10px 8px;
+    }
+
+    .date-box strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .date-box small {
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+
+    .agenda-item h4 {
+      margin: 0 0 4px;
+      font-size: 15px;
+    }
+
+    .agenda-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 1250px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .main-grid,
+      .bottom-grid,
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        height: auto;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .content {
+        padding: 16px;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .search-wrap {
+        max-width: none;
+      }
+
+      .top-actions {
+        width: 100%;
+      }
+
+      .top-actions > * {
+        flex: 1 1 auto;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .chart-card,
+      .panel-body,
+      .stat-card {
+        padding: 18px;
+      }
+
+      .bars {
+        gap: 10px;
+        height: 260px;
+      }
+
+      .bar {
+        max-width: 42px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge">AFA</div>
+        <div>
+          <small>Painel de Gestão</small>
+          <strong>Agro Forest Amazon</strong>
+        </div>
+      </div>
+
+      <div class="menu-title">Principal</div>
+      <nav class="nav-list">
+        <a class="nav-link active" href="#">
+          <span class="nav-icon">🏠</span>
+          Dashboard
+        </a>
+        <a class="nav-link" href="#">
+          <span class="nav-icon">🌱</span>
+          Produtores
+        </a>
+        <a class="nav-link" href="#">
+          <span class="nav-icon">📁</span>
+          Projetos
+        </a>
+        <a class="nav-link" href="#">
+          <span class="nav-icon">💰</span>
+          Crédito Rural
+        </a>
+        <a class="nav-link" href="#">
+          <span class="nav-icon">🫐</span>
+          Produção de Açaí
+        </a>
+      </nav>
+
+      <div class="menu-title">Operação</div>
+      <nav class="nav-list">
+        <a class="nav-link" href="#">
+          <span class="nav-icon">🧭</span>
+          Vistorias Técnicas
+        </a>
+        <a class="nav-link" href="#">
+          <span class="nav-icon">🗺️</span>
+          Áreas & Comunidades
+        </a>
+        <a class="nav-link" href="#">
+          <span class="nav-icon">📄</span>
+          Documentos
+        </a>
+        <a class="nav-link" href="#">
+          <span class="nav-icon">📊</span>
+          Relatórios
+        </a>
+      </nav>
+
+      <div class="sidebar-card">
+        <strong>Resumo do período</strong>
+        <p>
+          Acompanhamento de produção, crédito rural, visitas técnicas e pendências documentais em uma visão clara e executiva.
+        </p>
+        <button type="button">Gerar relatório mensal</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <div class="search-wrap">
+          <span>🔎</span>
+          <input type="text" placeholder="Buscar produtor, projeto, comunidade ou documento..." />
+        </div>
+        <div class="top-actions">
+          <div class="chip">Abril 2026</div>
+          <div class="chip">Coari - AM</div>
+          <button class="btn primary">+ Novo projeto</button>
+        </div>
+      </div>
+
+      <section class="hero card">
+        <div class="hero-grid">
+          <div>
+            <span class="eyebrow">Meio ambiente • crédito rural • manejo florestal</span>
+            <h1>Dashboard estratégico com identidade forte da Agro Forest Amazon</h1>
+            <p>
+              Uma tela pensada para unir campo, floresta e gestão técnica. O foco aqui é acompanhar produtores, projetos, custeio, visitas e resultados com uma visualização profissional, clara e alinhada ao universo agro amazônico.
+            </p>
+
+            <div class="hero-stats">
+              <div class="hero-pill">
+                <small>Projetos ativos</small>
+                <strong>48</strong>
+              </div>
+              <div class="hero-pill">
+                <small>Produtores atendidos</small>
+                <strong>126</strong>
+              </div>
+              <div class="hero-pill">
+                <small>Área monitorada</small>
+                <strong>1.840 ha</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-aside">
+            <h3>Foco da semana</h3>
+            <div class="list">
+              <div class="mini-item">
+                <div>
+                  <strong>Vistoria técnica</strong>
+                  <small>Comunidade São José • 12 propriedades</small>
+                </div>
+                <span class="mini-badge">Hoje</span>
+              </div>
+              <div class="mini-item">
+                <div>
+                  <strong>Análise documental</strong>
+                  <small>7 propostas aguardando validação</small>
+                </div>
+                <span class="mini-badge">Urgente</span>
+              </div>
+              <div class="mini-item">
+                <div>
+                  <strong>Crédito rural</strong>
+                  <small>R$ 1,28 mi em tramitação</small>
+                </div>
+                <span class="mini-badge">Atualizado</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats-grid">
+        <article class="card stat-card">
+          <div class="stat-top">
+            <div>
+              <div class="stat-icon soft-green">🌿</div>
+            </div>
+            <span class="trend up">▲ 12,4%</span>
+          </div>
+          <h3>126</h3>
+          <p>Produtores acompanhados no período</p>
+        </article>
+
+        <article class="card stat-card">
+          <div class="stat-top">
+            <div>
+              <div class="stat-icon soft-acai">🫐</div>
+            </div>
+            <span class="trend up">▲ 8,1%</span>
+          </div>
+          <h3>384 t</h3>
+          <p>Produção estimada de açaí</p>
+        </article>
+
+        <article class="card stat-card">
+          <div class="stat-top">
+            <div>
+              <div class="stat-icon soft-amber">💳</div>
+            </div>
+            <span class="trend warn">7 em análise</span>
+          </div>
+          <h3>R$ 2,87 mi</h3>
+          <p>Volume de crédito rural movimentado</p>
+        </article>
+
+        <article class="card stat-card">
+          <div class="stat-top">
+            <div>
+              <div class="stat-icon soft-red">📑</div>
+            </div>
+            <span class="trend down">11 pendências</span>
+          </div>
+          <h3>89%</h3>
+          <p>Índice médio de conformidade documental</p>
+        </article>
+      </section>
+
+      <section class="main-grid">
+        <article class="card chart-card">
+          <div class="panel-header">
+            <div>
+              <h2>Produção projetada x execução</h2>
+              <p>Comparativo mensal da safra acompanhada</p>
+            </div>
+            <div class="chip">Últimos 6 meses</div>
+          </div>
+
+          <div class="bars">
+            <div class="bar-wrap">
+              <div class="bar-value">52 t</div>
+              <div class="bar" style="height: 40%;"></div>
+              <div class="bar-label">Nov</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-value">61 t</div>
+              <div class="bar acai" style="height: 48%;"></div>
+              <div class="bar-label">Dez</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-value">74 t</div>
+              <div class="bar" style="height: 58%;"></div>
+              <div class="bar-label">Jan</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-value">83 t</div>
+              <div class="bar acai" style="height: 65%;"></div>
+              <div class="bar-label">Fev</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-value">96 t</div>
+              <div class="bar" style="height: 74%;"></div>
+              <div class="bar-label">Mar</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-value">112 t</div>
+              <div class="bar acai" style="height: 88%;"></div>
+              <div class="bar-label">Abr</div>
+            </div>
+          </div>
+
+          <div class="legend">
+            <span><i class="dot" style="background:#3c6f56"></i> Meta operacional</span>
+            <span><i class="dot" style="background:#5b2c6f"></i> Execução consolidada</span>
+          </div>
+        </article>
+
+        <article class="card panel-body">
+          <div class="panel-header">
+            <div>
+              <h3>Pipeline dos projetos</h3>
+              <p>Status macro da carteira</p>
+            </div>
+          </div>
+
+          <div class="progress-list">
+            <div class="progress-item">
+              <div class="progress-top">
+                <strong>Crédito rural</strong>
+                <span>78%</span>
+              </div>
+              <div class="meter"><span style="width: 78%"></span></div>
+              <div class="small-note">Documentação estruturada e propostas avançando para aprovação.</div>
+            </div>
+
+            <div class="progress-item">
+              <div class="progress-top">
+                <strong>Manejo florestal</strong>
+                <span>62%</span>
+              </div>
+              <div class="meter acai"><span style="width: 62%"></span></div>
+              <div class="small-note">Equipe técnica em validação de campo e ajustes de cronograma.</div>
+            </div>
+
+            <div class="progress-item">
+              <div class="progress-top">
+                <strong>Regularização documental</strong>
+                <span>44%</span>
+              </div>
+              <div class="meter warn"><span style="width: 44%"></span></div>
+              <div class="small-note">Maior atenção para cadastros e documentos pendentes de assinatura.</div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="card panel-body">
+          <div class="panel-header">
+            <div>
+              <h3>Projetos em destaque</h3>
+              <p>Visão resumida da carteira técnica e financeira</p>
+            </div>
+            <a class="chip" href="#">Ver todos</a>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Projeto</th>
+                <th>Comunidade</th>
+                <th>Valor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="project-name">Expansão de açaizal nativo</div>
+                  <div class="project-sub">12 produtores vinculados</div>
+                </td>
+                <td>São José</td>
+                <td>R$ 420.000</td>
+                <td><span class="status ok">Aprovado</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="project-name">Custeio da safra 2026</div>
+                  <div class="project-sub">23 cadastros em análise</div>
+                </td>
+                <td>Itapeuá</td>
+                <td>R$ 860.000</td>
+                <td><span class="status progress">Em andamento</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="project-name">Assistência técnica integrada</div>
+                  <div class="project-sub">Manejo e produtividade</div>
+                </td>
+                <td>Lago do Mamiá</td>
+                <td>R$ 195.000</td>
+                <td><span class="status pending">Pendente</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="project-name">Recuperação de área produtiva</div>
+                  <div class="project-sub">8 propriedades assistidas</div>
+                </td>
+                <td>Vila Amazônia</td>
+                <td>R$ 312.000</td>
+                <td><span class="status ok">Aprovado</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="card panel-body">
+          <div class="panel-header">
+            <div>
+              <h3>Agenda técnica</h3>
+              <p>Próximas ações do time</p>
+            </div>
+          </div>
+
+          <div class="agenda-list">
+            <div class="agenda-item">
+              <div class="date-box">
+                <strong>24</strong>
+                <small>Abr</small>
+              </div>
+              <div>
+                <h4>Visita de vistoria em campo</h4>
+                <p>Comunidade São José • Equipe agronômica • 08:30</p>
+              </div>
+            </div>
+
+            <div class="agenda-item">
+              <div class="date-box">
+                <strong>25</strong>
+                <small>Abr</small>
+              </div>
+              <div>
+                <h4>Validação documental</h4>
+                <p>Propostas de crédito rural • Escritório • 10:00</p>
+              </div>
+            </div>
+
+            <div class="agenda-item">
+              <div class="date-box">
+                <strong>28</strong>
+                <small>Abr</small>
+              </div>
+              <div>
+                <h4>Reunião de planejamento</h4>
+                <p>Safra, custeio e metas do mês seguinte • 15:00</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <div class="footer-note">
+        Layout conceito para adaptação em HTML, PHP ou sistema administrativo da Agro Forest Amazon.
+      </div>
+    </main>
+  </div>
+</body>
+</html>
