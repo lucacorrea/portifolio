@@ -8,7 +8,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     
     <nav class="nav flex-column sidebar-menu">
 
-        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
+        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente']) && !($_SESSION['is_temporary'] ?? false)): ?>
         <a href="index.php" class="nav-link <?= ($current_page == 'index.php' || $current_page == '') ? 'active' : '' ?>">
             <i class="fas fa-chart-line"></i> <span>Painel Comercial</span>
         </a>
@@ -66,7 +66,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <?php endif; ?>
         </a>
         
-        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
+        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente']) && !($_SESSION['is_temporary'] ?? false)): ?>
         <a href="estoque_baixo.php" class="nav-link <?= $current_page == 'estoque_baixo.php' ? 'active' : '' ?>">
             <i class="fas fa-triangle-exclamation"></i> <span>Estoque Baixo</span>
             <?php 
@@ -95,6 +95,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
         
+        <?php endif; ?>
+
+        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente']) && !($_SESSION['is_temporary'] ?? false)): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Financeiro</div>
         
         <a href="financeiro.php" class="nav-link <?= ($current_page == 'financeiro.php' && !isset($_GET['action'])) ? 'active' : '' ?>">
@@ -125,7 +128,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
         <?php endif; ?>
 
-        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin'])): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin']) && !($_SESSION['is_temporary'] ?? false)): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão Estratégica</div>
         
         <a href="custos.php" class="nav-link <?= $current_page == 'custos.php' ? 'active' : '' ?>">
@@ -139,7 +142,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
 
-        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin'])): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin']) && !($_SESSION['is_temporary'] ?? false)): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Administração</div>
         
         <a href="configuracoes.php?tab=unidades#unidades" class="nav-link <?= ($current_page == 'configuracoes.php' && ($_GET['tab'] ?? '') == 'unidades') ? 'active' : '' ?>">
@@ -153,7 +156,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
         
-        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente'])): ?>
+        <?php if (!in_array($_SESSION['usuario_nivel'] ?? '', ['vendedor', 'gerente']) && !($_SESSION['is_temporary'] ?? false)): ?>
         <a href="configuracoes.php" class="nav-link mt-auto border-top border-secondary border-opacity-10 <?= ($current_page == 'configuracoes.php' && !isset($_GET['tab'])) ? 'active' : '' ?>">
             <i class="fas fa-sliders-h"></i> <span>Ajustes Gerais</span>
         </a>
