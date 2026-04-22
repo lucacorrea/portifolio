@@ -67,11 +67,16 @@ async function checkBiometricSupport() {
 }
 
 async function registerBiometrics() {
+    if (!window.isSecureContext) {
+        alert('A biometria exige conexão segura (HTTPS). Certifique-se de que o site está usando SSL.');
+        return;
+    }
+
     try {
         const resChallenge = await apiCall('get_webauthn_challenge');
         if (!resChallenge.success) throw new Error('Não foi possível obter desafio do servidor.');
 
-        const challenge = base64ToBinary(resChallenge.challenge);
+        const challenge = base64ToBinary(resChallenge.challenge || resChallenge.data?.challenge);
         const userId = Uint8Array.from(window.crypto.getRandomValues(new Uint8Array(16)));
 
         const publicKeyCredentialCreationOptions = {
@@ -82,25 +87,35 @@ async function registerBiometrics() {
                 name: "Administrador",
                 displayName: "Administrador Geral"
             },
-            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+            pubKeyCredParams: [
+                { alg: -7, type: "public-key" }, // ES256
+                { alg: -257, type: "public-key" } // RS256
+            ],
+            authenticatorSelection: { 
+                authenticatorAttachment: "platform", 
+                userVerification: "required" 
+            },
             timeout: 60000
         };
 
         const credential = await navigator.credentials.create({ publicKey: publicKeyCredentialCreationOptions });
         
-        // Prepare data for server
-        const attestationObject = binaryToBase64(credential.response.attestationObject);
-        const clientDataJSON = binaryToBase64(credential.response.clientDataJSON);
+        // Use modern getPublicKey if available (Chrome 11x+, Android, iOS 16+)
+        let publicKeyPem = "";
+        if (typeof credential.response.getPublicKey === 'function') {
+            const spkiBuffer = credential.response.getPublicKey();
+            publicKeyPem = spkiToPem(spkiBuffer);
+        } else {
+            throw new Error('Seu navegador não suporta a exportação segura da chave pública biométrica necessária.');
+        }
         
-        // Minimal Pre-parsing for server simplicity
         const res = await apiCall('webauthn_register', {
-            attestationObject: attestationObject,
-            clientDataJSON: atob(clientDataJSON),
+            attestationObject: binaryToBase64(credential.response.attestationObject),
+            clientDataJSON: new TextDecoder().decode(credential.response.clientDataJSON),
             result: JSON.stringify({
                 id: binaryToBase64(new Uint8Array(credential.rawId)),
-                publicKey: extractPublicKeyPlaceholder(), // Real spec would parse attestation on server
-                deviceName: navigator.userAgent.split(')')[0].split('(')[1] || 'Celular'
+                publicKey: publicKeyPem,
+                deviceName: (navigator.userAgent.match(/\(([^)]+)\)/) || [null, 'Celular'])[1]
             })
         });
 
@@ -113,7 +128,11 @@ async function registerBiometrics() {
         }
     } catch (e) {
         console.error('Registration error:', e);
-        alert('Erro ao configurar biometria: ' + e.message);
+        if (e.name === 'NotAllowedError') {
+            alert('Permissão negada ou biometria cancelada.');
+        } else {
+            alert('Erro ao configurar biometria: ' + e.message);
+        }
     }
 }
 
@@ -170,10 +189,13 @@ function binaryToBase64(binary) {
     return btoa(String.fromCharCode(...new Uint8Array(binary)));
 }
 
-// Placeholder: in a real implementation, we would extract the PK from the attestation
-// Here we might need a small helper to get the PK from the authenticator response properly
-function extractPublicKeyPlaceholder() {
-    return "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"; 
+/**
+ * Converts SPKI ArrayBuffer to PEM string.
+ */
+function spkiToPem(buffer) {
+    const base64 = binaryToBase64(buffer);
+    const matches = base64.match(/.{1,64}/g);
+    return "-----BEGIN PUBLIC KEY-----\n" + matches.join("\n") + "\n-----END PUBLIC KEY-----";
 }
 
 // --- Features ---
