@@ -36,6 +36,7 @@ class PreSale extends BaseModel {
         $preVendaId = $this->db->lastInsertId();
 
         foreach ($data['items'] as $item) {
+            $this->query(
                 "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario, preco_tier) VALUES (?, ?, ?, ?, ?)",
                 [$preVendaId, $item['id'], $item['qty'], $item['price'], $item['price_tier'] ?? 1]
             );
