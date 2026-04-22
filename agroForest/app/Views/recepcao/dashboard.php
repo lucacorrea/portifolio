@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Recepção | Sistema de Protocolo</title>
-  <link rel="stylesheet" href="../../public/assets/css/recepcao-dashboard.css" />
+  <link rel="stylesheet" href="../public/assets/css/recepcao-dashboard.css" />
 </head>
 <body>
   <div class="layout">
