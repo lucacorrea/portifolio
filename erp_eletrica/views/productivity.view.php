@@ -8,7 +8,9 @@
                 <div class="badge bg-primary bg-opacity-10 text-primary px-3">Tempo Real</div>
             </div>
             <div class="card-body">
-                <canvas id="productivityChart" style="min-height: 300px;"></canvas>
+                <div style="position: relative; height: 350px; width: 100%;">
+                    <canvas id="productivityChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -121,10 +123,12 @@
                                 <?= strtoupper($a['acao']) ?>
                             </span>
                         </td>
-                        <td>
-                            <div class="text-truncate" style="max-width: 500px;" title='<?= htmlspecialchars($a['dados_novos']) ?>'>
-                                <?= $a['tabela'] ? "<b>[{$a['tabela']} #{$a['registro_id']}]</b> " : "" ?>
-                                <?= htmlspecialchars(substr($a['dados_novos'], 0, 150)) . (strlen($a['dados_novos']) > 150 ? '...' : '') ?>
+                        <td class="text-break" style="min-width: 300px;">
+                            <?php if ($a['tabela']): ?>
+                                <span class="badge bg-light text-dark extra-small border mb-1"><?= $a['tabela'] ?> #<?= $a['registro_id'] ?></span><br>
+                            <?php endif; ?>
+                            <div class="extra-small text-muted" style="max-height: 60px; overflow-y: auto;">
+                                <?= htmlspecialchars($a['dados_novos']) ?>
                             </div>
                         </td>
                     </tr>
