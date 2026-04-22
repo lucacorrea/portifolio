@@ -74,9 +74,12 @@ async function registerBiometrics() {
 
     try {
         const resChallenge = await apiCall('get_webauthn_challenge');
-        if (!resChallenge.success) throw new Error('Não foi possível obter desafio do servidor.');
+        if (!resChallenge.success) throw new Error(resChallenge.message || 'Não foi possível obter desafio do servidor.');
 
-        const challenge = base64ToBinary(resChallenge.challenge || resChallenge.data?.challenge);
+        const challengeBase64 = resChallenge.challenge || (resChallenge.data && resChallenge.data.challenge);
+        if (!challengeBase64) throw new Error('Desafio não encontrado na resposta do servidor.');
+        
+        const challenge = base64ToBinary(challengeBase64);
         const userId = Uint8Array.from(window.crypto.getRandomValues(new Uint8Array(16)));
 
         const publicKeyCredentialCreationOptions = {

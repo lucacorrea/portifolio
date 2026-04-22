@@ -9,6 +9,27 @@ class WebAuthnService extends BaseService {
     
     public function __construct() {
         $db = \App\Config\Database::getInstance()->getConnection();
+        
+        // Ensure table existence (Fallback if migration didn't run)
+        try {
+            $db->query("SELECT 1 FROM webauthn_credentials LIMIT 1");
+        } catch (\Exception $e) {
+            $sql = "CREATE TABLE IF NOT EXISTS webauthn_credentials (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                usuario_id INT NOT NULL,
+                credential_id VARBINARY(255) NOT NULL,
+                public_key TEXT NOT NULL,
+                user_handle VARBINARY(64) NOT NULL,
+                signature_counter INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_used_at TIMESTAMP NULL,
+                device_name VARCHAR(100),
+                UNIQUE(credential_id),
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+            )";
+            $db->exec($sql);
+        }
+
         parent::__construct(new class($db) {
             private $db;
             public function __construct($db) { $this->db = $db; }
@@ -46,23 +67,30 @@ class WebAuthnService extends BaseService {
     }
 
     /**
-     * Minimal verification of the registration response.
-     * In a real full spec, we would parse CBOR attestationObject.
-     * Here we expect the frontend to help with some pre-parsing for simplicity.
+     * Decodes Base64URL (used by browsers) to raw binary.
      */
+    private function base64url_decode($data) {
+        $remainder = strlen($data) % 4;
+        if ($remainder) {
+            $padlen = 4 - $remainder;
+            $data .= str_repeat('=', $padlen);
+        }
+        return base64_decode(strtr($data, '-_', '+/'));
+    }
+
     public function verifyRegistration($userId, $clientDataJson, $attestationObject, $parsedData) {
         // 1. Verify Challenge
         $clientData = json_decode($clientDataJson);
         $storedChallenge = $_SESSION['webauthn_challenge'] ?? '';
         
-        if (base64_decode($clientData->challenge) !== base64_decode($storedChallenge)) {
-            throw new \Exception("WebAuthn challenge mismatch during registration.");
+        // Browser sends challenge in Base64URL. Server stored it in Base64.
+        $receivedChallengeRaw = $this->base64url_decode($clientData->challenge);
+        $storedChallengeRaw = base64_decode($storedChallenge);
+
+        if ($receivedChallengeRaw !== $storedChallengeRaw) {
+            throw new \Exception("WebAuthn challenge mismatch during registration. Check session persistence.");
         }
 
-        // 2. In a minimal implementation, we trust the browser's response for the public key 
-        // provided we are on a secure origin (HTTPS). The frontend will send the extracted 
-        // credentialId and publicKey (PEM format) from the attestation.
-        
         return $this->repository->saveCredential([
             'usuario_id' => $userId,
             'credential_id' => base64_decode($parsedData['id']),
@@ -72,9 +100,6 @@ class WebAuthnService extends BaseService {
         ]);
     }
 
-    /**
-     * Verify the authentication signature.
-     */
     public function verifyAuthentication($credentialId, $clientDataJson, $authenticatorData, $signature) {
         $credential = $this->repository->findByCredentialId(base64_decode($credentialId));
         if (!$credential) {
@@ -84,49 +109,43 @@ class WebAuthnService extends BaseService {
         // 1. Verify Challenge
         $clientData = json_decode($clientDataJson);
         $storedChallenge = $_SESSION['webauthn_challenge'] ?? '';
-        if (base64_decode($clientData->challenge) !== base64_decode($storedChallenge)) {
+        
+        $receivedChallengeRaw = $this->base64url_decode($clientData->challenge);
+        $storedChallengeRaw = base64_decode($storedChallenge);
+
+        if ($receivedChallengeRaw !== $storedChallengeRaw) {
              throw new \Exception("WebAuthn challenge mismatch during authentication.");
         }
 
         // 2. Reconstruct the signed data
-        // Signed data = authenticatorData + hash_sha256(clientDataJSON)
         $clientDataHash = hash('sha256', $clientDataJson, true);
         $authenticatorDataBinary = base64_decode($authenticatorData);
         $dataToVerify = $authenticatorDataBinary . $clientDataHash;
 
-        // 3. Verify Signature using OpenSSL
+        // 3. Verify Signature
         $publicKey = $credential['public_key'];
         $signatureBinary = base64_decode($signature);
-        
-        // Note: Browsers return signatures as raw (r, s) concatenated. 
-        // PHP openssl_verify expects ASN.1 DER format.
         $derSignature = $this->rawToDer($signatureBinary);
 
         $result = openssl_verify($dataToVerify, $derSignature, $publicKey, OPENSSL_ALGO_SHA256);
 
         if ($result === 1) {
-            // Success! Update counter
-            $this->repository->updateCounter($credential['id'], 0); // Minimal counter tracking
+            $this->repository->updateCounter($credential['id'], 0);
             return $credential['usuario_id'];
         }
 
         return false;
     }
 
-    /**
-     * Helper to convert raw WebAuthn signature (concat R and S) to ASN.1 DER.
-     */
     private function rawToDer($signature) {
         $length = strlen($signature);
         $half = $length / 2;
         $r = substr($signature, 0, $half);
         $s = substr($signature, $half);
 
-        // Trim leading zeros but ensure at least one byte
         $r = ltrim($r, "\x00");
         $s = ltrim($s, "\x00");
         
-        // If highest bit is set, prefix with zero
         if (ord($r[0]) > 0x7f) $r = "\x00" . $r;
         if (ord($s[0]) > 0x7f) $s = "\x00" . $s;
 
