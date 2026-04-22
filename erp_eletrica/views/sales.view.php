@@ -328,7 +328,7 @@
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white border-0 shadow-sm">
-                <h5 class="modal-title fw-bold text-white"><i class="fas fa-cash-register me-2 text-white"></i>Gestão de Venda <span class="text-white">#</span><span id="manageSaleId" class="text-white"></span></h5>
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-cash-register me-2 text-white" style="color: #ffffff !important;"></i>Gestão de Venda <span class="text-white" style="color: #ffffff !important;">#</span><span id="manageSaleId" class="text-white" style="color: #ffffff !important;"></span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -361,7 +361,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg overflow-hidden">
             <div class="modal-header bg-danger text-white border-0 py-3 shadow-sm">
-                <h5 class="modal-title fw-bold text-white"><i class="fas fa-exclamation-triangle me-2 text-white"></i>Cancelar Venda <span class="text-white">#</span><span id="cancel-id-label" class="text-white"></span></h5>
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-exclamation-triangle me-2 text-white" style="color: #ffffff !important;"></i>Cancelar Venda <span class="text-white" style="color: #ffffff !important;">#</span><span id="cancel-id-label" class="text-white" style="color: #ffffff !important;"></span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -434,7 +434,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-secondary text-white border-0 shadow-sm">
-                <h5 class="modal-title fw-bold text-white"><i class="fas fa-exchange-alt me-2 text-white"></i>Solicitação de Troca (Venda <span class="text-white">#</span><span id="exchangeSaleId" class="text-white"></span>)</h5>
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-exchange-alt me-2 text-white" style="color: #ffffff !important;"></i>Solicitação de Troca (Venda <span class="text-white" style="color: #ffffff !important;">#</span><span id="exchangeSaleId" class="text-white" style="color: #ffffff !important;"></span>)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
