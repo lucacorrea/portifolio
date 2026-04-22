@@ -1163,6 +1163,10 @@ async function importPreSale(code) {
             id: i.produto_id,
             nome: i.produto_nome,
             price: parseFloat(i.preco_unitario),
+            price1: parseFloat(i.preco_venda || 0),
+            price2: parseFloat(i.preco_venda_2 || 0),
+            price3: parseFloat(i.preco_venda_3 || 0),
+            price_tier: parseInt(i.preco_tier || 1),
             qty: parseFloat(i.quantidade),
             imagens: i.imagens
         }));
