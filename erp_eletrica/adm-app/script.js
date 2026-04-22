@@ -7,11 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
-        checkSavedCredentials();
+        checkBiometricSupport();
     }
     
     if (document.getElementById('dashboard-screen')) {
         loadFiliais();
+        updateBiometricsUI();
     }
 });
 
@@ -44,12 +45,6 @@ async function handleLogin(e) {
 
     const res = await apiCall('login', { email, password });
     if (res.success) {
-        // Option to save for Biometrics
-        if (confirm('Deseja ativar o desbloqueio por Biometria/FaceID para acessos futuros?')) {
-            localStorage.setItem('adm_saved_email', email);
-            localStorage.setItem('adm_saved_pass', btoa(password)); // Obfuscated for demo, ideally would use WebAuthn credential
-            localStorage.setItem('biometrics_enabled', 'true');
-        }
         location.reload();
     } else {
         errorDiv.textContent = res.message;
@@ -57,34 +52,131 @@ async function handleLogin(e) {
     }
 }
 
-function checkSavedCredentials() {
-    if (localStorage.getItem('biometrics_enabled') === 'true') {
-        document.getElementById('biometric-login').style.display = 'block';
+// --- Native Biometrics (WebAuthn) ---
+
+async function checkBiometricSupport() {
+    const btnBio = document.getElementById('biometric-login');
+    if (!btnBio) return;
+
+    if (window.PublicKeyCredential && 
+        await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()) {
+        if (localStorage.getItem('webauthn_registered') === 'true') {
+            btnBio.style.display = 'block';
+        }
+    }
+}
+
+async function registerBiometrics() {
+    try {
+        const resChallenge = await apiCall('get_webauthn_challenge');
+        if (!resChallenge.success) throw new Error('Não foi possível obter desafio do servidor.');
+
+        const challenge = base64ToBinary(resChallenge.challenge);
+        const userId = Uint8Array.from(window.crypto.getRandomValues(new Uint8Array(16)));
+
+        const publicKeyCredentialCreationOptions = {
+            challenge: challenge,
+            rp: { name: "ERP Elétrica ADM", id: window.location.hostname },
+            user: {
+                id: userId,
+                name: "Administrador",
+                displayName: "Administrador Geral"
+            },
+            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+            timeout: 60000
+        };
+
+        const credential = await navigator.credentials.create({ publicKey: publicKeyCredentialCreationOptions });
+        
+        // Prepare data for server
+        const attestationObject = binaryToBase64(credential.response.attestationObject);
+        const clientDataJSON = binaryToBase64(credential.response.clientDataJSON);
+        
+        // Minimal Pre-parsing for server simplicity
+        const res = await apiCall('webauthn_register', {
+            attestationObject: attestationObject,
+            clientDataJSON: atob(clientDataJSON),
+            result: JSON.stringify({
+                id: binaryToBase64(new Uint8Array(credential.rawId)),
+                publicKey: extractPublicKeyPlaceholder(), // Real spec would parse attestation on server
+                deviceName: navigator.userAgent.split(')')[0].split('(')[1] || 'Celular'
+            })
+        });
+
+        if (res.success) {
+            localStorage.setItem('webauthn_registered', 'true');
+            alert('Biometria registrada com sucesso!');
+            updateBiometricsUI();
+        } else {
+            alert(res.message);
+        }
+    } catch (e) {
+        console.error('Registration error:', e);
+        alert('Erro ao configurar biometria: ' + e.message);
     }
 }
 
 async function tryBiometricLogin() {
-    // In a real WebAuthn implementation, we would call navigator.credentials.get()
-    // Here we simulate the OS biometric prompt
     try {
-        // This is a placeholder for actual Biometric Auth logic
-        alert('Autenticando via Biometria...');
-        
-        const email = localStorage.getItem('adm_saved_email');
-        const password = atob(localStorage.getItem('adm_saved_pass'));
+        const resChallenge = await apiCall('get_webauthn_challenge');
+        const challenge = base64ToBinary(resChallenge.challenge);
 
-        if (email && password) {
-            const res = await apiCall('login', { email, password });
-            if (res.success) {
-                location.reload();
-            } else {
-                alert('Erro na biometria: Credenciais salvas inválidas.');
-            }
+        const publicKeyCredentialRequestOptions = {
+            challenge: challenge,
+            allowCredentials: [], // Allow any credential from this RP
+            userVerification: "required"
+        };
+
+        const assertion = await navigator.credentials.get({ publicKey: publicKeyCredentialRequestOptions });
+
+        const res = await apiCall('webauthn_login', {
+            credentialId: binaryToBase64(new Uint8Array(assertion.rawId)),
+            clientDataJSON: new TextDecoder().decode(assertion.response.clientDataJSON),
+            authenticatorData: binaryToBase64(new Uint8Array(assertion.response.authenticatorData)),
+            signature: binaryToBase64(new Uint8Array(assertion.response.signature))
+        });
+
+        if (res.success) {
+            location.reload();
+        } else {
+            alert(res.message);
         }
     } catch (e) {
-        console.error('Biometric Error:', e);
+        console.error('Login error:', e);
+        alert('Erro na biometria: ' + e.message);
     }
 }
+
+function updateBiometricsUI() {
+    const status = document.getElementById('biometrics-status');
+    const btn = document.getElementById('btn-register-bio');
+    if (!status) return;
+
+    if (localStorage.getItem('webauthn_registered') === 'true') {
+        status.className = 'alert alert-success py-2 extra-small mb-3';
+        status.innerHTML = '<i class="fas fa-check-circle me-1"></i> Biometria Ativa neste dispositivo.';
+        btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i> Atualizar Biometria';
+    }
+}
+
+// --- Helpers ---
+
+function base64ToBinary(base64) {
+    return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+}
+
+function binaryToBase64(binary) {
+    return btoa(String.fromCharCode(...new Uint8Array(binary)));
+}
+
+// Placeholder: in a real implementation, we would extract the PK from the attestation
+// Here we might need a small helper to get the PK from the authenticator response properly
+function extractPublicKeyPlaceholder() {
+    return "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"; 
+}
+
+// --- Features ---
 
 async function loadFiliais() {
     const res = await apiCall('get_filiais');
@@ -124,6 +216,23 @@ async function generateTempLogin() {
     } else {
         alert(res.message);
     }
+}
+
+function shareToWhatsApp(type) {
+    let message = "";
+    if (type === 'code') {
+        const code = document.getElementById('display-code').textContent;
+        const tipo = document.getElementById('code-type').options[document.getElementById('code-type').selectedIndex].text;
+        message = `*Código de Autorização ERP*\nOperação: ${tipo}\nCódigo: *${code}*`;
+    } else {
+        const user = document.getElementById('display-user').textContent;
+        const pass = document.getElementById('display-pass').textContent;
+        const time = document.getElementById('display-time').textContent;
+        message = `*Acesso Temporário ERP*\nUsuário: ${user}\nSenha: ${pass}\nVálido até: ${time}`;
+    }
+    
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
 }
 
 function copyToClipboard(id) {

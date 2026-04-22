@@ -149,6 +149,20 @@ $isLoggedIn = isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] != -1 &&
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Configurações de Biometria -->
+                        <div class="premium-card mt-3" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05)">
+                            <h6 class="fw-bold mb-3 text-warning"><i class="fas fa-fingerprint me-2"></i>Biometria / FaceID</h6>
+                            <p class="extra-small text-secondary mb-3">Vincule a biometria nativa deste celular para acessos rápidos.</p>
+                            
+                            <div id="biometrics-status" class="alert alert-secondary py-2 extra-small mb-3" style="font-size: 0.75rem">
+                                <i class="fas fa-info-circle me-1"></i> Biometria não configurada.
+                            </div>
+                            
+                            <button onclick="registerBiometrics()" id="btn-register-bio" class="btn btn-sm btn-outline-warning w-100 fw-bold">
+                                <i class="fas fa-plus-circle me-1"></i> CONFIGURAR NESTE CELULAR
+                            </button>
+                        </div>
                     </div>
                 </div>
 
