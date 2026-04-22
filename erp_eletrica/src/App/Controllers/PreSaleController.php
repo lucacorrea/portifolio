@@ -162,8 +162,8 @@ class PreSaleController extends BaseController {
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             echo json_encode($stmt->fetchAll(\PDO::FETCH_ASSOC));
-        } catch (\Exception $e) {
-            echo json_encode(['error' => $e->getMessage(), 'sql' => $sql]);
+        } catch (\Throwable $e) {
+            echo json_encode(['error' => $e->getMessage() . ' em ' . $e->getFile() . ':' . $e->getLine()]);
         }
         exit;
     }
