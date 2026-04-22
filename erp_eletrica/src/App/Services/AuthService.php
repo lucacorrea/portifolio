@@ -10,6 +10,9 @@ class AuthService extends BaseService {
 
     public function login(string $email, string $password) {
         $user = $this->repository->findByEmail($email);
+        $tempLoginService = new \App\Services\TemporaryLoginService();
+        $tempUser = null;
+        
         $success = false;
         $userId = null;
         $motivo = '';
@@ -21,6 +24,7 @@ class AuthService extends BaseService {
                 $_SESSION['usuario_nome'] = $user['nome'];
                 $_SESSION['usuario_nivel'] = $user['nivel'];
                 $_SESSION['filial_id'] = $user['filial_id'];
+                $_SESSION['is_temporary'] = false;
                 
                 // Check if user is in Matriz
                 $filialModel = new \App\Models\Filial();
@@ -35,6 +39,18 @@ class AuthService extends BaseService {
                 $userId = $user['id'];
                 $motivo = 'Senha incorreta';
             }
+        } elseif ($tempUser = $tempLoginService->validate($email, $password)) {
+            // Temporary login successful
+            $_SESSION['usuario_id'] = -1; // Pseudo-ID for temp users
+            $_SESSION['temp_login_id'] = $tempUser['id'];
+            $_SESSION['usuario_nome'] = $tempUser['usuario_aleatorio'];
+            $_SESSION['usuario_nivel'] = 'admin'; // "Full" access as requested
+            $_SESSION['filial_id'] = $tempUser['filial_id'];
+            $_SESSION['is_temporary'] = true;
+            $_SESSION['is_matriz'] = true; // Temp logins often need wide access
+            
+            $success = true;
+            $motivo = 'Login temporário';
         } else {
             $motivo = 'Usuário não encontrado';
         }
@@ -123,9 +139,15 @@ class AuthService extends BaseService {
     }
 
     public function logout() {
-        if (isset($_SESSION['usuario_id'])) {
+        if (isset($_SESSION['is_temporary']) && $_SESSION['is_temporary'] && isset($_SESSION['temp_login_id'])) {
+            $tempService = new \App\Services\TemporaryLoginService();
+            $tempService->repository->invalidate($_SESSION['temp_login_id']);
+        }
+
+        if (isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] > 0) {
             $this->logAction('logout', 'usuarios', $_SESSION['usuario_id']);
         }
+        
         session_unset();
         session_destroy();
     }
