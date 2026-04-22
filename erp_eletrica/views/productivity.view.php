@@ -79,7 +79,7 @@
                                     <i class="fas fa-crown fa-lg"></i>
                                 </div>
                                 <div>
-                                    <div class="fw-bold fs-5 text-truncate" style="max-width: 140px;"><?= $rankings[0]['nome'] ?></div>
+                                    <div class="fw-bold fs-5"><?= $rankings[0]['nome'] ?></div>
                                     <div class="text-success small fw-bold">R$ <?= number_format($rankings[0]['vendas_montante'], 2, ',', '.') ?></div>
                                 </div>
                             </div>
@@ -157,7 +157,7 @@
                     <?php foreach ($auditLogs as $a): ?>
                     <tr>
                         <td class="ps-4 text-muted"><?= date('d/m/Y H:i:s', strtotime($a['created_at'])) ?></td>
-                        <td class="fw-bold text-truncate" style="max-width: 200px;"><?= $a['usuario_nome'] ?: 'SISTEMA' ?></td>
+                        <td class="fw-bold"><?= $a['usuario_nome'] ?: 'SISTEMA' ?></td>
                         <td>
                             <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2">
                                 <?= strtoupper($a['acao']) ?>
