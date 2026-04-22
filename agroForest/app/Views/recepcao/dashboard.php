@@ -10,9 +10,9 @@
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-badge">RP</div>
+        <div class="brand-badge">AFA</div>
         <div>
-          <small>Sistema de Protocolo</small>
+          <small>Agro Forest Amazon</small>
           <strong>Recepção</strong>
         </div>
       </div>
