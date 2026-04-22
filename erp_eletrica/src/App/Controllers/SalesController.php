@@ -37,7 +37,7 @@ class SalesController extends BaseController {
         // 1. Search Products (Global catalog for Matriz, Branch-specific for others)
         $join = ((int)$filialId === 1) ? "LEFT JOIN" : "INNER JOIN";
 
-        $sqlProd = "SELECT p.id, p.nome, p.preco_venda, p.unidade, p.imagens, p.codigo, 'product' as type,
+        $sqlProd = "SELECT p.id, p.nome, p.preco_venda, p.preco_venda_2, p.preco_venda_3, p.unidade, p.imagens, p.codigo, 'product' as type,
                     COALESCE(ef.quantidade, 0) as stock_qty
                     FROM produtos p
                     $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
