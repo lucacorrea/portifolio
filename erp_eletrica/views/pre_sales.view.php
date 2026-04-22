@@ -35,7 +35,7 @@
                     <div id="pvPreviewImg" class="bg-light rounded mb-2 d-flex align-items-center justify-content-center border product-zoom-container" style="width: 100px; height: 100px; overflow: hidden;">
                         <i class="fas fa-image fs-1 text-muted opacity-25"></i>
                     </div>
-                    <div id="pvPreviewName" class="extra-small fw-bold text-uppercase text-muted">Aguardando...</div>
+                    <div id="pvPreviewName" class="extra-small fw-bold text-uppercase text-muted" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em; line-height: 1.4em;">Aguardando...</div>
                 </div>
             </div>
         </div>
