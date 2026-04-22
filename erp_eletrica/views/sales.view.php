@@ -296,7 +296,7 @@
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-dark text-white border-0 shadow-sm">
-                <h5 class="modal-title fw-bold"><i class="fas fa-shield-halved me-2 text-primary"></i>Autorização de Administrador</h5>
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-shield-halved me-2 text-white"></i>Autorização de Administrador</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="resetDiscount()"></button>
             </div>
             <div class="modal-body p-4 text-center">
@@ -328,7 +328,7 @@
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white border-0 shadow-sm">
-                <h5 class="modal-title fw-bold"><i class="fas fa-cash-register me-2"></i>Gestão de Venda #<span id="manageSaleId"></span></h5>
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-cash-register me-2 text-white"></i>Gestão de Venda #<span id="manageSaleId"></span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
