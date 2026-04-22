@@ -271,6 +271,10 @@ function addToPVCart(product) {
             id: product.id,
             nome: product.nome,
             price: parseFloat(product.preco_venda),
+            price1: parseFloat(product.preco_venda),
+            price2: parseFloat(product.preco_venda_2 || 0),
+            price3: parseFloat(product.preco_venda_3 || 0),
+            priceTier: 1,
             qty: 1,
             imagens: product.imagens
         });
@@ -299,7 +303,16 @@ function renderPVCart() {
         row.onmouseover = () => showPvPreview(item);
         row.innerHTML = `
             <td class="ps-4 fw-bold text-muted">#${item.id}</td>
-            <td>${item.nome}</td>
+            <td>
+                <div class="fw-bold">${item.nome}</div>
+                <div class="mt-1">
+                    <select class="form-select form-select-sm py-0 extra-small" style="width: auto; height: 24px; font-size: 0.75rem;" onchange="changePVPriceTier(${index}, this.value)">
+                        <option value="1" ${item.priceTier == 1 ? 'selected' : ''}>Preço 1 (R$ ${item.price1.toFixed(2).replace('.', ',')})</option>
+                        <option value="2" ${item.priceTier == 2 ? 'selected' : ''}>Preço 2 (R$ ${item.price2.toFixed(2).replace('.', ',')})</option>
+                        <option value="3" ${item.priceTier == 3 ? 'selected' : ''}>Preço 3 (R$ ${item.price3.toFixed(2).replace('.', ',')})</option>
+                    </select>
+                </div>
+            </td>
             <td class="text-center">
                 <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" onchange="updatePVQty(${index}, this.value)">
             </td>
@@ -319,6 +332,17 @@ function renderPVCart() {
 
 function updatePVQty(index, val) {
     pvCart[index].qty = Math.max(1, parseFloat(val));
+    renderPVCart();
+}
+
+function changePVPriceTier(index, tier) {
+    const item = pvCart[index];
+    item.priceTier = parseInt(tier);
+    
+    if (tier == 1) item.price = item.price1;
+    else if (tier == 2) item.price = item.price2;
+    else if (tier == 3) item.price = item.price3;
+    
     renderPVCart();
 }
 

@@ -37,8 +37,8 @@ class PreSale extends BaseModel {
 
         foreach ($data['items'] as $item) {
             $this->query(
-                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)",
-                [$preVendaId, $item['id'], $item['qty'], $item['price']]
+                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario, preco_tier) VALUES (?, ?, ?, ?, ?)",
+                [$preVendaId, $item['id'], $item['qty'], $item['price'], $item['priceTier'] ?? 1]
             );
         }
 
@@ -118,8 +118,8 @@ class PreSale extends BaseModel {
         // Insert new items
         foreach ($data['items'] as $item) {
             $this->query(
-                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)",
-                [$id, $item['id'], $item['qty'], $item['price']]
+                "INSERT INTO pre_venda_itens (pre_venda_id, produto_id, quantidade, preco_unitario, preco_tier) VALUES (?, ?, ?, ?, ?)",
+                [$id, $item['id'], $item['qty'], $item['price'], $item['priceTier'] ?? 1]
             );
         }
 
