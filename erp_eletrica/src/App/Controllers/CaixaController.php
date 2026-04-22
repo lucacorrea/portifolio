@@ -135,18 +135,19 @@ class CaixaController extends BaseController {
 
             if (!$isAdmin) {
                 $authService = new \App\Services\AuthorizationService();
-                $userService = new \App\Models\User();
+                $userModel = new \App\Models\User();
                 $authorized = false;
 
-                // 1. Try One-time Auth Code
+                // 1. Try One-time Auth Code (6-digit)
                 if ($authCode && ($authService->validateAndUse($authCode, $tipo, $_SESSION['filial_id']) || $authService->validateAndUse($authCode, 'geral', $_SESSION['filial_id']))) {
                     $authorized = true;
                 } 
-                // 2. Try Admin Password (any admin of the branch)
-                else if ($authPassword) {
-                    $admins = $userService->findAdmins();
+                // 2. Try Admin Password/PIN as a fallback (using either auth_code or auth_password input)
+                else if ($authCode || $authPassword) {
+                    $credentialToTest = $authCode ?: $authPassword;
+                    $admins = $userModel->findAdmins();
                     foreach ($admins as $adm) {
-                        if (password_verify($authPassword, $adm['senha'])) {
+                        if ($userModel->validateAuth($adm['id'], $credentialToTest)) {
                             $authorized = true;
                             break;
                         }
@@ -154,7 +155,7 @@ class CaixaController extends BaseController {
                 }
 
                 if (!$authorized) {
-                    header('Location: caixa.php?error=Autorização administrativa obrigatória para esta operação.');
+                    header('Location: caixa.php?error=Autorização administrativa inválida ou expirada.');
                     exit;
                 }
 

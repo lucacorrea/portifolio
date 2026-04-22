@@ -221,13 +221,30 @@ class SalesController extends BaseController {
                         }
 
                         $userModel = new \App\Models\User();
-                        if (!$userModel->validateAuth($supervisorId, $supervisorCredential)) {
-                            throw new \Exception("Credenciais ou código de autorização inválidos.");
+                        $isValid = false;
+
+                        // 1. Try as a Password/PIN for a specific user
+                        if ($userModel->validateAuth($supervisorId, $supervisorCredential)) {
+                            $isValid = true;
+                        } 
+                        // 2. Try as a 6-digit code (fallback)
+                        else {
+                            $authService = new \App\Services\AuthorizationService();
+                            if ($authService->validateAndUse($supervisorCredential, 'desconto', $_SESSION['filial_id'] ?? 1)) {
+                                $isValid = true;
+                                $supervisorId = 0; 
+                            }
                         }
 
-                        $supervisor = $db->query("SELECT nivel FROM usuarios WHERE id = " . (int)$supervisorId)->fetch();
-                        if (!$supervisor || $supervisor['nivel'] !== 'admin') {
-                            throw new \Exception("Apenas administradores podem autorizar descontos.");
+                        if (!$isValid) {
+                            throw new \Exception("Credenciais ou código de autorização inválidos ou expirados.");
+                        }
+
+                        if ($supervisorId > 0) {
+                            $supervisor = $db->query("SELECT nivel FROM usuarios WHERE id = " . (int)$supervisorId)->fetch();
+                            if (!$supervisor || $supervisor['nivel'] !== 'admin') {
+                                throw new \Exception("Apenas administradores podem autorizar descontos.");
+                            }
                         }
                         $isValid = true;
                     }

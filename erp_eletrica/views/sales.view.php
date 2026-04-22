@@ -1622,9 +1622,6 @@ async function loadAdmins() {
         const input = document.getElementById('authCredential');
         const label = document.getElementById('authLabel');
         
-        const input = document.getElementById('authCredential');
-        const label = document.getElementById('authLabel');
-        
         input.type = 'text'; // Allow both password (text) and numeric codes
         input.placeholder = 'Senha ou Código (Ex: 123456)';
         label.innerText = 'SENHA OU CÓDIGO DE AUTORIZAÇÃO';
