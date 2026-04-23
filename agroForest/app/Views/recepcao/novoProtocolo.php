@@ -7,7 +7,7 @@ $usuarioCargo = 'Recepção';
 $textoBotaoAcao = 'Voltar ao Dashboard';
 $linkBotaoAcao = route_url('recepcao', 'dashboard');
 $tituloPagina = 'Recepção - Novo Protocolo';
-$cssPagina = 'assets/css/recepcao/novo-protocolo.css';
+$cssPagina = 'assets/css/recepcao/recepcao.css';
 $mostrarBusca = false;
 require dirname(__DIR__) . '/layouts/header.php';
 ?>

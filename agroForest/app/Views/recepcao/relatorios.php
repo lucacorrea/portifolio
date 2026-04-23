@@ -7,7 +7,7 @@ $usuarioCargo = 'Recepção';
 $textoBotaoAcao = 'Exportar Relatório';
 $linkBotaoAcao = '#';
 $tituloPagina = 'Recepção - Relatórios';
-$cssPagina = 'assets/css/recepcao/relatorios.css';
+$cssPagina = 'assets/css/recepcao/recepcao.css';
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
 <div class="layout">
