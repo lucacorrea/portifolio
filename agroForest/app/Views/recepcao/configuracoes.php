@@ -7,7 +7,7 @@ $usuarioCargo = 'Recepção';
 $textoBotaoAcao = 'Salvar Configurações';
 $linkBotaoAcao = '#';
 $tituloPagina = 'Recepção - Configurações';
-$cssPagina = 'assets/css/recepcao/configuracoes.css';
+$cssPagina = 'assets/css/recepcao/styleRecepcao.css';
 $mostrarBusca = false;
 require dirname(__DIR__) . '/layouts/header.php';
 ?>

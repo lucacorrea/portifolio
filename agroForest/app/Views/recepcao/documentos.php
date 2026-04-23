@@ -7,7 +7,7 @@ $usuarioCargo = 'Recepção';
 $textoBotaoAcao = 'Novo Protocolo';
 $linkBotaoAcao = route_url('recepcao', 'novoProtocolo');
 $tituloPagina = 'Recepção - Documentos';
-$cssPagina = 'assets/css/recepcao/documentos.css';
+$cssPagina = 'assets/css/recepcao/styleRecepcao.css';
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
 <div class="layout">
