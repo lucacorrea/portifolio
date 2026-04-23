@@ -9,8 +9,8 @@ $stmt = $pdo->prepare("
     SELECT
         a.*,
         o.numero AS oficio_num,
+        o.local AS oficio_local,
         s.nome AS secretaria,
-        s.local AS sec_local,
         s.responsavel AS sec_responsavel,
         f.nome AS fornecedor,
         f.cnpj AS fornecedor_cnpj,
@@ -573,9 +573,16 @@ include 'views/layout/header.php';
                         <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
                     </tr>
                     <tr>
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
+                       <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
 
-                        <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
+                        <td style="font-weight: 700;">
+                            <?= h(strtoupper($aq['secretaria'])) ?>
+                            <?php if (!empty($aq['oficio_local'])): ?>
+                                <div style="margin-top: 4px; font-size: 0.72rem; font-weight: 600; color: #444; text-transform: uppercase;">
+                                    LOCAL: <?= h(strtoupper($aq['oficio_local'])) ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
                          
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
                         <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
@@ -657,8 +664,16 @@ include 'views/layout/header.php';
                         <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
                     </tr>
                     <tr>
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
-                        <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
+                       <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
+
+                        <td style="font-weight: 700;">
+                            <?= h(strtoupper($aq['secretaria'])) ?>
+                            <?php if (!empty($aq['oficio_local'])): ?>
+                                <div style="margin-top: 4px; font-size: 0.72rem; font-weight: 600; color: #444; text-transform: uppercase;">
+                                    LOCAL: <?= h(strtoupper($aq['oficio_local'])) ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
                         <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
                     </tr>
