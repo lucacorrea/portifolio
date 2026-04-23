@@ -16,8 +16,8 @@ $mostrarBusca = false;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Novo Protocolo - Recepção</title>
 
-    <link rel="stylesheet" href="../public/assets/css/recepcao/recepcao.css">
-    <link rel="stylesheet" href="../public/assets/css/recepcao/novo-protocolo.css">
+    <link rel="stylesheet" href="../public/assets/css/recepcao.css">
+    <link rel="stylesheet" href="../public/assets/css/novo-protocolo.css">
 </head>
 <body>
     <div class="layout">
