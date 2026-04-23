@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $arquivo_orcamento = null;
             $arquivo_oficio    = null;
-            $status = 'ENVIADO';
+            $status = 'PENDENTE_ITENS';
 
             $stmt = $pdo->prepare("
                 INSERT INTO oficios
