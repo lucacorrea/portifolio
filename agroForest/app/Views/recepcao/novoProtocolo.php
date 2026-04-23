@@ -1,12 +1,12 @@
 <?php
-$paginaAtual = 'novo-protocolo';
+$paginaAtual = 'novoProtocolo';
 
 $paginaTitulo = 'Novo Protocolo';
 $paginaDescricao = 'Cadastre o cliente, selecione o serviço e encaminhe o atendimento para análise administrativa.';
 $usuarioNome = 'Maria Souza';
 $usuarioCargo = 'Recepcionista';
 $textoBotaoAcao = 'Voltar ao Dashboard';
-$linkBotaoAcao = 'dashboard.php';
+$linkBotaoAcao = '/agroForest/public/?pagina=dashboard';
 $mostrarBusca = false;
 ?>
 <!DOCTYPE html>
