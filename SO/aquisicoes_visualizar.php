@@ -10,6 +10,7 @@ $stmt = $pdo->prepare("
         a.*,
         o.numero AS oficio_num,
         s.nome AS secretaria,
+        s.local AS sec_local,
         s.responsavel AS sec_responsavel,
         f.nome AS fornecedor,
         f.cnpj AS fornecedor_cnpj,
@@ -573,6 +574,10 @@ include 'views/layout/header.php';
                     </tr>
                     <tr>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
+
+                        <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
+                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
+
                         <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
                         <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
                         <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
