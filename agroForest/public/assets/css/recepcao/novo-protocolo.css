@@ -1,21 +1,2 @@
-.page-section { display: grid; gap: 20px; }
-.card-header { padding: 22px 24px 16px; border-bottom: 1px solid #e6e1d5; background: linear-gradient(180deg, #ffffff 0%, #fbfaf6 100%); }
-.card-header h2 { margin: 0 0 6px; font-size: 22px; }
-.card-header p { margin: 0; color: #6a786f; font-size: 14px; }
-.card-body { padding: 24px; }
-.form-protocolo { display: grid; gap: 22px; }
-.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
-.form-group { display: flex; flex-direction: column; gap: 8px; }
-.form-col-2 { grid-column: span 2; }
-.section-title { margin: 0; font-size: 18px; color: #1f4d3a; padding-bottom: 10px; border-bottom: 1px solid #e6e1d5; }
-.form-group input, .form-group select, .form-group textarea { width: 100%; border: 1px solid #e6e1d5; border-radius: 14px; padding: 14px 15px; }
-.form-group textarea { min-height: 120px; resize: vertical; }
-.form-actions { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; border-top: 1px solid #e6e1d5; padding-top: 12px; }
-.btn-primary, .btn-secondary { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: 0 20px; border-radius: 14px; font-weight: 700; }
-.btn-primary { background: linear-gradient(135deg, #1f4d3a, #6d8b57); color: #fff; border: 0; }
-.btn-secondary { background: #fff; color: #223128; border: 1px solid #d8d2c4; }
-.info-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
-.info-card { padding: 18px; border: 1px solid #e6e1d5; border-radius: 18px; background: #fbfaf6; }
-.info-card strong { display: block; margin-bottom: 8px; color: #1f4d3a; }
-.info-card p { margin: 0; color: #6a786f; font-size: 13px; line-height: 1.6; }
-@media (max-width: 900px) { .form-grid, .info-grid { grid-template-columns: 1fr; } .form-col-2 { grid-column: span 1; } }
+@import url("recepcao.css");
+.form-card { margin-bottom: 18px; }

@@ -14,42 +14,17 @@ require dirname(__DIR__) . '/layouts/header.php';
     <?php require __DIR__ . '/includes/sidebar.php'; ?>
     <main class="content">
         <?php require __DIR__ . '/includes/topbar.php'; ?>
-
         <section class="table-card">
-            <div class="section-header">
-                <h2>Fila de encaminhamento</h2>
-                <p>Protocolos prontos para envio ao administrativo.</p>
-            </div>
-
+            <div class="section-header"><h2>Fila de encaminhamento</h2><p>Protocolos prontos para envio ao administrativo.</p></div>
             <table>
-                <thead>
-                    <tr>
-                        <th>Protocolo</th>
-                        <th>Cliente</th>
-                        <th>Serviço</th>
-                        <th>Prioridade</th>
-                        <th>Ação</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Protocolo</th><th>Cliente</th><th>Serviço</th><th>Prioridade</th><th>Ação</th></tr></thead>
                 <tbody>
-                    <tr>
-                        <td>PRT-2026-0418</td>
-                        <td>Carlos Henrique</td>
-                        <td>Orçamento</td>
-                        <td>Normal</td>
-                        <td><button class="btn-primary">Encaminhar</button></td>
-                    </tr>
-                    <tr>
-                        <td>PRT-2026-0421</td>
-                        <td>Fernanda Martins</td>
-                        <td>Atendimento urgente</td>
-                        <td>Urgente</td>
-                        <td><button class="btn-primary">Encaminhar</button></td>
-                    </tr>
+                    <tr><td>PRT-2026-0418</td><td>Carlos Henrique</td><td>Orçamento</td><td><span class="status progress">Normal</span></td><td><button class="btn-primary" type="button">Encaminhar</button></td></tr>
+                    <tr><td>PRT-2026-0421</td><td>Fernanda Martins</td><td>Atendimento urgente</td><td><span class="status high">Urgente</span></td><td><button class="btn-primary" type="button">Encaminhar</button></td></tr>
+                    <tr><td>PRT-2026-0424</td><td>Rafael Souza</td><td>Análise documental</td><td><span class="status pending">Média</span></td><td><button class="btn-primary" type="button">Encaminhar</button></td></tr>
                 </tbody>
             </table>
         </section>
-
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>
 </div>

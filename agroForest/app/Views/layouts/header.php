@@ -6,8 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($tituloPagina ?? 'Sistema') ?></title>
     <link rel="stylesheet" href="<?= base_url('assets/css/global/app.css') ?>">
-    <?php if (!empty($cssPagina ?? '')): ?>
-        <link rel="stylesheet" href="<?= base_url($cssPagina) ?>">
-    <?php endif; ?>
+    <?php
+    $cssArquivos = $cssPagina ?? null;
+    if (is_string($cssArquivos) && $cssArquivos !== '') {
+        $cssArquivos = [$cssArquivos];
+    }
+    if (is_array($cssArquivos)):
+        foreach ($cssArquivos as $arquivoCss):
+            if (!empty($arquivoCss)):
+    ?>
+        <link rel="stylesheet" href="<?= base_url($arquivoCss) ?>">
+    <?php
+            endif;
+        endforeach;
+    endif;
+    ?>
 </head>
 <body>
