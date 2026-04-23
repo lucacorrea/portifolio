@@ -209,7 +209,7 @@ include 'views/layout/header.php';
                         type="text"
                         name="numero_oficio"
                         class="form-control"
-                        required
+                       
                         placeholder="Ex: OF-2026-01"
                         oninput="this.value = this.value.toUpperCase()"
                         value="<?php echo htmlspecialchars($_POST['numero_oficio'] ?? ''); ?>"
