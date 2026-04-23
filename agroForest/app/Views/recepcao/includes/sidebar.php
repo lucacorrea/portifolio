@@ -20,7 +20,7 @@ if (!isset($paginaAtual)) {
             Dashboard
         </a>
 
-        <a href="novo-protocolo.php" class="nav-link <?= $paginaAtual === 'novo-protocolo' ? 'active' : '' ?>">
+        <a href="novoProtocolo.php" class="nav-link <?= $paginaAtual === 'novo-protocolo' ? 'active' : '' ?>">
             <span class="nav-icon">📝</span>
             Novo Protocolo
         </a>
