@@ -4,108 +4,134 @@ require_once 'config/functions.php';
 login_check();
 
 $nivel_user = strtoupper(trim($_SESSION['nivel'] ?? ''));
-
 $page_title = "Cadastrar Nova Solicitação";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $secretaria_id    = $_POST['secretaria_id'] ?? '';
+    $local            = trim($_POST['local'] ?? '');
     $justificativa    = trim($_POST['justificativa'] ?? '');
-    $valor_orcamento  = !empty($_POST['valor_orcamento']) ? str_replace(',', '.', $_POST['valor_orcamento']) : null;
+    $valor_orcamento  = !empty($_POST['valor_orcamento']) ? str_replace(['.', ','], ['', '.'], $_POST['valor_orcamento']) : null;
     $numero_manual    = isset($_POST['numero_oficio']) ? mb_strtoupper(trim($_POST['numero_oficio']), 'UTF-8') : null;
     $criado_em_device = trim($_POST['criado_em_device'] ?? '');
 
-    // Validação de Campos Obrigatórios
     if (empty($justificativa)) {
         $error = "O campo Justificativa é obrigatório.";
-   
     } elseif (empty($secretaria_id)) {
         $error = "Selecione a secretaria solicitante.";
+    } elseif (empty($local)) {
+        $error = "Informe o local da solicitação.";
     } elseif (empty($criado_em_device)) {
         $error = "Não foi possível capturar a data e hora do dispositivo. Atualize a página e tente novamente.";
     } else {
         try {
             $pdo->beginTransaction();
 
-            // Tratamento do horário vindo do dispositivo
             $dt = DateTime::createFromFormat('Y-m-d H:i:s', $criado_em_device);
             if (!$dt || $dt->format('Y-m-d H:i:s') !== $criado_em_device) {
                 throw new Exception("Data/hora do dispositivo inválida.");
             }
 
-            // Função auxiliar para upload múltiplo
             function handleMultipleUploads($filesKey, $targetDir, $prefix, $tipo, $oficio_id, $pdo) {
-                if (!isset($_FILES[$filesKey]) || empty($_FILES[$filesKey]['name'][0])) return null;
+                if (!isset($_FILES[$filesKey]) || empty($_FILES[$filesKey]['name'][0])) {
+                    return null;
+                }
 
                 $first_file_path = null;
                 $files = $_FILES[$filesKey];
-                
-                if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+
+                if (!is_dir($targetDir)) {
+                    mkdir($targetDir, 0777, true);
+                }
 
                 for ($i = 0; $i < count($files['name']); $i++) {
                     if ($files['error'][$i] === UPLOAD_ERR_OK) {
                         $file_tmp  = $files['tmp_name'][$i];
                         $file_name = $files['name'][$i];
-                        $ext       = pathinfo($file_name, PATHINFO_EXTENSION);
-                        $new_name   = $prefix . "_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
-                        
+                        $ext       = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                        $new_name  = $prefix . "_" . date("Ymd_His") . "_" . uniqid() . "." . $ext;
+
                         if (move_uploaded_file($file_tmp, $targetDir . $new_name)) {
                             $caminho = $targetDir . $new_name;
-                            if ($i === 0) $first_file_path = $caminho;
 
-                            // Inserir na nova tabela de anexos
-                            $stmt_anexo = $pdo->prepare("INSERT INTO oficio_anexos (oficio_id, caminho, tipo, nome_original) VALUES (?, ?, ?, ?)");
+                            if ($i === 0) {
+                                $first_file_path = $caminho;
+                            }
+
+                            $stmt_anexo = $pdo->prepare("
+                                INSERT INTO oficio_anexos (oficio_id, caminho, tipo, nome_original)
+                                VALUES (?, ?, ?, ?)
+                            ");
                             $stmt_anexo->execute([$oficio_id, $caminho, $tipo, $file_name]);
                         }
                     }
                 }
+
                 return $first_file_path;
             }
 
-            // Verificar se o número do ofício já existe
             $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ?");
             $stmt_check->execute([$numero_manual]);
             if ($stmt_check->fetch()) {
-                throw new Exception("O número de ofício '$numero_manual' já está cadastrado.");
+                throw new Exception("O número de ofício '{$numero_manual}' já está cadastrado.");
             }
 
-            // Toda nova solicitação agora entra como PENDENTE_ITENS
-            $status = 'PENDENTE_ITENS';
+            // Inicializa para evitar variável indefinida
+            $arquivo_orcamento = null;
+            $arquivo_oficio    = null;
+
+            // Use ENVIADO se seu ENUM ainda não tiver PENDENTE_ITENS
+            $status = 'ENVIADO';
 
             $stmt = $pdo->prepare("
-                INSERT INTO oficios 
-                    (numero, secretaria_id, justificativa, usuario_id, arquivo_orcamento, arquivo_oficio, valor_orcamento, status, criado_em) 
-                VALUES 
-                    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO oficios
+                    (numero, secretaria_id, local, justificativa, usuario_id, arquivo_orcamento, status, criado_em)
+                VALUES
+                    (?, ?, ?, ?, ?, ?, ?, ?)
             ");
+
             $stmt->execute([
                 $numero_manual,
                 $secretaria_id,
+                $local,
                 $justificativa,
                 $_SESSION['user_id'],
                 $arquivo_orcamento,
-                $arquivo_oficio,
-                $valor_orcamento,
                 $status,
                 $criado_em_device
             ]);
 
             $oficio_id = $pdo->lastInsertId();
 
-            // Processar múltiplos uploads agora que temos o oficio_id
-            $arquivo_orcamento = handleMultipleUploads('orcamento', "assets/uploads/orcamentos/", "ORC", "ORCAMENTO", $oficio_id, $pdo);
-            $arquivo_oficio    = handleMultipleUploads('arquivo_oficio', "assets/uploads/oficios/", "OFI", "OFICIO", $oficio_id, $pdo);
+            $arquivo_orcamento = handleMultipleUploads(
+                'orcamento',
+                'assets/uploads/orcamentos/',
+                'ORC',
+                'ORCAMENTO',
+                $oficio_id,
+                $pdo
+            );
 
-            // Opcional: Atualizar a tabela principal com o primeiro arquivo para retrocompatibilidade
-            if ($arquivo_orcamento || $arquivo_oficio) {
-                $stmt_upd = $pdo->prepare("UPDATE oficios SET arquivo_orcamento = ?, arquivo_oficio = ? WHERE id = ?");
-                $stmt_upd->execute([$arquivo_orcamento, $arquivo_oficio, $oficio_id]);
-            }
+            $arquivo_oficio = handleMultipleUploads(
+                'arquivo_oficio',
+                'assets/uploads/oficios/',
+                'OFI',
+                'OFICIO',
+                $oficio_id,
+                $pdo
+            );
 
-            log_action($pdo, "CRIAR_OFICIO", "Ofício $numero_manual cadastrado aguardando itens.");
+            $stmt_upd = $pdo->prepare("
+                UPDATE oficios
+                SET arquivo_orcamento = ?
+                WHERE id = ?
+            ");
+            $stmt_upd->execute([$arquivo_orcamento, $oficio_id]);
+
+            log_action($pdo, "CRIAR_OFICIO", "Ofício {$numero_manual} cadastrado com sucesso.");
             $pdo->commit();
 
-            flash_message('success', "Solicitação $numero_manual cadastrada com sucesso! Agora a SEMFAZ deverá atribuir os itens.");
-            header("Location: oficios_visualizar.php?id=$oficio_id");
+            flash_message('success', "Solicitação {$numero_manual} cadastrada com sucesso.");
+            header("Location: oficios_visualizar.php?id={$oficio_id}");
             exit();
         } catch (Exception $e) {
             if ($pdo->inTransaction()) {
@@ -208,10 +234,10 @@ include 'views/layout/header.php';
                         type="text"
                         name="numero_oficio"
                         class="form-control"
-                       
                         placeholder="Ex: OF-2026-01"
                         oninput="this.value = this.value.toUpperCase()"
                         value="<?php echo htmlspecialchars($_POST['numero_oficio'] ?? ''); ?>"
+                        required
                     >
                     <small class="text-muted">Informe o número do processo físico ou ofício.</small>
                 </div>
@@ -229,6 +255,18 @@ include 'views/layout/header.php';
                             </option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Local <span style="color:red">*</span></label>
+                    <input
+                        type="text"
+                        name="local"
+                        class="form-control"
+                        placeholder="Ex: Almoxarifado Central, Zona Rural, Unidade de Saúde..."
+                        value="<?php echo htmlspecialchars($_POST['local'] ?? ''); ?>"
+                        required
+                    >
                 </div>
 
                 <div class="form-group">
@@ -270,7 +308,7 @@ include 'views/layout/header.php';
             <div class="alert alert-info" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                 <i class="fas fa-info-circle" style="font-size: 1.5rem;"></i>
                 <div>
-                    <strong>Nota:</strong> Este formulário é destinado ao registro inicial. Os itens específicos de produtos serão atribuídos pela <strong>SEMFAZ</strong> após a criação deste registro.
+                    <strong>Nota:</strong> Este formulário é destinado ao registro inicial. Os itens específicos de produtos serão atribuídos posteriormente.
                 </div>
             </div>
 

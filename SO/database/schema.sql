@@ -28,11 +28,11 @@ CREATE TABLE IF NOT EXISTS usuarios (
     criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabela de Ofícios
 CREATE TABLE IF NOT EXISTS oficios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     numero VARCHAR(50) UNIQUE NOT NULL, -- Ex: OF-2026-0001
     secretaria_id INT NOT NULL,
+    local VARCHAR(150) DEFAULT NULL,
     justificativa TEXT,
     status ENUM('ENVIADO', 'APROVADO', 'REPROVADO', 'ARQUIVADO') DEFAULT 'ENVIADO',
     usuario_id INT NOT NULL, -- Quem cadastrou
@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS oficios (
     FOREIGN KEY (secretaria_id) REFERENCES secretarias(id),
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
-
 -- Itens do Ofício
 CREATE TABLE IF NOT EXISTS itens_oficio (
     id INT AUTO_INCREMENT PRIMARY KEY,
