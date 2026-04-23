@@ -1,0 +1,11 @@
+.stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px; margin-bottom: 22px; }
+.stat-card { padding: 20px; background: rgba(255,255,255,.94); border: 1px solid rgba(31,77,58,.08); border-radius: 24px; box-shadow: 0 14px 34px rgba(31,77,58,.08); }
+.table-card { padding: 22px; background: rgba(255,255,255,.95); border: 1px solid rgba(31,77,58,.08); border-radius: 24px; box-shadow: 0 14px 34px rgba(31,77,58,.08); }
+.table-card table { width: 100%; border-collapse: collapse; }
+.table-card th, .table-card td { padding: 14px 0; border-bottom: 1px solid #ece7db; text-align: left; }
+.table-card th { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #6a786f; }
+.table-card tr:last-child td { border-bottom: 0; }
+.placeholder-card { padding: 24px; }
+.placeholder-card h2 { margin-top: 0; }
+@media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 700px) { .stats-grid { grid-template-columns: 1fr; } }

@@ -1,0 +1,1 @@
+<header class="topbar-area"><div class="topbar-left"><div class="page-heading"><span class="page-tag">Sistema de Protocolo</span><h1><?= htmlspecialchars($paginaTitulo ?? 'Dono') ?></h1><p><?= htmlspecialchars($paginaDescricao ?? 'Visão total do sistema.') ?></p></div></div></header>

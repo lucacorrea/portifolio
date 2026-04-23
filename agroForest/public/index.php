@@ -1,23 +1,25 @@
 <?php
 declare(strict_types=1);
 
-$rota = $_GET['pagina'] ?? 'dashboard';
+require dirname(__DIR__) . '/app/Helpers/url.php';
+require dirname(__DIR__) . '/app/Helpers/auth.php';
+require dirname(__DIR__) . '/app/Core/Router.php';
+require dirname(__DIR__) . '/app/Core/Controller.php';
+require dirname(__DIR__) . '/app/Core/Model.php';
+require dirname(__DIR__) . '/app/Core/Session.php';
 
-$viewsPermitidas = [
-    'dashboard'      => dirname(__DIR__) . '/app/Views/recepcao/dashboard.php',
-    'novoProtocolo'  => dirname(__DIR__) . '/app/Views/recepcao/novoProtocolo.php',
-    'clientes'       => dirname(__DIR__) . '/app/Views/recepcao/clientes.php',
-    'protocolos'     => dirname(__DIR__) . '/app/Views/recepcao/protocolos.php',
-    'documentos'     => dirname(__DIR__) . '/app/Views/recepcao/documentos.php',
-    'encaminhar'     => dirname(__DIR__) . '/app/Views/recepcao/encaminhar.php',
-    'pendencias'     => dirname(__DIR__) . '/app/Views/recepcao/pendencias.php',
-    'relatorios'     => dirname(__DIR__) . '/app/Views/recepcao/relatorios.php',
-    'configuracoes'  => dirname(__DIR__) . '/app/Views/recepcao/configuracoes.php',
-];
+Session::start();
 
-if (!isset($viewsPermitidas[$rota])) {
+date_default_timezone_set((require dirname(__DIR__) . '/app/Config/app.php')['timezone'] ?? 'America/Manaus');
+
+$area = $_GET['area'] ?? 'recepcao';
+$pagina = $_GET['pagina'] ?? 'dashboard';
+$view = Router::resolve($area, $pagina);
+
+if ($view === null) {
     http_response_code(404);
-    exit('Página não encontrada.');
+    require dirname(__DIR__) . '/app/Views/errors/404.php';
+    exit;
 }
 
-require $viewsPermitidas[$rota];
+require dirname(__DIR__) . '/app/Views/' . $view . '.php';
