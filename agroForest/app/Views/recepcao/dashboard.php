@@ -1,5 +1,12 @@
 <?php
   $paginaAtual = 'dashboard';
+
+  $paginaTitulo = 'Dashboard da Recepção';
+  $paginaDescricao = 'Visão geral dos atendimentos, protocolos e encaminhamentos do setor.';
+  $usuarioNome = 'Maria Souza';
+  $usuarioCargo = 'Recepcionista';
+  $textoBotaoAcao = '+ Novo Protocolo';
+  $linkBotaoAcao = 'novo-protocolo.php';
 ?>
 
 <!DOCTYPE html>
@@ -15,18 +22,7 @@
      <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <main class="content">
-      <div class="topbar">
-        <div class="search-wrap">
-          <span>🔎</span>
-          <input type="text" placeholder="Buscar cliente, protocolo, telefone ou serviço..." />
-        </div>
-
-        <div class="top-actions">
-          <div class="chip">22 Abril 2026</div>
-          <div class="chip">Recepcionista: Maria</div>
-          <button class="btn btn-primary">Novo Atendimento</button>
-        </div>
-      </div>
+      <?php include __DIR__ . '/includes/topbar.php'; ?>
 
       <section class="hero">
         <div class="hero-grid">
@@ -318,9 +314,7 @@
         </article>
       </section>
 
-      <div class="footer-note">
-        Dashboard da recepção • modelo HTML inicial para sistema de protocolo com níveis de usuário
-      </div>
+       <?php include __DIR__ . '/includes/footer.php'; ?>
     </main>
   </div>
 </body>
