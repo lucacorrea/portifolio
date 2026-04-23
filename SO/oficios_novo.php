@@ -10,7 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $secretaria_id    = $_POST['secretaria_id'] ?? '';
     $local            = trim($_POST['local'] ?? '');
     $justificativa    = trim($_POST['justificativa'] ?? '');
-    $valor_orcamento  = !empty($_POST['valor_orcamento']) ? str_replace(['.', ','], ['', '.'], $_POST['valor_orcamento']) : null;
+    $valor_orcamento  = !empty($_POST['valor_orcamento'])
+        ? str_replace(['.', ','], ['', '.'], $_POST['valor_orcamento'])
+        : null;
     $numero_manual    = isset($_POST['numero_oficio']) ? mb_strtoupper(trim($_POST['numero_oficio']), 'UTF-8') : null;
     $criado_em_device = trim($_POST['criado_em_device'] ?? '');
 
@@ -75,18 +77,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("O número de ofício '{$numero_manual}' já está cadastrado.");
             }
 
-            // Inicializa para evitar variável indefinida
             $arquivo_orcamento = null;
             $arquivo_oficio    = null;
-
-            // Use ENVIADO se seu ENUM ainda não tiver PENDENTE_ITENS
             $status = 'ENVIADO';
 
             $stmt = $pdo->prepare("
                 INSERT INTO oficios
-                    (numero, secretaria_id, local, justificativa, usuario_id, arquivo_orcamento, status, criado_em)
+                    (numero, secretaria_id, local, justificativa, usuario_id, valor_orcamento, arquivo_orcamento, status, criado_em)
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             $stmt->execute([
@@ -95,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $local,
                 $justificativa,
                 $_SESSION['user_id'],
+                $valor_orcamento,
                 $arquivo_orcamento,
                 $status,
                 $criado_em_device
@@ -122,10 +122,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt_upd = $pdo->prepare("
                 UPDATE oficios
-                SET arquivo_orcamento = ?
+                SET arquivo_orcamento = ?, arquivo_oficio = ?, valor_orcamento = ?
                 WHERE id = ?
             ");
-            $stmt_upd->execute([$arquivo_orcamento, $oficio_id]);
+            $stmt_upd->execute([
+                $arquivo_orcamento,
+                $arquivo_oficio,
+                $valor_orcamento,
+                $oficio_id
+            ]);
 
             log_action($pdo, "CRIAR_OFICIO", "Ofício {$numero_manual} cadastrado com sucesso.");
             $pdo->commit();
