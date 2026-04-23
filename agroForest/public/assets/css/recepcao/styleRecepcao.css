@@ -1544,3 +1544,51 @@ tbody tr:hover {
         margin: 0 -4px;
     }
 }
+.relatorios-grid {
+    margin-bottom: 18px;
+}
+
+.chart-box {
+    position: relative;
+    width: 100%;
+    min-height: 340px;
+}
+
+.chart-box-sm {
+    min-height: 340px;
+    max-width: 420px;
+    margin: 0 auto;
+}
+
+.relatorio-resumo-list {
+    display: grid;
+    gap: 14px;
+}
+
+.relatorio-resumo-item {
+    padding: 16px 18px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--panel-soft);
+}
+
+.relatorio-resumo-item strong {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 15px;
+    color: var(--primary);
+}
+
+.relatorio-resumo-item p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--muted);
+}
+
+@media (max-width: 680px) {
+    .chart-box,
+    .chart-box-sm {
+        min-height: 280px;
+    }
+}
