@@ -1,3 +1,7 @@
+<?php
+  $paginaAtual = 'dashboard';
+?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -8,68 +12,7 @@
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-badge">AFA</div>
-        <div>
-          <small>Agro Forest Amazon</small>
-          <strong>Recepção</strong>
-        </div>
-      </div>
-
-      <div class="menu-title">Principal</div>
-      <nav class="nav-list">
-        <a href="#" class="nav-link active">
-          <span class="nav-icon">🏠</span>
-          Dashboard
-        </a>
-        <a href="#" class="nav-link">
-          <span class="nav-icon">📝</span>
-          Novo Protocolo
-        </a>
-        <a href="#" class="nav-link">
-          <span class="nav-icon">👥</span>
-          Clientes
-        </a>
-        <a href="#" class="nav-link">
-          <span class="nav-icon">📂</span>
-          Protocolos
-        </a>
-        <a href="#" class="nav-link">
-          <span class="nav-icon">📎</span>
-          Documentos
-        </a>
-      </nav>
-
-      <div class="menu-title">Operação</div>
-      <nav class="nav-list">
-        <a href="#" class="nav-link">
-          <span class="nav-icon">📤</span>
-          Encaminhar
-        </a>
-        <a href="#" class="nav-link">
-          <span class="nav-icon">⏳</span>
-          Pendências
-        </a>
-        <a href="#" class="nav-link">
-          <span class="nav-icon">📊</span>
-          Relatórios
-        </a>
-        <a href="#" class="nav-link">
-          <span class="nav-icon">⚙️</span>
-          Configurações
-        </a>
-      </nav>
-
-      <div class="sidebar-card">
-        <strong>Resumo da recepção</strong>
-        <p>
-          A recepção cadastra o cliente, identifica o tipo de serviço, gera o protocolo
-          e encaminha para o administrativo realizar o orçamento.
-        </p>
-        <button type="button">+ Abrir novo protocolo</button>
-      </div>
-    </aside>
+     <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
     <main class="content">
       <div class="topbar">
