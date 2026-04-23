@@ -17,8 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validação de Campos Obrigatórios
     if (empty($justificativa)) {
         $error = "O campo Justificativa é obrigatório.";
-    } elseif (empty($numero_manual)) {
-        $error = "O número do ofício é obrigatório.";
+   
     } elseif (empty($secretaria_id)) {
         $error = "Selecione a secretaria solicitante.";
     } elseif (empty($criado_em_device)) {
