@@ -1,6 +1,6 @@
 <?php
 return [
     'name' => 'Agro Forest Amazon',
-    'base_url' => '/agroForest/public',
+    'base_url' => '/public',
     'timezone' => 'America/Manaus',
 ];
