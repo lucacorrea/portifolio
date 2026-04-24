@@ -12,7 +12,7 @@
         <div class="card">
             <div class="card-body">
                 <h2>Login</h2>
-                <form action="login_process.php" method="post">
+                <form action="login_process.php" method="POST">
                     <div class="form-group">
                         <label for="username">Usuário:</label>
                         <input type="text" class="form-control" id="username" name="username" required>
