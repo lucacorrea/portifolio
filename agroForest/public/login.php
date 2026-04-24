@@ -38,6 +38,11 @@
             padding: 32px 28px;
         }
 
+        .logo
+        {
+            text-align: center;
+            margin-bottom: 24px;
+        }
         h2 {
             margin: 0 0 24px;
             font-size: 1.9rem;
