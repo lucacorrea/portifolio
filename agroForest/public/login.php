@@ -60,7 +60,7 @@
             width: 100%;
             padding: 12px 14px;
             border: 1px solid #cddad0;
-            border-radius: 10px;
+            border-radius: 7px;
             background: #f7f9f4;
             font-size: 1rem;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -77,7 +77,7 @@
             width: 100%;
             padding: 14px 16px;
             border: none;
-            border-radius: 10px;
+            border-radius: 7px;
             background: #2f7c28;
             color: #fff;
             font-size: 1rem;
