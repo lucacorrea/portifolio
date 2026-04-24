@@ -29,7 +29,7 @@
 
         .card {
             background: rgba(255, 255, 255, 0.96);
-            border-radius: 24px;
+            border-radius: 10px;
             box-shadow: 0 24px 60px rgba(0, 0, 0, 0.14);
             overflow: hidden;
         }
