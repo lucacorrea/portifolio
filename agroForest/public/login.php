@@ -43,6 +43,13 @@
             text-align: center;
             margin-bottom: 24px;
         }
+
+        .logo-img
+        {
+            width: 120px;
+            height: auto;
+        }
+
         h2 {
             margin: 0 0 24px;
             font-size: 1.9rem;
