@@ -111,7 +111,7 @@
     <div class="container">
         <div class="card">
             <div class="card-body">
-                <img src="" class="logo" alt="">
+                <img src="" class="logo" alt="Agro Forest">
                 <h2>Seja Bem-vindo</h2>
                 <form action="login_process.php" method="POST">
                     <div class="form-group">
