@@ -641,8 +641,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Toggle Cash Change Calculator
             if (e.target.value === 'dinheiro') {
                 cashContainer.classList.remove('d-none');
-                document.getElementById('valor_recebido').value = '';
-                document.getElementById('valor_recebido').focus();
+                const valorRecebido = document.getElementById('valor_recebido');
+                valorRecebido.value = '';
+                setTimeout(() => valorRecebido.focus(), 100);
             } else {
                 cashContainer.classList.add('d-none');
             }
@@ -650,6 +651,23 @@ document.addEventListener('DOMContentLoaded', () => {
             renderCart();
         });
     });
+
+    // Enter in Valor Recebido to finalize
+    const valorRecebidoInput = document.getElementById('valor_recebido');
+    if (valorRecebidoInput) {
+        valorRecebidoInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const recebido = parseFloat(valorRecebidoInput.value) || 0;
+                const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace('.', '').replace(',', '.');
+                const total = parseFloat(finalTotalText) || 0;
+                
+                if (recebido >= total && !btnCheckout.disabled) {
+                    e.preventDefault();
+                    btnCheckout.click();
+                }
+            }
+        });
+    }
 });
 
 function calculateChange() {
@@ -709,24 +727,41 @@ pdvSearch.addEventListener('input', async (e) => {
 
 pdvSearch.addEventListener('keydown', (e) => {
     const items = searchResults.querySelectorAll('.list-group-item');
-    if (items.length === 0) return;
 
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'Enter') {
+        if (items.length > 0) {
+            e.preventDefault();
+            if (pdvSearchIndex === -1) pdvSearchIndex = 0;
+            items[pdvSearchIndex].click();
+            return;
+        }
+        
+        // If search is empty, move to payment
+        if (pdvSearch.value === '' && cart.length > 0) {
+            e.preventDefault();
+            const payDinheiro = document.getElementById('pay_dinheiro');
+            if (payDinheiro) {
+                payDinheiro.checked = true;
+                payDinheiro.dispatchEvent(new Event('change'));
+            }
+            return;
+        }
+
+        // Fast barcode handling: if no results yet but has content
+        if (pdvSearch.value.length >= 8 && !isNaN(pdvSearch.value)) {
+            e.preventDefault();
+            handleBarcode(pdvSearch.value);
+        }
+    } else if (e.key === 'ArrowDown') {
+        if (items.length === 0) return;
         e.preventDefault();
         pdvSearchIndex = Math.min(pdvSearchIndex + 1, items.length - 1);
         highlightPdvSearchResult(items);
     } else if (e.key === 'ArrowUp') {
+        if (items.length === 0) return;
         e.preventDefault();
         pdvSearchIndex = Math.max(pdvSearchIndex - 1, -1);
         highlightPdvSearchResult(items);
-    } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (pdvSearchIndex === -1 && items.length > 0) {
-            pdvSearchIndex = 0;
-        }
-        if (pdvSearchIndex >= 0) {
-            items[pdvSearchIndex].click();
-        }
     } else if (e.key === 'Escape') {
         searchResults.classList.add('d-none');
         pdvSearchIndex = -1;
@@ -2017,20 +2052,31 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Barcode optimization: If search returns exactly 1 result and looks like a barcode, add to cart automatically
+// Barcode optimization
+let isProcessingBarcode = false;
 async function handleBarcode(val) {
+    if (isProcessingBarcode) return;
     if (val.length >= 8 && !isNaN(val)) {
-        const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(val)}`);
-        const products = await response.json();
-        if (products.length === 1) {
-            addToCart(products[0]);
-            pdvSearch.value = '';
+        isProcessingBarcode = true;
+        try {
+            const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(val)}`);
+            const products = await response.json();
+            if (products.length === 1) {
+                addToCart(products[0]);
+                pdvSearch.value = '';
+            }
+        } finally {
+            isProcessingBarcode = false;
         }
     }
 }
 
 pdvSearch.addEventListener('keyup', (e) => {
-    if (e.key === 'Enter') handleBarcode(pdvSearch.value);
+    if (e.key === 'Enter') {
+        // keydown already handles most cases, but if search was empty and keyup fires, 
+        // handleBarcode will just return because value is empty or isProcessingBarcode is true.
+        handleBarcode(pdvSearch.value);
+    }
 });
 
 // Missing intercepter to prevent default browser behavior for numeric/percentage inputs
