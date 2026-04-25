@@ -115,7 +115,7 @@ $qrCodeUrl = $val('//nfe:infNFeSupl/nfe:qrCode');
             </tr>
             <tr>
                 <td></td>
-                <td align="right"><?= number_format((float)$prod->getElementsByTagName('qCom')->item(0)->nodeValue, 3, ',', '.') ?> <?= $prod->getElementsByTagName('uCom')->item(0)->nodeValue ?> x <?= number_format((float)$prod->getElementsByTagName('vUnCom')->item(0)->nodeValue, 2, ',', '.') ?></td>
+                <td align="right"><?= formatarQuantidade((float)$prod->getElementsByTagName('qCom')->item(0)->nodeValue) ?> <?= $prod->getElementsByTagName('uCom')->item(0)->nodeValue ?> x <?= number_format((float)$prod->getElementsByTagName('vUnCom')->item(0)->nodeValue, 2, ',', '.') ?></td>
                 <td align="right"><?= number_format((float)$prod->getElementsByTagName('vProd')->item(0)->nodeValue, 2, ',', '.') ?></td>
             </tr>
             <?php endforeach; ?>

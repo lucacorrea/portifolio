@@ -695,7 +695,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         <?php foreach ($itens as $it): ?>
           <tr>
             <td><?= htmlspecialchars($it['xProd'], ENT_QUOTES, 'UTF-8') ?></td>
-            <td class="right"><?= $it['qCom'] ?><br><?= htmlspecialchars($it['uCom'], ENT_QUOTES, 'UTF-8') ?></td>
+            <td class="right"><?= formatarQuantidade($it['qCom']) ?><br><?= htmlspecialchars($it['unidade'], ENT_QUOTES, 'UTF-8') ?></td>
             <td class="right"><?= $it['vUn'] ?></td>
             <td class="right"><?= $it['vTot'] ?></td>
           </tr>
