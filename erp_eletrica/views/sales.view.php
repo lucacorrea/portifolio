@@ -1994,7 +1994,20 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
 }
 
 function imprimirRecibo(saleId) {
-    window.open('recibo_venda.php?id=' + saleId, '_blank', 'width=480,height=700,toolbar=0,menubar=0,location=0');
+    let iframe = document.getElementById('print-iframe');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'print-iframe';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        iframe.style.visibility = 'hidden';
+        document.body.appendChild(iframe);
+    }
+    iframe.src = 'recibo_venda.php?id=' + saleId;
 }
 
 async function issueNFCe(saleId) {

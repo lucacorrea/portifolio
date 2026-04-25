@@ -826,6 +826,13 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
           height: 180
         });
       }
+
+      // Auto-print on load
+      window.addEventListener('load', function() {
+        setTimeout(() => {
+          window.print();
+        }, 800); // Slightly longer delay for QR code to render
+      });
     })();
   </script>
 </body>

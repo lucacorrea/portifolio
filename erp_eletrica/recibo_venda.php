@@ -414,8 +414,17 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
             document.getElementById('btn-print').addEventListener('click', function() {
                 window.print();
             });
+            
+            // Auto-print on load
             window.addEventListener('load', function() {
-                setTimeout(() => window.print(), 600);
+                // Short delay to ensure styles and fonts are ready
+                setTimeout(() => {
+                    window.print();
+                    // If in iframe, we don't need to close, but if opened as popup, 
+                    // some users prefer it closes after print dialog is closed.
+                    // However, window.print() is blocking in most browsers, 
+                    // so we can detect completion in some.
+                }, 500);
             });
         })();
     </script>
