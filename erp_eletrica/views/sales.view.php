@@ -657,13 +657,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (valorRecebidoInput) {
         valorRecebidoInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
+                calculateChange(); // Ensure calculations are fresh
                 const recebido = parseFloat(valorRecebidoInput.value) || 0;
-                const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace('.', '').replace(',', '.');
+                const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
                 const total = parseFloat(finalTotalText) || 0;
                 
                 if (recebido >= total && !btnCheckout.disabled) {
                     e.preventDefault();
                     btnCheckout.click();
+                } else if (recebido < total) {
+                    alert("Valor recebido é insuficiente.");
                 }
             }
         });
@@ -671,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function calculateChange() {
-    const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(',', '.');
+    const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
     const total = parseFloat(finalTotalText) || 0;
     const recebido = parseFloat(document.getElementById('valor_recebido').value) || 0;
     
@@ -700,7 +703,7 @@ function updateCheckoutButtonState() {
 
     const payment = document.querySelector('input[name="payment"]:checked')?.value;
     if (payment === 'dinheiro') {
-        const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace('.', '').replace(',', '.');
+        const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
         const total = parseFloat(finalTotalText) || 0;
         const recebido = parseFloat(document.getElementById('valor_recebido').value) || 0;
         
@@ -712,6 +715,7 @@ function updateCheckoutButtonState() {
 
 // Search functionality
 pdvSearch.addEventListener('input', async (e) => {
+    if (isProcessingBarcode) return;
     const term = e.target.value;
     if (term.length < 2) {
         searchResults.classList.add('d-none');
@@ -720,9 +724,14 @@ pdvSearch.addEventListener('input', async (e) => {
         return;
     }
 
-    const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(term)}`);
-    const products = await response.json();
-    renderSearchResults(products);
+    try {
+        const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(term)}`);
+        const products = await response.json();
+        if (isProcessingBarcode) return; // Re-check after async
+        renderSearchResults(products);
+    } catch (err) {
+        console.error("Erro na busca:", err);
+    }
 });
 
 pdvSearch.addEventListener('keydown', (e) => {
@@ -737,20 +746,32 @@ pdvSearch.addEventListener('keydown', (e) => {
         }
         
         // If search is empty, move to payment
-        if (pdvSearch.value === '' && cart.length > 0) {
+        if (pdvSearch.value.trim() === '' && cart.length > 0) {
             e.preventDefault();
             const payDinheiro = document.getElementById('pay_dinheiro');
             if (payDinheiro) {
                 payDinheiro.checked = true;
-                payDinheiro.dispatchEvent(new Event('change'));
+                // Force triggering the change logic
+                const changeEvent = new Event('change', { bubbles: true });
+                payDinheiro.dispatchEvent(changeEvent);
+                
+                // Extra assurance: focus directly too
+                const valorRecebido = document.getElementById('valor_recebido');
+                if (valorRecebido) {
+                    setTimeout(() => {
+                        valorRecebido.focus();
+                        valorRecebido.select();
+                    }, 150);
+                }
             }
             return;
         }
 
         // Fast barcode handling: if no results yet but has content
-        if (pdvSearch.value.length >= 8 && !isNaN(pdvSearch.value)) {
+        const searchVal = pdvSearch.value.trim();
+        if (searchVal.length >= 8 && !isNaN(searchVal)) {
             e.preventDefault();
-            handleBarcode(pdvSearch.value);
+            handleBarcode(searchVal);
         }
     } else if (e.key === 'ArrowDown') {
         if (items.length === 0) return;
