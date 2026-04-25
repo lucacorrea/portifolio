@@ -344,7 +344,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
                 ?>
                     <tr>
                         <td class="left"><?= htmlspecialchars(mb_strimwidth($it['nome'], 0, 22, '..')) ?></td>
-                        <td class="right"><?= number_format($it['quantidade'],2,',','.') ?></td>
+                        <td class="right"><?= formatarQuantidade($it['quantidade']) ?></td>
                         <td class="left"><?= htmlspecialchars($it['unidade'] ?? 'UN') ?></td>
                         <td class="right"><?= number_format($it['preco_unitario'],2,',','.') ?></td>
                         <td class="right"><?= number_format($subtotal,2,',','.') ?></td>

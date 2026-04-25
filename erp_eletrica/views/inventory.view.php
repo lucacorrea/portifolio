@@ -148,7 +148,7 @@
                         </td>
                         <td class="text-center">
                             <div class="fw-bold <?= $p['quantidade'] <= $p['estoque_minimo'] ? 'text-danger' : 'text-dark' ?>">
-                                <?= number_format($p['quantidade'], 2, ',', '.') ?>
+                                <?= formatarQuantidade($p['quantidade']) ?>
                             </div>
                             <?php if ($p['quantidade'] <= $p['estoque_minimo']): ?>
                                 <span class="badge bg-danger text-uppercase" style="font-size: 0.6rem;">Estoque Baixo</span>
