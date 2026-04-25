@@ -735,7 +735,8 @@ pdvSearch.addEventListener('input', async (e) => {
 });
 
 pdvSearch.addEventListener('keydown', (e) => {
-    const items = searchResults.querySelectorAll('.list-group-item');
+    const isResultsVisible = !searchResults.classList.contains('d-none');
+    const items = isResultsVisible ? searchResults.querySelectorAll('.list-group-item') : [];
 
     if (e.key === 'Enter') {
         if (items.length > 0) {
@@ -893,6 +894,9 @@ function addToCart(product) {
     
     pdvSearch.value = '';
     searchResults.classList.add('d-none');
+    searchResults.innerHTML = '';
+    currentSearchResults = [];
+    pdvSearchIndex = -1;
     isAuthorized = false; // Reset auth on new items
     renderCart();
 }
