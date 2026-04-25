@@ -97,7 +97,7 @@
                             <?php endif; ?>
                         </td>
                         <td class="text-center fw-bold">
-                            <?= number_format($m['quantidade'], 2, ',', '.') ?>
+                            <?= formatarQuantidade($m['quantidade']) ?>
                         </td>
                         <td>
                             <div class="text-truncate" style="max-width: 250px;" title="<?= htmlspecialchars($m['motivo']) ?>">

@@ -188,7 +188,7 @@
                                     <div class="fw-bold small"><?= htmlspecialchars($pm['nome']) ?></div>
                                     <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?></div>
                                 </td>
-                                <td><span class="badge bg-secondary"><?= number_format($pm['qtd_matriz'], 2, ',', '.') ?> UN</span></td>
+                                <td><span class="badge bg-secondary"><?= formatarQuantidade($pm['qtd_matriz']) ?> UN</span></td>
                                 <td>
                                     <input type="number" step="1" min="0" max="<?= $pm['qtd_matriz'] ?>"
                                         name="itens[<?= $pm['id'] ?>][quantidade]"
