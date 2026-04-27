@@ -9,6 +9,13 @@ if (!function_exists('formatarMoeda')) {
     }
 }
 
+if (!function_exists('formatarQuantidade')) {
+    function formatarQuantidade($valor) {
+        // Se for um número inteiro (ou .00), mostra sem decimais. Caso contrário, mostra 2.
+        return (float)$valor == (int)$valor ? number_format($valor, 0, ',', '.') : number_format($valor, 2, ',', '.');
+    }
+}
+
 if (!function_exists('formatarData')) {
     function formatarData($data) {
         if (!$data) return '-';
@@ -60,6 +67,7 @@ if (!function_exists('getFlash')) {
         return null;
     }
 }
+
 if (!function_exists('jsonResponse')) {
     function jsonResponse($success, $message, $data = [], $code = 200) {
         if (!headers_sent()) {
@@ -75,6 +83,7 @@ if (!function_exists('jsonResponse')) {
         exit;
     }
 }
+
 if (!function_exists('renderPagination')) {
     function renderPagination($pagination, $baseUrl, $queryParams = []) {
         if (!isset($pagination['pages']) || $pagination['pages'] <= 1) return '';

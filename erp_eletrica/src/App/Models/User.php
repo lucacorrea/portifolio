@@ -111,6 +111,10 @@ class User extends BaseModel {
             }
 
             if ($hasAuthCols) {
+                $fields[] = "auth_pin";
+                $fields[] = "auth_type";
+                $placeholders[] = "?";
+                $placeholders[] = "?";
                 $params[] = !empty($data['auth_pin']) ? $data['auth_pin'] : null;
                 $params[] = $data['auth_type'] ?? 'password';
             }

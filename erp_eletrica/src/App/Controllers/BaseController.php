@@ -44,6 +44,11 @@ abstract class BaseController {
         return jsonResponse($success, $message, $data, $code);
     }
 
+    protected function redirect($url) {
+        header("Location: $url");
+        exit;
+    }
+
     protected function executeSafe(callable $action, $isAjax = true) {
         try {
             return $action();

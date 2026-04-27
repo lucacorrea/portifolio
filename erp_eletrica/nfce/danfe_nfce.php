@@ -399,7 +399,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
   $itens[] = [
     'cProd' => $cProdNode ? limpar($cProdNode->nodeValue) : '',
     'xProd' => $xProdNode ? limpar($xProdNode->nodeValue) : '',
-    'qCom'  => number_format((float)($qComNode ? $qComNode->nodeValue : 0), 3, ',', '.'),
+    'qCom'  => (float)($qComNode ? $qComNode->nodeValue : 0),
     'uCom'  => $uComNode ? limpar($uComNode->nodeValue) : '',
     'vUn'   => br($vUnNode ? $vUnNode->nodeValue : 0),
     'vTot'  => br($vTotNode ? $vTotNode->nodeValue : 0),
@@ -695,7 +695,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         <?php foreach ($itens as $it): ?>
           <tr>
             <td><?= htmlspecialchars($it['xProd'], ENT_QUOTES, 'UTF-8') ?></td>
-            <td class="right"><?= $it['qCom'] ?><br><?= htmlspecialchars($it['uCom'], ENT_QUOTES, 'UTF-8') ?></td>
+            <td class="right"><?= formatarQuantidade($it['qCom']) ?><br><?= htmlspecialchars($it['uCom'], ENT_QUOTES, 'UTF-8') ?></td>
             <td class="right"><?= $it['vUn'] ?></td>
             <td class="right"><?= $it['vTot'] ?></td>
           </tr>
@@ -826,6 +826,13 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
           height: 180
         });
       }
+
+      // Auto-print on load
+      window.addEventListener('load', function() {
+        setTimeout(() => {
+          window.print();
+        }, 800); // Slightly longer delay for QR code to render
+      });
     })();
   </script>
 </body>

@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 data_protocolo: document.getElementById('data_protocolo').value,
                 tipo_contagem: inputContagem.value,
                 final_prazo: inputFinal.value || '',
-                analisador: inputAnalisador ? inputAnalisador.value : '',
+                analisador: inputAnalisador ? inputAnalisador.value.trim().toUpperCase() : '',
                 peticionador: inputPeticionador ? inputPeticionador.value : '',
                 protocolista: document.getElementById('protocolista') ? document.getElementById('protocolista').value : '',
                 quantidade_dias: inputDias ? inputDias.value : 15,
@@ -416,10 +416,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabsContainer = document.getElementById('analisador-tabs');
         if (!tabsContainer) return;
 
-        const analisadores = [...new Set(dadosOriginais.map(p => p.analisador || 'N/A'))]
-            .filter(a => a !== 'N/A')
-            .map(a => String(a).toUpperCase())
-            .sort();
+        // Normalizar nomes (trim e uppercase) para evitar duplicados
+        const analisadores = [...new Set(dadosOriginais.map(p => String(p.analisador || 'N/A').trim().toUpperCase()))]
+            .filter(a => a !== 'N/A');
+        
+        analisadores.sort((a, b) => {
+            if (a === b) return 0;
+            // KELLEN deve ser sempre o último
+            if (a === 'KELLEN') return 1;
+            if (b === 'KELLEN') return -1;
+            // MARINEZ deve ser o penúltimo (antes de KELLEN)
+            if (a === 'MARINEZ') return 1;
+            if (b === 'MARINEZ') return -1;
+            // O resto em ordem alfabética
+            return a.localeCompare(b);
+        });
         
         // Determinar aba padrão caso ainda não tenha aba ativa
         if (!analisadorAtivo || analisadorAtivo === 'null') {
@@ -662,6 +673,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (u.includes('RHANNY')) return 'user-rhanny';
         if (u.includes('MARINEZ')) return 'user-marinez';
         if (u.includes('HARRISON')) return 'user-harrison';
+        if (u.includes('KELLEN')) return 'user-kellen';
         return 'user-default';
     };
 

@@ -148,7 +148,7 @@
                         </td>
                         <td class="text-center">
                             <div class="fw-bold <?= $p['quantidade'] <= $p['estoque_minimo'] ? 'text-danger' : 'text-dark' ?>">
-                                <?= number_format($p['quantidade'], 2, ',', '.') ?>
+                                <?= formatarQuantidade($p['quantidade']) ?>
                             </div>
                             <?php if ($p['quantidade'] <= $p['estoque_minimo']): ?>
                                 <span class="badge bg-danger text-uppercase" style="font-size: 0.6rem;">Estoque Baixo</span>
@@ -298,11 +298,11 @@
                     <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-warning small border-bottom pb-2"><i class="fas fa-boxes me-1"></i>Estoque</h6></div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Quantidade Inicial *</label>
-                        <input type="number" step="0.01" min="0" name="quantidade" class="form-control shadow-sm" required id="edit_quantidade" value="0">
+                        <input type="number" step="any" min="0" name="quantidade" class="form-control shadow-sm" required id="edit_quantidade" value="0">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Estoque Mínimo (Alerta)</label>
-                        <input type="number" min="0" name="estoque_minimo" class="form-control shadow-sm" id="edit_estoque_minimo" value="0">
+                        <input type="number" step="any" min="0" name="estoque_minimo" class="form-control shadow-sm" id="edit_estoque_minimo" value="0">
                     </div>
 
                     <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-secondary small border-bottom pb-2"><i class="fas fa-ruler-combined me-1"></i>Logística <small class="text-muted fw-normal">(mostrado conforme unidade)</small></h6></div>
@@ -436,7 +436,7 @@ function editProduct(product) {
     document.getElementById('edit_categoria').value = product.categoria;
     document.getElementById('edit_tipo_produto').value = product.tipo_produto || 'simples';
     document.getElementById('edit_fornecedor_id').value = product.fornecedor_id || '';
-    document.getElementById('edit_quantidade').value = product.quantidade || 0;
+    document.getElementById('edit_quantidade').value = parseFloat(product.quantidade || 0);
     
     document.getElementById('edit_peso').value = product.peso || '';
     document.getElementById('edit_dimensoes').value = product.dimensoes || '';
@@ -447,7 +447,7 @@ function editProduct(product) {
     document.getElementById('edit_preco_venda_2').value = product.preco_venda_2 || '';
     document.getElementById('edit_preco_venda_3').value = product.preco_venda_3 || '';
     document.getElementById('edit_preco_venda_atacado').value = product.preco_venda_atacado || '';
-    document.getElementById('edit_estoque_minimo').value = product.estoque_minimo;
+    document.getElementById('edit_estoque_minimo').value = parseFloat(product.estoque_minimo || 0);
     
     // Fiscal Fields
     document.getElementById('edit_cean').value = product.cean || '';

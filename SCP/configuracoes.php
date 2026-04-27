@@ -501,6 +501,6 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
 <script>
     window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
 </script>
-<script src="assets/js/script.js?v=62"></script>
+<script src="assets/js/script.js?v=65"></script>
 </body>
 </html>

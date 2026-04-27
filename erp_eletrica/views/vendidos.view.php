@@ -525,7 +525,21 @@
         window.printSale = function(id, tipo, chave = '') {
             let url = tipo === 'fiscal' ? `nfce/danfe_nfce.php?venda_id=${id}` : `recibo_venda.php?id=${id}`;
             if (tipo === 'fiscal' && chave) url += `&chave=${chave}`;
-            window.open(url, '_blank');
+            
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'fixed';
+                iframe.style.right = '0';
+                iframe.style.bottom = '0';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                iframe.style.visibility = 'hidden';
+                document.body.appendChild(iframe);
+            }
+            iframe.src = url;
         };
 
         let currentCancelId = null;
