@@ -40,7 +40,7 @@ $cssVersion = file_exists($cssPath) ? filemtime($cssPath) : time();
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap"
         rel="stylesheet">
 
-    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="style.css">
 
     <meta name="theme-color" content="#2f5487">
     <meta name="apple-mobile-web-app-capable" content="yes">
