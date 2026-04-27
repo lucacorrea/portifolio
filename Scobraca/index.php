@@ -1,5 +1,95 @@
 <?php
 $baseUrl = './';
+
+$planos = [
+    [
+        'nome' => 'Essencial',
+        'tag' => 'Plano inicial',
+        'descricao' => 'Para empresas pequenas que precisam sair da planilha e controlar melhor suas cobranças.',
+        'preco_antigo' => '79,90',
+        'preco' => '49,90',
+        'anual' => '499,00',
+        'economia' => 'Economize R$ 99,80 no anual',
+        'limite' => 'Até 50 clientes em cobrança',
+        'icone' => 'ri-user-line',
+        'botao' => 'Começar no Essencial',
+        'destaque' => false,
+        'premium' => false,
+        'features' => [
+            'Cadastro de clientes',
+            'Controle de mensalidades',
+            'Registro manual de pagamentos',
+            'Status de clientes em dia, pendentes e atrasados',
+            'Relatórios básicos',
+            'Ideal para começar com baixo custo'
+        ]
+    ],
+    [
+        'nome' => 'Profissional',
+        'tag' => 'Mais escolhido',
+        'descricao' => 'Para empresas que querem automatizar lembretes e acompanhar cobranças com mais organização.',
+        'preco_antigo' => '149,90',
+        'preco' => '89,90',
+        'anual' => '899,00',
+        'economia' => 'Economize R$ 179,80 no anual',
+        'limite' => 'Até 200 clientes em cobrança',
+        'icone' => 'ri-group-line',
+        'botao' => 'Escolher Profissional',
+        'destaque' => true,
+        'premium' => false,
+        'features' => [
+            'Tudo do plano Essencial',
+            'Lembretes automáticos por WhatsApp',
+            'Mensagens antes e depois do vencimento',
+            'Controle de clientes atrasados',
+            'PIX nas mensagens de cobrança',
+            'Relatórios financeiros completos'
+        ]
+    ],
+    [
+        'nome' => 'Premium',
+        'tag' => 'Maior escala',
+        'descricao' => 'Para empresas com alto volume de cobranças e necessidade de recursos avançados.',
+        'preco_antigo' => '249,90',
+        'preco' => '149,90',
+        'anual' => '1.499,00',
+        'economia' => 'Economize R$ 299,80 no anual',
+        'limite' => 'Clientes em cobrança ilimitados*',
+        'icone' => 'ri-infinity-line',
+        'botao' => 'Quero o Premium',
+        'destaque' => false,
+        'premium' => true,
+        'features' => [
+            'Tudo do plano Profissional',
+            'Clientes em cobrança ilimitados',
+            'Leitura assistida de comprovantes',
+            'Baixa inteligente de pagamentos',
+            'Relatórios avançados',
+            'Suporte prioritário da L&J'
+        ]
+    ],
+];
+
+$depoimentos = [
+    [
+        'nome' => 'Marcos Almeida',
+        'empresa' => 'Empresa de Rastreamento',
+        'comentario' => 'Antes o controle era todo em planilha. Com uma plataforma desse tipo, a equipe consegue visualizar quem pagou, quem está pendente e quem precisa receber lembrete.',
+        'iniciais' => 'MA'
+    ],
+    [
+        'nome' => 'Renata Costa',
+        'empresa' => 'Serviços Recorrentes',
+        'comentario' => 'O maior ganho está em não esquecer cobranças. Ter lembretes, status e relatórios no mesmo lugar ajuda muito na rotina.',
+        'iniciais' => 'RC'
+    ],
+    [
+        'nome' => 'Felipe Santos',
+        'empresa' => 'Gestão de Mensalidades',
+        'comentario' => 'O painel deixa claro quanto entrou, quanto ainda falta receber e quais clientes precisam de atenção. Isso economiza tempo todos os dias.',
+        'iniciais' => 'FS'
+    ],
+];
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -9,13 +99,31 @@ $baseUrl = './';
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FluxPay - Plataforma de Cobranças Automatizadas</title>
 
-    <meta name="description" content="FluxPay é uma plataforma SaaS para gestão de clientes, cobranças recorrentes, pagamentos, PIX, WhatsApp e relatórios financeiros.">
+    <meta name="description" content="FluxPay é uma plataforma SaaS criada pela L&J Soluções Tecnológicas para gestão de clientes, cobranças recorrentes, pagamentos, PIX, WhatsApp e relatórios financeiros.">
 
-    <link rel="stylesheet" href="<?= $baseUrl ?>/public/assets/css/landing.css">
+    <link rel="stylesheet" href="<?= $baseUrl ?>public/assets/css/landing.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
 </head>
 
 <body>
+
+<div class="top-offer">
+    <div class="container top-offer-content">
+        <span>
+            <i class="ri-fire-line"></i>
+            Oferta de lançamento FluxPay
+        </span>
+
+        <strong>
+            Contrate no anual, pague 10 meses e use por 12 meses.
+        </strong>
+
+        <a href="#planos">
+            Ver planos
+            <i class="ri-arrow-right-line"></i>
+        </a>
+    </div>
+</div>
 
 <header class="site-header" id="topo">
     <div class="container header-content">
@@ -25,7 +133,7 @@ $baseUrl = './';
             </span>
             <span class="brand-text">
                 <strong>FluxPay</strong>
-                <small>Cobranças Recorrentes</small>
+                <small>by L&J Soluções Tecnológicas</small>
             </span>
         </a>
 
@@ -37,6 +145,7 @@ $baseUrl = './';
             <a href="#recursos">Recursos</a>
             <a href="#como-funciona">Como funciona</a>
             <a href="#planos">Planos</a>
+            <a href="#depoimentos">Comentários</a>
             <a href="#perguntas">Dúvidas</a>
             <a href="#contato">Contato</a>
             <a href="login.php" class="nav-login">Entrar</a>
@@ -47,32 +156,49 @@ $baseUrl = './';
 <main>
 
     <section class="hero-section">
+        <div class="hero-glow hero-glow-one"></div>
+        <div class="hero-glow hero-glow-two"></div>
+
         <div class="container hero-grid">
 
-            <div class="hero-text">
+            <div class="hero-text" data-animate="fade-right">
                 <span class="hero-badge">
                     <i class="ri-whatsapp-line"></i>
-                    Cobranças inteligentes por WhatsApp
+                    Cobranças automáticas para vender mais e esquecer menos
                 </span>
 
                 <h1>
-                    Controle cobranças, clientes e pagamentos em uma única plataforma.
+                    Pare de perder dinheiro por falta de controle nas cobranças.
                 </h1>
 
                 <p>
-                    O FluxPay ajuda empresas a organizar mensalidades, enviar lembretes automáticos,
-                    acompanhar atrasos, registrar pagamentos e manter uma visão clara do fluxo financeiro.
+                    O FluxPay organiza clientes, mensalidades, lembretes no WhatsApp,
+                    pagamentos, PIX e relatórios em uma plataforma simples, feita pela
+                    <strong>L&J Soluções Tecnológicas</strong>.
                 </p>
 
                 <div class="hero-actions">
-                    <a href="login.php" class="btn-primary">
-                        Entrar na plataforma
+                    <a href="#planos" class="btn-primary">
+                        Quero organizar minhas cobranças
                         <i class="ri-arrow-right-line"></i>
                     </a>
 
-                    <a href="#planos" class="btn-secondary">
-                        Ver planos
+                    <a href="login.php" class="btn-secondary">
+                        Já sou cliente
                     </a>
+                </div>
+
+                <div class="hero-proof">
+                    <div class="proof-avatars">
+                        <span> LJ </span>
+                        <span> FP </span>
+                        <span> + </span>
+                    </div>
+
+                    <p>
+                        Plataforma pensada para empresas que trabalham com clientes recorrentes,
+                        mensalidades e cobrança por WhatsApp.
+                    </p>
                 </div>
 
                 <div class="hero-highlights">
@@ -93,7 +219,23 @@ $baseUrl = './';
                 </div>
             </div>
 
-            <div class="hero-panel">
+            <div class="hero-panel" data-animate="fade-left">
+                <div class="floating-card floating-card-one">
+                    <i class="ri-notification-3-line"></i>
+                    <div>
+                        <strong>Lembrete enviado</strong>
+                        <span>Cliente avisado antes do vencimento</span>
+                    </div>
+                </div>
+
+                <div class="floating-card floating-card-two">
+                    <i class="ri-money-dollar-circle-line"></i>
+                    <div>
+                        <strong>Pagamento confirmado</strong>
+                        <span>Baixa registrada no painel</span>
+                    </div>
+                </div>
+
                 <div class="dashboard-card">
 
                     <div class="dashboard-top">
@@ -169,31 +311,64 @@ $baseUrl = './';
 
     <section class="trust-section">
         <div class="container trust-grid">
-            <div>
+            <div data-animate="fade-up">
                 <strong>+ organização</strong>
-                <span>Controle completo dos clientes em cobrança</span>
+                <span>Clientes e cobranças em um só lugar</span>
             </div>
 
-            <div>
-                <strong>+ automação</strong>
-                <span>Lembretes antes e depois do vencimento</span>
+            <div data-animate="fade-up">
+                <strong>+ lembretes</strong>
+                <span>Mensagens antes e depois do vencimento</span>
             </div>
 
-            <div>
+            <div data-animate="fade-up">
                 <strong>+ clareza</strong>
                 <span>Relatórios para tomada de decisão</span>
             </div>
 
-            <div>
+            <div data-animate="fade-up">
                 <strong>+ recebimentos</strong>
                 <span>Menos esquecimento e mais acompanhamento</span>
             </div>
         </div>
     </section>
 
+    <section class="pain-section">
+        <div class="container pain-grid">
+            <div class="pain-text" data-animate="fade-right">
+                <span class="section-kicker">Problema real</span>
+                <h2>Sua empresa pode estar perdendo dinheiro por falta de acompanhamento.</h2>
+                <p>
+                    Cliente esquece. Equipe esquece. Planilha fica desatualizada.
+                    Mensagem não é enviada no dia certo. No final, o caixa sofre.
+                </p>
+            </div>
+
+            <div class="pain-cards">
+                <article data-animate="fade-up">
+                    <i class="ri-file-excel-2-line"></i>
+                    <h3>Planilhas confusas</h3>
+                    <p>Difícil saber quem pagou, quem está atrasado e quem já recebeu cobrança.</p>
+                </article>
+
+                <article data-animate="fade-up">
+                    <i class="ri-time-line"></i>
+                    <h3>Cobrança atrasada</h3>
+                    <p>Quando o lembrete não vai no tempo certo, a chance de atraso aumenta.</p>
+                </article>
+
+                <article data-animate="fade-up">
+                    <i class="ri-alert-line"></i>
+                    <h3>Falta de visão</h3>
+                    <p>Sem relatório, fica difícil saber quanto entrou e quanto ainda falta receber.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
     <section class="features-section" id="recursos">
         <div class="container">
-            <div class="section-header">
+            <div class="section-header" data-animate="fade-up">
                 <span>Recursos principais</span>
                 <h2>Tudo que sua empresa precisa para controlar cobranças</h2>
                 <p>
@@ -203,37 +378,37 @@ $baseUrl = './';
             </div>
 
             <div class="features-grid">
-                <article class="feature-card">
+                <article class="feature-card" data-animate="fade-up">
                     <i class="ri-user-settings-line"></i>
                     <h3>Gestão de clientes</h3>
                     <p>Cadastre clientes, telefones, mensalidades, veículos, vencimentos e status financeiro.</p>
                 </article>
 
-                <article class="feature-card">
+                <article class="feature-card" data-animate="fade-up">
                     <i class="ri-calendar-check-line"></i>
                     <h3>Cobranças recorrentes</h3>
                     <p>Gere cobranças por período e acompanhe quem está em dia, pendente ou atrasado.</p>
                 </article>
 
-                <article class="feature-card">
+                <article class="feature-card" data-animate="fade-up">
                     <i class="ri-whatsapp-line"></i>
                     <h3>Lembretes por WhatsApp</h3>
                     <p>Envie mensagens antes do vencimento, no vencimento e após atraso.</p>
                 </article>
 
-                <article class="feature-card">
+                <article class="feature-card" data-animate="fade-up">
                     <i class="ri-bank-card-line"></i>
                     <h3>Controle de pagamentos</h3>
                     <p>Registre valores recebidos, datas de pagamento, comprovantes e histórico financeiro.</p>
                 </article>
 
-                <article class="feature-card">
+                <article class="feature-card" data-animate="fade-up">
                     <i class="ri-qr-code-line"></i>
                     <h3>PIX nas mensagens</h3>
                     <p>Inclua os dados de PIX diretamente nas mensagens de cobrança enviadas aos clientes.</p>
                 </article>
 
-                <article class="feature-card">
+                <article class="feature-card" data-animate="fade-up">
                     <i class="ri-bar-chart-box-line"></i>
                     <h3>Relatórios inteligentes</h3>
                     <p>Acompanhe recebimentos, pendências, atrasos e evolução da carteira de clientes.</p>
@@ -245,7 +420,7 @@ $baseUrl = './';
     <section class="how-section" id="como-funciona">
         <div class="container how-grid">
 
-            <div class="how-text">
+            <div class="how-text" data-animate="fade-right">
                 <span class="section-kicker">Como funciona</span>
                 <h2>Da cobrança ao pagamento, tudo em um fluxo simples.</h2>
                 <p>
@@ -253,14 +428,14 @@ $baseUrl = './';
                     vencimentos e pagamentos sem depender de planilhas soltas ou controles manuais.
                 </p>
 
-                <a href="login.php" class="btn-primary">
-                    Acessar plataforma
+                <a href="#planos" class="btn-primary">
+                    Ver planos promocionais
                     <i class="ri-arrow-right-line"></i>
                 </a>
             </div>
 
             <div class="steps-list">
-                <div class="step-item">
+                <div class="step-item" data-animate="fade-up">
                     <span>01</span>
                     <div>
                         <h3>Cadastre seus clientes</h3>
@@ -268,7 +443,7 @@ $baseUrl = './';
                     </div>
                 </div>
 
-                <div class="step-item">
+                <div class="step-item" data-animate="fade-up">
                     <span>02</span>
                     <div>
                         <h3>Gere as cobranças</h3>
@@ -276,7 +451,7 @@ $baseUrl = './';
                     </div>
                 </div>
 
-                <div class="step-item">
+                <div class="step-item" data-animate="fade-up">
                     <span>03</span>
                     <div>
                         <h3>Envie lembretes</h3>
@@ -284,7 +459,7 @@ $baseUrl = './';
                     </div>
                 </div>
 
-                <div class="step-item">
+                <div class="step-item" data-animate="fade-up">
                     <span>04</span>
                     <div>
                         <h3>Registre pagamentos</h3>
@@ -298,130 +473,161 @@ $baseUrl = './';
 
     <section class="plans-section" id="planos">
         <div class="container">
-            <div class="section-header">
-                <span>Planos FluxPay</span>
-                <h2>Escolha o plano ideal para sua operação</h2>
+            <div class="section-header" data-animate="fade-up">
+                <span>Planos promocionais de lançamento</span>
+                <h2>Comece pagando menos e organize sua cobrança ainda este mês</h2>
                 <p>
-                    Comece com um plano simples e evolua conforme sua carteira de clientes crescer.
+                    Valores reduzidos para entrada de novos clientes. No plano anual,
+                    você paga 10 meses e usa o FluxPay por 12 meses.
                 </p>
             </div>
 
+            <div class="billing-banner" data-animate="fade-up">
+                <div>
+                    <i class="ri-gift-line"></i>
+                    <strong>Oferta anual</strong>
+                    <span>Contrate por 1 ano e ganhe 2 meses de uso.</span>
+                </div>
+
+                <a href="#contato">
+                    Solicitar proposta
+                    <i class="ri-arrow-right-line"></i>
+                </a>
+            </div>
+
             <div class="plans-grid">
+                <?php foreach ($planos as $plano): ?>
+                    <article class="plan-card <?= $plano['destaque'] ? 'featured-plan' : '' ?> <?= $plano['premium'] ? 'premium-plan' : '' ?>" data-animate="fade-up">
+                        <?php if ($plano['destaque']): ?>
+                            <div class="popular-badge">Mais indicado</div>
+                        <?php endif; ?>
 
-                <article class="plan-card">
-                    <div class="plan-header">
-                        <span class="plan-tag">Plano inicial</span>
-                        <h3>Essencial</h3>
-                        <p>Para empresas pequenas que estão começando a organizar suas cobranças.</p>
-                    </div>
+                        <div class="plan-header">
+                            <span class="plan-tag"><?= htmlspecialchars($plano['tag']) ?></span>
+                            <h3><?= htmlspecialchars($plano['nome']) ?></h3>
+                            <p><?= htmlspecialchars($plano['descricao']) ?></p>
+                        </div>
 
-                    <div class="plan-price">
-                        <small>R$</small>
-                        <strong>79,90</strong>
-                        <span>/mês</span>
-                    </div>
+                        <div class="old-price">
+                            De R$ <?= htmlspecialchars($plano['preco_antigo']) ?>/mês
+                        </div>
 
-                    <div class="plan-limit">
-                        <i class="ri-user-line"></i>
-                        <strong>Até 50 clientes em cobrança</strong>
-                    </div>
+                        <div class="plan-price">
+                            <small>R$</small>
+                            <strong><?= htmlspecialchars($plano['preco']) ?></strong>
+                            <span>/mês</span>
+                        </div>
 
-                    <ul class="plan-features">
-                        <li><i class="ri-check-line"></i> Cadastro de clientes</li>
-                        <li><i class="ri-check-line"></i> Controle de mensalidades</li>
-                        <li><i class="ri-check-line"></i> Registro de pagamentos</li>
-                        <li><i class="ri-check-line"></i> Status de clientes em dia ou pendentes</li>
-                        <li><i class="ri-check-line"></i> Relatórios básicos</li>
-                    </ul>
+                        <div class="annual-price">
+                            <i class="ri-discount-percent-line"></i>
+                            <div>
+                                <strong>R$ <?= htmlspecialchars($plano['anual']) ?> no anual</strong>
+                                <span><?= htmlspecialchars($plano['economia']) ?></span>
+                            </div>
+                        </div>
 
-                    <a href="login.php" class="plan-button">
-                        Começar agora
-                    </a>
-                </article>
+                        <div class="plan-limit <?= $plano['premium'] ? 'unlimited' : '' ?>">
+                            <i class="<?= htmlspecialchars($plano['icone']) ?>"></i>
+                            <strong><?= htmlspecialchars($plano['limite']) ?></strong>
+                        </div>
 
-                <article class="plan-card featured-plan">
-                    <div class="popular-badge">Mais escolhido</div>
+                        <ul class="plan-features">
+                            <?php foreach ($plano['features'] as $feature): ?>
+                                <li>
+                                    <i class="ri-check-line"></i>
+                                    <?= htmlspecialchars($feature) ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
 
-                    <div class="plan-header">
-                        <span class="plan-tag">Plano profissional</span>
-                        <h3>Profissional</h3>
-                        <p>Para empresas com uma carteira maior e que precisam automatizar cobranças.</p>
-                    </div>
+                        <a href="#contato" class="plan-button <?= $plano['destaque'] ? 'featured-button' : '' ?> <?= $plano['premium'] ? 'premium-button' : '' ?>">
+                            <?= htmlspecialchars($plano['botao']) ?>
+                        </a>
+                    </article>
+                <?php endforeach; ?>
+            </div>
 
-                    <div class="plan-price">
-                        <small>R$</small>
-                        <strong>149,90</strong>
-                        <span>/mês</span>
-                    </div>
+            <p class="plans-note">
+                *Clientes ilimitados sujeitos à política de uso justo da plataforma e capacidade operacional contratada.
+                Os valores promocionais podem ser ajustados futuramente para novas contratações.
+            </p>
+        </div>
+    </section>
 
-                    <div class="plan-limit">
-                        <i class="ri-group-line"></i>
-                        <strong>Até 200 clientes em cobrança</strong>
-                    </div>
+    <section class="testimonials-section" id="depoimentos">
+        <div class="container">
+            <div class="section-header" data-animate="fade-up">
+                <span>Prova social</span>
+                <h2>Comentários que mostram a dor que o FluxPay resolve</h2>
+                <p>
+                    Estes textos são modelos demonstrativos. Substitua pelos depoimentos reais
+                    assim que os primeiros clientes começarem a usar.
+                </p>
+            </div>
 
-                    <ul class="plan-features">
-                        <li><i class="ri-check-line"></i> Tudo do plano Essencial</li>
-                        <li><i class="ri-check-line"></i> Lembretes automáticos por WhatsApp</li>
-                        <li><i class="ri-check-line"></i> Mensagens antes e depois do vencimento</li>
-                        <li><i class="ri-check-line"></i> Controle de atrasados</li>
-                        <li><i class="ri-check-line"></i> Relatórios financeiros completos</li>
-                        <li><i class="ri-check-line"></i> Configuração de PIX nas mensagens</li>
-                    </ul>
+            <div class="testimonials-grid">
+                <?php foreach ($depoimentos as $depoimento): ?>
+                    <article class="testimonial-card" data-animate="fade-up">
+                        <div class="stars">
+                            <i class="ri-star-fill"></i>
+                            <i class="ri-star-fill"></i>
+                            <i class="ri-star-fill"></i>
+                            <i class="ri-star-fill"></i>
+                            <i class="ri-star-fill"></i>
+                        </div>
 
-                    <a href="login.php" class="plan-button featured-button">
-                        Escolher Profissional
-                    </a>
-                </article>
+                        <p>
+                            “<?= htmlspecialchars($depoimento['comentario']) ?>”
+                        </p>
 
-                <article class="plan-card premium-plan">
-                    <div class="plan-header">
-                        <span class="plan-tag">Plano avançado</span>
-                        <h3>Premium</h3>
-                        <p>Para empresas com grande volume de cobranças e necessidade de escala.</p>
-                    </div>
-
-                    <div class="plan-price">
-                        <small>R$</small>
-                        <strong>249,90</strong>
-                        <span>/mês</span>
-                    </div>
-
-                    <div class="plan-limit unlimited">
-                        <i class="ri-infinity-line"></i>
-                        <strong>Clientes em cobrança ilimitados</strong>
-                    </div>
-
-                    <ul class="plan-features">
-                        <li><i class="ri-check-line"></i> Tudo do plano Profissional</li>
-                        <li><i class="ri-check-line"></i> Clientes ilimitados</li>
-                        <li><i class="ri-check-line"></i> Leitura de comprovantes</li>
-                        <li><i class="ri-check-line"></i> Baixa inteligente de pagamentos</li>
-                        <li><i class="ri-check-line"></i> Relatórios avançados</li>
-                        <li><i class="ri-check-line"></i> Suporte prioritário</li>
-                        <li><i class="ri-check-line"></i> Ideal para operação em escala</li>
-                    </ul>
-
-                    <a href="login.php" class="plan-button premium-button">
-                        Quero o Premium
-                    </a>
-                </article>
-
+                        <div class="testimonial-author">
+                            <span><?= htmlspecialchars($depoimento['iniciais']) ?></span>
+                            <div>
+                                <strong><?= htmlspecialchars($depoimento['nome']) ?></strong>
+                                <small><?= htmlspecialchars($depoimento['empresa']) ?></small>
+                            </div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
             </div>
         </div>
     </section>
 
-    <section class="cta-section">
-        <div class="container cta-box">
+    <section class="guarantee-section">
+        <div class="container guarantee-box" data-animate="zoom-in">
+            <div class="guarantee-icon">
+                <i class="ri-shield-check-line"></i>
+            </div>
+
             <div>
-                <span>FluxPay SaaS</span>
-                <h2>Pronto para organizar suas cobranças?</h2>
+                <span>Desenvolvido pela L&J Soluções Tecnológicas</span>
+                <h2>Você não está contratando só um sistema. Está contratando organização para sua cobrança.</h2>
                 <p>
-                    Tenha mais controle sobre clientes, pagamentos, atrasos e lembretes automáticos.
+                    O FluxPay foi pensado para pequenos e médios negócios que precisam controlar melhor
+                    mensalidades, inadimplência, lembretes e pagamentos sem complicação.
                 </p>
             </div>
 
-            <a href="login.php" class="btn-white">
-                Entrar na plataforma
+            <a href="#contato" class="btn-primary">
+                Falar com a L&J
+                <i class="ri-whatsapp-line"></i>
+            </a>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container cta-box" data-animate="zoom-in">
+            <div>
+                <span>Oferta de lançamento</span>
+                <h2>Quanto custa continuar perdendo cobrança por esquecimento?</h2>
+                <p>
+                    Com planos a partir de R$ 49,90/mês, o FluxPay foi criado para caber no bolso
+                    e ajudar sua empresa a cobrar melhor.
+                </p>
+            </div>
+
+            <a href="#planos" class="btn-white">
+                Ver planos agora
                 <i class="ri-arrow-right-line"></i>
             </a>
         </div>
@@ -429,14 +635,14 @@ $baseUrl = './';
 
     <section class="faq-section" id="perguntas">
         <div class="container">
-            <div class="section-header">
+            <div class="section-header" data-animate="fade-up">
                 <span>Dúvidas frequentes</span>
                 <h2>Perguntas comuns sobre o FluxPay</h2>
                 <p>Veja algumas respostas antes de começar a usar a plataforma.</p>
             </div>
 
             <div class="faq-list">
-                <div class="faq-item active">
+                <div class="faq-item active" data-animate="fade-up">
                     <button type="button" onclick="toggleFaq(this)">
                         O FluxPay serve para qual tipo de empresa?
                         <i class="ri-arrow-down-s-line"></i>
@@ -449,7 +655,7 @@ $baseUrl = './';
                     </div>
                 </div>
 
-                <div class="faq-item">
+                <div class="faq-item" data-animate="fade-up">
                     <button type="button" onclick="toggleFaq(this)">
                         O sistema envia mensagens por WhatsApp?
                         <i class="ri-arrow-down-s-line"></i>
@@ -462,20 +668,20 @@ $baseUrl = './';
                     </div>
                 </div>
 
-                <div class="faq-item">
+                <div class="faq-item" data-animate="fade-up">
                     <button type="button" onclick="toggleFaq(this)">
-                        O plano Premium é realmente ilimitado?
+                        Como funciona o desconto anual?
                         <i class="ri-arrow-down-s-line"></i>
                     </button>
                     <div class="faq-content">
                         <p>
-                            Sim, o plano Premium é indicado para empresas que precisam cadastrar uma grande
-                            quantidade de clientes em cobrança sem limite definido no plano.
+                            No plano anual, o cliente paga o equivalente a 10 meses e utiliza a plataforma
+                            por 12 meses. É uma forma de reduzir o custo mensal e garantir acesso por mais tempo.
                         </p>
                     </div>
                 </div>
 
-                <div class="faq-item">
+                <div class="faq-item" data-animate="fade-up">
                     <button type="button" onclick="toggleFaq(this)">
                         Posso trocar de plano depois?
                         <i class="ri-arrow-down-s-line"></i>
@@ -487,6 +693,19 @@ $baseUrl = './';
                         </p>
                     </div>
                 </div>
+
+                <div class="faq-item" data-animate="fade-up">
+                    <button type="button" onclick="toggleFaq(this)">
+                        Quem desenvolve o FluxPay?
+                        <i class="ri-arrow-down-s-line"></i>
+                    </button>
+                    <div class="faq-content">
+                        <p>
+                            O FluxPay é desenvolvido pela L&J Soluções Tecnológicas, com foco em sistemas
+                            práticos para organização, cobrança e gestão de negócios.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -494,11 +713,12 @@ $baseUrl = './';
     <section class="contact-section" id="contato">
         <div class="container contact-grid">
 
-            <div class="contact-info">
+            <div class="contact-info" data-animate="fade-right">
                 <span class="section-kicker">Contato</span>
-                <h2>Solicite uma demonstração do FluxPay</h2>
+                <h2>Solicite acesso ao FluxPay</h2>
                 <p>
-                    Preencha os dados ao lado para solicitar acesso, tirar dúvidas ou conhecer melhor a plataforma.
+                    Preencha os dados ao lado para solicitar uma demonstração, tirar dúvidas
+                    ou contratar um dos planos promocionais.
                 </p>
 
                 <div class="contact-cards">
@@ -513,10 +733,16 @@ $baseUrl = './';
                         <span>WhatsApp</span>
                         <strong>(00) 00000-0000</strong>
                     </div>
+
+                    <div>
+                        <i class="ri-building-4-line"></i>
+                        <span>Empresa responsável</span>
+                        <strong>L&J Soluções Tecnológicas</strong>
+                    </div>
                 </div>
             </div>
 
-            <form class="contact-form" action="#" method="post">
+            <form class="contact-form" action="#" method="post" data-animate="fade-left">
                 <div class="form-group">
                     <label for="nome">Nome</label>
                     <input type="text" id="nome" name="nome" placeholder="Seu nome completo">
@@ -537,9 +763,10 @@ $baseUrl = './';
                         <label for="plano">Plano de interesse</label>
                         <select id="plano" name="plano">
                             <option value="">Selecione</option>
-                            <option value="essencial">Essencial</option>
-                            <option value="profissional">Profissional</option>
-                            <option value="premium">Premium</option>
+                            <option value="essencial">Essencial - R$ 49,90/mês</option>
+                            <option value="profissional">Profissional - R$ 89,90/mês</option>
+                            <option value="premium">Premium - R$ 149,90/mês</option>
+                            <option value="anual">Quero desconto anual</option>
                         </select>
                     </div>
                 </div>
@@ -553,6 +780,11 @@ $baseUrl = './';
                     Solicitar contato
                     <i class="ri-send-plane-line"></i>
                 </button>
+
+                <p class="form-note">
+                    Ao solicitar contato, a equipe da L&J Soluções Tecnológicas poderá falar com você
+                    para apresentar o FluxPay e orientar sobre o melhor plano.
+                </p>
             </form>
 
         </div>
@@ -579,6 +811,7 @@ $baseUrl = './';
         <div class="footer-links">
             <a href="#recursos">Recursos</a>
             <a href="#planos">Planos</a>
+            <a href="#depoimentos">Comentários</a>
             <a href="#contato">Contato</a>
             <a href="login.php">Entrar</a>
         </div>
@@ -590,6 +823,6 @@ $baseUrl = './';
     </div>
 </footer>
 
-<script src="<?= $baseUrl ?>/public/assets/js/landing.js"></script>
+<script src="<?= $baseUrl ?>public/assets/js/landing.js"></script>
 </body>
 </html>
