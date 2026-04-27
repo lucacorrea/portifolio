@@ -2000,21 +2000,10 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
 }
 
 function imprimirRecibo(saleId) {
-    let iframe = document.getElementById('print-iframe');
-    if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'print-iframe';
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        iframe.style.visibility = 'hidden';
-        document.body.appendChild(iframe);
-    }
-    // Adiciona timestamp para evitar cache e forçar recarregamento/disparo do print
-    iframe.src = 'recibo_venda.php?id=' + saleId + '&t=' + Date.now();
+    const url = 'recibo_venda.php?id=' + saleId + '&t=' + Date.now();
+    // Abre em uma pequena janela popup. Com o --kiosk-printing, o Chrome vai
+    // enviar direto para a impressora e o script no recibo fechará a janela logo após.
+    window.open(url, 'print_popup', 'width=400,height=600,toolbar=0,scrollbars=0,status=0,location=0,menubar=0');
 }
 
 async function issueNFCe(saleId) {
