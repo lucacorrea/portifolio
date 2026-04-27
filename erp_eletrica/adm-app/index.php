@@ -518,14 +518,9 @@ $cssVersion = file_exists($cssPath) ? filemtime($cssPath) : time();
             padding: 24px 22px;
         }
 
-        .header .brand-icon {
-            width: 72px;
-            height: 72px;
-            border-radius: 21px;
-        }
-
-        .header .brand-icon i {
-            font-size: 2.25rem;
+        .logo-img {
+            max-width: 225px;
+            max-height: 82px;
         }
 
         .premium-card {
