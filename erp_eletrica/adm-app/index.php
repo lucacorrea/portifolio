@@ -98,12 +98,7 @@ if ($db instanceof PDO) {
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
 
-    <?php
-    $cssFile = __DIR__ . '/style.css';
-    $cssVersion = file_exists($cssFile) ? filemtime($cssFile) : time();
-    ?>
-
-    <link rel="stylesheet" href="/style.css?v=<?= $cssVersion ?>">
+    <link rel="stylesheet" href="index.css">
 
     <meta name="theme-color" content="#2f5487">
     <meta name="apple-mobile-web-app-capable" content="yes">
