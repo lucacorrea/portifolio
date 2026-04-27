@@ -271,7 +271,7 @@ try {
                     $stmt->execute([
                         $p['numero'], $p['tipo_processo'] ?? 'CIÊNCIA', $p['tipo_ato'], $p['natureza'], $p['tipo_manifestacao'],
                         $p['revelia'], $p['data_envio'], $p['data_ciencia'], $p['tipo_contagem'],
-                        $p['final_prazo'], $p['prazo_critico'], $p['analisador'], $p['peticionador'] ?? '', $p['protocolista'] ?? '',
+                        $p['final_prazo'], $p['prazo_critico'], trim(strtoupper($p['analisador'])), $p['peticionador'] ?? '', $p['protocolista'] ?? '',
                         $p['quantidade_dias'], $p['status'],
                         $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes'], $p['id']
                     ]);
@@ -288,7 +288,7 @@ try {
                     $stmt->execute([
                         $p['numero'], $p['tipo_processo'] ?? 'CIÊNCIA', $p['tipo_ato'], $p['natureza'], $p['tipo_manifestacao'],
                         $p['revelia'], $p['data_envio'], $p['data_ciencia'], $p['tipo_contagem'],
-                        $p['final_prazo'], $p['prazo_critico'], $p['analisador'], $p['peticionador'] ?? '', $p['protocolista'] ?? '',
+                        $p['final_prazo'], $p['prazo_critico'], trim(strtoupper($p['analisador'])), $p['peticionador'] ?? '', $p['protocolista'] ?? '',
                         $p['quantidade_dias'], $p['status'],
                         $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes']
                     ]);
@@ -400,7 +400,7 @@ try {
                         $dados[$mapeamento['tipo_contagem'] ?? -1] ?? 'ÚTEIS',
                         $formatarData($dados[$mapeamento['final_prazo'] ?? -1] ?? ''),
                         $dados[$mapeamento['prazo_critico'] ?? -1] ?? 'NÃO',
-                        $analisador_import,
+                        trim(strtoupper($analisador_import)),
                         $status_import,
                         $formatarData($data_protocolo_raw),
                         $dados[$mapeamento['observacoes'] ?? -1] ?? '',
@@ -518,7 +518,7 @@ try {
                         $item['tipo_contagem'] ?? 'ÚTEIS',
                         $item['final_prazo'] ?? '',
                         $item['prazo_critico'] ?? 'NÃO',
-                        $analisador_import,
+                        trim(strtoupper($analisador_import)),
                         $status_import,
                         $data_protocolo_raw,
                         $protocolista_import,
