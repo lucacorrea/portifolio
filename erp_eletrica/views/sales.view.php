@@ -596,6 +596,17 @@
 </div>
 
 <script>
+// Helper function to safely parse native or masked BRL currency strings into float
+function parseCurrencyToFloat(valStr) {
+    if (valStr === undefined || valStr === null || valStr === '') return 0;
+    if (typeof valStr === 'number') return valStr;
+    valStr = valStr.toString();
+    if (valStr.includes(',')) {
+        valStr = valStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
+    }
+    return parseFloat(valStr) || 0;
+}
+
 let cart = [];
 let currentPvId = null;
 let currentPvCode = null;
@@ -678,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function calculateChange() {
     const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
     const total = parseFloat(finalTotalText) || 0;
-    const recebido = parseFloat(document.getElementById('valor_recebido').value) || 0;
+    const recebido = parseCurrencyToFloat(document.getElementById('valor_recebido').value) || 0;
     
     const troco = Math.max(0, recebido - total);
     
@@ -707,7 +718,7 @@ function updateCheckoutButtonState() {
     if (payment === 'dinheiro') {
         const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
         const total = parseFloat(finalTotalText) || 0;
-        const recebido = parseFloat(document.getElementById('valor_recebido').value) || 0;
+        const recebido = parseCurrencyToFloat(document.getElementById('valor_recebido').value) || 0;
         
         btnCheckout.disabled = (recebido < total || recebido === 0);
     } else {
@@ -949,12 +960,12 @@ function renderCart() {
         cartTable.appendChild(row);
     });
 
-    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const discountVal = total * (discountPercent / 100);
     const baseVal = total - discountVal;
 
     const payment = document.querySelector('input[name="payment"]:checked').value;
-    const taxPercent = (payment.includes('cartao')) ? (parseFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    const taxPercent = (payment.includes('cartao')) ? (parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
     const taxVal = baseVal * (taxPercent / 100);
     const finalTotalVal = baseVal + taxVal;
 
@@ -1296,7 +1307,7 @@ async function saveCurrentSaleAsPreSale() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
 
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const total = subtotal * (1 - (discountPercent / 100));
 
     const data = {
@@ -1659,7 +1670,7 @@ let authSupervisorCredential = null;
 let authAdmins = [];
 
 async function checkDiscountAuth() {
-    const discount = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discount = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     
     // Admins don't need authorization modal for themselves
     if (currentUserLevel === 'admin') {
@@ -1739,7 +1750,7 @@ function resetDiscount() {
 btnCheckout.onclick = async () => {
     if (cart.length === 0) return;
     
-    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     
     if (discountPercent > 0 && !isAuthorized && currentUserLevel !== 'admin') {
         alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
@@ -1825,13 +1836,13 @@ async function confirmarCheckoutFiado() {
 }
 
 async function processarCheckout() {
-    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const baseVal = subtotal * (1 - (discountPercent / 100));
     const payment = document.querySelector('input[name="payment"]:checked').value;
-    const taxaCartaoPercent = (payment.includes('cartao')) ? (parseFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    const taxaCartaoPercent = (payment.includes('cartao')) ? (parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
     const total = baseVal + (baseVal * (taxaCartaoPercent / 100));
-    const taxaCartao = parseFloat(document.getElementById('taxa_cartao').value) || 0;
+    const taxaCartao = parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0;
 
     if (payment === 'cartao_credito') {
         if (!taxaCartao || taxaCartao <= 0) {
@@ -1841,7 +1852,7 @@ async function processarCheckout() {
         }
     }
 
-    const entrada = parseFloat(document.getElementById('entradaValor')?.value) || 0;
+    const entrada = parseCurrencyToFloat(document.getElementById('entradaValor')?.value) || 0;
     const entradaMetodo = document.getElementById('entradaMetodo')?.value || 'dinheiro';
 
     // Troco / valor recebido (only relevant for dinheiro)
@@ -1849,9 +1860,9 @@ async function processarCheckout() {
     let troco = 0;
     if (payment === 'dinheiro') {
         const valorRecebidoEl = document.getElementById('valor_recebido');
-        valorRecebido = valorRecebidoEl ? (parseFloat(valorRecebidoEl.value) || total) : total;
+        valorRecebido = valorRecebidoEl ? (parseCurrencyToFloat(valorRecebidoEl.value) || total) : total;
         if (valorRecebido < total) valorRecebido = total; // ensure at least total
-        troco = parseFloat(document.getElementById('troco_input').value) || (valorRecebido - total);
+        troco = parseCurrencyToFloat(document.getElementById('troco_input').value) || (valorRecebido - total);
     }
 
     if (payment === 'fiado' && entrada >= total) {
