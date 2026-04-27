@@ -590,6 +590,6 @@ $baseUrl = './';
     </div>
 </footer>
 
-<script src="<?= $baseUrl ?>assets/js/landing.js"></script>
+<script src="<?= $baseUrl ?>/public/assets/js/landing.js"></script>
 </body>
 </html>
