@@ -22,7 +22,9 @@
                                 <span class="input-group-text bg-white border-end-0 text-muted">
                                     <i class="fas fa-search"></i>
                                 </span>
-                                <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off">
+                                <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off" style="flex: 3;">
+                                <span class="input-group-text bg-light border-start-0 text-muted extra-small fw-bold">QTD</span>
+                                <input type="number" id="pdvQty" class="form-control border-start-0 text-center fw-bold" value="1" min="1" step="0.001" style="flex: 1; max-width: 90px;" title="Quantidade">
                             </div>
                             <div id="searchResults" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 10000; width: 100%; max-height: 400px; overflow-y: auto;">
                                 <!-- Results will be injected here -->
@@ -875,9 +877,12 @@ function showPreview(p) {
 }
 
 function addToCart(product) {
+    const qtyInput = document.getElementById('pdvQty');
+    const qtyToAdd = parseFloat(qtyInput.value) || 1;
+
     const existing = cart.find(i => i.id === product.id);
     if (existing) {
-        existing.qty++;
+        existing.qty += qtyToAdd;
     } else {
         cart.push({
             id: product.id,
@@ -887,12 +892,13 @@ function addToCart(product) {
             price2: parseFloat(product.preco_venda_2) || 0,
             price3: parseFloat(product.preco_venda_3) || 0,
             price_tier: 1,
-            qty: 1,
+            qty: qtyToAdd,
             imagens: product.imagens
         });
     }
     
     pdvSearch.value = '';
+    qtyInput.value = 1; // Reseta para 1 após adicionar
     searchResults.classList.add('d-none');
     searchResults.innerHTML = '';
     currentSearchResults = [];
@@ -2114,6 +2120,21 @@ pdvSearch.addEventListener('keyup', (e) => {
         // keydown already handles most cases, but if search was empty and keyup fires, 
         // handleBarcode will just return because value is empty or isProcessingBarcode is true.
         handleBarcode(pdvSearch.value);
+    }
+    
+    // Quick shortcut: if user types '*' in the search box, move focus to quantity
+    if (e.key === '*') {
+        pdvSearch.value = pdvSearch.value.replace('*', '');
+        document.getElementById('pdvQty').focus();
+        document.getElementById('pdvQty').select();
+    }
+});
+
+// If user presses Enter in Qty, focus search
+document.getElementById('pdvQty').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        pdvSearch.focus();
     }
 });
 
