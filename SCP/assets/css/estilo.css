@@ -103,7 +103,7 @@
 .user-marinez { background-color: #f3e8ff; color: #7e22ce; }
 .user-harrison { background-color: #ccfbf1; color: #0f766e; }
 .user-default { background-color: #f1f5f9; color: #475569; }
-.user-Kellen {background-color:  #f1f5f9; color: #f97316;}
+.user-kellen { background-color: #e0e7ff; color: #4338ca; border: 1px solid #a5b4fc; }
 
 .filter-toggle {
     display: flex;

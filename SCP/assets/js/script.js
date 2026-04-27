@@ -662,6 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (u.includes('RHANNY')) return 'user-rhanny';
         if (u.includes('MARINEZ')) return 'user-marinez';
         if (u.includes('HARRISON')) return 'user-harrison';
+        if (u.includes('KELLEN')) return 'user-kellen';
         return 'user-default';
     };
 
