@@ -420,16 +420,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const analisadores = [...new Set(dadosOriginais.map(p => String(p.analisador || 'N/A').trim().toUpperCase()))]
             .filter(a => a !== 'N/A');
         
-        // Ordem personalizada: ANANDA, HARRISON, MARINEZ, KELLEN
-        const ordemDesejada = ['ANANDA', 'HARRISON', 'MARINEZ', 'KELLEN'];
-        
         analisadores.sort((a, b) => {
-            const indexA = ordemDesejada.indexOf(a);
-            const indexB = ordemDesejada.indexOf(b);
-            
-            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-            if (indexA !== -1) return -1;
-            if (indexB !== -1) return 1;
+            if (a === b) return 0;
+            // KELLEN deve ser sempre o último
+            if (a === 'KELLEN') return 1;
+            if (b === 'KELLEN') return -1;
+            // MARINEZ deve ser o penúltimo (antes de KELLEN)
+            if (a === 'MARINEZ') return 1;
+            if (b === 'MARINEZ') return -1;
+            // O resto em ordem alfabética
             return a.localeCompare(b);
         });
         
