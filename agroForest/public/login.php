@@ -38,14 +38,12 @@
             padding: 32px 28px;
         }
 
-        .logo
-        {
+        .logo {
             text-align: center;
             margin-bottom: 24px;
         }
 
-        .logo-img
-        {
+        .logo-img {
             width: 120px;
             height: auto;
         }
