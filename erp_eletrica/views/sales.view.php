@@ -1833,9 +1833,9 @@ async function processarCheckout() {
     const total = baseVal + (baseVal * (taxaCartaoPercent / 100));
     const taxaCartao = parseFloat(document.getElementById('taxa_cartao').value) || 0;
 
-    if (payment.includes('cartao')) {
+    if (payment === 'cartao_credito') {
         if (!taxaCartao || taxaCartao <= 0) {
-            alert("Para pagamentos em cartão, é obrigatório informar a taxa da maquininha.");
+            alert("Para pagamentos em CRÉDITO, é obrigatório informar a taxa da maquininha.");
             document.getElementById('taxa_cartao').focus();
             return;
         }
