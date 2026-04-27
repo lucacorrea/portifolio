@@ -2013,7 +2013,8 @@ function imprimirRecibo(saleId) {
         iframe.style.visibility = 'hidden';
         document.body.appendChild(iframe);
     }
-    iframe.src = 'recibo_venda.php?id=' + saleId;
+    // Adiciona timestamp para evitar cache e forçar recarregamento/disparo do print
+    iframe.src = 'recibo_venda.php?id=' + saleId + '&t=' + Date.now();
 }
 
 async function issueNFCe(saleId) {
