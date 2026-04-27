@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -73,34 +74,36 @@ if ($db instanceof PDO) {
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
 
-    <meta 
-        name="viewport" 
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    >
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <title>Login - ERP Elétrica</title>
 
     <link rel="manifest" href="manifest.json">
 
-    <link 
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" 
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+    <link
         rel="stylesheet"
-    >
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <link 
-        rel="stylesheet" 
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-    >
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
 
-    <link 
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" 
-        rel="stylesheet"
-    >
+    <?php
+    $cssFile = __DIR__ . '/style.css';
+    $cssVersion = file_exists($cssFile) ? filemtime($cssFile) : time();
+    ?>
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/erp_eletrica/style.css?v=<?= $cssVersion ?>">
 
     <meta name="theme-color" content="#2f5487">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -116,11 +119,10 @@ if ($db instanceof PDO) {
                 <div class="login-card">
                     <div class="login-brand">
                         <div class="brand-logo-wrap">
-                            <img 
-                                src="<?= h($logoPath) ?>" 
-                                alt="Centro do Eletricista" 
-                                class="brand-logo"
-                            >
+                            <img
+                                src="<?= h($logoPath) ?>"
+                                alt="Centro do Eletricista"
+                                class="brand-logo">
                         </div>
                     </div>
 
@@ -136,12 +138,11 @@ if ($db instanceof PDO) {
                             <div class="form-group-ce">
                                 <label for="login-unit">Unidade de acesso</label>
 
-                                <select 
-                                    id="login-unit" 
-                                    name="filial_id" 
+                                <select
+                                    id="login-unit"
+                                    name="filial_id"
                                     class="form-control-ce"
-                                    required
-                                >
+                                    required>
                                     <option value="">Selecionar unidade...</option>
 
                                     <?php foreach ($filiais as $filial): ?>
@@ -155,37 +156,34 @@ if ($db instanceof PDO) {
                             <div class="form-group-ce">
                                 <label for="email">ID ou e-mail corporativo</label>
 
-                                <input 
-                                    type="text" 
-                                    id="email" 
+                                <input
+                                    type="text"
+                                    id="email"
                                     name="email"
-                                    class="form-control-ce" 
+                                    class="form-control-ce"
                                     placeholder="Digite seu usuário ou e-mail"
-                                    required 
-                                    autocomplete="username"
-                                >
+                                    required
+                                    autocomplete="username">
                             </div>
 
                             <div class="form-group-ce">
                                 <label for="password">Senha técnica</label>
 
                                 <div class="password-field">
-                                    <input 
-                                        type="password" 
-                                        id="password" 
+                                    <input
+                                        type="password"
+                                        id="password"
                                         name="password"
-                                        class="form-control-ce password-input" 
+                                        class="form-control-ce password-input"
                                         placeholder="Digite sua senha"
-                                        required 
-                                        autocomplete="current-password"
-                                    >
+                                        required
+                                        autocomplete="current-password">
 
-                                    <button 
-                                        type="button" 
-                                        class="btn-password-toggle" 
+                                    <button
+                                        type="button"
+                                        class="btn-password-toggle"
                                         id="toggle-password"
-                                        aria-label="Mostrar ou ocultar senha"
-                                    >
+                                        aria-label="Mostrar ou ocultar senha">
                                         <i class="fa-solid fa-eye"></i>
                                     </button>
                                 </div>
@@ -197,11 +195,10 @@ if ($db instanceof PDO) {
                             </button>
 
                             <div id="biometric-login" class="biometric-box">
-                                <button 
-                                    type="button" 
-                                    class="btn-biometric" 
-                                    onclick="tryBiometricLogin()"
-                                >
+                                <button
+                                    type="button"
+                                    class="btn-biometric"
+                                    onclick="tryBiometricLogin()">
                                     <i class="fa-solid fa-fingerprint"></i>
                                     Desbloquear com biometria
                                 </button>
@@ -227,11 +224,10 @@ if ($db instanceof PDO) {
                 <div class="dashboard-card">
                     <div class="dashboard-brand">
                         <div class="brand-logo-wrap">
-                            <img 
-                                src="<?= h($logoPath) ?>" 
-                                alt="Centro do Eletricista" 
-                                class="brand-logo"
-                            >
+                            <img
+                                src="<?= h($logoPath) ?>"
+                                alt="Centro do Eletricista"
+                                class="brand-logo">
                         </div>
                     </div>
 
@@ -266,28 +262,26 @@ if ($db instanceof PDO) {
 
                         <ul class="nav nav-pills adm-tabs" id="admTabs" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button 
-                                    class="nav-link active" 
-                                    id="tab-codes" 
-                                    data-bs-toggle="pill" 
-                                    data-bs-target="#codes-section" 
-                                    type="button" 
-                                    role="tab"
-                                >
+                                <button
+                                    class="nav-link active"
+                                    id="tab-codes"
+                                    data-bs-toggle="pill"
+                                    data-bs-target="#codes-section"
+                                    type="button"
+                                    role="tab">
                                     <i class="fa-solid fa-key"></i>
                                     Códigos
                                 </button>
                             </li>
 
                             <li class="nav-item" role="presentation">
-                                <button 
-                                    class="nav-link" 
-                                    id="tab-logins" 
-                                    data-bs-toggle="pill" 
-                                    data-bs-target="#logins-section" 
-                                    type="button" 
-                                    role="tab"
-                                >
+                                <button
+                                    class="nav-link"
+                                    id="tab-logins"
+                                    data-bs-toggle="pill"
+                                    data-bs-target="#logins-section"
+                                    type="button"
+                                    role="tab">
                                     <i class="fa-solid fa-user-shield"></i>
                                     Logins
                                 </button>
@@ -295,11 +289,10 @@ if ($db instanceof PDO) {
                         </ul>
 
                         <div class="tab-content adm-tab-content">
-                            <div 
-                                class="tab-pane fade show active" 
-                                id="codes-section" 
-                                role="tabpanel"
-                            >
+                            <div
+                                class="tab-pane fade show active"
+                                id="codes-section"
+                                role="tabpanel">
                                 <div class="section-card">
                                     <div class="section-title">
                                         <i class="fa-solid fa-lock"></i>
@@ -334,11 +327,10 @@ if ($db instanceof PDO) {
                                         </select>
                                     </div>
 
-                                    <button 
-                                        type="button" 
-                                        onclick="generateCode()" 
-                                        class="btn-access"
-                                    >
+                                    <button
+                                        type="button"
+                                        onclick="generateCode()"
+                                        class="btn-access">
                                         <span>Gerar código único</span>
                                         <i class="fa-solid fa-arrow-right"></i>
                                     </button>
@@ -351,20 +343,18 @@ if ($db instanceof PDO) {
                                         </div>
 
                                         <div class="action-row">
-                                            <button 
-                                                type="button" 
-                                                class="btn-outline-ce" 
-                                                onclick="copyToClipboard('display-code')"
-                                            >
+                                            <button
+                                                type="button"
+                                                class="btn-outline-ce"
+                                                onclick="copyToClipboard('display-code')">
                                                 <i class="fa-regular fa-copy"></i>
                                                 Copiar
                                             </button>
 
-                                            <button 
-                                                type="button" 
-                                                class="btn-whatsapp" 
-                                                onclick="shareToWhatsApp('code')"
-                                            >
+                                            <button
+                                                type="button"
+                                                class="btn-whatsapp"
+                                                onclick="shareToWhatsApp('code')">
                                                 <i class="fa-brands fa-whatsapp"></i>
                                                 Enviar
                                             </button>
@@ -373,11 +363,10 @@ if ($db instanceof PDO) {
                                 </div>
                             </div>
 
-                            <div 
-                                class="tab-pane fade" 
-                                id="logins-section" 
-                                role="tabpanel"
-                            >
+                            <div
+                                class="tab-pane fade"
+                                id="logins-section"
+                                role="tabpanel">
                                 <div class="section-card">
                                     <div class="section-title">
                                         <i class="fa-solid fa-user-clock"></i>
@@ -412,11 +401,10 @@ if ($db instanceof PDO) {
                                         </select>
                                     </div>
 
-                                    <button 
-                                        type="button" 
-                                        onclick="generateTempLogin()" 
-                                        class="btn-access btn-access-purple"
-                                    >
+                                    <button
+                                        type="button"
+                                        onclick="generateTempLogin()"
+                                        class="btn-access btn-access-purple">
                                         <span>Criar acesso especial</span>
                                         <i class="fa-solid fa-arrow-right"></i>
                                     </button>
@@ -443,20 +431,18 @@ if ($db instanceof PDO) {
                                         </div>
 
                                         <div class="action-row">
-                                            <button 
-                                                type="button" 
-                                                class="btn-outline-ce" 
-                                                onclick="copyLogin()"
-                                            >
+                                            <button
+                                                type="button"
+                                                class="btn-outline-ce"
+                                                onclick="copyLogin()">
                                                 <i class="fa-regular fa-copy"></i>
                                                 Copiar tudo
                                             </button>
 
-                                            <button 
-                                                type="button" 
-                                                class="btn-whatsapp" 
-                                                onclick="shareToWhatsApp('login')"
-                                            >
+                                            <button
+                                                type="button"
+                                                class="btn-whatsapp"
+                                                onclick="shareToWhatsApp('login')">
                                                 <i class="fa-brands fa-whatsapp"></i>
                                                 WhatsApp
                                             </button>
@@ -479,12 +465,11 @@ if ($db instanceof PDO) {
                                         Biometria não configurada.
                                     </div>
 
-                                    <button 
-                                        type="button" 
-                                        onclick="registerBiometrics()" 
-                                        id="btn-register-bio" 
-                                        class="btn-outline-warning-ce"
-                                    >
+                                    <button
+                                        type="button"
+                                        onclick="registerBiometrics()"
+                                        id="btn-register-bio"
+                                        class="btn-outline-warning-ce">
                                         <i class="fa-solid fa-plus-circle"></i>
                                         Configurar neste celular
                                     </button>
@@ -509,10 +494,11 @@ if ($db instanceof PDO) {
         </section>
     </main>
 
-    <script 
+    <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
     </script>
 
     <script src="script.js"></script>
 </body>
+
 </html>
