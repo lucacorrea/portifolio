@@ -7,15 +7,15 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 define('BASE_PATH', dirname(__DIR__));
-define('APP_PATH', BASE_PATH . '/app');
-define('PUBLIC_PATH', BASE_PATH . '/public');
-define('STORAGE_PATH', BASE_PATH . '/storage');
+define('APP_PATH', BASE_PATH . '/Scobraca/app');
+define('PUBLIC_PATH', BASE_PATH . '/Scobraca/public');
+define('STORAGE_PATH', BASE_PATH . '/Scobraca/storage');
 
-require_once APP_PATH . '/Config/env.php';
-require_once APP_PATH . '/Config/database.php';
-require_once APP_PATH . '/Helpers/functions.php';
-require_once APP_PATH . '/Auth/auth.php';
-require_once APP_PATH . '/Auth/guards.php';
+require_once APP_PATH . '/Scobraca/Config/env.php';
+require_once APP_PATH . '/Scobraca/Config/database.php';
+require_once APP_PATH . '/Scobraca/Helpers/functions.php';
+require_once APP_PATH . '/Scobraca/Auth/auth.php';
+require_once APP_PATH . '/Scobraca/Auth/guards.php';
 
 if ((env('APP_DEBUG', 'false') === 'true')) {
     ini_set('display_errors', '1');
