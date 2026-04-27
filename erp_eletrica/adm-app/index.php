@@ -578,7 +578,7 @@ select {
 
                     <div class="header">
                         <div class="brand-icon">
-                            <i class="fas fa-shield-halved"></i>
+                            <img src="../../erp_eletrica/logo_sistema_erp_eletrica.PNG" alt="">
                         </div>
 
                         <h1>ADM SHIELD</h1>
