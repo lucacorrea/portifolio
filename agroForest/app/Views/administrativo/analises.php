@@ -7,7 +7,7 @@ $usuarioCargo = 'Administrativo';
 $textoBotaoAcao = '';
 $linkBotaoAcao = '#';
 $tituloPagina = 'Administrativo - Análises';
-$cssPagina = 'assets/css/administrativo/administrativo.css';
+$cssPagina = 'app/assets/css/administrativo/administrativo.css';
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
 <div class="layout">
