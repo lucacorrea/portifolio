@@ -411,21 +411,31 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
 
     <script>
         (function() {
-            document.getElementById('btn-print').addEventListener('click', function() {
-                window.print();
-            });
-            
-            // Auto-print on load
-            window.addEventListener('load', function() {
-                // Short delay to ensure styles and fonts are ready
-                setTimeout(() => {
+            const btnPrint = document.getElementById('btn-print');
+            if (btnPrint) {
+                btnPrint.addEventListener('click', function() {
                     window.print();
-                    // If in iframe, we don't need to close, but if opened as popup, 
-                    // some users prefer it closes after print dialog is closed.
-                    // However, window.print() is blocking in most browsers, 
-                    // so we can detect completion in some.
-                }, 500);
-            });
+                });
+            }
+            
+            // Auto-print on load with a faster approach
+            function triggerPrint() {
+                // Focus the window to ensure print command is received
+                window.focus();
+                window.print();
+                
+                // If this is a popup (not an iframe), we can try to close it after printing
+                if (window.opener || window.name === 'print_popup') {
+                    // Note: window.print() is blocking, so this runs after print dialog closes
+                    setTimeout(() => window.close(), 500);
+                }
+            }
+
+            if (document.readyState === 'complete') {
+                triggerPrint();
+            } else {
+                window.addEventListener('load', triggerPrint);
+            }
         })();
     </script>
 </body>

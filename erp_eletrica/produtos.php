@@ -2,6 +2,18 @@
 require_once 'config.php';
 checkAuth();
 
+function cleanCurrency($val) {
+    if (empty($val)) return 0;
+    // Remove R$ and spaces
+    $val = str_replace(['R$', ' '], '', $val);
+    // Remove thousands separators (dots) if there's a comma for decimals
+    if (strpos($val, ',') !== false) {
+        $val = str_replace('.', '', $val);
+        $val = str_replace(',', '.', $val);
+    }
+    return (float) $val;
+}
+
 // Processar formulário
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['action'])) {
@@ -29,9 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_POST['dimensoes'],
                 $_POST['descricao'],
                 $_POST['categoria'],
-                str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_custo'])),
-                str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_venda'])),
-                $_POST['preco_venda_atacado'] ? str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_venda_atacado'])) : null,
+                cleanCurrency($_POST['preco_custo']),
+                cleanCurrency($_POST['preco_venda']),
+                $_POST['preco_venda_atacado'] ? cleanCurrency($_POST['preco_venda_atacado']) : null,
                 $_POST['quantidade'],
                 $_POST['estoque_minimo'],
                 $_POST['tipo_produto']
@@ -66,9 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_POST['dimensoes'],
                 $_POST['descricao'],
                 $_POST['categoria'],
-                str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_custo'])),
-                str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_venda'])),
-                $_POST['preco_venda_atacado'] ? str_replace(['R$', '.', ' '], ['', '', ''], str_replace(',', '.', $_POST['preco_venda_atacado'])) : null,
+                cleanCurrency($_POST['preco_custo']),
+                cleanCurrency($_POST['preco_venda']),
+                $_POST['preco_venda_atacado'] ? cleanCurrency($_POST['preco_venda_atacado']) : null,
                 $_POST['quantidade'],
                 $_POST['estoque_minimo'],
                 $_POST['tipo_produto'],

@@ -201,3 +201,84 @@ window.erpFetch = async function(url, options = {}) {
         throw error;
     }
 };
+
+/**
+ * ERP Global Currency Mask
+ * Auto-formats inputs as currency (R$ xx,xx) right-to-left
+ */
+document.addEventListener('input', function(e) {
+    const target = e.target;
+    if (target.tagName !== 'INPUT') return;
+
+    const name = (target.name || '').toLowerCase();
+    const id = (target.id || '').toLowerCase();
+    
+    const isMoneyField = target.classList.contains('money') || 
+                         target.dataset.mask === 'currency' ||
+                         name.includes('preco') || name.includes('custo') || name === 'valor' ||
+                         id.includes('preco') || id.includes('custo') || id === 'valor';
+
+    if (isMoneyField && target.type !== 'hidden' && !target.classList.contains('no-mask')) {
+        // Automatically change type to text to allow formatting characters
+        if (target.type === 'number') {
+            target.type = 'text';
+        }
+
+        let value = target.value;
+        
+        // Remove tudo que não é dígito
+        value = value.replace(/\D/g, "");
+
+        if (value === "") {
+            target.value = "";
+            return;
+        }
+
+        // Converte para decimal
+        value = (parseInt(value, 10) / 100).toFixed(2);
+        
+        // Formata para o padrão Brasileiro
+        value = value.replace(".", ",");
+        value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+
+        target.value = value;
+    }
+});
+
+/**
+ * ERP Global Submit Cleaner
+ * Automatically removes the currency mask before the form is submitted
+ * so the backend receives clean numbers (e.g., 1500.00 instead of 1.500,00).
+ */
+document.addEventListener('submit', function(e) {
+    if (!e.target || e.target.tagName !== 'FORM') return;
+    
+    const form = e.target;
+    // Encontra todos os inputs que possam ter a máscara de dinheiro dentro deste formulário
+    const moneyInputs = form.querySelectorAll('input[type="text"]');
+    
+    moneyInputs.forEach(input => {
+        const name = (input.name || '').toLowerCase();
+        const id = (input.id || '').toLowerCase();
+        
+        const isMoneyField = input.classList.contains('money') || 
+                             input.dataset.mask === 'currency' ||
+                             name.includes('preco') || name.includes('custo') || name === 'valor' ||
+                             id.includes('preco') || id.includes('custo') || id === 'valor';
+                             
+        if (isMoneyField && !input.classList.contains('no-mask') && input.value) {
+            let value = input.value;
+            // Verifica se o valor parece ter formatação brasileira com vírgula e opcionalmente pontos
+            if (value.includes(',')) {
+                // Remove R$ e espaços
+                value = value.replace(/[R$\s]/g, '');
+                // Remove pontos de milhares
+                value = value.replace(/\./g, '');
+                // Troca vírgula por ponto
+                value = value.replace(/,/g, '.');
+                // Atualiza o valor do input imediatamente antes do submit
+                input.value = value;
+            }
+        }
+    });
+});

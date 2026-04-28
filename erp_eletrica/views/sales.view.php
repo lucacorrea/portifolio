@@ -22,7 +22,9 @@
                                 <span class="input-group-text bg-white border-end-0 text-muted">
                                     <i class="fas fa-search"></i>
                                 </span>
-                                <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off">
+                                <input type="text" id="pdvSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off" style="flex: 3;">
+                                <span class="input-group-text bg-light border-start-0 text-muted extra-small fw-bold">QTD</span>
+                                <input type="number" id="pdvQty" class="form-control border-start-0 text-center fw-bold" value="1" min="1" step="0.001" style="flex: 1; max-width: 90px;" title="Quantidade">
                             </div>
                             <div id="searchResults" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 10000; width: 100%; max-height: 400px; overflow-y: auto;">
                                 <!-- Results will be injected here -->
@@ -594,6 +596,17 @@
 </div>
 
 <script>
+// Helper function to safely parse native or masked BRL currency strings into float
+function parseCurrencyToFloat(valStr) {
+    if (valStr === undefined || valStr === null || valStr === '') return 0;
+    if (typeof valStr === 'number') return valStr;
+    valStr = valStr.toString();
+    if (valStr.includes(',')) {
+        valStr = valStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
+    }
+    return parseFloat(valStr) || 0;
+}
+
 let cart = [];
 let currentPvId = null;
 let currentPvCode = null;
@@ -676,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function calculateChange() {
     const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
     const total = parseFloat(finalTotalText) || 0;
-    const recebido = parseFloat(document.getElementById('valor_recebido').value) || 0;
+    const recebido = parseCurrencyToFloat(document.getElementById('valor_recebido').value) || 0;
     
     const troco = Math.max(0, recebido - total);
     
@@ -705,7 +718,7 @@ function updateCheckoutButtonState() {
     if (payment === 'dinheiro') {
         const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
         const total = parseFloat(finalTotalText) || 0;
-        const recebido = parseFloat(document.getElementById('valor_recebido').value) || 0;
+        const recebido = parseCurrencyToFloat(document.getElementById('valor_recebido').value) || 0;
         
         btnCheckout.disabled = (recebido < total || recebido === 0);
     } else {
@@ -875,9 +888,12 @@ function showPreview(p) {
 }
 
 function addToCart(product) {
+    const qtyInput = document.getElementById('pdvQty');
+    const qtyToAdd = parseFloat(qtyInput.value) || 1;
+
     const existing = cart.find(i => i.id === product.id);
     if (existing) {
-        existing.qty++;
+        existing.qty += qtyToAdd;
     } else {
         cart.push({
             id: product.id,
@@ -887,12 +903,13 @@ function addToCart(product) {
             price2: parseFloat(product.preco_venda_2) || 0,
             price3: parseFloat(product.preco_venda_3) || 0,
             price_tier: 1,
-            qty: 1,
+            qty: qtyToAdd,
             imagens: product.imagens
         });
     }
     
     pdvSearch.value = '';
+    qtyInput.value = 1; // Reseta para 1 após adicionar
     searchResults.classList.add('d-none');
     searchResults.innerHTML = '';
     currentSearchResults = [];
@@ -943,12 +960,12 @@ function renderCart() {
         cartTable.appendChild(row);
     });
 
-    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const discountVal = total * (discountPercent / 100);
     const baseVal = total - discountVal;
 
     const payment = document.querySelector('input[name="payment"]:checked').value;
-    const taxPercent = (payment.includes('cartao')) ? (parseFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    const taxPercent = (payment.includes('cartao')) ? (parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
     const taxVal = baseVal * (taxPercent / 100);
     const finalTotalVal = baseVal + taxVal;
 
@@ -1290,7 +1307,7 @@ async function saveCurrentSaleAsPreSale() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
 
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const total = subtotal * (1 - (discountPercent / 100));
 
     const data = {
@@ -1653,7 +1670,7 @@ let authSupervisorCredential = null;
 let authAdmins = [];
 
 async function checkDiscountAuth() {
-    const discount = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discount = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     
     // Admins don't need authorization modal for themselves
     if (currentUserLevel === 'admin') {
@@ -1733,7 +1750,7 @@ function resetDiscount() {
 btnCheckout.onclick = async () => {
     if (cart.length === 0) return;
     
-    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     
     if (discountPercent > 0 && !isAuthorized && currentUserLevel !== 'admin') {
         alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
@@ -1819,23 +1836,23 @@ async function confirmarCheckoutFiado() {
 }
 
 async function processarCheckout() {
-    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const baseVal = subtotal * (1 - (discountPercent / 100));
     const payment = document.querySelector('input[name="payment"]:checked').value;
-    const taxaCartaoPercent = (payment.includes('cartao')) ? (parseFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    const taxaCartaoPercent = (payment.includes('cartao')) ? (parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
     const total = baseVal + (baseVal * (taxaCartaoPercent / 100));
-    const taxaCartao = parseFloat(document.getElementById('taxa_cartao').value) || 0;
+    const taxaCartao = parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0;
 
-    if (payment.includes('cartao')) {
+    if (payment === 'cartao_credito') {
         if (!taxaCartao || taxaCartao <= 0) {
-            alert("Para pagamentos em cartão, é obrigatório informar a taxa da maquininha.");
+            alert("Para pagamentos em CRÉDITO, é obrigatório informar a taxa da maquininha.");
             document.getElementById('taxa_cartao').focus();
             return;
         }
     }
 
-    const entrada = parseFloat(document.getElementById('entradaValor')?.value) || 0;
+    const entrada = parseCurrencyToFloat(document.getElementById('entradaValor')?.value) || 0;
     const entradaMetodo = document.getElementById('entradaMetodo')?.value || 'dinheiro';
 
     // Troco / valor recebido (only relevant for dinheiro)
@@ -1843,9 +1860,9 @@ async function processarCheckout() {
     let troco = 0;
     if (payment === 'dinheiro') {
         const valorRecebidoEl = document.getElementById('valor_recebido');
-        valorRecebido = valorRecebidoEl ? (parseFloat(valorRecebidoEl.value) || total) : total;
+        valorRecebido = valorRecebidoEl ? (parseCurrencyToFloat(valorRecebidoEl.value) || total) : total;
         if (valorRecebido < total) valorRecebido = total; // ensure at least total
-        troco = parseFloat(document.getElementById('troco_input').value) || (valorRecebido - total);
+        troco = parseCurrencyToFloat(document.getElementById('troco_input').value) || (valorRecebido - total);
     }
 
     if (payment === 'fiado' && entrada >= total) {
@@ -1994,20 +2011,10 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
 }
 
 function imprimirRecibo(saleId) {
-    let iframe = document.getElementById('print-iframe');
-    if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'print-iframe';
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        iframe.style.visibility = 'hidden';
-        document.body.appendChild(iframe);
-    }
-    iframe.src = 'recibo_venda.php?id=' + saleId;
+    const url = 'recibo_venda.php?id=' + saleId + '&t=' + Date.now();
+    // Abre em uma pequena janela popup. Com o --kiosk-printing, o Chrome vai
+    // enviar direto para a impressora e o script no recibo fechará a janela logo após.
+    window.open(url, 'print_popup', 'width=400,height=600,toolbar=0,scrollbars=0,status=0,location=0,menubar=0');
 }
 
 async function issueNFCe(saleId) {
@@ -2114,6 +2121,21 @@ pdvSearch.addEventListener('keyup', (e) => {
         // keydown already handles most cases, but if search was empty and keyup fires, 
         // handleBarcode will just return because value is empty or isProcessingBarcode is true.
         handleBarcode(pdvSearch.value);
+    }
+    
+    // Quick shortcut: if user types '*' in the search box, move focus to quantity
+    if (e.key === '*') {
+        pdvSearch.value = pdvSearch.value.replace('*', '');
+        document.getElementById('pdvQty').focus();
+        document.getElementById('pdvQty').select();
+    }
+});
+
+// If user presses Enter in Qty, focus search
+document.getElementById('pdvQty').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        pdvSearch.focus();
     }
 });
 
