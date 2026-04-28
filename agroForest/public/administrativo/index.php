@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require dirname(__DIR__, 2) . '/app/Helpers/url.php';
+
 $pagina = $_GET['pagina'] ?? 'dashboard';
 
 $viewsPermitidas = [
@@ -20,4 +22,11 @@ if (!isset($viewsPermitidas[$pagina])) {
     exit('Página não encontrada.');
 }
 
-require $viewsPermitidas[$pagina];
+$arquivoView = $viewsPermitidas[$pagina];
+
+if (!file_exists($arquivoView)) {
+    http_response_code(500);
+    exit('View não encontrada: ' . basename($arquivoView));
+}
+
+require $arquivoView;
