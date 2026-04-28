@@ -1,25 +1,32 @@
 <?php
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/app/Helpers/url.php';
-require dirname(__DIR__) . '/app/Helpers/auth.php';
-require dirname(__DIR__) . '/app/Core/Router.php';
-require dirname(__DIR__) . '/app/Core/Controller.php';
-require dirname(__DIR__) . '/app/Core/Model.php';
-require dirname(__DIR__) . '/app/Core/Session.php';
+require dirname(__DIR__, 2) . '/app/Helpers/url.php';
 
-Session::start();
-
-date_default_timezone_set((require dirname(__DIR__) . '/app/Config/app.php')['timezone'] ?? 'America/Manaus');
-
-$area = $_GET['area'] ?? 'administrativo';
 $pagina = $_GET['pagina'] ?? 'dashboard';
-$view = Router::resolve($area, $pagina);
 
-if ($view === null) {
+$viewsPermitidas = [
+    'dashboard'           => dirname(__DIR__, 2) . '/app/Views/administrativo/dashboard.php',
+    'protocolosRecebidos' => dirname(__DIR__, 2) . '/app/Views/administrativo/protocolosRecebidos.php',
+    'orcamentos'          => dirname(__DIR__, 2) . '/app/Views/administrativo/orcamentos.php',
+    'clientes'            => dirname(__DIR__, 2) . '/app/Views/administrativo/clientes.php',
+    'documentos'          => dirname(__DIR__, 2) . '/app/Views/administrativo/documentos.php',
+    'pendencias'          => dirname(__DIR__, 2) . '/app/Views/administrativo/pendencias.php',
+    'relatorios'          => dirname(__DIR__, 2) . '/app/Views/administrativo/relatorios.php',
+    'configuracoes'       => dirname(__DIR__, 2) . '/app/Views/administrativo/configuracoes.php',
+    'verProtocolo'        => dirname(__DIR__, 2) . '/app/Views/administrativo/verProtocolo.php',
+];
+
+if (!isset($viewsPermitidas[$pagina])) {
     http_response_code(404);
-    require dirname(__DIR__) . '/app/Views/errors/404.php';
-    exit;
+    exit('Página não encontrada.');
 }
 
-require dirname(__DIR__) . '/app/Views/' . $view . '.php';
+$arquivoView = $viewsPermitidas[$pagina];
+
+if (!file_exists($arquivoView)) {
+    http_response_code(500);
+    exit('View não encontrada: ' . basename($arquivoView));
+}
+
+require $arquivoView;
