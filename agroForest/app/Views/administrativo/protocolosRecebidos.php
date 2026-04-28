@@ -9,68 +9,6 @@ $linkBotaoAcao = route_url('administrativo', 'orcamentos');
 $tituloPagina = 'Administrativo - Protocolos Recebidos';
 $cssPagina = 'assets/css/administrativo/styleAdministrativo.css';
 
-$protocolos = [
-    [
-        'numero' => 'PRT-2026-0501',
-        'cliente' => 'Carlos Henrique',
-        'servico' => 'Solicitação de orçamento',
-        'prioridade' => 'Normal',
-        'recebido_em' => '28/04/2026 08:30',
-        'status' => 'Em análise'
-    ],
-    [
-        'numero' => 'PRT-2026-0502',
-        'cliente' => 'Fernanda Martins',
-        'servico' => 'Atendimento prioritário',
-        'prioridade' => 'Alta',
-        'recebido_em' => '28/04/2026 09:10',
-        'status' => 'Urgente'
-    ],
-    [
-        'numero' => 'PRT-2026-0503',
-        'cliente' => 'Ana Beatriz Costa',
-        'servico' => 'Análise documental',
-        'prioridade' => 'Média',
-        'recebido_em' => '28/04/2026 10:05',
-        'status' => 'Pendente'
-    ],
-    [
-        'numero' => 'PRT-2026-0504',
-        'cliente' => 'João Pedro Silva',
-        'servico' => 'Cadastro de serviço',
-        'prioridade' => 'Normal',
-        'recebido_em' => '28/04/2026 10:42',
-        'status' => 'Concluído'
-    ],
-    [
-        'numero' => 'PRT-2026-0505',
-        'cliente' => 'Raimundo Lopes',
-        'servico' => 'Revisão de solicitação',
-        'prioridade' => 'Média',
-        'recebido_em' => '28/04/2026 11:15',
-        'status' => 'Em análise'
-    ],
-];
-
-function classe_status_admin(string $status): string
-{
-    return match ($status) {
-        'Concluído' => 'ok',
-        'Pendente' => 'pending',
-        'Urgente' => 'high',
-        default => 'progress',
-    };
-}
-
-function classe_prioridade_admin(string $prioridade): string
-{
-    return match ($prioridade) {
-        'Alta' => 'high',
-        'Média' => 'pending',
-        default => 'progress',
-    };
-}
-
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
 
@@ -181,50 +119,134 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <th>Protocolo</th>
                             <th>Cliente</th>
                             <th>Serviço</th>
+                            <th>Origem</th>
+                            <th>Recepcionista</th>
                             <th>Prioridade</th>
-                            <th>Recebido em</th>
+                            <th>Tempo em fila</th>
+                            <th>SLA</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($protocolos as $protocolo): ?>
-                            <tr>
-                                <td>
-                                    <strong><?= htmlspecialchars($protocolo['numero']) ?></strong>
-                                </td>
-                                <td><?= htmlspecialchars($protocolo['cliente']) ?></td>
-                                <td><?= htmlspecialchars($protocolo['servico']) ?></td>
-                                <td>
-                                    <span class="status <?= classe_prioridade_admin($protocolo['prioridade']) ?>">
-                                        <?= htmlspecialchars($protocolo['prioridade']) ?>
-                                    </span>
-                                </td>
-                                <td><?= htmlspecialchars($protocolo['recebido_em']) ?></td>
-                                <td>
-                                    <span class="status <?= classe_status_admin($protocolo['status']) ?>">
-                                        <?= htmlspecialchars($protocolo['status']) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="table-actions">
-                                        <a href="#" class="btn-outline">Ver</a>
-                                        <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+                        <tr>
+                            <td><strong>PRT-2026-0501</strong></td>
+                            <td>Carlos Henrique</td>
+                            <td>Solicitação de orçamento</td>
+                            <td>Recepção</td>
+                            <td>Maria Souza</td>
+                            <td><span class="status progress">Normal</span></td>
+                            <td>02h 10min</td>
+                            <td><span class="status ok">No prazo</span></td>
+                            <td><span class="status progress">Em análise</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>PRT-2026-0502</strong></td>
+                            <td>Fernanda Martins</td>
+                            <td>Atendimento prioritário</td>
+                            <td>Recepção</td>
+                            <td>Maria Souza</td>
+                            <td><span class="status high">Alta</span></td>
+                            <td>01h 30min</td>
+                            <td><span class="status pending">Próximo do prazo</span></td>
+                            <td><span class="status high">Urgente</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>PRT-2026-0503</strong></td>
+                            <td>Ana Beatriz Costa</td>
+                            <td>Análise documental</td>
+                            <td>Recepção</td>
+                            <td>Juliana Lima</td>
+                            <td><span class="status pending">Média</span></td>
+                            <td>03h 45min</td>
+                            <td><span class="status high">Prazo vencido</span></td>
+                            <td><span class="status pending">Pendente</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>PRT-2026-0504</strong></td>
+                            <td>João Pedro Silva</td>
+                            <td>Cadastro de serviço</td>
+                            <td>Recepção</td>
+                            <td>Maria Souza</td>
+                            <td><span class="status progress">Normal</span></td>
+                            <td>00h 55min</td>
+                            <td><span class="status ok">No prazo</span></td>
+                            <td><span class="status ok">Concluído</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>PRT-2026-0505</strong></td>
+                            <td>Raimundo Lopes</td>
+                            <td>Revisão de solicitação</td>
+                            <td>Recepção</td>
+                            <td>Juliana Lima</td>
+                            <td><span class="status pending">Média</span></td>
+                            <td>01h 05min</td>
+                            <td><span class="status ok">No prazo</span></td>
+                            <td><span class="status progress">Em análise</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>PRT-2026-0506</strong></td>
+                            <td>Marcos Vinícius</td>
+                            <td>Emissão documental</td>
+                            <td>Recepção</td>
+                            <td>Maria Souza</td>
+                            <td><span class="status high">Alta</span></td>
+                            <td>01h 18min</td>
+                            <td><span class="status pending">Próximo do prazo</span></td>
+                            <td><span class="status high">Urgente</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                </div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="pagination">
                 <div class="pagination-info">
-                    Mostrando 5 protocolos da fila atual.
+                    Mostrando 6 protocolos da fila atual.
                 </div>
 
                 <div class="pagination-nav">
-                    <a href="#" class="page-link">1</a>
+                    <a href="#" class="page-link active">1</a>
                     <a href="#" class="page-link">2</a>
                     <a href="#" class="page-link">3</a>
                 </div>
@@ -243,19 +265,19 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <div class="alert-list">
                     <div class="alert-item">
                         <strong>Protocolos urgentes</strong>
-                        <p>Existem 4 processos com prioridade alta aguardando resposta do administrativo.</p>
+                        <p>Existem processos com prioridade alta aguardando resposta do administrativo.</p>
                         <span class="alert-tag urgent">Tratar agora</span>
                     </div>
 
                     <div class="alert-item">
                         <strong>Documentação incompleta</strong>
-                        <p>3 protocolos não podem avançar para orçamento sem conferência dos anexos.</p>
+                        <p>Parte da fila não pode avançar para orçamento sem conferência dos anexos enviados.</p>
                         <span class="alert-tag attention">Conferência</span>
                     </div>
 
                     <div class="alert-item">
                         <strong>Fila crescente</strong>
-                        <p>O volume recebido hoje está acima da média e pode impactar o prazo de retorno.</p>
+                        <p>O volume recebido está acima da média e pode impactar o prazo de retorno do setor.</p>
                         <span class="alert-tag info">Monitorar</span>
                     </div>
                 </div>
@@ -277,7 +299,7 @@ require dirname(__DIR__) . '/layouts/header.php';
 
                     <div class="setting-block">
                         <h3>Taxa de conclusão</h3>
-                        <p>39% dos protocolos do dia já foram transformados em orçamento ou finalizados.</p>
+                        <p>Parte dos protocolos do dia já foi transformada em orçamento ou finalizada.</p>
                     </div>
 
                     <div class="setting-block">
