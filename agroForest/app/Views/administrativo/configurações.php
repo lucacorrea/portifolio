@@ -184,62 +184,7 @@ require dirname(__DIR__) . '/layouts/header.php';
             </form>
         </section>
 
-        <section class="bottom-grid">
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Pontos de configuração</h3>
-                        <p>Itens que impactam diretamente o fluxo do administrativo.</p>
-                    </div>
-                </div>
-
-                <div class="alert-list">
-                    <div class="alert-item">
-                        <strong>Prazo de retorno</strong>
-                        <p>O prazo padrão influencia o nível de cobrança interna e a organização da fila de trabalho.</p>
-                        <span class="alert-tag info">Regra operacional</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Checklist documental</strong>
-                        <p>Essa configuração reduz retrabalho e impede que processos incompletos avancem no fluxo.</p>
-                        <span class="alert-tag attention">Importante</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Bloqueio de conclusão</strong>
-                        <p>Ativar essa regra aumenta a segurança do processo, mas exige mais disciplina do time.</p>
-                        <span class="alert-tag urgent">Avaliar uso</span>
-                    </div>
-                </div>
-            </article>
-
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Resumo da área</h3>
-                        <p>Visão rápida do impacto das configurações atuais.</p>
-                    </div>
-                </div>
-
-                <div class="config-grid">
-                    <div class="setting-block">
-                        <h3>Fluxo mais seguro</h3>
-                        <p>Com checklist ativo e validação obrigatória, o setor reduz risco de erro na conclusão.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Resposta mais rápida</h3>
-                        <p>Alertas automáticos ajudam a equipe a priorizar urgências e controlar a fila.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Padronização</h3>
-                        <p>Mensagens e regras padrão deixam o processo mais claro para quem opera o sistema.</p>
-                    </div>
-                </div>
-            </article>
-        </section>
+      
 
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>

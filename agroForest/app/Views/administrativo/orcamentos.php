@@ -152,62 +152,7 @@ require dirname(__DIR__) . '/layouts/header.php';
             </div>
         </section>
 
-        <section class="bottom-grid">
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Pontos de atenção</h3>
-                        <p>Itens que podem impactar prazo e fechamento.</p>
-                    </div>
-                </div>
-
-                <div class="alert-list">
-                    <div class="alert-item">
-                        <strong>Prazo crítico</strong>
-                        <p>2 orçamentos precisam ser concluídos ainda hoje para não estourar o prazo acordado.</p>
-                        <span class="alert-tag urgent">Prioridade máxima</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Aguardando aprovação</strong>
-                        <p>Existem 3 propostas já montadas aguardando validação final antes do envio.</p>
-                        <span class="alert-tag attention">Validar</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Volume de trabalho</strong>
-                        <p>A fila atual exige atenção especial na distribuição das análises entre o time.</p>
-                        <span class="alert-tag info">Acompanhar</span>
-                    </div>
-                </div>
-            </article>
-
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Resumo do setor</h3>
-                        <p>Indicadores rápidos dos orçamentos administrativos.</p>
-                    </div>
-                </div>
-
-                <div class="config-grid">
-                    <div class="setting-block">
-                        <h3>Ticket médio</h3>
-                        <p>O valor médio dos orçamentos ativos está em R$ 2.150,00.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Eficiência operacional</h3>
-                        <p>O setor está mantendo boa taxa de entrega, mas precisa reduzir urgências de última hora.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Melhor oportunidade</h3>
-                        <p>Ganhar velocidade na validação documental para liberar mais orçamentos no mesmo dia.</p>
-                    </div>
-                </div>
-            </article>
-        </section>
+     
 
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>

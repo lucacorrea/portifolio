@@ -259,62 +259,7 @@ require dirname(__DIR__) . '/layouts/header.php';
             </div>
         </section>
 
-        <section class="bottom-grid">
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Pontos de atenção</h3>
-                        <p>O que o time precisa tratar primeiro.</p>
-                    </div>
-                </div>
-
-                <div class="alert-list">
-                    <div class="alert-item">
-                        <strong>Protocolos urgentes</strong>
-                        <p>Existem processos com prioridade alta aguardando resposta do administrativo.</p>
-                        <span class="alert-tag urgent">Tratar agora</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Documentação incompleta</strong>
-                        <p>Parte da fila não pode avançar para orçamento sem conferência dos anexos enviados.</p>
-                        <span class="alert-tag attention">Conferência</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Fila crescente</strong>
-                        <p>O volume recebido está acima da média e pode impactar o prazo de retorno do setor.</p>
-                        <span class="alert-tag info">Monitorar</span>
-                    </div>
-                </div>
-            </article>
-
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Resumo operacional</h3>
-                        <p>Visão rápida da performance da fila.</p>
-                    </div>
-                </div>
-
-                <div class="config-grid">
-                    <div class="setting-block">
-                        <h3>Tempo médio de análise</h3>
-                        <p>18 minutos por protocolo, mantendo o ritmo esperado do setor.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Taxa de conclusão</h3>
-                        <p>Parte dos protocolos do dia já foi transformada em orçamento ou finalizada.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Risco atual</h3>
-                        <p>O principal gargalo continua sendo documentação pendente enviada pela recepção.</p>
-                    </div>
-                </div>
-            </article>
-        </section>
+     
 
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>
