@@ -1,87 +1,13 @@
 <?php
 $paginaAtual = 'orcamentos';
 $paginaTitulo = 'Orçamentos';
-$paginaDescricao = 'Criação e gestão dos orçamentos da área administrativa.';
-$usuarioNome = 'Usuário Demo';
-$usuarioCargo = 'Administrativo';
-$textoBotaoAcao = '';
-$linkBotaoAcao = '#';
-$tituloPagina = 'Administrativo - Orçamentos';
-$cssPagina = 'assets/css/administrativo/styleadm.css';
-require dirname(__DIR__) . '/layouts/header.php';
-?>
-<div class="layout">
-    <?php require __DIR__ . '/includes/sidebar.php'; ?>
-    <main class="content">
-        <?php require __DIR__ . '/includes/topbar.php'; ?>
-        <section class="placeholder-card">
-            <h2>Orçamentos</h2>
-            <p>Criação e gestão dos orçamentos da área administrativa.</p>
-            <p>Arquivo base criado para continuar a construção do sistema com organização.</p>
-        </section>
-        <?php require __DIR__ . '/includes/footer.php'; ?>
-    </main>
-</div>
-<?php require dirname(__DIR__) . '/layouts/footer.php'; ?>
-<?php
-$paginaAtual = 'orcamentos';
-$paginaTitulo = 'Orçamentos';
 $paginaDescricao = 'Monte, acompanhe e finalize os orçamentos gerados a partir dos protocolos recebidos.';
 $usuarioNome = 'Paulo Martins';
 $usuarioCargo = 'Administrativo';
 $textoBotaoAcao = 'Protocolos Recebidos';
 $linkBotaoAcao = route_url('administrativo', 'protocolosRecebidos');
 $tituloPagina = 'Administrativo - Orçamentos';
-$cssPagina = 'assets/css/administrativo/styleAdministrativo.css';
-
-$orcamentos = [
-    [
-        'codigo' => 'ORC-2026-0101',
-        'protocolo' => 'PRT-2026-0501',
-        'cliente' => 'Carlos Henrique',
-        'servico' => 'Solicitação de orçamento',
-        'valor' => 'R$ 2.450,00',
-        'status' => 'Em elaboração',
-        'prazo' => '29/04/2026'
-    ],
-    [
-        'codigo' => 'ORC-2026-0102',
-        'protocolo' => 'PRT-2026-0502',
-        'cliente' => 'Fernanda Martins',
-        'servico' => 'Atendimento prioritário',
-        'valor' => 'R$ 3.980,00',
-        'status' => 'Urgente',
-        'prazo' => '28/04/2026'
-    ],
-    [
-        'codigo' => 'ORC-2026-0103',
-        'protocolo' => 'PRT-2026-0503',
-        'cliente' => 'Ana Beatriz Costa',
-        'servico' => 'Análise documental',
-        'valor' => 'R$ 1.280,00',
-        'status' => 'Aguardando aprovação',
-        'prazo' => '30/04/2026'
-    ],
-    [
-        'codigo' => 'ORC-2026-0104',
-        'protocolo' => 'PRT-2026-0504',
-        'cliente' => 'João Pedro Silva',
-        'servico' => 'Cadastro de serviço',
-        'valor' => 'R$ 890,00',
-        'status' => 'Concluído',
-        'prazo' => '27/04/2026'
-    ],
-];
-
-function classe_status_orcamento(string $status): string
-{
-    return match ($status) {
-        'Concluído' => 'ok',
-        'Urgente' => 'high',
-        'Aguardando aprovação' => 'pending',
-        default => 'progress',
-    };
-}
+$cssPagina = '../../app/assets/css/administrativo/style.css';
 
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
@@ -205,27 +131,69 @@ require dirname(__DIR__) . '/layouts/header.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($orcamentos as $orcamento): ?>
-                            <tr>
-                                <td><strong><?= htmlspecialchars($orcamento['codigo']) ?></strong></td>
-                                <td><?= htmlspecialchars($orcamento['protocolo']) ?></td>
-                                <td><?= htmlspecialchars($orcamento['cliente']) ?></td>
-                                <td><?= htmlspecialchars($orcamento['servico']) ?></td>
-                                <td><?= htmlspecialchars($orcamento['valor']) ?></td>
-                                <td><?= htmlspecialchars($orcamento['prazo']) ?></td>
-                                <td>
-                                    <span class="status <?= classe_status_orcamento($orcamento['status']) ?>">
-                                        <?= htmlspecialchars($orcamento['status']) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="table-actions">
-                                        <a href="#" class="btn-outline">Ver</a>
-                                        <a href="#" class="btn-primary">Editar</a>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+                        <tr>
+                            <td><strong>ORC-2026-0101</strong></td>
+                            <td>PRT-2026-0501</td>
+                            <td>Carlos Henrique</td>
+                            <td>Solicitação de orçamento</td>
+                            <td>R$ 2.450,00</td>
+                            <td>29/04/2026</td>
+                            <td><span class="status progress">Em elaboração</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="#" class="btn-outline">Ver</a>
+                                    <a href="#" class="btn-primary">Editar</a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>ORC-2026-0102</strong></td>
+                            <td>PRT-2026-0502</td>
+                            <td>Fernanda Martins</td>
+                            <td>Atendimento prioritário</td>
+                            <td>R$ 3.980,00</td>
+                            <td>28/04/2026</td>
+                            <td><span class="status high">Urgente</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="#" class="btn-outline">Ver</a>
+                                    <a href="#" class="btn-primary">Editar</a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>ORC-2026-0103</strong></td>
+                            <td>PRT-2026-0503</td>
+                            <td>Ana Beatriz Costa</td>
+                            <td>Análise documental</td>
+                            <td>R$ 1.280,00</td>
+                            <td>30/04/2026</td>
+                            <td><span class="status pending">Aguardando aprovação</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="#" class="btn-outline">Ver</a>
+                                    <a href="#" class="btn-primary">Editar</a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>ORC-2026-0104</strong></td>
+                            <td>PRT-2026-0504</td>
+                            <td>João Pedro Silva</td>
+                            <td>Cadastro de serviço</td>
+                            <td>R$ 890,00</td>
+                            <td>27/04/2026</td>
+                            <td><span class="status ok">Concluído</span></td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="#" class="btn-outline">Ver</a>
+                                    <a href="#" class="btn-primary">Editar</a>
+                                </div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
