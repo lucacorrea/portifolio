@@ -230,21 +230,6 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
                 <input type="hidden" id="peticionador" value="">
                 <input type="hidden" id="data_peticionamento" value="">
 
-                <!-- Visualização Dinâmica do Peticionamento -->
-                <div id="container-peticionamento" style="display: none; grid-column: span 2; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; background: rgba(139, 92, 246, 0.05); padding: 1.5rem; border-radius: var(--radius); border: 1px dashed rgba(139, 92, 246, 0.3);">
-                    <div style="grid-column: span 2; margin-bottom: -0.5rem;">
-                        <h3 style="color: #8b5cf6; font-size: 0.95rem; border-bottom: 2px solid #8b5cf6; display: inline-block; padding-bottom: 4px;"><i class="fas fa-file-upload"></i> Dados do Peticionamento</h3>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Data de Peticionamento</label>
-                        <input type="date" id="data_peticionamento_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Responsável por Peticionar</label>
-                        <input type="text" id="peticionador_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
-                    </div>
-                </div>
-
                 <div class="form-group" style="grid-column: span 2;">
                     <label for="observacoes">Observações</label>
                     <textarea id="observacoes" rows="4" placeholder="Adicione notas ou detalhes importantes sobre este processo..."></textarea>
@@ -271,7 +256,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
     </form>
 </main>
 
-<script src="assets/js/script.js?v=65"></script>
+<script src="assets/js/script.js?v=66"></script>
 <script>
     // Plano de contingência: Forçar visibilidade se o script externo falhar ou for cacheado
     document.addEventListener('DOMContentLoaded', function() {
