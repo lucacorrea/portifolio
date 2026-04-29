@@ -759,6 +759,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('data_peticionamento_visivel')) {
             document.getElementById('data_peticionamento_visivel').value = p.data_peticionamento || '';
             document.getElementById('data_peticionamento').value = p.data_peticionamento || '';
+        } else if (p.data_peticionamento) {
+            const elDataPeti = document.getElementById('data_peticionamento');
+            if(elDataPeti) elDataPeti.value = p.data_peticionamento;
         }
         
         if (document.getElementById('data_protocolo_visivel')) {
