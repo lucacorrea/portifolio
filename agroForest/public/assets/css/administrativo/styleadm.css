@@ -670,6 +670,12 @@ ol {
     min-width: 0;
 }
 
+.content > .card:not(:first-child),
+.content > .table-card:not(:first-child),
+.content > .form-card:not(:first-child) {
+    margin-top: 20px;
+}
+
 .panel,
 .table-card,
 .form-card {
