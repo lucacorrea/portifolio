@@ -7,7 +7,6 @@ $usuarioCargo = 'Administrativo';
 $textoBotaoAcao = 'Exportar Relatório';
 $linkBotaoAcao = '#';
 $tituloPagina = 'Administrativo - Relatórios';
-$cssPagina = 'assets/css/administrativo/styleAdministrativo.css';
 
 $dadosMensais = [
     ['periodo' => 'Fevereiro/2026', 'recebidos' => 96,  'orcamentos' => 71, 'concluidos' => 58, 'pendencias' => 12, 'tempo_medio' => 21],

@@ -7,7 +7,7 @@ $usuarioCargo = 'Administrativo';
 $textoBotaoAcao = 'Protocolos Recebidos';
 $linkBotaoAcao = route_url('administrativo', 'protocolosRecebidos');
 $tituloPagina = 'Administrativo - Documentos';
-$cssPagina = 'assets/css/administrativo/styleAdministrativo.css';
+
 
 $documentos = [
     [
