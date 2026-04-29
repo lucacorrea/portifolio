@@ -1,32 +1,69 @@
 <?php
 declare(strict_types=1);
 
-require dirname(__DIR__, 2) . '/app/Helpers/url.php';
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 
-$pagina = $_GET['pagina'] ?? 'dashboard';
+define('BASE_PATH', dirname(__DIR__, 2));
+define('APP_PATH', BASE_PATH . '/app');
+define('PUBLIC_PATH', BASE_PATH . '/public');
 
-$viewsPermitidas = [
-    'dashboard'           => dirname(__DIR__, 2) . '/app/Views/administrativo/dashboard.php',
-    'protocolosRecebidos' => dirname(__DIR__, 2) . '/app/Views/administrativo/protocolosRecebidos.php',
-    'orcamentos'          => dirname(__DIR__, 2) . '/app/Views/administrativo/orcamentos.php',
-    'clientes'            => dirname(__DIR__, 2) . '/app/Views/administrativo/clientes.php',
-    'documentos'          => dirname(__DIR__, 2) . '/app/Views/administrativo/documentos.php',
-    'pendencias'          => dirname(__DIR__, 2) . '/app/Views/administrativo/pendencias.php',
-    'relatorios'          => dirname(__DIR__, 2) . '/app/Views/administrativo/relatorios.php',
-    'configuracoes'       => dirname(__DIR__, 2) . '/app/Views/administrativo/configuracoes.php',
-    'verProtocolo'        => dirname(__DIR__, 2) . '/app/Views/administrativo/verProtocolo.php',
+require_once APP_PATH . '/Core/Controller.php';
+require_once APP_PATH . '/Helpers/url.php';
+require_once APP_PATH . '/Helpers/view.php';
+require_once APP_PATH . '/Helpers/flash.php';
+require_once APP_PATH . '/Helpers/auth.php';
+require_once APP_PATH . '/Controllers/AdministrativoController.php';
+
+$pagina = trim($_GET['pagina'] ?? 'dashboard');
+
+$rotas = [
+    'dashboard'           => 'dashboard',
+
+    'protocolosRecebidos' => 'protocolosRecebidos',
+    'protocoloVisualizar' => 'protocoloVisualizar',
+
+    'orcamentos'          => 'orcamentos',
+    'orcamentoCadastrar'  => 'orcamentoCadastrar',
+    'orcamentoEditar'     => 'orcamentoEditar',
+    'orcamentoVisualizar' => 'orcamentoVisualizar',
+
+    'clientes'            => 'clientes',
+    'clienteCadastrar'    => 'clienteCadastrar',
+    'clienteEditar'       => 'clienteEditar',
+    'clienteVisualizar'   => 'clienteVisualizar',
+
+    'documentos'          => 'documentos',
+    'documentoVisualizar' => 'documentoVisualizar',
+
+    'pendencias'          => 'pendencias',
+    'pendenciaCadastrar'  => 'pendenciaCadastrar',
+    'pendenciaEditar'     => 'pendenciaEditar',
+    'pendenciaVisualizar' => 'pendenciaVisualizar',
+
+    'relatorios'          => 'relatorios',
+    'configuracoes'       => 'configuracoes',
 ];
 
-if (!isset($viewsPermitidas[$pagina])) {
+if (!isset($rotas[$pagina])) {
     http_response_code(404);
-    exit('Página não encontrada.');
+
+    $arquivo404 = APP_PATH . '/Views/errors/404.php';
+    if (file_exists($arquivo404)) {
+        require $arquivo404;
+    } else {
+        exit('Página não encontrada.');
+    }
+    exit;
 }
 
-$arquivoView = $viewsPermitidas[$pagina];
+$controller = new AdministrativoController();
+$metodo = $rotas[$pagina];
 
-if (!file_exists($arquivoView)) {
+if (!method_exists($controller, $metodo)) {
     http_response_code(500);
-    exit('View não encontrada: ' . basename($arquivoView));
+    exit('Método não encontrado no AdministrativoController: ' . $metodo);
 }
 
-require $arquivoView;
+$controller->$metodo();
