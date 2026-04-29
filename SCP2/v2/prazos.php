@@ -171,7 +171,16 @@
                 <td style="color:${cor}; font-weight:700;">${diff < 0 ? 'VENCIDO' : diff + 'd'}</td>
                 <td><span style="font-size:0.75rem;">${p.analisador}</span></td>
                 <td><span style="background:${cor}33; color:${cor}; padding:4px 10px; border-radius:50px; font-size:0.7rem; font-weight:800;">${p.status}</span></td>
-                <td><i class="fas fa-eye" style="cursor:pointer; color:var(--primary);"></i></td>
+                <td>
+                    <div class="dropdown">
+                        <button class="btn-dots" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-v"></i></button>
+                        <div class="dropdown-menu">
+                            <button onclick="abrirNoProjudi('${p.numero}')"><i class="fas fa-external-link-alt"></i> Ver no Projudi</button>
+                            <button onclick="editarProcesso(${p.id})"><i class="fas fa-edit"></i> Editar</button>
+                            <button onclick="excluirProcesso(${p.id})" style="color: #f87171;"><i class="fas fa-trash"></i> Excluir</button>
+                        </div>
+                    </div>
+                </td>
             `;
             tbody.appendChild(tr);
         });

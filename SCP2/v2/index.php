@@ -101,7 +101,16 @@
                 <td style="font-weight: 600; color: ${corStatus}">${p.final_prazo ? p.final_prazo.split('-').reverse().join('/') : '---'}</td>
                 <td><span style="color: ${corStatus}; background: ${corStatus}1a; padding: 4px 10px; border-radius: 50px; font-size: 0.75rem; font-weight: 700;">${p.status}</span></td>
                 <td><span style="color: var(--primary); font-size: 0.75rem;"><i class="fas fa-check"></i> Sincronizado</span></td>
-                <td><i class="fas fa-eye" style="cursor: pointer; color: var(--primary);"></i></td>
+                <td>
+                    <div class="dropdown">
+                        <button class="btn-dots" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-v"></i></button>
+                        <div class="dropdown-menu">
+                            <button onclick="abrirNoProjudi('${p.numero}')"><i class="fas fa-external-link-alt"></i> Ver no Projudi</button>
+                            <button onclick="editarProcesso(${p.id})"><i class="fas fa-edit"></i> Editar</button>
+                            <button onclick="excluirProcesso(${p.id})" style="color: #f87171;"><i class="fas fa-trash"></i> Excluir</button>
+                        </div>
+                    </div>
+                </td>
             `;
             tbody.appendChild(tr);
         });

@@ -109,9 +109,12 @@ if ($_SESSION['usuario_perfil'] !== 'ADMIN') {
                 <td>${u.login}</td>
                 <td><span style="background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 50px; font-size: 0.75rem;">${u.perfil}</span></td>
                 <td>
-                    <div style="display:flex; gap:15px;">
-                        <i class="fas fa-edit" onclick="abrirModalUsuario(${u.id})" style="cursor:pointer; color:var(--primary);"></i>
-                        <i class="fas fa-trash" onclick="excluirUsuario(${u.id})" style="cursor:pointer; color:var(--status-urgente);"></i>
+                    <div class="dropdown">
+                        <button class="btn-dots" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-v"></i></button>
+                        <div class="dropdown-menu">
+                            <button onclick="abrirModalUsuario(${u.id})"><i class="fas fa-edit"></i> Editar Dados</button>
+                            <button onclick="excluirUsuario(${u.id})" style="color: #f87171;"><i class="fas fa-user-times"></i> Remover Usuário</button>
+                        </div>
                     </div>
                 </td>
             `;
