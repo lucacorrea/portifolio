@@ -7,6 +7,68 @@ $usuarioCargo = 'Dono';
 $tituloPagina = 'Dono - Relatórios Gerenciais';
 $cssPagina = ['assets/css/administrativo/styleadm.css', 'assets/css/dono/dono.css'];
 
+/*
+|--------------------------------------------------------------------------
+| Funções auxiliares
+|--------------------------------------------------------------------------
+| Mantidas simples para evitar erro em hospedagem.
+*/
+if (!function_exists('dono_h')) {
+    function dono_h($value)
+    {
+        return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('dono_money')) {
+    function dono_money($value)
+    {
+        return 'R$ ' . number_format((float)$value, 2, ',', '.');
+    }
+}
+
+if (!function_exists('dono_int')) {
+    function dono_int($value)
+    {
+        return number_format((float)$value, 0, ',', '.');
+    }
+}
+
+if (!function_exists('dono_percent')) {
+    function dono_percent($value)
+    {
+        $value = (int)$value;
+
+        if ($value > 0) {
+            return '+' . $value . '%';
+        }
+
+        return $value . '%';
+    }
+}
+
+if (!function_exists('dono_trend_class')) {
+    function dono_trend_class($value)
+    {
+        $value = (int)$value;
+
+        if ($value > 0) {
+            return 'up';
+        }
+
+        if ($value < 0) {
+            return 'down';
+        }
+
+        return 'neutral';
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Período fictício
+|--------------------------------------------------------------------------
+*/
 $periodoSelecionado = $_GET['periodo'] ?? 'trimestre';
 
 $periodosPermitidos = ['mes', 'trimestre', 'semestre', 'ano'];
@@ -26,38 +88,37 @@ switch ($periodoSelecionado) {
             'fim' => $hoje->setTime(23, 59, 59),
         ];
 
-        $relatorio = [
-            'indicadores' => [
-                'protocolos_total' => 118,
-                'protocolos_concluidos' => 84,
-                'protocolos_pendentes' => 16,
-                'protocolos_atrasados' => 5,
-                'protocolos_trend' => 12,
+        $indicadores = [
+            'protocolos_total' => 118,
+            'protocolos_concluidos' => 84,
+            'protocolos_pendentes' => 16,
+            'protocolos_atrasados' => 5,
+            'protocolos_trend' => 12,
 
-                'orcamentos_total' => 46,
-                'orcamentos_finalizados' => 32,
-                'orcamentos_pendentes' => 14,
-                'orcamentos_trend' => 9,
+            'orcamentos_total' => 46,
+            'orcamentos_finalizados' => 32,
+            'orcamentos_pendentes' => 14,
+            'orcamentos_trend' => 9,
 
-                'valor_total_orcamentos' => 28750.00,
-                'ticket_medio' => 898.44,
+            'valor_total_orcamentos' => 28750.00,
+            'ticket_medio' => 898.44,
 
-                'usuarios_total' => 12,
-                'usuarios_ativos' => 9,
-                'usuarios_inativos' => 3,
-                'usuarios_ativos_percentual' => 75,
+            'usuarios_total' => 12,
+            'usuarios_ativos' => 9,
+            'usuarios_inativos' => 3,
+            'usuarios_ativos_percentual' => 75,
+        ];
+
+        $graficos = [
+            'evolucao' => [
+                'labels' => ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+                'abertos' => [24, 31, 28, 35],
+                'concluidos' => [18, 22, 20, 24],
+                'pendentes' => [6, 9, 8, 10],
             ],
-            'graficos' => [
-                'evolucao' => [
-                    'labels' => ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
-                    'abertos' => [24, 31, 28, 35],
-                    'concluidos' => [18, 22, 20, 24],
-                    'pendentes' => [6, 9, 8, 10],
-                ],
-                'status' => [
-                    'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
-                    'valores' => [84, 18, 16],
-                ],
+            'status' => [
+                'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
+                'valores' => [84, 18, 16],
             ],
         ];
         break;
@@ -70,38 +131,37 @@ switch ($periodoSelecionado) {
             'fim' => $hoje->setTime(23, 59, 59),
         ];
 
-        $relatorio = [
-            'indicadores' => [
-                'protocolos_total' => 684,
-                'protocolos_concluidos' => 512,
-                'protocolos_pendentes' => 39,
-                'protocolos_atrasados' => 11,
-                'protocolos_trend' => 22,
+        $indicadores = [
+            'protocolos_total' => 684,
+            'protocolos_concluidos' => 512,
+            'protocolos_pendentes' => 39,
+            'protocolos_atrasados' => 11,
+            'protocolos_trend' => 22,
 
-                'orcamentos_total' => 212,
-                'orcamentos_finalizados' => 168,
-                'orcamentos_pendentes' => 44,
-                'orcamentos_trend' => 17,
+            'orcamentos_total' => 212,
+            'orcamentos_finalizados' => 168,
+            'orcamentos_pendentes' => 44,
+            'orcamentos_trend' => 17,
 
-                'valor_total_orcamentos' => 148920.00,
-                'ticket_medio' => 886.43,
+            'valor_total_orcamentos' => 148920.00,
+            'ticket_medio' => 886.43,
 
-                'usuarios_total' => 12,
-                'usuarios_ativos' => 9,
-                'usuarios_inativos' => 3,
-                'usuarios_ativos_percentual' => 75,
+            'usuarios_total' => 12,
+            'usuarios_ativos' => 9,
+            'usuarios_inativos' => 3,
+            'usuarios_ativos_percentual' => 75,
+        ];
+
+        $graficos = [
+            'evolucao' => [
+                'labels' => ['Nov', 'Dez', 'Jan', 'Fev', 'Mar', 'Abr'],
+                'abertos' => [92, 104, 111, 118, 126, 133],
+                'concluidos' => [70, 81, 86, 91, 94, 90],
+                'pendentes' => [12, 15, 19, 17, 20, 21],
             ],
-            'graficos' => [
-                'evolucao' => [
-                    'labels' => ['Nov', 'Dez', 'Jan', 'Fev', 'Mar', 'Abr'],
-                    'abertos' => [92, 104, 111, 118, 126, 133],
-                    'concluidos' => [70, 81, 86, 91, 94, 90],
-                    'pendentes' => [12, 15, 19, 17, 20, 21],
-                ],
-                'status' => [
-                    'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
-                    'valores' => [512, 133, 39],
-                ],
+            'status' => [
+                'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
+                'valores' => [512, 133, 39],
             ],
         ];
         break;
@@ -114,38 +174,37 @@ switch ($periodoSelecionado) {
             'fim' => $hoje->setTime(23, 59, 59),
         ];
 
-        $relatorio = [
-            'indicadores' => [
-                'protocolos_total' => 1248,
-                'protocolos_concluidos' => 936,
-                'protocolos_pendentes' => 64,
-                'protocolos_atrasados' => 18,
-                'protocolos_trend' => 31,
+        $indicadores = [
+            'protocolos_total' => 1248,
+            'protocolos_concluidos' => 936,
+            'protocolos_pendentes' => 64,
+            'protocolos_atrasados' => 18,
+            'protocolos_trend' => 31,
 
-                'orcamentos_total' => 398,
-                'orcamentos_finalizados' => 301,
-                'orcamentos_pendentes' => 97,
-                'orcamentos_trend' => 24,
+            'orcamentos_total' => 398,
+            'orcamentos_finalizados' => 301,
+            'orcamentos_pendentes' => 97,
+            'orcamentos_trend' => 24,
 
-                'valor_total_orcamentos' => 276480.00,
-                'ticket_medio' => 918.54,
+            'valor_total_orcamentos' => 276480.00,
+            'ticket_medio' => 918.54,
 
-                'usuarios_total' => 12,
-                'usuarios_ativos' => 9,
-                'usuarios_inativos' => 3,
-                'usuarios_ativos_percentual' => 75,
+            'usuarios_total' => 12,
+            'usuarios_ativos' => 9,
+            'usuarios_inativos' => 3,
+            'usuarios_ativos_percentual' => 75,
+        ];
+
+        $graficos = [
+            'evolucao' => [
+                'labels' => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+                'abertos' => [88, 94, 101, 118, 125, 132, 137, 121, 111, 98, 92, 31],
+                'concluidos' => [62, 70, 82, 89, 94, 98, 104, 96, 88, 75, 64, 14],
+                'pendentes' => [12, 14, 16, 18, 17, 21, 19, 16, 14, 12, 9, 4],
             ],
-            'graficos' => [
-                'evolucao' => [
-                    'labels' => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
-                    'abertos' => [88, 94, 101, 118, 125, 132, 137, 121, 111, 98, 92, 31],
-                    'concluidos' => [62, 70, 82, 89, 94, 98, 104, 96, 88, 75, 64, 14],
-                    'pendentes' => [12, 14, 16, 18, 17, 21, 19, 16, 14, 12, 9, 4],
-                ],
-                'status' => [
-                    'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
-                    'valores' => [936, 248, 64],
-                ],
+            'status' => [
+                'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
+                'valores' => [936, 248, 64],
             ],
         ];
         break;
@@ -159,198 +218,135 @@ switch ($periodoSelecionado) {
             'fim' => $hoje->setTime(23, 59, 59),
         ];
 
-        $relatorio = [
-            'indicadores' => [
-                'protocolos_total' => 342,
-                'protocolos_concluidos' => 247,
-                'protocolos_pendentes' => 14,
-                'protocolos_atrasados' => 6,
-                'protocolos_trend' => 18,
+        $indicadores = [
+            'protocolos_total' => 342,
+            'protocolos_concluidos' => 247,
+            'protocolos_pendentes' => 14,
+            'protocolos_atrasados' => 6,
+            'protocolos_trend' => 18,
 
-                'orcamentos_total' => 112,
-                'orcamentos_finalizados' => 89,
-                'orcamentos_pendentes' => 23,
-                'orcamentos_trend' => 11,
+            'orcamentos_total' => 112,
+            'orcamentos_finalizados' => 89,
+            'orcamentos_pendentes' => 23,
+            'orcamentos_trend' => 11,
 
-                'valor_total_orcamentos' => 48750.00,
-                'ticket_medio' => 547.75,
+            'valor_total_orcamentos' => 48750.00,
+            'ticket_medio' => 547.75,
 
-                'usuarios_total' => 12,
-                'usuarios_ativos' => 9,
-                'usuarios_inativos' => 3,
-                'usuarios_ativos_percentual' => 75,
+            'usuarios_total' => 12,
+            'usuarios_ativos' => 9,
+            'usuarios_inativos' => 3,
+            'usuarios_ativos_percentual' => 75,
+        ];
+
+        $graficos = [
+            'evolucao' => [
+                'labels' => ['Fev', 'Mar', 'Abr'],
+                'abertos' => [104, 113, 125],
+                'concluidos' => [72, 81, 94],
+                'pendentes' => [13, 15, 14],
             ],
-            'graficos' => [
-                'evolucao' => [
-                    'labels' => ['Fev', 'Mar', 'Abr'],
-                    'abertos' => [104, 113, 125],
-                    'concluidos' => [72, 81, 94],
-                    'pendentes' => [13, 15, 14],
-                ],
-                'status' => [
-                    'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
-                    'valores' => [247, 81, 14],
-                ],
+            'status' => [
+                'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
+                'valores' => [247, 81, 14],
             ],
         ];
         break;
 }
 
-$indicadores = $relatorio['indicadores'];
+/*
+|--------------------------------------------------------------------------
+| Dados fictícios fixos
+|--------------------------------------------------------------------------
+*/
+$relatorio = [
+    'indicadores' => $indicadores,
+    'graficos' => $graficos,
 
-$relatorio['areas'] = [
-    [
-        'area' => 'Recepção',
-        'descricao' => 'Entrada e triagem',
-        'volume' => '128 atendimentos',
-        'concluidos' => '89 encaminhados',
-        'pendencias' => '17',
-        'eficiencia' => 69,
-        'status' => 'progress',
-        'leitura' => 'Operação estável',
+    'areas' => [
+        [
+            'area' => 'Recepção',
+            'descricao' => 'Entrada e triagem',
+            'volume' => '128 atendimentos',
+            'concluidos' => '89 encaminhados',
+            'pendencias' => '17',
+            'eficiencia' => 69,
+            'status' => 'progress',
+            'leitura' => 'Operação estável',
+        ],
+        [
+            'area' => 'Administrativo',
+            'descricao' => 'Análise e orçamento',
+            'volume' => '94 análises',
+            'concluidos' => '72 finalizadas',
+            'pendencias' => '11',
+            'eficiencia' => 76,
+            'status' => 'ok',
+            'leitura' => 'Boa entrega',
+        ],
+        [
+            'area' => 'Gestão',
+            'descricao' => 'Usuários e permissões',
+            'volume' => '12 usuários',
+            'concluidos' => '9 ativos',
+            'pendencias' => '3 revisões',
+            'eficiencia' => 75,
+            'status' => 'pending',
+            'leitura' => 'Acompanhar acessos',
+        ],
     ],
-    [
-        'area' => 'Administrativo',
-        'descricao' => 'Análise e orçamento',
-        'volume' => '94 análises',
-        'concluidos' => '72 finalizadas',
-        'pendencias' => '11',
-        'eficiencia' => 76,
-        'status' => 'ok',
-        'leitura' => 'Boa entrega',
+
+    'ranking' => [
+        [
+            'area' => 'Administrativo',
+            'descricao' => 'Maior taxa de conclusão',
+            'eficiencia' => 76,
+        ],
+        [
+            'area' => 'Gestão',
+            'descricao' => 'Equipe ativa e controlada',
+            'eficiencia' => 75,
+        ],
+        [
+            'area' => 'Recepção',
+            'descricao' => 'Bom volume de atendimento',
+            'eficiencia' => 69,
+        ],
     ],
-    [
-        'area' => 'Gestão',
-        'descricao' => 'Usuários e permissões',
-        'volume' => '12 usuários',
-        'concluidos' => '9 ativos',
-        'pendencias' => '3 revisões',
-        'eficiencia' => 75,
-        'status' => 'pending',
-        'leitura' => 'Acompanhar acessos',
+
+    'alertas' => [
+        [
+            'tipo' => 'danger',
+            'titulo' => $indicadores['protocolos_atrasados'] . ' protocolos atrasados',
+            'descricao' => 'Existem protocolos sem movimentação há mais de 7 dias. Recomenda-se revisar esses casos com prioridade.',
+        ],
+        [
+            'tipo' => 'warning',
+            'titulo' => $indicadores['protocolos_pendentes'] . ' pendências abertas',
+            'descricao' => 'A operação está estável, mas as pendências precisam ser acompanhadas para evitar acúmulo.',
+        ],
+        [
+            'tipo' => 'success',
+            'titulo' => dono_money($indicadores['valor_total_orcamentos']) . ' em orçamentos',
+            'descricao' => 'O volume financeiro do período está positivo e indica boa movimentação operacional.',
+        ],
+    ],
+
+    'movimentos' => [
+        [
+            'titulo' => 'Orçamento aprovado',
+            'descricao' => 'Administrativo finalizou uma nova análise com valor aprovado pelo cliente.',
+        ],
+        [
+            'titulo' => 'Novo protocolo recebido',
+            'descricao' => 'Recepção registrou atendimento prioritário para análise.',
+        ],
+        [
+            'titulo' => 'Usuário inativo identificado',
+            'descricao' => 'Gestão precisa revisar permissões e acessos antigos.',
+        ],
     ],
 ];
-
-$relatorio['ranking'] = [
-    [
-        'area' => 'Administrativo',
-        'descricao' => 'Maior taxa de conclusão',
-        'eficiencia' => 76,
-    ],
-    [
-        'area' => 'Gestão',
-        'descricao' => 'Equipe ativa e controlada',
-        'eficiencia' => 75,
-    ],
-    [
-        'area' => 'Recepção',
-        'descricao' => 'Bom volume de atendimento',
-        'eficiencia' => 69,
-    ],
-];
-
-$relatorio['alertas'] = [
-    [
-        'tipo' => 'danger',
-        'titulo' => $indicadores['protocolos_atrasados'] . ' protocolos atrasados',
-        'descricao' => 'Existem protocolos sem movimentação há mais de 7 dias. Recomenda-se revisar esses casos com prioridade.',
-    ],
-    [
-        'tipo' => 'warning',
-        'titulo' => $indicadores['protocolos_pendentes'] . ' pendências abertas',
-        'descricao' => 'A operação está estável, mas as pendências precisam ser acompanhadas para evitar acúmulo.',
-    ],
-    [
-        'tipo' => 'success',
-        'titulo' => dono_money_fake($indicadores['valor_total_orcamentos']) . ' em orçamentos',
-        'descricao' => 'O volume financeiro do período está positivo e indica boa movimentação operacional.',
-    ],
-];
-
-$relatorio['movimentos'] = [
-    [
-        'titulo' => 'Orçamento aprovado',
-        'descricao' => 'Administrativo finalizou uma nova análise com valor aprovado pelo cliente.',
-    ],
-    [
-        'titulo' => 'Novo protocolo recebido',
-        'descricao' => 'Recepção registrou atendimento prioritário para análise.',
-    ],
-    [
-        'titulo' => 'Usuário inativo identificado',
-        'descricao' => 'Gestão precisa revisar permissões e acessos antigos.',
-    ],
-];
-
-if (!function_exists('dono_h')) {
-    function dono_h($value): string
-    {
-        return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-    }
-}
-
-if (!function_exists('dono_money')) {
-    function dono_money(float|int $value): string
-    {
-        return 'R$ ' . number_format((float)$value, 2, ',', '.');
-    }
-}
-
-if (!function_exists('dono_money_fake')) {
-    function dono_money_fake(float|int $value): string
-    {
-        return 'R$ ' . number_format((float)$value, 2, ',', '.');
-    }
-}
-
-if (!function_exists('dono_int')) {
-    function dono_int(float|int $value): string
-    {
-        return number_format((float)$value, 0, ',', '.');
-    }
-}
-
-if (!function_exists('dono_percent')) {
-    function dono_percent(float|int $value): string
-    {
-        $value = (int)$value;
-
-        if ($value > 0) {
-            return '+' . $value . '%';
-        }
-
-        return $value . '%';
-    }
-}
-
-if (!function_exists('dono_trend_class')) {
-    function dono_trend_class(float|int $value): string
-    {
-        if ($value > 0) {
-            return 'up';
-        }
-
-        if ($value < 0) {
-            return 'down';
-        }
-
-        return 'neutral';
-    }
-}
-
-if (!function_exists('dono_asset')) {
-    function dono_asset(string $path): string
-    {
-        if (function_exists('asset')) {
-            return asset($path);
-        }
-
-        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
-        $base = preg_replace('#/dono/?$#', '', rtrim($scriptDir, '/'));
-
-        return $base . '/' . ltrim($path, '/');
-    }
-}
 
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
@@ -750,6 +746,172 @@ require dirname(__DIR__) . '/layouts/header.php';
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="<?= dono_h(dono_asset('assets/js/dono/relatoriosDono.js')) ?>"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const dados = window.relatorioDonoCharts || {};
+
+    const protocolosCanvas = document.getElementById("protocolosChart");
+    const statusCanvas = document.getElementById("statusChart");
+
+    if (typeof Chart === "undefined") {
+        console.warn("Chart.js não foi carregado.");
+        return;
+    }
+
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', Arial, sans-serif";
+    Chart.defaults.color = "#475569";
+
+    if (protocolosCanvas) {
+        const evolucao = dados.evolucao || {
+            labels: [],
+            abertos: [],
+            concluidos: [],
+            pendentes: []
+        };
+
+        new Chart(protocolosCanvas, {
+            type: "line",
+            data: {
+                labels: evolucao.labels || [],
+                datasets: [
+                    {
+                        label: "Protocolos abertos",
+                        data: evolucao.abertos || [],
+                        borderColor: "#1b5e20",
+                        backgroundColor: "rgba(27, 94, 32, 0.10)",
+                        pointBackgroundColor: "#1b5e20",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: true
+                    },
+                    {
+                        label: "Concluídos",
+                        data: evolucao.concluidos || [],
+                        borderColor: "#2563eb",
+                        backgroundColor: "rgba(37, 99, 235, 0.08)",
+                        pointBackgroundColor: "#2563eb",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: true
+                    },
+                    {
+                        label: "Pendentes",
+                        data: evolucao.pendentes || [],
+                        borderColor: "#f59e0b",
+                        backgroundColor: "rgba(245, 158, 11, 0.08)",
+                        pointBackgroundColor: "#f59e0b",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            padding: 18,
+                            font: {
+                                weight: "700"
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: "#102016",
+                        titleColor: "#ffffff",
+                        bodyColor: "#ffffff",
+                        padding: 12,
+                        cornerRadius: 12
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                weight: "700"
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: "rgba(148, 163, 184, 0.18)"
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    if (statusCanvas) {
+        const status = dados.status || {
+            labels: ["Concluídos", "Em análise", "Pendentes"],
+            valores: [0, 0, 0]
+        };
+
+        new Chart(statusCanvas, {
+            type: "doughnut",
+            data: {
+                labels: status.labels || [],
+                datasets: [
+                    {
+                        data: status.valores || [],
+                        backgroundColor: [
+                            "#1b5e20",
+                            "#2563eb",
+                            "#f59e0b"
+                        ],
+                        borderColor: "#ffffff",
+                        borderWidth: 5,
+                        hoverOffset: 8
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "68%",
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: "#102016",
+                        titleColor: "#ffffff",
+                        bodyColor: "#ffffff",
+                        padding: 12,
+                        cornerRadius: 12
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 
 <?php require dirname(__DIR__) . '/layouts/footer.php'; ?>
