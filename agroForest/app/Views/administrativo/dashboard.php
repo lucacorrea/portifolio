@@ -7,11 +7,10 @@ $usuarioCargo = 'Administrativo';
 $textoBotaoAcao = 'Novo Orçamento';
 $linkBotaoAcao = route_url('administrativo', 'orcamentos');
 $tituloPagina = 'Administrativo - Dashboard';
-
+$cssPagina = '../assets/css/administrativo/style.css';
 
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
-
 <div class="layout">
     <?php require __DIR__ . '/includes/sidebar.php'; ?>
 

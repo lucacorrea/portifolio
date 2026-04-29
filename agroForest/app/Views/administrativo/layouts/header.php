@@ -2,6 +2,10 @@
 if (!isset($tituloPagina) || $tituloPagina === '') {
     $tituloPagina = 'Sistema';
 }
+
+if (!isset($cssPagina)) {
+    $cssPagina = '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -10,6 +14,8 @@ if (!isset($tituloPagina) || $tituloPagina === '') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($tituloPagina) ?></title>
 
-   <link rel="stylesheet" href="../../app/assets/css/administrativo/style.css">
+    <?php if ($cssPagina !== ''): ?>
+        <link rel="stylesheet" href="<?= htmlspecialchars($cssPagina) ?>">
+    <?php endif; ?>
 </head>
 <body>
