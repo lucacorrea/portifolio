@@ -9,21 +9,25 @@ class ProjudiService {
     private $idConsultante;
     private $codigoSecreto;
     private $client;
+    private $demoMode;
 
-    public function __construct($wsdl, $idConsultante, $codigoSecreto) {
+    public function __construct($wsdl, $idConsultante, $codigoSecreto, $demoMode = false) {
         $this->wsdl = $wsdl;
         $this->idConsultante = $idConsultante;
         $this->codigoSecreto = $codigoSecreto;
+        $this->demoMode = $demoMode;
         
-        try {
-            $this->client = new SoapClient($this->wsdl, [
-                'trace' => 1,
-                'exceptions' => true,
-                'cache_wsdl' => WSDL_CACHE_NONE,
-                'connection_timeout' => 15
-            ]);
-        } catch (Exception $e) {
-            throw new Exception("Erro ao conectar ao Web Service: " . $e->getMessage());
+        if (!$this->demoMode) {
+            try {
+                $this->client = new SoapClient($this->wsdl, [
+                    'trace' => 1,
+                    'exceptions' => true,
+                    'cache_wsdl' => WSDL_CACHE_NONE,
+                    'connection_timeout' => 15
+                ]);
+            } catch (Exception $e) {
+                throw new Exception("Erro ao conectar ao Web Service: " . $e->getMessage());
+            }
         }
     }
 
@@ -39,13 +43,27 @@ class ProjudiService {
      * Consulta os dados de um processo específico
      */
     public function consultarProcesso($numeroProcesso) {
+        if ($this->demoMode) {
+            // Simula um atraso de rede para realismo
+            sleep(1);
+            return [
+                'status' => 'sucesso',
+                'numero' => $numeroProcesso,
+                'magistrado' => 'Dr. Ricardo Alberto de Moraes Cabral',
+                'classe_processual' => 'Procedimento Comum Cível',
+                'nivel_sigilo' => 0,
+                'ultima_movimentacao' => 'Expedição de Mandado de Citação',
+                'data_ultima_mov' => date('Y-m-d H:i:s')
+            ];
+        }
+
         $params = [
             'idConsultante' => $this->idConsultante,
             'senhaConsultante' => $this->gerarSenhaDinamica(),
             'numeroProcesso' => $numeroProcesso,
             'movimentos' => true,
             'incluirCabecalho' => true,
-            'incluirDocumentos' => false // Por padrão não baixa PDFs para ser mais rápido
+            'incluirDocumentos' => false 
         ];
 
         try {

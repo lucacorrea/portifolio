@@ -20,7 +20,8 @@ try {
     $projudi = new ProjudiService(
         $config['tjam']['wsdl']['1g'], 
         $config['tjam']['id_consultante'], 
-        $config['tjam']['codigo_secreto']
+        $config['tjam']['codigo_secreto'],
+        $config['modo_demo'] ?? false
     );
 
     echo "Iniciando sincronização (SCP 2.0 - Tabelas Isoladas)...\n";
@@ -35,18 +36,19 @@ try {
         try {
             $dados = $projudi->consultarProcesso($proc['numero']);
             
-            // Exemplo de atualização no banco (tabelas v2)
+            // Atualização no banco (tabelas v2)
             $upd = $pdo->prepare("UPDATE processos_v2 SET 
                 last_sync = NOW(),
                 magistrado = ?,
-                classe_processual = ?
+                classe_processual = ?,
+                tipo_ato = ?
                 WHERE id = ?");
             
-            // Nota: No XML do MNI, o magistrado costuma vir dentro de <magistradoAtuante>
-            $magistrado = "Dr. Exemplo (Via Projudi)"; // Valor extraído do XML
-            $classe = "Classe Exemplo"; // Valor extraído do XML
+            $magistrado = $dados['magistrado'] ?? 'Magistrado não informado';
+            $classe = $dados['classe_processual'] ?? 'Classe não informada';
+            $ultima_mov = $dados['ultima_movimentacao'] ?? '';
             
-            $upd->execute([$magistrado, $classe, $proc['id']]);
+            $upd->execute([$magistrado, $classe, $ultima_mov, $proc['id']]);
             echo "OK!\n";
 
         } catch (Exception $e) {

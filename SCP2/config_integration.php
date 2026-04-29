@@ -4,6 +4,7 @@
  */
 
 return [
+    'modo_demo' => true, // Ative para testar sem conexão real com o Projudi
     'tjam' => [
         // Substitua pelos seus dados reais fornecidos pelo tribunal
         'id_consultante' => 'SEU_ID_AQUI', 
