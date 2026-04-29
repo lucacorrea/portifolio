@@ -5,9 +5,9 @@ session_start();
 header('Content-Type: application/json');
 
 $host = 'localhost'; 
-$dbname = 'u784961086_procuradoria';
-$username = 'u784961086_procuradoria';
-$password = '@XeFGMa8';
+$dbname = 'portifolio';
+$username = 'root';
+$password = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
