@@ -1,53 +1,69 @@
 <?php
 declare(strict_types=1);
 
-require dirname(__DIR__, 2) . '/app/Helpers/url.php';
-
-$controller = trim($_GET['controller'] ?? 'dashboard');
-$action     = trim($_GET['action'] ?? 'index');
-
-$controller = preg_replace('/[^a-zA-Z0-9_-]/', '', $controller);
-$action     = preg_replace('/[^a-zA-Z0-9_-]/', '', $action);
-
-if ($controller === '') {
-    $controller = 'dashboard';
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
 }
 
-if ($action === '') {
-    $action = 'index';
-}
+define('BASE_PATH', dirname(__DIR__, 2));
+define('APP_PATH', BASE_PATH . '/app');
+define('PUBLIC_PATH', BASE_PATH . '/public');
 
-$basePath          = dirname(__DIR__, 2);
-$controllersPath   = $basePath . '/app/Controllers/Administrativo/';
-$actionsPath       = $basePath . '/app/Actions/Administrativo/';
+require_once APP_PATH . '/Core/Controller.php';
+require_once APP_PATH . '/Helpers/url.php';
+require_once APP_PATH . '/Helpers/view.php';
+require_once APP_PATH . '/Helpers/flash.php';
+require_once APP_PATH . '/Helpers/auth.php';
+require_once APP_PATH . '/Controllers/AdministrativoController.php';
 
+$pagina = trim($_GET['pagina'] ?? 'dashboard');
 
-$controllerClassFile = ucfirst($controller) . 'Controller.php';
-$controllerFile      = $controllersPath . $controllerClassFile;
+$rotas = [
+    'dashboard'           => 'dashboard',
 
+    'protocolosRecebidos' => 'protocolosRecebidos',
+    'protocoloVisualizar' => 'protocoloVisualizar',
 
-$actionFile = $actionsPath . $controller . '/' . $action . '.php';
+    'orcamentos'          => 'orcamentos',
+    'orcamentoCadastrar'  => 'orcamentoCadastrar',
+    'orcamentoEditar'     => 'orcamentoEditar',
+    'orcamentoVisualizar' => 'orcamentoVisualizar',
 
+    'clientes'            => 'clientes',
+    'clienteCadastrar'    => 'clienteCadastrar',
+    'clienteEditar'       => 'clienteEditar',
+    'clienteVisualizar'   => 'clienteVisualizar',
 
-if (!is_dir($actionsPath . $controller)) {
+    'documentos'          => 'documentos',
+    'documentoVisualizar' => 'documentoVisualizar',
+
+    'pendencias'          => 'pendencias',
+    'pendenciaCadastrar'  => 'pendenciaCadastrar',
+    'pendenciaEditar'     => 'pendenciaEditar',
+    'pendenciaVisualizar' => 'pendenciaVisualizar',
+
+    'relatorios'          => 'relatorios',
+    'configuracoes'       => 'configuracoes',
+];
+
+if (!isset($rotas[$pagina])) {
     http_response_code(404);
-    exit('Pasta de actions do controller não encontrada: ' . $controller);
+
+    $arquivo404 = APP_PATH . '/Views/errors/404.php';
+    if (file_exists($arquivo404)) {
+        require $arquivo404;
+    } else {
+        exit('Página não encontrada.');
+    }
+    exit;
 }
 
-if (!file_exists($actionFile)) {
-    http_response_code(404);
-    exit('Action não encontrada: ' . $controller . '/' . $action . '.php');
+$controller = new AdministrativoController();
+$metodo = $rotas[$pagina];
+
+if (!method_exists($controller, $metodo)) {
+    http_response_code(500);
+    exit('Método não encontrado no AdministrativoController: ' . $metodo);
 }
 
-
-if (file_exists($controllerFile)) {
-    require_once $controllerFile;
-}
-
-
-$controllerAtual = $controller;
-$actionAtual     = $action;
-$controllerFileAtual = $controllerFile;
-$actionFileAtual     = $actionFile;
-
-require $actionFile;
+$controller->$metodo();
