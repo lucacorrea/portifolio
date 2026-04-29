@@ -18,6 +18,19 @@ CREATE TABLE clientes (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE tipos_servicos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(120) NOT NULL,
+  categoria VARCHAR(80) NOT NULL,
+  setor_responsavel ENUM('recepcao','administrativo','dono') NOT NULL DEFAULT 'administrativo',
+  prazo_padrao VARCHAR(40) DEFAULT NULL,
+  valor_base DECIMAL(10,2) DEFAULT NULL,
+  descricao TEXT NULL,
+  documentos_necessarios TEXT NULL,
+  status ENUM('ativo','em_revisao','inativo') NOT NULL DEFAULT 'ativo',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE protocolos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   numero VARCHAR(30) NOT NULL UNIQUE,

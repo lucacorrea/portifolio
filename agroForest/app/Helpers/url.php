@@ -24,7 +24,7 @@ function route_url(string $area, string $pagina): string
     return match ($area) {
         'recepcao'       => base_url('index.php?area=recepcao&pagina=' . urlencode($pagina)),
         'administrativo' => base_url('administrativo/?pagina=' . urlencode($pagina)),
-        'dono'           => base_url('index.php?area=dono&pagina=' . urlencode($pagina)),
+        'dono'           => base_url('dono/?pagina=' . urlencode($pagina)),
         default          => base_url('index.php?area=' . urlencode($area) . '&pagina=' . urlencode($pagina)),
     };
 }

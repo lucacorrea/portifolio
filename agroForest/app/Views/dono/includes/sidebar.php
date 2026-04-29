@@ -6,6 +6,7 @@
         <a href="<?= route_url('dono', 'dashboard') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'dashboard' ? 'active' : '' ?>"><span class="nav-icon">🏠</span>Dashboard</a>
         <a href="<?= route_url('dono', 'usuarios') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'usuarios' ? 'active' : '' ?>"><span class="nav-icon">👤</span>Usuários</a>
         <a href="<?= route_url('dono', 'permissoes') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'permissoes' ? 'active' : '' ?>"><span class="nav-icon">🛡️</span>Permissões</a>
+        <a href="<?= route_url('dono', 'tiposServicos') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'tiposServicos' ? 'active' : '' ?>"><span class="nav-icon">🧾</span>Tipos de Serviços</a>
         <a href="<?= route_url('dono', 'relatorios') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'relatorios' ? 'active' : '' ?>"><span class="nav-icon">📊</span>Relatórios</a>
         <a href="<?= route_url('dono', 'configuracoes') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'configuracoes' ? 'active' : '' ?>"><span class="nav-icon">⚙️</span>Configurações</a>
     </nav>
