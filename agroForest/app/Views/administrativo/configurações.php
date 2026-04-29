@@ -7,7 +7,7 @@ $usuarioCargo = 'Administrativo';
 $textoBotaoAcao = 'Salvar Configurações';
 $linkBotaoAcao = '#';
 $tituloPagina = 'Administrativo - Configurações';
-
+$cssPagina = 'assets/css/administrativo/styleadm.css';
 
 require dirname(__DIR__) . '/layouts/header.php';
 ?>

@@ -20,7 +20,7 @@ $dadosOrcamentos      = array_column($dadosMensais, 'orcamentos');
 $dadosConcluidos      = array_column($dadosMensais, 'concluidos');
 $dadosPendencias      = array_column($dadosMensais, 'pendencias');
 $dadosTempoMedio      = array_column($dadosMensais, 'tempo_medio');
-
+$cssPagina = 'assets/css/administrativo/styleadm.css';
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
 

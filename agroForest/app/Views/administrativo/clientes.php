@@ -7,7 +7,7 @@ $usuarioCargo = 'Administrativo';
 $textoBotaoAcao = 'Novo Orçamento';
 $linkBotaoAcao = route_url('administrativo', 'orcamentos');
 $tituloPagina = 'Administrativo - Clientes';
-
+$cssPagina = 'assets/css/administrativo/styleadm.css';
 
 $clientes = [
     [
