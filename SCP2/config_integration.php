@@ -10,8 +10,8 @@ return [
         'codigo_secreto' => 'SEU_CODIGO_SECRETO_AQUI',
         
         'wsdl' => [
-            '1g' => 'https://projudi.tjam.jus.br/projudi_webservices/projudi_intercomunicacaoWebService222?wsdl',
-            '2g' => 'https://projudi.tjam.jus.br/projudi_webservices/projudi_intercomunicacaoWebService2G222?wsdl'
+            '1g' => 'https://projudi.tjam.jus.br/projudi/webservices/projudiIntercomunicacaoWebService222?wsdl',
+            '2g' => 'https://projudi.tjam.jus.br/projudi/webservices/projudiIntercomunicacaoWebService2G222?wsdl'
         ],
         
         'namespaces' => [
