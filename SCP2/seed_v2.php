@@ -3,9 +3,9 @@ require_once 'config_integration.php';
 
 // Conexão com o banco (usando as mesmas configs do sistema)
 $host = 'localhost';
-$db   = 'portifolio'; // Ajuste se o nome do banco for outro
-$user = 'root';
-$pass = '';
+$db   = 'u784961086_procuradoria'; 
+$user = 'u784961086_procuradoria';
+$pass = '@XeFGMa8';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
