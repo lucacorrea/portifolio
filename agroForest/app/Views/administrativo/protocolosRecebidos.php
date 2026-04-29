@@ -143,6 +143,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="PRT-2026-0501">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -161,6 +162,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="PRT-2026-0502">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -179,6 +181,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="PRT-2026-0503">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -197,6 +200,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="PRT-2026-0504">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -215,6 +219,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="PRT-2026-0505">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -233,6 +238,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="PRT-2026-0506">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -246,9 +252,9 @@ require dirname(__DIR__) . '/layouts/header.php';
                 </div>
 
                 <div class="pagination-nav">
-                    <a href="#" class="page-link active">1</a>
-                    <a href="#" class="page-link">2</a>
-                    <a href="#" class="page-link">3</a>
+                    <a href="<?= route_url('administrativo', 'protocolosRecebidos') ?>" class="page-link active">1</a>
+                    <a href="<?= route_url('administrativo', 'protocolosRecebidos') ?>" class="page-link">2</a>
+                    <a href="<?= route_url('administrativo', 'protocolosRecebidos') ?>" class="page-link">3</a>
                 </div>
             </div>
         </section>
@@ -313,5 +319,24 @@ require dirname(__DIR__) . '/layouts/header.php';
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>
 </div>
+
+<div class="modal-backdrop" id="deleteModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+        <div class="modal-header"><h3 id="deleteTitle">Confirmar exclusão</h3></div>
+        <div class="modal-body"><p>Deseja excluir <strong id="deleteItemName">este protocolo</strong>? Não existe página separada para excluir.</p></div>
+        <div class="modal-footer"><button type="button" class="btn-secondary" data-modal-close>Cancelar</button><button type="button" class="btn-danger" data-modal-close>Excluir</button></div>
+    </div>
+</div>
+<script>
+document.querySelectorAll('[data-delete-name]').forEach((button) => {
+    button.addEventListener('click', () => {
+        document.getElementById('deleteItemName').textContent = button.dataset.deleteName;
+        document.getElementById('deleteModal').classList.add('active');
+    });
+});
+document.querySelectorAll('[data-modal-close]').forEach((button) => {
+    button.addEventListener('click', () => document.getElementById('deleteModal').classList.remove('active'));
+});
+</script>
 
 <?php require dirname(__DIR__) . '/layouts/footer.php'; ?>

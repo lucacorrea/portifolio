@@ -56,57 +56,6 @@ require dirname(__DIR__) . '/layouts/header.php';
             </article>
         </section>
 
-        <section class="card panel compact-card">
-            <div class="panel-header">
-                <div>
-                    <h2>Novo orçamento</h2>
-                    <p>Preencha os dados principais para iniciar um orçamento administrativo.</p>
-                </div>
-            </div>
-
-            <form class="form-grid" method="POST" action="">
-                <div class="form-group">
-                    <label for="protocolo">Protocolo</label>
-                    <select id="protocolo" name="protocolo">
-                        <option value="">Selecione o protocolo</option>
-                        <option value="PRT-2026-0501">PRT-2026-0501</option>
-                        <option value="PRT-2026-0502">PRT-2026-0502</option>
-                        <option value="PRT-2026-0503">PRT-2026-0503</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="cliente">Cliente</label>
-                    <input type="text" id="cliente" name="cliente" placeholder="Nome do cliente">
-                </div>
-
-                <div class="form-group col-2">
-                    <label for="servico">Serviço</label>
-                    <input type="text" id="servico" name="servico" placeholder="Descrição do serviço orçado">
-                </div>
-
-                <div class="form-group">
-                    <label for="valor">Valor do orçamento</label>
-                    <input type="text" id="valor" name="valor" placeholder="R$ 0,00">
-                </div>
-
-                <div class="form-group">
-                    <label for="prazo">Prazo de retorno</label>
-                    <input type="date" id="prazo" name="prazo">
-                </div>
-
-                <div class="form-group col-2">
-                    <label for="observacoes">Observações</label>
-                    <textarea id="observacoes" name="observacoes" rows="4" placeholder="Informações adicionais para o orçamento"></textarea>
-                </div>
-
-                <div class="form-actions col-2">
-                    <a href="<?= route_url('administrativo', 'dashboard') ?>" class="btn-secondary">Cancelar</a>
-                    <button type="submit" class="btn-primary">Salvar Orçamento</button>
-                </div>
-            </form>
-        </section>
-
         <section class="card panel">
             <div class="panel-header">
                 <div>
@@ -143,6 +92,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'orcamentoVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoEditar') ?>" class="btn-primary">Editar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="ORC-2026-0101">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -159,6 +109,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'orcamentoVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoEditar') ?>" class="btn-primary">Editar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="ORC-2026-0102">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -175,6 +126,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'orcamentoVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoEditar') ?>" class="btn-primary">Editar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="ORC-2026-0103">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -191,6 +143,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <div class="table-actions">
                                     <a href="<?= route_url('administrativo', 'orcamentoVisualizar') ?>" class="btn-outline">Ver</a>
                                     <a href="<?= route_url('administrativo', 'orcamentoEditar') ?>" class="btn-primary">Editar</a>
+                                    <button type="button" class="btn-danger" data-delete-name="ORC-2026-0104">Excluir</button>
                                 </div>
                             </td>
                         </tr>
@@ -259,5 +212,28 @@ require dirname(__DIR__) . '/layouts/header.php';
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>
 </div>
+
+<div class="modal-backdrop" id="deleteModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+        <div class="modal-header"><h3 id="deleteTitle">Confirmar exclusão</h3></div>
+        <div class="modal-body"><p>Deseja excluir <strong id="deleteItemName">este registro</strong>? Esta ação fica restrita à confirmação da listagem.</p></div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-modal-close>Cancelar</button>
+            <button type="button" class="btn-danger" data-modal-close>Excluir</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('[data-delete-name]').forEach((button) => {
+    button.addEventListener('click', () => {
+        document.getElementById('deleteItemName').textContent = button.dataset.deleteName;
+        document.getElementById('deleteModal').classList.add('active');
+    });
+});
+document.querySelectorAll('[data-modal-close]').forEach((button) => {
+    button.addEventListener('click', () => document.getElementById('deleteModal').classList.remove('active'));
+});
+</script>
 
 <?php require dirname(__DIR__) . '/layouts/footer.php'; ?>

@@ -181,6 +181,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                     <p>Processos que precisam de correção, retorno ou complementação antes da conclusão.</p>
                 </div>
                 <a href="<?= route_url('administrativo', 'relatorios') ?>" class="chip">Ver relatório</a>
+                <a href="<?= route_url('administrativo', 'pendenciaCadastrar') ?>" class="btn-primary">Cadastrar Pendência</a>
             </div>
 
             <div class="table-responsive">
@@ -219,6 +220,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                     <div class="table-actions">
                                         <a href="<?= route_url('administrativo', 'pendenciaVisualizar') ?>" class="btn-outline">Ver</a>
                                         <a href="<?= route_url('administrativo', 'pendenciaEditar') ?>" class="btn-primary">Resolver</a>
+                                        <button type="button" class="btn-danger" data-delete-name="<?= htmlspecialchars($pendencia['protocolo']) ?>">Excluir</button>
                                     </div>
                                 </td>
                             </tr>
@@ -233,9 +235,9 @@ require dirname(__DIR__) . '/layouts/header.php';
                 </div>
 
                 <div class="pagination-nav">
-                    <a href="#" class="page-link">1</a>
-                    <a href="#" class="page-link">2</a>
-                    <a href="#" class="page-link">3</a>
+                    <a href="<?= route_url('administrativo', 'pendencias') ?>" class="page-link active">1</a>
+                    <a href="<?= route_url('administrativo', 'pendencias') ?>" class="page-link">2</a>
+                    <a href="<?= route_url('administrativo', 'pendencias') ?>" class="page-link">3</a>
                 </div>
             </div>
         </section>
@@ -300,5 +302,24 @@ require dirname(__DIR__) . '/layouts/header.php';
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>
 </div>
+
+<div class="modal-backdrop" id="deleteModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+        <div class="modal-header"><h3 id="deleteTitle">Confirmar exclusão</h3></div>
+        <div class="modal-body"><p>Deseja excluir a pendência de <strong id="deleteItemName">este protocolo</strong>? A ação de excluir permanece somente nesta modal.</p></div>
+        <div class="modal-footer"><button type="button" class="btn-secondary" data-modal-close>Cancelar</button><button type="button" class="btn-danger" data-modal-close>Excluir</button></div>
+    </div>
+</div>
+<script>
+document.querySelectorAll('[data-delete-name]').forEach((button) => {
+    button.addEventListener('click', () => {
+        document.getElementById('deleteItemName').textContent = button.dataset.deleteName;
+        document.getElementById('deleteModal').classList.add('active');
+    });
+});
+document.querySelectorAll('[data-modal-close]').forEach((button) => {
+    button.addEventListener('click', () => document.getElementById('deleteModal').classList.remove('active'));
+});
+</script>
 
 <?php require dirname(__DIR__) . '/layouts/footer.php'; ?>

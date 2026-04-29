@@ -1237,6 +1237,12 @@ tbody tr:hover {
     gap: 18px;
 }
 
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
 .setting-block-row {
     display: flex;
     justify-content: space-between;

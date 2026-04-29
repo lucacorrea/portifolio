@@ -4,8 +4,8 @@ $paginaTitulo = 'Relatórios';
 $paginaDescricao = 'Indicadores operacionais da recepção e volume de atendimento.';
 $usuarioNome = 'Maria Souza';
 $usuarioCargo = 'Recepção';
-$textoBotaoAcao = 'Exportar Relatório';
-$linkBotaoAcao = '#';
+$textoBotaoAcao = '';
+$linkBotaoAcao = '';
 $tituloPagina = 'Recepção - Relatórios';
 $cssPagina = 'assets/css/recepcao/styleRecepcao.css';
 
