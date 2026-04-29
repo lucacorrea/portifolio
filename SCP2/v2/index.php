@@ -1,38 +1,9 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCP 2.0 - Dashboard Inteligente</title>
-    <!-- Fontes e Ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
-</head>
-<body>
+<?php include 'includes/header.php'; ?>
 
-    <nav class="premium-nav">
-        <div class="logo-group">
-            <i class="fas fa-microchip"></i>
-            <span>SCP 2.0</span>
-        </div>
-        <div style="display: flex; gap: 2rem; align-items: center;">
-            <div id="sync-status" class="sync-badge">
-                <i class="fas fa-sync-alt fa-spin"></i> Conectado ao Projudi
-            </div>
-            <div class="user-profile" style="display: flex; align-items: center; gap: 10px;">
-                <img src="https://ui-avatars.com/api/?name=Admin&background=38bdf8&color=fff" alt="User" style="width: 35px; border-radius: 50%;">
-                <span style="font-weight: 600; font-size: 0.9rem;">Procuradoria Coari</span>
-            </div>
-        </div>
-    </nav>
-
-    <main style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
-        
         <header style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
             <div>
-                <h1 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 0.5rem;">Bem-vindo ao SCP 2.0</h1>
-                <p style="color: var(--text-muted);">Sincronização automática com TJAM ativa e monitorada.</p>
+                <h1 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 0.5rem;">Painel de Controle</h1>
+                <p style="color: var(--text-muted);">Sincronização automática com TJAM ativa (Modo Demo).</p>
             </div>
             <button class="btn-premium" onclick="location.href='../cadastro.php'">
                 <i class="fas fa-plus"></i> Novo Processo
@@ -102,8 +73,4 @@
             </div>
         </div>
 
-    </main>
-
-    <script src="assets/js/app.js"></script>
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>
