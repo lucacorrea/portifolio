@@ -3,30 +3,51 @@ declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/app/Helpers/url.php';
 
-$pagina = $_GET['pagina'] ?? 'dashboard';
+$controller = trim($_GET['controller'] ?? 'dashboard');
+$action     = trim($_GET['action'] ?? 'index');
 
-$viewsPermitidas = [
-    'dashboard'           => dirname(__DIR__, 2) . '/app/Views/administrativo/dashboard.php',
-    'protocolosRecebidos' => dirname(__DIR__, 2) . '/app/Views/administrativo/protocolosRecebidos.php',
-    'orcamentos'          => dirname(__DIR__, 2) . '/app/Views/administrativo/orcamentos.php',
-    'clientes'            => dirname(__DIR__, 2) . '/app/Views/administrativo/clientes.php',
-    'documentos'          => dirname(__DIR__, 2) . '/app/Views/administrativo/documentos.php',
-    'pendencias'          => dirname(__DIR__, 2) . '/app/Views/administrativo/pendencias.php',
-    'relatorios'          => dirname(__DIR__, 2) . '/app/Views/administrativo/relatorios.php',
-    'configuracoes'       => dirname(__DIR__, 2) . '/app/Views/administrativo/configuracoes.php',
-    'verProtocolo'        => dirname(__DIR__, 2) . '/app/Views/administrativo/verProtocolo.php',
-];
+$controller = preg_replace('/[^a-zA-Z0-9_-]/', '', $controller);
+$action     = preg_replace('/[^a-zA-Z0-9_-]/', '', $action);
 
-if (!isset($viewsPermitidas[$pagina])) {
+if ($controller === '') {
+    $controller = 'dashboard';
+}
+
+if ($action === '') {
+    $action = 'index';
+}
+
+$basePath          = dirname(__DIR__, 2);
+$controllersPath   = $basePath . '/app/Controllers/Administrativo/';
+$actionsPath       = $basePath . '/app/Actions/Administrativo/';
+
+
+$controllerClassFile = ucfirst($controller) . 'Controller.php';
+$controllerFile      = $controllersPath . $controllerClassFile;
+
+
+$actionFile = $actionsPath . $controller . '/' . $action . '.php';
+
+
+if (!is_dir($actionsPath . $controller)) {
     http_response_code(404);
-    exit('Página não encontrada.');
+    exit('Pasta de actions do controller não encontrada: ' . $controller);
 }
 
-$arquivoView = $viewsPermitidas[$pagina];
-
-if (!file_exists($arquivoView)) {
-    http_response_code(500);
-    exit('View não encontrada: ' . basename($arquivoView));
+if (!file_exists($actionFile)) {
+    http_response_code(404);
+    exit('Action não encontrada: ' . $controller . '/' . $action . '.php');
 }
 
-require $arquivoView;
+
+if (file_exists($controllerFile)) {
+    require_once $controllerFile;
+}
+
+
+$controllerAtual = $controller;
+$actionAtual     = $action;
+$controllerFileAtual = $controllerFile;
+$actionFileAtual     = $actionFile;
+
+require $actionFile;
