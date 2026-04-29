@@ -278,6 +278,13 @@ try {
 
                     registrarAuditoria($pdo, 'UPDATE', 'processos', $p['id'], $dados_anteriores, $p);
                 } else {
+                    // Novo - Verificar se o número JÁ EXISTE com o MESMO TIPO
+                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND tipo_processo = ?");
+                    $stmt_check->execute([$p['numero'], $p['tipo_processo'] ?? 'CIÊNCIA']);
+                    if ($stmt_check->fetchColumn() > 0) {
+                        throw new Exception("O processo nº " . $p['numero'] . " já está cadastrado como " . ($p['tipo_processo'] ?? 'CIÊNCIA') . ".");
+                    }
+
                     // Novo
                     $stmt = $pdo->prepare("INSERT INTO processos (
                         numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
@@ -356,8 +363,10 @@ try {
 
                     $data_ciencia_formatada = $formatarData($data_ciencia);
                     $tipo_proc_csv = $dados[$mapeamento['tipo_processo'] ?? -1] ?? 'CIÊNCIA';
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND data_ciencia = ? AND tipo_processo = ?");
-                    $stmt_check->execute([$numero, $data_ciencia_formatada, $tipo_proc_csv]);
+                    
+                    // Verificar se o processo já existe (Número + Tipo)
+                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND tipo_processo = ?");
+                    $stmt_check->execute([$numero, $tipo_proc_csv]);
                     if ($stmt_check->fetchColumn() > 0) {
                         $pula++;
                         continue;
@@ -453,10 +462,10 @@ try {
                         }
                     }
 
-                    // Verificar duplicata (Processo + Data Ciência)
+                    // Verificar duplicata (Número + Tipo)
                     $tipo_processo_dados = $item['tipo_processo'] ?? 'CIÊNCIA';
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND data_ciencia = ? AND tipo_processo = ?");
-                    $stmt_check->execute([$numero, $data_ciencia, $tipo_processo_dados]);
+                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND tipo_processo = ?");
+                    $stmt_check->execute([$numero, $tipo_processo_dados]);
                     if ($stmt_check->fetchColumn() > 0) {
                         $pula++;
                         continue;

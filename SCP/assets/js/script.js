@@ -247,9 +247,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(formData)
             });
 
-            if (resp.ok) {
+            const result = await resp.json();
+
+            if (resp.ok && result.status === 'sucesso') {
                 alert('Processo salvo com sucesso!');
                 window.location.href = 'index.php';
+            } else {
+                alert('Erro ao salvar: ' + (result.message || 'Ocorreu um erro desconhecido.'));
             }
         });
     }
