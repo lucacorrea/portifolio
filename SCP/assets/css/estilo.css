@@ -10,13 +10,13 @@
     --glass-bg: rgba(255, 255, 255, 0.7);
     --glass-border: rgba(255, 255, 255, 0.4);
     
-    /* Cores de Status baseadas no print */
-    --status-pendente: #ef4444;
-    --status-sendo-avaliado: #eab308;
-    --status-em-elaboracao: #f97316;
-    --status-protocolado: #22c55e;
-    --status-analisado: #3b82f6;
-    --status-finalizado: #2E6C80;
+    /* Cores de Status baseadas na Planilha */
+    --status-pendente: #FF0000;          /* Vermelho forte */
+    --status-sendo-avaliado: #FFFFFF;    /* Branco (Avaliador) */
+    --status-em-elaboracao: #FFFF00;     /* Amarelo */
+    --status-protocolado: #90EE90;       /* Verde claro */
+    --status-analisado: #90EE90;         /* Verde claro (igual protocolado na planilha) */
+    --status-finalizado: #008000;        /* Verde forte */
     
     /* Cores de Tipos de Ato */
     --ato-despacho: #ec4899;
@@ -394,12 +394,12 @@ td:last-child {
     text-transform: uppercase;
 }
 
-.badge-pendente { background: #fee2e2; color: #ef4444; }
-.badge-sendo-avaliado { background: #fef9c3; color: #854d0e; }
-.badge-em-elaboração { background: #ffedd5; color: #ea580c; }
-.badge-protocolado { background: #dcfce7; color: #22c55e; }
-.badge-analisado { background: #dbeafe; color: #3b82f6; }
-.badge-processo-finalizado { background: #2E6C80; color: white; }
+.badge-pendente { background: #FF0000; color: white; border: 1px solid #cc0000; }
+.badge-sendo-avaliado { background: #FFFFFF; color: #000; border: 1px solid #ccc; }
+.badge-em-elaboração { background: #FFFF00; color: #000; border: 1px solid #cccc00; }
+.badge-protocolado { background: #90EE90; color: #000; border: 1px solid #7ccd7c; }
+.badge-analisado { background: #90EE90; color: #000; border: 1px solid #7ccd7c; }
+.badge-processo-finalizado { background: #008000; color: white; border: 1px solid #006400; }
 
 /* Buttons */
 .btn {
