@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
+    const dados = window.relatorioDonoCharts || {};
+
     const protocolosCanvas = document.getElementById("protocolosChart");
     const statusCanvas = document.getElementById("statusChart");
 
@@ -7,69 +9,108 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', Arial, sans-serif";
+    Chart.defaults.color = "#475569";
+
     if (protocolosCanvas) {
+        const evolucao = dados.evolucao || {
+            labels: [],
+            abertos: [],
+            concluidos: [],
+            pendentes: []
+        };
+
         new Chart(protocolosCanvas, {
             type: "line",
             data: {
-                labels: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"],
+                labels: evolucao.labels || [],
                 datasets: [
                     {
                         label: "Protocolos abertos",
-                        data: [48, 55, 61, 58, 70, 82],
+                        data: evolucao.abertos || [],
+                        borderColor: "#1b5e20",
+                        backgroundColor: "rgba(27, 94, 32, 0.10)",
+                        pointBackgroundColor: "#1b5e20",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
                         borderWidth: 3,
                         tension: 0.35,
-                        fill: false
+                        fill: true
                     },
                     {
                         label: "Concluídos",
-                        data: [32, 41, 49, 46, 57, 68],
+                        data: evolucao.concluidos || [],
+                        borderColor: "#2563eb",
+                        backgroundColor: "rgba(37, 99, 235, 0.08)",
+                        pointBackgroundColor: "#2563eb",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
                         borderWidth: 3,
                         tension: 0.35,
-                        fill: false
+                        fill: true
                     },
                     {
                         label: "Pendentes",
-                        data: [12, 10, 14, 13, 16, 14],
+                        data: evolucao.pendentes || [],
+                        borderColor: "#f59e0b",
+                        backgroundColor: "rgba(245, 158, 11, 0.08)",
+                        pointBackgroundColor: "#f59e0b",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
                         borderWidth: 3,
                         tension: 0.35,
-                        fill: false
+                        fill: true
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
                 plugins: {
                     legend: {
                         position: "bottom",
                         labels: {
                             usePointStyle: true,
                             boxWidth: 8,
+                            padding: 18,
                             font: {
-                                weight: "bold"
+                                weight: "700"
                             }
                         }
                     },
                     tooltip: {
-                        mode: "index",
-                        intersect: false
+                        backgroundColor: "#102016",
+                        titleColor: "#ffffff",
+                        bodyColor: "#ffffff",
+                        padding: 12,
+                        cornerRadius: 12
                     }
-                },
-                interaction: {
-                    mode: "nearest",
-                    axis: "x",
-                    intersect: false
                 },
                 scales: {
                     x: {
                         grid: {
                             display: false
+                        },
+                        ticks: {
+                            font: {
+                                weight: "700"
+                            }
                         }
                     },
                     y: {
                         beginAtZero: true,
                         ticks: {
                             precision: 0
+                        },
+                        grid: {
+                            color: "rgba(148, 163, 184, 0.18)"
                         }
                     }
                 }
@@ -78,14 +119,26 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (statusCanvas) {
+        const status = dados.status || {
+            labels: ["Concluídos", "Em análise", "Pendentes"],
+            valores: [0, 0, 0]
+        };
+
         new Chart(statusCanvas, {
             type: "doughnut",
             data: {
-                labels: ["Concluídos", "Em análise", "Pendentes"],
+                labels: status.labels || [],
                 datasets: [
                     {
-                        data: [72, 18, 10],
-                        borderWidth: 4
+                        data: status.valores || [],
+                        backgroundColor: [
+                            "#1b5e20",
+                            "#2563eb",
+                            "#f59e0b"
+                        ],
+                        borderColor: "#ffffff",
+                        borderWidth: 5,
+                        hoverOffset: 8
                     }
                 ]
             },
@@ -96,6 +149,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        backgroundColor: "#102016",
+                        titleColor: "#ffffff",
+                        bodyColor: "#ffffff",
+                        padding: 12,
+                        cornerRadius: 12
                     }
                 }
             }

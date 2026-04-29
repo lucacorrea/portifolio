@@ -2,10 +2,355 @@
 $paginaAtual = 'relatorios';
 $paginaTitulo = 'Relatórios Gerenciais';
 $paginaDescricao = 'Indicadores globais de protocolos, usuários e operação.';
-$usuarioNome = 'Usuário Demo';
+$usuarioNome = $_SESSION['usuario_nome'] ?? 'Usuário Demo';
 $usuarioCargo = 'Dono';
 $tituloPagina = 'Dono - Relatórios Gerenciais';
 $cssPagina = ['assets/css/administrativo/styleadm.css', 'assets/css/dono/dono.css'];
+
+$periodoSelecionado = $_GET['periodo'] ?? 'trimestre';
+
+$periodosPermitidos = ['mes', 'trimestre', 'semestre', 'ano'];
+
+if (!in_array($periodoSelecionado, $periodosPermitidos, true)) {
+    $periodoSelecionado = 'trimestre';
+}
+
+$hoje = new DateTimeImmutable('now');
+
+switch ($periodoSelecionado) {
+    case 'mes':
+        $periodo = [
+            'valor' => 'mes',
+            'label' => 'Este mês',
+            'inicio' => $hoje->modify('first day of this month')->setTime(0, 0, 0),
+            'fim' => $hoje->setTime(23, 59, 59),
+        ];
+
+        $relatorio = [
+            'indicadores' => [
+                'protocolos_total' => 118,
+                'protocolos_concluidos' => 84,
+                'protocolos_pendentes' => 16,
+                'protocolos_atrasados' => 5,
+                'protocolos_trend' => 12,
+
+                'orcamentos_total' => 46,
+                'orcamentos_finalizados' => 32,
+                'orcamentos_pendentes' => 14,
+                'orcamentos_trend' => 9,
+
+                'valor_total_orcamentos' => 28750.00,
+                'ticket_medio' => 898.44,
+
+                'usuarios_total' => 12,
+                'usuarios_ativos' => 9,
+                'usuarios_inativos' => 3,
+                'usuarios_ativos_percentual' => 75,
+            ],
+            'graficos' => [
+                'evolucao' => [
+                    'labels' => ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+                    'abertos' => [24, 31, 28, 35],
+                    'concluidos' => [18, 22, 20, 24],
+                    'pendentes' => [6, 9, 8, 10],
+                ],
+                'status' => [
+                    'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
+                    'valores' => [84, 18, 16],
+                ],
+            ],
+        ];
+        break;
+
+    case 'semestre':
+        $periodo = [
+            'valor' => 'semestre',
+            'label' => 'Último semestre',
+            'inicio' => $hoje->modify('first day of this month')->modify('-5 months')->setTime(0, 0, 0),
+            'fim' => $hoje->setTime(23, 59, 59),
+        ];
+
+        $relatorio = [
+            'indicadores' => [
+                'protocolos_total' => 684,
+                'protocolos_concluidos' => 512,
+                'protocolos_pendentes' => 39,
+                'protocolos_atrasados' => 11,
+                'protocolos_trend' => 22,
+
+                'orcamentos_total' => 212,
+                'orcamentos_finalizados' => 168,
+                'orcamentos_pendentes' => 44,
+                'orcamentos_trend' => 17,
+
+                'valor_total_orcamentos' => 148920.00,
+                'ticket_medio' => 886.43,
+
+                'usuarios_total' => 12,
+                'usuarios_ativos' => 9,
+                'usuarios_inativos' => 3,
+                'usuarios_ativos_percentual' => 75,
+            ],
+            'graficos' => [
+                'evolucao' => [
+                    'labels' => ['Nov', 'Dez', 'Jan', 'Fev', 'Mar', 'Abr'],
+                    'abertos' => [92, 104, 111, 118, 126, 133],
+                    'concluidos' => [70, 81, 86, 91, 94, 90],
+                    'pendentes' => [12, 15, 19, 17, 20, 21],
+                ],
+                'status' => [
+                    'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
+                    'valores' => [512, 133, 39],
+                ],
+            ],
+        ];
+        break;
+
+    case 'ano':
+        $periodo = [
+            'valor' => 'ano',
+            'label' => 'Este ano',
+            'inicio' => $hoje->setDate((int)$hoje->format('Y'), 1, 1)->setTime(0, 0, 0),
+            'fim' => $hoje->setTime(23, 59, 59),
+        ];
+
+        $relatorio = [
+            'indicadores' => [
+                'protocolos_total' => 1248,
+                'protocolos_concluidos' => 936,
+                'protocolos_pendentes' => 64,
+                'protocolos_atrasados' => 18,
+                'protocolos_trend' => 31,
+
+                'orcamentos_total' => 398,
+                'orcamentos_finalizados' => 301,
+                'orcamentos_pendentes' => 97,
+                'orcamentos_trend' => 24,
+
+                'valor_total_orcamentos' => 276480.00,
+                'ticket_medio' => 918.54,
+
+                'usuarios_total' => 12,
+                'usuarios_ativos' => 9,
+                'usuarios_inativos' => 3,
+                'usuarios_ativos_percentual' => 75,
+            ],
+            'graficos' => [
+                'evolucao' => [
+                    'labels' => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+                    'abertos' => [88, 94, 101, 118, 125, 132, 137, 121, 111, 98, 92, 31],
+                    'concluidos' => [62, 70, 82, 89, 94, 98, 104, 96, 88, 75, 64, 14],
+                    'pendentes' => [12, 14, 16, 18, 17, 21, 19, 16, 14, 12, 9, 4],
+                ],
+                'status' => [
+                    'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
+                    'valores' => [936, 248, 64],
+                ],
+            ],
+        ];
+        break;
+
+    case 'trimestre':
+    default:
+        $periodo = [
+            'valor' => 'trimestre',
+            'label' => 'Último trimestre',
+            'inicio' => $hoje->modify('first day of this month')->modify('-2 months')->setTime(0, 0, 0),
+            'fim' => $hoje->setTime(23, 59, 59),
+        ];
+
+        $relatorio = [
+            'indicadores' => [
+                'protocolos_total' => 342,
+                'protocolos_concluidos' => 247,
+                'protocolos_pendentes' => 14,
+                'protocolos_atrasados' => 6,
+                'protocolos_trend' => 18,
+
+                'orcamentos_total' => 112,
+                'orcamentos_finalizados' => 89,
+                'orcamentos_pendentes' => 23,
+                'orcamentos_trend' => 11,
+
+                'valor_total_orcamentos' => 48750.00,
+                'ticket_medio' => 547.75,
+
+                'usuarios_total' => 12,
+                'usuarios_ativos' => 9,
+                'usuarios_inativos' => 3,
+                'usuarios_ativos_percentual' => 75,
+            ],
+            'graficos' => [
+                'evolucao' => [
+                    'labels' => ['Fev', 'Mar', 'Abr'],
+                    'abertos' => [104, 113, 125],
+                    'concluidos' => [72, 81, 94],
+                    'pendentes' => [13, 15, 14],
+                ],
+                'status' => [
+                    'labels' => ['Concluídos', 'Em análise', 'Pendentes'],
+                    'valores' => [247, 81, 14],
+                ],
+            ],
+        ];
+        break;
+}
+
+$indicadores = $relatorio['indicadores'];
+
+$relatorio['areas'] = [
+    [
+        'area' => 'Recepção',
+        'descricao' => 'Entrada e triagem',
+        'volume' => '128 atendimentos',
+        'concluidos' => '89 encaminhados',
+        'pendencias' => '17',
+        'eficiencia' => 69,
+        'status' => 'progress',
+        'leitura' => 'Operação estável',
+    ],
+    [
+        'area' => 'Administrativo',
+        'descricao' => 'Análise e orçamento',
+        'volume' => '94 análises',
+        'concluidos' => '72 finalizadas',
+        'pendencias' => '11',
+        'eficiencia' => 76,
+        'status' => 'ok',
+        'leitura' => 'Boa entrega',
+    ],
+    [
+        'area' => 'Gestão',
+        'descricao' => 'Usuários e permissões',
+        'volume' => '12 usuários',
+        'concluidos' => '9 ativos',
+        'pendencias' => '3 revisões',
+        'eficiencia' => 75,
+        'status' => 'pending',
+        'leitura' => 'Acompanhar acessos',
+    ],
+];
+
+$relatorio['ranking'] = [
+    [
+        'area' => 'Administrativo',
+        'descricao' => 'Maior taxa de conclusão',
+        'eficiencia' => 76,
+    ],
+    [
+        'area' => 'Gestão',
+        'descricao' => 'Equipe ativa e controlada',
+        'eficiencia' => 75,
+    ],
+    [
+        'area' => 'Recepção',
+        'descricao' => 'Bom volume de atendimento',
+        'eficiencia' => 69,
+    ],
+];
+
+$relatorio['alertas'] = [
+    [
+        'tipo' => 'danger',
+        'titulo' => $indicadores['protocolos_atrasados'] . ' protocolos atrasados',
+        'descricao' => 'Existem protocolos sem movimentação há mais de 7 dias. Recomenda-se revisar esses casos com prioridade.',
+    ],
+    [
+        'tipo' => 'warning',
+        'titulo' => $indicadores['protocolos_pendentes'] . ' pendências abertas',
+        'descricao' => 'A operação está estável, mas as pendências precisam ser acompanhadas para evitar acúmulo.',
+    ],
+    [
+        'tipo' => 'success',
+        'titulo' => dono_money_fake($indicadores['valor_total_orcamentos']) . ' em orçamentos',
+        'descricao' => 'O volume financeiro do período está positivo e indica boa movimentação operacional.',
+    ],
+];
+
+$relatorio['movimentos'] = [
+    [
+        'titulo' => 'Orçamento aprovado',
+        'descricao' => 'Administrativo finalizou uma nova análise com valor aprovado pelo cliente.',
+    ],
+    [
+        'titulo' => 'Novo protocolo recebido',
+        'descricao' => 'Recepção registrou atendimento prioritário para análise.',
+    ],
+    [
+        'titulo' => 'Usuário inativo identificado',
+        'descricao' => 'Gestão precisa revisar permissões e acessos antigos.',
+    ],
+];
+
+if (!function_exists('dono_h')) {
+    function dono_h($value): string
+    {
+        return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('dono_money')) {
+    function dono_money(float|int $value): string
+    {
+        return 'R$ ' . number_format((float)$value, 2, ',', '.');
+    }
+}
+
+if (!function_exists('dono_money_fake')) {
+    function dono_money_fake(float|int $value): string
+    {
+        return 'R$ ' . number_format((float)$value, 2, ',', '.');
+    }
+}
+
+if (!function_exists('dono_int')) {
+    function dono_int(float|int $value): string
+    {
+        return number_format((float)$value, 0, ',', '.');
+    }
+}
+
+if (!function_exists('dono_percent')) {
+    function dono_percent(float|int $value): string
+    {
+        $value = (int)$value;
+
+        if ($value > 0) {
+            return '+' . $value . '%';
+        }
+
+        return $value . '%';
+    }
+}
+
+if (!function_exists('dono_trend_class')) {
+    function dono_trend_class(float|int $value): string
+    {
+        if ($value > 0) {
+            return 'up';
+        }
+
+        if ($value < 0) {
+            return 'down';
+        }
+
+        return 'neutral';
+    }
+}
+
+if (!function_exists('dono_asset')) {
+    function dono_asset(string $path): string
+    {
+        if (function_exists('asset')) {
+            return asset($path);
+        }
+
+        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+        $base = preg_replace('#/dono/?$#', '', rtrim($scriptDir, '/'));
+
+        return $base . '/' . ltrim($path, '/');
+    }
+}
 
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
@@ -28,68 +373,97 @@ require dirname(__DIR__) . '/layouts/header.php';
                 </p>
 
                 <div class="owner-report-actions">
-                    <a href="#" class="btn-owner-primary">
+                    <a href="#" class="btn-owner-primary" onclick="alert('Exportação PDF fictícia.'); return false;">
                         Exportar PDF
                     </a>
 
-                    <a href="#" class="btn-owner-secondary">
+                    <a href="#" class="btn-owner-secondary" onclick="alert('Exportação Excel fictícia.'); return false;">
                         Exportar Excel
                     </a>
                 </div>
             </div>
 
-            <div class="owner-report-filter">
+            <form method="GET" class="owner-report-filter">
+                <input type="hidden" name="pagina" value="relatorios">
+
                 <label for="periodoRelatorio">Período analisado</label>
-                <select id="periodoRelatorio" name="periodoRelatorio">
-                    <option value="trimestre">Último trimestre</option>
-                    <option value="mes">Este mês</option>
-                    <option value="semestre">Último semestre</option>
-                    <option value="ano">Este ano</option>
+
+                <select id="periodoRelatorio" name="periodo" onchange="this.form.submit()">
+                    <option value="trimestre" <?= $periodo['valor'] === 'trimestre' ? 'selected' : '' ?>>
+                        Último trimestre
+                    </option>
+
+                    <option value="mes" <?= $periodo['valor'] === 'mes' ? 'selected' : '' ?>>
+                        Este mês
+                    </option>
+
+                    <option value="semestre" <?= $periodo['valor'] === 'semestre' ? 'selected' : '' ?>>
+                        Último semestre
+                    </option>
+
+                    <option value="ano" <?= $periodo['valor'] === 'ano' ? 'selected' : '' ?>>
+                        Este ano
+                    </option>
                 </select>
 
                 <div class="owner-report-date">
-                    Atualizado em
-                    <strong><?= date('d/m/Y') ?></strong>
+                    Período:
+                    <strong>
+                        <?= dono_h($periodo['inicio']->format('d/m/Y')) ?>
+                        até
+                        <?= dono_h($periodo['fim']->format('d/m/Y')) ?>
+                    </strong>
                 </div>
-            </div>
+
+                <div class="owner-report-date owner-report-updated">
+                    Atualizado em
+                    <strong><?= date('d/m/Y H:i') ?></strong>
+                </div>
+            </form>
         </section>
 
         <section class="stats-grid owner-kpi-grid">
             <article class="card stat-card owner-kpi-card">
                 <div class="stat-top">
                     <div class="stat-icon soft-primary">📂</div>
-                    <span class="trend up">+18%</span>
+
+                    <span class="trend <?= dono_h(dono_trend_class($indicadores['protocolos_trend'])) ?>">
+                        <?= dono_h(dono_percent($indicadores['protocolos_trend'])) ?>
+                    </span>
                 </div>
 
-                <h3>342</h3>
-                <p>Protocolos no trimestre</p>
+                <h3><?= dono_int($indicadores['protocolos_total']) ?></h3>
+                <p>Protocolos no período</p>
 
                 <div class="owner-kpi-footer">
-                    <span>Meta: 300</span>
-                    <strong>114%</strong>
+                    <span>Concluídos</span>
+                    <strong><?= dono_int($indicadores['protocolos_concluidos']) ?></strong>
                 </div>
 
-                <div class="owner-progress">
-                    <span style="width: 86%;"></span>
+                <div class="owner-progress" style="--progress: 86%;">
+                    <span></span>
                 </div>
             </article>
 
             <article class="card stat-card owner-kpi-card">
                 <div class="stat-top">
                     <div class="stat-icon soft-secondary">💰</div>
-                    <span class="trend up">+11%</span>
+
+                    <span class="trend <?= dono_h(dono_trend_class($indicadores['orcamentos_trend'])) ?>">
+                        <?= dono_h(dono_percent($indicadores['orcamentos_trend'])) ?>
+                    </span>
                 </div>
 
-                <h3>89</h3>
+                <h3><?= dono_int($indicadores['orcamentos_finalizados']) ?></h3>
                 <p>Orçamentos finalizados</p>
 
                 <div class="owner-kpi-footer">
-                    <span>Conversão operacional</span>
-                    <strong>72%</strong>
+                    <span>Total no período</span>
+                    <strong><?= dono_int($indicadores['orcamentos_total']) ?></strong>
                 </div>
 
-                <div class="owner-progress">
-                    <span style="width: 72%;"></span>
+                <div class="owner-progress" style="--progress: 72%;">
+                    <span></span>
                 </div>
             </article>
 
@@ -99,35 +473,70 @@ require dirname(__DIR__) . '/layouts/header.php';
                     <span class="trend warn">Atenção</span>
                 </div>
 
-                <h3>14</h3>
+                <h3><?= dono_int($indicadores['protocolos_pendentes']) ?></h3>
                 <p>Pendências abertas</p>
 
                 <div class="owner-kpi-footer">
-                    <span>Acima do ideal</span>
-                    <strong>+4</strong>
+                    <span>Atrasados</span>
+                    <strong><?= dono_int($indicadores['protocolos_atrasados']) ?></strong>
                 </div>
 
-                <div class="owner-progress danger">
-                    <span style="width: 58%;"></span>
+                <div class="owner-progress danger" style="--progress: 58%;">
+                    <span></span>
                 </div>
             </article>
 
             <article class="card stat-card owner-kpi-card">
                 <div class="stat-top">
                     <div class="stat-icon soft-info">👤</div>
-                    <span class="trend up">9 ativos</span>
+
+                    <span class="trend up">
+                        <?= dono_int($indicadores['usuarios_ativos']) ?> ativos
+                    </span>
                 </div>
 
-                <h3>12</h3>
+                <h3><?= dono_int($indicadores['usuarios_total']) ?></h3>
                 <p>Usuários cadastrados</p>
 
                 <div class="owner-kpi-footer">
                     <span>Equipe ativa</span>
-                    <strong>75%</strong>
+                    <strong><?= dono_int($indicadores['usuarios_ativos_percentual']) ?>%</strong>
                 </div>
 
-                <div class="owner-progress">
-                    <span style="width: 75%;"></span>
+                <div class="owner-progress" style="--progress: <?= (int)$indicadores['usuarios_ativos_percentual'] ?>%;">
+                    <span></span>
+                </div>
+            </article>
+        </section>
+
+        <section class="stats-grid owner-kpi-grid owner-money-grid">
+            <article class="card stat-card owner-kpi-card owner-money-card">
+                <div class="stat-top">
+                    <div class="stat-icon soft-secondary">💵</div>
+                    <span class="trend up">Financeiro</span>
+                </div>
+
+                <h3><?= dono_money($indicadores['valor_total_orcamentos']) ?></h3>
+                <p>Valor total em orçamentos finalizados</p>
+
+                <div class="owner-kpi-footer">
+                    <span>Ticket médio</span>
+                    <strong><?= dono_money($indicadores['ticket_medio']) ?></strong>
+                </div>
+            </article>
+
+            <article class="card stat-card owner-kpi-card owner-money-card">
+                <div class="stat-top">
+                    <div class="stat-icon soft-accent">🚨</div>
+                    <span class="trend warn">Controle</span>
+                </div>
+
+                <h3><?= dono_int($indicadores['protocolos_atrasados']) ?></h3>
+                <p>Protocolos atrasados</p>
+
+                <div class="owner-kpi-footer">
+                    <span>Mais de 7 dias sem movimentação</span>
+                    <strong>Revisar</strong>
                 </div>
             </article>
         </section>
@@ -137,10 +546,12 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <div class="panel-header owner-panel-header">
                     <div>
                         <h2>Evolução de protocolos</h2>
-                        <p>Comparativo mensal entre protocolos abertos, concluídos e pendentes.</p>
+                        <p>Comparativo entre protocolos abertos, concluídos e pendentes.</p>
                     </div>
 
-                    <span class="owner-chip success">Crescimento controlado</span>
+                    <span class="owner-chip success">
+                        <?= dono_h($periodo['label']) ?>
+                    </span>
                 </div>
 
                 <div class="owner-chart-box">
@@ -161,23 +572,13 @@ require dirname(__DIR__) . '/layouts/header.php';
                 </div>
 
                 <div class="owner-status-list">
-                    <div>
-                        <span class="dot ok"></span>
-                        Concluídos
-                        <strong>72%</strong>
-                    </div>
-
-                    <div>
-                        <span class="dot warn"></span>
-                        Em análise
-                        <strong>18%</strong>
-                    </div>
-
-                    <div>
-                        <span class="dot danger"></span>
-                        Pendentes
-                        <strong>10%</strong>
-                    </div>
+                    <?php foreach ($relatorio['graficos']['status']['labels'] as $index => $label): ?>
+                        <div>
+                            <span class="dot <?= $index === 0 ? 'ok' : ($index === 1 ? 'warn' : 'danger') ?>"></span>
+                            <?= dono_h($label) ?>
+                            <strong><?= dono_int($relatorio['graficos']['status']['valores'][$index] ?? 0) ?></strong>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             </article>
         </section>
@@ -189,7 +590,9 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <div>
                     <h3>Melhor desempenho</h3>
                     <p>
-                        O administrativo finalizou 72 análises no período, mantendo boa taxa de entrega.
+                        O administrativo finalizou
+                        <strong><?= dono_int($indicadores['orcamentos_finalizados']) ?></strong>
+                        orçamento(s) no período selecionado.
                     </p>
                 </div>
             </article>
@@ -200,7 +603,9 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <div>
                     <h3>Ponto de atenção</h3>
                     <p>
-                        Existem 14 pendências abertas. O ideal é reduzir esse número para evitar acúmulo operacional.
+                        Existem
+                        <strong><?= dono_int($indicadores['protocolos_pendentes']) ?></strong>
+                        pendência(s) aberta(s). O ideal é revisar os processos parados.
                     </p>
                 </div>
             </article>
@@ -211,7 +616,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <div>
                     <h3>Leitura gerencial</h3>
                     <p>
-                        O volume aumentou, mas a operação ainda está estável. O foco deve ser tempo de resposta.
+                        O dono deve acompanhar atrasos, produtividade por área e valor de orçamentos finalizados.
                     </p>
                 </div>
             </article>
@@ -223,8 +628,6 @@ require dirname(__DIR__) . '/layouts/header.php';
                     <h2>Resumo por área</h2>
                     <p>Relatório consolidado para acompanhamento do dono.</p>
                 </div>
-
-                <a href="#" class="owner-link-action">Ver detalhes</a>
             </div>
 
             <div class="table-responsive">
@@ -241,71 +644,32 @@ require dirname(__DIR__) . '/layouts/header.php';
                     </thead>
 
                     <tbody>
-                        <tr>
-                            <td>
-                                <strong>Recepção</strong>
-                                <small>Entrada e triagem</small>
-                            </td>
+                        <?php foreach ($relatorio['areas'] as $area): ?>
+                            <tr>
+                                <td>
+                                    <strong><?= dono_h($area['area']) ?></strong>
+                                    <small><?= dono_h($area['descricao']) ?></small>
+                                </td>
 
-                            <td>128 atendimentos</td>
-                            <td>89 encaminhados</td>
-                            <td>17</td>
+                                <td><?= dono_h($area['volume']) ?></td>
+                                <td><?= dono_h($area['concluidos']) ?></td>
+                                <td><?= dono_h($area['pendencias']) ?></td>
 
-                            <td>
-                                <div class="owner-mini-progress">
-                                    <span style="width: 69%;"></span>
-                                </div>
-                                <small>69%</small>
-                            </td>
+                                <td>
+                                    <div class="owner-mini-progress <?= $area['eficiencia'] < 50 ? 'danger' : '' ?>" style="--progress: <?= (int)$area['eficiencia'] ?>%;">
+                                        <span></span>
+                                    </div>
 
-                            <td>
-                                <span class="status progress">Operação estável</span>
-                            </td>
-                        </tr>
+                                    <small><?= dono_int($area['eficiencia']) ?>%</small>
+                                </td>
 
-                        <tr>
-                            <td>
-                                <strong>Administrativo</strong>
-                                <small>Análise e orçamento</small>
-                            </td>
-
-                            <td>94 análises</td>
-                            <td>72 finalizadas</td>
-                            <td>11</td>
-
-                            <td>
-                                <div class="owner-mini-progress">
-                                    <span style="width: 76%;"></span>
-                                </div>
-                                <small>76%</small>
-                            </td>
-
-                            <td>
-                                <span class="status ok">Boa entrega</span>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td>
-                                <strong>Gestão</strong>
-                                <small>Usuários e permissões</small>
-                            </td>
-
-                            <td>12 usuários</td>
-                            <td>9 ativos</td>
-                            <td>3 revisões</td>
-
-                            <td>
-                                <div class="owner-mini-progress danger">
-                                    <span style="width: 75%;"></span>
-                                </div>
-                                <small>75%</small>
-                            </td>
-
-                            <td>
-                                <span class="status pending">Acompanhar acessos</span>
-                            </td>
-                        </tr>
+                                <td>
+                                    <span class="status <?= dono_h($area['status']) ?>">
+                                        <?= dono_h($area['leitura']) ?>
+                                    </span>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
@@ -321,38 +685,18 @@ require dirname(__DIR__) . '/layouts/header.php';
                 </div>
 
                 <div class="owner-ranking-list">
-                    <div class="owner-ranking-item">
-                        <span class="rank-number">1</span>
+                    <?php foreach ($relatorio['ranking'] as $index => $item): ?>
+                        <div class="owner-ranking-item">
+                            <span class="rank-number"><?= $index + 1 ?></span>
 
-                        <div>
-                            <strong>Administrativo</strong>
-                            <small>Maior taxa de conclusão</small>
+                            <div>
+                                <strong><?= dono_h($item['area']) ?></strong>
+                                <small><?= dono_h($item['descricao']) ?></small>
+                            </div>
+
+                            <b><?= dono_int($item['eficiencia']) ?>%</b>
                         </div>
-
-                        <b>76%</b>
-                    </div>
-
-                    <div class="owner-ranking-item">
-                        <span class="rank-number">2</span>
-
-                        <div>
-                            <strong>Gestão</strong>
-                            <small>Equipe ativa e controlada</small>
-                        </div>
-
-                        <b>75%</b>
-                    </div>
-
-                    <div class="owner-ranking-item">
-                        <span class="rank-number">3</span>
-
-                        <div>
-                            <strong>Recepção</strong>
-                            <small>Bom volume de atendimento</small>
-                        </div>
-
-                        <b>69%</b>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
             </article>
 
@@ -365,20 +709,12 @@ require dirname(__DIR__) . '/layouts/header.php';
                 </div>
 
                 <div class="owner-alert-list">
-                    <div class="owner-alert-item danger">
-                        <strong>14 pendências abertas</strong>
-                        <span>Recomenda-se revisar os protocolos parados ainda nesta semana.</span>
-                    </div>
-
-                    <div class="owner-alert-item warning">
-                        <strong>3 usuários precisam de revisão</strong>
-                        <span>Verifique permissões, acessos e usuários inativos.</span>
-                    </div>
-
-                    <div class="owner-alert-item success">
-                        <strong>Orçamentos em crescimento</strong>
-                        <span>O volume finalizado subiu 11% em relação ao período anterior.</span>
-                    </div>
+                    <?php foreach ($relatorio['alertas'] as $alerta): ?>
+                        <div class="owner-alert-item <?= dono_h($alerta['tipo']) ?>">
+                            <strong><?= dono_h($alerta['titulo']) ?></strong>
+                            <span><?= dono_h($alerta['descricao']) ?></span>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             </article>
 
@@ -391,29 +727,16 @@ require dirname(__DIR__) . '/layouts/header.php';
                 </div>
 
                 <div class="owner-timeline">
-                    <div class="owner-timeline-item">
-                        <span></span>
-                        <div>
-                            <strong>Orçamento aprovado</strong>
-                            <small>Administrativo finalizou nova análise.</small>
-                        </div>
-                    </div>
+                    <?php foreach ($relatorio['movimentos'] as $movimento): ?>
+                        <div class="owner-timeline-item">
+                            <span></span>
 
-                    <div class="owner-timeline-item">
-                        <span></span>
-                        <div>
-                            <strong>Novo protocolo recebido</strong>
-                            <small>Recepção registrou atendimento prioritário.</small>
+                            <div>
+                                <strong><?= dono_h($movimento['titulo']) ?></strong>
+                                <small><?= dono_h($movimento['descricao']) ?></small>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="owner-timeline-item">
-                        <span></span>
-                        <div>
-                            <strong>Usuário inativo identificado</strong>
-                            <small>Gestão precisa revisar permissões.</small>
-                        </div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
             </article>
         </section>
@@ -422,7 +745,11 @@ require dirname(__DIR__) . '/layouts/header.php';
     </main>
 </div>
 
+<script>
+    window.relatorioDonoCharts = <?= json_encode($relatorio['graficos'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="assets/js/dono/relatoriosDono.js"></script>
+<script src="<?= dono_h(dono_asset('assets/js/dono/relatoriosDono.js')) ?>"></script>
 
 <?php require dirname(__DIR__) . '/layouts/footer.php'; ?>
