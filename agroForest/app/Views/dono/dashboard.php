@@ -47,6 +47,16 @@ require dirname(__DIR__) . '/layouts/header.php';
                     </div>
                 </div>
                 <div class="owner-actions-grid">
+                    <a href="<?= route_url('recepcao', 'dashboard') ?>" class="owner-action">
+                        <span>🏢</span>
+                        <strong>Entrar na recepção</strong>
+                        <small>Veja clientes, documentos, protocolos e cadastros iniciais.</small>
+                    </a>
+                    <a href="<?= route_url('administrativo', 'dashboard') ?>" class="owner-action">
+                        <span>📋</span>
+                        <strong>Entrar no administrativo</strong>
+                        <small>Acompanhe análises, orçamentos, pendências e relatórios.</small>
+                    </a>
                     <a href="<?= route_url('dono', 'usuarioCadastrar') ?>" class="owner-action">
                         <span>👤</span>
                         <strong>Cadastrar usuário</strong>

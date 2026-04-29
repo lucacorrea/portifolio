@@ -55,6 +55,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                     <div><h2>Módulos de configuração</h2><p>Áreas administrativas mantidas pelo dono.</p></div>
                 </div>
                 <div class="owner-actions-grid owner-actions-grid-compact">
+                    <a href="<?= route_url('recepcao', 'dashboard') ?>" class="owner-action"><span>🏢</span><strong>Recepção</strong><small>Acesso completo aos atendimentos, clientes e protocolos.</small></a>
+                    <a href="<?= route_url('administrativo', 'dashboard') ?>" class="owner-action"><span>📋</span><strong>Administrativo</strong><small>Acesso completo às análises, orçamentos e documentos.</small></a>
                     <a href="<?= route_url('dono', 'tiposServicos') ?>" class="owner-action"><span>🧾</span><strong>Tipos de serviços</strong><small>Cadastro, valor base, prazo e setor.</small></a>
                     <a href="<?= route_url('dono', 'permissoes') ?>" class="owner-action"><span>🛡️</span><strong>Permissões</strong><small>Perfis e regras de acesso.</small></a>
                     <a href="<?= route_url('dono', 'usuarios') ?>" class="owner-action"><span>👤</span><strong>Usuários</strong><small>Equipe, status e cargos.</small></a>

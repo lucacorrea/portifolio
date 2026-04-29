@@ -3,6 +3,16 @@ class RoleMiddleware
 {
     public static function handle(string $area): void
     {
-        // Placeholder para validar o perfil conforme a área.
+        $permissoes = require dirname(__DIR__) . '/Config/permissions.php';
+        $usuario = $_SESSION['user'] ?? [];
+        $nivel = $usuario['nivel'] ?? 'recepcao';
+        $perfisPermitidos = $permissoes[$area] ?? [];
+
+        if ($nivel === 'dono' || in_array($nivel, $perfisPermitidos, true)) {
+            return;
+        }
+
+        http_response_code(403);
+        exit('Acesso negado.');
     }
 }

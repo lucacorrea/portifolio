@@ -10,4 +10,13 @@
         <a href="<?= route_url('dono', 'relatorios') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'relatorios' ? 'active' : '' ?>"><span class="nav-icon">📊</span>Relatórios</a>
         <a href="<?= route_url('dono', 'configuracoes') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'configuracoes' ? 'active' : '' ?>"><span class="nav-icon">⚙️</span>Configurações</a>
     </nav>
+    <div class="menu-title">Acesso total</div>
+    <nav class="nav-list">
+        <a href="<?= route_url('recepcao', 'dashboard') ?>" class="nav-link"><span class="nav-icon">🏢</span>Recepção</a>
+        <a href="<?= route_url('recepcao', 'novoProtocolo') ?>" class="nav-link"><span class="nav-icon">➕</span>Novo Protocolo</a>
+        <a href="<?= route_url('recepcao', 'clientes') ?>" class="nav-link"><span class="nav-icon">👥</span>Clientes</a>
+        <a href="<?= route_url('administrativo', 'dashboard') ?>" class="nav-link"><span class="nav-icon">📋</span>Administrativo</a>
+        <a href="<?= route_url('administrativo', 'protocolosRecebidos') ?>" class="nav-link"><span class="nav-icon">📥</span>Protocolos Recebidos</a>
+        <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="nav-link"><span class="nav-icon">💰</span>Orçamentos</a>
+    </nav>
 </aside>
