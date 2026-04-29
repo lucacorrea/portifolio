@@ -4,6 +4,6 @@
     </div>
 
     <div class="footer-right">
-        <p>Área Administrativa • Análise, orçamento e gestão operacional</p>
+        <p>Desenvolvido por L&J Soluções Tecnológicas</p>
     </div>
 </footer>
