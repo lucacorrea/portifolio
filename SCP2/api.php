@@ -182,7 +182,29 @@ try {
         case 'GET':
             if ($acao === 'listar') {
                 $stmt = $pdo->query("SELECT * FROM processos_v2 ORDER BY data_criacao DESC");
-                echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+                $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Se não houver dados no banco, enviar dados estáticos para a apresentação
+                if (empty($resultados) || isset($_GET['demo'])) {
+                    $resultados = [
+                        [
+                            'id' => 991, 'numero' => '0645123-45.2024.8.04.0001', 'tipo_processo' => 'CIÊNCIA',
+                            'tipo_ato' => 'DESPACHO', 'natureza' => 'CONTESTAÇÃO', 'final_prazo' => date('Y-m-d', strtotime('+3 days')),
+                            'analisador' => 'KELLEN', 'status' => 'PENDENTE', 'data_criacao' => date('Y-m-d H:i:s')
+                        ],
+                        [
+                            'id' => 992, 'numero' => '0712345-67.2023.8.04.0001', 'tipo_processo' => 'CUMPRIMENTO',
+                            'tipo_ato' => 'DECISÃO', 'natureza' => 'PAGAMENTO', 'final_prazo' => date('Y-m-d', strtotime('-2 days')),
+                            'analisador' => 'LUIZ', 'status' => 'PENDENTE', 'data_criacao' => date('Y-m-d H:i:s')
+                        ],
+                        [
+                            'id' => 993, 'numero' => '0200987-12.2024.8.04.0001', 'tipo_processo' => 'CIÊNCIA',
+                            'tipo_ato' => 'SENTENÇA', 'natureza' => 'RECURSO INOMINADO', 'final_prazo' => date('Y-m-d', strtotime('+12 days')),
+                            'analisador' => 'KELLEN', 'status' => 'PROTOCOLADO', 'data_protocolo' => date('Y-m-d'), 'data_criacao' => date('Y-m-d H:i:s')
+                        ]
+                    ];
+                }
+                echo json_encode($resultados);
             } elseif ($acao === 'login_status') {
                 echo json_encode([
                     'logado' => isset($_SESSION['usuario_id']),
