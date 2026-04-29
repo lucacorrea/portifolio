@@ -23,10 +23,10 @@ try {
         $config['tjam']['codigo_secreto']
     );
 
-    echo "Iniciando sincronização...\n";
+    echo "Iniciando sincronização (SCP 2.0 - Tabelas Isoladas)...\n";
 
-    // 1. Buscar processos que precisam de atualização (ex: os últimos 50 não finalizados)
-    $stmt = $pdo->query("SELECT id, numero FROM processos WHERE status != 'PROCESSO FINALIZADO' ORDER BY last_sync ASC LIMIT 10");
+    // 1. Buscar processos que precisam de atualização (tabelas v2)
+    $stmt = $pdo->query("SELECT id, numero FROM processos_v2 WHERE status != 'PROCESSO FINALIZADO' ORDER BY last_sync ASC LIMIT 10");
     $processos = $stmt->fetchAll();
 
     foreach ($processos as $proc) {
@@ -35,9 +35,8 @@ try {
         try {
             $dados = $projudi->consultarProcesso($proc['numero']);
             
-            // Aqui você processaria o XML de resposta (conforme o XSD que você me mandou)
-            // Exemplo de atualização no banco:
-            $upd = $pdo->prepare("UPDATE processos SET 
+            // Exemplo de atualização no banco (tabelas v2)
+            $upd = $pdo->prepare("UPDATE processos_v2 SET 
                 last_sync = NOW(),
                 magistrado = ?,
                 classe_processual = ?

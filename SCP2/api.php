@@ -19,7 +19,7 @@ try {
 }
 
 // Criação automática da tabela se não existir
-$pdo->exec("CREATE TABLE IF NOT EXISTS processos (
+$pdo->exec("CREATE TABLE IF NOT EXISTS processos_v2 (
     id INT AUTO_INCREMENT PRIMARY KEY,
     numero VARCHAR(255),
     tipo_processo VARCHAR(50),
@@ -42,7 +42,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS processos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
 // Tabela de Usuários
-$pdo->exec("CREATE TABLE IF NOT EXISTS usuarios (
+$pdo->exec("CREATE TABLE IF NOT EXISTS usuarios_v2 (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(255),
     login VARCHAR(100) UNIQUE,
@@ -52,22 +52,22 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS usuarios (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
 // Inserir usuário padrão se não existir (admin / admin123)
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE login = 'admin'");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM usuarios_v2 WHERE login = 'admin'");
 $stmt->execute();
 if ($stmt->fetchColumn() == 0) {
     $senhaHash = password_hash('admin123', PASSWORD_DEFAULT);
-    $pdo->prepare("INSERT INTO usuarios (nome, login, senha, perfil) VALUES ('Administrador', 'admin', ?, 'ADMIN')")->execute([$senhaHash]);
+    $pdo->prepare("INSERT INTO usuarios_v2 (nome, login, senha, perfil) VALUES ('Administrador', 'admin', ?, 'ADMIN')")->execute([$senhaHash]);
 }
 
 // Tabela de Configurações
-$pdo->exec("CREATE TABLE IF NOT EXISTS configuracoes (
+$pdo->exec("CREATE TABLE IF NOT EXISTS configuracoes_v2 (
     id INT AUTO_INCREMENT PRIMARY KEY,
     chave VARCHAR(100) UNIQUE,
     valor TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
 // Tabela de Auditoria
-$pdo->exec("CREATE TABLE IF NOT EXISTS auditoria (
+$pdo->exec("CREATE TABLE IF NOT EXISTS auditoria_v2 (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usuario_id INT,
     usuario_nome VARCHAR(255),
@@ -80,7 +80,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS auditoria (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
 // Verificar se a coluna senha_plana existe na tabela usuários
-$cols_u = $pdo->query("SHOW COLUMNS FROM usuarios")->fetchAll();
+$cols_u = $pdo->query("SHOW COLUMNS FROM usuarios_v2")->fetchAll();
 $hasSenhaPlana = false;
 foreach ($cols_u as $col) {
     if ($col['Field'] === 'senha_plana') {
@@ -89,12 +89,12 @@ foreach ($cols_u as $col) {
     }
 }
 if (!$hasSenhaPlana) {
-    $pdo->exec("ALTER TABLE usuarios ADD COLUMN senha_plana VARCHAR(255)");
-    $pdo->exec("UPDATE usuarios SET senha_plana = 'admin123' WHERE login = 'admin'");
+    $pdo->exec("ALTER TABLE usuarios_v2 ADD COLUMN senha_plana VARCHAR(255)");
+    $pdo->exec("UPDATE usuarios_v2 SET senha_plana = 'admin123' WHERE login = 'admin'");
 }
 
-// Verificar se a coluna peticionador existe na tabela processos
-$columns = $pdo->query("SHOW COLUMNS FROM processos")->fetchAll();
+// Verificar se a coluna peticionador existe na tabela processos_v2
+$columns = $pdo->query("SHOW COLUMNS FROM processos_v2")->fetchAll();
 $hasPeticionador = false;
 foreach ($columns as $col) {
     if ($col['Field'] === 'peticionador') {
@@ -103,7 +103,7 @@ foreach ($columns as $col) {
     }
 }
 if (!$hasPeticionador) {
-    $pdo->exec("ALTER TABLE processos ADD COLUMN peticionador VARCHAR(255)");
+    $pdo->exec("ALTER TABLE processos_v2 ADD COLUMN peticionador VARCHAR(255)");
 }
 
 // Verificar se a coluna quantidade_dias existe
@@ -115,7 +115,7 @@ foreach ($columns as $col) {
     }
 }
 if (!$hasQtdDias) {
-    $pdo->exec("ALTER TABLE processos ADD COLUMN quantidade_dias INT");
+    $pdo->exec("ALTER TABLE processos_v2 ADD COLUMN quantidade_dias INT");
 }
 
 // Verificar se a coluna observacoes existe
@@ -127,7 +127,7 @@ foreach ($columns as $col) {
     }
 }
 if (!$hasObs) {
-    $pdo->exec("ALTER TABLE processos ADD COLUMN observacoes TEXT");
+    $pdo->exec("ALTER TABLE processos_v2 ADD COLUMN observacoes TEXT");
 }
 
 // Verificar se a coluna tipo_processo existe
@@ -139,7 +139,7 @@ foreach ($columns as $col) {
     }
 }
 if (!$hasTipoProcesso) {
-    $pdo->exec("ALTER TABLE processos ADD COLUMN tipo_processo VARCHAR(50) DEFAULT 'CIÊNCIA'");
+    $pdo->exec("ALTER TABLE processos_v2 ADD COLUMN tipo_processo VARCHAR(50) DEFAULT 'CIÊNCIA'");
 }
 
 // Verificar se a coluna protocolista e data_analise existem
@@ -149,20 +149,20 @@ foreach ($columns as $col) {
     if ($col['Field'] === 'protocolista') { $hasProtocolista = true; }
     if ($col['Field'] === 'data_analise') { $hasDataAnalise = true; }
 }
-if (!$hasProtocolista) { $pdo->exec("ALTER TABLE processos ADD COLUMN protocolista VARCHAR(255)"); }
-if (!$hasDataAnalise) { $pdo->exec("ALTER TABLE processos ADD COLUMN data_analise VARCHAR(50)"); }
+if (!$hasProtocolista) { $pdo->exec("ALTER TABLE processos_v2 ADD COLUMN protocolista VARCHAR(255)"); }
+if (!$hasDataAnalise) { $pdo->exec("ALTER TABLE processos_v2 ADD COLUMN data_analise VARCHAR(50)"); }
 $hasDataPeticionamento = false;
 foreach ($columns as $col) {
     if ($col['Field'] === 'data_peticionamento') { $hasDataPeticionamento = true; break; }
 }
-if (!$hasDataPeticionamento) { $pdo->exec("ALTER TABLE processos ADD COLUMN data_peticionamento VARCHAR(50)"); }
+if (!$hasDataPeticionamento) { $pdo->exec("ALTER TABLE processos_v2 ADD COLUMN data_peticionamento VARCHAR(50)"); }
 
 
 
 function registrarAuditoria($pdo, $acao, $tabela, $registro_id, $dados_anteriores = null, $dados_novos = null) {
     $usuario_id = $_SESSION['usuario_id'] ?? 0;
     $usuario_nome = $_SESSION['usuario_nome'] ?? 'Sistema';
-    $stmt = $pdo->prepare("INSERT INTO auditoria (usuario_id, usuario_nome, acao, tabela, registro_id, dados_anteriores, dados_novos) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO auditoria_v2 (usuario_id, usuario_nome, acao, tabela, registro_id, dados_anteriores, dados_novos) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([
         $usuario_id, 
         $usuario_nome, 
@@ -181,7 +181,7 @@ try {
     switch ($metodo) {
         case 'GET':
             if ($acao === 'listar') {
-                $stmt = $pdo->query("SELECT * FROM processos ORDER BY data_criacao DESC");
+                $stmt = $pdo->query("SELECT * FROM processos_v2 ORDER BY data_criacao DESC");
                 echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             } elseif ($acao === 'login_status') {
                 echo json_encode([
@@ -193,13 +193,13 @@ try {
                 if ($_SESSION['usuario_perfil'] !== 'ADMIN') {
                     throw new Exception("Acesso negado");
                 }
-                $stmt = $pdo->query("SELECT * FROM auditoria ORDER BY data_hora DESC LIMIT 100");
+                $stmt = $pdo->query("SELECT * FROM auditoria_v2 ORDER BY data_hora DESC LIMIT 100");
                 echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             } elseif ($acao === 'listar_usuarios') {
                 if (!isset($_SESSION['usuario_id'])) {
                     throw new Exception("Acesso negado");
                 }
-                $stmt = $pdo->query("SELECT id, nome, login, perfil, senha_plana FROM usuarios ORDER BY nome ASC");
+                $stmt = $pdo->query("SELECT id, nome, login, perfil, senha_plana FROM usuarios_v2 ORDER BY nome ASC");
                 echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             } elseif ($acao === 'logout') {
                 session_destroy();
@@ -210,7 +210,7 @@ try {
         case 'POST':
             if ($acao === 'login') {
                 $p = json_decode(file_get_contents('php://input'), true);
-                $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE login = ?");
+                $stmt = $pdo->prepare("SELECT * FROM usuarios_v2 WHERE login = ?");
                 $stmt->execute([$p['login']]);
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -232,22 +232,22 @@ try {
                     // Update
                     if (!empty($p['senha'])) {
                         $senhaHash = password_hash($p['senha'], PASSWORD_DEFAULT);
-                        $stmt = $pdo->prepare("UPDATE usuarios SET nome = ?, login = ?, senha = ?, senha_plana = ?, perfil = ? WHERE id = ?");
+                        $stmt = $pdo->prepare("UPDATE usuarios_v2 SET nome = ?, login = ?, senha = ?, senha_plana = ?, perfil = ? WHERE id = ?");
                         $stmt->execute([$p['nome'], $p['login'], $senhaHash, $p['senha'], $p['perfil'], $p['id']]);
                     } else {
-                        $stmt = $pdo->prepare("UPDATE usuarios SET nome = ?, login = ?, perfil = ? WHERE id = ?");
+                        $stmt = $pdo->prepare("UPDATE usuarios_v2 SET nome = ?, login = ?, perfil = ? WHERE id = ?");
                         $stmt->execute([$p['nome'], $p['login'], $p['perfil'], $p['id']]);
                     }
                 } else {
                     // Novo
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE login = ?");
+                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM usuarios_v2 WHERE login = ?");
                     $stmt_check->execute([$p['login']]);
                     if ($stmt_check->fetchColumn() > 0) {
                         throw new Exception("O login '" . $p['login'] . "' já está em uso.");
                     }
 
                     $senhaHash = password_hash($p['senha'], PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO usuarios (nome, login, senha, senha_plana, perfil) VALUES (?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO usuarios_v2 (nome, login, senha, senha_plana, perfil) VALUES (?, ?, ?, ?, ?)");
                     $stmt->execute([$p['nome'], $p['login'], $senhaHash, $p['senha'], $p['perfil']]);
                 }
                 echo json_encode(['status' => 'sucesso']);
@@ -257,12 +257,12 @@ try {
                 
                 if (isset($p['id']) && $p['id'] !== '') {
                     // Buscar dados anteriores para auditoria
-                    $stmt_ant = $pdo->prepare("SELECT * FROM processos WHERE id = ?");
+                    $stmt_ant = $pdo->prepare("SELECT * FROM processos_v2 WHERE id = ?");
                     $stmt_ant->execute([$p['id']]);
                     $dados_anteriores = $stmt_ant->fetch(PDO::FETCH_ASSOC);
 
                     // Editar
-                    $stmt = $pdo->prepare("UPDATE processos SET 
+                    $stmt = $pdo->prepare("UPDATE processos_v2 SET 
                         numero = ?, tipo_processo = ?, tipo_ato = ?, natureza = ?, tipo_manifestacao = ?, 
                         revelia = ?, data_envio = ?, data_ciencia = ?, tipo_contagem = ?, 
                         final_prazo = ?, prazo_critico = ?, analisador = ?, peticionador = ?, protocolista = ?,
@@ -276,17 +276,17 @@ try {
                         $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes'], $p['id']
                     ]);
 
-                    registrarAuditoria($pdo, 'UPDATE', 'processos', $p['id'], $dados_anteriores, $p);
+                    registrarAuditoria($pdo, 'UPDATE', 'processos_v2', $p['id'], $dados_anteriores, $p);
                 } else {
                     // Novo - Verificar se o número JÁ EXISTE com o MESMO TIPO
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND tipo_processo = ?");
+                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos_v2 WHERE numero = ? AND tipo_processo = ?");
                     $stmt_check->execute([$p['numero'], $p['tipo_processo'] ?? 'CIÊNCIA']);
                     if ($stmt_check->fetchColumn() > 0) {
                         throw new Exception("O processo nº " . $p['numero'] . " já está cadastrado como " . ($p['tipo_processo'] ?? 'CIÊNCIA') . ".");
                     }
 
                     // Novo
-                    $stmt = $pdo->prepare("INSERT INTO processos (
+                    $stmt = $pdo->prepare("INSERT INTO processos_v2 (
                         numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
                         revelia, data_envio, data_ciencia, tipo_contagem, 
                         final_prazo, prazo_critico, analisador, peticionador, protocolista,
@@ -300,7 +300,7 @@ try {
                         $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes']
                     ]);
                     $novo_id = $pdo->lastInsertId();
-                    registrarAuditoria($pdo, 'INSERT', 'processos', $novo_id, null, $p);
+                    registrarAuditoria($pdo, 'INSERT', 'processos_v2', $novo_id, null, $p);
                 }
                 echo json_encode(['status' => 'sucesso']);
             } elseif ($acao === 'importar_csv') {
@@ -365,7 +365,7 @@ try {
                     $tipo_proc_csv = $dados[$mapeamento['tipo_processo'] ?? -1] ?? 'CIÊNCIA';
                     
                     // Verificar se o processo já existe (Número + Tipo)
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND tipo_processo = ?");
+                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos_v2 WHERE numero = ? AND tipo_processo = ?");
                     $stmt_check->execute([$numero, $tipo_proc_csv]);
                     if ($stmt_check->fetchColumn() > 0) {
                         $pula++;
@@ -373,7 +373,7 @@ try {
                     }
                     
                     if (!isset($stmt_import_csv)) {
-                        $stmt_import_csv = $pdo->prepare("INSERT INTO processos (
+                        $stmt_import_csv = $pdo->prepare("INSERT INTO processos_v2 (
                             numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
                             revelia, data_envio, data_ciencia, tipo_contagem, 
                             final_prazo, prazo_critico, analisador, status, data_protocolo, 
@@ -439,7 +439,7 @@ try {
 
                     // Cadastro automático de analisador se não existir
                     if ($analisador_nome !== '' && $analisador_nome !== 'Sistema') {
-                        $stmt_u = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE nome = ?");
+                        $stmt_u = $pdo->prepare("SELECT COUNT(*) FROM usuarios_v2 WHERE nome = ?");
                         $stmt_u->execute([$analisador_nome]);
                         if ($stmt_u->fetchColumn() == 0) {
                             // Gerar um login simples (primeiro nome + last id ou similar para garantir UNIQUE se necessário)
@@ -447,7 +447,7 @@ try {
                             $login_gerado = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $analisador_nome));
                             
                             // Verificar se o login já existe, se sim, anexar algo
-                            $check_l = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE login = ?");
+                            $check_l = $pdo->prepare("SELECT COUNT(*) FROM usuarios_v2 WHERE login = ?");
                             $check_l->execute([$login_gerado]);
                             if ($check_l->fetchColumn() > 0) {
                                 $login_gerado .= rand(10, 99);
@@ -455,16 +455,16 @@ try {
 
                             $senhaPadrao = 'admin123';
                             $senhaHash = password_hash($senhaPadrao, PASSWORD_DEFAULT);
-                            $stmt_new_u = $pdo->prepare("INSERT INTO usuarios (nome, login, senha, senha_plana, perfil) VALUES (?, ?, ?, ?, ?)");
+                            $stmt_new_u = $pdo->prepare("INSERT INTO usuarios_v2 (nome, login, senha, senha_plana, perfil) VALUES (?, ?, ?, ?, ?)");
                             $stmt_new_u->execute([$analisador_nome, $login_gerado, $senhaHash, $senhaPadrao, 'ANALISADOR']);
                             
-                            registrarAuditoria($pdo, 'AUTO_INSERT_USER', 'usuarios', $pdo->lastInsertId(), null, ['nome' => $analisador_nome, 'login' => $login_gerado]);
+                            registrarAuditoria($pdo, 'AUTO_INSERT_USER', 'usuarios_v2', $pdo->lastInsertId(), null, ['nome' => $analisador_nome, 'login' => $login_gerado]);
                         }
                     }
 
                     // Verificar duplicata (Número + Tipo)
                     $tipo_processo_dados = $item['tipo_processo'] ?? 'CIÊNCIA';
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND tipo_processo = ?");
+                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos_v2 WHERE numero = ? AND tipo_processo = ?");
                     $stmt_check->execute([$numero, $tipo_processo_dados]);
                     if ($stmt_check->fetchColumn() > 0) {
                         $pula++;
@@ -489,11 +489,11 @@ try {
 
                     // Cadastro automático de ACESSOR se extraído do protocolo
                     if ($protocolista_import !== '' && $protocolista_import !== 'Sistema' && $protocolista_import !== $analisador_nome) {
-                        $stmt_ac = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE nome = ?");
+                        $stmt_ac = $pdo->prepare("SELECT COUNT(*) FROM usuarios_v2 WHERE nome = ?");
                         $stmt_ac->execute([$protocolista_import]);
                         if ($stmt_ac->fetchColumn() == 0) {
                             $login_gerado = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $protocolista_import));
-                            $check_l = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE login = ?");
+                            $check_l = $pdo->prepare("SELECT COUNT(*) FROM usuarios_v2 WHERE login = ?");
                             $check_l->execute([$login_gerado]);
                             if ($check_l->fetchColumn() > 0) {
                                 $login_gerado .= rand(10, 99);
@@ -501,14 +501,14 @@ try {
 
                             $senhaPadrao = 'admin123';
                             $senhaHash = password_hash($senhaPadrao, PASSWORD_DEFAULT);
-                            $stmt_new_ac = $pdo->prepare("INSERT INTO usuarios (nome, login, senha, senha_plana, perfil) VALUES (?, ?, ?, ?, ?)");
+                            $stmt_new_ac = $pdo->prepare("INSERT INTO usuarios_v2 (nome, login, senha, senha_plana, perfil) VALUES (?, ?, ?, ?, ?)");
                             $stmt_new_ac->execute([$protocolista_import, $login_gerado, $senhaHash, $senhaPadrao, 'ACESSORES']);
                             
-                            registrarAuditoria($pdo, 'AUTO_INSERT_USER', 'usuarios', $pdo->lastInsertId(), null, ['nome' => $protocolista_import, 'login' => $login_gerado, 'perfil' => 'ACESSORES']);
+                            registrarAuditoria($pdo, 'AUTO_INSERT_USER', 'usuarios_v2', $pdo->lastInsertId(), null, ['nome' => $protocolista_import, 'login' => $login_gerado, 'perfil' => 'ACESSORES']);
                         }
                     }
 
-                    $stmt = $pdo->prepare("INSERT INTO processos (
+                    $stmt = $pdo->prepare("INSERT INTO processos_v2 (
                         numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
                         revelia, data_envio, data_ciencia, tipo_contagem, 
                         final_prazo, prazo_critico, analisador, status, 
@@ -550,19 +550,19 @@ try {
                 if ($_SESSION['usuario_perfil'] !== 'ADMIN') {
                     throw new Exception("Acesso negado");
                 }
-                $stmt = $pdo->prepare("DELETE FROM usuarios WHERE id = ?");
+                $stmt = $pdo->prepare("DELETE FROM usuarios_v2 WHERE id = ?");
                 $stmt->execute([$id]);
                 echo json_encode(['status' => 'sucesso']);
             } else { // 'excluir' processo
                 // Buscar para auditoria
-                $stmt_ant = $pdo->prepare("SELECT * FROM processos WHERE id = ?");
+                $stmt_ant = $pdo->prepare("SELECT * FROM processos_v2 WHERE id = ?");
                 $stmt_ant->execute([$id]);
                 $dados_anteriores = $stmt_ant->fetch(PDO::FETCH_ASSOC);
 
-                $stmt = $pdo->prepare("DELETE FROM processos WHERE id = ?");
+                $stmt = $pdo->prepare("DELETE FROM processos_v2 WHERE id = ?");
                 $stmt->execute([$id]);
 
-                registrarAuditoria($pdo, 'DELETE', 'processos', $id, $dados_anteriores, null);
+                registrarAuditoria($pdo, 'DELETE', 'processos_v2', $id, $dados_anteriores, null);
                 echo json_encode(['status' => 'sucesso']);
             }
             break;
