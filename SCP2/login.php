@@ -1,12 +1,19 @@
+<?php
+session_start();
+if (isset($_SESSION['usuario_id'])) {
+    header("Location: v2/index.html");
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SCP</title>
-    <link rel="stylesheet" href="assets/css/estilo.css">
+    <title>SCP 2.0 - Acesso ao Sistema</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="v2/assets/css/style.css">
     <style>
         body {
             display: flex;
@@ -14,171 +21,144 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            background: #0f172a;
         }
-        .login-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 3rem;
-            border-radius: 24px;
+        .login-container {
             width: 100%;
             max-width: 400px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            padding: 2rem;
+        }
+        .login-header {
             text-align: center;
-        }
-        .login-logo {
-            font-size: 3rem;
-            color: #38bdf8;
-            margin-bottom: 1.5rem;
-        }
-        .login-card h2 {
-            color: white;
-            margin-bottom: 0.5rem;
-            font-weight: 700;
-        }
-        .login-card p {
-            color: #94a3b8;
             margin-bottom: 2rem;
         }
-        .form-group {
-            text-align: left;
+        .login-header i {
+            font-size: 3rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .input-group {
             margin-bottom: 1.5rem;
+            position: relative;
         }
-        .form-group label {
-            display: block;
-            color: #cbd5e1;
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
+        .input-group i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
         }
-        .form-group input {
+        .input-group input {
             width: 100%;
-            padding: 0.75rem 1rem;
+            padding: 1rem 1rem 1rem 3rem;
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
             border-radius: 12px;
             color: white;
+            outline: none;
             transition: all 0.3s;
         }
-        .form-group input:focus {
-            outline: none;
-            border-color: #38bdf8;
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1);
+        .input-group input:focus {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.1);
         }
         .btn-login {
             width: 100%;
-            padding: 0.75rem;
-            background: #38bdf8;
-            color: #0f172a;
-            border: none;
+            padding: 1rem;
             border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
             font-weight: 700;
+            font-size: 1rem;
             cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
+            transition: 0.3s;
         }
         .btn-login:hover {
-            background: #7dd3fc;
+            box-shadow: 0 0 20px var(--primary-glow);
             transform: translateY(-2px);
-        }
-        .error-message {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #f87171;
-            padding: 0.75rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            display: none;
-            font-size: 0.875rem;
         }
     </style>
 </head>
 <body>
 
-<div class="login-card">
-    <div class="login-logo">
-        <i class="fas fa-balance-scale"></i>
-    </div>
-    <h2>SCP PGM</h2>
-    <p>Acesse o sistema de controle</p>
-
-    <div id="error-msg" class="error-message"></div>
-
-    <form id="login-form">
-        <div class="form-group">
-            <label for="login">Usuário</label>
-            <input type="text" id="login" placeholder="Seu login" required>
-        </div>
-        <div class="form-group">
-            <label for="senha">Senha</label>
-            <div class="password-wrapper">
-                <input type="password" id="senha" placeholder="••••••••" required>
-                <button type="button" class="toggle-password" onclick="togglePasswordVisibility('senha', this)" style="color:#94a3b8;">
-                    <i class="fas fa-eye"></i>
-                </button>
+    <div class="login-container">
+        <div class="glass-card">
+            <div class="login-header">
+                <i class="fas fa-microchip"></i>
+                <h1 style="font-weight: 800; font-size: 1.8rem;">SCP 2.0</h1>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Versão Premium com Integração Projudi</p>
             </div>
+
+            <form id="form-login">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="login" name="login" placeholder="Seu usuário" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="senha" name="senha" placeholder="Sua senha" required>
+                </div>
+
+                <button type="submit" class="btn-login" id="btn-entrar">
+                    Entrar no Sistema
+                </button>
+            </form>
+
+            <p style="text-align: center; margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted);">
+                &copy; 2024 Procuradoria Geral do Município
+            </p>
         </div>
-        <button type="submit" class="btn-login" id="btn-submit">
-            <i class="fas fa-sign-in-alt"></i> Entrar no Sistema
-        </button>
-    </form>
-</div>
+    </div>
 
-<script>
-    function togglePasswordVisibility(inputId, btn) {
-        const input = document.getElementById(inputId);
-        const icon = btn.querySelector('i');
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            input.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-    }
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.getElementById('form-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-entrar');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Autenticando...';
+            btn.disabled = true;
 
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('btn-submit');
-        const errorMsg = document.getElementById('error-msg');
-        
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Autenticando...';
-        errorMsg.style.display = 'none';
+            const login = document.getElementById('login').value;
+            const senha = document.getElementById('senha').value;
 
-        const login = document.getElementById('login').value;
-        const senha = document.getElementById('senha').value;
-
-        try {
-            const response = await fetch('api.php?acao=login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ login, senha })
-            });
-            const data = await response.json();
-
-            if (data.status === 'sucesso') {
-                window.location.href = 'index.php';
-            } else {
-                errorMsg.textContent = data.message;
-                errorMsg.style.display = 'block';
+            try {
+                const response = await fetch('api.php?acao=login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login, senha })
+                });
+                
+                const result = await response.json();
+                
+                if(result.status === 'sucesso') {
+                    location.href = 'v2/index.html';
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Acesso Negado',
+                        text: result.message,
+                        background: '#1e293b',
+                        color: '#fff',
+                        confirmButtonColor: '#f87171'
+                    });
+                    btn.innerHTML = 'Entrar no Sistema';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro de Conexão',
+                    text: 'Não foi possível falar com o servidor.',
+                    background: '#1e293b',
+                    color: '#fff'
+                });
+                btn.innerHTML = 'Entrar no Sistema';
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar no Sistema';
             }
-        } catch (error) {
-            errorMsg.textContent = 'Erro de conexão com o servidor';
-            errorMsg.style.display = 'block';
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar no Sistema';
-        }
-    });
-</script>
-
+        });
+    </script>
 </body>
 </html>
