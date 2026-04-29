@@ -4,8 +4,8 @@ $paginaTitulo = 'Clientes';
 $paginaDescricao = 'Consulte os clientes vinculados aos protocolos e acompanhe a situação administrativa de cada cadastro.';
 $usuarioNome = 'Paulo Martins';
 $usuarioCargo = 'Administrativo';
-$textoBotaoAcao = 'Novo Orçamento';
-$linkBotaoAcao = route_url('administrativo', 'orcamentos');
+$textoBotaoAcao = 'Cadastrar Cliente';
+$linkBotaoAcao = route_url('administrativo', 'clienteCadastrar');
 $tituloPagina = 'Administrativo - Clientes';
 $cssPagina = 'assets/css/administrativo/styleadm.css';
 
@@ -190,8 +190,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 </td>
                                 <td>
                                     <div class="table-actions">
-                                        <a href="#" class="btn-outline">Ver</a>
-                                        <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                        <a href="<?= route_url('administrativo', 'clienteVisualizar') ?>" class="btn-outline">Ver</a>
+                                        <a href="<?= route_url('administrativo', 'clienteEditar') ?>" class="btn-primary">Editar</a>
                                     </div>
                                 </td>
                             </tr>

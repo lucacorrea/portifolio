@@ -65,6 +65,6 @@ if (!isset($paginaAtual)) {
             O setor administrativo recebe os protocolos, valida documentos,
             monta os orçamentos e acompanha as pendências até a finalização.
         </p>
-        <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-sidebar">+ Novo Orçamento</a>
+        <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-sidebar">+ Novo Orçamento</a>
     </div>
 </aside>

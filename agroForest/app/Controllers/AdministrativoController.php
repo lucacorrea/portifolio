@@ -95,6 +95,6 @@ class AdministrativoController extends Controller
 
     public function configuracoes(): void
     {
-        require APP_PATH . '/Views/administrativo/configuracoes.php';
+        require APP_PATH . '/Views/administrativo/configurações.php';
     }
 }

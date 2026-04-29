@@ -7,7 +7,7 @@ $usuarioCargo = 'Administrativo';
 $textoBotaoAcao = 'Voltar para Orçamentos';
 $linkBotaoAcao = route_url('administrativo', 'orcamentos');
 $tituloPagina = 'Administrativo - Editar Orçamento';
-$cssPagina = '../../app/assets/css/administrativo/style.css';
+$cssPagina = 'assets/css/administrativo/styleadm.css';
 
 require dirname(__DIR__) . '/layouts/header.php';
 ?>

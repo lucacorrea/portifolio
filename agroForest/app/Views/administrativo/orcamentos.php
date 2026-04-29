@@ -4,8 +4,8 @@ $paginaTitulo = 'Orçamentos';
 $paginaDescricao = 'Monte, acompanhe e finalize os orçamentos gerados a partir dos protocolos recebidos.';
 $usuarioNome = 'Paulo Martins';
 $usuarioCargo = 'Administrativo';
-$textoBotaoAcao = 'Protocolos Recebidos';
-$linkBotaoAcao = route_url('administrativo', 'protocolosRecebidos');
+$textoBotaoAcao = 'Cadastrar Orçamento';
+$linkBotaoAcao = route_url('administrativo', 'orcamentoCadastrar');
 $tituloPagina = 'Administrativo - Orçamentos';
 $cssPagina = 'assets/css/administrativo/styleadm.css';
 
@@ -141,8 +141,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status progress">Em elaboração</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="#" class="btn-outline">Ver</a>
-                                    <a href="#" class="btn-primary">Editar</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoEditar') ?>" class="btn-primary">Editar</a>
                                 </div>
                             </td>
                         </tr>
@@ -157,8 +157,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status high">Urgente</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="#" class="btn-outline">Ver</a>
-                                    <a href="#" class="btn-primary">Editar</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoEditar') ?>" class="btn-primary">Editar</a>
                                 </div>
                             </td>
                         </tr>
@@ -173,8 +173,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status pending">Aguardando aprovação</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="#" class="btn-outline">Ver</a>
-                                    <a href="#" class="btn-primary">Editar</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoEditar') ?>" class="btn-primary">Editar</a>
                                 </div>
                             </td>
                         </tr>
@@ -189,8 +189,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status ok">Concluído</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="#" class="btn-outline">Ver</a>
-                                    <a href="#" class="btn-primary">Editar</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoEditar') ?>" class="btn-primary">Editar</a>
                                 </div>
                             </td>
                         </tr>

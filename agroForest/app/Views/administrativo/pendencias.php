@@ -4,8 +4,8 @@ $paginaTitulo = 'Pendências';
 $paginaDescricao = 'Acompanhe os processos com bloqueios, documentação incompleta e itens que impedem a finalização.';
 $usuarioNome = 'Paulo Martins';
 $usuarioCargo = 'Administrativo';
-$textoBotaoAcao = 'Protocolos Recebidos';
-$linkBotaoAcao = route_url('administrativo', 'protocolosRecebidos');
+$textoBotaoAcao = 'Cadastrar Pendência';
+$linkBotaoAcao = route_url('administrativo', 'pendenciaCadastrar');
 $tituloPagina = 'Administrativo - Pendências';
 $cssPagina = 'assets/css/administrativo/styleadm.css';
 
@@ -217,8 +217,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 </td>
                                 <td>
                                     <div class="table-actions">
-                                        <a href="#" class="btn-outline">Ver</a>
-                                        <a href="#" class="btn-primary">Resolver</a>
+                                        <a href="<?= route_url('administrativo', 'pendenciaVisualizar') ?>" class="btn-outline">Ver</a>
+                                        <a href="<?= route_url('administrativo', 'pendenciaEditar') ?>" class="btn-primary">Resolver</a>
                                     </div>
                                 </td>
                             </tr>

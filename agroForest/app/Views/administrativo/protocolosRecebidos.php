@@ -5,7 +5,7 @@ $paginaDescricao = 'Acompanhe os protocolos enviados pela recepção e organize 
 $usuarioNome = 'Paulo Martins';
 $usuarioCargo = 'Administrativo';
 $textoBotaoAcao = 'Novo Orçamento';
-$linkBotaoAcao = route_url('administrativo', 'orcamentos');
+$linkBotaoAcao = route_url('administrativo', 'orcamentoCadastrar');
 $tituloPagina = 'Administrativo - Protocolos Recebidos';
 $cssPagina = 'assets/css/administrativo/styleadm.css';
 
@@ -141,8 +141,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status progress">Em análise</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
-                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                    <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
                                 </div>
                             </td>
                         </tr>
@@ -159,8 +159,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status high">Urgente</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
-                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                    <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
                                 </div>
                             </td>
                         </tr>
@@ -177,8 +177,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status pending">Pendente</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
-                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                    <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
                                 </div>
                             </td>
                         </tr>
@@ -195,8 +195,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status ok">Concluído</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
-                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                    <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
                                 </div>
                             </td>
                         </tr>
@@ -213,8 +213,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status progress">Em análise</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
-                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                    <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
                                 </div>
                             </td>
                         </tr>
@@ -231,8 +231,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <td><span class="status high">Urgente</span></td>
                             <td>
                                 <div class="table-actions">
-                                    <a href="<?= route_url('administrativo', 'verProtocolo') ?>" class="btn-outline">Ver</a>
-                                    <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçar</a>
+                                    <a href="<?= route_url('administrativo', 'protocoloVisualizar') ?>" class="btn-outline">Ver</a>
+                                    <a href="<?= route_url('administrativo', 'orcamentoCadastrar') ?>" class="btn-primary">Orçar</a>
                                 </div>
                             </td>
                         </tr>

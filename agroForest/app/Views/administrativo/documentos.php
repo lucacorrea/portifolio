@@ -191,8 +191,8 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 </td>
                                 <td>
                                     <div class="table-actions">
-                                        <a href="#" class="btn-outline">Visualizar</a>
-                                        <a href="#" class="btn-primary">Validar</a>
+                                        <a href="<?= route_url('administrativo', 'documentoVisualizar') ?>" class="btn-outline">Visualizar</a>
+                                        <a href="<?= route_url('administrativo', 'documentoVisualizar') ?>" class="btn-primary">Validar</a>
                                     </div>
                                 </td>
                             </tr>
