@@ -1,9 +1,8 @@
 <?php
-ob_start();
 session_start();
-if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORES') {
-    header('Location: index.php');
-    exit;
+if (!isset($_SESSION['usuario_id'])) {
+    header("Location: login.php");
+    exit();
 }
 ?>
 <!DOCTYPE html>
@@ -11,282 +10,189 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCP - Cadastro de Processo</title>
-    <link rel="stylesheet" href="assets/css/estilo.css">
+    <title>SCP 2.0 - Cadastro de Processo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="v2/assets/css/style.css">
+    <style>
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        input, select, textarea {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.8rem;
+            color: white;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--primary);
+        }
+    </style>
 </head>
 <body>
 
-<header class="navbar">
-    <div class="logo">
-        <i class="fas fa-balance-scale"></i>
-        <span>SCP PGM</span>
-    </div>
-    <nav class="nav-links">
-        <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
-        <a href="cadastro.php" class="nav-link active"><i class="fas fa-plus-circle"></i> Novo</a>
-        <a href="prazos.php" class="nav-link"><i class="fas fa-clock"></i> Prazos</a>
-        <a href="tipos.php" class="nav-link"><i class="fas fa-layer-group"></i> Tipos</a>
-        <a href="relatorios.php" class="nav-link"><i class="fas fa-chart-line"></i> Relatórios</a>
-        <?php if ($_SESSION['usuario_perfil'] === 'ADMIN'): ?>
-        <a href="usuarios.php" class="nav-link"><i class="fas fa-users"></i> Usuários</a>
-        <a href="configuracoes.php" class="nav-link"><i class="fas fa-cog"></i></a>
-        <?php endif; ?>
+    <nav class="premium-nav">
+        <div class="logo-group" style="cursor:pointer" onclick="location.href='v2/index.html'">
+            <i class="fas fa-microchip"></i>
+            <span>SCP 2.0</span>
+        </div>
+        <div style="display: flex; gap: 2rem; align-items: center;">
+            <button class="btn-premium" style="background: var(--border);" onclick="location.href='v2/index.html'">
+                <i class="fas fa-arrow-left"></i> Voltar ao Painel
+            </button>
+        </div>
     </nav>
-    <div style="display: flex; align-items: center; gap: 1rem;">
-        <div id="nome-analisador" style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">
-            <i class="fas fa-user-circle" style="color: var(--primary); margin-right: 5px;"></i>
-            <?php echo $_SESSION['usuario_nome']; ?>
-        </div>
-        <a href="api.php?acao=logout" class="btn-quick" style="color: #f87171; border:none;" title="Sair">
-            <i class="fas fa-sign-out-alt"></i>
-        </a>
-    </div>
-</header>
 
-<main class="main-content">
-    <header class="header">
-        <div class="title-group">
-            <h1>Cadastro de Processo</h1>
-            <p>Preencha os dados abaixo para iniciar o controle.</p>
-        </div>
-        <a href="index.php" class="btn btn-secondary" style="background: white; border: 1px solid var(--border);"><i class="fas fa-arrow-left"></i> Voltar</a>
-    </header>
-
-    <form id="form-processo" class="data-section">
-        <input type="hidden" id="processo-id" value="">
+    <main style="padding: 2rem; max-width: 1000px; margin: 0 auto;">
         
-        <!-- Step Indicator -->
-        <div class="step-indicator">
-            <div class="step-item active" id="indicator-1" onclick="irParaEtapa(1)">
-                <div class="step-number">1</div>
-                <span>Identificação</span>
-            </div>
-            <div class="step-item" id="indicator-2" onclick="irParaEtapa(2)">
-                <div class="step-number">2</div>
-                <span>Conclusão</span>
-            </div>
+        <header style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2rem; font-weight: 800;">Novo Registro</h1>
+            <p style="color: var(--text-muted);">Preencha os dados do processo para iniciar o monitoramento.</p>
+        </header>
+
+        <div class="glass-card">
+            <form id="form-cadastro-v2">
+                
+                <div class="section-title"><i class="fas fa-info-circle"></i> Informações Básicas</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Número do Processo (CNJ)</label>
+                        <input type="text" id="numero" name="numero" placeholder="0000000-00.0000.8.04.0000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Processo</label>
+                        <select id="tipo_processo" name="tipo_processo">
+                            <option value="CIÊNCIA">CIÊNCIA</option>
+                            <option value="CUMPRIMENTO">CUMPRIMENTO</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Natureza</label>
+                        <input type="text" id="natureza" name="natureza" placeholder="Ex: Execução de Título">
+                    </div>
+                </div>
+
+                <div class="section-title"><i class="fas fa-calendar-alt"></i> Prazos e Datas</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Data de Ciência</label>
+                        <input type="date" id="data_ciencia" name="data_ciencia">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Contagem</label>
+                        <select id="tipo_contagem" name="tipo_contagem">
+                            <option value="DIAS ÚTEIS">DIAS ÚTEIS</option>
+                            <option value="DIAS CORRIDOS">DIAS CORRIDOS</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantidade de Dias</label>
+                        <input type="number" id="quantidade_dias" name="quantidade_dias" value="15">
+                    </div>
+                </div>
+
+                <div class="section-title"><i class="fas fa-user-tie"></i> Atribuição</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Analisador Responsável</label>
+                        <input type="text" id="analisador" name="analisador" value="<?php echo $_SESSION['usuario_nome']; ?>">
+                    </div>
+                    <div class="form-group">
+                        <label>Status Inicial</label>
+                        <select id="status" name="status">
+                            <option value="PENDENTE">PENDENTE</option>
+                            <option value="URGENTE">URGENTE</option>
+                            <option value="ANALISADO">ANALISADO</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label>Observações Adicionais</label>
+                    <textarea id="observacoes" name="observacoes" rows="4" placeholder="Algum detalhe importante?"></textarea>
+                </div>
+
+                <div style="margin-top: 2.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="reset" class="btn-premium" style="background: rgba(248,113,113,0.1); color: #f87171;">
+                        Limpar Campos
+                    </button>
+                    <button type="submit" class="btn-premium">
+                        <i class="fas fa-save"></i> Gravar Processo
+                    </button>
+                </div>
+
+            </form>
         </div>
 
-        <!-- Step 1: Identificação -->
-        <div class="form-step form-step-active" id="step-1">
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
-            <!-- Dados Básicos -->
-            <div class="form-group">
-                <label for="numero_processo">Nº do Processo</label>
-                <input type="text" id="numero_processo" placeholder="0000000-00.0000.8.04.0000" required>
-            </div>
+    </main>
 
-            <div class="form-group">
-                <label for="tipo_processo">Tipo de Processo</label>
-                <select id="tipo_processo" required>
-                    <option value="">Selecione...</option>
-                    <option value="CIÊNCIA">CIÊNCIA</option>
-                    <option value="CUMPRIMENTO">CUMPRIMENTO</option>
-                    <option value="RECURSO - CIÊNCIA">RECURSO - CIÊNCIA</option>
-                    <option value="RECURSO - CUMPRIMENTO">RECURSO - CUMPRIMENTO</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="tipo_ato">Tipo de Ato</label>
-                <select id="tipo_ato" required>
-                    <option value="">Selecione...</option>
-                    <option value="DECISÃO">DECISÃO</option>
-                    <option value="DESPACHO">DESPACHO</option>
-                    <option value="JUNTADA DE ANÁLISE DE DECURSO DE PRAZO">JUNTADA DE ANÁLISE DE DECURSO DE PRAZO</option>
-                    <option value="JUNTADA DE ATO ORDINATÓRIO">JUNTADA DE ATO ORDINATÓRIO</option>
-                    <option value="EXPEDIÇÃO DE OFÍCIO">EXPEDIÇÃO DE OFÍCIO</option>
-                    <option value="CERTIDÃO">CERTIDÃO</option>
-                    <option value="SENTENÇA">SENTENÇA</option>
-                    <option value="SEQUESTRO DE VALOR">SEQUESTRO DE VALOR</option>
-                    <option value="JUNTADA DE CUMPRIMENTO DE DILIGÊNCIA">JUNTADA DE CUMPRIMENTO DE DILIGÊNCIA</option>
-                    <option value="JUNTADA DE PETIÇÃO DE MANIFESTAÇÃO DA PARTE">JUNTADA DE PETIÇÃO DE MANIFESTAÇÃO DA PARTE</option>
-                    <option value="CIÊNCIA">CIÊNCIA</option>
-                    <option value="PERSONALIZADO" style="color: #4338ca; font-weight: bold;">PERSONALIZADO</option>
-                </select>
-                <input type="text" id="tipo_ato_personalizado" placeholder="Digite o tipo de ato..." style="display: none; margin-top: 0.5rem; text-transform: uppercase;">
-            </div>
-
-            <div class="form-group">
-                <label for="natureza_prazo">Natureza do Prazo</label>
-                <select id="natureza_prazo" required>
-                    <option value="">Selecione...</option>
-                    <option value="MANIFESTAÇÃO">MANIFESTAÇÃO</option>
-                    <option value="PAGAMENTO">PAGAMENTO</option>
-                    <option value="RECURSO">RECURSO</option>
-                    <option value="IMPUGNAÇÃO">IMPUGNAÇÃO</option>
-                    <option value="REMETIDOS OS AUTOS">REMETIDOS OS AUTOS</option>
-                    <option value="CUMPRIMENTO DA DECISÃO">CUMPRIMENTO DA DECISÃO</option>
-                    <option value="CONTESTAÇÃO">CONTESTAÇÃO</option>
-                    <option value="APELAÇÃO">APELAÇÃO</option>
-                    <option value="FINALIZADO">FINALIZADO</option>
-                    <option value="AUDIÊNCIA">AUDIÊNCIA</option>
-                    <option value="ANÁLISE">ANÁLISE</option>
-                    <option value="CIÊNCIA">CIÊNCIA</option>
-                    <option value="PERSONALIZADO" style="color: #4338ca; font-weight: bold;">PERSONALIZADO</option>
-                </select>
-                <input type="text" id="natureza_prazo_personalizado" placeholder="Digite a natureza do prazo..." style="display: none; margin-top: 0.5rem; text-transform: uppercase;">
-            </div>
-
-            <div class="form-group">
-                <label for="revelia">Revelia / Desnec. Audiência</label>
-                <select id="revelia">
-                    <option value="NÃO" style="color: red;">NÃO</option>
-                    <option value="SIM" style="color: green;">SIM</option>
-                </select>
-            </div>
-
-            <!-- Datas e Contagem -->
-            <div class="form-group">
-                <label for="data_envio_intimacao">Data de Envio da Intimação</label>
-                <input type="date" id="data_envio_intimacao" required>
-            </div>
-
-            <div class="form-group">
-                <label for="data_ciencia">Data da Ciência</label>
-                <input type="date" id="data_ciencia" required>
-            </div>
-
-            <div class="form-group">
-                <label for="tipo_contagem">Tipo de Contagem (Cálculo Automático)</label>
-                <select id="tipo_contagem" required>
-                    <option value="ÚTEIS">DIAS ÚTEIS</option>
-                    <option value="CORRIDOS">DIAS CORRIDOS</option>
-                    <option value="REDESIGNADA">REDESIGNADA</option>
-                </select>
-            </div>
-
-                <div class="form-group">
-                    <label for="final_prazo">Data Final do Prazo</label>
-                    <input type="date" id="final_prazo" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="quantidade_dias">Qtd. Dias (Calculado)</label>
-                    <input type="number" id="quantidade_dias" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700; color: var(--primary);">
-                </div>
-            </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.getElementById('form-cadastro-v2').addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            <div class="form-navigation">
-                <span></span> <!-- Spacer -->
-                <button type="button" class="btn btn-primary" onclick="proximaEtapa()">Próximo <i class="fas fa-arrow-right"></i></button>
-            </div>
-        </div>
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            data.acao = 'salvar';
 
-        <!-- Step 2: Conclusão -->
-        <div class="form-step" id="step-2">
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
-                <div class="form-group">
-                    <label for="prazo_critico">Prazo Crítico?</label>
-                    <select id="prazo_critico">
-                        <option value="NÃO">NÃO</option>
-                        <option value="SIM">SIM</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="tipo_manifestacao">Tipo de Manifestação</label>
-                    <input type="text" id="tipo_manifestacao" placeholder="Ex: Manifestar a respeito do valor">
-                </div>
-
-                <!-- Campos Reais (usados para salvar no BD) -->
-                <input type="hidden" id="data_protocolo" value="">
-                <input type="hidden" id="data_analise" value="">
-                <input type="hidden" id="analisador" value="<?php echo $_SESSION['usuario_nome']; ?>">
-                <input type="hidden" id="protocolista" value="">
-
-                <!-- Visualização Dinâmica do Protocolo -->
-                <div id="container-protocolo" style="display: none; grid-column: span 2; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; background: rgba(34, 197, 94, 0.05); padding: 1.5rem; border-radius: var(--radius); border: 1px dashed rgba(34, 197, 94, 0.3);">
-                    <div style="grid-column: span 2; margin-bottom: -0.5rem;">
-                        <h3 style="color: var(--status-protocolado); font-size: 0.95rem; border-bottom: 2px solid var(--status-protocolado); display: inline-block; padding-bottom: 4px;"><i class="fas fa-check-circle"></i> Dados do Protocolo</h3>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Data do Protocolo</label>
-                        <input type="date" id="data_protocolo_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Responsável pelo Protocolo</label>
-                        <input type="text" id="protocolista_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
-                    </div>
-                </div>
-
-                <!-- Visualização Dinâmica da Análise -->
-                <div id="container-analise" style="display: none; grid-column: span 2; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; background: rgba(59, 130, 246, 0.05); padding: 1.5rem; border-radius: var(--radius); border: 1px dashed rgba(59, 130, 246, 0.3);">
-                    <div style="grid-column: span 2; margin-bottom: -0.5rem;">
-                        <h3 style="color: var(--status-analisado); font-size: 0.95rem; border-bottom: 2px solid var(--status-analisado); display: inline-block; padding-bottom: 4px;"><i class="fas fa-eye"></i> Dados da Análise</h3>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Data da Análise</label>
-                        <input type="date" id="data_analise_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Responsável pela Análise</label>
-                        <input type="text" id="analisador_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
-                    </div>
-                </div>
-
-                <input type="hidden" id="peticionador" value="">
-                <input type="hidden" id="data_peticionamento" value="">
-
-                <!-- Visualização Dinâmica do Peticionamento -->
-                <div id="container-peticionamento" style="display: none; grid-column: span 2; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; background: rgba(139, 92, 246, 0.05); padding: 1.5rem; border-radius: var(--radius); border: 1px dashed rgba(139, 92, 246, 0.3);">
-                    <div style="grid-column: span 2; margin-bottom: -0.5rem;">
-                        <h3 style="color: #8b5cf6; font-size: 0.95rem; border-bottom: 2px solid #8b5cf6; display: inline-block; padding-bottom: 4px;"><i class="fas fa-file-upload"></i> Dados do Peticionamento</h3>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Data de Peticionamento</label>
-                        <input type="date" id="data_peticionamento_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Responsável por Peticionar</label>
-                        <input type="text" id="peticionador_visivel" readonly style="background: white; cursor: not-allowed; font-weight: 700; color: var(--text-main);">
-                    </div>
-                </div>
-
-                <div class="form-group" style="grid-column: span 2;">
-                    <label for="observacoes">Observações</label>
-                    <textarea id="observacoes" rows="4" placeholder="Adicione notas ou detalhes importantes sobre este processo..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="status">Status</label>
-                    <select id="status">
-                        <option value="PENDENTE" style="color: #ef4444; font-weight: bold;">PENDENTE</option>
-                        <option value="SENDO AVALIADO" style="color: #eab308; font-weight: bold;">SENDO AVALIADO</option>
-                        <option value="EM ELABORAÇÃO" style="color: #f97316; font-weight: bold;">EM ELABORAÇÃO</option>
-                        <option value="PROTOCOLADO" style="color: #22c55e; font-weight: bold;">PROTOCOLADO</option>
-                        <option value="ANALISADO" style="color: #3b82f6; font-weight: bold;">ANALISADO</option>
-                        <option value="PROCESSO FINALIZADO" style="color: #2E6C80; font-weight: bold;">PROCESSO FINALIZADO</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-navigation">
-                <button type="button" class="btn btn-secondary" onclick="etapaAnterior()"><i class="fas fa-arrow-left"></i> Anterior</button>
-                <button type="submit" class="btn btn-primary" id="btn-salvar">Salvar Processo <i class="fas fa-check"></i></button>
-            </div>
-        </div>
-    </form>
-</main>
-
-<script src="assets/js/script.js?v=65"></script>
-<script>
-    // Plano de contingência: Forçar visibilidade se o script externo falhar ou for cacheado
-    document.addEventListener('DOMContentLoaded', function() {
-        const check = (sId, iId) => {
-            const s = document.getElementById(sId);
-            const i = document.getElementById(iId);
-            if(s && i) {
-                const up = () => { i.style.setProperty('display', s.value === 'PERSONALIZADO' ? 'block' : 'none', 'important'); };
-                s.addEventListener('change', up);
-                up();
+            try {
+                const response = await fetch('api.php?acao=salvar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if(result.status === 'sucesso') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Processo Gravado!',
+                        text: 'O registro foi salvo com sucesso no SCP 2.0.',
+                        background: '#1e293b',
+                        color: '#fff',
+                        confirmButtonColor: '#38bdf8'
+                    }).then(() => {
+                        location.href = 'v2/index.html';
+                    });
+                } else {
+                    throw new Exception(result.message);
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro no Cadastro',
+                    text: error.message || 'Não foi possível salvar o processo.',
+                    background: '#1e293b',
+                    color: '#fff'
+                });
             }
-        };
-        check('tipo_ato', 'tipo_ato_personalizado');
-        check('natureza_prazo', 'natureza_prazo_personalizado');
-    });
-</script>
+        });
+    </script>
 </body>
 </html>
