@@ -9,7 +9,7 @@ $linkBotaoAcao = route_url('administrativo', 'orcamentos');
 $tituloPagina = 'Administrativo - Dashboard';
 $cssPagina = '../../app/assets/css/administrativo/styleAdministrativo.css';
 
-require dirname(__DIR__) . '/includes/header.php';
+require dirname(__DIR__) . '/layouts/header.php';
 ?>
 
 <div class="layout">
