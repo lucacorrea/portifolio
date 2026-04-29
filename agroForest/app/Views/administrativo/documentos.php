@@ -215,62 +215,7 @@ require dirname(__DIR__) . '/layouts/header.php';
             </div>
         </section>
 
-        <section class="bottom-grid">
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Pontos de atenção</h3>
-                        <p>Arquivos que precisam de ação do administrativo.</p>
-                    </div>
-                </div>
-
-                <div class="alert-list">
-                    <div class="alert-item">
-                        <strong>Documentos pendentes</strong>
-                        <p>Há arquivos recebidos que ainda não passaram por conferência e podem travar a sequência do processo.</p>
-                        <span class="alert-tag attention">Conferir</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Revisão necessária</strong>
-                        <p>Dois documentos apresentam inconsistência de formato ou informação e precisam ser revisados.</p>
-                        <span class="alert-tag urgent">Prioridade</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Fluxo documental</strong>
-                        <p>Padronizar a conferência dos anexos pode reduzir o tempo de aprovação dos orçamentos.</p>
-                        <span class="alert-tag info">Melhoria</span>
-                    </div>
-                </div>
-            </article>
-
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Resumo documental</h3>
-                        <p>Visão rápida da qualidade e situação dos arquivos recebidos.</p>
-                    </div>
-                </div>
-
-                <div class="config-grid">
-                    <div class="setting-block">
-                        <h3>Qualidade dos envios</h3>
-                        <p>A maioria dos arquivos recebidos está em formato adequado e pronta para validação.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Risco principal</h3>
-                        <p>Arquivos incompletos ou ilegíveis continuam sendo o maior fator de retrabalho no setor.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Oportunidade de ganho</h3>
-                        <p>Checklist único para a recepção pode reduzir pendências documentais já na entrada do protocolo.</p>
-                    </div>
-                </div>
-            </article>
-        </section>
+       
 
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>

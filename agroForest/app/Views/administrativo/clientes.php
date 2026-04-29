@@ -215,63 +215,7 @@ require dirname(__DIR__) . '/layouts/header.php';
             </div>
         </section>
 
-        <section class="bottom-grid">
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Pontos de atenção</h3>
-                        <p>Cadastros que merecem cuidado especial do administrativo.</p>
-                    </div>
-                </div>
-
-                <div class="alert-list">
-                    <div class="alert-item">
-                        <strong>Cadastro com documentação pendente</strong>
-                        <p>Alguns clientes ainda possuem anexos incompletos, o que pode atrasar a conclusão do orçamento.</p>
-                        <span class="alert-tag attention">Conferir anexos</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Clientes prioritários</strong>
-                        <p>Existem 6 clientes com solicitações urgentes e necessidade de retorno mais rápido.</p>
-                        <span class="alert-tag urgent">Prioridade alta</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Volume crescente</strong>
-                        <p>O aumento de clientes ativos exige melhor organização da fila e acompanhamento mais próximo.</p>
-                        <span class="alert-tag info">Monitorar</span>
-                    </div>
-                </div>
-            </article>
-
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Resumo gerencial</h3>
-                        <p>Visão rápida da base de clientes do administrativo.</p>
-                    </div>
-                </div>
-
-                <div class="config-grid">
-                    <div class="setting-block">
-                        <h3>Base ativa</h3>
-                        <p>A maior parte dos clientes possui protocolo recente e está em acompanhamento normal.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Risco principal</h3>
-                        <p>Cadastros com falta de documentação continuam sendo o maior motivo de atraso.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Melhor oportunidade</h3>
-                        <p>Centralizar checklist por cliente pode acelerar a montagem e aprovação dos orçamentos.</p>
-                    </div>
-                </div>
-            </article>
-        </section>
-
+     
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>
 </div>

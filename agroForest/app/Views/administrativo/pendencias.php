@@ -242,63 +242,7 @@ require dirname(__DIR__) . '/layouts/header.php';
             </div>
         </section>
 
-        <section class="bottom-grid">
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Pontos críticos</h3>
-                        <p>Itens que mais impactam prazo e produtividade do setor.</p>
-                    </div>
-                </div>
-
-                <div class="alert-list">
-                    <div class="alert-item">
-                        <strong>Dependência de retorno do cliente</strong>
-                        <p>Parte das pendências está parada aguardando documento ou confirmação externa.</p>
-                        <span class="alert-tag urgent">Travando fluxo</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Retrabalho interno</strong>
-                        <p>Dados incompletos enviados pela recepção aumentam o tempo de revisão do administrativo.</p>
-                        <span class="alert-tag attention">Ajustar processo</span>
-                    </div>
-
-                    <div class="alert-item">
-                        <strong>Prioridade alta acumulando</strong>
-                        <p>Pendências urgentes precisam de tratamento imediato para não contaminar a fila normal.</p>
-                        <span class="alert-tag info">Monitorar</span>
-                    </div>
-                </div>
-            </article>
-
-            <article class="card panel">
-                <div class="panel-header">
-                    <div>
-                        <h3>Resumo de pendências</h3>
-                        <p>Leitura rápida da situação atual.</p>
-                    </div>
-                </div>
-
-                <div class="config-grid">
-                    <div class="setting-block">
-                        <h3>Maior causa atual</h3>
-                        <p>Documentação incompleta e anexos inválidos seguem como principal motivo de bloqueio.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Ponto de melhoria</h3>
-                        <p>Padronizar checklist entre recepção e administrativo deve reduzir retrabalho e atrasos.</p>
-                    </div>
-
-                    <div class="setting-block">
-                        <h3>Meta operacional</h3>
-                        <p>Reduzir a fila aberta e priorizar casos de alta urgência ainda dentro do mesmo turno.</p>
-                    </div>
-                </div>
-            </article>
-        </section>
-
+        
         <?php require __DIR__ . '/includes/footer.php'; ?>
     </main>
 </div>
