@@ -98,7 +98,16 @@
                 <td>${p.final_prazo ? p.final_prazo.split('-').reverse().join('/') : 'N/A'}</td>
                 <td><span style="font-size:0.75rem;">${p.analisador}</span></td>
                 <td><span class="badge-v2 status-${p.status.toLowerCase().replace(/ /g, '-')}">${p.status}</span></td>
-                <td><i class="fas fa-edit" style="cursor:pointer; color:var(--primary);"></i></td>
+                <td>
+                    <div class="dropdown">
+                        <button class="btn-dots" onclick="toggleDropdown(this)"><i class="fas fa-ellipsis-v"></i></button>
+                        <div class="dropdown-menu">
+                            <button onclick="abrirNoProjudi('${p.numero}')"><i class="fas fa-external-link-alt"></i> Ver no Projudi</button>
+                            <button onclick="editarProcesso(${p.id})"><i class="fas fa-edit"></i> Editar</button>
+                            <button onclick="excluirProcesso(${p.id})" style="color: #f87171;"><i class="fas fa-trash"></i> Excluir</button>
+                        </div>
+                    </div>
+                </td>
             `;
             tbody.appendChild(tr);
         });
