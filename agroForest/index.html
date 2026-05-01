@@ -3,330 +3,979 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard | Agro Forest Amazon</title>
-  
+  <title>Agro Forest Editions | Winter 2026</title>
+  <style>
+    :root {
+      --bg: #07130e;
+      --bg-2: #0d2017;
+      --ink: #f3f8ef;
+      --muted: #b6c6b8;
+      --line: rgba(243, 248, 239, 0.16);
+      --card: rgba(255, 255, 255, 0.075);
+      --card-strong: rgba(255, 255, 255, 0.12);
+      --lime: #c9ff62;
+      --mint: #9df0bd;
+      --leaf: #2eb26a;
+      --acai: #b481ff;
+      --amber: #f6c35f;
+      --white: #ffffff;
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 5%, rgba(201, 255, 98, 0.2), transparent 28rem),
+        radial-gradient(circle at 88% 0%, rgba(180, 129, 255, 0.14), transparent 30rem),
+        linear-gradient(180deg, #07130e 0%, #081911 45%, #f4f2e9 45%, #f4f2e9 100%);
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .shell {
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .nav {
+      position: fixed;
+      z-index: 20;
+      top: 18px;
+      left: 50%;
+      width: min(1180px, calc(100% - 32px));
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 10px 12px 10px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      background: rgba(7, 19, 14, 0.72);
+      backdrop-filter: blur(22px);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: max-content;
+      font-weight: 780;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      color: #082013;
+      background: linear-gradient(135deg, var(--lime), var(--mint));
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: rgba(243, 248, 239, 0.78);
+      font-size: 14px;
+    }
+
+    .nav-links a {
+      padding: 9px 13px;
+      border-radius: 999px;
+    }
+
+    .nav-links a:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--white);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-button,
+    .button {
+      border: 0;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .icon-button {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 42px;
+      padding: 0 18px;
+      border-radius: 999px;
+      font-weight: 760;
+      color: #07130e;
+      background: var(--lime);
+      box-shadow: 0 16px 34px rgba(201, 255, 98, 0.2);
+    }
+
+    .button.secondary {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: none;
+    }
+
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: grid;
+      align-items: end;
+      padding: 128px 24px 42px;
+      background:
+        linear-gradient(180deg, rgba(7, 19, 14, 0.58) 0%, rgba(7, 19, 14, 0.08) 42%, rgba(7, 19, 14, 0.76) 100%),
+        url("public/assets/img/agro-editions-hero.png") center / cover no-repeat;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 26vh;
+      background: linear-gradient(180deg, transparent, #081911);
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 44px;
+    }
+
+    .edition-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      width: max-content;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: rgba(243, 248, 239, 0.88);
+      background: rgba(0, 0, 0, 0.24);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(18px);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .edition-tag span {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: 0 0 0 6px rgba(201, 255, 98, 0.16);
+    }
+
+    h1 {
+      max-width: 920px;
+      margin: 16px 0 0;
+      font-size: clamp(56px, 11vw, 142px);
+      line-height: 0.84;
+      letter-spacing: 0;
+      font-weight: 900;
+      text-wrap: balance;
+    }
+
+    .hero-copy {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      gap: 28px;
+      align-items: end;
+    }
+
+    .hero-copy p {
+      max-width: 650px;
+      margin: 0;
+      color: rgba(243, 248, 239, 0.86);
+      font-size: clamp(18px, 2.5vw, 27px);
+      line-height: 1.25;
+      font-weight: 520;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .quick-nav {
+      position: relative;
+      z-index: 2;
+      width: min(1180px, calc(100% - 48px));
+      margin: -22px auto 0;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .quick-card {
+      min-height: 132px;
+      padding: 18px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(24px);
+      box-shadow: var(--shadow);
+    }
+
+    .quick-card small {
+      display: block;
+      margin-bottom: 26px;
+      color: var(--lime);
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .quick-card strong {
+      display: block;
+      font-size: 19px;
+      line-height: 1.08;
+    }
+
+    .section-dark {
+      padding: 96px 24px;
+      background: #081911;
+      color: var(--ink);
+    }
+
+    .section-light {
+      padding: 96px 24px;
+      background: #f4f2e9;
+      color: #122017;
+    }
+
+    .container {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(260px, 0.5fr);
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 34px;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #3b7a56;
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 860;
+    }
+
+    .section-dark .eyebrow {
+      color: var(--lime);
+    }
+
+    h2 {
+      margin: 0;
+      max-width: 820px;
+      font-size: clamp(36px, 5.8vw, 76px);
+      line-height: 0.95;
+      letter-spacing: 0;
+      font-weight: 900;
+      text-wrap: balance;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: #526054;
+      font-size: 17px;
+      line-height: 1.45;
+    }
+
+    .section-dark .section-head p {
+      color: var(--muted);
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .feature-card {
+      min-height: 340px;
+      padding: 22px;
+      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid rgba(18, 32, 23, 0.09);
+      box-shadow: 0 18px 46px rgba(18, 32, 23, 0.06);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    .feature-card.dark {
+      color: var(--ink);
+      background: linear-gradient(145deg, #0d2218, #183527);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .feature-card.wide {
+      grid-column: span 2;
+    }
+
+    .feature-card h3 {
+      margin: 0 0 12px;
+      font-size: clamp(25px, 3vw, 40px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .feature-card p {
+      max-width: 560px;
+      margin: 0;
+      color: #526054;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .feature-card.dark p {
+      color: rgba(243, 248, 239, 0.74);
+    }
+
+    .mini-ui {
+      margin-top: 28px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .message {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      color: #07130e;
+      background: var(--lime);
+      font-weight: 900;
+    }
+
+    .message strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .message span {
+      color: rgba(243, 248, 239, 0.7);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .metric-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+
+    .metric {
+      padding: 14px;
+      border-radius: 8px;
+      color: #102015;
+      background: #eef4d8;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: #55634d;
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+    }
+
+    .product-frame {
+      position: relative;
+      min-height: 410px;
+      border-radius: 8px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(7, 19, 14, 0.08), rgba(7, 19, 14, 0.68)),
+        url("public/assets/img/agro-editions-hero.png") center / cover no-repeat;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .floating-panel {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      width: min(360px, calc(100% - 36px));
+      padding: 18px;
+      border-radius: 8px;
+      background: rgba(7, 19, 14, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(20px);
+    }
+
+    .floating-panel h3 {
+      margin: 0 0 10px;
+      color: var(--white);
+      font-size: 22px;
+    }
+
+    .floating-panel p {
+      margin: 0;
+      color: rgba(243, 248, 239, 0.76);
+      line-height: 1.45;
+    }
+
+    .updates {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .update-card {
+      padding: 22px;
+      min-height: 220px;
+      border-radius: 8px;
+      background: var(--card);
+      border: 1px solid var(--line);
+    }
+
+    .update-card:nth-child(3) {
+      grid-column: span 2;
+      min-height: 280px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.9fr);
+      gap: 24px;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(201, 255, 98, 0.18), rgba(180, 129, 255, 0.12));
+    }
+
+    .update-card small {
+      color: var(--lime);
+      font-size: 12px;
+      font-weight: 820;
+      text-transform: uppercase;
+    }
+
+    .update-card h3 {
+      margin: 10px 0;
+      font-size: clamp(25px, 3vw, 42px);
+      line-height: 1.02;
+    }
+
+    .update-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .stack-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 13px 14px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      color: rgba(243, 248, 239, 0.78);
+    }
+
+    .stack-row strong {
+      color: var(--white);
+    }
+
+    .timeline {
+      display: grid;
+      gap: 1px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(18, 32, 23, 0.1);
+      background: rgba(18, 32, 23, 0.1);
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 160px 1fr 170px;
+      gap: 18px;
+      padding: 22px;
+      background: #fff;
+      align-items: center;
+    }
+
+    .timeline-row strong {
+      font-size: 18px;
+    }
+
+    .timeline-row p {
+      margin: 6px 0 0;
+      color: #58665b;
+      line-height: 1.45;
+    }
+
+    .pill {
+      justify-self: end;
+      padding: 8px 11px;
+      border-radius: 999px;
+      color: #102015;
+      background: #dff5b0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .cta {
+      position: relative;
+      padding: 104px 24px;
+      background: #0a1711;
+      color: var(--ink);
+      overflow: hidden;
+    }
+
+    .cta .container {
+      display: grid;
+      grid-template-columns: minmax(0, 0.85fr) minmax(280px, 0.55fr);
+      gap: 36px;
+      align-items: center;
+    }
+
+    .cta h2 {
+      max-width: 760px;
+    }
+
+    .cta p {
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
+    .cta-panel {
+      padding: 22px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .cta-panel label {
+      display: block;
+      margin-bottom: 8px;
+      color: rgba(243, 248, 239, 0.76);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .input-row input {
+      min-width: 0;
+      flex: 1;
+      height: 44px;
+      padding: 0 14px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      outline: 0;
+      color: var(--ink);
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    footer {
+      padding: 28px 24px;
+      color: rgba(243, 248, 239, 0.62);
+      background: #07130e;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    footer .container {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .nav {
+        top: 10px;
+        width: calc(100% - 20px);
+      }
+
+      .nav-links,
+      .nav-actions .button.secondary {
+        display: none;
+      }
+
+      .hero {
+        min-height: 92vh;
+        padding: 106px 18px 34px;
+      }
+
+      .hero-copy,
+      .section-head,
+      .update-card:nth-child(3),
+      .cta .container {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-actions {
+        justify-content: flex-start;
+      }
+
+      .quick-nav {
+        width: calc(100% - 32px);
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .feature-grid,
+      .updates {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-card.wide,
+      .update-card:nth-child(3) {
+        grid-column: auto;
+      }
+
+      .timeline-row {
+        grid-template-columns: 1fr;
+      }
+
+      .pill {
+        justify-self: start;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .brand span:last-child {
+        display: none;
+      }
+
+      .hero {
+        min-height: 94vh;
+      }
+
+      h1 {
+        font-size: clamp(50px, 18vw, 86px);
+      }
+
+      .quick-nav {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-card {
+        min-height: 280px;
+      }
+
+      .metric-strip,
+      .input-row {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+      }
+
+      .input-row .button {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-badge">AFA</div>
-        <div>
-          <small>Painel de Gestão</small>
-          <strong>Agro Forest Amazon</strong>
-        </div>
-      </div>
+  <div class="shell">
+    <header class="nav" aria-label="Navegacao principal">
+      <a class="brand" href="#">
+        <span class="brand-mark">AF</span>
+        <span>Agro Forest Editions</span>
+      </a>
 
-      <div class="menu-title">Principal</div>
-      <nav class="nav-list">
-        <a class="nav-link active" href="#">
-          <span class="nav-icon">🏠</span>
-          Dashboard
+      <nav class="nav-links" aria-label="Secoes">
+        <a href="#sidekick">Sidekick</a>
+        <a href="#commerce">Commerce</a>
+        <a href="#updates">Updates</a>
+        <a href="#roadmap">Roadmap</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="icon-button" type="button" aria-label="Abrir busca">/</button>
+        <a class="button secondary" href="#updates">Ver novidades</a>
+        <a class="button" href="#demo">Explorar</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="top">
+        <div class="hero-inner">
+          <div>
+            <div class="edition-tag"><span></span> Winter 2026 release</div>
+            <h1>O futuro da operacao agroflorestal.</h1>
+          </div>
+
+          <div class="hero-copy">
+            <p>Uma experiencia inspirada em grandes lancamentos de produto: IA, dados de campo, credito rural, documentos e producao em uma narrativa visual unica.</p>
+            <div class="hero-actions">
+              <a class="button" href="#sidekick">Conhecer recursos</a>
+              <a class="button secondary" href="#roadmap">Ver roteiro</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <nav class="quick-nav" aria-label="Atalhos da pagina">
+        <a class="quick-card" href="#sidekick">
+          <small>01 / IA</small>
+          <strong>Assistente para decisoes e tarefas operacionais.</strong>
         </a>
-        <a class="nav-link" href="#">
-          <span class="nav-icon">🌱</span>
-          Produtores
+        <a class="quick-card" href="#commerce">
+          <small>02 / Canais</small>
+          <strong>Catalogo preparado para compradores e parceiros.</strong>
         </a>
-        <a class="nav-link" href="#">
-          <span class="nav-icon">📁</span>
-          Projetos
+        <a class="quick-card" href="#updates">
+          <small>03 / Gestao</small>
+          <strong>Paineis, relatorios e fluxos mais inteligentes.</strong>
         </a>
-        <a class="nav-link" href="#">
-          <span class="nav-icon">💰</span>
-          Crédito Rural
-        </a>
-        <a class="nav-link" href="#">
-          <span class="nav-icon">🫐</span>
-          Produção de Açaí
+        <a class="quick-card" href="#roadmap">
+          <small>04 / Escala</small>
+          <strong>Base pronta para crescer com equipes e unidades.</strong>
         </a>
       </nav>
 
-      <div class="menu-title">Operação</div>
-      <nav class="nav-list">
-        <a class="nav-link" href="#">
-          <span class="nav-icon">🧭</span>
-          Vistorias Técnicas
-        </a>
-        <a class="nav-link" href="#">
-          <span class="nav-icon">🗺️</span>
-          Áreas & Comunidades
-        </a>
-        <a class="nav-link" href="#">
-          <span class="nav-icon">📄</span>
-          Documentos
-        </a>
-        <a class="nav-link" href="#">
-          <span class="nav-icon">📊</span>
-          Relatórios
-        </a>
-      </nav>
+      <section class="section-light" id="sidekick">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">AI workspace</p>
+              <h2>Menos tela parada. Mais acao assistida.</h2>
+            </div>
+            <p>Como no modelo da Shopify Editions, a pagina organiza novidades em blocos editoriais grandes, com cards densos e uma leitura bem guiada.</p>
+          </div>
 
-      <div class="sidebar-card">
-        <strong>Resumo do período</strong>
-        <p>
-          Acompanhamento de produção, crédito rural, visitas técnicas e pendências documentais em uma visão clara e executiva.
-        </p>
-        <button type="button">Gerar relatório mensal</button>
-      </div>
-    </aside>
+          <div class="feature-grid">
+            <article class="feature-card dark wide">
+              <div>
+                <h3>Sidekick para Agro Forest</h3>
+                <p>Um painel conversacional para consultar produtores, gerar relatorios, priorizar pendencias e transformar dados soltos em proximas acoes.</p>
+              </div>
+              <div class="mini-ui">
+                <div class="message">
+                  <div class="avatar">AI</div>
+                  <div>
+                    <strong>Resumo do dia</strong>
+                    <span>12 protocolos precisam de revisao, 4 visitas foram reagendadas e 3 propostas de credito estao prontas para envio.</span>
+                  </div>
+                </div>
+                <div class="message">
+                  <div class="avatar">AF</div>
+                  <div>
+                    <strong>Acao sugerida</strong>
+                    <span>Gerar lista priorizada por comunidade e risco documental.</span>
+                  </div>
+                </div>
+              </div>
+            </article>
 
-    <main class="content">
-      <div class="topbar">
-        <div class="search-wrap">
-          <span>🔎</span>
-          <input type="text" placeholder="Buscar produtor, projeto, comunidade ou documento..." />
+            <article class="feature-card">
+              <div>
+                <h3>Relatorios vivos</h3>
+                <p>Indicadores de producao, credito e conformidade com contexto suficiente para o time agir, nao apenas observar.</p>
+              </div>
+              <div class="metric-strip">
+                <div class="metric"><strong>126</strong><span>produtores</span></div>
+                <div class="metric"><strong>89%</strong><span>conformidade</span></div>
+                <div class="metric"><strong>384t</strong><span>acai</span></div>
+              </div>
+            </article>
+          </div>
         </div>
-        <div class="top-actions">
-          <div class="chip">Abril 2026</div>
-          <div class="chip">Coari - AM</div>
-          <button class="btn primary">+ Novo projeto</button>
+      </section>
+
+      <section class="section-dark" id="commerce">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Agentic commerce</p>
+              <h2>Catalogos prontos para novos canais.</h2>
+            </div>
+            <p>A estrutura simula o tipo de storytelling da Editions: recurso principal, impacto pratico e demonstracao visual no mesmo bloco.</p>
+          </div>
+
+          <div class="product-frame">
+            <div class="floating-panel">
+              <h3>Produtos, contratos e rastreabilidade</h3>
+              <p>Uma vitrine operacional para apresentar producao, disponibilidade, comunidade, certificacoes e status de entrega com clareza.</p>
+            </div>
+          </div>
         </div>
-      </div>
-
-  
-      <section class="stats-grid">
-        <article class="card stat-card">
-          <div class="stat-top">
-            <div>
-              <div class="stat-icon soft-green">🌿</div>
-            </div>
-            <span class="trend up">▲ 12,4%</span>
-          </div>
-          <h3>126</h3>
-          <p>Produtores acompanhados no período</p>
-        </article>
-
-        <article class="card stat-card">
-          <div class="stat-top">
-            <div>
-              <div class="stat-icon soft-acai">🫐</div>
-            </div>
-            <span class="trend up">▲ 8,1%</span>
-          </div>
-          <h3>384 t</h3>
-          <p>Produção estimada de açaí</p>
-        </article>
-
-        <article class="card stat-card">
-          <div class="stat-top">
-            <div>
-              <div class="stat-icon soft-amber">💳</div>
-            </div>
-            <span class="trend warn">7 em análise</span>
-          </div>
-          <h3>R$ 2,87 mi</h3>
-          <p>Volume de crédito rural movimentado</p>
-        </article>
-
-        <article class="card stat-card">
-          <div class="stat-top">
-            <div>
-              <div class="stat-icon soft-red">📑</div>
-            </div>
-            <span class="trend down">11 pendências</span>
-          </div>
-          <h3>89%</h3>
-          <p>Índice médio de conformidade documental</p>
-        </article>
       </section>
 
-      <section class="main-grid">
-        <article class="card chart-card">
-          <div class="panel-header">
+      <section class="section-dark" id="updates">
+        <div class="container">
+          <div class="section-head">
             <div>
-              <h2>Produção projetada x execução</h2>
-              <p>Comparativo mensal da safra acompanhada</p>
+              <p class="eyebrow">Novidades</p>
+              <h2>Uma pagina de lancamento completa.</h2>
             </div>
-            <div class="chip">Últimos 6 meses</div>
+            <p>O layout usa contraste forte, ritmo de cards e seções alternadas para parecer uma pagina premium de produto, nao um dashboard comum.</p>
           </div>
 
-          <div class="bars">
-            <div class="bar-wrap">
-              <div class="bar-value">52 t</div>
-              <div class="bar" style="height: 40%;"></div>
-              <div class="bar-label">Nov</div>
-            </div>
-            <div class="bar-wrap">
-              <div class="bar-value">61 t</div>
-              <div class="bar acai" style="height: 48%;"></div>
-              <div class="bar-label">Dez</div>
-            </div>
-            <div class="bar-wrap">
-              <div class="bar-value">74 t</div>
-              <div class="bar" style="height: 58%;"></div>
-              <div class="bar-label">Jan</div>
-            </div>
-            <div class="bar-wrap">
-              <div class="bar-value">83 t</div>
-              <div class="bar acai" style="height: 65%;"></div>
-              <div class="bar-label">Fev</div>
-            </div>
-            <div class="bar-wrap">
-              <div class="bar-value">96 t</div>
-              <div class="bar" style="height: 74%;"></div>
-              <div class="bar-label">Mar</div>
-            </div>
-            <div class="bar-wrap">
-              <div class="bar-value">112 t</div>
-              <div class="bar acai" style="height: 88%;"></div>
-              <div class="bar-label">Abr</div>
-            </div>
-          </div>
-
-          <div class="legend">
-            <span><i class="dot" style="background:#3c6f56"></i> Meta operacional</span>
-            <span><i class="dot" style="background:#5b2c6f"></i> Execução consolidada</span>
-          </div>
-        </article>
-
-        <article class="card panel-body">
-          <div class="panel-header">
-            <div>
-              <h3>Pipeline dos projetos</h3>
-              <p>Status macro da carteira</p>
-            </div>
-          </div>
-
-          <div class="progress-list">
-            <div class="progress-item">
-              <div class="progress-top">
-                <strong>Crédito rural</strong>
-                <span>78%</span>
+          <div class="updates">
+            <article class="update-card">
+              <small>Operacao</small>
+              <h3>Fluxos de protocolo mais claros</h3>
+              <p>Recepcao, administrativo e dono com etapas visiveis, status consistentes e menos perda de informacao entre areas.</p>
+            </article>
+            <article class="update-card">
+              <small>Financeiro</small>
+              <h3>Credito rural em primeiro plano</h3>
+              <p>Acompanhe propostas, valores, pendencias e aprovacoes com cards desenhados para comparacao rapida.</p>
+            </article>
+            <article class="update-card">
+              <div>
+                <small>Inteligencia</small>
+                <h3>Dados de campo viram proximas decisoes.</h3>
+                <p>O visual editorial ajuda a explicar valor, produto e operacao em uma unica narrativa, como uma pagina de release moderna.</p>
               </div>
-              <div class="meter"><span style="width: 78%"></span></div>
-              <div class="small-note">Documentação estruturada e propostas avançando para aprovação.</div>
-            </div>
-
-            <div class="progress-item">
-              <div class="progress-top">
-                <strong>Manejo florestal</strong>
-                <span>62%</span>
+              <div class="stack">
+                <div class="stack-row"><span>Visitas tecnicas</span><strong>32</strong></div>
+                <div class="stack-row"><span>Projetos em analise</span><strong>18</strong></div>
+                <div class="stack-row"><span>Pendencias criticas</span><strong>7</strong></div>
+                <div class="stack-row"><span>Comunidades ativas</span><strong>14</strong></div>
               </div>
-              <div class="meter acai"><span style="width: 62%"></span></div>
-              <div class="small-note">Equipe técnica em validação de campo e ajustes de cronograma.</div>
-            </div>
-
-            <div class="progress-item">
-              <div class="progress-top">
-                <strong>Regularização documental</strong>
-                <span>44%</span>
-              </div>
-              <div class="meter warn"><span style="width: 44%"></span></div>
-              <div class="small-note">Maior atenção para cadastros e documentos pendentes de assinatura.</div>
-            </div>
+            </article>
           </div>
-        </article>
+        </div>
       </section>
 
-      <section class="bottom-grid">
-        <article class="card panel-body">
-          <div class="panel-header">
+      <section class="section-light" id="roadmap">
+        <div class="container">
+          <div class="section-head">
             <div>
-              <h3>Projetos em destaque</h3>
-              <p>Visão resumida da carteira técnica e financeira</p>
+              <p class="eyebrow">Roadmap</p>
+              <h2>Da apresentacao ao produto real.</h2>
             </div>
-            <a class="chip" href="#">Ver todos</a>
+            <p>Esse modelo pode virar landing page, painel institucional ou uma tela inicial mais sofisticada para o sistema atual.</p>
           </div>
 
-          <table>
-            <thead>
-              <tr>
-                <th>Projeto</th>
-                <th>Comunidade</th>
-                <th>Valor</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <div class="project-name">Expansão de açaizal nativo</div>
-                  <div class="project-sub">12 produtores vinculados</div>
-                </td>
-                <td>São José</td>
-                <td>R$ 420.000</td>
-                <td><span class="status ok">Aprovado</span></td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="project-name">Custeio da safra 2026</div>
-                  <div class="project-sub">23 cadastros em análise</div>
-                </td>
-                <td>Itapeuá</td>
-                <td>R$ 860.000</td>
-                <td><span class="status progress">Em andamento</span></td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="project-name">Assistência técnica integrada</div>
-                  <div class="project-sub">Manejo e produtividade</div>
-                </td>
-                <td>Lago do Mamiá</td>
-                <td>R$ 195.000</td>
-                <td><span class="status pending">Pendente</span></td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="project-name">Recuperação de área produtiva</div>
-                  <div class="project-sub">8 propriedades assistidas</div>
-                </td>
-                <td>Vila Amazônia</td>
-                <td>R$ 312.000</td>
-                <td><span class="status ok">Aprovado</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </article>
-
-        <article class="card panel-body">
-          <div class="panel-header">
-            <div>
-              <h3>Agenda técnica</h3>
-              <p>Próximas ações do time</p>
+          <div class="timeline">
+            <div class="timeline-row">
+              <strong>Agora</strong>
+              <div>
+                <strong>Landing page visual</strong>
+                <p>Primeira versao estatica com identidade editorial, responsiva e pronta para evoluir.</p>
+              </div>
+              <span class="pill">Entregue</span>
+            </div>
+            <div class="timeline-row">
+              <strong>Proximo</strong>
+              <div>
+                <strong>Integrar com rotas PHP</strong>
+                <p>Usar o mesmo sistema visual nos paines de recepcao, administrativo e dono.</p>
+              </div>
+              <span class="pill">Planejado</span>
+            </div>
+            <div class="timeline-row">
+              <strong>Depois</strong>
+              <div>
+                <strong>Componentizar secoes</strong>
+                <p>Separar header, cards, metricas e blocos de release para manutencao mais facil.</p>
+              </div>
+              <span class="pill">Escala</span>
             </div>
           </div>
-
-          <div class="agenda-list">
-            <div class="agenda-item">
-              <div class="date-box">
-                <strong>24</strong>
-                <small>Abr</small>
-              </div>
-              <div>
-                <h4>Visita de vistoria em campo</h4>
-                <p>Comunidade São José • Equipe agronômica • 08:30</p>
-              </div>
-            </div>
-
-            <div class="agenda-item">
-              <div class="date-box">
-                <strong>25</strong>
-                <small>Abr</small>
-              </div>
-              <div>
-                <h4>Validação documental</h4>
-                <p>Propostas de crédito rural • Escritório • 10:00</p>
-              </div>
-            </div>
-
-            <div class="agenda-item">
-              <div class="date-box">
-                <strong>28</strong>
-                <small>Abr</small>
-              </div>
-              <div>
-                <h4>Reunião de planejamento</h4>
-                <p>Safra, custeio e metas do mês seguinte • 15:00</p>
-              </div>
-            </div>
-          </div>
-        </article>
+        </div>
       </section>
 
-      <div class="footer-note">
-        Layout conceito para adaptação em HTML, PHP ou sistema administrativo da Agro Forest Amazon.
-      </div>
+      <section class="cta" id="demo">
+        <div class="container">
+          <div>
+            <p class="eyebrow">Agro Forest Amazon</p>
+            <h2>Um site com cara de lancamento global.</h2>
+            <p>Inspirado na estrutura da Shopify Editions, mas adaptado para agrofloresta, gestao rural e tecnologia operacional.</p>
+          </div>
+
+          <form class="cta-panel">
+            <label for="email">Receber apresentacao</label>
+            <div class="input-row">
+              <input id="email" type="email" placeholder="seu@email.com" />
+              <button class="button" type="submit">Enviar</button>
+            </div>
+          </form>
+        </div>
+      </section>
     </main>
+
+    <footer>
+      <div class="container">
+        <span>Agro Forest Editions Winter 2026</span>
+        <span>Layout conceito inspirado em experiencias editoriais de produto.</span>
+      </div>
+    </footer>
   </div>
 </body>
 </html>
