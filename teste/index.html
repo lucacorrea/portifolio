@@ -1,20 +1,436 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#050608" />
-    <meta name="description" content="L&J Soluções Tecnológicas — experiência editorial premium com React, Canvas 2D, parallax e imagens em camadas." />
-    <title>L&J Soluções Tecnológicas | Parallax Canvas Edition</title>
-    <link rel="icon" href="/favicon.svg" />
-    <link rel="preconnect" href="https://images.unsplash.com" />
-    <link rel="preconnect" href="https://images.pexels.com" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>L&J Soluções Tecnológicas | Editions 3D</title>
+  <meta name="description" content="Página institucional premium da L&J Soluções Tecnológicas com parallax, Canvas 2D, Three.js, GSAP e animações 3D." />
+  <meta name="theme-color" content="#040509" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+
+<body>
+  <canvas id="canvas2d" aria-hidden="true"></canvas>
+  <canvas id="threeScene" aria-hidden="true"></canvas>
+  <div class="noise" aria-hidden="true"></div>
+
+  <header class="site-header" id="siteHeader">
+    <a href="#inicio" class="brand" aria-label="L&J Soluções Tecnológicas">
+      <span class="brand-mark">L&J</span>
+      <span class="brand-text">
+        <strong>Soluções Tecnológicas</strong>
+        <small>Editions 3D</small>
+      </span>
+    </a>
+
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav class="main-nav" id="mainNav" aria-label="Menu principal">
+      <a href="#solucoes">Soluções</a>
+      <a href="#experiencia">Experiência</a>
+      <a href="#showcase">Showcase</a>
+      <a href="#metodo">Método</a>
+      <a href="#contato" class="nav-button">Solicitar projeto</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio">
+      <div class="hero-images" aria-hidden="true">
+        <div class="floating-photo photo-1 parallax-img" data-speed="-0.18">
+          <img src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=760&q=85" alt="" />
+        </div>
+        <div class="floating-photo photo-2 parallax-img" data-speed="0.14">
+          <img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=760&q=85" alt="" />
+        </div>
+        <div class="floating-photo photo-3 parallax-img" data-speed="-0.10">
+          <img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=760&q=85" alt="" />
+        </div>
+      </div>
+
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow reveal">
+            <span></span>
+            L&J Digital Edition 2026
+          </p>
+
+          <h1 class="hero-title reveal">
+            Uma presença digital com movimento, profundidade e impacto de marca.
+          </h1>
+
+          <p class="hero-description reveal">
+            Página institucional premium com parallax, imagens em camadas, Canvas 2D,
+            animações 3D e transições suaves para apresentar sua empresa como uma marca grande.
+          </p>
+
+          <div class="hero-actions reveal">
+            <a href="#contato" class="btn btn-primary">Quero um projeto assim</a>
+            <a href="#showcase" class="btn btn-secondary">Ver experiência</a>
+          </div>
+
+          <div class="hero-metrics reveal">
+            <article>
+              <strong>GSAP</strong>
+              <span>scroll animations</span>
+            </article>
+            <article>
+              <strong>Three.js</strong>
+              <span>3D no navegador</span>
+            </article>
+            <article>
+              <strong>Canvas 2D</strong>
+              <span>fundo animado</span>
+            </article>
+          </div>
+        </div>
+
+        <aside class="hero-panel reveal">
+          <div class="panel-bar">
+            <span></span><span></span><span></span>
+            <small>lj.editions.live</small>
+          </div>
+
+          <div class="panel-body">
+            <div class="panel-status">
+              <span></span>
+              Experiência premium ativa
+            </div>
+
+            <h2>Site estático avançado</h2>
+            <p>
+              Sem React, sem build, sem package.json. Apenas HTML, CSS, JS e bibliotecas via CDN.
+            </p>
+
+            <div class="mini-grid">
+              <article>
+                <b>01</b>
+                <strong>Parallax</strong>
+                <span>camadas com imagens</span>
+              </article>
+              <article>
+                <b>02</b>
+                <strong>3D</strong>
+                <span>Three.js</span>
+              </article>
+              <article>
+                <b>03</b>
+                <strong>Motion</strong>
+                <span>GSAP</span>
+              </article>
+              <article>
+                <b>04</b>
+                <strong>Scroll</strong>
+                <span>Lenis suave</span>
+              </article>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <a class="scroll-hint" href="#solucoes">
+        <span></span>
+        Explorar edição
+      </a>
+    </section>
+
+    <section class="edition-nav">
+      <div class="container edition-nav-inner">
+        <a href="#sites">Sites</a>
+        <a href="#sistemas">Sistemas</a>
+        <a href="#automacao">Automação</a>
+        <a href="#dashboards">Dashboards</a>
+        <a href="#branding">Branding</a>
+      </div>
+    </section>
+
+    <section class="statement-section">
+      <div class="container">
+        <p class="eyebrow reveal"><span></span> Pensamento profissional</p>
+        <h2 class="statement reveal">
+          O visual não pode ser só bonito. Ele precisa segurar atenção, explicar valor
+          e conduzir o visitante até o contato.
+        </h2>
+      </div>
+    </section>
+
+    <section class="solutions-section" id="solucoes">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow"><span></span> Soluções</p>
+          <h2>Blocos grandes, imagens fortes e experiência parecida com páginas editoriais de lançamento.</h2>
+          <p>
+            A estrutura abaixo usa o mesmo raciocínio das grandes páginas de produto:
+            cada solução vira uma área visual, com texto direto, mídia forte e animação.
+          </p>
+        </div>
+
+        <div class="feature-stack">
+          <article class="feature-card" id="sites">
+            <div class="feature-content">
+              <span class="number">01</span>
+              <h3>Sites institucionais premium</h3>
+              <p>
+                Ideal para empresas que precisam passar confiança, mostrar serviços,
+                diferenciais, equipe, estrutura e receber contatos pelo WhatsApp.
+              </p>
+              <ul>
+                <li>Hero de alto impacto visual.</li>
+                <li>Seções comerciais com copy direta.</li>
+                <li>Responsivo para celular, tablet e desktop.</li>
+              </ul>
+            </div>
+
+            <div class="feature-media parallax-img" data-speed="-0.12">
+              <img src="https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=1200&q=85" alt="Equipe trabalhando em projeto digital" />
+            </div>
+          </article>
+
+          <article class="feature-card feature-card-reverse" id="sistemas">
+            <div class="feature-content">
+              <span class="number">02</span>
+              <h3>Sistemas web sob medida</h3>
+              <p>
+                Painéis internos, cadastros, permissões, relatórios, dashboards,
+                fluxos administrativos e controle real da operação.
+              </p>
+              <ul>
+                <li>PHP, MySQL e JavaScript.</li>
+                <li>Áreas por nível de usuário.</li>
+                <li>Estrutura pronta para crescer.</li>
+              </ul>
+            </div>
+
+            <div class="feature-media feature-media-tall parallax-img" data-speed="0.10">
+              <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=85" alt="Dashboard com gráficos em notebook" />
+            </div>
+          </article>
+
+          <article class="feature-card" id="automacao">
+            <div class="feature-content">
+              <span class="number">03</span>
+              <h3>Automações inteligentes</h3>
+              <p>
+                Reduza trabalho manual com notificações, mensagens, integrações,
+                rotinas automatizadas, WhatsApp, PIX e organização de processos.
+              </p>
+              <ul>
+                <li>Fluxos automáticos de atendimento.</li>
+                <li>Integração com APIs externas.</li>
+                <li>Menos erro e mais velocidade.</li>
+              </ul>
+            </div>
+
+            <div class="feature-media collage-media">
+              <div class="collage-img parallax-img" data-speed="-0.16">
+                <img src="https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=900&q=85" alt="Tecnologia e automação" />
+              </div>
+              <div class="collage-img parallax-img" data-speed="0.14">
+                <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=85" alt="Aplicativo em notebook" />
+              </div>
+            </div>
+          </article>
+
+          <article class="feature-card feature-card-reverse" id="dashboards">
+            <div class="feature-content">
+              <span class="number">04</span>
+              <h3>Dashboards e relatórios</h3>
+              <p>
+                Dados precisam ser claros. Criamos painéis com indicadores, gráficos,
+                filtros por período e visual pensado para tomada de decisão.
+              </p>
+              <ul>
+                <li>Cards de indicadores.</li>
+                <li>Gráficos e rankings.</li>
+                <li>Relatórios exportáveis.</li>
+              </ul>
+            </div>
+
+            <div class="feature-media dashboard-visual">
+              <div class="dash-window">
+                <div class="dash-sidebar"></div>
+                <div class="dash-main">
+                  <span class="dash-title"></span>
+                  <div class="dash-cards">
+                    <span></span><span></span><span></span>
+                  </div>
+                  <div class="dash-bars">
+                    <i style="--h: 45%"></i>
+                    <i style="--h: 72%"></i>
+                    <i style="--h: 58%"></i>
+                    <i style="--h: 94%"></i>
+                    <i style="--h: 66%"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="feature-card" id="branding">
+            <div class="feature-content">
+              <span class="number">05</span>
+              <h3>Identidade digital forte</h3>
+              <p>
+                Layout, cores, tipografia, imagens, movimento e componentes precisam
+                conversar para sua empresa parecer confiável e atual.
+              </p>
+              <ul>
+                <li>Visual moderno e sério.</li>
+                <li>Componentes reutilizáveis.</li>
+                <li>Experiência premium em todas as telas.</li>
+              </ul>
+            </div>
+
+            <div class="feature-media brand-showcase">
+              <img class="parallax-img" data-speed="-0.10" src="https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=1200&q=85" alt="Design e identidade visual" />
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="experience-section" id="experiencia">
+      <div class="container experience-grid">
+        <div class="section-heading reveal">
+          <p class="eyebrow"><span></span> Experiência técnica</p>
+          <h2>Animação 3D, parallax real e scroll cinematográfico.</h2>
+          <p>
+            Esta versão usa bibliotecas profissionais via CDN. Você sobe direto na hospedagem
+            e a página já funciona, sem terminal, sem React e sem compilação.
+          </p>
+        </div>
+
+        <div class="tech-cards">
+          <article class="tech-card reveal">
+            <strong>GSAP + ScrollTrigger</strong>
+            <span>Animações amarradas ao scroll.</span>
+          </article>
+          <article class="tech-card reveal">
+            <strong>Lenis</strong>
+            <span>Rolagem suave estilo site premium.</span>
+          </article>
+          <article class="tech-card reveal">
+            <strong>Three.js</strong>
+            <span>Objetos 3D renderizados no navegador.</span>
+          </article>
+          <article class="tech-card reveal">
+            <strong>Canvas 2D</strong>
+            <span>Partículas, linhas, brilho e profundidade.</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="showcase-section" id="showcase">
+      <div class="container">
+        <div class="section-heading center reveal">
+          <p class="eyebrow"><span></span> Showcase visual</p>
+          <h2>Imagens em movimento para dar sensação de marca grande.</h2>
+        </div>
+
+        <div class="image-showcase">
+          <figure class="showcase-item item-wide parallax-img" data-speed="-0.12">
+            <img src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1300&q=85" alt="Escritório moderno" />
+          </figure>
+          <figure class="showcase-item parallax-img" data-speed="0.16">
+            <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=900&q=85" alt="Reunião de equipe" />
+          </figure>
+          <figure class="showcase-item parallax-img" data-speed="-0.08">
+            <img src="https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=900&q=85" alt="Ambiente corporativo" />
+          </figure>
+          <figure class="showcase-item item-tall parallax-img" data-speed="0.10">
+            <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85" alt="Profissional em reunião" />
+          </figure>
+          <figure class="showcase-item item-wide parallax-img" data-speed="-0.14">
+            <img src="https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1300&q=85" alt="Negócios e tecnologia" />
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="method-section" id="metodo">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow"><span></span> Método</p>
+          <h2>Estratégia antes do código. Isso é o que evita site bonito que não converte.</h2>
+        </div>
+
+        <div class="method-grid">
+          <article class="method-card reveal">
+            <span>01</span>
+            <h3>Diagnóstico</h3>
+            <p>Entendemos sua empresa, seu público, seus serviços e o objetivo da página.</p>
+          </article>
+          <article class="method-card reveal">
+            <span>02</span>
+            <h3>Direção visual</h3>
+            <p>Definimos cores, imagens, blocos, hierarquia e ritmo visual da experiência.</p>
+          </article>
+          <article class="method-card reveal">
+            <span>03</span>
+            <h3>Desenvolvimento</h3>
+            <p>Criamos a página com HTML, CSS, JS, parallax, Canvas, 3D e responsividade.</p>
+          </article>
+          <article class="method-card reveal">
+            <span>04</span>
+            <h3>Publicação</h3>
+            <p>Você sobe direto na Hostinger, inclusive dentro de subpasta como /teste/.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact-section" id="contato">
+      <div class="container">
+        <div class="contact-card reveal">
+          <div>
+            <p class="eyebrow"><span></span> Projeto premium</p>
+            <h2>Quer uma página nesse nível para vender a imagem da sua empresa?</h2>
+            <p>
+              A L&J Soluções Tecnológicas cria sites, landing pages, sistemas,
+              dashboards e automações com visual profissional e foco em resultado.
+            </p>
+          </div>
+
+          <div class="contact-actions">
+            <a class="btn btn-primary" href="https://wa.me/5592991515710?text=Ol%C3%A1%2C%20quero%20um%20site%20premium%20com%20parallax%2C%203D%20e%20anima%C3%A7%C3%B5es." target="_blank" rel="noopener">
+              Falar no WhatsApp
+            </a>
+            <a class="btn btn-secondary" href="mailto:ljsolucoestechh@gmail.com">
+              Enviar e-mail
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>© <span id="year"></span> L&J Soluções Tecnológicas. Todos os direitos reservados.</p>
+      <a href="#inicio">Voltar ao topo</a>
+    </div>
+  </footer>
+
+  <a class="whatsapp-float" href="https://wa.me/5592991515710?text=Ol%C3%A1%2C%20conheci%20o%20site%203D%20da%20L%26J%20e%20quero%20conversar." target="_blank" rel="noopener">
+    WhatsApp
+  </a>
+
+  <!-- Bibliotecas via CDN: não precisa npm, React, JSON ou build -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/bundled/lenis.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+  <script src="assets/js/main.js"></script>
+</body>
 </html>
