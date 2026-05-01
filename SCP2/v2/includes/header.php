@@ -113,3 +113,26 @@ $page = basename($_SERVER['PHP_SELF']);
         </aside>
 
         <main class="content-area">
+            
+            <!-- Barra Superior (Top Bar) -->
+            <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
+                <!-- Alertas de Incidentes (SEEU) -->
+                <div class="notification-bell" style="position: relative; cursor: pointer;">
+                    <i class="fas fa-bell" style="font-size: 1.5rem; color: var(--text-muted); transition: 0.3s;"></i>
+                    <span id="badge-notificacoes" style="position: absolute; top: -5px; right: -5px; background: var(--status-urgente); color: white; font-size: 0.6rem; font-weight: 800; padding: 2px 6px; border-radius: 50px; display: none;">0</span>
+                    
+                    <div id="dropdown-notificacoes" class="glass-card" style="position: absolute; right: 0; top: 35px; width: 300px; display: none; z-index: 1000; padding: 1rem;">
+                        <h4 style="margin-bottom: 10px; font-size: 0.9rem; border-bottom: 1px solid var(--border); padding-bottom: 5px;">Alertas de Prazos</h4>
+                        <div id="lista-notificacoes" style="max-height: 200px; overflow-y: auto; font-size: 0.8rem; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="opacity: 0.7; text-align: center;">Nenhum prazo crítico no momento.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                document.querySelector('.notification-bell').addEventListener('click', function() {
+                    const drop = document.getElementById('dropdown-notificacoes');
+                    drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
+                });
+            </script>
