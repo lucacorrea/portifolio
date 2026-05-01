@@ -1,10 +1,5 @@
 Options -Indexes
 
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
-</IfModule>
-
 <IfModule mod_headers.c>
   Header set X-Content-Type-Options "nosniff"
 </IfModule>
@@ -13,8 +8,8 @@ Options -Indexes
   ExpiresActive On
   ExpiresByType text/css "access plus 1 month"
   ExpiresByType application/javascript "access plus 1 month"
-  ExpiresByType image/svg+xml "access plus 1 month"
   ExpiresByType image/webp "access plus 1 month"
   ExpiresByType image/png "access plus 1 month"
   ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType image/svg+xml "access plus 1 month"
 </IfModule>

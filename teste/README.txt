@@ -1,40 +1,50 @@
-L&J Editions 3D - versão estática
+L&J Ultra Editions Experience
 
-Essa versão NÃO usa:
+Versão estática premium inspirada na experiência editorial de páginas como Shopify Editions.
+
+Não usa:
 - React
-- package.json
 - npm
-- vite
 - build
-- arquivos JSON
+- package.json
+- Vite
 
-Usa apenas:
-- index.html
-- assets/css/style.css
-- assets/js/main.js
-- bibliotecas via CDN
+Usa:
+- HTML
+- CSS
+- JavaScript puro
+- GSAP + ScrollTrigger via CDN
+- Lenis via CDN
+- Three.js via CDN
+- Canvas 2D
+- Imagens remotas do Unsplash
 
-Bibliotecas:
-- Three.js: animações/objetos 3D
-- GSAP + ScrollTrigger: animações com scroll
-- Lenis: scroll suave
-- Canvas 2D: fundo com partículas, linhas e grade animada
+Recursos:
+- Preloader
+- Barra de progresso de scroll
+- Cursor premium
+- Canvas 2D com partículas, linhas, ondas e grade
+- Camada 3D com Three.js
+- Parallax em imagens
+- Cards com tilt 3D
+- Galeria horizontal com scroll pinado
+- Seções editoriais grandes
+- Layout responsivo
+- Pronto para Hostinger
 
 Como subir na Hostinger:
-1. Abra o Gerenciador de Arquivos.
-2. Entre em public_html/teste/ ou public_html/.
-3. Apague os arquivos antigos.
-4. Envie o conteúdo deste ZIP.
-5. Extraia.
-6. O index.html precisa ficar diretamente dentro da pasta publicada.
+1. Entre em public_html/teste/ ou public_html/.
+2. Apague os arquivos antigos da pasta.
+3. Envie este ZIP.
+4. Extraia.
+5. Confira se ficou assim:
 
-Exemplo correto:
 public_html/teste/index.html
 public_html/teste/assets/css/style.css
 public_html/teste/assets/js/main.js
 
-Exemplo errado:
-public_html/teste/lj-editions-static-3d/index.html
+Não deixe assim:
+public_html/teste/lj-editions-ultra-static/index.html
 
 Contato configurado:
 WhatsApp: 55 92 99151-5710
