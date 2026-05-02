@@ -656,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cashContainer.classList.remove('d-none');
                 const valorRecebido = document.getElementById('valor_recebido');
                 valorRecebido.value = '';
+                valorRecebido.dataset.autoFilled = 'true';
                 setTimeout(() => valorRecebido.focus(), 100);
             } else {
                 cashContainer.classList.add('d-none');
@@ -668,6 +669,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Enter in Valor Recebido to finalize
     const valorRecebidoInput = document.getElementById('valor_recebido');
     if (valorRecebidoInput) {
+        valorRecebidoInput.addEventListener('input', () => {
+            valorRecebidoInput.dataset.autoFilled = 'false';
+        });
         valorRecebidoInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 calculateChange(); // Ensure calculations are fresh
@@ -981,6 +985,15 @@ function renderCart() {
     }
 
     finalTotal.innerText = `R$ ${finalTotalVal.toFixed(2).replace('.', ',')}`;
+
+    // Pre-fill Valor Recebido for practical cash handling
+    const valorRecebidoInput = document.getElementById('valor_recebido');
+    if (payment === 'dinheiro' && valorRecebidoInput) {
+        if (valorRecebidoInput.value === '' || parseFloat(valorRecebidoInput.value) === 0 || valorRecebidoInput.dataset.autoFilled === 'true') {
+            valorRecebidoInput.value = finalTotalVal.toFixed(2);
+            valorRecebidoInput.dataset.autoFilled = 'true';
+        }
+    }
 
     checkDiscountAuth();
     calculateChange();
