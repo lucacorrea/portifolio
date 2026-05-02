@@ -608,6 +608,7 @@ function parseCurrencyToFloat(valStr) {
 }
 
 let cart = [];
+let pendingProduct = null;
 let currentPvId = null;
 let currentPvCode = null;
 let activeManageId = null;
@@ -874,7 +875,7 @@ function renderSearchResults(products) {
             };
         } else {
             item.onmouseover = () => showPreview(p);
-            item.onclick = () => addToCart(p);
+            item.onclick = () => selectForQty(p);
         }
         
         searchResults.appendChild(item);
@@ -889,6 +890,15 @@ function showPreview(p) {
         productPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
     }
     productPreviewName.innerText = p.nome;
+}
+
+function selectForQty(product) {
+    pendingProduct = product;
+    showPreview(product);
+    const qtyInput = document.getElementById('pdvQty');
+    qtyInput.focus();
+    qtyInput.select();
+    searchResults.classList.add('d-none');
 }
 
 function addToCart(product) {
@@ -2148,6 +2158,10 @@ pdvSearch.addEventListener('keyup', (e) => {
 document.getElementById('pdvQty').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         e.preventDefault();
+        if (pendingProduct) {
+            addToCart(pendingProduct);
+            pendingProduct = null;
+        }
         pdvSearch.focus();
     }
 });
