@@ -916,10 +916,12 @@ function addToCart(product) {
             price1: parseFloat(product.preco_venda),
             price2: parseFloat(product.preco_venda_2) || 0,
             price3: parseFloat(product.preco_venda_3) || 0,
+            preco_variavel: !!product.preco_variavel,
             price_tier: 1,
             qty: qtyToAdd,
             imagens: product.imagens
         });
+
     }
     
     pdvSearch.value = '';
@@ -963,10 +965,19 @@ function renderCart() {
                 </div>
             </td>
             <td class="text-center">
-                <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" onchange="updateQty(${index}, this.value)">
+                <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" step="any" onchange="updateQty(${index}, this.value)">
             </td>
-            <td class="text-end">R$ ${item.price.toFixed(2).replace('.', ',')}</td>
+            <td class="text-end">
+                ${item.preco_variavel ? 
+                    `<div class="input-group input-group-sm justify-content-end">
+                        <span class="input-group-text bg-white border-0 extra-small px-1">R$</span>
+                        <input type="number" class="form-control form-control-sm text-end border-primary fw-bold" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updateItemPrice(${index}, this.value)">
+                    </div>` : 
+                    `R$ ${item.price.toFixed(2).replace('.', ',')}`
+                }
+            </td>
             <td class="text-end fw-bold">R$ ${subtotal.toFixed(2).replace('.', ',')}</td>
+
             <td class="text-center">
                 <button class="btn btn-sm btn-link text-danger p-0" onclick="removeFromCart(${index})"><i class="fas fa-times"></i></button>
             </td>
@@ -1020,9 +1031,15 @@ function updatePriceTier(index, tier) {
 }
 
 function updateQty(index, val) {
-    cart[index].qty = Math.max(1, parseFloat(val));
+    cart[index].qty = Math.max(0.001, parseFloat(val));
     renderCart();
 }
+
+function updateItemPrice(index, val) {
+    cart[index].price = Math.max(0, parseFloat(val));
+    renderCart();
+}
+
 
 function removeFromCart(index) {
     cart.splice(index, 1);

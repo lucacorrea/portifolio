@@ -277,6 +277,8 @@ class Product extends BaseModel {
         $hasPrecoVenda3   = $this->columnExists('preco_venda_3');
         $hasPrecoAtacado  = $this->columnExists('preco_venda_atacado');
         $hasImagens       = $this->columnExists('imagens');
+        $hasPrecoVariavel = $this->columnExists('preco_variavel');
+
         
         if (!$this->columnExists('fornecedor_id')) {
             try {
@@ -309,7 +311,9 @@ class Product extends BaseModel {
             if ($hasPrecoVenda2) { $sets[] = 'preco_venda_2 = ?'; $params[] = ($data['preco_venda_2'] ?? '') === '' ? null : $data['preco_venda_2']; }
             if ($hasPrecoVenda3) { $sets[] = 'preco_venda_3 = ?'; $params[] = ($data['preco_venda_3'] ?? '') === '' ? null : $data['preco_venda_3']; }
             if ($hasPrecoAtacado){ $sets[] = 'preco_venda_atacado = ?'; $params[] = ($data['preco_venda_atacado'] ?? '') === '' ? null : $data['preco_venda_atacado']; }
+            if ($hasPrecoVariavel){ $sets[] = 'preco_variavel = ?'; $params[] = (int)($data['preco_variavel'] ?? 0); }
             if ($hasImagens && isset($data['imagens'])) { $sets[] = 'imagens = ?'; $params[] = $data['imagens']; }
+
             if ($hasFornecedor)  { $sets[] = 'fornecedor_id = ?'; $params[] = ($data['fornecedor_id'] ?? '') === '' ? null : $data['fornecedor_id']; }
             if ($this->columnExists('descricao')) { $sets[] = 'descricao = ?'; $params[] = $data['descricao'] ?? null; }
 
@@ -347,7 +351,9 @@ class Product extends BaseModel {
             if ($hasPrecoVenda2) { $cols[] = 'preco_venda_2'; $params[] = ($data['preco_venda_2'] ?? '') === '' ? null : $data['preco_venda_2']; }
             if ($hasPrecoVenda3) { $cols[] = 'preco_venda_3'; $params[] = ($data['preco_venda_3'] ?? '') === '' ? null : $data['preco_venda_3']; }
             if ($hasPrecoAtacado){ $cols[] = 'preco_venda_atacado'; $params[] = ($data['preco_venda_atacado'] ?? '') === '' ? null : $data['preco_venda_atacado']; }
+            if ($hasPrecoVariavel) { $cols[] = 'preco_variavel'; $params[] = (int)($data['preco_variavel'] ?? 0); }
             if ($hasImagens)     { $cols[] = 'imagens';       $params[] = $data['imagens'] ?? null; }
+
             if ($hasFornecedor)  { $cols[] = 'fornecedor_id'; $params[] = ($data['fornecedor_id'] ?? '') === '' ? null : $data['fornecedor_id']; }
             if ($this->columnExists('descricao')) { $cols[] = 'descricao'; $params[] = $data['descricao'] ?? null; }
 

@@ -278,10 +278,15 @@
                         <label class="form-label small fw-bold">Preço de Custo (R$) *</label>
                         <input type="number" step="0.01" min="0" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold text-nowrap">Preço Venda Normal (R$) *</label>
                         <input type="number" step="0.01" min="0" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
                     </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="preco_variavel" value="1" id="edit_preco_variavel">
+                            <label class="form-check-label small fw-bold text-primary" for="edit_preco_variavel">Preço Variável (PDV)</label>
+                        </div>
+                    </div>
+
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Preço 2 (R$)</label>
                         <input type="number" step="0.01" min="0" name="preco_venda_2" class="form-control shadow-sm" id="edit_preco_venda_2" placeholder="Opcional">
@@ -448,6 +453,8 @@ function editProduct(product) {
     document.getElementById('edit_preco_venda_3').value = product.preco_venda_3 || '';
     document.getElementById('edit_preco_venda_atacado').value = product.preco_venda_atacado || '';
     document.getElementById('edit_estoque_minimo').value = parseFloat(product.estoque_minimo || 0);
+    document.getElementById('edit_preco_variavel').checked = product.preco_variavel == 1;
+
     
     // Fiscal Fields
     document.getElementById('edit_cean').value = product.cean || '';
