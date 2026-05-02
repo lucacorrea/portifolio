@@ -208,7 +208,7 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Código Interno</label>
-                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" value="<?= (new \App\Models\Product())->getNextCode() ?>" readonly>
+                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" value="<?= (new \App\Models\Product())->getNextCode() ?>">
                     </div>
                     <div class="col-md-8">
                         <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
