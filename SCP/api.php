@@ -278,12 +278,7 @@ try {
 
                     registrarAuditoria($pdo, 'UPDATE', 'processos', $p['id'], $dados_anteriores, $p);
                 } else {
-                    // Novo - Verificar se o número JÁ EXISTE com o MESMO TIPO
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND tipo_processo = ?");
-                    $stmt_check->execute([$p['numero'], $p['tipo_processo'] ?? 'CIÊNCIA']);
-                    if ($stmt_check->fetchColumn() > 0) {
-                        throw new Exception("O processo nº " . $p['numero'] . " já está cadastrado como " . ($p['tipo_processo'] ?? 'CIÊNCIA') . ".");
-                    }
+                    // Novo - (Removido bloqueio de duplicata conforme solicitação)
 
                     // Novo
                     $stmt = $pdo->prepare("INSERT INTO processos (
@@ -364,13 +359,7 @@ try {
                     $data_ciencia_formatada = $formatarData($data_ciencia);
                     $tipo_proc_csv = $dados[$mapeamento['tipo_processo'] ?? -1] ?? 'CIÊNCIA';
                     
-                    // Verificar se o processo já existe (Número + Tipo)
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND tipo_processo = ?");
-                    $stmt_check->execute([$numero, $tipo_proc_csv]);
-                    if ($stmt_check->fetchColumn() > 0) {
-                        $pula++;
-                        continue;
-                    }
+                    // Verificar se o processo já existe (Removido bloqueio de duplicata conforme solicitação)
                     
                     if (!isset($stmt_import_csv)) {
                         $stmt_import_csv = $pdo->prepare("INSERT INTO processos (
@@ -462,14 +451,7 @@ try {
                         }
                     }
 
-                    // Verificar duplicata (Número + Tipo)
-                    $tipo_processo_dados = $item['tipo_processo'] ?? 'CIÊNCIA';
-                    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM processos WHERE numero = ? AND tipo_processo = ?");
-                    $stmt_check->execute([$numero, $tipo_processo_dados]);
-                    if ($stmt_check->fetchColumn() > 0) {
-                        $pula++;
-                        continue;
-                    }
+                    // Verificar duplicata (Removido bloqueio de duplicata conforme solicitação)
 
                     // Tratamento Especial para Protocolo (Data - Nome)
                     $data_protocolo_raw = trim($item['data_protocolo'] ?? '');
