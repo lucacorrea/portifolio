@@ -75,10 +75,14 @@ class AuthController extends Controller
 
     private function databaseMessage(PDOException $exception): string
     {
-        $driverCode = (int) ($exception->errorInfo[1] ?? 0);
+        $driverCode = $this->mysqlErrorCode($exception);
         $message = $exception->getMessage();
 
-        if ($driverCode === 1045 || str_contains($message, 'Access denied')) {
+        if (str_contains($message, 'could not find driver')) {
+            return 'A extensão pdo_mysql do PHP não está habilitada no servidor.';
+        }
+
+        if ($driverCode === 1045 || $driverCode === 1044 || str_contains($message, 'Access denied')) {
             return 'Usuário ou senha do banco MySQL estão incorretos.';
         }
 
@@ -86,7 +90,12 @@ class AuthController extends Controller
             return 'O banco MySQL configurado não existe ou não está vinculado ao site.';
         }
 
-        if ($driverCode === 2002 || str_contains($message, 'No such file') || str_contains($message, 'Connection refused')) {
+        if (
+            in_array($driverCode, [2002, 2003, 2005], true)
+            || str_contains($message, 'No such file')
+            || str_contains($message, 'Connection refused')
+            || str_contains($message, 'php_network_getaddresses')
+        ) {
             return 'O host do MySQL não respondeu. Confira se o host é localhost e a porta é 3306.';
         }
 
@@ -99,5 +108,17 @@ class AuthController extends Controller
         }
 
         return 'Falha no banco MySQL. Veja o erro técnico em storage/logs/app.log.';
+    }
+
+    private function mysqlErrorCode(PDOException $exception): int
+    {
+        $driverCode = (int) ($exception->errorInfo[1] ?? 0);
+
+        if ($driverCode > 0) {
+            return $driverCode;
+        }
+
+        $code = $exception->getCode();
+        return is_numeric($code) ? (int) $code : 0;
     }
 }
