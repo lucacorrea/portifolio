@@ -55,6 +55,13 @@ function br($v): string
   return number_format((float)$v, 2, ',', '.');
 }
 
+/**
+ * Formata quantidade: sem decimais se for inteiro, 2 decimais caso contrário.
+ */
+function formatarQuantidade($valor) {
+    return (float)$valor == (int)$valor ? number_format((float)$valor, 0, ',', '.') : number_format((float)$valor, 2, ',', '.');
+}
+
 function limpar($s): string
 {
   return trim((string)$s);
