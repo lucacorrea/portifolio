@@ -36,7 +36,7 @@ class AuthController extends Controller
         $model = new Usuario();
         $usuario = $model->buscarAtivoPorIdentificacao($identificacao);
 
-        if (!$usuario || !password_verify($senha, $usuario['senha'])) {
+        if (!$usuario || !Auth::verifyPassword($senha, $usuario['senha'])) {
             flash_set('error', 'Nome, e-mail ou senha inválidos.');
             header('Location: ' . route_url('auth', 'login'));
             exit;

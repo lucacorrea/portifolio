@@ -45,6 +45,35 @@ class Auth
         };
     }
 
+    public static function verifyPassword(string $senha, string $hash): bool
+    {
+        if (substr($hash, 0, 14) === 'pbkdf2_sha256') {
+            return self::verifyPbkdf2($senha, $hash);
+        }
+
+        return password_verify($senha, $hash);
+    }
+
+    private static function verifyPbkdf2(string $senha, string $hash): bool
+    {
+        $partes = explode('$', $hash);
+
+        if (count($partes) !== 4 || $partes[0] !== 'pbkdf2_sha256') {
+            return false;
+        }
+
+        [, $iteracoes, $salt, $hashEsperado] = $partes;
+        $iteracoes = filter_var($iteracoes, FILTER_VALIDATE_INT, ['options' => ['min_range' => 10000]]);
+
+        if (!$iteracoes || $salt === '' || $hashEsperado === '') {
+            return false;
+        }
+
+        $hashCalculado = hash_pbkdf2('sha256', $senha, $salt, $iteracoes, 64);
+
+        return hash_equals($hashEsperado, $hashCalculado);
+    }
+
     private static function cargoPorNivel(string $nivel): string
     {
         return match ($nivel) {
