@@ -22,6 +22,7 @@ function base_url(string $path = ''): string
 function route_url(string $area, string $pagina): string
 {
     return match ($area) {
+        'auth'            => base_url('index.php?area=auth&pagina=' . urlencode($pagina)),
         'recepcao'       => base_url('index.php?area=recepcao&pagina=' . urlencode($pagina)),
         'administrativo' => base_url('administrativo/?pagina=' . urlencode($pagina)),
         'dono'           => base_url('dono/?pagina=' . urlencode($pagina)),

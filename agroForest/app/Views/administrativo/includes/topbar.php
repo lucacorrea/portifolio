@@ -26,6 +26,12 @@ if (!isset($linkBotaoAcao)) {
 if (!isset($mostrarBusca)) {
     $mostrarBusca = true;
 }
+
+$usuarioLogado = current_user();
+if ($usuarioLogado) {
+    $usuarioNome = $usuarioLogado['nome'] ?? $usuarioNome;
+    $usuarioCargo = $usuarioLogado['cargo'] ?? $usuarioCargo;
+}
 ?>
 
 <header class="topbar-area">
@@ -64,6 +70,7 @@ if (!isset($mostrarBusca)) {
             <a href="<?= htmlspecialchars($linkBotaoAcao) ?>" class="topbar-btn-primary">
                 <?= htmlspecialchars($textoBotaoAcao) ?>
             </a>
+            <a href="<?= route_url('auth', 'logout') ?>" class="topbar-btn-primary">Sair</a>
         </div>
     </div>
 </header>
