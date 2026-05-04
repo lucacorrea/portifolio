@@ -79,13 +79,15 @@
             </main>
 
             <!-- Global Footer Bar -->
-            <footer class="erp-footer py-3 bg-white border-top shadow-sm mt-auto">
-                <div class="container-fluid d-flex justify-content-between align-items-center">
-                    <div class="fw-medium text-nowrap extra-small">
-                        ERP Elétrica &copy; <?= date('Y') ?>
-                    </div>
-                    <div class="text-end extra-small">
-                        Desenvolvido por <strong>L&J Soluções</strong>
+            <footer class="erp-footer py-4 mt-auto">
+                <div class="container-fluid px-4">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+                        <div class="text-muted extra-small fw-medium">
+                            ERP Elétrica &copy; <?= date('Y') ?> &middot; Todos os direitos reservados.
+                        </div>
+                        <div class="text-muted extra-small">
+                            Desenvolvido por <strong class="text-dark">Luiz Breno da Frota</strong>
+                        </div>
                     </div>
                 </div>
             </footer>
