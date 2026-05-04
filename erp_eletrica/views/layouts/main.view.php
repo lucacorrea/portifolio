@@ -79,11 +79,11 @@
             </main>
 
             <!-- Global Footer Bar -->
-            <footer class="erp-footer py-4 mt-auto">
-                <div class="container-fluid px-4">
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
-                        <div class="text-muted extra-small fw-medium">
-                            ERP Elétrica &copy; <?= date('Y') ?> &middot; Todos os direitos reservados.
+            <footer class="erp-footer py-4 mt-auto w-100">
+                <div class="px-4">
+                    <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
+                        <div class="text-muted extra-small">
+                            <strong>ERP Elétrica</strong> &copy; <?= date('Y') ?> &middot; Todos os direitos reservados.
                         </div>
                         <div class="text-muted extra-small">
                             Desenvolvido por <strong class="text-dark">Luiz Breno da Frota</strong>
