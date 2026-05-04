@@ -10,15 +10,23 @@ class Database
         }
 
         $config = self::config();
-        $dsn = self::dsn($config);
 
         try {
-            self::$pdo = new PDO($dsn, $config['username'], $config['password'], [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ]);
+            self::$pdo = self::connect($config);
         } catch (PDOException $exception) {
+            if (($config['host'] ?? '') === 'localhost') {
+                $tcpConfig = $config;
+                $tcpConfig['host'] = '127.0.0.1';
+
+                try {
+                    self::$pdo = self::connect($tcpConfig);
+                    AppLogger::error('PDO connected using TCP fallback: ' . self::safeContext($tcpConfig));
+                    return self::$pdo;
+                } catch (PDOException $fallbackException) {
+                    AppLogger::error('PDO TCP fallback failed: ' . self::safeContext($tcpConfig), $fallbackException);
+                }
+            }
+
             AppLogger::error('PDO connection failed: ' . self::safeContext($config), $exception);
             throw $exception;
         }
@@ -66,5 +74,14 @@ class Database
             $config['database'],
             $config['charset']
         );
+    }
+
+    private static function connect(array $config): PDO
+    {
+        return new PDO(self::dsn($config), $config['username'], $config['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
     }
 }

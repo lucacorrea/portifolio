@@ -36,9 +36,14 @@ class AuthController extends Controller
         try {
             $model = new Usuario();
             $usuario = $model->buscarAtivoPorIdentificacao($identificacao);
+        } catch (PDOException $exception) {
+            AppLogger::error('Login database failed: ' . Database::safeContext(), $exception);
+            flash_set('error', $this->databaseMessage($exception));
+            header('Location: ' . route_url('auth', 'login'));
+            exit;
         } catch (Throwable $exception) {
             AppLogger::error('Login query failed: ' . Database::safeContext(), $exception);
-            flash_set('error', 'Não foi possível conectar ao banco de dados. Confira as configurações e tente novamente.');
+            flash_set('error', 'Erro interno no login. Verifique o arquivo storage/logs/app.log.');
             header('Location: ' . route_url('auth', 'login'));
             exit;
         }
@@ -66,5 +71,33 @@ class AuthController extends Controller
         Auth::logout();
         header('Location: ' . route_url('auth', 'login'));
         exit;
+    }
+
+    private function databaseMessage(PDOException $exception): string
+    {
+        $driverCode = (int) ($exception->errorInfo[1] ?? 0);
+        $message = $exception->getMessage();
+
+        if ($driverCode === 1045 || str_contains($message, 'Access denied')) {
+            return 'Usuário ou senha do banco MySQL estão incorretos.';
+        }
+
+        if ($driverCode === 1049 || str_contains($message, 'Unknown database')) {
+            return 'O banco MySQL configurado não existe ou não está vinculado ao site.';
+        }
+
+        if ($driverCode === 2002 || str_contains($message, 'No such file') || str_contains($message, 'Connection refused')) {
+            return 'O host do MySQL não respondeu. Confira se o host é localhost e a porta é 3306.';
+        }
+
+        if (str_contains($message, "Base table or view not found") || str_contains($message, "doesn't exist")) {
+            return 'A tabela usuarios não existe. Rode o installAuth.php ou o SQL de criação no phpMyAdmin.';
+        }
+
+        if (str_contains($message, 'Unknown column')) {
+            return 'A tabela usuarios existe, mas está com colunas faltando. Rode o SQL de atualização.';
+        }
+
+        return 'Falha no banco MySQL. Veja o erro técnico em storage/logs/app.log.';
     }
 }
