@@ -608,6 +608,7 @@ function parseCurrencyToFloat(valStr) {
 }
 
 let cart = [];
+let pendingProduct = null;
 let currentPvId = null;
 let currentPvCode = null;
 let activeManageId = null;
@@ -656,6 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cashContainer.classList.remove('d-none');
                 const valorRecebido = document.getElementById('valor_recebido');
                 valorRecebido.value = '';
+                valorRecebido.dataset.autoFilled = 'true';
                 setTimeout(() => valorRecebido.focus(), 100);
             } else {
                 cashContainer.classList.add('d-none');
@@ -668,6 +670,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Enter in Valor Recebido to finalize
     const valorRecebidoInput = document.getElementById('valor_recebido');
     if (valorRecebidoInput) {
+        valorRecebidoInput.addEventListener('input', () => {
+            valorRecebidoInput.dataset.autoFilled = 'false';
+        });
         valorRecebidoInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 calculateChange(); // Ensure calculations are fresh
@@ -870,7 +875,7 @@ function renderSearchResults(products) {
             };
         } else {
             item.onmouseover = () => showPreview(p);
-            item.onclick = () => addToCart(p);
+            item.onclick = () => selectForQty(p);
         }
         
         searchResults.appendChild(item);
@@ -885,6 +890,15 @@ function showPreview(p) {
         productPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
     }
     productPreviewName.innerText = p.nome;
+}
+
+function selectForQty(product) {
+    pendingProduct = product;
+    showPreview(product);
+    const qtyInput = document.getElementById('pdvQty');
+    qtyInput.focus();
+    qtyInput.select();
+    searchResults.classList.add('d-none');
 }
 
 function addToCart(product) {
@@ -902,10 +916,12 @@ function addToCart(product) {
             price1: parseFloat(product.preco_venda),
             price2: parseFloat(product.preco_venda_2) || 0,
             price3: parseFloat(product.preco_venda_3) || 0,
+            preco_variavel: !!product.preco_variavel,
             price_tier: 1,
             qty: qtyToAdd,
             imagens: product.imagens
         });
+
     }
     
     pdvSearch.value = '';
@@ -949,10 +965,19 @@ function renderCart() {
                 </div>
             </td>
             <td class="text-center">
-                <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" onchange="updateQty(${index}, this.value)">
+                <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" step="any" onchange="updateQty(${index}, this.value)">
             </td>
-            <td class="text-end">R$ ${item.price.toFixed(2).replace('.', ',')}</td>
+            <td class="text-end">
+                ${item.preco_variavel ? 
+                    `<div class="input-group input-group-sm justify-content-end">
+                        <span class="input-group-text bg-white border-0 extra-small px-1">R$</span>
+                        <input type="number" class="form-control form-control-sm text-end border-primary fw-bold" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updateItemPrice(${index}, this.value)">
+                    </div>` : 
+                    `R$ ${item.price.toFixed(2).replace('.', ',')}`
+                }
+            </td>
             <td class="text-end fw-bold">R$ ${subtotal.toFixed(2).replace('.', ',')}</td>
+
             <td class="text-center">
                 <button class="btn btn-sm btn-link text-danger p-0" onclick="removeFromCart(${index})"><i class="fas fa-times"></i></button>
             </td>
@@ -982,6 +1007,15 @@ function renderCart() {
 
     finalTotal.innerText = `R$ ${finalTotalVal.toFixed(2).replace('.', ',')}`;
 
+    // Pre-fill Valor Recebido for practical cash handling
+    const valorRecebidoInput = document.getElementById('valor_recebido');
+    if (payment === 'dinheiro' && valorRecebidoInput) {
+        if (valorRecebidoInput.value === '' || parseFloat(valorRecebidoInput.value) === 0 || valorRecebidoInput.dataset.autoFilled === 'true') {
+            valorRecebidoInput.value = finalTotalVal.toFixed(2);
+            valorRecebidoInput.dataset.autoFilled = 'true';
+        }
+    }
+
     checkDiscountAuth();
     calculateChange();
     updateCheckoutButtonState();
@@ -997,9 +1031,15 @@ function updatePriceTier(index, tier) {
 }
 
 function updateQty(index, val) {
-    cart[index].qty = Math.max(1, parseFloat(val));
+    cart[index].qty = Math.max(0.001, parseFloat(val));
     renderCart();
 }
+
+function updateItemPrice(index, val) {
+    cart[index].price = Math.max(0, parseFloat(val));
+    renderCart();
+}
+
 
 function removeFromCart(index) {
     cart.splice(index, 1);
@@ -2135,6 +2175,10 @@ pdvSearch.addEventListener('keyup', (e) => {
 document.getElementById('pdvQty').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         e.preventDefault();
+        if (pendingProduct) {
+            addToCart(pendingProduct);
+            pendingProduct = null;
+        }
         pdvSearch.focus();
     }
 });

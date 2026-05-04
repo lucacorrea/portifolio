@@ -273,7 +273,7 @@ $categorias = [
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Código Interno (SKU) *</label>
-                        <input type="text" name="codigo" class="form-control" required style="font-family: 'Roboto Mono'; background-color: #f1f3f5;" value="<?php echo 'PRD' . str_pad((int)$pdo->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>" readonly>
+                        <input type="text" name="codigo" class="form-control" required style="font-family: 'Roboto Mono';" value="<?php echo 'PRD' . str_pad((int)$pdo->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>">
                     </div>
                     <div class="form-group">
                         <label class="form-label">GTIN/EAN (cEAN)</label>
@@ -365,8 +365,14 @@ $categorias = [
                         <input type="text" name="preco_custo" class="form-control money" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Preço Venda Varejo (R$) *</label>
-                        <input type="text" name="preco_venda" class="form-control money" required>
+                        <label class="form-label">Preço Venda Normal (R$) *</label>
+                        <input type="number" step="0.01" min="0" name="preco_venda" class="form-control" required>
+                    </div>
+                    <div class="form-group d-flex align-items-end">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="preco_variavel" value="1">
+                            <label class="form-check-label small fw-bold text-primary">Preço Variável (PDV)</label>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Preço Atacado (R$)</label>
@@ -406,7 +412,7 @@ $categorias = [
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Código Interno (SKU) *</label>
-                        <input type="text" name="codigo" id="edit_codigo" class="form-control" required style="font-family: 'Roboto Mono'; background-color: #f1f3f5;" readonly>
+                        <input type="text" name="codigo" id="edit_codigo" class="form-control" required style="font-family: 'Roboto Mono';">
                     </div>
                     <div class="form-group">
                         <label class="form-label">GTIN/EAN (cEAN)</label>
@@ -498,8 +504,14 @@ $categorias = [
                         <input type="text" name="preco_custo" id="edit_preco_custo" class="form-control money" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Preço Venda Varejo (R$) *</label>
-                        <input type="text" name="preco_venda" id="edit_preco_venda" class="form-control money" required>
+                        <label class="form-label">Preço Venda Normal (R$) *</label>
+                        <input type="number" step="0.01" min="0" name="preco_venda" id="edit_preco_venda" class="form-control" required>
+                    </div>
+                    <div class="form-group d-flex align-items-end">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="preco_variavel" value="1" id="edit_preco_variavel">
+                            <label class="form-check-label small fw-bold text-primary" for="edit_preco_variavel">Preço Variável (PDV)</label>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Preço Atacado (R$)</label>
@@ -534,34 +546,35 @@ $categorias = [
     
     <script src="script.js"></script>
     <script>
-        function editarProduto(p) {
-            document.getElementById('edit_id').value = p.id;
-            document.getElementById('edit_codigo').value = p.codigo;
-            document.getElementById('edit_cean').value = p.cean || '';
-            document.getElementById('edit_ncm').value = p.ncm || '';
-            document.getElementById('edit_cest').value = p.cest || '';
-            document.getElementById('edit_tipo_produto').value = p.tipo_produto || 'simples';
-            document.getElementById('edit_origem').value = p.origem !== null ? p.origem : 0;
-            document.getElementById('edit_csosn').value = p.csosn || '';
-            document.getElementById('edit_cfop_interno').value = p.cfop_interno || '';
-            document.getElementById('edit_cfop_externo').value = p.cfop_externo || '';
-            document.getElementById('edit_aliquota_icms').value = p.aliquota_icms || '';
-            document.getElementById('edit_nome').value = p.nome;
-            document.getElementById('edit_categoria').value = p.categoria;
-            document.getElementById('edit_unidade').value = p.unidade || 'UN';
-            document.getElementById('edit_peso').value = p.peso || '';
-            document.getElementById('edit_dimensoes').value = p.dimensoes || '';
-            document.getElementById('edit_descricao').value = p.descricao || '';
+        function editarProduto(product) {
+            document.getElementById('edit_id').value = product.id;
+            document.getElementById('edit_codigo').value = product.codigo;
+            document.getElementById('edit_cean').value = product.cean || '';
+            document.getElementById('edit_ncm').value = product.ncm || '';
+            document.getElementById('edit_cest').value = product.cest || '';
+            document.getElementById('edit_tipo_produto').value = product.tipo_produto || 'simples';
+            document.getElementById('edit_origem').value = product.origem !== null ? product.origem : 0;
+            document.getElementById('edit_csosn').value = product.csosn || '';
+            document.getElementById('edit_cfop_interno').value = product.cfop_interno || '';
+            document.getElementById('edit_cfop_externo').value = product.cfop_externo || '';
+            document.getElementById('edit_aliquota_icms').value = product.aliquota_icms || '';
+            document.getElementById('edit_nome').value = product.nome;
+            document.getElementById('edit_categoria').value = product.categoria;
+            document.getElementById('edit_unidade').value = product.unidade || 'UN';
+            document.getElementById('edit_peso').value = product.peso || '';
+            document.getElementById('edit_dimensoes').value = product.dimensoes || '';
+            document.getElementById('edit_descricao').value = product.descricao || '';
             
             // Format money for the inputs
             const formatMoneyInput = (val) => 'R$ ' + parseFloat(val || 0).toFixed(2).replace('.', ',');
             
-            document.getElementById('edit_preco_custo').value = formatMoneyInput(p.preco_custo);
-            document.getElementById('edit_preco_venda').value = formatMoneyInput(p.preco_venda);
-            document.getElementById('edit_preco_venda_atacado').value = p.preco_venda_atacado ? formatMoneyInput(p.preco_venda_atacado) : '';
+            document.getElementById('edit_preco_custo').value = product.preco_custo;
+            document.getElementById('edit_preco_venda').value = product.preco_venda;
+            document.getElementById('edit_preco_variavel').checked = product.preco_variavel == 1;
+            document.getElementById('edit_preco_venda_atacado').value = product.preco_venda_atacado ? formatMoneyInput(product.preco_venda_atacado) : '';
             
-            document.getElementById('edit_quantidade').value = p.quantidade;
-            document.getElementById('edit_estoque_minimo').value = p.estoque_minimo;
+            document.getElementById('edit_quantidade').value = product.quantidade;
+            document.getElementById('edit_estoque_minimo').value = product.estoque_minimo;
             
             openModal('modalEditarProduto');
         }

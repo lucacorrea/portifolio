@@ -1,5 +1,5 @@
 /**
- * ERP Elétrica — Service Worker v6
+ * ERP Elétrica — Service Worker v7
  * 
  * REGRAS:
  *  1. PRÉ-CACHEIA as 4 páginas críticas no INSTALL (vendas, pre_vendas, caixa, estoque)
@@ -11,7 +11,7 @@
  *  7. Cache PERSISTE entre sessões — abrir uma vez já salva pra sempre
  */
 
-const CACHE_NAME = 'erp-v6';
+const CACHE_NAME = 'erp-v7';
 
 // Páginas que devem ser pré-cacheadas e funcionar offline
 const CRITICAL_PAGES = [
@@ -60,7 +60,7 @@ function isImage(url) {
 
 // ===== INSTALL — Pré-cacheia páginas críticas =====
 self.addEventListener('install', (event) => {
-    console.log('[SW v6] Instalando com pré-cache...');
+    console.log('[SW v7] Instalando com pré-cache...');
     event.waitUntil(
         caches.open(CACHE_NAME).then(async (cache) => {
             // Limpar caches antigos
@@ -71,7 +71,7 @@ self.addEventListener('install', (event) => {
             for (const asset of CRITICAL_ASSETS) {
                 try {
                     await cache.add(asset);
-                    console.log('[SW v6] Asset pré-cacheado:', asset);
+                    console.log('[SW v7] Asset pré-cacheado:', asset);
                 } catch (e) {
                     console.warn('[SW v6] Falha ao pré-cachear asset:', asset, e.message);
                 }
@@ -83,7 +83,7 @@ self.addEventListener('install', (event) => {
                     const response = await fetch(page, { credentials: 'include' });
                     if (response.ok) {
                         await cache.put(page, response);
-                        console.log('[SW v6] Página pré-cacheada:', page);
+                        console.log('[SW v7] Página pré-cacheada:', page);
                     }
                 } catch (e) {
                     console.warn('[SW v6] Falha ao pré-cachear página:', page, e.message);
@@ -97,7 +97,7 @@ self.addEventListener('install', (event) => {
 
 // ===== ACTIVATE =====
 self.addEventListener('activate', (event) => {
-    console.log('[SW v6] Ativado — tomando controle');
+    console.log('[SW v7] Ativado — tomando controle');
     event.waitUntil(self.clients.claim());
 });
 
