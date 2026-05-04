@@ -80,13 +80,32 @@ class AuthController extends Controller
         }
 
         $linha = sprintf(
-            "[%s] Login DB error: %s in %s:%d\n",
+            "[%s] Login DB error: %s in %s:%d | %s\n",
             date('Y-m-d H:i:s'),
             $exception->getMessage(),
             $exception->getFile(),
-            $exception->getLine()
+            $exception->getLine(),
+            $this->databaseContext()
         );
 
         @file_put_contents($diretorio . '/app.log', $linha, FILE_APPEND);
+    }
+
+    private function databaseContext(): string
+    {
+        if (!class_exists('Model')) {
+            return 'database_config=unavailable';
+        }
+
+        $config = Model::config();
+
+        return sprintf(
+            'database=%s host=%s port=%s user=%s driver=%s',
+            $config['database'] ?? '',
+            $config['host'] ?? '',
+            $config['port'] ?? '',
+            $config['username'] ?? '',
+            $config['driver'] ?? ''
+        );
     }
 }

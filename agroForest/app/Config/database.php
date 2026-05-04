@@ -1,10 +1,10 @@
 <?php
 return [
     'driver' => 'mysql',
-    'host' => 'localhost',
+    'host' => getenv('DB_HOST') ?: 'localhost',
     'port' => '3306',
-    'database' => 'u784961086_agro',
-    'username' => 'u784961086_agro',
-    'password' => '=e@;gw+6>F6',
+    'database' => getenv('DB_DATABASE') ?: 'u784961086_agro',
+    'username' => getenv('DB_USERNAME') ?: 'u784961086_agro',
+    'password' => getenv('DB_PASSWORD') ?: '=e@;gw+6>F6',
     'charset' => 'utf8mb4',
 ];

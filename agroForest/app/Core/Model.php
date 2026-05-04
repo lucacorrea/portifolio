@@ -3,13 +3,13 @@ abstract class Model
 {
     protected static ?PDO $pdo = null;
 
-    protected static function db(): PDO
+    public static function db(): PDO
     {
         if (self::$pdo instanceof PDO) {
             return self::$pdo;
         }
 
-        $config = require dirname(__DIR__) . '/Config/database.php';
+        $config = self::config();
         $driver = $config['driver'] ?? 'mysql';
         $host = $config['host'] ?? 'localhost';
         $port = $config['port'] ?? '3306';
@@ -32,5 +32,10 @@ abstract class Model
         ]);
 
         return self::$pdo;
+    }
+
+    public static function config(): array
+    {
+        return require dirname(__DIR__) . '/Config/database.php';
     }
 }
