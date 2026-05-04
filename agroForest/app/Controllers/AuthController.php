@@ -33,8 +33,14 @@ class AuthController extends Controller
             exit;
         }
 
-        $model = new Usuario();
-        $usuario = $model->buscarAtivoPorIdentificacao($identificacao);
+        try {
+            $model = new Usuario();
+            $usuario = $model->buscarAtivoPorIdentificacao($identificacao);
+        } catch (Throwable $exception) {
+            flash_set('error', 'Não foi possível conectar ao banco de dados. Confira as configurações e tente novamente.');
+            header('Location: ' . route_url('auth', 'login'));
+            exit;
+        }
 
         if (!$usuario || !Auth::verifyPassword($senha, $usuario['senha'])) {
             flash_set('error', 'Nome, e-mail ou senha inválidos.');
@@ -43,7 +49,12 @@ class AuthController extends Controller
         }
 
         Auth::login($usuario);
-        $model->registrarUltimoLogin((int) $usuario['id']);
+
+        try {
+            $model->registrarUltimoLogin((int) $usuario['id']);
+        } catch (Throwable $exception) {
+            // O login não deve falhar só porque o registro de auditoria não foi salvo.
+        }
 
         header('Location: ' . Auth::homeForNivel($usuario['nivel']));
         exit;

@@ -47,7 +47,7 @@ class Auth
 
     public static function verifyPassword(string $senha, string $hash): bool
     {
-        if (substr($hash, 0, 14) === 'pbkdf2_sha256') {
+        if (strncmp($hash, 'pbkdf2_sha256$', 14) === 0) {
             return self::verifyPbkdf2($senha, $hash);
         }
 

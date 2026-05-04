@@ -18,7 +18,13 @@ class Usuario extends Model
 
     public function registrarUltimoLogin(int $id): void
     {
-        $stmt = self::db()->prepare('UPDATE usuarios SET ultimo_login = NOW() WHERE id = :id');
-        $stmt->execute(['id' => $id]);
+        try {
+            $stmt = self::db()->prepare('UPDATE usuarios SET ultimo_login = NOW() WHERE id = :id');
+            $stmt->execute(['id' => $id]);
+        } catch (PDOException $exception) {
+            if ($exception->getCode() !== '42S22') {
+                throw $exception;
+            }
+        }
     }
 }
