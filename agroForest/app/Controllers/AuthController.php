@@ -37,6 +37,7 @@ class AuthController extends Controller
             $model = new Usuario();
             $usuario = $model->buscarAtivoPorIdentificacao($identificacao);
         } catch (Throwable $exception) {
+            $this->logLoginError($exception);
             flash_set('error', 'Não foi possível conectar ao banco de dados. Confira as configurações e tente novamente.');
             header('Location: ' . route_url('auth', 'login'));
             exit;
@@ -65,5 +66,27 @@ class AuthController extends Controller
         Auth::logout();
         header('Location: ' . route_url('auth', 'login'));
         exit;
+    }
+
+    private function logLoginError(Throwable $exception): void
+    {
+        if (!defined('BASE_PATH')) {
+            return;
+        }
+
+        $diretorio = BASE_PATH . '/storage/logs';
+        if (!is_dir($diretorio)) {
+            return;
+        }
+
+        $linha = sprintf(
+            "[%s] Login DB error: %s in %s:%d\n",
+            date('Y-m-d H:i:s'),
+            $exception->getMessage(),
+            $exception->getFile(),
+            $exception->getLine()
+        );
+
+        @file_put_contents($diretorio . '/app.log', $linha, FILE_APPEND);
     }
 }
