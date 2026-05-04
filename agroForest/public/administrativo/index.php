@@ -1,22 +1,5 @@
 <?php
-declare(strict_types=1);
-
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
-
-define('BASE_PATH', dirname(__DIR__, 2));
-define('APP_PATH', BASE_PATH . '/app');
-define('PUBLIC_PATH', BASE_PATH . '/public');
-
-require_once APP_PATH . '/Core/Controller.php';
-require_once APP_PATH . '/Core/Auth.php';
-require_once APP_PATH . '/Helpers/url.php';
-require_once APP_PATH . '/Helpers/view.php';
-require_once APP_PATH . '/Helpers/flash.php';
-require_once APP_PATH . '/Helpers/auth.php';
-require_once APP_PATH . '/Middleware/AuthMiddleware.php';
-require_once APP_PATH . '/Middleware/RoleMiddleware.php';
+require dirname(__DIR__, 2) . '/app/bootstrap.php';
 require_once APP_PATH . '/Controllers/AdministrativoController.php';
 
 RoleMiddleware::handle('administrativo');
