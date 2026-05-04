@@ -1,3 +1,10 @@
+<?php
+$usuarioLogado = current_user();
+if ($usuarioLogado) {
+    $usuarioNome = $usuarioLogado['nome'] ?? ($usuarioNome ?? 'Usuário');
+    $usuarioCargo = $usuarioLogado['cargo'] ?? ($usuarioCargo ?? 'Recepção');
+}
+?>
 <header class="topbar-area">
     <div class="topbar-left">
         <div class="page-heading">
@@ -29,6 +36,7 @@
             <?php if (!empty($textoBotaoAcao ?? '')): ?>
                 <a href="<?= htmlspecialchars($linkBotaoAcao ?? '#') ?>" class="topbar-btn-primary"><?= htmlspecialchars($textoBotaoAcao) ?></a>
             <?php endif; ?>
+            <a href="<?= route_url('auth', 'logout') ?>" class="topbar-btn-primary">Sair</a>
         </div>
     </div>
 </header>

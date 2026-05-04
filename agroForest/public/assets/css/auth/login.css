@@ -1,3 +1,9 @@
 .login-card form { display: grid; gap: 12px; }
+.login-card label { display: grid; gap: 6px; font-weight: 700; color: #243729; }
+.login-card label span { font-size: 0.9rem; }
 .login-card input, .login-card button { height: 46px; border-radius: 12px; border: 1px solid #e6e1d5; padding: 0 14px; }
 .login-card button { background: linear-gradient(135deg, #1f4d3a, #6d8b57); color: #fff; border: 0; font-weight: 700; }
+.alert { border-radius: 10px; margin: 0 0 14px; padding: 12px 14px; font-weight: 700; }
+.alert-error { background: #fff0f0; border: 1px solid #f0b7b7; color: #8a1f1f; }
+.alert-success { background: #eef9ee; border: 1px solid #b8ddb8; color: #1f642f; }
+.btn-link { color: #1f4d3a; font-weight: 800; }

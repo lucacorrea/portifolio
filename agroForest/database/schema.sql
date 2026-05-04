@@ -5,6 +5,7 @@ CREATE TABLE usuarios (
   senha VARCHAR(255) NOT NULL,
   nivel ENUM('recepcao','administrativo','dono') NOT NULL DEFAULT 'recepcao',
   ativo TINYINT(1) NOT NULL DEFAULT 1,
+  ultimo_login DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -54,3 +55,8 @@ CREATE TABLE orcamentos (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_orcamentos_protocolo FOREIGN KEY (protocolo_id) REFERENCES protocolos(id)
 );
+
+INSERT INTO usuarios (nome, email, senha, nivel, ativo) VALUES
+('Recepção Agro Forest', 'recepcao@agroforest.test', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi', 'recepcao', 1),
+('Administrativo Agro Forest', 'administrativo@agroforest.test', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi', 'administrativo', 1),
+('Dono Agro Forest', 'dono@agroforest.test', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi', 'dono', 1);

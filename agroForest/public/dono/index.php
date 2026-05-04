@@ -10,11 +10,16 @@ define('APP_PATH', BASE_PATH . '/app');
 define('PUBLIC_PATH', BASE_PATH . '/public');
 
 require_once APP_PATH . '/Core/Controller.php';
+require_once APP_PATH . '/Core/Auth.php';
 require_once APP_PATH . '/Helpers/url.php';
 require_once APP_PATH . '/Helpers/view.php';
 require_once APP_PATH . '/Helpers/flash.php';
 require_once APP_PATH . '/Helpers/auth.php';
+require_once APP_PATH . '/Middleware/AuthMiddleware.php';
+require_once APP_PATH . '/Middleware/RoleMiddleware.php';
 require_once APP_PATH . '/Controllers/DonoController.php';
+
+RoleMiddleware::handle('dono');
 
 $pagina = trim($_GET['pagina'] ?? 'dashboard');
 
