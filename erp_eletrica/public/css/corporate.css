@@ -63,9 +63,7 @@ body {
 }
 
 .erp-wrapper {
-    display: flex;
     min-height: 100vh;
-    width: 100%;
 }
 
 /* Sidebar Styling */
@@ -181,7 +179,7 @@ body {
 body {
     overflow-x: hidden;
     position: relative;
-    background-color: var(--erp-slate);
+    background-color: var(--erp-surface);
 }
 
 /* Smart Stacking Utility */
