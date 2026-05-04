@@ -1,19 +1,19 @@
 <?php
 class Usuario extends Model
 {
-    public function buscarAtivoPorEmail(string $email): ?array
+    public function buscarAtivoPorIdentificacao(string $identificacao): ?array
     {
         $stmt = self::db()->prepare(
-            'SELECT id, nome, email, senha, nivel, ativo FROM usuarios WHERE email = :email LIMIT 1'
+            'SELECT id, nome, email, senha, nivel, ativo
+             FROM usuarios
+             WHERE ativo = 1 AND (email = :identificacao OR nome = :identificacao)
+             ORDER BY id ASC
+             LIMIT 1'
         );
-        $stmt->execute(['email' => $email]);
+        $stmt->execute(['identificacao' => $identificacao]);
         $usuario = $stmt->fetch();
 
-        if (!$usuario || (int) $usuario['ativo'] !== 1) {
-            return null;
-        }
-
-        return $usuario;
+        return $usuario ?: null;
     }
 
     public function registrarUltimoLogin(int $id): void

@@ -24,20 +24,20 @@ class AuthController extends Controller
             exit;
         }
 
-        $email = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+        $identificacao = trim((string) ($_POST['identificacao'] ?? ''));
         $senha = (string) ($_POST['senha'] ?? '');
 
-        if (!$email || $senha === '') {
-            flash_set('error', 'Informe e-mail e senha.');
+        if ($identificacao === '' || $senha === '') {
+            flash_set('error', 'Informe nome ou e-mail e senha.');
             header('Location: ' . route_url('auth', 'login'));
             exit;
         }
 
         $model = new Usuario();
-        $usuario = $model->buscarAtivoPorEmail($email);
+        $usuario = $model->buscarAtivoPorIdentificacao($identificacao);
 
         if (!$usuario || !password_verify($senha, $usuario['senha'])) {
-            flash_set('error', 'E-mail ou senha inválidos.');
+            flash_set('error', 'Nome, e-mail ou senha inválidos.');
             header('Location: ' . route_url('auth', 'login'));
             exit;
         }

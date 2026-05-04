@@ -17,8 +17,8 @@ require dirname(__DIR__) . '/layouts/header.php';
         <form action="<?= base_url('loginProcess.php') ?>" method="POST" autocomplete="on">
             <input type="hidden" name="_csrf" value="<?= htmlspecialchars(Csrf::token()) ?>">
             <label>
-                <span>E-mail</span>
-                <input type="email" name="email" placeholder="seu@email.com" required autofocus>
+                <span>Nome ou e-mail</span>
+                <input type="text" name="identificacao" placeholder="Seu nome ou e-mail" required autofocus autocomplete="username">
             </label>
             <label>
                 <span>Senha</span>
