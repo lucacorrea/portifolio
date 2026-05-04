@@ -12,8 +12,8 @@
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="public/css/corporate.css?v=10.6">
-    <link rel="stylesheet" href="style.css?v=10.6">
+    <link rel="stylesheet" href="public/css/corporate.css?v=11.0">
+    <link rel="stylesheet" href="style.css?v=11.0">
     
     <script>
         // Critical: Apply sidebar state before rendering to avoid flash
@@ -140,9 +140,9 @@
             if (!('serviceWorker' in navigator)) return;
             
             try {
-                // Registrar SW v6 — NÃO limpa caches existentes (eles devem persistir!)
+                // Registrar SW v7 — NÃO limpa caches existentes (eles devem persistir!)
                 const reg = await navigator.serviceWorker.register('sw.js');
-                console.log('[ERP] SW v6 registrado:', reg.scope);
+                console.log('[ERP] SW v7 registrado:', reg.scope);
                 
                 // Forçar ativação imediata se houver update
                 if (reg.waiting) {
@@ -153,7 +153,7 @@
                     if (newSW) {
                         newSW.addEventListener('statechange', () => {
                             if (newSW.state === 'activated') {
-                                console.log('[ERP] SW v6 ativado com sucesso!');
+                                console.log('[ERP] SW v7 ativado com sucesso!');
                             }
                         });
                     }
