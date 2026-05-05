@@ -11,6 +11,10 @@ if ($area === 'auth') {
         $controller->logout();
     }
 
+    if ($pagina === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $controller->processarLogin();
+    }
+
     $controller->login();
     exit;
 }

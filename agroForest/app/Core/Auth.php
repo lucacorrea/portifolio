@@ -69,7 +69,7 @@ class Auth
             return false;
         }
 
-        $hashCalculado = hash_pbkdf2('sha256', $senha, $salt, $iteracoes, 64);
+        $hashCalculado = hash_pbkdf2('sha256', $senha, $salt, $iteracoes, 0);
 
         return hash_equals($hashEsperado, $hashCalculado);
     }

@@ -14,7 +14,7 @@ require dirname(__DIR__) . '/layouts/header.php';
         <?php if ($sucesso): ?>
             <div class="alert alert-success"><?= htmlspecialchars($sucesso) ?></div>
         <?php endif; ?>
-        <form action="<?= base_url('loginProcess.php') ?>" method="POST" autocomplete="on">
+        <form action="<?= route_url('auth', 'login') ?>" method="POST" autocomplete="on">
             <input type="hidden" name="_csrf" value="<?= htmlspecialchars(Csrf::token()) ?>">
             <label>
                 <span>Nome ou e-mail</span>
