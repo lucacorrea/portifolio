@@ -299,7 +299,6 @@ try {
                     // Novo - (Removido bloqueio de duplicata conforme solicitação)
 
                     // Novo
-                    $stmt = $pdo->prepare("INSERT INTO processos (
                         numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
                         revelia, data_envio, data_ciencia, tipo_contagem, 
                         final_prazo, prazo_critico, analisador, peticionador, protocolista,
