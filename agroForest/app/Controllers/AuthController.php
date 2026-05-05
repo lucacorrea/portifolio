@@ -107,7 +107,7 @@ class AuthController extends Controller
             return 'A tabela usuarios existe, mas está com colunas faltando. Rode o SQL de atualização.';
         }
 
-        return 'Falha no banco MySQL. Veja o erro técnico em storage/logs/app.log.';
+        return 'Falha no banco MySQL: ' . $message . '. Verifique o arquivo storage/logs/app.log.';
     }
 
     private function mysqlErrorCode(PDOException $exception): int
