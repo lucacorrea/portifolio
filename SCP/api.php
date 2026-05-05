@@ -38,6 +38,9 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS processos (
     status VARCHAR(100),
     data_protocolo VARCHAR(50),
     observacoes TEXT,
+    assessora_responsavel VARCHAR(255),
+    topico_detalhado VARCHAR(255),
+    comentario_atividade TEXT,
     data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
@@ -157,6 +160,19 @@ foreach ($columns as $col) {
 }
 if (!$hasDataPeticionamento) { $pdo->exec("ALTER TABLE processos ADD COLUMN data_peticionamento VARCHAR(50)"); }
 
+// Verificar novas colunas: assessora_responsavel, topico_detalhado, comentario_atividade
+$hasAssessora = false;
+$hasTopico = false;
+$hasComentario = false;
+foreach ($columns as $col) {
+    if ($col['Field'] === 'assessora_responsavel') { $hasAssessora = true; }
+    if ($col['Field'] === 'topico_detalhado') { $hasTopico = true; }
+    if ($col['Field'] === 'comentario_atividade') { $hasComentario = true; }
+}
+if (!$hasAssessora) { $pdo->exec("ALTER TABLE processos ADD COLUMN assessora_responsavel VARCHAR(255)"); }
+if (!$hasTopico) { $pdo->exec("ALTER TABLE processos ADD COLUMN topico_detalhado VARCHAR(255)"); }
+if (!$hasComentario) { $pdo->exec("ALTER TABLE processos ADD COLUMN comentario_atividade TEXT"); }
+
 
 
 function registrarAuditoria($pdo, $acao, $tabela, $registro_id, $dados_anteriores = null, $dados_novos = null) {
@@ -267,13 +283,15 @@ try {
                         revelia = ?, data_envio = ?, data_ciencia = ?, tipo_contagem = ?, 
                         final_prazo = ?, prazo_critico = ?, analisador = ?, peticionador = ?, protocolista = ?,
                         quantidade_dias = ?, status = ?, 
-                        data_protocolo = ?, data_analise = ?, data_peticionamento = ?, observacoes = ? WHERE id = ?");
+                        data_protocolo = ?, data_analise = ?, data_peticionamento = ?, observacoes = ?,
+                        assessora_responsavel = ?, topico_detalhado = ?, comentario_atividade = ? WHERE id = ?");
                     $stmt->execute([
                         $p['numero'], $p['tipo_processo'] ?? 'CIÊNCIA', $p['tipo_ato'], $p['natureza'], $p['tipo_manifestacao'],
                         $p['revelia'], $p['data_envio'], $p['data_ciencia'], $p['tipo_contagem'],
                         $p['final_prazo'], $p['prazo_critico'], trim(strtoupper($p['analisador'])), $p['peticionador'] ?? '', $p['protocolista'] ?? '',
                         $p['quantidade_dias'], $p['status'],
-                        $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes'], $p['id']
+                        $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes'],
+                        $p['assessora_responsavel'] ?? '', $p['topico_detalhado'] ?? '', $p['comentario_atividade'] ?? '', $p['id']
                     ]);
 
                     registrarAuditoria($pdo, 'UPDATE', 'processos', $p['id'], $dados_anteriores, $p);
@@ -281,18 +299,19 @@ try {
                     // Novo - (Removido bloqueio de duplicata conforme solicitação)
 
                     // Novo
-                    $stmt = $pdo->prepare("INSERT INTO processos (
                         numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
                         revelia, data_envio, data_ciencia, tipo_contagem, 
                         final_prazo, prazo_critico, analisador, peticionador, protocolista,
-                        quantidade_dias, status, data_protocolo, data_analise, data_peticionamento, observacoes
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        quantidade_dias, status, data_protocolo, data_analise, data_peticionamento, observacoes,
+                        assessora_responsavel, topico_detalhado, comentario_atividade
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $p['numero'], $p['tipo_processo'] ?? 'CIÊNCIA', $p['tipo_ato'], $p['natureza'], $p['tipo_manifestacao'],
                         $p['revelia'], $p['data_envio'], $p['data_ciencia'], $p['tipo_contagem'],
                         $p['final_prazo'], $p['prazo_critico'], trim(strtoupper($p['analisador'])), $p['peticionador'] ?? '', $p['protocolista'] ?? '',
                         $p['quantidade_dias'], $p['status'],
-                        $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes']
+                        $p['data_protocolo'], $p['data_analise'] ?? '', $p['data_peticionamento'] ?? '', $p['observacoes'],
+                        $p['assessora_responsavel'] ?? '', $p['topico_detalhado'] ?? '', $p['comentario_atividade'] ?? ''
                     ]);
                     $novo_id = $pdo->lastInsertId();
                     registrarAuditoria($pdo, 'INSERT', 'processos', $novo_id, null, $p);

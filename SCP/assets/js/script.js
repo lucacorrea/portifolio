@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         handleVisibilidadePers('tipo_ato', 'tipo_ato_personalizado');
         handleVisibilidadePers('natureza_prazo', 'natureza_prazo_personalizado');
+        handleVisibilidadePers('topico_detalhado', 'topico_detalhado_personalizado');
         // -----------------------------------------------------------------------------------
 
         const inputCiencia = document.getElementById('data_ciencia');
@@ -238,7 +239,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 prazo_critico: document.getElementById('prazo_critico') ? document.getElementById('prazo_critico').value : 'NÃO',
                 data_analise: document.getElementById('data_analise') ? document.getElementById('data_analise').value : '',
                 data_peticionamento: document.getElementById('data_peticionamento') ? document.getElementById('data_peticionamento').value : '',
-                observacoes: document.getElementById('observacoes') ? document.getElementById('observacoes').value : ''
+                observacoes: document.getElementById('observacoes') ? document.getElementById('observacoes').value : '',
+                assessora_responsavel: document.getElementById('assessora_responsavel') ? document.getElementById('assessora_responsavel').value : '',
+                topico_detalhado: (document.getElementById('topico_detalhado') && document.getElementById('topico_detalhado').value === 'PERSONALIZADO') ? document.getElementById('topico_detalhado_personalizado').value.toUpperCase() : (document.getElementById('topico_detalhado') ? document.getElementById('topico_detalhado').value : ''),
+                comentario_atividade: document.getElementById('comentario_atividade') ? document.getElementById('comentario_atividade').value : ''
             };
 
             const resp = await fetch('api.php?acao=salvar', {
@@ -536,6 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${p.prazo_critico === 'SIM' ? ' <i class="fas fa-exclamation-triangle"></i>' : ''}
                 </td>
                 <td><span class="tag-badge ${classUser}">${p.analisador || 'N/A'}</span></td>
+                <td><span class="tag-badge ${window.getColorForUser(p.assessora_responsavel)}">${p.assessora_responsavel || '---'}</span></td>
                 <td>
                     <span class="badge badge-${statusClass}">${statusLimpo}</span>
                     ${statusLimpo === 'PROTOCOLADO' ? `
@@ -784,6 +789,23 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('status').value = p.status;
         document.getElementById('prazo_critico').value = p.prazo_critico;
         document.getElementById('observacoes').value = p.observacoes || '';
+        if (document.getElementById('assessora_responsavel')) document.getElementById('assessora_responsavel').value = p.assessora_responsavel || '';
+        
+        const elTopico = document.getElementById('topico_detalhado');
+        if (elTopico) {
+            let topicoEncontrado = Array.from(elTopico.options).some(opt => opt.value === p.topico_detalhado);
+            if (!topicoEncontrado && p.topico_detalhado) {
+                elTopico.value = 'PERSONALIZADO';
+                const elTopicoPers = document.getElementById('topico_detalhado_personalizado');
+                if (elTopicoPers) {
+                    elTopicoPers.value = p.topico_detalhado;
+                    elTopicoPers.style.display = 'block';
+                }
+            } else {
+                elTopico.value = p.topico_detalhado || '';
+            }
+        }
+        if (document.getElementById('comentario_atividade')) document.getElementById('comentario_atividade').value = p.comentario_atividade || '';
 
         if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO') {
             const cProt = document.getElementById('container-protocolo');
@@ -1019,6 +1041,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="split-label">Observações Adicionais</span>
                         <div class="split-obs">${p.observacoes || 'Nenhuma observação registrada.'}</div>
                     </div>
+
+                    ${p.comentario_atividade ? `
+                    <div class="split-item-stacked" style="border:none; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0;">
+                        <span class="split-label">Comentário na Atividade</span>
+                        <div class="split-obs" style="background: rgba(37, 99, 235, 0.03); border-left-color: var(--primary);">${p.comentario_atividade}</div>
+                    </div>` : ''}
                 </div>
 
                 <!-- Coluna Direita -->
@@ -1055,6 +1083,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="split-item-stacked" style="border:none; margin-top: 0.5rem;">
                         <span class="split-label">Manifestação Exigida</span>
                         <span class="split-value" style="text-align: left; background: #f8fafc; padding: 10px; border-radius: 4px; border-left: 3px solid var(--primary);">${p.tipo_manifestacao || '---'}</span>
+                    </div>
+
+                    ${p.topico_detalhado ? `
+                    <div class="split-item-stacked" style="border:none; margin-top: 1rem;">
+                        <span class="split-label">Tópico Detalhado</span>
+                        <span class="split-value" style="text-align: left; background: #fffbeb; padding: 10px; border-radius: 4px; border-left: 3px solid #f59e0b; color: #92400e; font-weight: 600;">${p.topico_detalhado}</span>
+                    </div>` : ''}
+
+                    <div class="split-item flex-between" style="margin-top: 1rem;">
+                        <span class="split-label">Assessora Responsável</span>
+                        <span class="tag-badge ${window.getColorForUser(p.assessora_responsavel)}">${p.assessora_responsavel || 'N/A'}</span>
                     </div>
 
                     ${p.status === 'ANALISADO' ? `

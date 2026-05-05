@@ -182,6 +182,7 @@ if (!isset($_SESSION['usuario_id'])) {
                         <th>ATO / NATUREZA</th>
                         <th>PRAZO FINAL</th>
                         <th>ANALISADOR</th>
+                        <th>ASSESSORA</th>
                         <th>STATUS</th>
                         <th>AÇÕES</th>
                     </tr>

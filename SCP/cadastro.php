@@ -187,8 +187,35 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
                 </div>
 
                 <div class="form-group">
-                    <label for="tipo_manifestacao">Tipo de Manifestação</label>
+                    <label for="tipo_manifestacao">Manifestação Exigida</label>
                     <input type="text" id="tipo_manifestacao" placeholder="Ex: Manifestar a respeito do valor">
+                </div>
+
+                <div class="form-group">
+                    <label for="assessora_responsavel">Assessora Responsável</label>
+                    <select id="assessora_responsavel">
+                        <option value="">NENHUMA</option>
+                        <option value="DRA UANNA">DRA UANNA</option>
+                        <option value="DRA RHANNY">DRA RHANNY</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="topico_detalhado">Tópico Detalhado (O que deve ser feito)</label>
+                    <select id="topico_detalhado">
+                        <option value="">Selecione...</option>
+                        <option value="CONTESTAÇÃO">CONTESTAÇÃO</option>
+                        <option value="IMPUGNAÇÃO">IMPUGNAÇÃO</option>
+                        <option value="RECURSO DE APELAÇÃO">RECURSO DE APELAÇÃO</option>
+                        <option value="MANIFESTAÇÃO SOBRE AUDIÊNCIA">MANIFESTAÇÃO SOBRE AUDIÊNCIA</option>
+                        <option value="PERSONALIZADO" style="color: #4338ca; font-weight: bold;">PERSONALIZADO</option>
+                    </select>
+                    <input type="text" id="topico_detalhado_personalizado" placeholder="Digite o tópico detalhado..." style="display: none; margin-top: 0.5rem; text-transform: uppercase;">
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="comentario_atividade">Comentário na Atividade</label>
+                    <textarea id="comentario_atividade" rows="3" placeholder="Adicione um comentário específico sobre esta atividade..."></textarea>
                 </div>
 
                 <!-- Campos Reais (usados para salvar no BD) -->
@@ -271,6 +298,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
         };
         check('tipo_ato', 'tipo_ato_personalizado');
         check('natureza_prazo', 'natureza_prazo_personalizado');
+        check('topico_detalhado', 'topico_detalhado_personalizado');
     });
 </script>
 </body>
