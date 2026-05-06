@@ -5,23 +5,23 @@ $area = trim($_GET['area'] ?? 'auth');
 $pagina = trim($_GET['pagina'] ?? 'login');
 
 if ($area === 'auth') {
-    $controller = new AuthController();
-
     if ($pagina === 'logout') {
-        $controller->logout();
+        auth_logout_session();
+        header('Location: ' . route_url('auth', 'login'));
+        exit;
     }
 
     if ($pagina === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $controller->processarLogin();
+        login_processar();
     }
 
-    $controller->login();
+    login_exibir();
     exit;
 }
 
-RoleMiddleware::handle($area);
+role_required($area);
 
-$view = Router::resolve($area, $pagina);
+$view = router_resolve($area, $pagina);
 
 if ($view === null) {
     http_response_code(404);

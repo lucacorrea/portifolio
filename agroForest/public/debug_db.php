@@ -13,17 +13,17 @@ if (PHP_SAPI !== 'cli' && !hash_equals($expectedToken, (string) $token)) {
 
 echo "<h1>Debug Conexão Banco de Dados</h1>";
 
-$config = Database::config();
+$config = db_config();
 echo "<h2>Configuração Atual:</h2>";
 echo "<ul>";
-echo "<li>Contexto: " . htmlspecialchars(Database::safeContext()) . "</li>";
-echo "<li>Log: " . htmlspecialchars((string) AppLogger::path()) . "</li>";
-echo "<li>Log existe: " . (is_file((string) AppLogger::path()) ? 'sim' : 'não') . "</li>";
+echo "<li>Contexto: " . htmlspecialchars(db_safe_context()) . "</li>";
+echo "<li>Log: " . htmlspecialchars(app_log_path()) . "</li>";
+echo "<li>Log existe: " . (is_file(app_log_path()) ? 'sim' : 'não') . "</li>";
 echo "</ul>";
 
 try {
     echo "<h3>Tentando conectar...</h3>";
-    $pdo = Database::pdo();
+    $pdo = db();
     echo "<p style='color: green; font-weight: bold;'>CONECTADO COM SUCESSO!</p>";
     
     $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);

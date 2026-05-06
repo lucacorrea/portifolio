@@ -20,21 +20,10 @@ if (!defined('PUBLIC_PATH')) {
 $appConfig = require APP_PATH . '/Config/app.php';
 date_default_timezone_set($appConfig['timezone'] ?? 'America/Manaus');
 
-require_once APP_PATH . '/Core/AppLogger.php';
-
-AppLogger::init();
-
-require_once APP_PATH . '/Core/Controller.php';
-require_once APP_PATH . '/Core/Csrf.php';
-require_once APP_PATH . '/Core/Auth.php';
-require_once APP_PATH . '/Core/Database.php';
-require_once APP_PATH . '/Core/Model.php';
-require_once APP_PATH . '/Core/Router.php';
 require_once APP_PATH . '/Helpers/url.php';
 require_once APP_PATH . '/Helpers/view.php';
 require_once APP_PATH . '/Helpers/flash.php';
 require_once APP_PATH . '/Helpers/auth.php';
-require_once APP_PATH . '/Middleware/AuthMiddleware.php';
-require_once APP_PATH . '/Middleware/RoleMiddleware.php';
-require_once APP_PATH . '/Models/Usuario.php';
-require_once APP_PATH . '/Controllers/AuthController.php';
+require_once APP_PATH . '/Helpers/procedural_auth.php';
+
+app_log_init();

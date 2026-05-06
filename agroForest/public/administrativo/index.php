@@ -1,37 +1,36 @@
 <?php
 require dirname(__DIR__, 2) . '/app/bootstrap.php';
-require_once APP_PATH . '/Controllers/AdministrativoController.php';
 
-RoleMiddleware::handle('administrativo');
+role_required('administrativo');
 
 $pagina = trim($_GET['pagina'] ?? 'dashboard');
 
 $rotas = [
-    'dashboard'           => 'dashboard',
+    'dashboard'           => 'administrativo/dashboard',
 
-    'protocolosRecebidos' => 'protocolosRecebidos',
-    'protocoloVisualizar' => 'protocoloVisualizar',
+    'protocolosRecebidos' => 'administrativo/protocolosRecebidos',
+    'protocoloVisualizar' => 'administrativo/protocoloVisualizar',
 
-    'orcamentos'          => 'orcamentos',
-    'orcamentoCadastrar'  => 'orcamentoCadastrar',
-    'orcamentoEditar'     => 'orcamentoEditar',
-    'orcamentoVisualizar' => 'orcamentoVisualizar',
+    'orcamentos'          => 'administrativo/orcamentos',
+    'orcamentoCadastrar'  => 'administrativo/orcamentoCadastrar',
+    'orcamentoEditar'     => 'administrativo/orcamentoEditar',
+    'orcamentoVisualizar' => 'administrativo/orcamentoVisualizar',
 
-    'clientes'            => 'clientes',
-    'clienteCadastrar'    => 'clienteCadastrar',
-    'clienteEditar'       => 'clienteEditar',
-    'clienteVisualizar'   => 'clienteVisualizar',
+    'clientes'            => 'administrativo/clientes',
+    'clienteCadastrar'    => 'administrativo/clienteCadastrar',
+    'clienteEditar'       => 'administrativo/clienteEditar',
+    'clienteVisualizar'   => 'administrativo/clienteVisualizar',
 
-    'documentos'          => 'documentos',
-    'documentoVisualizar' => 'documentoVisualizar',
+    'documentos'          => 'administrativo/documentos',
+    'documentoVisualizar' => 'administrativo/documentoVisualizar',
 
-    'pendencias'          => 'pendencias',
-    'pendenciaCadastrar'  => 'pendenciaCadastrar',
-    'pendenciaEditar'     => 'pendenciaEditar',
-    'pendenciaVisualizar' => 'pendenciaVisualizar',
+    'pendencias'          => 'administrativo/pendencias',
+    'pendenciaCadastrar'  => 'administrativo/pendenciaCadastrar',
+    'pendenciaEditar'     => 'administrativo/pendenciaEditar',
+    'pendenciaVisualizar' => 'administrativo/pendenciaVisualizar',
 
-    'relatorios'          => 'relatorios',
-    'configuracoes'       => 'configuracoes',
+    'relatorios'          => 'administrativo/relatorios',
+    'configuracoes'       => 'administrativo/configurações',
 ];
 
 if (!isset($rotas[$pagina])) {
@@ -46,12 +45,4 @@ if (!isset($rotas[$pagina])) {
     exit;
 }
 
-$controller = new AdministrativoController();
-$metodo = $rotas[$pagina];
-
-if (!method_exists($controller, $metodo)) {
-    http_response_code(500);
-    exit('Método não encontrado no AdministrativoController: ' . $metodo);
-}
-
-$controller->$metodo();
+render_view($rotas[$pagina]);

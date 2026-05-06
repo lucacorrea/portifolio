@@ -12,13 +12,13 @@ if (PHP_SAPI !== 'cli' && !hash_equals($expectedToken, (string) $token)) {
 }
 
 echo "Agro Forest database check\n";
-echo "Context: " . Database::safeContext() . "\n";
-echo "Log path: " . AppLogger::path() . "\n";
-echo "Log file exists: " . (is_file((string) AppLogger::path()) ? 'yes' : 'no') . "\n";
+echo "Context: " . db_safe_context() . "\n";
+echo "Log path: " . app_log_path() . "\n";
+echo "Log file exists: " . (is_file(app_log_path()) ? 'yes' : 'no') . "\n";
 echo "Log directory writable: " . (is_writable(BASE_PATH . '/storage/logs') ? 'yes' : 'no') . "\n";
 
 try {
-    $pdo = Database::pdo();
+    $pdo = db();
     echo "PDO: connected\n";
 
     $version = $pdo->query('SELECT VERSION() AS version')->fetch();
@@ -33,7 +33,7 @@ try {
     }
 } catch (Throwable $exception) {
     http_response_code(500);
-    AppLogger::error('Database check failed: ' . Database::activeContext(), $exception);
+    app_log_write('error', 'Database check failed: ' . db_safe_context(), $exception);
     echo "PDO: failed\n";
     echo "Code: " . $exception->getCode() . "\n";
     echo "Error: " . $exception->getMessage() . "\n";

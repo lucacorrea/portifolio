@@ -12,7 +12,7 @@ if (!hash_equals($expectedToken, (string) $token)) {
 }
 
 try {
-    $pdo = Database::pdo();
+    $pdo = db();
 
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS usuarios (
@@ -34,9 +34,9 @@ try {
 
     $stmt = $pdo->prepare("
         INSERT INTO usuarios (nome, email, senha, nivel, ativo) VALUES
-        (:nome_recepcao, :email_recepcao, :senha_recepcao, 'recepcao', 1),
-        (:nome_administrativo, :email_administrativo, :senha_administrativo, 'administrativo', 1),
-        (:nome_dono, :email_dono, :senha_dono, 'dono', 1)
+        (?, ?, ?, 'recepcao', 1),
+        (?, ?, ?, 'administrativo', 1),
+        (?, ?, ?, 'dono', 1)
         ON DUPLICATE KEY UPDATE
           nome = VALUES(nome),
           senha = VALUES(senha),
@@ -45,27 +45,27 @@ try {
     ");
 
     $stmt->execute([
-        'nome_recepcao' => 'Recepção Agro Forest',
-        'email_recepcao' => 'recepcao@agroforest.test',
-        'senha_recepcao' => 'pbkdf2_sha256$100000$58956eb178db20badfc23db429605cc4$6be2b831342df6b188c2a8ad601d18c6a0c56c2499a71e7f2bb7bfc619841e19',
-        'nome_administrativo' => 'Administrativo Agro Forest',
-        'email_administrativo' => 'administrativo@agroforest.test',
-        'senha_administrativo' => 'pbkdf2_sha256$100000$d23c59529dfa23f756ac61d436b4a740$c514b9459bddd28735141f1f689d76c382f413d8a465668373d1f1e83c4febc2',
-        'nome_dono' => 'Dono Agro Forest',
-        'email_dono' => 'dono@agroforest.test',
-        'senha_dono' => 'pbkdf2_sha256$100000$c88d6949ee4c91a8a4a6cd7d7c086c13$9accfad0d725ab7f227cabba34f79ae6507b93ffa041bf35f046aa96c3bb3771',
+        'Recepção Agro Forest',
+        'recepcao@agroforest.test',
+        'pbkdf2_sha256$100000$58956eb178db20badfc23db429605cc4$6be2b831342df6b188c2a8ad601d18c6a0c56c2499a71e7f2bb7bfc619841e19',
+        'Administrativo Agro Forest',
+        'administrativo@agroforest.test',
+        'pbkdf2_sha256$100000$d23c59529dfa23f756ac61d436b4a740$c514b9459bddd28735141f1f689d76c382f413d8a465668373d1f1e83c4febc2',
+        'Dono Agro Forest',
+        'dono@agroforest.test',
+        'pbkdf2_sha256$100000$c88d6949ee4c91a8a4a6cd7d7c086c13$9accfad0d725ab7f227cabba34f79ae6507b93ffa041bf35f046aa96c3bb3771',
     ]);
 
     echo "Auth install OK\n";
-    echo "Context: " . Database::safeContext() . "\n";
+    echo "Context: " . db_safe_context() . "\n";
     echo "Users:\n";
     echo "- recepcao@agroforest.test / recepcao123\n";
     echo "- administrativo@agroforest.test / administrativo123\n";
     echo "- dono@agroforest.test / dono123\n";
 } catch (Throwable $exception) {
     http_response_code(500);
-    AppLogger::error('Auth install failed: ' . Database::safeContext(), $exception);
+    app_log_write('error', 'Auth install failed: ' . db_safe_context(), $exception);
     echo "Auth install failed\n";
-    echo "Context: " . Database::safeContext() . "\n";
+    echo "Context: " . db_safe_context() . "\n";
     echo "Error: " . $exception->getMessage() . "\n";
 }

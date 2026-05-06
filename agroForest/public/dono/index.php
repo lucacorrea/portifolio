@@ -1,27 +1,26 @@
 <?php
 require dirname(__DIR__, 2) . '/app/bootstrap.php';
-require_once APP_PATH . '/Controllers/DonoController.php';
 
-RoleMiddleware::handle('dono');
+role_required('dono');
 
 $pagina = trim($_GET['pagina'] ?? 'dashboard');
 
 $rotas = [
-    'dashboard'              => 'dashboard',
-    'usuarios'               => 'usuarios',
-    'usuarioCadastrar'       => 'usuarioCadastrar',
-    'usuarioVisualizar'      => 'usuarioVisualizar',
-    'usuarioEditar'          => 'usuarioEditar',
-    'permissoes'             => 'permissoes',
-    'permissaoCadastrar'     => 'permissaoCadastrar',
-    'permissaoVisualizar'    => 'permissaoVisualizar',
-    'permissaoEditar'        => 'permissaoEditar',
-    'tiposServicos'          => 'tiposServicos',
-    'tipoServicoCadastrar'   => 'tipoServicoCadastrar',
-    'tipoServicoVisualizar'  => 'tipoServicoVisualizar',
-    'tipoServicoEditar'      => 'tipoServicoEditar',
-    'relatorios'             => 'relatorios',
-    'configuracoes'          => 'configuracoes',
+    'dashboard'              => 'dono/dashboard',
+    'usuarios'               => 'dono/usuarios',
+    'usuarioCadastrar'       => 'dono/usuarioCadastrar',
+    'usuarioVisualizar'      => 'dono/usuarioVisualizar',
+    'usuarioEditar'          => 'dono/usuarioEditar',
+    'permissoes'             => 'dono/permissoes',
+    'permissaoCadastrar'     => 'dono/permissaoCadastrar',
+    'permissaoVisualizar'    => 'dono/permissaoVisualizar',
+    'permissaoEditar'        => 'dono/permissaoEditar',
+    'tiposServicos'          => 'dono/tiposServicos',
+    'tipoServicoCadastrar'   => 'dono/tipoServicoCadastrar',
+    'tipoServicoVisualizar'  => 'dono/tipoServicoVisualizar',
+    'tipoServicoEditar'      => 'dono/tipoServicoEditar',
+    'relatorios'             => 'dono/relatorios',
+    'configuracoes'          => 'dono/configuracoes',
 ];
 
 if (!isset($rotas[$pagina])) {
@@ -36,12 +35,4 @@ if (!isset($rotas[$pagina])) {
     exit;
 }
 
-$controller = new DonoController();
-$metodo = $rotas[$pagina];
-
-if (!method_exists($controller, $metodo)) {
-    http_response_code(500);
-    exit('Metodo nao encontrado no DonoController: ' . $metodo);
-}
-
-$controller->$metodo();
+render_view($rotas[$pagina]);
