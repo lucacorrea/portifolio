@@ -96,6 +96,10 @@ class AuthController extends Controller
             return 'A extensão pdo_mysql do PHP não está habilitada no servidor.';
         }
 
+        if (str_contains($message, 'Invalid parameter number') || $exception->getCode() === 'HY093') {
+            return 'Erro interno na consulta de login. O sistema registrou os detalhes em storage/logs/app.log.';
+        }
+
         if ($driverCode === 1045 || $driverCode === 1044 || str_contains($message, 'Access denied')) {
             return 'Usuário ou senha do banco MySQL estão incorretos.';
         }

@@ -8,14 +8,11 @@ class Usuario extends Model
         $stmt = self::db()->prepare(
             'SELECT id, nome, email, senha, nivel, ativo
              FROM usuarios
-             WHERE email = :email OR nome = :nome
+             WHERE email = ? OR nome = ?
              ORDER BY id ASC
              LIMIT 1'
         );
-        $stmt->execute([
-            'email' => strtolower($identificacao),
-            'nome' => $identificacao,
-        ]);
+        $stmt->execute([strtolower($identificacao), $identificacao]);
         $usuario = $stmt->fetch();
 
         return $usuario ?: null;
@@ -35,8 +32,8 @@ class Usuario extends Model
     public function registrarUltimoLogin(int $id): void
     {
         try {
-            $stmt = self::db()->prepare('UPDATE usuarios SET ultimo_login = NOW() WHERE id = :id');
-            $stmt->execute(['id' => $id]);
+            $stmt = self::db()->prepare('UPDATE usuarios SET ultimo_login = NOW() WHERE id = ?');
+            $stmt->execute([$id]);
         } catch (PDOException $exception) {
             if ($exception->getCode() !== '42S22') {
                 throw $exception;
