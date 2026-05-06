@@ -28,6 +28,7 @@ try {
     echo "usuarios table: " . ($table ? 'found' : 'missing') . "\n";
 
     if ($table) {
+        echo "usuarios cpf column: " . (db_column_exists('usuarios', 'cpf') ? 'found' : 'missing') . "\n";
         $count = $pdo->query('SELECT COUNT(*) AS total FROM usuarios')->fetch();
         echo "usuarios count: " . ($count['total'] ?? '0') . "\n";
     }

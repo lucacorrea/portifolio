@@ -238,9 +238,52 @@ function router_resolve(string $area, string $pagina): ?string
     return $map[$area][$pagina] ?? null;
 }
 
+function somente_digitos(string $value): string
+{
+    return preg_replace('/\D+/', '', $value) ?? '';
+}
+
+function db_column_exists(string $table, string $column): bool
+{
+    static $cache = [];
+
+    $key = $table . '.' . $column;
+
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $stmt = db()->prepare('SHOW COLUMNS FROM `' . str_replace('`', '``', $table) . '` LIKE ?');
+    $stmt->execute([$column]);
+
+    $cache[$key] = (bool) $stmt->fetch();
+
+    return $cache[$key];
+}
+
 function usuario_buscar_por_identificacao(string $identificacao): ?array
 {
     $identificacao = trim($identificacao);
+    $email = strtolower($identificacao);
+    $cpf = somente_digitos($identificacao);
+
+    if (db_column_exists('usuarios', 'cpf')) {
+        $stmt = db()->prepare(
+            "SELECT id, nome, email, cpf, senha, nivel, ativo
+             FROM usuarios
+             WHERE email = ?
+                OR nome = ?
+                OR cpf = ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), '/', ''), ' ', '') = ?
+             ORDER BY id ASC
+             LIMIT 1"
+        );
+        $stmt->execute([$email, $identificacao, $identificacao, $cpf]);
+
+        $usuario = $stmt->fetch();
+
+        return $usuario ?: null;
+    }
 
     $stmt = db()->prepare(
         'SELECT id, nome, email, senha, nivel, ativo
@@ -249,7 +292,7 @@ function usuario_buscar_por_identificacao(string $identificacao): ?array
          ORDER BY id ASC
          LIMIT 1'
     );
-    $stmt->execute([strtolower($identificacao), $identificacao]);
+    $stmt->execute([$email, $identificacao]);
 
     $usuario = $stmt->fetch();
 
@@ -365,7 +408,7 @@ function login_processar(): void
     $senha = (string) ($_POST['senha'] ?? '');
 
     if ($identificacao === '' || $senha === '') {
-        flash_set('error', 'Informe nome ou e-mail e senha.');
+        flash_set('error', 'Informe nome, e-mail ou CPF e senha.');
         header('Location: ' . route_url('auth', 'login'));
         exit;
     }
@@ -385,7 +428,7 @@ function login_processar(): void
     }
 
     if (!$usuario) {
-        flash_set('error', 'Nome, e-mail ou senha inválidos.');
+        flash_set('error', 'Nome, e-mail, CPF ou senha inválidos.');
         header('Location: ' . route_url('auth', 'login'));
         exit;
     }
@@ -398,7 +441,7 @@ function login_processar(): void
 
     if (!senha_confere($senha, (string) $usuario['senha'])) {
         app_log_write('info', 'Login denied for user id=' . (int) $usuario['id']);
-        flash_set('error', 'Nome, e-mail ou senha inválidos.');
+        flash_set('error', 'Nome, e-mail, CPF ou senha inválidos.');
         header('Location: ' . route_url('auth', 'login'));
         exit;
     }
