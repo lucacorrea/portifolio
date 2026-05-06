@@ -2,6 +2,7 @@
 class Database
 {
     private static ?PDO $pdo = null;
+    private static ?array $lastConfig = null;
 
     public static function pdo(): PDO
     {
@@ -10,20 +11,21 @@ class Database
         }
 
         $config = self::config();
+        self::$lastConfig = $config;
 
         try {
             self::$pdo = self::connect($config);
         } catch (PDOException $exception) {
-            if (($config['host'] ?? '') === 'localhost') {
-                $tcpConfig = $config;
-                $tcpConfig['host'] = '127.0.0.1';
+            $fallbacks = self::fallbackConfigs($config);
 
+            foreach ($fallbacks as $fallbackConfig) {
                 try {
-                    self::$pdo = self::connect($tcpConfig);
-                    AppLogger::error('PDO connected using TCP fallback: ' . self::safeContext($tcpConfig));
+                    self::$pdo = self::connect($fallbackConfig);
+                    self::$lastConfig = $fallbackConfig;
+                    AppLogger::info('PDO connected using fallback: ' . self::safeContext($fallbackConfig));
                     return self::$pdo;
                 } catch (PDOException $fallbackException) {
-                    AppLogger::error('PDO TCP fallback failed: ' . self::safeContext($tcpConfig), $fallbackException);
+                    AppLogger::error('PDO fallback failed: ' . self::safeContext($fallbackConfig), $fallbackException);
                 }
             }
 
@@ -40,13 +42,18 @@ class Database
 
         return [
             'driver' => $config['driver'] ?? 'mysql',
-            'host' => $config['host'] ?? 'localhost',
-            'port' => (string) ($config['port'] ?? '3306'),
-            'database' => $config['database'] ?? '',
-            'username' => $config['username'] ?? '',
+            'host' => trim((string) ($config['host'] ?? 'localhost')),
+            'port' => trim((string) ($config['port'] ?? '3306')),
+            'database' => trim((string) ($config['database'] ?? '')),
+            'username' => trim((string) ($config['username'] ?? '')),
             'password' => $config['password'] ?? '',
-            'charset' => $config['charset'] ?? 'utf8mb4',
+            'charset' => trim((string) ($config['charset'] ?? 'utf8mb4')),
         ];
+    }
+
+    public static function activeContext(): string
+    {
+        return self::safeContext(self::$lastConfig ?? self::config());
     }
 
     public static function safeContext(?array $config = null): string
@@ -74,6 +81,22 @@ class Database
             $config['database'],
             $config['charset']
         );
+    }
+
+    private static function fallbackConfigs(array $config): array
+    {
+        $host = $config['host'] ?? '';
+        $fallbacks = [];
+
+        if ($host === 'localhost') {
+            $fallbacks[] = array_replace($config, ['host' => '127.0.0.1']);
+        }
+
+        if ($host === '127.0.0.1') {
+            $fallbacks[] = array_replace($config, ['host' => 'localhost']);
+        }
+
+        return $fallbacks;
     }
 
     private static function connect(array $config): PDO

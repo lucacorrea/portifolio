@@ -35,20 +35,33 @@ class AuthController extends Controller
 
         try {
             $model = new Usuario();
-            $usuario = $model->buscarAtivoPorIdentificacao($identificacao);
+            $usuario = $model->buscarPorIdentificacao($identificacao);
         } catch (PDOException $exception) {
-            AppLogger::error('Login database failed: ' . Database::safeContext(), $exception);
+            AppLogger::error('Login database failed: ' . Database::activeContext(), $exception);
             flash_set('error', $this->databaseMessage($exception));
             header('Location: ' . route_url('auth', 'login'));
             exit;
         } catch (Throwable $exception) {
-            AppLogger::error('Login query failed: ' . Database::safeContext(), $exception);
+            AppLogger::error('Login query failed: ' . Database::activeContext(), $exception);
             flash_set('error', 'Erro interno no login. Verifique o arquivo storage/logs/app.log.');
             header('Location: ' . route_url('auth', 'login'));
             exit;
         }
 
-        if (!$usuario || !Auth::verifyPassword($senha, $usuario['senha'])) {
+        if (!$usuario) {
+            flash_set('error', 'Nome, e-mail ou senha inválidos.');
+            header('Location: ' . route_url('auth', 'login'));
+            exit;
+        }
+
+        if ((int) ($usuario['ativo'] ?? 0) !== 1) {
+            flash_set('error', 'Usuário inativo. Solicite a liberação do acesso.');
+            header('Location: ' . route_url('auth', 'login'));
+            exit;
+        }
+
+        if (!Auth::verifyPassword($senha, (string) $usuario['senha'])) {
+            AppLogger::info('Login denied for user id=' . (int) $usuario['id']);
             flash_set('error', 'Nome, e-mail ou senha inválidos.');
             header('Location: ' . route_url('auth', 'login'));
             exit;
@@ -60,6 +73,7 @@ class AuthController extends Controller
             $model->registrarUltimoLogin((int) $usuario['id']);
         } catch (Throwable $exception) {
             // O login não deve falhar só porque o registro de auditoria não foi salvo.
+            AppLogger::error('Failed to update ultimo_login for user id=' . (int) $usuario['id'], $exception);
         }
 
         header('Location: ' . Auth::homeForNivel($usuario['nivel']));
