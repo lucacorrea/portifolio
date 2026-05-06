@@ -253,10 +253,17 @@ function db_column_exists(string $table, string $column): bool
         return $cache[$key];
     }
 
-    $stmt = db()->prepare('SHOW COLUMNS FROM `' . str_replace('`', '``', $table) . '` LIKE ?');
-    $stmt->execute([$column]);
+    $stmt = db()->prepare(
+        'SELECT COUNT(*) AS total
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = ?'
+    );
+    $stmt->execute([$table, $column]);
 
-    $cache[$key] = (bool) $stmt->fetch();
+    $result = $stmt->fetch();
+    $cache[$key] = (int) ($result['total'] ?? 0) > 0;
 
     return $cache[$key];
 }
