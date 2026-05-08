@@ -33,25 +33,29 @@ require dirname(__DIR__) . '/layouts/header.php';
                     <thead><tr><th>Cliente</th><th>Telefone</th><th>Documento</th><th>Contratos</th><th>Último atendimento</th><th>Status</th><th>Ações</th></tr></thead>
                     <tbody>
                         <?php foreach ($clientes as $cliente): ?>
+                            <?php $contratoPrincipal = $cliente['contratos'][0] ?? null; ?>
                             <tr>
-                                <td>
+                                <td data-label="Cliente">
                                     <div class="client-name"><?= htmlspecialchars($cliente['nome']) ?></div>
                                     <div class="client-sub"><?= htmlspecialchars($cliente['email']) ?></div>
                                 </td>
-                                <td><?= htmlspecialchars($cliente['telefone']) ?></td>
-                                <td><?= htmlspecialchars($cliente['documento']) ?></td>
-                                <td class="contracts-cell">
+                                <td data-label="Telefone"><?= htmlspecialchars($cliente['telefone']) ?></td>
+                                <td data-label="Documento"><?= htmlspecialchars($cliente['documento']) ?></td>
+                                <td class="contracts-cell" data-label="Contratos">
                                     <?php
                                     $areaContrato = 'recepcao';
                                     $contratosCliente = $cliente['contratos'] ?? [];
                                     require APP_PATH . '/Views/shared/clienteContratosResumo.php';
                                     ?>
                                 </td>
-                                <td><?= htmlspecialchars($cliente['ultimo_atendimento']) ?></td>
-                                <td><span class="status <?= cliente_status_classe($cliente['status']) ?>"><?= htmlspecialchars($cliente['status']) ?></span></td>
-                                <td>
+                                <td data-label="Último atendimento"><?= htmlspecialchars($cliente['ultimo_atendimento']) ?></td>
+                                <td data-label="Status"><span class="status <?= cliente_status_classe($cliente['status']) ?>"><?= htmlspecialchars($cliente['status']) ?></span></td>
+                                <td data-label="Ações">
                                     <div class="table-actions">
                                         <a href="<?= route_url('recepcao', 'clienteVisualizar') ?>" class="btn-outline">Ver</a>
+                                        <?php if ($contratoPrincipal): ?>
+                                            <a href="<?= htmlspecialchars(contrato_visualizar_url('recepcao', $contratoPrincipal['numero'])) ?>" class="btn-outline">Ver contrato</a>
+                                        <?php endif; ?>
                                         <a href="<?= route_url('recepcao', 'clienteEditar') ?>" class="btn-primary">Editar</a>
                                         <button type="button" class="btn-danger" data-delete-name="<?= htmlspecialchars($cliente['nome']) ?>">Excluir</button>
                                     </div>

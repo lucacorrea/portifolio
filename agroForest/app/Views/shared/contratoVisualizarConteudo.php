@@ -85,7 +85,7 @@ $voltarUrl = route_url($areaContrato, 'clientes');
         </div>
 
         <div class="table-responsive">
-            <table>
+            <table class="responsive-data-table">
                 <thead>
                     <tr>
                         <th>Etapa</th>
@@ -96,22 +96,22 @@ $voltarUrl = route_url($areaContrato, 'clientes');
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>Cadastro do contrato</strong></td>
-                        <td>Recepção</td>
-                        <td><span class="status ok">Concluído</span></td>
-                        <td>Dados básicos conferidos com o cadastro do cliente.</td>
+                        <td data-label="Etapa"><strong>Cadastro do contrato</strong></td>
+                        <td data-label="Setor">Recepção</td>
+                        <td data-label="Status"><span class="status ok">Concluído</span></td>
+                        <td data-label="Observação">Dados básicos conferidos com o cadastro do cliente.</td>
                     </tr>
                     <tr>
-                        <td><strong>Análise administrativa</strong></td>
-                        <td>Administrativo</td>
-                        <td><span class="status <?= contrato_status_classe($contrato['status']) ?>"><?= htmlspecialchars($contrato['status']) ?></span></td>
-                        <td>Validação de vigência, valor e documentação vinculada.</td>
+                        <td data-label="Etapa"><strong>Análise administrativa</strong></td>
+                        <td data-label="Setor">Administrativo</td>
+                        <td data-label="Status"><span class="status <?= contrato_status_classe($contrato['status']) ?>"><?= htmlspecialchars($contrato['status']) ?></span></td>
+                        <td data-label="Observação">Validação de vigência, valor e documentação vinculada.</td>
                     </tr>
                     <tr>
-                        <td><strong>Acompanhamento gerencial</strong></td>
-                        <td>Dono</td>
-                        <td><span class="status progress">Monitorado</span></td>
-                        <td>Contrato disponível para consulta em todos os níveis de usuário.</td>
+                        <td data-label="Etapa"><strong>Acompanhamento gerencial</strong></td>
+                        <td data-label="Setor">Dono</td>
+                        <td data-label="Status"><span class="status progress">Monitorado</span></td>
+                        <td data-label="Observação">Contrato disponível para consulta em todos os níveis de usuário.</td>
                     </tr>
                 </tbody>
             </table>

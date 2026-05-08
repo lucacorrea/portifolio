@@ -28,9 +28,6 @@ foreach ($contratosCliente as $contratoResumo) {
                 <span><?= htmlspecialchars($contrato['vigencia']) ?></span>
                 <strong><?= contrato_valor_formatado((float) $contrato['valor']) ?></strong>
             </div>
-            <a class="contract-link" href="<?= htmlspecialchars(contrato_visualizar_url($areaContrato, $contrato['numero'])) ?>">
-                Ver contrato
-            </a>
         </article>
     <?php endforeach; ?>
 </div>
