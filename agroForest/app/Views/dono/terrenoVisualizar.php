@@ -8,14 +8,14 @@ $usuarioCargo = 'Dono';
 $textoBotaoAcao = 'Terrenos';
 $linkBotaoAcao = terreno_url('dono', 'terrenos');
 $tituloPagina = 'Dono - Visualizar Terreno';
-$cssPagina = ['assets/css/administrativo/styleadm.css', 'assets/css/dono/dono.css'];
+$cssPagina = ['assets/css/administrativo/styleadm.css', 'assets/css/dono/dono.css', 'assets/css/global/terrain-report.css'];
 
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
 
 <div class="layout">
     <?php require __DIR__ . '/includes/sidebar.php'; ?>
-    <main class="content">
+    <main class="content terrain-report-page">
         <?php require __DIR__ . '/includes/topbar.php'; ?>
         <?php require APP_PATH . '/Views/shared/terrenoVisualizarConteudo.php'; ?>
         <?php require __DIR__ . '/includes/footer.php'; ?>

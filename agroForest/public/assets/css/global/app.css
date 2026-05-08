@@ -84,41 +84,6 @@ a { color: inherit; text-decoration: none; }
 .terrain-point.p3 { right: 5%; bottom: 12%; }
 .terrain-point.p4 { left: 14%; bottom: 4%; }
 .terrain-observation { margin: 0; color: var(--muted); line-height: 1.7; }
-.terrain-report-actions { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-.terrain-report-sheet { width: min(100%, 1060px); margin: 0 auto; padding: 38px 44px; background: #fff; border: 1px solid #dfe5ec; box-shadow: var(--shadow); color: #222; }
-.terrain-report-header { display: grid; grid-template-columns: 1fr 1.2fr 1fr; align-items: center; gap: 18px; }
-.terrain-report-header h1 { margin: 0; text-align: center; font-size: 26px; line-height: 1.2; color: #2b2f36; }
-.terrain-report-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.terrain-report-brand-right { justify-content: flex-end; text-align: right; }
-.terrain-report-logo { width: 56px; height: 42px; flex: 0 0 56px; display: grid; place-items: center; border-radius: 10px; background: #0b63ff; color: #fff; font-weight: 900; letter-spacing: .04em; }
-.terrain-report-logo.soft { background: #e7f1ff; color: #0b63ff; border: 1px solid #bfdbff; }
-.terrain-report-brand strong { display: block; color: #162033; font-size: 13px; line-height: 1.2; }
-.terrain-report-brand span { display: block; margin-top: 3px; color: #64748b; font-size: 11px; line-height: 1.3; }
-.terrain-report-divider { height: 4px; margin: 34px 0 18px; background: #0b63ff; }
-.terrain-report-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 36px; margin-bottom: 18px; }
-.terrain-report-details div,
-.terrain-report-metrics div { min-width: 0; }
-.terrain-report-details span,
-.terrain-report-metrics span { display: block; margin-bottom: 4px; color: #7a8594; font-size: 13px; }
-.terrain-report-details strong { display: block; color: #222; font-size: 18px; line-height: 1.35; word-break: break-word; }
-.terrain-report-status { width: fit-content; padding: 5px 12px; border-radius: 999px; background: #eef6ff; border: 1px solid #bfdbff; color: #1e3a8a !important; }
-.terrain-report-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 18px 0 22px; padding: 14px; background: #f8fafc; border: 1px solid #e5e7eb; }
-.terrain-report-metrics strong { display: block; color: #111827; font-size: 13px; line-height: 1.35; word-break: break-word; }
-.terrain-report-title { margin: 18px 0 8px; color: #0b63ff; font-size: 20px; line-height: 1.25; }
-.terrain-report-table-wrap { margin-bottom: 14px; }
-.terrain-report-table { width: 100%; min-width: 760px; border-collapse: collapse; border: 1px solid #dfe5ec; }
-.terrain-report-table th { padding: 11px 12px; text-align: center; background: #eef2f7; border: 1px solid #dfe5ec; color: #1f2937; font-size: 14px; text-transform: none; letter-spacing: 0; }
-.terrain-report-table td { padding: 11px 12px; text-align: center; border: 1px solid #dfe5ec; color: #2b2f36; font-size: 14px; }
-.terrain-report-table-compact { min-width: 620px; }
-.terrain-report-croqui { height: 560px; margin-bottom: 18px; border: 1px solid #dfe5ec; background: #fff; }
-.terrain-report-croqui svg { display: block; width: 100%; height: 100%; }
-.croqui-fill { fill: #dce5f2; stroke: none; }
-.croqui-line { fill: none; stroke: #0b4ea2; stroke-width: .55; vector-effect: non-scaling-stroke; }
-.croqui-dot { fill: #e11d1d; stroke: #fff; stroke-width: .35; }
-.croqui-label { fill: #172554; font-size: 4px; font-weight: 800; font-family: Arial, sans-serif; }
-.terrain-report-observation { margin-top: 12px; padding: 14px 16px; border: 1px solid #dfe5ec; background: #f8fafc; }
-.terrain-report-observation strong { display: block; margin-bottom: 6px; color: #1f2937; }
-.terrain-report-observation p { margin: 0; color: #475569; line-height: 1.6; }
 @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .sidebar { position: relative; height: auto; } }
 @media (max-width: 760px) {
     .table-responsive { margin: 0; padding-bottom: 8px; overflow-x: auto; }
@@ -130,35 +95,9 @@ a { color: inherit; text-decoration: none; }
     .client-contract-table .btn-danger,
     .client-contract-table .btn-outline,
     .client-contract-table .chip { width: auto; min-height: 38px; padding: 0 12px; }
-    .terrain-report-sheet { padding: 24px 18px; }
-    .terrain-report-header { grid-template-columns: 1fr; text-align: center; }
-    .terrain-report-brand,
-    .terrain-report-brand-right { justify-content: center; text-align: center; }
-    .terrain-report-details,
-    .terrain-report-metrics { grid-template-columns: 1fr; }
-    .terrain-report-croqui { height: 420px; }
 }
 @media (max-width: 520px) {
     .terrain-view-grid { grid-template-columns: 1fr; }
     .terrain-map-preview { min-height: 300px; }
     .contract-pill-head { align-items: flex-start; flex-direction: column; }
-}
-@media print {
-    @page { size: A4 portrait; margin: 12mm; }
-    body { background: #fff !important; }
-    .sidebar,
-    .topbar-area,
-    .content-footer,
-    .no-print { display: none !important; }
-    .layout,
-    .content { display: block !important; min-height: 0 !important; padding: 0 !important; overflow: visible !important; }
-    .terrain-report-sheet { width: 100% !important; margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }
-    .terrain-report-header { grid-template-columns: 1fr 1.2fr 1fr !important; }
-    .terrain-report-divider { margin: 28px 0 16px !important; }
-    .terrain-report-details { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px 28px !important; }
-    .terrain-report-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
-    .table-responsive { overflow: visible !important; }
-    .terrain-report-table { min-width: 0 !important; page-break-inside: avoid; }
-    .terrain-report-croqui { height: 500px !important; page-break-inside: avoid; }
-    .terrain-report-title { page-break-after: avoid; }
 }
