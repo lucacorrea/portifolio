@@ -30,7 +30,7 @@ require dirname(__DIR__) . '/layouts/header.php';
             </div>
             <div class="table-responsive">
                 <table class="client-contract-table">
-                    <thead><tr><th>Cliente</th><th>Telefone</th><th>Documento</th><th>Contratos</th><th>Último atendimento</th><th>Status</th><th>Ações</th></tr></thead>
+                    <thead><tr><th>Cliente</th><th>Telefone</th><th>Documento</th><th>Último atendimento</th><th>Status</th><th>Ações</th></tr></thead>
                     <tbody>
                         <?php foreach ($clientes as $cliente): ?>
                             <?php $contratoPrincipal = $cliente['contratos'][0] ?? null; ?>
@@ -41,13 +41,6 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 </td>
                                 <td data-label="Telefone"><?= htmlspecialchars($cliente['telefone']) ?></td>
                                 <td data-label="Documento"><?= htmlspecialchars($cliente['documento']) ?></td>
-                                <td class="contracts-cell" data-label="Contratos">
-                                    <?php
-                                    $areaContrato = 'recepcao';
-                                    $contratosCliente = $cliente['contratos'] ?? [];
-                                    require APP_PATH . '/Views/shared/clienteContratosResumo.php';
-                                    ?>
-                                </td>
                                 <td data-label="Último atendimento"><?= htmlspecialchars($cliente['ultimo_atendimento']) ?></td>
                                 <td data-label="Status"><span class="status <?= cliente_status_classe($cliente['status']) ?>"><?= htmlspecialchars($cliente['status']) ?></span></td>
                                 <td data-label="Ações">

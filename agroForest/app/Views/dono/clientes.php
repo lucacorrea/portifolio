@@ -62,7 +62,6 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <th>Cliente</th>
                             <th>Contato</th>
                             <th>Último protocolo</th>
-                            <th>Contratos</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
@@ -82,13 +81,6 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <td data-label="Último protocolo">
                                     <strong><?= htmlspecialchars($cliente['ultimo_protocolo']) ?></strong><br>
                                     <span class="client-sub"><?= htmlspecialchars($cliente['ultimo_servico']) ?></span>
-                                </td>
-                                <td class="contracts-cell" data-label="Contratos">
-                                    <?php
-                                    $areaContrato = 'dono';
-                                    $contratosCliente = $cliente['contratos'] ?? [];
-                                    require APP_PATH . '/Views/shared/clienteContratosResumo.php';
-                                    ?>
                                 </td>
                                 <td data-label="Status"><span class="status <?= cliente_status_classe($cliente['status']) ?>"><?= htmlspecialchars($cliente['status']) ?></span></td>
                                 <td data-label="Ações">
