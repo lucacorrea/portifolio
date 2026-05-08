@@ -283,18 +283,27 @@ class Product extends BaseModel {
 
         
         if (!$this->columnExists('preco_variavel')) {
-            try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN preco_variavel TINYINT(1) DEFAULT 0"); } catch (\Exception $e) {}
+            try { 
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN preco_variavel TINYINT(1) DEFAULT 0"); 
+                $hasPrecoVariavel = true;
+            } catch (\Exception $e) { $hasPrecoVariavel = false; }
+        } else {
+            $hasPrecoVariavel = true;
         }
+
         if (!$this->columnExists('cean')) {
-            try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN cean VARCHAR(50) DEFAULT 'SEM GTIN'"); } catch (\Exception $e) {}
+            try { 
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN cean VARCHAR(50) DEFAULT 'SEM GTIN'"); 
+                $hasCean = true;
+            } catch (\Exception $e) { $hasCean = false; }
+        } else {
+            $hasCean = true;
         }
         
         if (!$this->columnExists('fornecedor_id')) {
             try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN fornecedor_id INT NULL"); } catch (\Exception $e) {}
         }
         $hasFornecedor    = true;
-        $hasPrecoVariavel = true;
-        $hasCean          = true;
 
         $filialId = $_SESSION['filial_id'] ?? 1;
 
