@@ -27,11 +27,13 @@ class Product extends BaseModel {
         $paramsQuery = [$filialId];
         
         if (!empty($filters['q'])) {
-            $where .= " AND (p.nome LIKE ? OR p.codigo LIKE ?)";
+            $where .= " AND (p.nome LIKE ? OR p.codigo LIKE ? OR p.cean = ?)";
             $paramsCount[] = "%{$filters['q']}%";
             $paramsCount[] = "%{$filters['q']}%";
+            $paramsCount[] = $filters['q'];
             $paramsQuery[] = "%{$filters['q']}%";
             $paramsQuery[] = "%{$filters['q']}%";
+            $paramsQuery[] = $filters['q'];
         }
 
         if (!empty($filters['categoria'])) {
