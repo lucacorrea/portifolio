@@ -137,6 +137,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <td><?= htmlspecialchars($cliente['ultimo_servico']) ?></td>
                                 <td class="contracts-cell">
                                     <?php
+                                    $areaContrato = 'administrativo';
                                     $contratosCliente = $cliente['contratos'] ?? [];
                                     require APP_PATH . '/Views/shared/clienteContratosResumo.php';
                                     ?>

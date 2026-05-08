@@ -9,6 +9,7 @@ return [
         'clienteCadastrar' => 'recepcao/clienteCadastrar',
         'clienteVisualizar' => 'recepcao/clienteVisualizar',
         'clienteEditar' => 'recepcao/clienteEditar',
+        'contratoVisualizar' => 'recepcao/contratoVisualizar',
         'protocolos' => 'recepcao/protocolos',
         'documentos' => 'recepcao/documentos',
         'documentoVisualizar' => 'recepcao/documentoVisualizar',
@@ -34,6 +35,7 @@ return [
         'clienteCadastrar' => 'administrativo/clienteCadastrar',
         'clienteEditar' => 'administrativo/clienteEditar',
         'clienteVisualizar' => 'administrativo/clienteVisualizar',
+        'contratoVisualizar' => 'administrativo/contratoVisualizar',
         'documentos' => 'administrativo/documentos',
         'documentoVisualizar' => 'administrativo/documentoVisualizar',
         'pendencias' => 'administrativo/pendencias',
@@ -46,6 +48,7 @@ return [
     'dono' => [
         'dashboard' => 'dono/dashboard',
         'clientes' => 'dono/clientes',
+        'contratoVisualizar' => 'dono/contratoVisualizar',
         'usuarios' => 'dono/usuarios',
         'usuarioCadastrar' => 'dono/usuarioCadastrar',
         'usuarioVisualizar' => 'dono/usuarioVisualizar',
