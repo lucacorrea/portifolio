@@ -132,6 +132,12 @@ function moeda_br(float $valor): string
     return 'R$ ' . number_format($valor, 2, ',', '.');
 }
 
+function data_br(?string $data): string
+{
+    $timestamp = $data ? strtotime($data) : false;
+    return $timestamp !== false ? date('d/m/Y', $timestamp) : '-';
+}
+
 function decimal_from_input(string $value): float
 {
     $value = trim($value);

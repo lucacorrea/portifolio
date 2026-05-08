@@ -19,24 +19,31 @@ $tipo = $_POST['tipo'] ?? 'operador';
 
 if (!$empresaId || $nome === '' || $email === '' || $senha === '') {
     flash('error', 'Preencha todos os dados.');
-    redirect('/app/usuarios.php');
+    redirect('/app/usuarios-cadastro.php');
 }
 
 if (!in_array($tipo, ['empresa_admin', 'operador'], true)) {
     $tipo = 'operador';
 }
 
-$stmt = db()->prepare(
-    "INSERT INTO usuarios (empresa_id, nome, email, senha, tipo, ativo, criado_em)
-     VALUES (:empresa_id, :nome, :email, :senha, :tipo, 1, NOW())"
-);
-$stmt->execute([
-    ':empresa_id' => $empresaId,
-    ':nome' => $nome,
-    ':email' => $email,
-    ':senha' => password_hash($senha, PASSWORD_DEFAULT),
-    ':tipo' => $tipo,
-]);
+try {
+    $stmt = db()->prepare(
+        "INSERT INTO usuarios (empresa_id, nome, email, senha, tipo, ativo, criado_em)
+         VALUES (:empresa_id, :nome, :email, :senha, :tipo, 1, NOW())"
+    );
+    $stmt->execute([
+        ':empresa_id' => $empresaId,
+        ':nome' => $nome,
+        ':email' => $email,
+        ':senha' => password_hash($senha, PASSWORD_DEFAULT),
+        ':tipo' => $tipo,
+    ]);
 
-flash('success', 'Usuário cadastrado com sucesso.');
+    flash('success', 'Usuário cadastrado com sucesso.');
+} catch (Throwable $e) {
+    error_log('[SALVAR USUÁRIO APP] ' . $e->getMessage());
+    flash('error', 'Não foi possível cadastrar o usuário. Verifique se o e-mail já existe.');
+    redirect('/app/usuarios-cadastro.php');
+}
+
 redirect('/app/usuarios.php');

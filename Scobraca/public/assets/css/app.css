@@ -979,19 +979,26 @@ tr:last-child td {
 }
 
 .badge.ativa,
-.badge.teste {
+.badge.ativo,
+.badge.teste,
+.badge.enviado {
     background: var(--accent-green-bg);
     color: #0e7b4e;
 }
 
 .badge.bloqueada,
+.badge.bloqueado,
 .badge.cancelada,
+.badge.cancelado,
+.badge.falhou,
 .badge.vencida {
     background: var(--accent-red-bg);
     color: #b91c1c;
 }
 
-.badge.pendente {
+.badge.pendente,
+.badge.Em,
+.badge.aberto {
     background: var(--accent-yellow-bg);
     color: var(--accent-yellow);
 }
