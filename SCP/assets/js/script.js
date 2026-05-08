@@ -300,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizarPrioridade();
         renderizarTabela();
     }
+    window.carregarProcessos = carregarProcessos;
 
     window.renderDropdownActions = function(p) {
         const perfil = (window.userPerfil || 'ANALISADOR').toUpperCase().trim();
@@ -965,6 +966,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.btn-dots').forEach(b => b.classList.remove('active-btn'));
 
         const p = JSON.parse(decodeURIComponent(pJson));
+        const perfil = (window.userPerfil || 'ANALISADOR').toUpperCase().trim();
         const modal = document.getElementById('modal-detalhes');
         if (!modal) return;
 
@@ -1172,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (saveResp.ok) {
             alert('Sugestões salvas com sucesso!');
             window.fecharModalDetalhes();
-            carregarProcessos();
+            window.carregarProcessos();
         } else {
             alert('Erro ao salvar sugestões.');
         }
