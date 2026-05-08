@@ -89,6 +89,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                         <?php if ($contratoPrincipal): ?>
                                             <a href="<?= htmlspecialchars(contrato_visualizar_url('dono', $contratoPrincipal['numero'])) ?>" class="btn-outline">Ver contrato</a>
                                         <?php endif; ?>
+                                        <a href="<?= htmlspecialchars(terreno_url('dono', 'terrenoVisualizar', 'TER-2026-001')) ?>" class="btn-outline">Ver terreno</a>
                                         <a href="<?= route_url('administrativo', 'orcamentos') ?>" class="btn-primary">Orçamentos</a>
                                     </div>
                                 </td>

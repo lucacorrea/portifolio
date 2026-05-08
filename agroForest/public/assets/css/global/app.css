@@ -62,6 +62,28 @@ a { color: inherit; text-decoration: none; }
 .contract-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
 .contract-meta strong { color: var(--text); white-space: nowrap; }
 .contract-view-hero { overflow: hidden; }
+.terrain-table { width: 100%; min-width: 980px; table-layout: auto; }
+.terrain-table-sm { min-width: 620px; }
+.utm-table { width: 100%; min-width: 720px; table-layout: auto; }
+.terrain-table th,
+.terrain-table td,
+.utm-table th,
+.utm-table td { vertical-align: top; }
+.utm-table input { width: 100%; min-width: 130px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #fff; color: var(--text); }
+.terrain-section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.form-group .terrain-section-title h3 { margin: 0; padding: 0; border: 0; }
+.terrain-view-grid { display: grid; grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr); gap: 18px; align-items: stretch; }
+.terrain-map-preview { position: relative; min-height: 360px; overflow: hidden; border: 1px solid var(--border); border-radius: 20px; background: linear-gradient(135deg, #dfeee4 0%, #f8faf7 45%, #d7e6d8 100%); }
+.terrain-map-preview::before { content: ""; position: absolute; inset: 0; opacity: .45; background-image: linear-gradient(rgba(31,77,58,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(31,77,58,.12) 1px, transparent 1px); background-size: 36px 36px; }
+.terrain-map-toolbar { position: absolute; top: 14px; left: 14px; right: 14px; z-index: 2; display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.86); border: 1px solid rgba(31,77,58,.1); color: var(--primary); font-size: 12px; }
+.terrain-polygon { position: absolute; inset: 84px 58px 44px; z-index: 1; clip-path: polygon(12% 14%, 86% 10%, 90% 80%, 18% 88%); background: linear-gradient(135deg, rgba(31,77,58,.20), rgba(109,139,87,.38)); border: 2px solid rgba(31,77,58,.45); }
+.terrain-polygon::after { content: ""; position: absolute; inset: 18%; border-radius: 999px; background: rgba(255,255,255,.22); }
+.terrain-point { position: absolute; z-index: 3; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: var(--primary); color: #fff; font-size: 11px; font-weight: 800; box-shadow: 0 8px 18px rgba(31,77,58,.20); }
+.terrain-point.p1 { left: 8%; top: 8%; }
+.terrain-point.p2 { right: 9%; top: 4%; }
+.terrain-point.p3 { right: 5%; bottom: 12%; }
+.terrain-point.p4 { left: 14%; bottom: 4%; }
+.terrain-observation { margin: 0; color: var(--muted); line-height: 1.7; }
 @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .sidebar { position: relative; height: auto; } }
 @media (max-width: 760px) {
     .table-responsive { margin: 0; padding-bottom: 8px; overflow-x: auto; }
@@ -75,5 +97,7 @@ a { color: inherit; text-decoration: none; }
     .client-contract-table .chip { width: auto; min-height: 38px; padding: 0 12px; }
 }
 @media (max-width: 520px) {
+    .terrain-view-grid { grid-template-columns: 1fr; }
+    .terrain-map-preview { min-height: 300px; }
     .contract-pill-head { align-items: flex-start; flex-direction: column; }
 }

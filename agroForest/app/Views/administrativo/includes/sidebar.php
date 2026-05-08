@@ -35,6 +35,11 @@ if (!isset($paginaAtual)) {
             Clientes
         </a>
 
+        <a href="<?= route_url('administrativo', 'terrenos') ?>" class="nav-link <?= $paginaAtual === 'terrenos' ? 'active' : '' ?>">
+            <span class="nav-icon">🗺️</span>
+            Terrenos
+        </a>
+
         <a href="<?= route_url('administrativo', 'documentos') ?>" class="nav-link <?= $paginaAtual === 'documentos' ? 'active' : '' ?>">
             <span class="nav-icon">📎</span>
             Documentos

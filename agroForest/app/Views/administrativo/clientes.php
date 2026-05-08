@@ -146,6 +146,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                                         <?php if ($contratoPrincipal): ?>
                                             <a href="<?= htmlspecialchars(contrato_visualizar_url('administrativo', $contratoPrincipal['numero'])) ?>" class="btn-outline">Ver contrato</a>
                                         <?php endif; ?>
+                                        <a href="<?= htmlspecialchars(terreno_url('administrativo', 'terrenoVisualizar', 'TER-2026-001')) ?>" class="btn-outline">Ver terreno</a>
                                         <a href="<?= route_url('administrativo', 'clienteEditar') ?>" class="btn-primary">Editar</a>
                                         <button type="button" class="btn-danger" data-delete-name="<?= htmlspecialchars($cliente['nome']) ?>">Excluir</button>
                                     </div>

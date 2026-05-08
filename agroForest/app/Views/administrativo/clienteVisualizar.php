@@ -28,6 +28,10 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <div class="setting-block"><h3>Situação cadastral</h3><p>Cliente ativo, sem pendências cadastrais abertas no momento.</p></div>
                 <div class="setting-block"><h3>Endereço</h3><p>Rua das Castanheiras, 120, Manaus - AM.</p></div>
                 <div class="setting-block"><h3>Último atendimento</h3><p>PRT-2026-0501 - Solicitação de orçamento encaminhada ao administrativo.</p></div>
+                <div class="setting-block setting-block-row">
+                    <div><h3>Terreno vinculado</h3><p>Sítio Castanheira com coordenadas UTM cadastradas.</p></div>
+                    <a href="<?= htmlspecialchars(terreno_url('administrativo', 'terrenoVisualizar', 'TER-2026-001')) ?>" class="btn-outline">Ver terreno</a>
+                </div>
             </div>
         </section>
 
