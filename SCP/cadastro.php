@@ -207,7 +207,12 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
                         <option value="CONTESTAÇÃO">CONTESTAÇÃO</option>
                         <option value="IMPUGNAÇÃO">IMPUGNAÇÃO</option>
                         <option value="RECURSO DE APELAÇÃO">RECURSO DE APELAÇÃO</option>
+                        <option value="RECURSO INOMINADO">RECURSO INOMINADO</option>
                         <option value="MANIFESTAÇÃO SOBRE AUDIÊNCIA">MANIFESTAÇÃO SOBRE AUDIÊNCIA</option>
+                        <option value="MANIFESTAÇÃO SOBRE DESPACHO">MANIFESTAÇÃO SOBRE DESPACHO</option>
+                        <option value="MANIFESTAÇÃO SOBRE DECISÃO">MANIFESTAÇÃO SOBRE DECISÃO</option>
+                        <option value="CONTRARRAZÕES">CONTRARRAZÕES</option>
+                        <option value="CUMPRIMENTO DE SENTENÇA">CUMPRIMENTO DE SENTENÇA</option>
                         <option value="PERSONALIZADO" style="color: #4338ca; font-weight: bold;">PERSONALIZADO</option>
                     </select>
                     <input type="text" id="topico_detalhado_personalizado" placeholder="Digite o tópico detalhado..." style="display: none; margin-top: 0.5rem; text-transform: uppercase;">
