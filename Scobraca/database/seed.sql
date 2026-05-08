@@ -1,4 +1,4 @@
-USE tatico_gps_saas;
+USE fluxpay_saas;
 
 INSERT INTO planos
 (nome, preco, limite_clientes, limite_usuarios, whatsapp_ativo, leitura_comprovante, relatorios_avancados, ativo)
@@ -10,4 +10,4 @@ VALUES
 INSERT INTO usuarios
 (empresa_id, nome, email, senha, tipo, ativo)
 VALUES
-(NULL, 'Administrador Plataforma', 'admin@taticogps.com.br', '$2y$12$ISDF67fzkJUUCcT7ZKOtFOokJXNIu8uDtkAlB6E75s1Zz6QQfrSLe', 'platform_admin', 1);
+(NULL, 'Administrador Plataforma', 'admin@fluxpay.com.br', '$2y$12$ISDF67fzkJUUCcT7ZKOtFOokJXNIu8uDtkAlB6E75s1Zz6QQfrSLe', 'platform_admin', 1);

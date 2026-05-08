@@ -14,7 +14,7 @@ function db(): PDO
     }
 
     $host = env('DB_HOST', 'localhost');
-    $dbname = env('DB_NAME', 'tatico_gps_saas');
+    $dbname = env('DB_NAME', 'fluxpay_saas');
     $user = env('DB_USER', 'root');
     $pass = env('DB_PASS', '');
     $charset = env('DB_CHARSET', 'utf8mb4');

@@ -3,7 +3,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap/app.php';
 require_platform_admin();
 
 $pageTitle = 'Empresas locatárias';
-$pageDescription = 'Empresas que alugam o Tático GPS SaaS.';
+$pageDescription = 'Empresas que alugam o FluxPay.';
 
 $pdo = db();
 $planos = $pdo->query('SELECT id, nome, preco FROM planos WHERE ativo = 1 ORDER BY preco ASC')->fetchAll();

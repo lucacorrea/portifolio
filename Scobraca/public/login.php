@@ -13,12 +13,12 @@ if (!empty($_SESSION['usuario'])) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login da empresa - Tático GPS SaaS</title>
+    <title>Login da empresa - FluxPay</title>
     <link rel="stylesheet" href="/assets/css/app.css">
 </head>
 <body class="login-body">
     <main class="login-card">
-        <div class="login-brand">Tático GPS <span>SaaS</span></div>
+        <div class="login-brand">FluxPay <span>Empresa</span></div>
         <h1>Acesso da empresa</h1>
         <p>Entre com o usuário cadastrado para a sua empresa.</p>
 

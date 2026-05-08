@@ -9,6 +9,10 @@ function e(?string $value): string
 
 function redirect(string $path): never
 {
+    if (preg_match('/[\r\n]/', $path) || preg_match('#^[a-z][a-z0-9+.-]*://#i', $path) || str_starts_with($path, '//')) {
+        $path = '/';
+    }
+
     header('Location: ' . $path);
     exit;
 }

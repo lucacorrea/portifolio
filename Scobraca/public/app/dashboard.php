@@ -3,7 +3,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap/app.php';
 require_tenant_user();
 
 $pageTitle = 'Dashboard da Empresa';
-$pageDescription = 'Painel da empresa locatária do Tático GPS.';
+$pageDescription = 'Painel da empresa locatária do FluxPay.';
 $empresaId = current_empresa_id();
 $pdo = db();
 

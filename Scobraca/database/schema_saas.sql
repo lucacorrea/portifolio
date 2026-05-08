@@ -1,8 +1,8 @@
-CREATE DATABASE IF NOT EXISTS tatico_gps_saas
+CREATE DATABASE IF NOT EXISTS fluxpay_saas
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-USE tatico_gps_saas;
+USE fluxpay_saas;
 
 CREATE TABLE IF NOT EXISTS planos (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

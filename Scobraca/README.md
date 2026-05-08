@@ -1,6 +1,6 @@
-# Tático GPS SaaS - Estrutura Base
+# FluxPay - Estrutura Base
 
-Esta é uma estrutura inicial para transformar o Tático GPS em um SaaS multiempresa.
+Esta é uma estrutura inicial do FluxPay como SaaS multiempresa.
 
 ## O que já vem nesta estrutura
 
@@ -13,7 +13,7 @@ Esta é uma estrutura inicial para transformar o Tático GPS em um SaaS multiemp
   - `operador`: usuário interno da empresa locatária.
 - Proteção básica de sessão.
 - Proteção CSRF nos formulários.
-- CSS externo em `public/assets/css/app.css`.
+- CSS externo em `public/assets/css/app.css` e `public/assets/css/landing.css`.
 - `.env.example` para tirar credenciais do código.
 
 ## Estrutura
@@ -41,6 +41,9 @@ public/
 storage/logs/
 ```
 
+O `index.php` da raiz existe apenas como redirecionamento seguro para `public/index.php`.
+Em produção, a configuração correta é apontar o domínio diretamente para a pasta `public/`.
+
 ## Instalação básica
 
 1. Crie um banco MySQL.
@@ -57,7 +60,7 @@ storage/logs/
 URL: `/admin/login.php`
 
 ```text
-E-mail: admin@taticogps.com.br
+E-mail: admin@fluxpay.com.br
 Senha: Admin123@2026
 ```
 

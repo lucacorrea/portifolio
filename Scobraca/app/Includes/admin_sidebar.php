@@ -1,5 +1,5 @@
 <aside class="sidebar">
-    <div class="brand">Tático GPS <span>SaaS</span></div>
+    <div class="brand">FluxPay <span>Admin</span></div>
     <nav>
         <a href="/admin/dashboard.php">Dashboard</a>
         <a href="/admin/empresas.php">Empresas locatárias</a>

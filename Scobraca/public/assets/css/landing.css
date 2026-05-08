@@ -28,6 +28,7 @@ body {
     font-family: Arial, Helvetica, sans-serif;
     background: var(--white);
     color: var(--text);
+    overflow-x: hidden;
 }
 
 a {
@@ -151,7 +152,7 @@ a {
 }
 
 .hero-section::after {
-    content: "";
+    content: none;
     position: absolute;
     width: 360px;
     height: 360px;
@@ -190,7 +191,7 @@ a {
 .hero-text h1 {
     font-size: clamp(38px, 5vw, 66px);
     line-height: 1.02;
-    letter-spacing: -2px;
+    letter-spacing: 0;
     color: var(--dark);
     max-width: 710px;
     margin-bottom: 22px;
@@ -527,7 +528,7 @@ a {
     font-size: 12px;
     font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0;
     margin-bottom: 16px;
 }
 
@@ -538,7 +539,7 @@ a {
     color: var(--dark);
     font-size: clamp(30px, 4vw, 44px);
     line-height: 1.12;
-    letter-spacing: -1px;
+    letter-spacing: 0;
     margin-bottom: 14px;
 }
 
@@ -761,7 +762,7 @@ a {
 .plan-price strong {
     font-size: 44px;
     line-height: 1;
-    letter-spacing: -1px;
+    letter-spacing: 0;
 }
 
 .plan-price span {
@@ -1251,7 +1252,7 @@ a {
     }
 
     .hero-text h1 {
-        letter-spacing: -1px;
+        letter-spacing: 0;
     }
 
     .hero-text p {
@@ -1353,7 +1354,7 @@ a {
     color: #bae6fd;
     font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0;
 }
 
 .top-offer-content strong {
@@ -1372,6 +1373,7 @@ a {
 }
 
 .hero-glow {
+    display: none;
     position: absolute;
     border-radius: 50%;
     filter: blur(10px);
@@ -1529,7 +1531,7 @@ a {
     color: #0f172a;
     font-size: clamp(30px, 4vw, 44px);
     line-height: 1.12;
-    letter-spacing: -1px;
+    letter-spacing: 0;
     margin-bottom: 16px;
 }
 

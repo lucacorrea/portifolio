@@ -14,12 +14,12 @@ if (!empty($_SESSION['usuario'])) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login administrativo - Tático GPS SaaS</title>
+    <title>Login administrativo - FluxPay</title>
     <link rel="stylesheet" href="/assets/css/app.css">
 </head>
 <body class="login-body login-body-admin">
     <main class="login-card">
-        <div class="login-brand">Tático GPS <span>Admin</span></div>
+        <div class="login-brand">FluxPay <span>Admin</span></div>
         <h1>Acesso administrativo</h1>
         <p>Área reservada para administradores internos da plataforma.</p>
 

@@ -10,7 +10,7 @@ define('STORAGE_PATH', BASE_PATH . '/storage');
 require_once APP_PATH . '/Config/env.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_name((string) env('SESSION_NAME', 'scobraca_session'));
+    session_name((string) env('SESSION_NAME', 'fluxpay_session'));
 
     $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
     session_set_cookie_params([
@@ -29,6 +29,13 @@ require_once APP_PATH . '/Config/database.php';
 require_once APP_PATH . '/Helpers/functions.php';
 require_once APP_PATH . '/Auth/auth.php';
 require_once APP_PATH . '/Auth/guards.php';
+
+if (!headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: camera=(), geolocation=(), microphone=()');
+}
 
 if ((env('APP_DEBUG', 'false') === 'true')) {
     ini_set('display_errors', '1');
