@@ -58,7 +58,7 @@ class SalesController extends BaseController {
         } catch (\PDOException $e) {
             // Fallback: If preco_venda_2 or 3 are missing, try without them
             if (str_contains($e->getMessage(), 'Unknown column')) {
-                $sqlProdFallback = "SELECT p.id, p.nome, p.preco_venda, 0 as preco_venda_2, 0 as preco_venda_3, p.unidade, p.imagens, p.codigo, p.cean, 0 as preco_variavel, 'product' as type,
+                $sqlProdFallback = "SELECT p.id, p.nome, p.preco_venda, 0 as preco_venda_2, 0 as preco_venda_3, p.unidade, p.imagens, p.codigo, p.cean, p.preco_variavel, 'product' as type,
                             COALESCE(ef.quantidade, 0) as stock_qty
                             FROM produtos p
                             $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?

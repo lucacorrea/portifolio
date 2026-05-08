@@ -22,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 INSERT INTO produtos (
                     codigo, ncm, cean, cest, origem, csosn, cfop_interno, cfop_externo, aliquota_icms, 
                     nome, unidade, peso, dimensoes, descricao, categoria, preco_custo, preco_venda, 
-                    preco_venda_atacado, quantidade, estoque_minimo, tipo_produto
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    preco_venda_atacado, quantidade, estoque_minimo, tipo_produto, preco_variavel
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $_POST['codigo'],
@@ -46,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_POST['preco_venda_atacado'] ? cleanCurrency($_POST['preco_venda_atacado']) : null,
                 $_POST['quantidade'],
                 $_POST['estoque_minimo'],
-                $_POST['tipo_produto']
+                $_POST['tipo_produto'],
+                isset($_POST['preco_variavel']) ? 1 : 0
             ]);
             
             header('Location: produtos.php?msg=Produto cadastrado com sucesso');
@@ -59,7 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 SET codigo = ?, ncm = ?, cean = ?, cest = ?, origem = ?, csosn = ?, cfop_interno = ?, cfop_externo = ?, aliquota_icms = ?,
                     nome = ?, unidade = ?, peso = ?, dimensoes = ?, 
                     descricao = ?, categoria = ?, preco_custo = ?, preco_venda = ?, 
-                    preco_venda_atacado = ?, quantidade = ?, estoque_minimo = ?, tipo_produto = ? 
+                    preco_venda_atacado = ?, quantidade = ?, estoque_minimo = ?, tipo_produto = ?,
+                    preco_variavel = ? 
                 WHERE id = ?
             ");
             $stmt->execute([
@@ -84,6 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_POST['quantidade'],
                 $_POST['estoque_minimo'],
                 $_POST['tipo_produto'],
+                isset($_POST['preco_variavel']) ? 1 : 0,
                 $_POST['id']
             ]);
             

@@ -916,7 +916,7 @@ function addToCart(product) {
             price1: parseFloat(product.preco_venda),
             price2: parseFloat(product.preco_venda_2) || 0,
             price3: parseFloat(product.preco_venda_3) || 0,
-            preco_variavel: !!product.preco_variavel,
+            preco_variavel: parseInt(product.preco_variavel) === 1,
             price_tier: 1,
             qty: qtyToAdd,
             imagens: product.imagens
