@@ -35,10 +35,11 @@ function terrenos_lista(): array
                 ['lado' => 'Esquerda', 'nome' => 'Igarapé São Pedro', 'distancia' => '505,70 m'],
             ],
             'coordenadas' => [
-                ['ponto' => 'P1', 'easting' => '827431.55', 'northing' => '9662184.10'],
-                ['ponto' => 'P2', 'easting' => '827852.05', 'northing' => '9662178.42'],
-                ['ponto' => 'P3', 'easting' => '827864.77', 'northing' => '9661672.90'],
-                ['ponto' => 'P4', 'easting' => '827429.38', 'northing' => '9661680.36'],
+                ['ponto' => 'P1', 'easting' => '827431.55', 'northing' => '9662184.10', 'latitude' => '-3.054910', 'longitude' => '-60.011430', 'x' => 68, 'y' => 72],
+                ['ponto' => 'P2', 'easting' => '827852.05', 'northing' => '9662178.42', 'latitude' => '-3.054962', 'longitude' => '-60.007640', 'x' => 46, 'y' => 86],
+                ['ponto' => 'P3', 'easting' => '827864.77', 'northing' => '9661672.90', 'latitude' => '-3.059533', 'longitude' => '-60.007525', 'x' => 34, 'y' => 40],
+                ['ponto' => 'P4', 'easting' => '827429.38', 'northing' => '9661680.36', 'latitude' => '-3.059465', 'longitude' => '-60.011446', 'x' => 52, 'y' => 18],
+                ['ponto' => 'P5', 'easting' => '827640.12', 'northing' => '9661928.54', 'latitude' => '-3.057218', 'longitude' => '-60.009549', 'x' => 62, 'y' => 52],
             ],
         ],
         [
@@ -73,10 +74,10 @@ function terrenos_lista(): array
                 ['lado' => 'Esquerda', 'nome' => 'Francisco Oliveira', 'distancia' => '367,50 m'],
             ],
             'coordenadas' => [
-                ['ponto' => 'P1', 'easting' => '829104.33', 'northing' => '9659401.26'],
-                ['ponto' => 'P2', 'easting' => '829370.11', 'northing' => '9659398.70'],
-                ['ponto' => 'P3', 'easting' => '829377.48', 'northing' => '9659031.20'],
-                ['ponto' => 'P4', 'easting' => '829109.92', 'northing' => '9659034.64'],
+                ['ponto' => 'P1', 'easting' => '829104.33', 'northing' => '9659401.26', 'latitude' => '-3.080084', 'longitude' => '-59.996292', 'x' => 70, 'y' => 74],
+                ['ponto' => 'P2', 'easting' => '829370.11', 'northing' => '9659398.70', 'latitude' => '-3.080107', 'longitude' => '-59.993901', 'x' => 50, 'y' => 86],
+                ['ponto' => 'P3', 'easting' => '829377.48', 'northing' => '9659031.20', 'latitude' => '-3.083431', 'longitude' => '-59.993835', 'x' => 34, 'y' => 42],
+                ['ponto' => 'P4', 'easting' => '829109.92', 'northing' => '9659034.64', 'latitude' => '-3.083400', 'longitude' => '-59.996243', 'x' => 52, 'y' => 18],
             ],
         ],
         [
@@ -111,10 +112,10 @@ function terrenos_lista(): array
                 ['lado' => 'Esquerda', 'nome' => 'Lote 06', 'distancia' => '292,40 m'],
             ],
             'coordenadas' => [
-                ['ponto' => 'P1', 'easting' => '825742.20', 'northing' => '9660324.80'],
-                ['ponto' => 'P2', 'easting' => '825921.66', 'northing' => '9660322.40'],
-                ['ponto' => 'P3', 'easting' => '825928.18', 'northing' => '9660031.28'],
-                ['ponto' => 'P4', 'easting' => '825739.94', 'northing' => '9660035.10'],
+                ['ponto' => 'P1', 'easting' => '825742.20', 'northing' => '9660324.80', 'latitude' => '-3.071715', 'longitude' => '-60.026546', 'x' => 69, 'y' => 72],
+                ['ponto' => 'P2', 'easting' => '825921.66', 'northing' => '9660322.40', 'latitude' => '-3.071737', 'longitude' => '-60.024932', 'x' => 48, 'y' => 86],
+                ['ponto' => 'P3', 'easting' => '825928.18', 'northing' => '9660031.28', 'latitude' => '-3.074371', 'longitude' => '-60.024873', 'x' => 34, 'y' => 40],
+                ['ponto' => 'P4', 'easting' => '825739.94', 'northing' => '9660035.10', 'latitude' => '-3.074336', 'longitude' => '-60.026567', 'x' => 52, 'y' => 18],
             ],
         ],
     ];
@@ -184,4 +185,15 @@ function terrenos_indicadores(array $terrenos): array
     }
 
     return $indicadores;
+}
+
+function terreno_croqui_points(array $coordenadas): string
+{
+    $points = [];
+
+    foreach ($coordenadas as $coordenada) {
+        $points[] = sprintf('%s,%s', (float) ($coordenada['x'] ?? 50), (float) ($coordenada['y'] ?? 50));
+    }
+
+    return implode(' ', $points);
 }

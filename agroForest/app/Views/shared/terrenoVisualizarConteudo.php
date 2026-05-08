@@ -12,87 +12,108 @@ $terreno = terreno_buscar_por_codigo($codigoTerreno);
         </div>
     </section>
 <?php else: ?>
-    <section class="card panel terrain-view-hero">
-        <div class="panel-header">
-            <div>
-                <h2><?= htmlspecialchars($terreno['nome_imovel']) ?></h2>
-                <p><?= htmlspecialchars($terreno['codigo']) ?> - <?= htmlspecialchars($terreno['cliente']) ?></p>
-            </div>
-            <div class="table-actions">
-                <span class="status <?= terreno_status_classe($terreno['status']) ?>"><?= htmlspecialchars($terreno['status']) ?></span>
-                <a href="<?= htmlspecialchars(terreno_url($areaTerrenos, 'terrenos')) ?>" class="chip">Voltar para terrenos</a>
-            </div>
-        </div>
+    <?php
+    $croquiPoints = terreno_croqui_points($terreno['coordenadas']);
+    $firstCroquiPoint = sprintf(
+        '%s,%s',
+        (float) ($terreno['coordenadas'][0]['x'] ?? 50),
+        (float) ($terreno['coordenadas'][0]['y'] ?? 50)
+    );
+    ?>
 
-        <div class="terrain-view-grid">
-            <div class="terrain-map-preview" aria-label="Prévia fictícia do polígono do terreno">
-                <div class="terrain-map-toolbar">
-                    <span><?= htmlspecialchars($terreno['zona_utm']) ?></span>
-                    <strong><?= htmlspecialchars($terreno['datum']) ?></strong>
-                </div>
-                <div class="terrain-polygon">
-                    <span class="terrain-point p1">P1</span>
-                    <span class="terrain-point p2">P2</span>
-                    <span class="terrain-point p3">P3</span>
-                    <span class="terrain-point p4">P4</span>
+    <section class="terrain-report-actions no-print">
+        <a href="<?= htmlspecialchars(terreno_url($areaTerrenos, 'terrenos')) ?>" class="chip">Voltar para terrenos</a>
+        <button type="button" class="btn-primary" data-print-terrain>Baixar PDF / Imprimir</button>
+    </section>
+
+    <section class="terrain-report-sheet" id="terrain-report">
+        <header class="terrain-report-header">
+            <div class="terrain-report-brand">
+                <div class="terrain-report-logo">AFA</div>
+                <div>
+                    <strong>Agro Forest Amazon</strong>
+                    <span>Gestão ambiental e territorial</span>
                 </div>
             </div>
-
-            <div class="config-grid">
-                <div class="setting-block"><h3>Cliente</h3><p><?= htmlspecialchars($terreno['cliente']) ?><br><?= htmlspecialchars($terreno['documento']) ?></p></div>
-                <div class="setting-block"><h3>Contato</h3><p><?= htmlspecialchars($terreno['telefone']) ?><br><?= htmlspecialchars($terreno['email']) ?></p></div>
-                <div class="setting-block"><h3>Localização</h3><p><?= htmlspecialchars($terreno['endereco']) ?>, <?= htmlspecialchars($terreno['bairro']) ?>, <?= htmlspecialchars($terreno['municipio']) ?> - <?= htmlspecialchars($terreno['uf']) ?></p></div>
+            <h1>Detalhes do Imóvel</h1>
+            <div class="terrain-report-brand terrain-report-brand-right">
+                <div class="terrain-report-logo soft">UTM</div>
+                <div>
+                    <strong>Cadastro Territorial</strong>
+                    <span><?= htmlspecialchars($terreno['datum']) ?> - Zona <?= htmlspecialchars($terreno['zona_utm']) ?></span>
+                </div>
             </div>
+        </header>
+
+        <div class="terrain-report-divider"></div>
+
+        <div class="terrain-report-details">
+            <div><span>Cliente</span><strong><?= htmlspecialchars($terreno['cliente']) ?></strong></div>
+            <div><span>Proprietário</span><strong><?= htmlspecialchars($terreno['proprietario']) ?></strong></div>
+            <div><span>Status</span><strong class="terrain-report-status"><?= htmlspecialchars($terreno['status']) ?></strong></div>
+            <div><span>Imóvel</span><strong><?= htmlspecialchars($terreno['nome_imovel']) ?></strong></div>
+            <div><span>Uso</span><strong><?= htmlspecialchars($terreno['uso']) ?></strong></div>
+            <div><span>Tipologia</span><strong><?= htmlspecialchars($terreno['tipologia']) ?></strong></div>
+            <div><span>Localização</span><strong><?= htmlspecialchars($terreno['endereco']) ?></strong></div>
+            <div><span>Bairro</span><strong><?= htmlspecialchars($terreno['bairro']) ?></strong></div>
+            <div><span>Município</span><strong><?= htmlspecialchars($terreno['municipio']) ?> - <?= htmlspecialchars($terreno['uf']) ?></strong></div>
         </div>
-    </section>
 
-    <section class="stats-grid stats-grid-mini compact-card">
-        <article class="card stat-card"><h3><?= terreno_area_formatada((float) $terreno['area_hectares']) ?></h3><p>Área estimada</p></article>
-        <article class="card stat-card"><h3><?= terreno_medida_formatada((float) $terreno['perimetro_metros']) ?></h3><p>Perímetro estimado</p></article>
-        <article class="card stat-card"><h3><?= htmlspecialchars((string) count($terreno['coordenadas'])) ?></h3><p>Pontos UTM</p></article>
-    </section>
-
-    <section class="card panel compact-card">
-        <div class="panel-header"><div><h2>Informações fundiárias</h2><p>Dados fictícios preparados para a futura integração com banco/GeoJSON.</p></div></div>
-        <div class="info-grid">
-            <div class="info-card"><strong>Proprietário</strong><p><?= htmlspecialchars($terreno['proprietario']) ?></p></div>
-            <div class="info-card"><strong>Matrícula</strong><p><?= htmlspecialchars($terreno['matricula']) ?></p></div>
-            <div class="info-card"><strong>CAR</strong><p><?= htmlspecialchars($terreno['car']) ?></p></div>
-            <div class="info-card"><strong>CCIR</strong><p><?= htmlspecialchars($terreno['ccir']) ?></p></div>
-            <div class="info-card"><strong>Uso</strong><p><?= htmlspecialchars($terreno['uso']) ?></p></div>
-            <div class="info-card"><strong>Tipologia</strong><p><?= htmlspecialchars($terreno['tipologia']) ?></p></div>
+        <div class="terrain-report-metrics">
+            <div><span>Código</span><strong><?= htmlspecialchars($terreno['codigo']) ?></strong></div>
+            <div><span>Área</span><strong><?= terreno_area_formatada((float) $terreno['area_hectares']) ?></strong></div>
+            <div><span>Perímetro</span><strong><?= terreno_medida_formatada((float) $terreno['perimetro_metros']) ?></strong></div>
+            <div><span>Matrícula</span><strong><?= htmlspecialchars($terreno['matricula']) ?></strong></div>
+            <div><span>CAR</span><strong><?= htmlspecialchars($terreno['car']) ?></strong></div>
+            <div><span>CCIR</span><strong><?= htmlspecialchars($terreno['ccir']) ?></strong></div>
         </div>
-    </section>
 
-    <section class="card panel compact-card">
-        <div class="panel-header"><div><h2>Coordenadas UTM</h2><p>Pontos do polígono no formato Easting/Northing.</p></div></div>
-        <div class="table-responsive">
-            <table class="utm-table">
-                <thead><tr><th>Ponto</th><th>Easting (E)</th><th>Northing (N)</th><th>Zona</th><th>Datum</th></tr></thead>
+        <h2 class="terrain-report-title">Pontos (UTM e Coordenadas Geográficas)</h2>
+        <div class="table-responsive terrain-report-table-wrap">
+            <table class="terrain-report-table">
+                <thead>
+                    <tr>
+                        <th>Ponto</th>
+                        <th>Easting</th>
+                        <th>Northing</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                    </tr>
+                </thead>
                 <tbody>
                     <?php foreach ($terreno['coordenadas'] as $coordenada): ?>
                         <tr>
-                            <td><strong><?= htmlspecialchars($coordenada['ponto']) ?></strong></td>
+                            <td><?= htmlspecialchars($coordenada['ponto']) ?></td>
                             <td><?= htmlspecialchars($coordenada['easting']) ?></td>
                             <td><?= htmlspecialchars($coordenada['northing']) ?></td>
-                            <td><?= htmlspecialchars($terreno['zona_utm']) ?></td>
-                            <td><?= htmlspecialchars($terreno['datum']) ?></td>
+                            <td><?= htmlspecialchars($coordenada['latitude']) ?></td>
+                            <td><?= htmlspecialchars($coordenada['longitude']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
-    </section>
 
-    <section class="card panel compact-card">
-        <div class="panel-header"><div><h2>Confrontantes</h2><p>Limites do terreno informados no cadastro.</p></div></div>
-        <div class="table-responsive">
-            <table class="terrain-table terrain-table-sm">
+        <h2 class="terrain-report-title">Croqui</h2>
+        <div class="terrain-report-croqui">
+            <svg viewBox="0 0 100 100" role="img" aria-label="Croqui do terreno">
+                <polygon points="<?= htmlspecialchars($croquiPoints) ?>" class="croqui-fill"></polygon>
+                <polyline points="<?= htmlspecialchars($croquiPoints . ' ' . $firstCroquiPoint) ?>" class="croqui-line"></polyline>
+                <?php foreach ($terreno['coordenadas'] as $coordenada): ?>
+                    <circle cx="<?= htmlspecialchars((string) $coordenada['x']) ?>" cy="<?= htmlspecialchars((string) $coordenada['y']) ?>" r="1.25" class="croqui-dot"></circle>
+                    <text x="<?= htmlspecialchars((string) ((float) $coordenada['x'] + 1.8)) ?>" y="<?= htmlspecialchars((string) ((float) $coordenada['y'] - 1.6)) ?>" class="croqui-label"><?= htmlspecialchars($coordenada['ponto']) ?></text>
+                <?php endforeach; ?>
+            </svg>
+        </div>
+
+        <h2 class="terrain-report-title">Confrontantes</h2>
+        <div class="table-responsive terrain-report-table-wrap">
+            <table class="terrain-report-table terrain-report-table-compact">
                 <thead><tr><th>Lado</th><th>Confrontante</th><th>Distância</th></tr></thead>
                 <tbody>
                     <?php foreach ($terreno['confrontantes'] as $confrontante): ?>
                         <tr>
-                            <td><strong><?= htmlspecialchars($confrontante['lado']) ?></strong></td>
+                            <td><?= htmlspecialchars($confrontante['lado']) ?></td>
                             <td><?= htmlspecialchars($confrontante['nome']) ?></td>
                             <td><?= htmlspecialchars($confrontante['distancia']) ?></td>
                         </tr>
@@ -100,10 +121,14 @@ $terreno = terreno_buscar_por_codigo($codigoTerreno);
                 </tbody>
             </table>
         </div>
+
+        <div class="terrain-report-observation">
+            <strong>Observações</strong>
+            <p><?= htmlspecialchars($terreno['observacoes']) ?></p>
+        </div>
     </section>
 
-    <section class="card panel compact-card">
-        <div class="panel-header"><div><h2>Observações</h2><p>Resumo para consulta do cliente e acompanhamento interno.</p></div></div>
-        <p class="terrain-observation"><?= htmlspecialchars($terreno['observacoes']) ?></p>
-    </section>
+    <script>
+    document.querySelector('[data-print-terrain]')?.addEventListener('click', () => window.print());
+    </script>
 <?php endif; ?>
