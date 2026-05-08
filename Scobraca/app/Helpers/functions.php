@@ -131,3 +131,16 @@ function moeda_br(float $valor): string
 {
     return 'R$ ' . number_format($valor, 2, ',', '.');
 }
+
+function decimal_from_input(string $value): float
+{
+    $value = trim($value);
+    $value = preg_replace('/[^\d,.-]/', '', $value) ?? '';
+
+    if (str_contains($value, ',')) {
+        $value = str_replace('.', '', $value);
+        $value = str_replace(',', '.', $value);
+    }
+
+    return (float) $value;
+}

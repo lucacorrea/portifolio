@@ -7,13 +7,13 @@ require_platform_admin();
 verify_csrf();
 
 $nome = trim($_POST['nome'] ?? '');
-$preco = str_replace(',', '.', str_replace('.', '', $_POST['preco'] ?? '0'));
+$preco = decimal_from_input((string) ($_POST['preco'] ?? '0'));
 $limiteClientes = $_POST['limite_clientes'] !== '' ? (int) $_POST['limite_clientes'] : null;
 $limiteUsuarios = $_POST['limite_usuarios'] !== '' ? (int) $_POST['limite_usuarios'] : null;
 
 if ($nome === '') {
     flash('error', 'Informe o nome do plano.');
-    redirect('/admin/planos.php');
+    redirect('/admin/planos-cadastro.php');
 }
 
 $stmt = db()->prepare(
@@ -22,7 +22,7 @@ $stmt = db()->prepare(
 );
 $stmt->execute([
     ':nome' => $nome,
-    ':preco' => (float) $preco,
+    ':preco' => $preco,
     ':limite_clientes' => $limiteClientes,
     ':limite_usuarios' => $limiteUsuarios,
     ':whatsapp' => isset($_POST['whatsapp_ativo']) ? 1 : 0,

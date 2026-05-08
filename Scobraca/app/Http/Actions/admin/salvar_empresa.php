@@ -18,7 +18,7 @@ $usuarioSenha = (string) ($_POST['usuario_senha'] ?? '');
 
 if ($nome === '' || $email === '' || $usuarioNome === '' || $usuarioEmail === '' || $usuarioSenha === '') {
     flash('error', 'Preencha os dados da empresa e do usuário principal.');
-    redirect('/admin/empresas.php');
+    redirect('/admin/empresas-cadastro.php');
 }
 
 $permitidos = ['teste', 'ativa', 'bloqueada', 'cancelada'];
@@ -80,6 +80,7 @@ try {
     $pdo->rollBack();
     error_log('[SALVAR EMPRESA] ' . $e->getMessage());
     flash('error', 'Não foi possível cadastrar a empresa. Verifique se o e-mail já existe.');
+    redirect('/admin/empresas-cadastro.php');
 }
 
 redirect('/admin/empresas.php');

@@ -14,7 +14,8 @@ $tipo = $_POST['tipo'] ?? 'operador';
 
 if ($empresaId <= 0 || $nome === '' || $email === '' || $senha === '') {
     flash('error', 'Preencha todos os dados do usuário.');
-    redirect('/admin/empresas.php');
+    $redirectPath = $empresaId > 0 ? '/admin/empresa-usuario-cadastro.php?empresa_id=' . $empresaId : '/admin/empresas.php';
+    redirect($redirectPath);
 }
 
 if (!in_array($tipo, ['empresa_admin', 'operador'], true)) {
@@ -38,6 +39,7 @@ try {
 } catch (Throwable $e) {
     error_log('[SALVAR USUÁRIO EMPRESA] ' . $e->getMessage());
     flash('error', 'Erro ao cadastrar usuário. Verifique se o e-mail já existe.');
+    redirect('/admin/empresa-usuario-cadastro.php?empresa_id=' . $empresaId);
 }
 
 redirect('/admin/empresas.php');
