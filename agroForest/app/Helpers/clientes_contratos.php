@@ -139,6 +139,33 @@ function contrato_valor_formatado(float $valor): string
     return 'R$ ' . number_format($valor, 2, ',', '.');
 }
 
+function contrato_visualizar_url(string $area, string $numero): string
+{
+    return route_url($area, 'contratoVisualizar') . '&numero=' . urlencode($numero);
+}
+
+function contrato_buscar_por_numero(string $numero): ?array
+{
+    $numero = trim($numero);
+
+    foreach (clientes_contratos_lista() as $cliente) {
+        foreach (($cliente['contratos'] ?? []) as $contrato) {
+            if (($contrato['numero'] ?? '') !== $numero) {
+                continue;
+            }
+
+            $clienteResumo = $cliente;
+            unset($clienteResumo['contratos']);
+
+            $contrato['cliente'] = $clienteResumo;
+
+            return $contrato;
+        }
+    }
+
+    return null;
+}
+
 function clientes_contratos_indicadores(array $clientes): array
 {
     $indicadores = [

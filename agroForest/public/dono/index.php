@@ -8,6 +8,7 @@ $pagina = trim($_GET['pagina'] ?? 'dashboard');
 $rotas = [
     'dashboard'              => 'dono/dashboard',
     'clientes'               => 'dono/clientes',
+    'contratoVisualizar'     => 'dono/contratoVisualizar',
     'usuarios'               => 'dono/usuarios',
     'usuarioCadastrar'       => 'dono/usuarioCadastrar',
     'usuarioVisualizar'      => 'dono/usuarioVisualizar',

@@ -20,6 +20,7 @@ $rotas = [
     'clienteCadastrar'    => 'administrativo/clienteCadastrar',
     'clienteEditar'       => 'administrativo/clienteEditar',
     'clienteVisualizar'   => 'administrativo/clienteVisualizar',
+    'contratoVisualizar'  => 'administrativo/contratoVisualizar',
 
     'documentos'          => 'administrativo/documentos',
     'documentoVisualizar' => 'administrativo/documentoVisualizar',
