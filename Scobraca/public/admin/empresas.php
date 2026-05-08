@@ -14,6 +14,10 @@ $empresas = $pdo->query(
      LEFT JOIN planos p ON p.id = e.plano_id
      ORDER BY e.id DESC"
 )->fetchAll();
+$totalEmpresas = count($empresas);
+$empresasAtivas = count(array_filter($empresas, static fn (array $empresa): bool => in_array($empresa['status'], ['ativa', 'teste'], true)));
+$empresasBloqueadas = count(array_filter($empresas, static fn (array $empresa): bool => $empresa['status'] === 'bloqueada'));
+$usuariosLocatarios = array_sum(array_map(static fn (array $empresa): int => (int) $empresa['total_usuarios'], $empresas));
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -30,9 +34,52 @@ $empresas = $pdo->query(
         <?php require APP_PATH . '/Includes/topbar.php'; ?>
         <?php require APP_PATH . '/Includes/flash.php'; ?>
 
+        <section class="grid four">
+            <article class="card metric accent-blue"><span>Total de empresas</span><strong><?= $totalEmpresas ?></strong><small class="metric-note">Carteira cadastrada</small></article>
+            <article class="card metric accent-green"><span>Ativas e teste</span><strong><?= $empresasAtivas ?></strong><small class="metric-note">Com acesso operacional</small></article>
+            <article class="card metric accent-red"><span>Bloqueadas</span><strong><?= $empresasBloqueadas ?></strong><small class="metric-note">Exigem regularização</small></article>
+            <article class="card metric accent-purple"><span>Usuários vinculados</span><strong><?= $usuariosLocatarios ?></strong><small class="metric-note">Soma por empresa</small></article>
+        </section>
+
+        <section class="report-grid">
+            <article class="card">
+                <div class="section-heading">
+                    <div>
+                        <h2>Pipeline de empresas</h2>
+                        <p>Visão estimada para priorizar conversão, ativação e retenção.</p>
+                    </div>
+                    <span class="soft-label">Estimado</span>
+                </div>
+                <div class="progress-list">
+                    <div class="progress-item"><div class="progress-head"><span>Novas em teste</span><strong>42%</strong></div><div class="progress-track"><span class="progress-fill" style="--value: 42%;"></span></div></div>
+                    <div class="progress-item"><div class="progress-head"><span>Empresas prontas para upgrade</span><strong>27%</strong></div><div class="progress-track"><span class="progress-fill green" style="--value: 27%;"></span></div></div>
+                    <div class="progress-item"><div class="progress-head"><span>Risco financeiro</span><strong>11%</strong></div><div class="progress-track"><span class="progress-fill yellow" style="--value: 11%;"></span></div></div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="section-heading">
+                    <div>
+                        <h2>Alertas comerciais</h2>
+                        <p>Sugestões para orientar a operação.</p>
+                    </div>
+                </div>
+                <div class="insight-list">
+                    <div class="insight-item"><span class="insight-dot green"></span><div><strong>Contato de boas-vindas</strong><span>Enviar onboarding para novas empresas nas primeiras 24 horas.</span></div></div>
+                    <div class="insight-item"><span class="insight-dot yellow"></span><div><strong>Validar plano escolhido</strong><span>Empresas sem plano devem ser revisadas antes de liberar uso produtivo.</span></div></div>
+                    <div class="insight-item"><span class="insight-dot red"></span><div><strong>Bloqueios recorrentes</strong><span>Separar bloqueio financeiro de cancelamento definitivo.</span></div></div>
+                </div>
+            </article>
+        </section>
+
         <section class="card">
-            <h2>Cadastrar empresa locatária</h2>
-            <p class="muted">Aqui você cadastra a empresa que vai alugar o sistema e já cria o usuário principal dela.</p>
+            <div class="section-heading">
+                <div>
+                    <h2>Cadastrar empresa locatária</h2>
+                    <p class="muted">Aqui você cadastra a empresa que vai alugar o sistema e já cria o usuário principal dela.</p>
+                </div>
+                <span class="soft-label success">Novo contrato</span>
+            </div>
 
             <form method="post" action="<?= e(public_url('/actions/admin/salvar_empresa.php')) ?>" class="form-grid">
                 <?= csrf_field() ?>
@@ -63,7 +110,12 @@ $empresas = $pdo->query(
         </section>
 
         <section class="card">
-            <h2>Empresas cadastradas</h2>
+            <div class="section-heading">
+                <div>
+                    <h2>Empresas cadastradas</h2>
+                    <p class="muted">Lista operacional com status, plano e usuarios vinculados.</p>
+                </div>
+            </div>
             <div class="table-responsive">
                 <table>
                     <thead>
