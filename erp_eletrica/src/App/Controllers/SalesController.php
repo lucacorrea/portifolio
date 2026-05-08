@@ -34,43 +34,57 @@ class SalesController extends BaseController {
         
         $results = [];
 
-        // 1. Search Products (Global catalog)
-        $join = "LEFT JOIN";
-
-        $sqlProd = "SELECT p.id, p.nome, p.preco_venda, p.preco_venda_2, p.preco_venda_3, p.unidade, p.imagens, p.codigo, p.cean, p.preco_variavel, 'product' as type,
-                    COALESCE(ef.quantidade, 0) as stock_qty
-                    FROM produtos p
-                    $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
-                    WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ? OR p.cean = ?) ";
-
-        $paramsProd = [$filialId, "%$term%", "%$term%", $term, $term];
-
-        $sqlProd .= " ORDER BY (CASE WHEN p.codigo = ? OR p.cean = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
-        $paramsProd[] = $term;
-        $paramsProd[] = $term;
-        $paramsProd[] = "$term%";
-
         try {
+            // Detect available columns to prevent "Unknown column" errors
+            $stmtCols = $db->query("DESCRIBE produtos");
+            $columns = $stmtCols->fetchAll(\PDO::FETCH_COLUMN);
+            
+            $hasCean = in_array('cean', $columns);
+            $hasPV2 = in_array('preco_venda_2', $columns);
+            $hasPV3 = in_array('preco_venda_3', $columns);
+            $hasPVariavel = in_array('preco_variavel', $columns);
+            $join = "LEFT JOIN";
+
+            $selectCols = [
+                "p.id", "p.nome", "p.preco_venda", "p.unidade", "p.imagens", "p.codigo",
+                "'product' as type", "COALESCE(ef.quantidade, 0) as stock_qty"
+            ];
+            if ($hasPV2) $selectCols[] = "p.preco_venda_2"; else $selectCols[] = "0 as preco_venda_2";
+            if ($hasPV3) $selectCols[] = "p.preco_venda_3"; else $selectCols[] = "0 as preco_venda_3";
+            if ($hasCean) $selectCols[] = "p.cean"; else $selectCols[] = "'' as cean";
+            if ($hasPVariavel) $selectCols[] = "p.preco_variavel"; else $selectCols[] = "0 as preco_variavel";
+
+            $whereParts = ["p.nome LIKE ?", "p.codigo LIKE ?", "p.codigo = ?"];
+            $paramsProd = ["%$term%", "%$term%", $term];
+            if ($hasCean) {
+                $whereParts[] = "p.cean = ?";
+                $paramsProd[] = $term;
+            }
+
+            $orderCase = "CASE WHEN p.codigo = ?";
+            $orderParams = [$term];
+            if ($hasCean) {
+                $orderCase .= " OR p.cean = ?";
+                $orderParams[] = $term;
+            }
+            $orderCase .= " THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END";
+            $orderParams[] = "$term%";
+
+            $sqlProd = "SELECT " . implode(', ', $selectCols) . "
+                        FROM produtos p
+                        $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                        WHERE (" . implode(' OR ', $whereParts) . ")";
+            
+            $sqlProd .= " ORDER BY ($orderCase), p.nome ASC LIMIT 15";
+            
             $stmtProd = $db->prepare($sqlProd);
-            $stmtProd->execute($paramsProd);
+            $stmtProd->execute(array_merge([$filialId], $paramsProd, $orderParams));
             $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
             foreach ($products as $p) $results[] = $p;
-        } catch (\PDOException $e) {
-            // Fallback: If preco_venda_2 or 3 are missing, try without them
-            if (str_contains($e->getMessage(), 'Unknown column')) {
-                $sqlProdFallback = "SELECT p.id, p.nome, p.preco_venda, 0 as preco_venda_2, 0 as preco_venda_3, p.unidade, p.imagens, p.codigo, p.cean, p.preco_variavel, 'product' as type,
-                            COALESCE(ef.quantidade, 0) as stock_qty
-                            FROM produtos p
-                            $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
-                            WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ? OR p.cean = ?)
-                            ORDER BY (CASE WHEN p.codigo = ? OR p.cean = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
-                $stmtProd = $db->prepare($sqlProdFallback);
-                $stmtProd->execute($paramsProd);
-                $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);
-                foreach ($products as $p) $results[] = $p;
-            } else {
-                throw $e;
-            }
+
+        } catch (\Exception $e) {
+            // Ultimate fallback in case of total failure
+            error_log("Critical Search Error: " . $e->getMessage());
         }
 
         // 2. Search Pre-Sales (Pending) - continues normally
