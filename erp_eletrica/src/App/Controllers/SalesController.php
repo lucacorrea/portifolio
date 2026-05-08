@@ -37,15 +37,16 @@ class SalesController extends BaseController {
         // 1. Search Products (Global catalog for Matriz, Branch-specific for others)
         $join = ((int)$filialId === 1) ? "LEFT JOIN" : "INNER JOIN";
 
-        $sqlProd = "SELECT p.id, p.nome, p.preco_venda, p.preco_venda_2, p.preco_venda_3, p.unidade, p.imagens, p.codigo, p.preco_variavel, 'product' as type,
+        $sqlProd = "SELECT p.id, p.nome, p.preco_venda, p.preco_venda_2, p.preco_venda_3, p.unidade, p.imagens, p.codigo, p.cean, p.preco_variavel, 'product' as type,
                     COALESCE(ef.quantidade, 0) as stock_qty
                     FROM produtos p
                     $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
-                    WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ?) ";
+                    WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ? OR p.cean = ?) ";
 
-        $paramsProd = [$filialId, "%$term%", "%$term%", $term];
+        $paramsProd = [$filialId, "%$term%", "%$term%", $term, $term];
 
-        $sqlProd .= " ORDER BY (CASE WHEN p.codigo = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
+        $sqlProd .= " ORDER BY (CASE WHEN p.codigo = ? OR p.cean = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
+        $paramsProd[] = $term;
         $paramsProd[] = $term;
         $paramsProd[] = "$term%";
 
@@ -57,12 +58,12 @@ class SalesController extends BaseController {
         } catch (\PDOException $e) {
             // Fallback: If preco_venda_2 or 3 are missing, try without them
             if (str_contains($e->getMessage(), 'Unknown column')) {
-                $sqlProdFallback = "SELECT p.id, p.nome, p.preco_venda, 0 as preco_venda_2, 0 as preco_venda_3, p.unidade, p.imagens, p.codigo, 0 as preco_variavel, 'product' as type,
+                $sqlProdFallback = "SELECT p.id, p.nome, p.preco_venda, 0 as preco_venda_2, 0 as preco_venda_3, p.unidade, p.imagens, p.codigo, p.cean, 0 as preco_variavel, 'product' as type,
                             COALESCE(ef.quantidade, 0) as stock_qty
                             FROM produtos p
                             $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
-                            WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ?)
-                            ORDER BY (CASE WHEN p.codigo = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
+                            WHERE (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo = ? OR p.cean = ?)
+                            ORDER BY (CASE WHEN p.codigo = ? OR p.cean = ? THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END), p.nome ASC LIMIT 15";
                 $stmtProd = $db->prepare($sqlProdFallback);
                 $stmtProd->execute($paramsProd);
                 $products = $stmtProd->fetchAll(\PDO::FETCH_ASSOC);

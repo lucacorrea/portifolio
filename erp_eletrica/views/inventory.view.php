@@ -206,11 +206,15 @@
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id" id="edit_id">
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label small fw-bold">Código Interno</label>
                         <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" value="<?= (new \App\Models\Product())->getNextCode() ?>">
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Cód. Barras (EAN)</label>
+                        <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="Opcional">
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
                         <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome">
                     </div>
@@ -333,10 +337,7 @@
                         </div>
                         <ul id="ncmDropdown" class="list-group shadow-lg" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:2000; max-height:220px; overflow-y:auto; background-color:#fff; border:1px solid #dee2e6; border-top:none; border-radius:0 0 6px 6px;"></ul>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">GTIN/EAN (cEAN)</label>
-                        <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="SEM GTIN">
-                    </div>
+
                     <div class="col-md-4 position-relative">
                         <label class="form-label small fw-bold">CEST</label>
                         <div class="input-group input-group-sm shadow-sm">

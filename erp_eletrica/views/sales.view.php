@@ -932,6 +932,21 @@ function addToCart(product) {
     pdvSearchIndex = -1;
     isAuthorized = false; // Reset auth on new items
     renderCart();
+
+    // Focus price input if it's a variable price product
+    if (product.preco_variavel) {
+        setTimeout(() => {
+            const rows = cartTable.querySelectorAll('tr');
+            const lastRow = rows[rows.length - 1];
+            if (lastRow) {
+                const priceInput = lastRow.querySelector('input[type="number"][onchange*="updateItemPrice"]');
+                if (priceInput) {
+                    priceInput.focus();
+                    priceInput.select();
+                }
+            }
+        }, 200);
+    }
 }
 
 function renderCart() {

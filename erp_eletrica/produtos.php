@@ -272,12 +272,12 @@ $categorias = [
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Código Interno (SKU) *</label>
+                        <label class="form-label">Código Interno *</label>
                         <input type="text" name="codigo" class="form-control" required style="font-family: 'Roboto Mono';" value="<?php echo 'PRD' . str_pad((int)$pdo->query("SELECT MAX(id) FROM produtos")->fetchColumn() + 1, 5, '0', STR_PAD_LEFT); ?>">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">GTIN/EAN (cEAN)</label>
-                        <input type="text" name="cean" class="form-control" placeholder="SEM GTIN">
+                        <label class="form-label">Código de Barras (EAN)</label>
+                        <input type="text" name="cean" class="form-control" placeholder="Opcional">
                     </div>
                     <div class="form-group">
                         <label class="form-label">NCM (Fiscal)</label>
@@ -411,12 +411,12 @@ $categorias = [
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Código Interno (SKU) *</label>
+                        <label class="form-label">Código Interno *</label>
                         <input type="text" name="codigo" id="edit_codigo" class="form-control" required style="font-family: 'Roboto Mono';">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">GTIN/EAN (cEAN)</label>
-                        <input type="text" name="cean" id="edit_cean" class="form-control" placeholder="SEM GTIN">
+                        <label class="form-label">Código de Barras (EAN)</label>
+                        <input type="text" name="cean" id="edit_cean" class="form-control" placeholder="Opcional">
                     </div>
                     <div class="form-group">
                         <label class="form-label">NCM (Fiscal)</label>
