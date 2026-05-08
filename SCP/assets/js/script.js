@@ -1042,11 +1042,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="split-obs">${p.observacoes || 'Nenhuma observação registrada.'}</div>
                     </div>
 
-                    ${p.comentario_atividade ? `
+                    ${perfil === 'ACESSORES' || perfil === 'ADMIN' || perfil === 'ANALISADOR' ? `
+                    <div class="split-item-stacked" style="border:none; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0;">
+                        <span class="split-label">Comentário na Atividade</span>
+                        <textarea id="edit-comentario" class="modal-edit-textarea" placeholder="Adicione um comentário específico...">${p.comentario_atividade || ''}</textarea>
+                    </div>` : (p.comentario_atividade ? `
                     <div class="split-item-stacked" style="border:none; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0;">
                         <span class="split-label">Comentário na Atividade</span>
                         <div class="split-obs" style="background: rgba(37, 99, 235, 0.03); border-left-color: var(--primary);">${p.comentario_atividade}</div>
-                    </div>` : ''}
+                    </div>` : '')}
                 </div>
 
                 <!-- Coluna Direita -->
@@ -1085,15 +1089,37 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="split-value" style="text-align: left; background: #f8fafc; padding: 10px; border-radius: 4px; border-left: 3px solid var(--primary);">${p.tipo_manifestacao || '---'}</span>
                     </div>
 
-                    ${p.topico_detalhado ? `
                     <div class="split-item-stacked" style="border:none; margin-top: 1rem;">
                         <span class="split-label">Tópico Detalhado</span>
-                        <span class="split-value" style="text-align: left; background: #fffbeb; padding: 10px; border-radius: 4px; border-left: 3px solid #f59e0b; color: #92400e; font-weight: 600;">${p.topico_detalhado}</span>
-                    </div>` : ''}
+                        ${perfil === 'ACESSORES' || perfil === 'ADMIN' || perfil === 'ANALISADOR' ? `
+                        <select id="edit-topico" class="modal-edit-select">
+                            <option value="">Selecione...</option>
+                            <option value="CONTESTAÇÃO" ${p.topico_detalhado === 'CONTESTAÇÃO' ? 'selected' : ''}>CONTESTAÇÃO</option>
+                            <option value="IMPUGNAÇÃO" ${p.topico_detalhado === 'IMPUGNAÇÃO' ? 'selected' : ''}>IMPUGNAÇÃO</option>
+                            <option value="RECURSO DE APELAÇÃO" ${p.topico_detalhado === 'RECURSO DE APELAÇÃO' ? 'selected' : ''}>RECURSO DE APELAÇÃO</option>
+                            <option value="RECURSO INOMINADO" ${p.topico_detalhado === 'RECURSO INOMINADO' ? 'selected' : ''}>RECURSO INOMINADO</option>
+                            <option value="MANIFESTAÇÃO SOBRE AUDIÊNCIA" ${p.topico_detalhado === 'MANIFESTAÇÃO SOBRE AUDIÊNCIA' ? 'selected' : ''}>MANIFESTAÇÃO SOBRE AUDIÊNCIA</option>
+                            <option value="MANIFESTAÇÃO SOBRE DESPACHO" ${p.topico_detalhado === 'MANIFESTAÇÃO SOBRE DESPACHO' ? 'selected' : ''}>MANIFESTAÇÃO SOBRE DESPACHO</option>
+                            <option value="MANIFESTAÇÃO SOBRE DECISÃO" ${p.topico_detalhado === 'MANIFESTAÇÃO SOBRE DECISÃO' ? 'selected' : ''}>MANIFESTAÇÃO SOBRE DECISÃO</option>
+                            <option value="CONTRARRAZÕES" ${p.topico_detalhado === 'CONTRARRAZÕES' ? 'selected' : ''}>CONTRARRAZÕES</option>
+                            <option value="CUMPRIMENTO DE SENTENÇA" ${p.topico_detalhado === 'CUMPRIMENTO DE SENTENÇA' ? 'selected' : ''}>CUMPRIMENTO DE SENTENÇA</option>
+                        </select>
+                        ` : `
+                        <span class="split-value" style="text-align: left; background: #fffbeb; padding: 10px; border-radius: 4px; border-left: 3px solid #f59e0b; color: #92400e; font-weight: 600;">${p.topico_detalhado || '---'}</span>
+                        `}
+                    </div>
 
                     <div class="split-item flex-between" style="margin-top: 1rem;">
                         <span class="split-label">Assessora Responsável</span>
+                        ${perfil === 'ACESSORES' || perfil === 'ADMIN' || perfil === 'ANALISADOR' ? `
+                        <select id="edit-assessora" class="modal-edit-select" style="width: auto; min-width: 150px;">
+                            <option value="">NENHUMA</option>
+                            <option value="DRA UANNA" ${p.assessora_responsavel === 'DRA UANNA' ? 'selected' : ''}>DRA UANNA</option>
+                            <option value="DRA RHANNY" ${p.assessora_responsavel === 'DRA RHANNY' ? 'selected' : ''}>DRA RHANNY</option>
+                        </select>
+                        ` : `
                         <span class="tag-badge ${window.getColorForUser(p.assessora_responsavel)}">${p.assessora_responsavel || 'N/A'}</span>
+                        `}
                     </div>
 
                     ${p.status === 'ANALISADO' ? `
@@ -1104,6 +1130,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     ` : ''}
                 </div>
             </div>
+
+            <div class="modal-footer-classic">
+                <button class="btn" style="background: #e2e8f0; color: #475569;" onclick="window.fecharModalDetalhes()">Fechar</button>
+                ${perfil === 'ACESSORES' || perfil === 'ADMIN' || perfil === 'ANALISADOR' ? `
+                <button class="btn-modal-save" onclick="window.salvarSugestoesAcessora(${p.id})">
+                    <i class="fas fa-save"></i> Salvar Alterações
+                </button>
+                ` : ''}
+            </div>
         `;
 
         modal.classList.add('active');
@@ -1112,6 +1147,35 @@ document.addEventListener('DOMContentLoaded', () => {
     window.fecharModalDetalhes = () => {
         const modal = document.getElementById('modal-detalhes');
         if (modal) modal.classList.remove('active');
+    };
+
+    window.salvarSugestoesAcessora = async (id) => {
+        const resp = await fetch('api.php?acao=listar');
+        const dados = await resp.json();
+        const p = dados.find(x => x.id == id);
+        if (!p) return;
+
+        const assessora = document.getElementById('edit-assessora').value;
+        const topico = document.getElementById('edit-topico').value;
+        const comentario = document.getElementById('edit-comentario').value;
+
+        p.assessora_responsavel = assessora;
+        p.topico_detalhado = topico;
+        p.comentario_atividade = comentario;
+
+        const saveResp = await fetch('api.php?acao=salvar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p)
+        });
+
+        if (saveResp.ok) {
+            alert('Sugestões salvas com sucesso!');
+            window.fecharModalDetalhes();
+            carregarProcessos();
+        } else {
+            alert('Erro ao salvar sugestões.');
+        }
     };
 
     // Fechar ao clicar fora do modal
