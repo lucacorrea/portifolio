@@ -25,5 +25,6 @@ require_once APP_PATH . '/Helpers/view.php';
 require_once APP_PATH . '/Helpers/flash.php';
 require_once APP_PATH . '/Helpers/auth.php';
 require_once APP_PATH . '/Helpers/procedural_auth.php';
+require_once APP_PATH . '/Helpers/clientes_contratos.php';
 
 app_log_init();

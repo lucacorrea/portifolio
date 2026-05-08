@@ -9,58 +9,8 @@ $linkBotaoAcao = route_url('administrativo', 'clienteCadastrar');
 $tituloPagina = 'Administrativo - Clientes';
 $cssPagina = 'assets/css/administrativo/styleadm.css';
 
-$clientes = [
-    [
-        'nome' => 'Carlos Henrique',
-        'telefone' => '(92) 99999-1020',
-        'documento' => '123.456.789-00',
-        'ultimo_protocolo' => 'PRT-2026-0501',
-        'ultimo_servico' => 'Solicitação de orçamento',
-        'status' => 'Ativo'
-    ],
-    [
-        'nome' => 'Fernanda Martins',
-        'telefone' => '(92) 99123-4088',
-        'documento' => '987.654.321-00',
-        'ultimo_protocolo' => 'PRT-2026-0502',
-        'ultimo_servico' => 'Atendimento prioritário',
-        'status' => 'Prioritário'
-    ],
-    [
-        'nome' => 'Ana Beatriz Costa',
-        'telefone' => '(92) 98888-2451',
-        'documento' => '741.852.963-00',
-        'ultimo_protocolo' => 'PRT-2026-0503',
-        'ultimo_servico' => 'Análise documental',
-        'status' => 'Pendente'
-    ],
-    [
-        'nome' => 'João Pedro Silva',
-        'telefone' => '(92) 99777-8874',
-        'documento' => '369.258.147-00',
-        'ultimo_protocolo' => 'PRT-2026-0504',
-        'ultimo_servico' => 'Cadastro de serviço',
-        'status' => 'Ativo'
-    ],
-    [
-        'nome' => 'Raimundo Lopes',
-        'telefone' => '(92) 99456-7721',
-        'documento' => '852.456.951-00',
-        'ultimo_protocolo' => 'PRT-2026-0505',
-        'ultimo_servico' => 'Revisão de solicitação',
-        'status' => 'Em análise'
-    ],
-];
-
-function classe_status_cliente_admin(string $status): string
-{
-    return match ($status) {
-        'Ativo' => 'ok',
-        'Pendente' => 'pending',
-        'Prioritário' => 'high',
-        default => 'progress',
-    };
-}
+$clientes = clientes_contratos_lista();
+$indicadores = clientes_contratos_indicadores($clientes);
 
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
@@ -77,35 +27,35 @@ require dirname(__DIR__) . '/layouts/header.php';
                     <div class="stat-icon soft-primary">👥</div>
                     <span class="trend up">+8 mês</span>
                 </div>
-                <h3>184</h3>
+                <h3><?= htmlspecialchars((string) $indicadores['clientes']) ?></h3>
                 <p>Clientes cadastrados</p>
             </article>
 
             <article class="card stat-card">
                 <div class="stat-top">
-                    <div class="stat-icon soft-secondary">📂</div>
-                    <span class="trend up">126 ativos</span>
+                    <div class="stat-icon soft-secondary">📄</div>
+                    <span class="trend up"><?= htmlspecialchars((string) $indicadores['contratos_ativos']) ?> ativos</span>
                 </div>
-                <h3>126</h3>
-                <p>Com processos ativos</p>
+                <h3><?= htmlspecialchars((string) $indicadores['contratos']) ?></h3>
+                <p>Contratos vinculados</p>
             </article>
 
             <article class="card stat-card">
                 <div class="stat-top">
-                    <div class="stat-icon soft-accent">📎</div>
-                    <span class="trend warn">14 revisão</span>
+                    <div class="stat-icon soft-accent">✍️</div>
+                    <span class="trend warn">assinatura/revisão</span>
                 </div>
-                <h3>14</h3>
-                <p>Cadastros com pendência</p>
+                <h3><?= htmlspecialchars((string) $indicadores['contratos_pendentes']) ?></h3>
+                <p>Contratos em atenção</p>
             </article>
 
             <article class="card stat-card">
                 <div class="stat-top">
-                    <div class="stat-icon soft-danger">⚠️</div>
-                    <span class="trend down">6 alta</span>
+                    <div class="stat-icon soft-info">💰</div>
+                    <span class="trend up">carteira</span>
                 </div>
-                <h3>06</h3>
-                <p>Clientes prioritários</p>
+                <h3><?= contrato_valor_formatado((float) $indicadores['valor_total']) ?></h3>
+                <p>Valor contratado</p>
             </article>
         </section>
 
@@ -155,14 +105,14 @@ require dirname(__DIR__) . '/layouts/header.php';
             <div class="panel-header">
                 <div>
                     <h2>Clientes acompanhados</h2>
-                    <p>Lista dos clientes vinculados aos protocolos e orçamentos do setor.</p>
+                    <p>Lista dos clientes vinculados aos protocolos, orçamentos e contratos do setor.</p>
                 </div>
                 <a href="<?= route_url('administrativo', 'relatorios') ?>" class="chip">Ver relatório</a>
                 <a href="<?= route_url('administrativo', 'clienteCadastrar') ?>" class="btn-primary">Cadastrar Cliente</a>
             </div>
 
             <div class="table-responsive">
-                <table>
+                <table class="client-contract-table">
                     <thead>
                         <tr>
                             <th>Cliente</th>
@@ -170,6 +120,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                             <th>Documento</th>
                             <th>Último protocolo</th>
                             <th>Último serviço</th>
+                            <th>Contratos</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
@@ -184,8 +135,14 @@ require dirname(__DIR__) . '/layouts/header.php';
                                 <td><?= htmlspecialchars($cliente['documento']) ?></td>
                                 <td><?= htmlspecialchars($cliente['ultimo_protocolo']) ?></td>
                                 <td><?= htmlspecialchars($cliente['ultimo_servico']) ?></td>
+                                <td class="contracts-cell">
+                                    <?php
+                                    $contratosCliente = $cliente['contratos'] ?? [];
+                                    require APP_PATH . '/Views/shared/clienteContratosResumo.php';
+                                    ?>
+                                </td>
                                 <td>
-                                    <span class="status <?= classe_status_cliente_admin($cliente['status']) ?>">
+                                    <span class="status <?= cliente_status_classe($cliente['status']) ?>">
                                         <?= htmlspecialchars($cliente['status']) ?>
                                     </span>
                                 </td>
@@ -204,7 +161,7 @@ require dirname(__DIR__) . '/layouts/header.php';
 
             <div class="pagination">
                 <div class="pagination-info">
-                    Mostrando 5 clientes da listagem atual.
+                    Mostrando <?= htmlspecialchars((string) count($clientes)) ?> clientes com seus contratos vinculados.
                 </div>
 
                 <div class="pagination-nav">

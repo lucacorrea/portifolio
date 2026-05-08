@@ -4,6 +4,7 @@
     <div class="menu-title">Gestão</div>
     <nav class="nav-list">
         <a href="<?= route_url('dono', 'dashboard') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'dashboard' ? 'active' : '' ?>"><span class="nav-icon">🏠</span>Dashboard</a>
+        <a href="<?= route_url('dono', 'clientes') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'clientes' ? 'active' : '' ?>"><span class="nav-icon">👥</span>Clientes</a>
         <a href="<?= route_url('dono', 'usuarios') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'usuarios' ? 'active' : '' ?>"><span class="nav-icon">👤</span>Usuários</a>
         <a href="<?= route_url('dono', 'permissoes') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'permissoes' ? 'active' : '' ?>"><span class="nav-icon">🛡️</span>Permissões</a>
         <a href="<?= route_url('dono', 'tiposServicos') ?>" class="nav-link <?= ($paginaAtual ?? '') === 'tiposServicos' ? 'active' : '' ?>"><span class="nav-icon">🧾</span>Tipos de Serviços</a>

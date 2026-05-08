@@ -45,6 +45,7 @@ return [
     ],
     'dono' => [
         'dashboard' => 'dono/dashboard',
+        'clientes' => 'dono/clientes',
         'usuarios' => 'dono/usuarios',
         'usuarioCadastrar' => 'dono/usuarioCadastrar',
         'usuarioVisualizar' => 'dono/usuarioVisualizar',

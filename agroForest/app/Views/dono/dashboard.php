@@ -52,6 +52,11 @@ require dirname(__DIR__) . '/layouts/header.php';
                         <strong>Entrar na recepção</strong>
                         <small>Veja clientes, documentos, protocolos e cadastros iniciais.</small>
                     </a>
+                    <a href="<?= route_url('dono', 'clientes') ?>" class="owner-action">
+                        <span>👥</span>
+                        <strong>Clientes e contratos</strong>
+                        <small>Acompanhe contratos vinculados aos clientes em uma visão consolidada.</small>
+                    </a>
                     <a href="<?= route_url('administrativo', 'dashboard') ?>" class="owner-action">
                         <span>📋</span>
                         <strong>Entrar no administrativo</strong>
