@@ -2,20 +2,33 @@
 
 declare(strict_types=1);
 
+define('BASE_PATH', dirname(__DIR__));
+define('APP_PATH', BASE_PATH . '/app');
+define('PUBLIC_PATH', BASE_PATH . '/public');
+define('STORAGE_PATH', BASE_PATH . '/storage');
+
+require_once APP_PATH . '/Config/env.php';
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_name((string) env('SESSION_NAME', 'scobraca_session'));
+
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => $isHttps,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+
     session_start();
 }
 
-define('BASE_PATH', dirname(__DIR__));
-define('APP_PATH', BASE_PATH . '/Scobraca/app');
-define('PUBLIC_PATH', BASE_PATH . '/Scobraca/public');
-define('STORAGE_PATH', BASE_PATH . '/Scobraca/storage');
-
-require_once APP_PATH . '/Scobraca/Config/env.php';
-require_once APP_PATH . '/Scobraca/Config/database.php';
-require_once APP_PATH . '/Scobraca/Helpers/functions.php';
-require_once APP_PATH . '/Scobraca/Auth/auth.php';
-require_once APP_PATH . '/Scobraca/Auth/guards.php';
+require_once APP_PATH . '/Config/database.php';
+require_once APP_PATH . '/Helpers/functions.php';
+require_once APP_PATH . '/Auth/auth.php';
+require_once APP_PATH . '/Auth/guards.php';
 
 if ((env('APP_DEBUG', 'false') === 'true')) {
     ini_set('display_errors', '1');

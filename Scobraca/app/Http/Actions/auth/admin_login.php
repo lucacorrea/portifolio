@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 4) . '/bootstrap/app.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    redirect('/login.php');
+    redirect('/admin/login.php');
 }
 
 verify_csrf();
@@ -15,12 +15,12 @@ $senha = (string) ($_POST['senha'] ?? '');
 
 if ($email === '' || $senha === '') {
     flash('error', 'Informe e-mail e senha.');
-    redirect('/login.php');
+    redirect('/admin/login.php');
 }
 
-if (!attempt_login($email, $senha, ['empresa_admin', 'operador'])) {
-    flash('error', 'Credenciais inválidas ou usuário inativo.');
-    redirect('/login.php');
+if (!attempt_login($email, $senha, ['platform_admin'])) {
+    flash('error', 'Credenciais administrativas inválidas ou usuário inativo.');
+    redirect('/admin/login.php');
 }
 
-redirect('/app/dashboard.php');
+redirect('/admin/dashboard.php');

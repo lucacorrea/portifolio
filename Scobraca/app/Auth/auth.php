@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function attempt_login(string $email, string $senha): bool
+function attempt_login(string $email, string $senha, array $allowedTypes = []): bool
 {
     $stmt = db()->prepare(
         "SELECT u.*, e.nome AS empresa_nome, e.status AS empresa_status
@@ -26,6 +26,10 @@ function attempt_login(string $email, string $senha): bool
         return false;
     }
 
+    if ($allowedTypes !== [] && !in_array((string) $usuario['tipo'], $allowedTypes, true)) {
+        return false;
+    }
+
     session_regenerate_id(true);
 
     $_SESSION['usuario'] = [
@@ -46,6 +50,10 @@ function attempt_login(string $email, string $senha): bool
 
 function logout_user(): never
 {
+    $redirectPath = (($_SESSION['usuario']['tipo'] ?? '') === 'platform_admin')
+        ? '/admin/login.php'
+        : '/login.php';
+
     $_SESSION = [];
 
     if (ini_get('session.use_cookies')) {
@@ -54,5 +62,5 @@ function logout_user(): never
     }
 
     session_destroy();
-    redirect('/login.php');
+    redirect($redirectPath);
 }

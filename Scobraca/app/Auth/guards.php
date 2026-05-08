@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-function require_login(): void
+function require_login(string $redirectPath = '/login.php'): void
 {
     if (empty($_SESSION['usuario'])) {
-        redirect('/login.php');
+        redirect($redirectPath);
     }
 }
 
 function require_platform_admin(): void
 {
-    require_login();
+    require_login('/admin/login.php');
 
     if (($_SESSION['usuario']['tipo'] ?? '') !== 'platform_admin') {
         http_response_code(403);

@@ -7,7 +7,7 @@ Esta é uma estrutura inicial para transformar o Tático GPS em um SaaS multiemp
 - Área do **Admin da Plataforma** para gerenciar empresas, planos, assinaturas e usuários locatários.
 - Área da **Empresa Locatária** para os usuários da empresa acessarem o sistema.
 - Banco de dados com `empresa_id` nas tabelas principais.
-- Login com separação de tipo de usuário:
+- Login com rotas separadas por contexto:
   - `platform_admin`: administrador dono do SaaS.
   - `empresa_admin`: responsável pela empresa que alugou o sistema.
   - `operador`: usuário interno da empresa locatária.
@@ -50,7 +50,11 @@ storage/logs/
 5. Ajuste os dados do banco no `.env`.
 6. Aponte o domínio/subdomínio para a pasta `public/`.
 
-## Login inicial do Admin da Plataforma
+## Logins
+
+### Admin da Plataforma
+
+URL: `/admin/login.php`
 
 ```text
 E-mail: admin@taticogps.com.br
@@ -58,6 +62,10 @@ Senha: Admin123@2026
 ```
 
 Depois de acessar, altere a senha.
+
+### Empresa locatária
+
+URL: `/login.php`
 
 ## Observação importante
 
