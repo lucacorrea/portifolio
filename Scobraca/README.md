@@ -53,6 +53,9 @@ Em produção, a configuração correta é apontar o domínio diretamente para a
 5. Ajuste os dados do banco no `.env`.
 6. Aponte o domínio/subdomínio para a pasta `public/`.
 
+Se a aplicação precisar rodar em subpasta, por exemplo `/Scobraca/public`, os links públicos são detectados automaticamente.
+Em servidor com proxy ou regra de URL especial, defina `APP_BASE_PATH=/Scobraca/public` no `.env`.
+
 ## Logins
 
 ### Admin da Plataforma

@@ -13,8 +13,54 @@ function redirect(string $path): never
         $path = '/';
     }
 
-    header('Location: ' . $path);
+    header('Location: ' . public_url($path));
     exit;
+}
+
+function public_base_path(): string
+{
+    static $basePath = null;
+
+    if ($basePath !== null) {
+        return $basePath;
+    }
+
+    $configuredBase = trim((string) env('APP_BASE_PATH', ''));
+
+    if ($configuredBase !== '') {
+        $basePath = '/' . trim($configuredBase, '/');
+        return $basePath === '/' ? '' : $basePath;
+    }
+
+    $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    $publicPosition = strpos($scriptName, '/public/');
+
+    if ($publicPosition !== false) {
+        $basePath = substr($scriptName, 0, $publicPosition + 7);
+        return rtrim($basePath, '/');
+    }
+
+    $scriptDir = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+
+    if (str_ends_with($scriptDir, '/public')) {
+        $basePath = $scriptDir;
+        return rtrim($basePath, '/');
+    }
+
+    $basePath = '';
+    return $basePath;
+}
+
+function public_url(string $path = ''): string
+{
+    $basePath = public_base_path();
+    $path = '/' . ltrim($path, '/');
+
+    if ($path === '/') {
+        return $basePath !== '' ? $basePath . '/' : '/';
+    }
+
+    return $basePath . $path;
 }
 
 function url(string $path = ''): string

@@ -21,7 +21,7 @@ $empresas = $pdo->query(
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($pageTitle) ?></title>
-    <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="<?= e(public_url('/assets/css/app.css')) ?>">
 </head>
 <body>
 <div class="layout">
@@ -34,7 +34,7 @@ $empresas = $pdo->query(
             <h2>Cadastrar empresa locatária</h2>
             <p class="muted">Aqui você cadastra a empresa que vai alugar o sistema e já cria o usuário principal dela.</p>
 
-            <form method="post" action="/actions/admin/salvar_empresa.php" class="form-grid">
+            <form method="post" action="<?= e(public_url('/actions/admin/salvar_empresa.php')) ?>" class="form-grid">
                 <?= csrf_field() ?>
                 <label>Nome da empresa<input name="nome" required></label>
                 <label>CNPJ<input name="cnpj" placeholder="00.000.000/0000-00"></label>
@@ -80,7 +80,7 @@ $empresas = $pdo->query(
                             <td><?= (int) $empresa['total_usuarios'] ?></td>
                             <td><?= e($empresa['email']) ?><br><small><?= e($empresa['telefone']) ?></small></td>
                             <td>
-                                <form method="post" action="/actions/admin/alterar_status_empresa.php" class="inline-form">
+                                <form method="post" action="<?= e(public_url('/actions/admin/alterar_status_empresa.php')) ?>" class="inline-form">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="empresa_id" value="<?= (int) $empresa['id'] ?>">
                                     <select name="status">
@@ -95,7 +95,7 @@ $empresas = $pdo->query(
                         </tr>
                         <tr class="subrow">
                             <td colspan="6">
-                                <form method="post" action="/actions/admin/salvar_usuario_empresa.php" class="compact-form">
+                                <form method="post" action="<?= e(public_url('/actions/admin/salvar_usuario_empresa.php')) ?>" class="compact-form">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="empresa_id" value="<?= (int) $empresa['id'] ?>">
                                     <input name="nome" placeholder="Novo usuário da empresa">

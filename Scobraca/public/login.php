@@ -14,7 +14,7 @@ if (!empty($_SESSION['usuario'])) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login da empresa - FluxPay</title>
-    <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="<?= e(public_url('/assets/css/app.css')) ?>">
 </head>
 <body class="login-body">
     <main class="login-card">
@@ -24,7 +24,7 @@ if (!empty($_SESSION['usuario'])) {
 
         <?php require APP_PATH . '/Includes/flash.php'; ?>
 
-        <form method="post" action="/actions/auth/login.php" class="form-stack">
+        <form method="post" action="<?= e(public_url('/actions/auth/login.php')) ?>" class="form-stack">
             <?= csrf_field() ?>
             <label>
                 E-mail
@@ -38,7 +38,7 @@ if (!empty($_SESSION['usuario'])) {
         </form>
 
         <div class="login-links">
-            <a href="/admin/login.php">Acesso administrativo</a>
+            <a href="<?= e(public_url('/admin/login.php')) ?>">Acesso administrativo</a>
         </div>
     </main>
 </body>

@@ -10,7 +10,7 @@ $planos = db()->query('SELECT * FROM planos ORDER BY preco ASC')->fetchAll();
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= e($pageTitle) ?></title><link rel="stylesheet" href="/assets/css/app.css">
+    <title><?= e($pageTitle) ?></title><link rel="stylesheet" href="<?= e(public_url('/assets/css/app.css')) ?>">
 </head>
 <body>
 <div class="layout">
@@ -20,7 +20,7 @@ $planos = db()->query('SELECT * FROM planos ORDER BY preco ASC')->fetchAll();
         <?php require APP_PATH . '/Includes/flash.php'; ?>
         <section class="card">
             <h2>Novo plano</h2>
-            <form method="post" action="/actions/admin/salvar_plano.php" class="form-grid">
+            <form method="post" action="<?= e(public_url('/actions/admin/salvar_plano.php')) ?>" class="form-grid">
                 <?= csrf_field() ?>
                 <label>Nome<input name="nome" required placeholder="Básico, Profissional, Premium"></label>
                 <label>Preço<input name="preco" required placeholder="99,90"></label>
