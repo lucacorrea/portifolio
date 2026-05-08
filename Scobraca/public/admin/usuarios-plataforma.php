@@ -7,7 +7,7 @@ $usuarios = db()->query("SELECT * FROM usuarios WHERE tipo = 'platform_admin' OR
 ?>
 <!doctype html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?= e($pageTitle) ?></title><link rel="stylesheet" href="<?= e(public_url('/assets/css/app.css')) ?>"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?= e($pageTitle) ?></title><link rel="stylesheet" href="<?= e(asset_url('/assets/css/app.css')) ?>"></head>
 <body>
 <div class="layout">
 <?php require APP_PATH . '/Includes/admin_sidebar.php'; ?>

@@ -9,7 +9,7 @@ $adminNavItems = [
 ];
 ?>
 <button class="mobile-toggle" type="button" data-sidebar-toggle aria-label="Abrir menu">
-    <svg viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>
 </button>
 <aside class="sidebar" id="sidebar">
     <div class="logo-area">
@@ -19,16 +19,16 @@ $adminNavItems = [
         <?php foreach ($adminNavItems as [$href, $label, $icon]): ?>
             <?php $active = str_ends_with($currentPath, $href) ? ' active' : ''; ?>
             <a class="nav-item<?= $active ?>" href="<?= e(public_url($href)) ?>">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><?= $icon ?></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><?= $icon ?></svg>
                 <span><?= e($label) ?></span>
             </a>
         <?php endforeach; ?>
         <span class="sidebar-spacer"></span>
         <a class="nav-item" href="<?= e(public_url('/logout.php')) ?>">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M21 3v18"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M21 3v18"></path></svg>
             <span>Sair</span>
         </a>
     </nav>
 </aside>
 <div class="sidebar-backdrop" data-sidebar-close></div>
-<script src="<?= e(public_url('/assets/js/app.js')) ?>" defer></script>
+<script src="<?= e(asset_url('/assets/js/app.js')) ?>" defer></script>

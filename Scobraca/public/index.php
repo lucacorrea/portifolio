@@ -114,7 +114,7 @@ $depoimentos = [
 
     <meta name="description" content="FluxPay é uma plataforma SaaS criada pela L&J Soluções Tecnológicas para gestão de clientes, cobranças recorrentes, pagamentos, PIX, WhatsApp e relatórios financeiros.">
 
-    <link rel="stylesheet" href="<?= e($baseUrl) ?>assets/css/landing.css">
+    <link rel="stylesheet" href="<?= e(asset_url('/assets/css/landing.css')) ?>">
     <link
         href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css"
         rel="stylesheet"
@@ -842,6 +842,6 @@ $depoimentos = [
     </div>
 </footer>
 
-<script src="<?= e($baseUrl) ?>assets/js/landing.js"></script>
+<script src="<?= e(asset_url('/assets/js/landing.js')) ?>"></script>
 </body>
 </html>

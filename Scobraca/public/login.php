@@ -14,7 +14,7 @@ if (!empty($_SESSION['usuario'])) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login da empresa - FluxPay</title>
-    <link rel="stylesheet" href="<?= e(public_url('/assets/css/app.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset_url('/assets/css/app.css')) ?>">
 </head>
 <body class="login-body">
     <main class="login-card">

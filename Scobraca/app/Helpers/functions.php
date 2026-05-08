@@ -63,6 +63,15 @@ function public_url(string $path = ''): string
     return $basePath . $path;
 }
 
+function asset_url(string $path): string
+{
+    $path = '/' . ltrim($path, '/');
+    $publicFile = PUBLIC_PATH . str_replace('/', DIRECTORY_SEPARATOR, $path);
+    $version = is_file($publicFile) ? (string) filemtime($publicFile) : (string) time();
+
+    return public_url($path) . '?v=' . rawurlencode($version);
+}
+
 function url(string $path = ''): string
 {
     $base = rtrim((string) env('APP_URL', ''), '/');

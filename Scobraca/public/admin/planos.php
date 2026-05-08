@@ -10,7 +10,7 @@ $planos = db()->query('SELECT * FROM planos ORDER BY preco ASC')->fetchAll();
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= e($pageTitle) ?></title><link rel="stylesheet" href="<?= e(public_url('/assets/css/app.css')) ?>">
+    <title><?= e($pageTitle) ?></title><link rel="stylesheet" href="<?= e(asset_url('/assets/css/app.css')) ?>">
 </head>
 <body>
 <div class="layout">
