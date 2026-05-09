@@ -13,7 +13,7 @@ Esta é uma estrutura inicial do FluxPay como SaaS multiempresa.
   - `operador`: usuário interno da empresa locatária.
 - Proteção básica de sessão.
 - Proteção CSRF nos formulários.
-- CSS externo em `public/assets/css/app.css` e `public/assets/css/landing.css`.
+- CSS externo em `public/assets/css/app.css` para o sistema e `public/assets/css/style.css` para a landing.
 - `.env.example` para tirar credenciais do código.
 
 ## Estrutura
@@ -38,6 +38,8 @@ public/
   admin/
   app/
   assets/css/app.css
+  assets/css/style.css
+  assets/js/main.js
 storage/logs/
 ```
 
@@ -88,3 +90,40 @@ SELECT * FROM clientes
 ```
 
 Sem filtro por empresa, uma empresa pode visualizar dados de outra.
+
+## Landing page FluxPay
+
+A landing pública está em `public/index.php` e usa:
+
+```text
+public/assets/css/style.css
+public/assets/js/main.js
+public/assets/icons/favicon.svg
+public/assets/img/fluxpay-og.svg
+```
+
+### Como abrir localmente
+
+Use um servidor PHP apontando para `public/`:
+
+```bash
+php -S localhost:8000 -t public
+```
+
+Depois acesse `http://localhost:8000`.
+
+### Como subir na Hostinger
+
+1. Envie o projeto para a hospedagem.
+2. Aponte o domínio para a pasta `public/` quando a hospedagem permitir.
+3. Se rodar em subpasta, ajuste `APP_BASE_PATH` no `.env`.
+4. Ative HTTPS antes de qualquer integração real com pagamentos.
+
+### Onde alterar
+
+- Textos, planos, depoimentos, FAQ e seções: `public/index.php`.
+- Visual, responsividade e animações CSS: `public/assets/css/style.css`.
+- Mega menu, carrossel, FAQ, contadores e formulário: `public/assets/js/main.js`.
+- Favicon e imagem de compartilhamento: `public/assets/icons/favicon.svg` e `public/assets/img/fluxpay-og.svg`.
+
+O formulário da landing não envia dados reais nesta versão. A função `handleLeadSubmit()` em `public/assets/js/main.js` está preparada para conectar um endpoint futuro da FluxPay.
