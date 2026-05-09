@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FluxPay">
-  <rect width="64" height="64" rx="14" fill="#061826"/>
-  <path d="M18 20h28a5 5 0 0 1 5 5v14a5 5 0 0 1-5 5H18a5 5 0 0 1-5-5V25a5 5 0 0 1 5-5Z" fill="none" stroke="#22d3ee" stroke-width="4"/>
-  <path d="M21 30h17M21 38h10M41 39l6-6-6-6" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>

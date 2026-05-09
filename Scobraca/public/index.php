@@ -116,7 +116,11 @@ $baseUrl = '';
         </nav>
 
         <div class="header-actions">
+<<<<<<< ours
             <a class="btn btn-ghost" href="<?= e(public_url('/login.php')) ?>">Entrar</a>
+=======
+            <a class="btn btn-ghost" href="<?= e(asset_url('/login.php')) ?>">Entrar</a>
+>>>>>>> theirs
             <a class="btn btn-gradient" href="#contato">Começar agora</a>
             <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-controls="menu-principal" aria-expanded="false" data-menu-toggle>
                 <svg class="menu-icon"><use href="#icon-menu"></use></svg>
