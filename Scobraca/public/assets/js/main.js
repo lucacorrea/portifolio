@@ -139,6 +139,48 @@
         items.forEach((item) => observer.observe(item));
     }
 
+    function initParallaxEffects() {
+        const cards = Array.from(document.querySelectorAll("[data-parallax-card]"));
+        const isSmallViewport = window.matchMedia("(max-width: 768px)").matches;
+
+        if (!cards.length || prefersReducedMotion || isSmallViewport) {
+            return;
+        }
+
+        let ticking = false;
+
+        const update = () => {
+            const viewportCenter = window.innerHeight / 2;
+
+            cards.forEach((card) => {
+                const rect = card.getBoundingClientRect();
+
+                if (rect.bottom < -120 || rect.top > window.innerHeight + 120) {
+                    return;
+                }
+
+                const cardCenter = rect.top + rect.height / 2;
+                const offset = Math.max(-18, Math.min(18, (viewportCenter - cardCenter) * 0.026));
+                card.style.setProperty("--parallax-y", `${offset.toFixed(2)}px`);
+            });
+
+            ticking = false;
+        };
+
+        const requestUpdate = () => {
+            if (ticking) {
+                return;
+            }
+
+            ticking = true;
+            window.requestAnimationFrame(update);
+        };
+
+        update();
+        window.addEventListener("scroll", requestUpdate, { passive: true });
+        window.addEventListener("resize", requestUpdate);
+    }
+
     function formatCounter(value, prefix, suffix) {
         return `${prefix || ""}${Math.round(value).toLocaleString("pt-BR")}${suffix || ""}`;
     }
@@ -287,6 +329,26 @@
         return String(value || "").replace(/\D/g, "");
     }
 
+    function bindPhoneMask(input) {
+        if (!input) {
+            return;
+        }
+
+        input.addEventListener("input", () => {
+            const digits = phoneDigits(input.value).slice(0, 11);
+            const area = digits.slice(0, 2);
+            const middle = digits.length > 10 ? digits.slice(2, 7) : digits.slice(2, 6);
+            const end = digits.length > 10 ? digits.slice(7, 11) : digits.slice(6, 10);
+
+            if (digits.length <= 2) {
+                input.value = area ? `(${area}` : "";
+                return;
+            }
+
+            input.value = `(${area}) ${middle}${end ? `-${end}` : ""}`;
+        });
+    }
+
     function isValidEmail(value) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
     }
@@ -328,23 +390,7 @@
             return;
         }
 
-        const phone = form.elements.phone;
-
-        if (phone) {
-            phone.addEventListener("input", () => {
-                const digits = phoneDigits(phone.value).slice(0, 11);
-                const area = digits.slice(0, 2);
-                const middle = digits.length > 10 ? digits.slice(2, 7) : digits.slice(2, 6);
-                const end = digits.length > 10 ? digits.slice(7, 11) : digits.slice(6, 10);
-
-                if (digits.length <= 2) {
-                    phone.value = area ? `(${area}` : "";
-                    return;
-                }
-
-                phone.value = `(${area}) ${middle}${end ? `-${end}` : ""}`;
-            });
-        }
+        bindPhoneMask(form.elements.phone);
 
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
@@ -399,13 +445,159 @@
         });
     }
 
-    function initCheckoutMock() {
-        document.querySelectorAll(".pay-methods button").forEach((button) => {
-            button.addEventListener("click", () => {
-                const group = button.closest(".pay-methods");
-                group.querySelectorAll("button").forEach((item) => item.classList.remove("active"));
-                button.classList.add("active");
+    function initCheckoutPage() {
+        const form = document.querySelector("[data-checkout-form]");
+
+        if (!form) {
+            return;
+        }
+
+        const cycleGroup = document.querySelector("[data-checkout-cycle]");
+        const paymentGroup = document.querySelector("[data-checkout-payments]");
+        const paymentPreview = document.querySelector("[data-payment-preview]");
+        const summaryPrice = document.querySelector("[data-summary-price]");
+        const summaryDiscount = document.querySelector("[data-summary-discount]");
+        const summaryTotal = document.querySelector("[data-summary-total]");
+        const summaryRenewal = document.querySelector("[data-summary-renewal]");
+
+        const prices = {
+            monthly: {
+                price: "R$ 89,00/mês",
+                discount: "-R$ 30,00",
+                total: "R$ 59,00",
+                renewal: "R$ 89,00/mês"
+            },
+            annual: {
+                price: "R$ 890,00/ano",
+                discount: "-R$ 178,00",
+                total: "R$ 712,00",
+                renewal: "R$ 890,00/ano"
+            }
+        };
+
+        const paymentCopy = {
+            pix: {
+                title: "Pix selecionado",
+                text: "Após a integração real, o sistema poderá exibir QR Code, copia e cola e confirmação automática do gateway."
+            },
+            card: {
+                title: "Cartão selecionado",
+                text: "A etapa de cartão está preparada para receber tokenização do provedor, validação antifraude e confirmação segura."
+            },
+            boleto: {
+                title: "Boleto selecionado",
+                text: "Quando o gateway for integrado, a página poderá exibir linha digitável, vencimento e status de compensação."
+            }
+        };
+
+        const setCheckoutStatus = (message, isError) => {
+            const status = form.querySelector("[data-checkout-status]");
+
+            if (!status) {
+                return;
+            }
+
+            status.textContent = message;
+            status.classList.toggle("is-error", Boolean(isError));
+        };
+
+        const updateSummary = (cycle) => {
+            const selected = prices[cycle] || prices.monthly;
+
+            if (summaryPrice) summaryPrice.textContent = selected.price;
+            if (summaryDiscount) summaryDiscount.textContent = selected.discount;
+            if (summaryTotal) summaryTotal.textContent = selected.total;
+            if (summaryRenewal) summaryRenewal.textContent = selected.renewal;
+        };
+
+        bindPhoneMask(form.elements.phone);
+
+        if (cycleGroup) {
+            cycleGroup.querySelectorAll("button").forEach((button) => {
+                button.addEventListener("click", () => {
+                    cycleGroup.querySelectorAll("button").forEach((item) => {
+                        item.classList.remove("active");
+                        item.setAttribute("aria-pressed", "false");
+                    });
+                    button.classList.add("active");
+                    button.setAttribute("aria-pressed", "true");
+                    updateSummary(button.dataset.cycle);
+                });
             });
+        }
+
+        if (paymentGroup && paymentPreview) {
+            paymentGroup.querySelectorAll("button").forEach((button) => {
+                button.addEventListener("click", () => {
+                    paymentGroup.querySelectorAll("button").forEach((item) => {
+                        item.classList.remove("active");
+                        item.setAttribute("aria-pressed", "false");
+                    });
+                    button.classList.add("active");
+                    button.setAttribute("aria-pressed", "true");
+
+                    const selected = paymentCopy[button.dataset.payment] || paymentCopy.pix;
+                    paymentPreview.innerHTML = `<strong>${selected.title}</strong><p>${selected.text}</p>`;
+                });
+            });
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const activeCycle = cycleGroup ? cycleGroup.querySelector(".active") : null;
+            const activePayment = paymentGroup ? paymentGroup.querySelector(".active") : null;
+            const data = {
+                name: sanitizeText(form.elements.name.value),
+                email: sanitizeText(form.elements.email.value).toLowerCase(),
+                phone: sanitizeText(form.elements.phone.value),
+                terms: Boolean(form.elements.terms.checked),
+                coupon: sanitizeText(form.elements.coupon.value),
+                plan: "Growth",
+                cycle: activeCycle ? activeCycle.dataset.cycle : "monthly",
+                payment: activePayment ? activePayment.dataset.payment : "pix"
+            };
+
+            const digits = phoneDigits(data.phone);
+            let hasError = false;
+
+            ["name", "email", "phone", "terms"].forEach((field) => setFieldError(form, field, ""));
+            setCheckoutStatus("", false);
+
+            if (!data.name) {
+                setFieldError(form, "name", "Informe seu nome completo.");
+                hasError = true;
+            }
+
+            if (!data.email || !isValidEmail(data.email)) {
+                setFieldError(form, "email", "Informe um e-mail válido.");
+                hasError = true;
+            }
+
+            if (digits.length < 10 || digits.length > 11) {
+                setFieldError(form, "phone", "Informe um WhatsApp válido com DDD.");
+                hasError = true;
+            }
+
+            if (!data.terms) {
+                setFieldError(form, "terms", "Confirme o aceite para continuar.");
+                hasError = true;
+            }
+
+            if (hasError) {
+                setCheckoutStatus("Revise os campos destacados antes de finalizar.", true);
+                return;
+            }
+
+            // TODO: conectar endpoint real do gateway/assinatura FluxPay.
+            await Promise.resolve({
+                ...data,
+                phoneDigits: digits,
+                source: "fluxpay_checkout",
+                capturedAt: new Date().toISOString()
+            });
+
+            setCheckoutStatus("Checkout demonstrativo validado. A próxima etapa é integrar o gateway de pagamento.", false);
         });
     }
 
@@ -413,10 +605,11 @@
     initMobileMenu();
     initMegaMenu();
     initScrollReveal();
+    initParallaxEffects();
     initCounters();
     initTestimonialsCarousel();
     initComparisonToggle();
     initFaq();
-    initCheckoutMock();
+    initCheckoutPage();
     initLeadForm();
 })();

@@ -73,7 +73,7 @@ $baseUrl = '';
                     <a href="#crie-cobre"><span><svg><use href="#i-repeat"></use></svg></span><strong>Cobranças recorrentes</strong><small>Planos e cobranças automáticas.</small></a>
                     <a href="#ferramentas"><span><svg><use href="#i-card"></use></svg></span><strong>Links de pagamento</strong><small>Envie links com uma jornada clara.</small></a>
                     <a href="#controle"><span><svg><use href="#i-users"></use></svg></span><strong>Gestão de clientes</strong><small>Histórico e status em um lugar.</small></a>
-                    <a href="#checkout"><span><svg><use href="#i-lock"></use></svg></span><strong>Checkout</strong><small>Fluxo limpo para conversão.</small></a>
+                    <a href="<?= e(public_url('/checkout.php')) ?>"><span><svg><use href="#i-lock"></use></svg></span><strong>Checkout</strong><small>Fluxo limpo para conversão.</small></a>
                 </div>
             </div>
 
@@ -125,7 +125,7 @@ $baseUrl = '';
             </div>
 
             <div class="hero-offer-grid">
-                <article class="offer-card reveal">
+                <article class="offer-card reveal" data-parallax-card>
                     <div class="offer-icon"><svg><use href="#i-chart"></use></svg></div>
                     <div>
                         <h2>Planos para qualquer fase do seu negócio</h2>
@@ -135,14 +135,14 @@ $baseUrl = '';
                     <a href="#planos">Ver planos <svg><use href="#i-arrow"></use></svg></a>
                 </article>
 
-                <article class="offer-card reveal">
+                <article class="offer-card reveal" data-parallax-card>
                     <div class="offer-icon accent"><svg><use href="#i-card"></use></svg></div>
                     <div>
                         <h2>Checkout preparado para conversão</h2>
                         <p>Uma experiência de pagamento objetiva, segura e sem distrações para seus clientes.</p>
                         <strong>Pix, cartão e boleto</strong>
                     </div>
-                    <a href="#checkout">Ver checkout <svg><use href="#i-arrow"></use></svg></a>
+                    <a href="<?= e(public_url('/checkout.php')) ?>">Ver checkout <svg><use href="#i-arrow"></use></svg></a>
                 </article>
             </div>
         </div>
@@ -211,7 +211,7 @@ $baseUrl = '';
                 </div>
             </div>
 
-            <div class="charge-builder reveal" aria-label="Mockup animado de criação de cobrança">
+            <div class="charge-builder reveal" data-parallax-card aria-label="Mockup animado de criação de cobrança">
                 <div class="builder-header">
                     <span>Nova cobrança</span>
                     <strong>Link em criação</strong>
@@ -249,7 +249,7 @@ $baseUrl = '';
                 </div>
             </div>
 
-            <div class="dashboard-showcase reveal" aria-label="Mockup de dashboard FluxPay">
+            <div class="dashboard-showcase reveal" data-parallax-card aria-label="Mockup de dashboard FluxPay">
                 <div class="dash-top">
                     <div><span>Receita prevista</span><strong>R$ 72.450</strong></div>
                     <div><span>Assinaturas</span><strong>486</strong></div>
@@ -387,31 +387,24 @@ $baseUrl = '';
         </div>
     </section>
 
-    <section class="checkout section-soft" id="checkout" aria-labelledby="checkout-title">
+    <section class="checkout-preview section-solid" id="checkout-preview" aria-labelledby="checkout-title">
         <div class="container">
-            <div class="section-title centered reveal">
-                <span class="kicker">Checkout</span>
-                <h2 id="checkout-title">Checkout feito para reduzir abandono</h2>
-                <p>Uma simulação de pagamento em página única, limpa e pronta para integração futura com gateway.</p>
-            </div>
-
-            <div class="checkout-shell reveal">
-                <div class="checkout-form">
-                    <div class="checkout-step"><strong>Etapa 1 — Conta</strong><label>E-mail<input type="email" value="cliente@empresa.com" readonly></label><label>Nome completo<input type="text" value="Mariana Costa" readonly></label><label>WhatsApp<input type="text" value="(11) 90000-0000" readonly></label></div>
-                    <div class="checkout-step"><strong>Etapa 2 — Plano</strong><div class="plan-selected"><span>Plano selecionado</span><b>Growth</b></div><div class="billing-switch"><span class="active">Mensal</span><span>Anual</span></div><label>Cupom de desconto<input type="text" value="BOASVINDAS" readonly></label></div>
-                    <div class="checkout-step"><strong>Etapa 3 — Pagamento</strong><div class="pay-methods"><button type="button" class="active">Pix</button><button type="button">Cartão</button><button type="button">Boleto</button></div></div>
+            <div class="checkout-preview-panel reveal" data-parallax-card>
+                <div class="section-title">
+                    <span class="kicker dark">Checkout separado</span>
+                    <h2 id="checkout-title">Uma página de pagamento dedicada para reduzir distrações</h2>
+                    <p>O checkout agora fica em uma página própria, com etapas claras, resumo fixo e visual preparado para integração futura com gateway.</p>
+                    <div class="inline-actions">
+                        <a class="btn btn-light" href="<?= e(public_url('/checkout.php')) ?>">Abrir checkout</a>
+                        <a class="btn btn-dark-outline" href="#planos">Ver planos</a>
+                    </div>
                 </div>
-                <aside class="order-card">
-                    <span>Resumo</span>
-                    <h3>Plano Growth</h3>
-                    <div class="order-row"><span>Mensalidade</span><strong>R$ 89,00/mês</strong></div>
-                    <div class="order-row"><span>Desconto</span><strong>-R$ 30,00</strong></div>
-                    <div class="order-row total"><span>Total hoje</span><strong>R$ 59,00</strong></div>
-                    <div class="order-row"><span>Renovação</span><strong>R$ 89,00/mês</strong></div>
+                <div class="checkout-mini-card" aria-hidden="true">
+                    <div><span>Plano Growth</span><strong>R$ 89,00/mês</strong></div>
+                    <div><span>Desconto</span><strong>-R$ 30,00</strong></div>
+                    <div class="total"><span>Total hoje</span><strong>R$ 59,00</strong></div>
                     <button type="button">Finalizar assinatura</button>
-                    <div class="secure-list"><span>Pagamento seguro</span><span>Dados protegidos</span><span>Cancele quando quiser</span><span>Suporte na implantação</span></div>
-                    <small>Ambiente preparado para integração segura com provedor de pagamento.</small>
-                </aside>
+                </div>
             </div>
         </div>
     </section>
@@ -484,7 +477,7 @@ $baseUrl = '';
             <a class="brand footer-brand" href="#inicio" aria-label="FluxPay"><span class="brand-mark"><svg><use href="#i-logo"></use></svg></span><span class="brand-copy"><strong>FluxPay</strong><small>Pagamentos recorrentes</small></span></a>
             <p>Plataforma para cobranças recorrentes, links de pagamento, checkout e gestão financeira de negócios com receita mensal.</p>
         </div>
-        <nav><strong>FluxPay</strong><a href="#inicio">Plataforma</a><a href="#crie-cobre">Cobranças recorrentes</a><a href="#ferramentas">Links de pagamento</a><a href="#checkout">Checkout</a><a href="#controle">Relatórios</a></nav>
+        <nav><strong>FluxPay</strong><a href="#inicio">Plataforma</a><a href="#crie-cobre">Cobranças recorrentes</a><a href="#ferramentas">Links de pagamento</a><a href="<?= e(public_url('/checkout.php')) ?>">Checkout</a><a href="#controle">Relatórios</a></nav>
         <nav><strong>Soluções</strong><a href="#prova-social">Escolas</a><a href="#prova-social">Academias</a><a href="#prova-social">Clínicas</a><a href="#prova-social">Agências</a><a href="#prova-social">Infoprodutores</a><a href="#prova-social">Prestadores de serviço</a></nav>
         <nav><strong>Empresa</strong><a href="#inicio">Sobre</a><a href="#lead">Contato</a><a href="#lead">Parcerias</a><a href="#clientes">Blog</a></nav>
         <nav><strong>Suporte</strong><a href="#faq">Central de ajuda</a><a href="https://wa.me/5500000000000" target="_blank" rel="noopener noreferrer">WhatsApp</a><a href="mailto:contato@fluxpay.com.br">E-mail</a><a href="#seguranca">Status</a></nav>

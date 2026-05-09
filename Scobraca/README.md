@@ -33,6 +33,7 @@ database/
   seed.sql
 public/
   index.php
+  checkout.php
   login.php
   logout.php
   admin/
@@ -93,7 +94,7 @@ Sem filtro por empresa, uma empresa pode visualizar dados de outra.
 
 ## Landing page FluxPay
 
-A landing pública está em `public/index.php` e usa:
+A landing pública está em `public/index.php`. O checkout demonstrativo separado está em `public/checkout.php`. Ambos usam:
 
 ```text
 public/assets/css/style.css
@@ -122,8 +123,10 @@ Depois acesse `http://localhost:8000`.
 ### Onde alterar
 
 - Textos, planos, depoimentos, FAQ e seções: `public/index.php`.
+- Fluxo visual de checkout, resumo do pedido e campos da compra: `public/checkout.php`.
 - Visual, responsividade e animações CSS: `public/assets/css/style.css`.
-- Mega menu, carrossel, FAQ, contadores e formulário: `public/assets/js/main.js`.
+- Mega menu, carrossel, FAQ, contadores, parallax leve, formulários e checkout demonstrativo: `public/assets/js/main.js`.
 - Favicon e imagem de compartilhamento: `public/assets/icons/favicon.svg` e `public/assets/img/fluxpay-og.svg`.
 
 O formulário da landing não envia dados reais nesta versão. A função `handleLeadSubmit()` em `public/assets/js/main.js` está preparada para conectar um endpoint futuro da FluxPay.
+O checkout também não processa pagamentos reais. A função `initCheckoutPage()` contém o ponto marcado com TODO para conectar gateway, criação de assinatura e validações server-side.
