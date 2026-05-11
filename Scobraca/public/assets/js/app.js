@@ -141,4 +141,70 @@ document.addEventListener('DOMContentLoaded', () => {
         syncSections();
         fillMonthlyDefaults();
     });
+
+    document.querySelectorAll('[data-payment-form]').forEach((form) => {
+        const chargeSelect = form.querySelector('[data-payment-charge]');
+        const clientSelect = form.querySelector('[data-payment-client]');
+        const amountInput = form.querySelector('[data-payment-amount]');
+        const helper = form.querySelector('[data-payment-helper]');
+
+        const setHelperText = (title, text) => {
+            if (!helper) {
+                return;
+            }
+
+            const titleNode = helper.querySelector('strong');
+            const textNode = helper.querySelector('span');
+
+            if (titleNode) {
+                titleNode.textContent = title;
+            }
+
+            if (textNode) {
+                textNode.textContent = text;
+            }
+        };
+
+        const syncPaymentCharge = () => {
+            if (!chargeSelect) {
+                return;
+            }
+
+            const option = chargeSelect.selectedOptions[0];
+
+            if (!option || !option.value) {
+                setHelperText(
+                    'Pagamento parcial permitido',
+                    'Selecione uma cobrança e informe o valor recebido. Pode ser o saldo total ou apenas uma parte da parcela.'
+                );
+
+                return;
+            }
+
+            if (clientSelect && option.dataset.clienteId) {
+                clientSelect.value = option.dataset.clienteId;
+            }
+
+            if (amountInput && option.dataset.saldo && amountInput.value.trim() === '') {
+                amountInput.value = option.dataset.saldo;
+            }
+
+            setHelperText(
+                `Saldo da cobrança: ${option.dataset.saldoLabel || '-'}`,
+                `Valor original: ${option.dataset.valorLabel || '-'}. Para AV/pagamento parcial, troque o valor recebido por qualquer quantia menor ou igual ao saldo.`
+            );
+        };
+
+        if (chargeSelect) {
+            chargeSelect.addEventListener('change', () => {
+                if (amountInput) {
+                    amountInput.value = '';
+                }
+
+                syncPaymentCharge();
+            });
+        }
+
+        syncPaymentCharge();
+    });
 });

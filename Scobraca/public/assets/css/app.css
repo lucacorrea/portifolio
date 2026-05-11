@@ -890,6 +890,26 @@ textarea:focus {
     line-height: 1.55;
 }
 
+.payment-helper {
+    display: grid;
+    gap: 4px;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-sm);
+    padding: 13px 14px;
+    background: #eff6ff;
+}
+
+.payment-helper strong {
+    color: var(--accent-blue);
+    font-size: 0.9rem;
+}
+
+.payment-helper span {
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
 .form-stack {
     display: grid;
     gap: 14px;
@@ -1030,7 +1050,8 @@ tr:last-child td {
 
 .badge.pendente,
 .badge.Em,
-.badge.aberto {
+.badge.aberto,
+.badge.parcial {
     background: var(--accent-yellow-bg);
     color: var(--accent-yellow);
 }

@@ -103,6 +103,10 @@ database/migrations/2026_05_11_cobrancas_tipo_parcelamento.sql
 
 Essa migração adiciona o tipo da cobrança, dados de parcelamento e remove a trava antiga que permitia apenas uma cobrança por cliente e referência.
 
+## Pagamentos parciais
+
+O sistema permite registrar pagamento parcial de uma cobrança. Na tela de pagamentos, selecione a cobrança e informe qualquer valor menor ou igual ao saldo. O pagamento fica no histórico, a cobrança continua em aberto/vencida enquanto houver saldo e muda para `Paga` quando o total recebido alcançar o valor da parcela.
+
 ## Landing page FluxPay
 
 A landing pública está em `public/index.php`. O checkout demonstrativo separado está em `public/checkout.php`. Ambos usam:
