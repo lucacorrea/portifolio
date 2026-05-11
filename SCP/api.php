@@ -173,12 +173,14 @@ if (!$hasAssessora) { $pdo->exec("ALTER TABLE processos ADD COLUMN assessora_res
 if (!$hasTopico) { $pdo->exec("ALTER TABLE processos ADD COLUMN topico_detalhado VARCHAR(255)"); }
 if (!$hasComentario) { $pdo->exec("ALTER TABLE processos ADD COLUMN comentario_atividade TEXT"); }
 
-// Verificar se a coluna avaliador existe
-$hasAvaliador = false;
-foreach ($columns as $col) {
-    if ($col['Field'] === 'avaliador') { $hasAvaliador = true; break; }
-}
 if (!$hasAvaliador) { $pdo->exec("ALTER TABLE processos ADD COLUMN avaliador VARCHAR(255)"); }
+
+// Verificar se a coluna data_criacao existe
+$hasDataCriacao = false;
+foreach ($columns as $col) {
+    if ($col['Field'] === 'data_criacao') { $hasDataCriacao = true; break; }
+}
+if (!$hasDataCriacao) { $pdo->exec("ALTER TABLE processos ADD COLUMN data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP"); }
 
 
 
@@ -204,7 +206,7 @@ try {
     switch ($metodo) {
         case 'GET':
             if ($acao === 'listar') {
-                $stmt = $pdo->query("SELECT * FROM processos ORDER BY data_criacao DESC");
+                $stmt = $pdo->query("SELECT * FROM processos ORDER BY id DESC");
                 echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             } elseif ($acao === 'login_status') {
                 echo json_encode([
