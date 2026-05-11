@@ -269,6 +269,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const resp = await fetch('api.php?acao=listar');
         let dados = await resp.json();
         
+        if (!Array.isArray(dados)) {
+            console.error('Erro da API:', dados);
+            dados = [];
+        }
+        
         // Ordenação padrão: por Data de Ciência decrescente (mais recentes primeiro)
         dados.sort((a, b) => {
             if (!a.data_ciencia) return 1;
