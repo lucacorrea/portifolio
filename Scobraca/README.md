@@ -31,6 +31,7 @@ app/
 database/
   schema_saas.sql
   seed.sql
+  migrations/
 public/
   index.php
   checkout.php
@@ -91,6 +92,16 @@ SELECT * FROM clientes
 ```
 
 Sem filtro por empresa, uma empresa pode visualizar dados de outra.
+
+## Migrações
+
+Para bases já existentes, execute as migrações em `database/migrations/` antes de usar recursos novos. A cobrança parcelada depende de:
+
+```text
+database/migrations/2026_05_11_cobrancas_tipo_parcelamento.sql
+```
+
+Essa migração adiciona o tipo da cobrança, dados de parcelamento e remove a trava antiga que permitia apenas uma cobrança por cliente e referência.
 
 ## Landing page FluxPay
 

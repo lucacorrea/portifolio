@@ -12,7 +12,7 @@ $stmt->execute([':empresa_id' => $empresaId]);
 $clientes = $stmt->fetchAll();
 
 $stmt = $pdo->prepare(
-    "SELECT cb.id, cb.referencia, cb.valor, c.nome AS cliente
+    "SELECT cb.id, cb.referencia, cb.valor, cb.tipo, cb.numero_parcela, cb.total_parcelas, c.nome AS cliente
      FROM cobrancas cb
      INNER JOIN clientes c ON c.id = cb.cliente_id
      WHERE cb.empresa_id = :empresa_id AND cb.status IN ('Em aberto','Vencida')
@@ -57,7 +57,13 @@ $cobrancas = $stmt->fetchAll();
                     <select name="cobranca_id">
                         <option value="">Sem vínculo</option>
                         <?php foreach ($cobrancas as $cobranca): ?>
-                            <option value="<?= (int) $cobranca['id'] ?>"><?= e($cobranca['cliente']) ?> · <?= e($cobranca['referencia']) ?> · <?= moeda_br((float) $cobranca['valor']) ?></option>
+                            <?php
+                            $tipoCobranca = (string) ($cobranca['tipo'] ?? 'mensalidade');
+                            $detalheCobranca = $tipoCobranca === 'parcelada'
+                                ? (((int) ($cobranca['numero_parcela'] ?? 1)) === 0 ? 'entrada' : 'parcela ' . (int) $cobranca['numero_parcela'] . '/' . (int) $cobranca['total_parcelas'])
+                                : 'mensalidade';
+                            ?>
+                            <option value="<?= (int) $cobranca['id'] ?>"><?= e($cobranca['cliente']) ?> · <?= e($detalheCobranca) ?> · <?= e($cobranca['referencia']) ?> · <?= moeda_br((float) $cobranca['valor']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>

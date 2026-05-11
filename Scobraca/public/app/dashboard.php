@@ -32,7 +32,7 @@ $stmt->execute([':empresa_id' => $empresaId]);
 $totalRecebido = (float) $stmt->fetchColumn();
 
 $stmt = $pdo->prepare(
-    "SELECT c.nome AS cliente, cb.referencia, cb.valor, cb.data_vencimento, cb.status
+    "SELECT c.nome AS cliente, cb.referencia, cb.valor, cb.data_vencimento, cb.status, cb.tipo, cb.numero_parcela, cb.total_parcelas
      FROM cobrancas cb
      INNER JOIN clientes c ON c.id = cb.cliente_id
      WHERE cb.empresa_id = :empresa_id
@@ -130,11 +130,22 @@ $recebimentoMes = [
                 </div>
                 <div class="table-responsive">
                     <table>
-                        <thead><tr><th>Cliente</th><th>Referência</th><th>Valor</th><th>Vencimento</th><th>Status</th></tr></thead>
+                        <thead><tr><th>Cliente</th><th>Tipo</th><th>Referência</th><th>Valor</th><th>Vencimento</th><th>Status</th></tr></thead>
                         <tbody>
                         <?php foreach ($proximasCobrancas as $cobranca): ?>
+                            <?php
+                            $tipoCobranca = (string) ($cobranca['tipo'] ?? 'mensalidade');
+                            $labelCobranca = 'Mensalidade';
+
+                            if ($tipoCobranca === 'parcelada') {
+                                $labelCobranca = ((int) ($cobranca['numero_parcela'] ?? 1)) === 0
+                                    ? 'Entrada'
+                                    : 'Parcela ' . (int) $cobranca['numero_parcela'] . '/' . (int) $cobranca['total_parcelas'];
+                            }
+                            ?>
                             <tr>
                                 <td><strong><?= e($cobranca['cliente']) ?></strong></td>
+                                <td><span class="soft-label <?= $tipoCobranca === 'parcelada' ? 'warning' : 'success' ?>"><?= e($labelCobranca) ?></span></td>
                                 <td><?= e($cobranca['referencia']) ?></td>
                                 <td><?= moeda_br((float) $cobranca['valor']) ?></td>
                                 <td><?= e(data_br($cobranca['data_vencimento'])) ?></td>
@@ -142,7 +153,7 @@ $recebimentoMes = [
                             </tr>
                         <?php endforeach; ?>
                         <?php if (!$proximasCobrancas): ?>
-                            <tr><td colspan="5">Nenhuma cobrança cadastrada.</td></tr>
+                            <tr><td colspan="6">Nenhuma cobrança cadastrada.</td></tr>
                         <?php endif; ?>
                         </tbody>
                     </table>
