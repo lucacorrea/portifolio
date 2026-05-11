@@ -473,21 +473,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderizarFiltroAssessores() {
         const selectAssessora = document.getElementById('filtro-assessora');
-        if (!selectAssessora) return;
+        if (!selectAssessora || !dadosOriginais) return;
         
         const valorAtual = selectAssessora.value;
-        const assessores = [...new Set(dadosOriginais.map(p => String(p.assessora_responsavel || '').trim().toUpperCase()))]
-            .filter(a => a !== '')
+        
+        // Coletar nomes de assessoras de duas fontes: da coluna assessora_responsavel e do campo avaliador
+        const nomesEncontrados = [];
+        dadosOriginais.forEach(p => {
+            if (p.assessora_responsavel) nomesEncontrados.push(String(p.assessora_responsavel).trim().toUpperCase());
+            if (p.avaliador) nomesEncontrados.push(String(p.avaliador).trim().toUpperCase());
+        });
+        
+        const assessoresUnicos = [...new Set(nomesEncontrados)]
+            .filter(a => a && a !== '' && a !== '---' && a !== 'N/A')
             .sort();
         
-        selectAssessora.innerHTML = '<option value="">Assessora (Todas)</option>';
-        assessores.forEach(a => {
-            const option = document.createElement('option');
-            option.value = a;
-            option.textContent = a;
-            if (a === valorAtual) option.selected = true;
-            selectAssessora.appendChild(option);
+        let html = '<option value="">Assessora (Todas)</option>';
+        assessoresUnicos.forEach(a => {
+            html += `<option value="${a}" ${a === valorAtual ? 'selected' : ''}>${a}</option>`;
         });
+        
+        selectAssessora.innerHTML = html;
     }
 
     function renderizarTabela() {
