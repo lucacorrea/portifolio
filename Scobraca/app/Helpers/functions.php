@@ -150,3 +150,104 @@ function decimal_from_input(string $value): float
 
     return (float) $value;
 }
+
+function only_digits(string $value): string
+{
+    return preg_replace('/\D+/', '', $value) ?? '';
+}
+
+function usuario_documento_tipo(string $documento): ?string
+{
+    $digits = only_digits($documento);
+
+    if (strlen($digits) === 11) {
+        return 'cpf';
+    }
+
+    if (strlen($digits) === 14) {
+        return 'cnpj';
+    }
+
+    return null;
+}
+
+function cpf_valido(string $cpf): bool
+{
+    $cpf = only_digits($cpf);
+
+    if (strlen($cpf) !== 11 || preg_match('/^(\d)\1{10}$/', $cpf)) {
+        return false;
+    }
+
+    for ($t = 9; $t < 11; $t++) {
+        $soma = 0;
+
+        for ($i = 0; $i < $t; $i++) {
+            $soma += (int) $cpf[$i] * (($t + 1) - $i);
+        }
+
+        $digito = ((10 * $soma) % 11) % 10;
+
+        if ((int) $cpf[$t] !== $digito) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function cnpj_valido(string $cnpj): bool
+{
+    $cnpj = only_digits($cnpj);
+
+    if (strlen($cnpj) !== 14 || preg_match('/^(\d)\1{13}$/', $cnpj)) {
+        return false;
+    }
+
+    $pesos = [
+        [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
+        [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
+    ];
+
+    for ($etapa = 0; $etapa < 2; $etapa++) {
+        $soma = 0;
+        $limite = 12 + $etapa;
+
+        for ($i = 0; $i < $limite; $i++) {
+            $soma += (int) $cnpj[$i] * $pesos[$etapa][$i];
+        }
+
+        $resto = $soma % 11;
+        $digito = $resto < 2 ? 0 : 11 - $resto;
+
+        if ((int) $cnpj[$limite] !== $digito) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function documento_cpf_cnpj_valido(string $documento): bool
+{
+    $tipo = usuario_documento_tipo($documento);
+
+    return $tipo === 'cpf'
+        ? cpf_valido($documento)
+        : ($tipo === 'cnpj' && cnpj_valido($documento));
+}
+
+function formatar_documento(?string $documento): string
+{
+    $digits = only_digits((string) $documento);
+
+    if (strlen($digits) === 11) {
+        return substr($digits, 0, 3) . '.' . substr($digits, 3, 3) . '.' . substr($digits, 6, 3) . '-' . substr($digits, 9, 2);
+    }
+
+    if (strlen($digits) === 14) {
+        return substr($digits, 0, 2) . '.' . substr($digits, 2, 3) . '.' . substr($digits, 5, 3) . '/' . substr($digits, 8, 4) . '-' . substr($digits, 12, 2);
+    }
+
+    return $documento ?: '-';
+}

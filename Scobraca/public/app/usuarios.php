@@ -7,7 +7,7 @@ $pageDescription = 'Equipe com acesso ao painel da empresa.';
 $empresaId = current_empresa_id();
 $podeCadastrar = ($_SESSION['usuario']['tipo'] ?? '') === 'empresa_admin';
 
-$stmt = db()->prepare('SELECT id, nome, email, tipo, ativo, ultimo_login, criado_em FROM usuarios WHERE empresa_id = :empresa_id ORDER BY id DESC');
+$stmt = db()->prepare('SELECT id, nome, email, documento, documento_tipo, tipo, ativo, ultimo_login, criado_em FROM usuarios WHERE empresa_id = :empresa_id ORDER BY id DESC');
 $stmt->execute([':empresa_id' => $empresaId]);
 $usuarios = $stmt->fetchAll();
 ?>
@@ -38,12 +38,13 @@ $usuarios = $stmt->fetchAll();
             </div>
             <div class="table-responsive">
                 <table>
-                    <thead><tr><th>Nome</th><th>E-mail</th><th>Tipo</th><th>Status</th><th>Último login</th><th>Criado em</th></tr></thead>
+                    <thead><tr><th>Nome</th><th>E-mail</th><th>CPF/CNPJ</th><th>Tipo</th><th>Status</th><th>Último login</th><th>Criado em</th></tr></thead>
                     <tbody>
                     <?php foreach ($usuarios as $u): ?>
                         <tr>
                             <td><strong><?= e($u['nome']) ?></strong></td>
                             <td><?= e($u['email']) ?></td>
+                            <td><?= e(formatar_documento($u['documento'] ?? null)) ?></td>
                             <td><span class="soft-label"><?= e($u['tipo']) ?></span></td>
                             <td><span class="badge <?= (int) $u['ativo'] === 1 ? 'ativa' : 'bloqueada' ?>"><?= (int) $u['ativo'] === 1 ? 'Ativo' : 'Inativo' ?></span></td>
                             <td><?= e($u['ultimo_login'] ? data_br($u['ultimo_login']) : 'Sem registro') ?></td>
@@ -51,7 +52,7 @@ $usuarios = $stmt->fetchAll();
                         </tr>
                     <?php endforeach; ?>
                     <?php if (!$usuarios): ?>
-                        <tr><td colspan="6">Nenhum usuário cadastrado.</td></tr>
+                        <tr><td colspan="7">Nenhum usuário cadastrado.</td></tr>
                     <?php endif; ?>
                     </tbody>
                 </table>

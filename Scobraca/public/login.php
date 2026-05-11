@@ -20,15 +20,15 @@ if (!empty($_SESSION['usuario'])) {
     <main class="login-card">
         <div class="login-brand">FluxPay <span>Empresa</span></div>
         <h1>Acesso da empresa</h1>
-        <p>Entre com o usuário cadastrado para a sua empresa.</p>
+        <p>Entre com e-mail, CPF ou CNPJ do usuário cadastrado para a sua empresa.</p>
 
         <?php require APP_PATH . '/Includes/flash.php'; ?>
 
         <form method="post" action="<?= e(public_url('/actions/auth/login.php')) ?>" class="form-stack">
             <?= csrf_field() ?>
             <label>
-                E-mail
-                <input type="email" name="email" required autocomplete="email" placeholder="seu@email.com">
+                E-mail, CPF ou CNPJ
+                <input type="text" name="email" required autocomplete="username" placeholder="seu@email.com ou documento">
             </label>
             <label>
                 Senha

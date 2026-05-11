@@ -14,10 +14,17 @@ $planoId = (int) ($_POST['plano_id'] ?? 0);
 $status = $_POST['status'] ?? 'teste';
 $usuarioNome = trim($_POST['usuario_nome'] ?? '');
 $usuarioEmail = trim($_POST['usuario_email'] ?? '');
+$usuarioDocumento = only_digits((string) ($_POST['usuario_documento'] ?? ''));
+$usuarioDocumentoTipo = usuario_documento_tipo($usuarioDocumento);
 $usuarioSenha = (string) ($_POST['usuario_senha'] ?? '');
 
-if ($nome === '' || $email === '' || $usuarioNome === '' || $usuarioEmail === '' || $usuarioSenha === '') {
+if ($nome === '' || $email === '' || $usuarioNome === '' || $usuarioEmail === '' || $usuarioDocumento === '' || $usuarioSenha === '') {
     flash('error', 'Preencha os dados da empresa e do usuário principal.');
+    redirect('/admin/empresas-cadastro.php');
+}
+
+if (!filter_var($usuarioEmail, FILTER_VALIDATE_EMAIL) || !$usuarioDocumentoTipo || !documento_cpf_cnpj_valido($usuarioDocumento)) {
+    flash('error', 'Informe e-mail e CPF/CNPJ válidos para o usuário principal.');
     redirect('/admin/empresas-cadastro.php');
 }
 
@@ -46,13 +53,15 @@ try {
     $empresaId = (int) $pdo->lastInsertId();
 
     $stmt = $pdo->prepare(
-        "INSERT INTO usuarios (empresa_id, nome, email, senha, tipo, ativo, criado_em)
-         VALUES (:empresa_id, :nome, :email, :senha, 'empresa_admin', 1, NOW())"
+        "INSERT INTO usuarios (empresa_id, nome, email, documento, documento_tipo, senha, tipo, ativo, criado_em)
+         VALUES (:empresa_id, :nome, :email, :documento, :documento_tipo, :senha, 'empresa_admin', 1, NOW())"
     );
     $stmt->execute([
         ':empresa_id' => $empresaId,
         ':nome' => $usuarioNome,
         ':email' => $usuarioEmail,
+        ':documento' => $usuarioDocumento,
+        ':documento_tipo' => $usuarioDocumentoTipo,
         ':senha' => password_hash($usuarioSenha, PASSWORD_DEFAULT),
     ]);
 
@@ -79,7 +88,7 @@ try {
 } catch (Throwable $e) {
     $pdo->rollBack();
     error_log('[SALVAR EMPRESA] ' . $e->getMessage());
-    flash('error', 'Não foi possível cadastrar a empresa. Verifique se o e-mail já existe.');
+    flash('error', 'Não foi possível cadastrar a empresa. Verifique se o e-mail ou CPF/CNPJ do usuário já existe.');
     redirect('/admin/empresas-cadastro.php');
 }
 

@@ -103,6 +103,14 @@ database/migrations/2026_05_11_cobrancas_tipo_parcelamento.sql
 
 Essa migração adiciona o tipo da cobrança, dados de parcelamento e remove a trava antiga que permitia apenas uma cobrança por cliente e referência.
 
+Para permitir cadastro e login de usuários por CPF/CNPJ, execute também:
+
+```text
+database/migrations/2026_05_11_usuarios_documento_login.sql
+```
+
+Depois disso, novos usuários passam a ter CPF ou CNPJ cadastrado e podem entrar com e-mail, CPF ou CNPJ.
+
 ## Pagamentos parciais
 
 O sistema permite registrar pagamento parcial de uma cobrança. Na tela de pagamentos, selecione a cobrança e informe qualquer valor menor ou igual ao saldo. O pagamento fica no histórico, a cobrança continua em aberto/vencida enquanto houver saldo e muda para `Paga` quando o total recebido alcançar o valor da parcela.

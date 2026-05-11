@@ -37,20 +37,21 @@ $formatarDataHora = static function (?string $data): string {
             <div class="table-responsive">
                 <table>
                     <thead>
-                    <tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Perfil</th><th>Último login</th></tr>
+                    <tr><th>Nome</th><th>E-mail</th><th>CPF/CNPJ</th><th>Status</th><th>Perfil</th><th>Último login</th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($usuarios as $u): ?>
                         <tr>
                             <td><strong><?= e($u['nome']) ?></strong></td>
                             <td><?= e($u['email']) ?></td>
+                            <td><?= e(formatar_documento($u['documento'] ?? null)) ?></td>
                             <td><span class="badge <?= (int) $u['ativo'] === 1 ? 'ativa' : 'bloqueada' ?>"><?= (int) $u['ativo'] === 1 ? 'Ativo' : 'Bloqueado' ?></span></td>
                             <td><span class="soft-label"><?= e($u['tipo']) ?></span></td>
                             <td><?= e($formatarDataHora($u['ultimo_login'])) ?></td>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (!$usuarios): ?>
-                        <tr><td colspan="5">Nenhum administrador cadastrado.</td></tr>
+                        <tr><td colspan="6">Nenhum administrador cadastrado.</td></tr>
                     <?php endif; ?>
                     </tbody>
                 </table>

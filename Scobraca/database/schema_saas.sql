@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     empresa_id INT UNSIGNED DEFAULT NULL,
     nome VARCHAR(120) NOT NULL,
     email VARCHAR(150) NOT NULL,
+    documento VARCHAR(20) DEFAULT NULL,
+    documento_tipo ENUM('cpf','cnpj') DEFAULT NULL,
     senha VARCHAR(255) NOT NULL,
     tipo ENUM('platform_admin','empresa_admin','operador') NOT NULL DEFAULT 'operador',
     ativo TINYINT(1) NOT NULL DEFAULT 1,
@@ -58,6 +60,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_em DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_usuarios_email (email),
+    UNIQUE KEY uq_usuarios_documento (documento),
     INDEX idx_usuarios_empresa (empresa_id),
     INDEX idx_usuarios_tipo (tipo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

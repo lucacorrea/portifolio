@@ -71,6 +71,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    document.querySelectorAll('input[name="documento"], input[name="usuario_documento"]').forEach((input) => {
+        input.addEventListener('input', () => {
+            const digits = input.value.replace(/\D/g, '').slice(0, 14);
+
+            if (digits.length <= 11) {
+                input.value = digits
+                    .replace(/(\d{3})(\d)/, '$1.$2')
+                    .replace(/(\d{3})(\d)/, '$1.$2')
+                    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                return;
+            }
+
+            input.value = digits
+                .replace(/(\d{2})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1/$2')
+                .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+        });
+    });
+
     document.querySelectorAll('[data-cobranca-form]').forEach((form) => {
         const typeSelect = form.querySelector('[data-billing-type]');
         const clientSelect = form.querySelector('[data-client-select]');

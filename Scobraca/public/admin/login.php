@@ -21,15 +21,15 @@ if (!empty($_SESSION['usuario'])) {
     <main class="login-card">
         <div class="login-brand">FluxPay <span>Admin</span></div>
         <h1>Acesso administrativo</h1>
-        <p>Área reservada para administradores internos da plataforma.</p>
+        <p>Área reservada para administradores internos. Use e-mail, CPF ou CNPJ.</p>
 
         <?php require APP_PATH . '/Includes/flash.php'; ?>
 
         <form method="post" action="<?= e(public_url('/actions/auth/admin_login.php')) ?>" class="form-stack">
             <?= csrf_field() ?>
             <label>
-                E-mail
-                <input type="email" name="email" required autocomplete="email" placeholder="admin@empresa.com">
+                E-mail, CPF ou CNPJ
+                <input type="text" name="email" required autocomplete="username" placeholder="admin@empresa.com ou documento">
             </label>
             <label>
                 Senha
