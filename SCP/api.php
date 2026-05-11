@@ -204,7 +204,7 @@ try {
     switch ($metodo) {
         case 'GET':
             if ($acao === 'listar') {
-                $stmt = $pdo->query("SELECT * FROM processos ORDER BY data_criacao DESC");
+                $stmt = $pdo->query("SELECT * FROM processos ORDER BY id DESC");
                 echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             } elseif ($acao === 'login_status') {
                 echo json_encode([
