@@ -525,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const classUser = window.getColorForUser(p.analisador);
 
             const statusLimpo = (p.status || 'PENDENTE').toUpperCase().trim();
-            const statusClass = statusLimpo.toLowerCase();
+            const statusClass = statusLimpo.toLowerCase().replace(/\s+/g, '-');
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -554,8 +554,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     ` : (statusLimpo === 'SENDO AVALIADO' ? `
                         <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
                             ${(p.data_analise || p.assessora_responsavel) ? `
-                                <i class="fas fa-calendar-check" style="color: #eab308;"></i> ${formatarData(p.data_analise)}<br>
-                                <i class="fas fa-user-check" style="color: #eab308;"></i> ${p.assessora_responsavel || 'N/A'}
+                                <i class="fas fa-calendar-check" style="color: #22c55e;"></i> ${formatarData(p.data_analise)}<br>
+                                <i class="fas fa-user-check" style="color: #22c55e;"></i> ${p.assessora_responsavel || 'N/A'}
                             ` : `<i class="fas fa-info-circle"></i> Sem registro de detalhes`}
                         </div>
                     ` : '')}

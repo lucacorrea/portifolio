@@ -395,7 +395,7 @@ td:last-child {
 }
 
 .badge-pendente { background: #FF0000; color: white; border: 1px solid #cc0000; }
-.badge-sendo-avaliado { background: #FFFFFF; color: #000; border: 1px solid #ccc; }
+.badge-sendo-avaliado { background: #90EE90; color: #000; border: 1px solid #7ccd7c; }
 .badge-em-elaboração { background: #FFFF00; color: #000; border: 1px solid #cccc00; }
 .badge-protocolado { background: #90EE90; color: #000; border: 1px solid #7ccd7c; }
 .badge-analisado { background: #90EE90; color: #000; border: 1px solid #7ccd7c; }
