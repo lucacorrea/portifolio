@@ -858,6 +858,38 @@ textarea:focus {
     align-items: end;
 }
 
+.form-grid.inner {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 16px;
+}
+
+.span-full {
+    grid-column: 1 / -1;
+}
+
+.billing-mode-panel {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 18px;
+    background: #fbfcfe;
+}
+
+.billing-mode-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.billing-mode-copy strong {
+    color: var(--text-primary);
+    font-size: 0.98rem;
+}
+
+.billing-mode-copy span {
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+    line-height: 1.55;
+}
+
 .form-stack {
     display: grid;
     gap: 14px;
@@ -1116,6 +1148,10 @@ code {
     .form-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .form-grid.inner {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 768px) {
@@ -1166,7 +1202,8 @@ code {
 
     .grid.three,
     .grid.four,
-    .form-grid {
+    .form-grid,
+    .form-grid.inner {
         grid-template-columns: 1fr;
     }
 

@@ -3,7 +3,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap/app.php';
 require_tenant_user();
 
 $pageTitle = 'Cobranças';
-$pageDescription = 'Controle de mensalidades e vencimentos.';
+$pageDescription = 'Controle de mensalidades, parcelamentos e vencimentos.';
 $empresaId = current_empresa_id();
 
 $stmt = db()->prepare(
@@ -35,19 +35,33 @@ $cobrancas = $stmt->fetchAll();
             <div class="section-heading">
                 <div>
                     <h2>Cobranças cadastradas</h2>
-                    <p class="muted">Mensalidades geradas por cliente, referência e status financeiro.</p>
+                    <p class="muted">Mensalidades fixas e parcelas geradas por cliente, referência e status financeiro.</p>
                 </div>
                 <a class="btn btn-primary" href="<?= e(public_url('/app/cobrancas-cadastro.php')) ?>">Gerar cobrança</a>
             </div>
             <div class="table-responsive">
                 <table>
                     <thead>
-                    <tr><th>Cliente</th><th>Referência</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Criada em</th></tr>
+                    <tr><th>Cliente</th><th>Tipo</th><th>Detalhe</th><th>Referência</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Criada em</th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($cobrancas as $cobranca): ?>
+                        <?php
+                        $tipo = (string) ($cobranca['tipo'] ?? 'mensalidade');
+                        $numeroParcela = (int) ($cobranca['numero_parcela'] ?? 1);
+                        $totalParcelas = (int) ($cobranca['total_parcelas'] ?? 1);
+                        $detalhe = 'Mensalidade fixa';
+
+                        if ($tipo === 'parcelada') {
+                            $detalhe = $numeroParcela === 0
+                                ? 'Entrada'
+                                : 'Parcela ' . $numeroParcela . '/' . max(1, $totalParcelas);
+                        }
+                        ?>
                         <tr>
                             <td><strong><?= e($cobranca['cliente']) ?></strong></td>
+                            <td><span class="soft-label <?= $tipo === 'parcelada' ? 'warning' : 'success' ?>"><?= e($tipo === 'parcelada' ? 'Parcelada' : 'Mensalidade') ?></span></td>
+                            <td><?= e($detalhe) ?></td>
                             <td><?= e($cobranca['referencia']) ?></td>
                             <td><?= moeda_br((float) $cobranca['valor']) ?></td>
                             <td><?= e(data_br($cobranca['data_vencimento'])) ?></td>
@@ -56,7 +70,7 @@ $cobrancas = $stmt->fetchAll();
                         </tr>
                     <?php endforeach; ?>
                     <?php if (!$cobrancas): ?>
-                        <tr><td colspan="6">Nenhuma cobrança cadastrada.</td></tr>
+                        <tr><td colspan="8">Nenhuma cobrança cadastrada.</td></tr>
                     <?php endif; ?>
                     </tbody>
                 </table>
