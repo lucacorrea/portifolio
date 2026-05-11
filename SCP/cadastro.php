@@ -271,7 +271,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
                     <label for="status">Status</label>
                     <select id="status">
                         <option value="PENDENTE" style="color: #ef4444; font-weight: bold;">PENDENTE</option>
-                        <option value="SENDO AVALIADO" style="color: #eab308; font-weight: bold;">SENDO AVALIADO</option>
+                        <option value="SENDO AVALIADO" style="color: #eab308; font-weight: bold;">AVALIADO</option>
                         <option value="EM ELABORAÇÃO" style="color: #f97316; font-weight: bold;">EM ELABORAÇÃO</option>
                         <option value="PROTOCOLADO" style="color: #22c55e; font-weight: bold;">PROTOCOLADO</option>
                         <option value="ANALISADO" style="color: #3b82f6; font-weight: bold;">ANALISADO</option>

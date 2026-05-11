@@ -146,7 +146,7 @@ if (!isset($_SESSION['usuario_id'])) {
                 <select id="filtro-status" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
                     <option value="">Status (Todos)</option>
                     <option value="PENDENTE">Pendente</option>
-                    <option value="SENDO AVALIADO">Sendo Avaliado</option>
+                    <option value="SENDO AVALIADO">Avaliado</option>
                     <option value="EM ELABORAÇÃO">Em Elaboração</option>
                     <option value="PROTOCOLADO">Protocolado</option>
                     <option value="ANALISADO">Analisado</option>

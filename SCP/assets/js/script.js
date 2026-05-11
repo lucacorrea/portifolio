@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><span class="tag-badge ${classUser}">${p.analisador || 'N/A'}</span></td>
                 <td><span class="tag-badge ${window.getColorForUser(p.assessora_responsavel)}">${p.assessora_responsavel || '---'}</span></td>
                 <td>
-                    <span class="badge badge-${statusClass}">${statusLimpo}</span>
+                    <span class="badge badge-${statusClass}">${statusLimpo === 'SENDO AVALIADO' ? 'AVALIADO' : statusLimpo}</span>
                     ${statusLimpo === 'PROTOCOLADO' ? `
                         <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
                             ${(p.data_protocolo || p.protocolista || p.peticionador) ? `
@@ -551,7 +551,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <i class="fas fa-user-edit" style="color: var(--status-protocolado);"></i> ${p.protocolista || p.peticionador || 'N/A'}
                             ` : `<i class="fas fa-info-circle"></i> Sem registro de detalhes`}
                         </div>
-                    ` : ''}
+                    ` : (statusLimpo === 'SENDO AVALIADO' ? `
+                        <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
+                            ${(p.data_analise || p.assessora_responsavel) ? `
+                                <i class="fas fa-calendar-check" style="color: #eab308;"></i> ${formatarData(p.data_analise)}<br>
+                                <i class="fas fa-user-check" style="color: #eab308;"></i> ${p.assessora_responsavel || 'N/A'}
+                            ` : `<i class="fas fa-info-circle"></i> Sem registro de detalhes`}
+                        </div>
+                    ` : '')}
                 </td>
                 <td>
                     <div class="dropdown">
@@ -900,7 +907,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const dados = await resp.json();
         const p = dados.find(x => x.id == id);
         if (!p) return;
+        
         p.status = 'SENDO AVALIADO';
+        p.data_analise = new Date().toISOString().split('T')[0];
+        
+        const elAnalisador = document.getElementById('nome-analisador');
+        p.assessora_responsavel = elAnalisador ? elAnalisador.textContent.trim() : 'Usuário';
+
         const saveResp = await fetch('api.php?acao=salvar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
