@@ -6,6 +6,11 @@ require_once dirname(__DIR__, 4) . '/bootstrap/app.php';
 require_tenant_user();
 verify_csrf();
 
+if (!suporte_ensure_tables()) {
+    flash('error', 'O suporte ainda não está preparado no banco de dados. Tente novamente em instantes ou aplique a migration de suporte.');
+    redirect('/app/suporte.php');
+}
+
 function suporte_app_redirect_with_error(string $message): never
 {
     flash('error', $message);

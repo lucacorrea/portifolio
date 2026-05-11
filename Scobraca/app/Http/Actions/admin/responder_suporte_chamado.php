@@ -6,6 +6,11 @@ require_once dirname(__DIR__, 4) . '/bootstrap/app.php';
 require_platform_admin();
 verify_csrf();
 
+if (!suporte_ensure_tables()) {
+    flash('error', 'O suporte ainda não está preparado no banco de dados. Tente novamente em instantes ou aplique a migration de suporte.');
+    redirect('/admin/suporte.php');
+}
+
 function suporte_admin_reply_error(string $message, int $chamadoId = 0): never
 {
     if (db()->inTransaction()) {

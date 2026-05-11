@@ -4,64 +4,69 @@ require_platform_admin();
 
 $pageTitle = 'Suporte e chat';
 $pageDescription = 'Atendimento dos chamados abertos pelas empresas.';
-
-$stmt = db()->query(
-    "SELECT
-        COUNT(*) AS total,
-        SUM(CASE WHEN status IN ('aberto', 'em_atendimento') THEN 1 ELSE 0 END) AS em_andamento,
-        SUM(CASE WHEN status = 'aguardando_empresa' THEN 1 ELSE 0 END) AS aguardando,
-        SUM(CASE WHEN prioridade IN ('alta', 'urgente') AND status NOT IN ('resolvido', 'fechado') THEN 1 ELSE 0 END) AS criticos
-     FROM suporte_chamados"
-);
-$metricas = $stmt->fetch() ?: ['total' => 0, 'em_andamento' => 0, 'aguardando' => 0, 'criticos' => 0];
-
-$stmt = db()->query(
-    "SELECT sc.*,
-            e.nome AS empresa_nome,
-            e.email AS empresa_email,
-            u.nome AS usuario_nome,
-            (SELECT COUNT(*) FROM suporte_mensagens sm WHERE sm.chamado_id = sc.id) AS total_mensagens,
-            (SELECT MAX(sm.criado_em) FROM suporte_mensagens sm WHERE sm.chamado_id = sc.id) AS ultima_mensagem
-     FROM suporte_chamados sc
-     INNER JOIN empresas e ON e.id = sc.empresa_id
-     LEFT JOIN usuarios u ON u.id = sc.usuario_id
-     ORDER BY FIELD(sc.status, 'aberto', 'em_atendimento', 'aguardando_empresa', 'resolvido', 'fechado'),
-              FIELD(sc.prioridade, 'urgente', 'alta', 'media', 'baixa'),
-              COALESCE((SELECT MAX(sm2.criado_em) FROM suporte_mensagens sm2 WHERE sm2.chamado_id = sc.id), sc.criado_em) DESC,
-              sc.id DESC"
-);
-$chamados = $stmt->fetchAll();
-
+$suporteDisponivel = suporte_ensure_tables();
+$metricas = ['total' => 0, 'em_andamento' => 0, 'aguardando' => 0, 'criticos' => 0];
+$chamados = [];
 $chamadoSelecionado = null;
 $mensagens = [];
-$requestedId = (int) ($_GET['chamado_id'] ?? 0);
 
-if ($requestedId > 0) {
-    $stmt = db()->prepare(
-        "SELECT sc.*, e.nome AS empresa_nome, e.email AS empresa_email, u.nome AS usuario_nome
+if ($suporteDisponivel) {
+    $stmt = db()->query(
+        "SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN status IN ('aberto', 'em_atendimento') THEN 1 ELSE 0 END) AS em_andamento,
+            SUM(CASE WHEN status = 'aguardando_empresa' THEN 1 ELSE 0 END) AS aguardando,
+            SUM(CASE WHEN prioridade IN ('alta', 'urgente') AND status NOT IN ('resolvido', 'fechado') THEN 1 ELSE 0 END) AS criticos
+         FROM suporte_chamados"
+    );
+    $metricas = $stmt->fetch() ?: $metricas;
+
+    $stmt = db()->query(
+        "SELECT sc.*,
+                e.nome AS empresa_nome,
+                e.email AS empresa_email,
+                u.nome AS usuario_nome,
+                (SELECT COUNT(*) FROM suporte_mensagens sm WHERE sm.chamado_id = sc.id) AS total_mensagens,
+                (SELECT MAX(sm.criado_em) FROM suporte_mensagens sm WHERE sm.chamado_id = sc.id) AS ultima_mensagem
          FROM suporte_chamados sc
          INNER JOIN empresas e ON e.id = sc.empresa_id
          LEFT JOIN usuarios u ON u.id = sc.usuario_id
-         WHERE sc.id = :id
-         LIMIT 1"
+         ORDER BY FIELD(sc.status, 'aberto', 'em_atendimento', 'aguardando_empresa', 'resolvido', 'fechado'),
+                  FIELD(sc.prioridade, 'urgente', 'alta', 'media', 'baixa'),
+                  COALESCE((SELECT MAX(sm2.criado_em) FROM suporte_mensagens sm2 WHERE sm2.chamado_id = sc.id), sc.criado_em) DESC,
+                  sc.id DESC"
     );
-    $stmt->execute([':id' => $requestedId]);
-    $chamadoSelecionado = $stmt->fetch() ?: null;
-}
+    $chamados = $stmt->fetchAll();
 
-if (!$chamadoSelecionado && $chamados) {
-    $chamadoSelecionado = $chamados[0];
-}
+    $requestedId = (int) ($_GET['chamado_id'] ?? 0);
 
-if ($chamadoSelecionado) {
-    $stmt = db()->prepare(
-        "SELECT *
-         FROM suporte_mensagens
-         WHERE chamado_id = :chamado_id
-         ORDER BY criado_em ASC, id ASC"
-    );
-    $stmt->execute([':chamado_id' => (int) $chamadoSelecionado['id']]);
-    $mensagens = $stmt->fetchAll();
+    if ($requestedId > 0) {
+        $stmt = db()->prepare(
+            "SELECT sc.*, e.nome AS empresa_nome, e.email AS empresa_email, u.nome AS usuario_nome
+             FROM suporte_chamados sc
+             INNER JOIN empresas e ON e.id = sc.empresa_id
+             LEFT JOIN usuarios u ON u.id = sc.usuario_id
+             WHERE sc.id = :id
+             LIMIT 1"
+        );
+        $stmt->execute([':id' => $requestedId]);
+        $chamadoSelecionado = $stmt->fetch() ?: null;
+    }
+
+    if (!$chamadoSelecionado && $chamados) {
+        $chamadoSelecionado = $chamados[0];
+    }
+
+    if ($chamadoSelecionado) {
+        $stmt = db()->prepare(
+            "SELECT *
+             FROM suporte_mensagens
+             WHERE chamado_id = :chamado_id
+             ORDER BY criado_em ASC, id ASC"
+        );
+        $stmt->execute([':chamado_id' => (int) $chamadoSelecionado['id']]);
+        $mensagens = $stmt->fetchAll();
+    }
 }
 
 $statusOptions = [
@@ -87,6 +92,18 @@ $statusOptions = [
         <?php require APP_PATH . '/Includes/topbar.php'; ?>
         <?php require APP_PATH . '/Includes/flash.php'; ?>
 
+        <?php if (!$suporteDisponivel): ?>
+            <section class="card">
+                <div class="section-heading">
+                    <div>
+                        <h2>Suporte em configuração</h2>
+                        <p class="muted">As tabelas de suporte ainda não estão disponíveis no banco de dados.</p>
+                    </div>
+                    <span class="soft-label warning">Banco de dados</span>
+                </div>
+                <div class="empty-state">Aplique a migration <code>database/migrations/2026_05_11_suporte_chamados.sql</code> ou confirme se o usuário do banco tem permissão para criar tabelas.</div>
+            </section>
+        <?php else: ?>
         <section class="grid four support-status-grid">
             <article class="card metric accent-blue">
                 <span>Total de chamados</span>
@@ -198,6 +215,7 @@ $statusOptions = [
                 <?php endif; ?>
             </article>
         </section>
+        <?php endif; ?>
     </main>
 </div>
 </body>
