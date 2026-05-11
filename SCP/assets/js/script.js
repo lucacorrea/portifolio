@@ -553,9 +553,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     ` : (statusLimpo === 'SENDO AVALIADO' ? `
                         <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
-                            ${(p.data_analise || p.assessora_responsavel) ? `
+                            ${(p.data_analise || p.avaliador) ? `
                                 <i class="fas fa-calendar-check" style="color: #22c55e;"></i> ${formatarData(p.data_analise)}<br>
-                                <i class="fas fa-user-check" style="color: #22c55e;"></i> ${p.assessora_responsavel || 'N/A'}
+                                <i class="fas fa-user-check" style="color: #22c55e;"></i> ${p.avaliador || 'N/A'}
                             ` : `<i class="fas fa-info-circle"></i> Sem registro de detalhes`}
                         </div>
                     ` : '')}
@@ -912,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
         p.data_analise = new Date().toISOString().split('T')[0];
         
         const elAnalisador = document.getElementById('nome-analisador');
-        p.assessora_responsavel = elAnalisador ? elAnalisador.textContent.trim() : 'Usuário';
+        p.avaliador = elAnalisador ? elAnalisador.textContent.trim() : 'Usuário';
 
         const saveResp = await fetch('api.php?acao=salvar', {
             method: 'POST',
