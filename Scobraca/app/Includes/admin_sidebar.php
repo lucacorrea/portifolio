@@ -6,7 +6,7 @@ $adminNavItems = [
     ['/admin/planos.php', 'Planos', '<path d="M20 7H4"></path><path d="M20 12H4"></path><path d="M20 17H4"></path><path d="M6 7v10"></path>', ['/admin/planos.php', '/admin/planos-cadastro.php']],
     ['/admin/assinaturas.php', 'Assinaturas', '<path d="M7 3h10l4 4v14H3V3h4z"></path><path d="M17 3v5h5"></path><path d="M8 13h8"></path><path d="M8 17h5"></path>', ['/admin/assinaturas.php', '/admin/assinaturas-cadastro.php']],
     ['/admin/relatorios.php', 'Relatórios', '<path d="M4 19V5"></path><path d="M4 19h16"></path><path d="M8 16v-5"></path><path d="M12 16V8"></path><path d="M16 16v-3"></path>', ['/admin/relatorios.php']],
-    ['/admin/suporte.php', 'Suporte e chat', '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path>', ['/admin/suporte.php']],
+    ['/admin/suporte.php', 'Suporte e chat', '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path>', ['/admin/suporte.php', '/admin/suporte-chat.php']],
     ['/admin/usuarios-plataforma.php', 'Usuários da plataforma', '<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>', ['/admin/usuarios-plataforma.php', '/admin/usuarios-plataforma-cadastro.php']],
 ];
 ?>

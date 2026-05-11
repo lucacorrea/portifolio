@@ -18,7 +18,7 @@ function suporte_app_reply_error(string $message, int $chamadoId = 0): never
     }
 
     flash('error', $message);
-    redirect('/app/suporte.php' . ($chamadoId > 0 ? '?chamado_id=' . $chamadoId : ''));
+    redirect($chamadoId > 0 ? '/app/suporte-chat.php?id=' . $chamadoId : '/app/suporte.php');
 }
 
 $empresaId = current_empresa_id();
@@ -112,4 +112,4 @@ try {
     flash('error', 'Não foi possível enviar a resposta.');
 }
 
-redirect('/app/suporte.php?chamado_id=' . $chamadoId);
+redirect('/app/suporte-chat.php?id=' . $chamadoId);

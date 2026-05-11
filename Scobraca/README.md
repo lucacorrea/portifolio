@@ -118,7 +118,7 @@ Para ativar o suporte entre empresa e administração, execute:
 database/migrations/2026_05_11_suporte_chamados.sql
 ```
 
-Essa migração cria `suporte_chamados` e `suporte_mensagens`. A empresa abre chamados em `/app/suporte.php`; o administrador atende e altera status em `/admin/suporte.php`.
+Essa migração cria `suporte_chamados` e `suporte_mensagens`. A empresa abre chamados em `/app/suporte.php` e conversa em `/app/suporte-chat.php?id=ID`; o administrador acompanha a fila em `/admin/suporte.php` e atende em `/admin/suporte-chat.php?id=ID`.
 
 ## Pagamentos parciais
 

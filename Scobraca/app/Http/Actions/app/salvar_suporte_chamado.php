@@ -113,7 +113,7 @@ try {
 
     db()->commit();
     flash('success', 'Chamado aberto com sucesso. Nossa equipe poderá responder pelo painel administrativo.');
-    redirect('/app/suporte.php?chamado_id=' . $chamadoId);
+    redirect('/app/suporte-chat.php?id=' . $chamadoId);
 } catch (Throwable $e) {
     if (db()->inTransaction()) {
         db()->rollBack();

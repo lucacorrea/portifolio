@@ -18,7 +18,7 @@ function suporte_admin_reply_error(string $message, int $chamadoId = 0): never
     }
 
     flash('error', $message);
-    redirect('/admin/suporte.php' . ($chamadoId > 0 ? '?chamado_id=' . $chamadoId : ''));
+    redirect($chamadoId > 0 ? '/admin/suporte-chat.php?id=' . $chamadoId : '/admin/suporte.php');
 }
 
 $usuario = current_user() ?? [];
@@ -114,4 +114,4 @@ try {
     flash('error', 'Não foi possível atualizar o atendimento.');
 }
 
-redirect('/admin/suporte.php?chamado_id=' . $chamadoId);
+redirect('/admin/suporte-chat.php?id=' . $chamadoId);
