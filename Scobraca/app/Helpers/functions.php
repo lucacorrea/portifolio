@@ -138,6 +138,12 @@ function data_br(?string $data): string
     return $timestamp !== false ? date('d/m/Y', $timestamp) : '-';
 }
 
+function data_hora_br(?string $data): string
+{
+    $timestamp = $data ? strtotime($data) : false;
+    return $timestamp !== false ? date('d/m/Y H:i', $timestamp) : '-';
+}
+
 function decimal_from_input(string $value): float
 {
     $value = trim($value);
@@ -250,4 +256,57 @@ function formatar_documento(?string $documento): string
     }
 
     return $documento ?: '-';
+}
+
+function suporte_status_label(string $status): string
+{
+    return [
+        'aberto' => 'Aberto',
+        'em_atendimento' => 'Em atendimento',
+        'aguardando_empresa' => 'Aguardando empresa',
+        'resolvido' => 'Resolvido',
+        'fechado' => 'Fechado',
+    ][$status] ?? 'Aberto';
+}
+
+function suporte_status_badge(string $status): string
+{
+    return [
+        'aberto' => 'aberto',
+        'em_atendimento' => 'pendente',
+        'aguardando_empresa' => 'pendente',
+        'resolvido' => 'ativa',
+        'fechado' => 'bloqueada',
+    ][$status] ?? 'aberto';
+}
+
+function suporte_prioridade_label(string $prioridade): string
+{
+    return [
+        'baixa' => 'Baixa',
+        'media' => 'Média',
+        'alta' => 'Alta',
+        'urgente' => 'Urgente',
+    ][$prioridade] ?? 'Média';
+}
+
+function suporte_prioridade_badge(string $prioridade): string
+{
+    return [
+        'baixa' => 'ativa',
+        'media' => 'pendente',
+        'alta' => 'vencida',
+        'urgente' => 'vencida',
+    ][$prioridade] ?? 'pendente';
+}
+
+function suporte_categoria_label(string $categoria): string
+{
+    return [
+        'financeiro' => 'Financeiro',
+        'tecnico' => 'Técnico',
+        'acesso' => 'Acesso',
+        'automacao' => 'Automação',
+        'outro' => 'Outro',
+    ][$categoria] ?? 'Outro';
 }

@@ -6,6 +6,7 @@ Esta é uma estrutura inicial do FluxPay como SaaS multiempresa.
 
 - Área do **Admin da Plataforma** para gerenciar empresas, planos, assinaturas e usuários locatários.
 - Área da **Empresa Locatária** para os usuários da empresa acessarem o sistema.
+- Suporte com chamados, mensagens e status compartilhados entre empresa e administração.
 - Banco de dados com `empresa_id` nas tabelas principais.
 - Login com rotas separadas por contexto:
   - `platform_admin`: administrador dono do SaaS.
@@ -110,6 +111,14 @@ database/migrations/2026_05_11_usuarios_documento_login.sql
 ```
 
 Depois disso, novos usuários passam a ter CPF ou CNPJ cadastrado e podem entrar com e-mail, CPF ou CNPJ.
+
+Para ativar o suporte entre empresa e administração, execute:
+
+```text
+database/migrations/2026_05_11_suporte_chamados.sql
+```
+
+Essa migração cria `suporte_chamados` e `suporte_mensagens`. A empresa abre chamados em `/app/suporte.php`; o administrador atende e altera status em `/admin/suporte.php`.
 
 ## Pagamentos parciais
 
