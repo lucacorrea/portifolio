@@ -269,11 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const resp = await fetch('api.php?acao=listar');
         let dados = await resp.json();
         
-        if (!Array.isArray(dados)) {
-            console.error('Erro da API:', dados);
-            dados = [];
-        }
-        
         // Ordenação padrão: por Data de Ciência decrescente (mais recentes primeiro)
         dados.sort((a, b) => {
             if (!a.data_ciencia) return 1;
@@ -478,27 +473,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderizarFiltroAssessores() {
         const selectAssessora = document.getElementById('filtro-assessora');
-        if (!selectAssessora || !dadosOriginais) return;
+        if (!selectAssessora) return;
         
         const valorAtual = selectAssessora.value;
-        
-        // Coletar nomes de assessoras de duas fontes: da coluna assessora_responsavel e do campo avaliador
-        const nomesEncontrados = [];
-        dadosOriginais.forEach(p => {
-            if (p.assessora_responsavel) nomesEncontrados.push(String(p.assessora_responsavel).trim().toUpperCase());
-            if (p.avaliador) nomesEncontrados.push(String(p.avaliador).trim().toUpperCase());
-        });
-        
-        const assessoresUnicos = [...new Set(nomesEncontrados)]
-            .filter(a => a && a !== '' && a !== '---' && a !== 'N/A')
+        const assessores = [...new Set(dadosOriginais.map(p => String(p.assessora_responsavel || '').trim().toUpperCase()))]
+            .filter(a => a !== '')
             .sort();
         
-        let html = '<option value="">Assessora (Todas)</option>';
-        assessoresUnicos.forEach(a => {
-            html += `<option value="${a}" ${a === valorAtual ? 'selected' : ''}>${a}</option>`;
+        selectAssessora.innerHTML = '<option value="">Assessora (Todas)</option>';
+        assessores.forEach(a => {
+            const option = document.createElement('option');
+            option.value = a;
+            option.textContent = a;
+            if (a === valorAtual) option.selected = true;
+            selectAssessora.appendChild(option);
         });
-        
-        selectAssessora.innerHTML = html;
     }
 
     function renderizarTabela() {
