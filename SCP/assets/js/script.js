@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectStatus = document.getElementById('filtro-status');
         const inputDataInicio = document.getElementById('filtro-data-inicio');
         const inputDataFim = document.getElementById('filtro-data-fim');
+        const selectAssessora = document.getElementById('filtro-assessora');
 
         if (selectTipoProcesso) {
             selectTipoProcesso.addEventListener('change', () => {
@@ -61,12 +62,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        if (inputDataFim) {
-            inputDataFim.addEventListener('change', () => {
+        if (selectAssessora) {
+            selectAssessora.addEventListener('change', () => {
                 paginaAtual = 1;
                 renderizarTabela();
             });
         }
+
+        if (inputDataFim) {
 
         if (inputBusca) {
             inputBusca.addEventListener('input', () => {
@@ -280,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Inicializar abas de analisadores (com fallback em caso de erro nos dados)
         try {
             renderizarAbasAnalisadores();
+            renderizarFiltroAssessores();
         } catch(e) {
             console.error('Erro ao renderizar abas:', e);
         }
@@ -467,6 +471,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function renderizarFiltroAssessores() {
+        const selectAssessora = document.getElementById('filtro-assessora');
+        if (!selectAssessora) return;
+        
+        const valorAtual = selectAssessora.value;
+        const assessores = [...new Set(dadosOriginais.map(p => String(p.assessora_responsavel || '').trim().toUpperCase()))]
+            .filter(a => a !== '')
+            .sort();
+        
+        selectAssessora.innerHTML = '<option value="">Assessora (Todas)</option>';
+        assessores.forEach(a => {
+            const option = document.createElement('option');
+            option.value = a;
+            option.textContent = a;
+            if (a === valorAtual) option.selected = true;
+            selectAssessora.appendChild(option);
+        });
+    }
+
     function renderizarTabela() {
         if (!listTable) return;
         listTable.innerHTML = '';
@@ -476,6 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectStatus = document.getElementById('filtro-status');
         const inputDataInicio = document.getElementById('filtro-data-inicio');
         const inputDataFim = document.getElementById('filtro-data-fim');
+        const selectAssessora = document.getElementById('filtro-assessora');
         let filtrados = dadosOriginais;
 
         if (selectTipoProcesso && selectTipoProcesso.value) {
@@ -484,6 +508,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (selectStatus && selectStatus.value) {
             filtrados = filtrados.filter(p => p.status === selectStatus.value);
+        }
+
+        if (selectAssessora && selectAssessora.value) {
+            filtrados = filtrados.filter(p => String(p.assessora_responsavel || '').toUpperCase() === selectAssessora.value.toUpperCase());
         }
 
         if (inputDataInicio && inputDataInicio.value) {
@@ -525,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const classUser = window.getColorForUser(p.analisador);
 
             const statusLimpo = (p.status || 'PENDENTE').toUpperCase().trim();
-            const statusClass = statusLimpo.toLowerCase();
+            const statusClass = statusLimpo.toLowerCase().replace(/\s+/g, '-');
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -543,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><span class="tag-badge ${classUser}">${p.analisador || 'N/A'}</span></td>
                 <td><span class="tag-badge ${window.getColorForUser(p.assessora_responsavel)}">${p.assessora_responsavel || '---'}</span></td>
                 <td>
-                    <span class="badge badge-${statusClass}">${statusLimpo}</span>
+                    <span class="badge badge-${statusClass}">${statusLimpo === 'SENDO AVALIADO' ? 'AVALIADO' : statusLimpo}</span>
                     ${statusLimpo === 'PROTOCOLADO' ? `
                         <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
                             ${(p.data_protocolo || p.protocolista || p.peticionador) ? `
@@ -551,7 +579,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <i class="fas fa-user-edit" style="color: var(--status-protocolado);"></i> ${p.protocolista || p.peticionador || 'N/A'}
                             ` : `<i class="fas fa-info-circle"></i> Sem registro de detalhes`}
                         </div>
-                    ` : ''}
+                    ` : (statusLimpo === 'SENDO AVALIADO' ? `
+                        <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted); line-height: 1.2;">
+                            <i class="fas fa-calendar-check" style="color: #22c55e;"></i> ${formatarData(p.data_analise || p.data_protocolo)}<br>
+                            <i class="fas fa-user-check" style="color: #22c55e;"></i> ${p.avaliador || p.assessora_responsavel || 'N/A'}
+                        </div>
+                    ` : '')}
                 </td>
                 <td>
                     <div class="dropdown">
@@ -900,7 +933,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const dados = await resp.json();
         const p = dados.find(x => x.id == id);
         if (!p) return;
+        
         p.status = 'SENDO AVALIADO';
+        p.data_analise = new Date().toISOString().split('T')[0];
+        
+        const elAnalisador = document.getElementById('nome-analisador');
+        p.avaliador = elAnalisador ? elAnalisador.textContent.trim() : 'Usuário';
+
         const saveResp = await fetch('api.php?acao=salvar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

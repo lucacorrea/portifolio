@@ -12,7 +12,7 @@ if (!isset($_SESSION['usuario_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCP - Sistema de Controle de Processos (PGM)</title>
-    <link rel="stylesheet" href="assets/css/estilo.css?v=61">
+    <link rel="stylesheet" href="assets/css/estilo.css?v=62">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -146,11 +146,15 @@ if (!isset($_SESSION['usuario_id'])) {
                 <select id="filtro-status" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
                     <option value="">Status (Todos)</option>
                     <option value="PENDENTE">Pendente</option>
-                    <option value="SENDO AVALIADO">Sendo Avaliado</option>
+                    <option value="SENDO AVALIADO">Avaliado</option>
                     <option value="EM ELABORAÇÃO">Em Elaboração</option>
                     <option value="PROTOCOLADO">Protocolado</option>
                     <option value="ANALISADO">Analisado</option>
                     <option value="PROCESSO FINALIZADO">Processo Finalizado</option>
+                </select>
+
+                <select id="filtro-assessora" style="width: auto; padding: 0.45rem 0.75rem; border-radius: 50px; border: 1px solid var(--border); background: white; font-weight: 600; color: var(--text-main); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="">Assessora (Todas)</option>
                 </select>
 
                 <div style="display: flex; align-items: center; gap: 0.2rem; background: white; border: 1px solid var(--border); border-radius: 50px; padding: 0 0.5rem; height: 32px;">
@@ -208,6 +212,6 @@ if (!isset($_SESSION['usuario_id'])) {
 <script>
     window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
 </script>
-<script src="assets/js/script.js?v=69"></script>
+<script src="assets/js/script.js?v=72"></script>
 </body>
 </html>
