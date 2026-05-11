@@ -285,6 +285,11 @@ try {
                     $dados_anteriores = $stmt_ant->fetch(PDO::FETCH_ASSOC);
 
                     // Editar
+                    $stmt = $pdo->prepare("UPDATE processos SET 
+                        numero = ?, tipo_processo = ?, tipo_ato = ?, natureza = ?, tipo_manifestacao = ?, 
+                        revelia = ?, data_envio = ?, data_ciencia = ?, tipo_contagem = ?, 
+                        final_prazo = ?, prazo_critico = ?, analisador = ?, peticionador = ?, protocolista = ?,
+                        quantidade_dias = ?, status = ?, 
                         data_protocolo = ?, data_analise = ?, data_peticionamento = ?, observacoes = ?,
                         assessora_responsavel = ?, topico_detalhado = ?, comentario_atividade = ?, avaliador = ? WHERE id = ?");
                     $stmt->execute([
@@ -299,6 +304,7 @@ try {
                     registrarAuditoria($pdo, 'UPDATE', 'processos', $p['id'], $dados_anteriores, $p);
                 } else {
                     // Novo
+                    $stmt = $pdo->prepare("INSERT INTO processos (
                         numero, tipo_processo, tipo_ato, natureza, tipo_manifestacao, 
                         revelia, data_envio, data_ciencia, tipo_contagem, 
                         final_prazo, prazo_critico, analisador, peticionador, protocolista,
