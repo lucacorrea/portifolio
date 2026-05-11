@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nomeAnalisadorExibicao = document.getElementById('nome-analisador');
     let analisadorAtivo = 'TODOS';
     let dadosOriginais = [];
+    let usuariosSistema = [];
     let paginaAtual = 1;
     const itensPorPagina = 10;
     
@@ -31,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Carregar dados se estiver na index
     if (listTable) {
-        carregarProcessos();
+        carregarUsuariosSistema().then(() => carregarProcessos());
         setInterval(carregarProcessos, 30000); // Atualiza a cada 30s
 
         const inputBusca = document.getElementById('filtro-busca');
@@ -70,6 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (inputDataFim) {
+            inputDataFim.addEventListener('change', () => {
+                paginaAtual = 1;
+                renderizarTabela();
+            });
+        }
 
         if (inputBusca) {
             inputBusca.addEventListener('input', () => {
@@ -77,6 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderizarTabela();
             });
         }
+    }
+
+    if (formProcesso) {
+        carregarUsuariosSistema().then(() => renderizarDropdownCadastroAssessores());
     }
 
     // Lógica do formulário
@@ -263,6 +273,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Erro ao salvar: ' + (result.message || 'Ocorreu um erro desconhecido.'));
             }
         });
+    }
+
+    async function carregarUsuariosSistema() {
+        try {
+            const resp = await fetch('api.php?acao=listar_usuarios');
+            if (resp.ok) {
+                usuariosSistema = await resp.json();
+            }
+        } catch (e) {
+            console.error('Erro ao carregar usuários:', e);
+        }
     }
 
     async function carregarProcessos() {
@@ -476,11 +497,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectAssessora) return;
         
         const valorAtual = selectAssessora.value;
-        const assessores = [...new Set(dadosOriginais.map(p => String(p.assessora_responsavel || '').trim().toUpperCase()))]
+        
+        // Nomes já existentes nos processos
+        const assessoresProcessos = dadosOriginais.map(p => String(p.assessora_responsavel || '').trim().toUpperCase());
+        
+        // Nomes cadastrados no sistema com perfil ACESSORES
+        const assessoresUsuarios = usuariosSistema
+            .filter(u => u.perfil === 'ACESSORES')
+            .map(u => u.nome.trim().toUpperCase());
+        
+        const assessores = [...new Set([...assessoresProcessos, ...assessoresUsuarios])]
             .filter(a => a !== '')
             .sort();
         
         selectAssessora.innerHTML = '<option value="">Assessora (Todas)</option>';
+        assessores.forEach(a => {
+            const option = document.createElement('option');
+            option.value = a;
+            option.textContent = a;
+            if (a === valorAtual) option.selected = true;
+            selectAssessora.appendChild(option);
+        });
+    }
+
+    function renderizarDropdownCadastroAssessores() {
+        const selectAssessora = document.getElementById('assessora_responsavel');
+        if (!selectAssessora) return;
+        
+        const valorAtual = selectAssessora.value;
+        const assessores = usuariosSistema
+            .filter(u => u.perfil === 'ACESSORES')
+            .map(u => u.nome.trim().toUpperCase())
+            .sort();
+            
+        selectAssessora.innerHTML = '<option value="">NENHUMA</option>';
         assessores.forEach(a => {
             const option = document.createElement('option');
             option.value = a;
@@ -999,6 +1049,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    window.getAssessoraOptions = (selectedValue) => {
+        let html = '<option value="">NENHUMA</option>';
+        const assessores = usuariosSistema
+            .filter(u => u.perfil === 'ACESSORES')
+            .map(u => u.nome.trim().toUpperCase())
+            .sort();
+            
+        assessores.forEach(a => {
+            html += `<option value="${a}" ${a === selectedValue ? 'selected' : ''}>${a}</option>`;
+        });
+        return html;
+    };
+
     window.visualizarProcesso = (pJson) => {
         // Fechar dropdown menus ao vizualizar
         document.querySelectorAll('.dropdown-menu-fixed').forEach(m => m.remove());
@@ -1154,9 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="split-label">Assessora Responsável</span>
                         ${perfil === 'ACESSORES' || perfil === 'ADMIN' || perfil === 'ANALISADOR' ? `
                         <select id="edit-assessora" class="modal-edit-select" style="width: auto; min-width: 150px;">
-                            <option value="">NENHUMA</option>
-                            <option value="DRA UANNA" ${p.assessora_responsavel === 'DRA UANNA' ? 'selected' : ''}>DRA UANNA</option>
-                            <option value="DRA RHANNY" ${p.assessora_responsavel === 'DRA RHANNY' ? 'selected' : ''}>DRA RHANNY</option>
+                            ${window.getAssessoraOptions(p.assessora_responsavel)}
                         </select>
                         ` : `
                         <span class="tag-badge ${window.getColorForUser(p.assessora_responsavel)}">${p.assessora_responsavel || 'N/A'}</span>

@@ -195,8 +195,6 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
                     <label for="assessora_responsavel">Assessora Responsável</label>
                     <select id="assessora_responsavel">
                         <option value="">NENHUMA</option>
-                        <option value="DRA UANNA">DRA UANNA</option>
-                        <option value="DRA RHANNY">DRA RHANNY</option>
                     </select>
                 </div>
 
