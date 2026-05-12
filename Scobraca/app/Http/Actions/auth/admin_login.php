@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect('/admin/login.php');
 }
 
-verify_csrf();
+verify_csrf('/admin/login.php');
 
 $login = trim($_POST['email'] ?? '');
 $senha = (string) ($_POST['senha'] ?? '');

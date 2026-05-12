@@ -106,11 +106,17 @@ function csrf_field(): string
     return '<input type="hidden" name="_csrf_token" value="' . e(csrf_token()) . '">';
 }
 
-function verify_csrf(): void
+function verify_csrf(?string $redirectPath = null): void
 {
     $token = $_POST['_csrf_token'] ?? '';
+    $sessionToken = $_SESSION['_csrf_token'] ?? '';
 
-    if (!$token || !hash_equals($_SESSION['_csrf_token'] ?? '', $token)) {
+    if (!is_string($token) || $token === '' || !is_string($sessionToken) || $sessionToken === '' || !hash_equals($sessionToken, $token)) {
+        if ($redirectPath !== null) {
+            flash('error', 'Sua sessão expirou. Abra a tela de login novamente e tente mais uma vez.');
+            redirect($redirectPath);
+        }
+
         http_response_code(419);
         exit('Sessão expirada ou token inválido. Volte e tente novamente.');
     }

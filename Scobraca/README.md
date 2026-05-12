@@ -44,6 +44,7 @@ public/
   assets/css/style.css
   assets/js/main.js
 storage/logs/
+storage/sessions/
 ```
 
 O `index.php` da raiz existe apenas como redirecionamento seguro para `public/index.php`.
@@ -57,6 +58,8 @@ Em produção, a configuração correta é apontar o domínio diretamente para a
 4. Copie `.env.example` para `.env`.
 5. Ajuste os dados do banco no `.env`.
 6. Aponte o domínio/subdomínio para a pasta `public/`.
+
+O login usa sessões PHP salvas em `storage/sessions`. Em hospedagem compartilhada, garanta permissão de escrita nessa pasta para evitar falha de CSRF no login.
 
 Se a aplicação precisar rodar em subpasta, por exemplo `/Scobraca/public`, os links públicos são detectados automaticamente.
 Em servidor com proxy ou regra de URL especial, defina `APP_BASE_PATH=/Scobraca/public` no `.env`.
