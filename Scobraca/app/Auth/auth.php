@@ -2,16 +2,24 @@
 
 declare(strict_types=1);
 
-function attempt_login(string $email, string $senha, array $allowedTypes = []): bool
+function attempt_login(string $login, string $senha, array $allowedTypes = []): bool
 {
+    $login = trim($login);
+    $documento = only_digits($login);
+    $usarDocumento = $documento !== '' && usuario_documento_tipo($documento) !== null;
+
+    if (!filter_var($login, FILTER_VALIDATE_EMAIL) && !$usarDocumento) {
+        return false;
+    }
+
     $stmt = db()->prepare(
         "SELECT u.*, e.nome AS empresa_nome, e.status AS empresa_status
          FROM usuarios u
          LEFT JOIN empresas e ON e.id = u.empresa_id
-         WHERE u.email = :email
+         WHERE " . ($usarDocumento ? 'u.documento = :login' : 'u.email = :login') . "
          LIMIT 1"
     );
-    $stmt->execute([':email' => $email]);
+    $stmt->execute([':login' => $usarDocumento ? $documento : $login]);
     $usuario = $stmt->fetch();
 
     if (!$usuario) {
@@ -39,6 +47,8 @@ function attempt_login(string $email, string $senha, array $allowedTypes = []): 
         'empresa_status' => $usuario['empresa_status'] ?? null,
         'nome' => $usuario['nome'],
         'email' => $usuario['email'],
+        'documento' => $usuario['documento'] ?? null,
+        'documento_tipo' => $usuario['documento_tipo'] ?? null,
         'tipo' => $usuario['tipo'],
     ];
 

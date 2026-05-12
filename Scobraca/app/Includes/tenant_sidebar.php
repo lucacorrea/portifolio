@@ -8,6 +8,7 @@ $tenantNavItems = [
     ['/app/mensagens.php', 'Mensagens', '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>', ['/app/mensagens.php', '/app/mensagens-enviar.php']],
     ['/app/relatorios.php', 'Relatórios', '<path d="M4 19V5"></path><path d="M4 19h16"></path><path d="M8 16v-5"></path><path d="M12 16V8"></path><path d="M16 16v-3"></path>', ['/app/relatorios.php']],
     ['/app/usuarios.php', 'Usuários', '<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>', ['/app/usuarios.php', '/app/usuarios-cadastro.php']],
+    ['/app/suporte.php', 'Suporte', '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path>', ['/app/suporte.php', '/app/suporte-chat.php']],
     ['/app/configuracoes.php', 'Configurações', '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H5.78a1.65 1.65 0 0 0-1.51 1 1.65 1.65 0 0 0 .33 1.82A10 10 0 0 0 12 17.66 10 10 0 0 0 19.4 15z"></path>', ['/app/configuracoes.php']],
 ];
 ?>

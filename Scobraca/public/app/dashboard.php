@@ -23,8 +23,21 @@ $stmt = $pdo->prepare("SELECT COUNT(*) FROM cobrancas WHERE empresa_id = :empres
 $stmt->execute([':empresa_id' => $empresaId]);
 $cobrancasVencidas = (int) $stmt->fetchColumn();
 
-$stmt = $pdo->prepare("SELECT COALESCE(SUM(valor), 0) FROM cobrancas WHERE empresa_id = :empresa_id AND status IN ('Em aberto','Vencida')");
-$stmt->execute([':empresa_id' => $empresaId]);
+$stmt = $pdo->prepare(
+    "SELECT COALESCE(SUM(GREATEST(cb.valor - COALESCE(pg.total_pago, 0), 0)), 0)
+     FROM cobrancas cb
+     LEFT JOIN (
+        SELECT empresa_id, cobranca_id, SUM(valor_pago) AS total_pago
+        FROM pagamentos
+        WHERE empresa_id = :empresa_pagamentos
+        GROUP BY empresa_id, cobranca_id
+     ) pg ON pg.cobranca_id = cb.id AND pg.empresa_id = cb.empresa_id
+     WHERE cb.empresa_id = :empresa_id AND cb.status IN ('Em aberto','Vencida')"
+);
+$stmt->execute([
+    ':empresa_id' => $empresaId,
+    ':empresa_pagamentos' => $empresaId,
+]);
 $valorEmAberto = (float) $stmt->fetchColumn();
 
 $stmt = $pdo->prepare("SELECT COALESCE(SUM(valor_pago), 0) FROM pagamentos WHERE empresa_id = :empresa_id AND MONTH(data_pagamento) = MONTH(CURDATE()) AND YEAR(data_pagamento) = YEAR(CURDATE())");
@@ -32,14 +45,34 @@ $stmt->execute([':empresa_id' => $empresaId]);
 $totalRecebido = (float) $stmt->fetchColumn();
 
 $stmt = $pdo->prepare(
-    "SELECT c.nome AS cliente, cb.referencia, cb.valor, cb.data_vencimento, cb.status, cb.tipo, cb.numero_parcela, cb.total_parcelas
+    "SELECT
+        c.nome AS cliente,
+        cb.referencia,
+        cb.valor,
+        cb.data_vencimento,
+        cb.status,
+        cb.tipo,
+        cb.numero_parcela,
+        cb.total_parcelas,
+        COALESCE(pg.total_pago, 0) AS total_pago,
+        cb.valor - COALESCE(pg.total_pago, 0) AS saldo
      FROM cobrancas cb
      INNER JOIN clientes c ON c.id = cb.cliente_id
-     WHERE cb.empresa_id = :empresa_id
+     LEFT JOIN (
+        SELECT empresa_id, cobranca_id, SUM(valor_pago) AS total_pago
+        FROM pagamentos
+        WHERE empresa_id = :empresa_pagamentos
+        GROUP BY empresa_id, cobranca_id
+     ) pg ON pg.cobranca_id = cb.id AND pg.empresa_id = cb.empresa_id
+     WHERE cb.empresa_id = :empresa_id AND cb.status IN ('Em aberto','Vencida')
+       AND cb.valor - COALESCE(pg.total_pago, 0) > 0
      ORDER BY cb.data_vencimento ASC
      LIMIT 6"
 );
-$stmt->execute([':empresa_id' => $empresaId]);
+$stmt->execute([
+    ':empresa_id' => $empresaId,
+    ':empresa_pagamentos' => $empresaId,
+]);
 $proximasCobrancas = $stmt->fetchAll();
 
 $stmt = $pdo->prepare(
@@ -130,7 +163,7 @@ $recebimentoMes = [
                 </div>
                 <div class="table-responsive">
                     <table>
-                        <thead><tr><th>Cliente</th><th>Tipo</th><th>Referência</th><th>Valor</th><th>Vencimento</th><th>Status</th></tr></thead>
+                        <thead><tr><th>Cliente</th><th>Tipo</th><th>Referência</th><th>Saldo</th><th>Vencimento</th><th>Status</th></tr></thead>
                         <tbody>
                         <?php foreach ($proximasCobrancas as $cobranca): ?>
                             <?php
@@ -142,14 +175,17 @@ $recebimentoMes = [
                                     ? 'Entrada'
                                     : 'Parcela ' . (int) $cobranca['numero_parcela'] . '/' . (int) $cobranca['total_parcelas'];
                             }
+
+                            $statusLabel = (float) ($cobranca['total_pago'] ?? 0) > 0 ? 'Parcial' : (string) $cobranca['status'];
+                            $statusClass = $statusLabel === 'Parcial' ? 'parcial' : ($cobranca['status'] === 'Vencida' ? 'vencida' : 'pendente');
                             ?>
                             <tr>
                                 <td><strong><?= e($cobranca['cliente']) ?></strong></td>
                                 <td><span class="soft-label <?= $tipoCobranca === 'parcelada' ? 'warning' : 'success' ?>"><?= e($labelCobranca) ?></span></td>
                                 <td><?= e($cobranca['referencia']) ?></td>
-                                <td><?= moeda_br((float) $cobranca['valor']) ?></td>
+                                <td><?= moeda_br((float) $cobranca['saldo']) ?></td>
                                 <td><?= e(data_br($cobranca['data_vencimento'])) ?></td>
-                                <td><span class="badge <?= $cobranca['status'] === 'Vencida' ? 'vencida' : ($cobranca['status'] === 'Paga' ? 'ativa' : 'pendente') ?>"><?= e($cobranca['status']) ?></span></td>
+                                <td><span class="badge <?= e($statusClass) ?>"><?= e($statusLabel) ?></span></td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (!$proximasCobrancas): ?>

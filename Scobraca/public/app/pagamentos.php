@@ -7,7 +7,14 @@ $pageDescription = 'Recebimentos confirmados da empresa.';
 $empresaId = current_empresa_id();
 
 $stmt = db()->prepare(
-    "SELECT p.*, c.nome AS cliente, cb.referencia
+    "SELECT
+        p.*,
+        c.nome AS cliente,
+        cb.referencia,
+        cb.valor AS valor_cobranca,
+        cb.tipo AS tipo_cobranca,
+        cb.numero_parcela,
+        cb.total_parcelas
      FROM pagamentos p
      INNER JOIN clientes c ON c.id = p.cliente_id
      LEFT JOIN cobrancas cb ON cb.id = p.cobranca_id
@@ -43,13 +50,35 @@ $pagamentos = $stmt->fetchAll();
             <div class="table-responsive">
                 <table>
                     <thead>
-                    <tr><th>Cliente</th><th>Referência</th><th>Valor pago</th><th>Data</th><th>Forma</th><th>Observação</th></tr>
+                    <tr><th>Cliente</th><th>Cobrança</th><th>Tipo</th><th>Valor pago</th><th>Data</th><th>Forma</th><th>Observação</th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($pagamentos as $pagamento): ?>
+                        <?php
+                        $tipoPagamento = 'Avulso';
+                        $detalheCobranca = $pagamento['referencia'] ?? '-';
+
+                        if (!empty($pagamento['cobranca_id'])) {
+                            $tipoCobranca = (string) ($pagamento['tipo_cobranca'] ?? 'mensalidade');
+                            $detalheCobranca = (string) ($pagamento['referencia'] ?? '-');
+
+                            if ($tipoCobranca === 'parcelada') {
+                                $detalheCobranca .= ((int) ($pagamento['numero_parcela'] ?? 1)) === 0
+                                    ? ' · entrada'
+                                    : ' · parcela ' . (int) $pagamento['numero_parcela'] . '/' . (int) $pagamento['total_parcelas'];
+                            } else {
+                                $detalheCobranca .= ' · mensalidade';
+                            }
+
+                            $tipoPagamento = ((float) $pagamento['valor_pago'] + 0.005) < (float) ($pagamento['valor_cobranca'] ?? 0)
+                                ? 'Parcial'
+                                : 'Integral';
+                        }
+                        ?>
                         <tr>
                             <td><strong><?= e($pagamento['cliente']) ?></strong></td>
-                            <td><?= e($pagamento['referencia'] ?? '-') ?></td>
+                            <td><?= e($detalheCobranca) ?></td>
+                            <td><span class="soft-label <?= $tipoPagamento === 'Parcial' ? 'warning' : 'success' ?>"><?= e($tipoPagamento) ?></span></td>
                             <td><?= moeda_br((float) $pagamento['valor_pago']) ?></td>
                             <td><?= e(data_br($pagamento['data_pagamento'])) ?></td>
                             <td><span class="soft-label success"><?= e($pagamento['forma_pagamento']) ?></span></td>
@@ -57,7 +86,7 @@ $pagamentos = $stmt->fetchAll();
                         </tr>
                     <?php endforeach; ?>
                     <?php if (!$pagamentos): ?>
-                        <tr><td colspan="6">Nenhum pagamento registrado.</td></tr>
+                        <tr><td colspan="7">Nenhum pagamento registrado.</td></tr>
                     <?php endif; ?>
                     </tbody>
                 </table>

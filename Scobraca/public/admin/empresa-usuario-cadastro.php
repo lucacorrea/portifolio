@@ -44,6 +44,7 @@ if (!$empresa) {
                 <input type="hidden" name="empresa_id" value="<?= (int) $empresa['id'] ?>">
                 <label>Nome<input name="nome" required placeholder="Nome do usuário"></label>
                 <label>E-mail<input type="email" name="email" required placeholder="email@empresa.com"></label>
+                <label>CPF ou CNPJ<input name="documento" required inputmode="numeric" placeholder="CPF ou CNPJ para login"></label>
                 <label>Senha inicial<input type="password" name="senha" required autocomplete="new-password"></label>
                 <label>Tipo de acesso
                     <select name="tipo">

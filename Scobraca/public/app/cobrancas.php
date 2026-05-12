@@ -7,13 +7,22 @@ $pageDescription = 'Controle de mensalidades, parcelamentos e vencimentos.';
 $empresaId = current_empresa_id();
 
 $stmt = db()->prepare(
-    "SELECT cb.*, c.nome AS cliente
+    "SELECT cb.*, c.nome AS cliente, COALESCE(pg.total_pago, 0) AS total_pago
      FROM cobrancas cb
      INNER JOIN clientes c ON c.id = cb.cliente_id
+     LEFT JOIN (
+        SELECT empresa_id, cobranca_id, SUM(valor_pago) AS total_pago
+        FROM pagamentos
+        WHERE empresa_id = :empresa_pagamentos
+        GROUP BY empresa_id, cobranca_id
+     ) pg ON pg.cobranca_id = cb.id AND pg.empresa_id = cb.empresa_id
      WHERE cb.empresa_id = :empresa_id
      ORDER BY cb.data_vencimento DESC, cb.id DESC"
 );
-$stmt->execute([':empresa_id' => $empresaId]);
+$stmt->execute([
+    ':empresa_id' => $empresaId,
+    ':empresa_pagamentos' => $empresaId,
+]);
 $cobrancas = $stmt->fetchAll();
 ?>
 <!doctype html>
@@ -42,7 +51,7 @@ $cobrancas = $stmt->fetchAll();
             <div class="table-responsive">
                 <table>
                     <thead>
-                    <tr><th>Cliente</th><th>Tipo</th><th>Detalhe</th><th>Referência</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Criada em</th></tr>
+                    <tr><th>Cliente</th><th>Tipo</th><th>Detalhe</th><th>Referência</th><th>Valor</th><th>Pago</th><th>Saldo</th><th>Vencimento</th><th>Status</th><th>Criada em</th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($cobrancas as $cobranca): ?>
@@ -50,12 +59,21 @@ $cobrancas = $stmt->fetchAll();
                         $tipo = (string) ($cobranca['tipo'] ?? 'mensalidade');
                         $numeroParcela = (int) ($cobranca['numero_parcela'] ?? 1);
                         $totalParcelas = (int) ($cobranca['total_parcelas'] ?? 1);
+                        $totalPago = (float) ($cobranca['total_pago'] ?? 0);
+                        $saldo = max(0, (float) $cobranca['valor'] - $totalPago);
                         $detalhe = 'Mensalidade fixa';
+                        $statusLabel = (string) $cobranca['status'];
+                        $statusClass = $statusLabel === 'Vencida' ? 'vencida' : ($statusLabel === 'Paga' ? 'ativa' : 'pendente');
 
                         if ($tipo === 'parcelada') {
                             $detalhe = $numeroParcela === 0
                                 ? 'Entrada'
                                 : 'Parcela ' . $numeroParcela . '/' . max(1, $totalParcelas);
+                        }
+
+                        if ($totalPago > 0 && $statusLabel !== 'Paga') {
+                            $statusLabel = 'Parcial';
+                            $statusClass = 'parcial';
                         }
                         ?>
                         <tr>
@@ -64,13 +82,15 @@ $cobrancas = $stmt->fetchAll();
                             <td><?= e($detalhe) ?></td>
                             <td><?= e($cobranca['referencia']) ?></td>
                             <td><?= moeda_br((float) $cobranca['valor']) ?></td>
+                            <td><?= moeda_br($totalPago) ?></td>
+                            <td><strong><?= moeda_br($saldo) ?></strong></td>
                             <td><?= e(data_br($cobranca['data_vencimento'])) ?></td>
-                            <td><span class="badge <?= $cobranca['status'] === 'Vencida' ? 'vencida' : ($cobranca['status'] === 'Paga' ? 'ativa' : 'pendente') ?>"><?= e($cobranca['status']) ?></span></td>
+                            <td><span class="badge <?= e($statusClass) ?>"><?= e($statusLabel) ?></span></td>
                             <td><?= e(data_br($cobranca['criado_em'])) ?></td>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (!$cobrancas): ?>
-                        <tr><td colspan="8">Nenhuma cobrança cadastrada.</td></tr>
+                        <tr><td colspan="10">Nenhuma cobrança cadastrada.</td></tr>
                     <?php endif; ?>
                     </tbody>
                 </table>

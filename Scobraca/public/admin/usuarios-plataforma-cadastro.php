@@ -32,6 +32,7 @@ $pageDescription = 'Crie um usuário interno para administrar a plataforma.';
                 <?= csrf_field() ?>
                 <label>Nome<input name="nome" required placeholder="Nome do administrador"></label>
                 <label>E-mail<input type="email" name="email" required placeholder="admin@fluxpay.com.br"></label>
+                <label>CPF ou CNPJ<input name="documento" required inputmode="numeric" placeholder="CPF ou CNPJ para login"></label>
                 <label>Senha inicial<input type="password" name="senha" required minlength="6" autocomplete="new-password"></label>
                 <div class="form-actions"><button class="btn btn-primary">Cadastrar administrador</button></div>
             </form>

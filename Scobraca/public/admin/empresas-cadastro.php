@@ -54,6 +54,7 @@ $planos = db()->query('SELECT id, nome, preco FROM planos WHERE ativo = 1 ORDER 
                 </label>
                 <label>Nome do usuário principal<input name="usuario_nome" required></label>
                 <label>E-mail do usuário principal<input type="email" name="usuario_email" required></label>
+                <label>CPF ou CNPJ do usuário principal<input name="usuario_documento" required inputmode="numeric" placeholder="CPF ou CNPJ para login"></label>
                 <label>Senha inicial<input type="password" name="usuario_senha" required autocomplete="new-password"></label>
                 <div class="form-actions"><button class="btn btn-primary">Cadastrar empresa e usuário</button></div>
             </form>

@@ -37,6 +37,7 @@ $pageDescription = 'Crie um acesso para a equipe da empresa.';
                 <?= csrf_field() ?>
                 <label>Nome<input name="nome" required></label>
                 <label>E-mail<input type="email" name="email" required></label>
+                <label>CPF ou CNPJ<input name="documento" required inputmode="numeric" placeholder="CPF ou CNPJ para login"></label>
                 <label>Senha inicial<input type="password" name="senha" required autocomplete="new-password"></label>
                 <label>Tipo
                     <select name="tipo">

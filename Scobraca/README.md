@@ -6,6 +6,7 @@ Esta é uma estrutura inicial do FluxPay como SaaS multiempresa.
 
 - Área do **Admin da Plataforma** para gerenciar empresas, planos, assinaturas e usuários locatários.
 - Área da **Empresa Locatária** para os usuários da empresa acessarem o sistema.
+- Suporte com chamados, mensagens e status compartilhados entre empresa e administração.
 - Banco de dados com `empresa_id` nas tabelas principais.
 - Login com rotas separadas por contexto:
   - `platform_admin`: administrador dono do SaaS.
@@ -102,6 +103,26 @@ database/migrations/2026_05_11_cobrancas_tipo_parcelamento.sql
 ```
 
 Essa migração adiciona o tipo da cobrança, dados de parcelamento e remove a trava antiga que permitia apenas uma cobrança por cliente e referência.
+
+Para permitir cadastro e login de usuários por CPF/CNPJ, execute também:
+
+```text
+database/migrations/2026_05_11_usuarios_documento_login.sql
+```
+
+Depois disso, novos usuários passam a ter CPF ou CNPJ cadastrado e podem entrar com e-mail, CPF ou CNPJ.
+
+Para ativar o suporte entre empresa e administração, execute:
+
+```text
+database/migrations/2026_05_11_suporte_chamados.sql
+```
+
+Essa migração cria `suporte_chamados` e `suporte_mensagens`. A empresa abre chamados em `/app/suporte.php` e conversa em `/app/suporte-chat.php?id=ID`; o administrador acompanha a fila em `/admin/suporte.php` e atende em `/admin/suporte-chat.php?id=ID`.
+
+## Pagamentos parciais
+
+O sistema permite registrar pagamento parcial de uma cobrança. Na tela de pagamentos, selecione a cobrança e informe qualquer valor menor ou igual ao saldo. O pagamento fica no histórico, a cobrança continua em aberto/vencida enquanto houver saldo e muda para `Paga` quando o total recebido alcançar o valor da parcela.
 
 ## Landing page FluxPay
 

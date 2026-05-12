@@ -15,8 +15,21 @@ $stmt = $pdo->prepare("SELECT COUNT(*) FROM clientes WHERE empresa_id = :empresa
 $stmt->execute([':empresa_id' => $empresaId]);
 $clientesAtivos = (int) $stmt->fetchColumn();
 
-$stmt = $pdo->prepare("SELECT COALESCE(SUM(valor), 0) FROM cobrancas WHERE empresa_id = :empresa_id AND status IN ('Em aberto','Vencida')");
-$stmt->execute([':empresa_id' => $empresaId]);
+$stmt = $pdo->prepare(
+    "SELECT COALESCE(SUM(GREATEST(cb.valor - COALESCE(pg.total_pago, 0), 0)), 0)
+     FROM cobrancas cb
+     LEFT JOIN (
+        SELECT empresa_id, cobranca_id, SUM(valor_pago) AS total_pago
+        FROM pagamentos
+        WHERE empresa_id = :empresa_pagamentos
+        GROUP BY empresa_id, cobranca_id
+     ) pg ON pg.cobranca_id = cb.id AND pg.empresa_id = cb.empresa_id
+     WHERE cb.empresa_id = :empresa_id AND cb.status IN ('Em aberto','Vencida')"
+);
+$stmt->execute([
+    ':empresa_id' => $empresaId,
+    ':empresa_pagamentos' => $empresaId,
+]);
 $emAberto = (float) $stmt->fetchColumn();
 
 $stmt = $pdo->prepare("SELECT COALESCE(SUM(valor_pago), 0) FROM pagamentos WHERE empresa_id = :empresa_id");
