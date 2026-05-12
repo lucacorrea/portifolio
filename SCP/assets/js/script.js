@@ -290,12 +290,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const resp = await fetch('api.php?acao=listar');
         let dados = await resp.json();
         
-        // Ordenação padrão: por Data de Ciência decrescente (mais recentes primeiro)
-        dados.sort((a, b) => {
-            if (!a.data_ciencia) return 1;
-            if (!b.data_ciencia) return -1;
-            return new Date(b.data_ciencia) - new Date(a.data_ciencia);
-        });
+        // Ordenação inteligente: Se for ACESSORES, prioriza prazos. Caso contrário, data de ciência.
+        const perfil = (window.userPerfil || '').toUpperCase().trim();
+        
+        if (perfil === 'ACESSORES') {
+            dados.sort((a, b) => {
+                try {
+                    const statusA = String(a.status || 'PENDENTE').toUpperCase();
+                    const statusB = String(b.status || 'PENDENTE').toUpperCase();
+                    
+                    const isFinalA = ['PROTOCOLADO', 'PROCESSO FINALIZADO'].includes(statusA);
+                    const isFinalB = ['PROTOCOLADO', 'PROCESSO FINALIZADO'].includes(statusB);
+
+                    if (!isFinalA && isFinalB) return -1;
+                    if (isFinalA && !isFinalB) return 1;
+
+                    const pA = String(a.final_prazo || '');
+                    const pB = String(b.final_prazo || '');
+                    const isValidA = pA.length >= 10 && !pA.startsWith('0001');
+                    const isValidB = pB.length >= 10 && !pB.startsWith('0001');
+
+                    if (isValidA && !isValidB) return -1;
+                    if (!isValidA && isValidB) return 1;
+
+                    if (isValidA && isValidB) {
+                        if (pA < pB) return -1;
+                        if (pA > pB) return 1;
+                    }
+                    
+                    const dA = a.data_ciencia ? new Date(a.data_ciencia).getTime() : 0;
+                    const dB = b.data_ciencia ? new Date(b.data_ciencia).getTime() : 0;
+                    return (dB || 0) - (dA || 0);
+                } catch (e) { return 0; }
+            });
+        } else {
+            dados.sort((a, b) => {
+                if (!a.data_ciencia) return 1;
+                if (!b.data_ciencia) return -1;
+                return new Date(b.data_ciencia) - new Date(a.data_ciencia);
+            });
+        }
 
         dadosOriginais = dados;
         
