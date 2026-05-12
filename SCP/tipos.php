@@ -278,12 +278,15 @@ if (!isset($_SESSION['usuario_id'])) {
             dados.sort((a, b) => {
                 const statusA = (a.status || 'PENDENTE').toUpperCase();
                 const statusB = (b.status || 'PENDENTE').toUpperCase();
-                const isPendA = ['PENDENTE', 'SENDO AVALIADO', 'EM ELABORAÇÃO'].includes(statusA);
-                const isPendB = ['PENDENTE', 'SENDO AVALIADO', 'EM ELABORAÇÃO'].includes(statusB);
+                
+                // Consideramos finalizados apenas PROTOCOLADO e PROCESSO FINALIZADO
+                const isFinalA = ['PROTOCOLADO', 'PROCESSO FINALIZADO'].includes(statusA);
+                const isFinalB = ['PROTOCOLADO', 'PROCESSO FINALIZADO'].includes(statusB);
 
-                if (isPendA && !isPendB) return -1;
-                if (!isPendA && isPendB) return 1;
+                if (!isFinalA && isFinalB) return -1;
+                if (isFinalA && !isFinalB) return 1;
 
+                // Dentro do mesmo grupo (ativo ou finalizado), ordena estritamente pelo prazo
                 if (!a.final_prazo && b.final_prazo) return 1;
                 if (a.final_prazo && !b.final_prazo) return -1;
                 if (a.final_prazo && b.final_prazo) {
@@ -291,6 +294,7 @@ if (!isset($_SESSION['usuario_id'])) {
                     if (a.final_prazo > b.final_prazo) return 1;
                 }
                 
+                // Fallback para data de ciência (mais recentes primeiro)
                 return new Date(b.data_ciencia) - new Date(a.data_ciencia);
             });
         } else {
