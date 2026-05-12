@@ -271,12 +271,35 @@ if (!isset($_SESSION['usuario_id'])) {
         const resp = await fetch('api.php?acao=listar');
         let dados = await resp.json();
 
-        // Ordenação inteligente: Data de Ciência decrescente
-        dados.sort((a, b) => {
-            if (!a.data_ciencia) return 1;
-            if (!b.data_ciencia) return -1;
-            return new Date(b.data_ciencia) - new Date(a.data_ciencia);
-        });
+        // Ordenação inteligente: Se for ACESSORES, prioriza prazos. Caso contrário, data de ciência.
+        const perfil = (window.userPerfil || '').toUpperCase().trim();
+        
+        if (perfil === 'ACESSORES') {
+            dados.sort((a, b) => {
+                const statusA = (a.status || 'PENDENTE').toUpperCase();
+                const statusB = (b.status || 'PENDENTE').toUpperCase();
+                const isPendA = ['PENDENTE', 'SENDO AVALIADO', 'EM ELABORAÇÃO'].includes(statusA);
+                const isPendB = ['PENDENTE', 'SENDO AVALIADO', 'EM ELABORAÇÃO'].includes(statusB);
+
+                if (isPendA && !isPendB) return -1;
+                if (!isPendA && isPendB) return 1;
+
+                if (!a.final_prazo && b.final_prazo) return 1;
+                if (a.final_prazo && !b.final_prazo) return -1;
+                if (a.final_prazo && b.final_prazo) {
+                    if (a.final_prazo < b.final_prazo) return -1;
+                    if (a.final_prazo > b.final_prazo) return 1;
+                }
+                
+                return new Date(b.data_ciencia) - new Date(a.data_ciencia);
+            });
+        } else {
+            dados.sort((a, b) => {
+                if (!a.data_ciencia) return 1;
+                if (!b.data_ciencia) return -1;
+                return new Date(b.data_ciencia) - new Date(a.data_ciencia);
+            });
+        }
 
         todosProcessos = dados;
         
