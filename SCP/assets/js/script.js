@@ -295,30 +295,33 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (perfil === 'ACESSORES') {
             dados.sort((a, b) => {
-                const statusA = (a.status || 'PENDENTE').toUpperCase();
-                const statusB = (b.status || 'PENDENTE').toUpperCase();
-                
-                // Consideramos finalizados apenas PROTOCOLADO e PROCESSO FINALIZADO
-                const isFinalA = ['PROTOCOLADO', 'PROCESSO FINALIZADO'].includes(statusA);
-                const isFinalB = ['PROTOCOLADO', 'PROCESSO FINALIZADO'].includes(statusB);
+                try {
+                    const statusA = String(a.status || 'PENDENTE').toUpperCase();
+                    const statusB = String(b.status || 'PENDENTE').toUpperCase();
+                    
+                    const isFinalA = ['PROTOCOLADO', 'PROCESSO FINALIZADO'].includes(statusA);
+                    const isFinalB = ['PROTOCOLADO', 'PROCESSO FINALIZADO'].includes(statusB);
 
-                if (!isFinalA && isFinalB) return -1;
-                if (isFinalA && !isFinalB) return 1;
+                    if (!isFinalA && isFinalB) return -1;
+                    if (isFinalA && !isFinalB) return 1;
 
-                // Validar se o prazo é "real" (evitar 0001-01-01 ou nulos)
-                const isValidA = a.final_prazo && a.final_prazo.length >= 10 && !a.final_prazo.startsWith('0001');
-                const isValidB = b.final_prazo && b.final_prazo.length >= 10 && !b.final_prazo.startsWith('0001');
+                    const pA = String(a.final_prazo || '');
+                    const pB = String(b.final_prazo || '');
+                    const isValidA = pA.length >= 10 && !pA.startsWith('0001');
+                    const isValidB = pB.length >= 10 && !pB.startsWith('0001');
 
-                if (isValidA && !isValidB) return -1;
-                if (!isValidA && isValidB) return 1;
+                    if (isValidA && !isValidB) return -1;
+                    if (!isValidA && isValidB) return 1;
 
-                if (isValidA && isValidB) {
-                    if (a.final_prazo < b.final_prazo) return -1;
-                    if (a.final_prazo > b.final_prazo) return 1;
-                }
-                
-                // Fallback para data de ciência (mais recentes primeiro)
-                return new Date(b.data_ciencia) - new Date(a.data_ciencia);
+                    if (isValidA && isValidB) {
+                        if (pA < pB) return -1;
+                        if (pA > pB) return 1;
+                    }
+                    
+                    const dA = a.data_ciencia ? new Date(a.data_ciencia).getTime() : 0;
+                    const dB = b.data_ciencia ? new Date(b.data_ciencia).getTime() : 0;
+                    return (dB || 0) - (dA || 0);
+                } catch (e) { return 0; }
             });
         } else {
             dados.sort((a, b) => {
