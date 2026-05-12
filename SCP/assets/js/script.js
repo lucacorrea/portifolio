@@ -305,10 +305,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!isFinalA && isFinalB) return -1;
                 if (isFinalA && !isFinalB) return 1;
 
-                // Dentro do mesmo grupo (ativo ou finalizado), ordena estritamente pelo prazo
-                if (!a.final_prazo && b.final_prazo) return 1;
-                if (a.final_prazo && !b.final_prazo) return -1;
-                if (a.final_prazo && b.final_prazo) {
+                // Validar se o prazo é "real" (evitar 0001-01-01 ou nulos)
+                const isValidA = a.final_prazo && a.final_prazo.length >= 10 && !a.final_prazo.startsWith('0001');
+                const isValidB = b.final_prazo && b.final_prazo.length >= 10 && !b.final_prazo.startsWith('0001');
+
+                if (isValidA && !isValidB) return -1;
+                if (!isValidA && isValidB) return 1;
+
+                if (isValidA && isValidB) {
                     if (a.final_prazo < b.final_prazo) return -1;
                     if (a.final_prazo > b.final_prazo) return 1;
                 }
