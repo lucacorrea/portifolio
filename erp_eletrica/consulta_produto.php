@@ -7,6 +7,7 @@ declare(strict_types=1);
 <html lang="pt-BR">
 
 <head>
+
     <meta charset="UTF-8">
 
     <meta
@@ -321,8 +322,7 @@ declare(strict_types=1);
             background: #000;
         }
 
-        #reader video,
-        #reader canvas {
+        #reader video {
             width: 100% !important;
             height: 100% !important;
             object-fit: cover !important;
@@ -417,22 +417,9 @@ declare(strict_types=1);
                 width: 86vw;
                 height: 86vw;
             }
-
-            @keyframes scanLine {
-                0% {
-                    transform: translateY(-90px);
-                }
-
-                50% {
-                    transform: translateY(90px);
-                }
-
-                100% {
-                    transform: translateY(-90px);
-                }
-            }
         }
     </style>
+
 </head>
 
 <body>
@@ -450,9 +437,14 @@ declare(strict_types=1);
                         alt="Centro do Eletricista"
                         onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
 
-                    <div class="logo-fallback" id="logoFallback">
+                    <div
+                        class="logo-fallback"
+                        id="logoFallback">
+
                         <strong>CENTRO DO ELETRICISTA</strong>
+
                         <span>Consulta rápida de produtos</span>
+
                     </div>
 
                 </div>
@@ -468,8 +460,7 @@ declare(strict_types=1);
                 </h1>
 
                 <p class="subtitle">
-                    Escaneie um código de barras ou QR Code usando a câmera
-                    do aparelho, ou digite manualmente o código do produto.
+                    Escaneie um QR Code ou código de barras usando a câmera do aparelho.
                 </p>
 
                 <div class="field">
@@ -515,13 +506,11 @@ declare(strict_types=1);
 
                 <div class="tip-box">
 
-                    <h3>Importante</h3>
+                    <h3>Leitura automática</h3>
 
                     <p>
-                        Agora o sistema NÃO abre automaticamente ao ler o código.
-                        Após escanear, o código será preenchido no campo e você
-                        poderá confirmar clicando em
-                        <strong>Consultar produto</strong>.
+                        Após ler o código ou QR Code, o sistema irá abrir automaticamente
+                        a página do produto.
                     </p>
 
                 </div>
@@ -543,7 +532,7 @@ declare(strict_types=1);
                 <strong>Leitor ativo</strong>
 
                 <span>
-                    Aponte a câmera para o código de barras
+                    Aponte a câmera para o código
                 </span>
 
             </div>
@@ -566,12 +555,12 @@ declare(strict_types=1);
         </div>
 
         <div class="camera-footer">
-            Centralize o código na área destacada para realizar a leitura.
+            Centralize o código dentro da área destacada.
         </div>
 
     </div>
 
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
     <script>
 
@@ -591,9 +580,7 @@ declare(strict_types=1);
 
         let cameraAtiva = false;
 
-        let ultimoCodigoLido = '';
-
-        let ultimoTempoLeitura = 0;
+        let leituraRealizada = false;
 
         function mostrarStatus(texto, tipo = 'info') {
 
@@ -633,13 +620,17 @@ declare(strict_types=1);
             }
 
             mostrarStatus(
-                'Consultando produto...',
+                'Abrindo produto...',
                 'success'
             );
 
-            window.location.href =
-                'produto_consulta.php?codigo=' +
-                encodeURIComponent(codigo);
+            setTimeout(() => {
+
+                window.location.href =
+                    'produto_consulta.php?codigo=' +
+                    encodeURIComponent(codigo);
+
+            }, 300);
         }
 
         async function abrirCamera() {
@@ -650,110 +641,147 @@ declare(strict_types=1);
 
             esconderStatus();
 
+            leituraRealizada = false;
+
             cameraOverlay.classList.add('show');
 
             try {
 
                 html5QrCode = new Html5Qrcode('reader');
 
+                cameraAtiva = true;
+
                 await html5QrCode.start(
 
                     {
-                        facingMode: "environment"
+                        facingMode: {
+                            exact: "environment"
+                        }
                     },
 
                     {
-                        fps: 10,
+                        fps: 15,
+
+                        qrbox: {
+                            width: 280,
+                            height: 280
+                        },
 
                         aspectRatio: 1.777,
 
                         disableFlip: false,
 
-                        rememberLastUsedCamera: true,
+                        experimentalFeatures: {
+                            useBarCodeDetectorIfSupported: true
+                        },
 
                         formatsToSupport: [
 
                             Html5QrcodeSupportedFormats.QR_CODE,
 
-                            Html5QrcodeSupportedFormats.CODE_128,
-
-                            Html5QrcodeSupportedFormats.CODE_39,
-
                             Html5QrcodeSupportedFormats.EAN_13,
 
                             Html5QrcodeSupportedFormats.EAN_8,
 
+                            Html5QrcodeSupportedFormats.CODE_128,
+
+                            Html5QrcodeSupportedFormats.CODE_39,
+
                             Html5QrcodeSupportedFormats.UPC_A,
 
                             Html5QrcodeSupportedFormats.UPC_E
-                        ],
-
-                        qrbox: (w, h) => {
-
-                            const tamanho = Math.min(
-                                w * 0.72,
-                                h * 0.42,
-                                420
-                            );
-
-                            return {
-                                width: tamanho,
-                                height: tamanho
-                            };
-                        }
+                        ]
                     },
 
                     async (decodedText) => {
 
+                        if (leituraRealizada) {
+                            return;
+                        }
+
+                        leituraRealizada = true;
+
                         const codigo = normalizarCodigo(decodedText);
-
-                        const agora = Date.now();
-
-                        if (!codigo) {
-                            return;
-                        }
-
-                        if (
-                            codigo === ultimoCodigoLido &&
-                            (agora - ultimoTempoLeitura) < 2000
-                        ) {
-                            return;
-                        }
-
-                        ultimoCodigoLido = codigo;
-
-                        ultimoTempoLeitura = agora;
 
                         inputCodigo.value = codigo;
 
                         if (navigator.vibrate) {
-                            navigator.vibrate(120);
+                            navigator.vibrate(150);
                         }
 
                         mostrarStatus(
-                            'Código lido com sucesso. Clique em "Consultar produto".',
+                            'Código lido com sucesso.',
                             'success'
                         );
 
                         await fecharCamera();
+
+                        consultarProduto();
                     },
 
-                    () => {}
+                    (errorMessage) => {
 
+                    }
                 );
-
-                cameraAtiva = true;
 
             } catch (erro) {
 
                 console.error(erro);
 
-                cameraOverlay.classList.remove('show');
+                try {
 
-                mostrarStatus(
-                    'Não foi possível acessar a câmera.',
-                    'error'
-                );
+                    await html5QrCode.start(
+
+                        {
+                            facingMode: "environment"
+                        },
+
+                        {
+                            fps: 12,
+
+                            qrbox: 250
+                        },
+
+                        async (decodedText) => {
+
+                            if (leituraRealizada) {
+                                return;
+                            }
+
+                            leituraRealizada = true;
+
+                            const codigo = normalizarCodigo(decodedText);
+
+                            inputCodigo.value = codigo;
+
+                            if (navigator.vibrate) {
+                                navigator.vibrate(150);
+                            }
+
+                            mostrarStatus(
+                                'Código lido com sucesso.',
+                                'success'
+                            );
+
+                            await fecharCamera();
+
+                            consultarProduto();
+                        }
+                    );
+
+                } catch (erro2) {
+
+                    console.error(erro2);
+
+                    cameraOverlay.classList.remove('show');
+
+                    mostrarStatus(
+                        'Não foi possível acessar a câmera. Verifique a permissão do navegador.',
+                        'error'
+                    );
+
+                    cameraAtiva = false;
+                }
             }
         }
 
