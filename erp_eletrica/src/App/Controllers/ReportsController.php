@@ -109,7 +109,7 @@ class ReportsController
             $params[':filial_id'] = $filial_id;
         }
 
-        $sql = "SELECT vi.produto_id, p.nome, SUM(vi.quantidade) as total_qtd, SUM(vi.subtotal) as total_valor 
+        $sql = "SELECT vi.produto_id, p.nome, SUM(vi.quantidade) as total_qtd, SUM(vi.quantidade * vi.preco_unitario) as total_valor 
                 FROM vendas_itens vi 
                 JOIN vendas v ON vi.venda_id = v.id 
                 JOIN produtos p ON vi.produto_id = p.id
@@ -155,7 +155,7 @@ class ReportsController
             $params[':filial_id'] = $filial_id;
         }
 
-        $sql = "SELECT p.categoria, SUM(vi.subtotal) as total 
+        $sql = "SELECT p.categoria, SUM(vi.quantidade * vi.preco_unitario) as total 
                 FROM vendas_itens vi 
                 JOIN vendas v ON vi.venda_id = v.id 
                 JOIN produtos p ON vi.produto_id = p.id
