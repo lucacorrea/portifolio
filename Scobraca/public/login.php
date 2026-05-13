@@ -7,6 +7,11 @@ if (!empty($_SESSION['usuario'])) {
     }
     redirect('/app/dashboard.php');
 }
+
+if (!headers_sent()) {
+    header('Cache-Control: no-store, max-age=0');
+    header('Pragma: no-cache');
+}
 ?>
 <!doctype html>
 <html lang="pt-BR">

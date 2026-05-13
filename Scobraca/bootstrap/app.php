@@ -13,9 +13,29 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_name((string) env('SESSION_NAME', 'fluxpay_session'));
 
     $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $sessionSavePath = (string) env('SESSION_SAVE_PATH', STORAGE_PATH . '/sessions');
+    $sessionCookiePath = (string) env('SESSION_COOKIE_PATH', '/');
+
+    if ($sessionSavePath !== '') {
+        if (!preg_match('#^(?:[A-Za-z]:[\\\\/]|/)#', $sessionSavePath)) {
+            $sessionSavePath = BASE_PATH . '/' . ltrim($sessionSavePath, '/\\');
+        }
+
+        if (!is_dir($sessionSavePath) && !@mkdir($sessionSavePath, 0775, true) && !is_dir($sessionSavePath)) {
+            error_log('[SESSION] Nao foi possivel criar o diretorio de sessoes: ' . $sessionSavePath);
+        } elseif (is_writable($sessionSavePath)) {
+            session_save_path($sessionSavePath);
+        } else {
+            error_log('[SESSION] Diretorio de sessoes sem permissao de escrita: ' . $sessionSavePath);
+        }
+    }
+
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.use_strict_mode', '1');
+
     session_set_cookie_params([
         'lifetime' => 0,
-        'path' => '/',
+        'path' => $sessionCookiePath !== '' ? $sessionCookiePath : '/',
         'domain' => '',
         'secure' => $isHttps,
         'httponly' => true,
