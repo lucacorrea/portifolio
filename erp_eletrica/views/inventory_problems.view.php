@@ -124,18 +124,13 @@
                                     <button class="btn btn-light btn-sm border shadow-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                         Mudar Status
                                     </button>
-                                    <ul class="dropdown-menu shadow-lg border-0">
+                                    <ul class="dropdown-menu shadow-lg border-0 dropdown-menu-end">
                                         <?php foreach ($statusLabels as $statusKey => $statusInfo): ?>
                                             <?php if ($statusKey !== $p['status']): ?>
                                                 <li>
-                                                    <form action="estoque.php?action=update_problem_status" method="POST">
-                                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                                                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                                                        <input type="hidden" name="status" value="<?= $statusKey ?>">
-                                                        <button type="submit" class="dropdown-item py-2">
-                                                            Marcar como <span class="text-<?= $statusInfo['class'] ?> fw-bold"><?= $statusInfo['label'] ?></span>
-                                                        </button>
-                                                    </form>
+                                                    <a class="dropdown-item py-2" href="javascript:void(0)" onclick="updateStatus(<?= $p['id'] ?>, '<?= $statusKey ?>')">
+                                                        Marcar como <span class="text-<?= $statusInfo['class'] ?> fw-bold"><?= $statusInfo['label'] ?></span>
+                                                    </a>
                                                 </li>
                                             <?php endif; ?>
                                         <?php endforeach; ?>
@@ -156,3 +151,18 @@
         </div>
     </div>
 </div>
+
+<!-- Hidden form for status updates -->
+<form id="statusUpdateForm" action="estoque.php?action=update_problem_status" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+    <input type="hidden" name="id" id="status_id">
+    <input type="hidden" name="status" id="status_value">
+</form>
+
+<script>
+function updateStatus(id, status) {
+    document.getElementById('status_id').value = id;
+    document.getElementById('status_value').value = status;
+    document.getElementById('statusUpdateForm').submit();
+}
+</script>
