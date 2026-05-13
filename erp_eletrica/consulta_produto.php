@@ -573,282 +573,284 @@ declare(strict_types=1);
 
     <script src="https://unpkg.com/html5-qrcode"></script>
 
-    <script>
-        const inputCodigo = document.getElementById('codigo');
+<script>
 
-        const btnCamera = document.getElementById('btnCamera');
+    const inputCodigo = document.getElementById('codigo');
 
-        const btnConsultar = document.getElementById('btnConsultar');
+    const btnCamera = document.getElementById('btnCamera');
 
-        const btnFecharCamera = document.getElementById('btnFecharCamera');
+    const btnConsultar = document.getElementById('btnConsultar');
 
-        const cameraOverlay = document.getElementById('cameraOverlay');
+    const btnFecharCamera = document.getElementById('btnFecharCamera');
 
-        const statusBox = document.getElementById('statusBox');
+    const cameraOverlay = document.getElementById('cameraOverlay');
 
-        let html5QrCode = null;
+    const statusBox = document.getElementById('statusBox');
 
-        let cameraAtiva = false;
+    let html5QrCode = null;
 
-        let ultimoCodigoLido = '';
+    let cameraAtiva = false;
 
-        let ultimoTempoLeitura = 0;
+    let ultimoCodigoLido = '';
 
-        function mostrarStatus(texto, tipo = 'info') {
+    let ultimoTempoLeitura = 0;
 
-            statusBox.className = 'status show ' + tipo;
+    function mostrarStatus(texto, tipo = 'info') {
 
-            statusBox.textContent = texto;
-        }
+        statusBox.className = 'status show ' + tipo;
 
-        function esconderStatus() {
+        statusBox.textContent = texto;
+    }
 
-            statusBox.className = 'status';
+    function esconderStatus() {
 
-            statusBox.textContent = '';
-        }
+        statusBox.className = 'status';
 
-        function normalizarCodigo(valor) {
+        statusBox.textContent = '';
+    }
 
-            return String(valor || '')
-                .trim()
-                .replace(/\s+/g, '');
-        }
+    function normalizarCodigo(valor) {
 
-        function consultarProduto() {
+        return String(valor || '')
+            .trim()
+            .replace(/\s+/g, '');
+    }
 
-            const codigo = normalizarCodigo(inputCodigo.value);
+    function consultarProduto() {
 
-            if (!codigo || codigo.length < 3) {
+        const codigo = normalizarCodigo(inputCodigo.value);
 
-                mostrarStatus(
-                    'Informe um código de barras válido.',
-                    'error'
-                );
-
-                inputCodigo.focus();
-
-                return;
-            }
+        if (!codigo || codigo.length < 3) {
 
             mostrarStatus(
-                'Consultando produto...',
-                'success'
+                'Informe um código de barras válido.',
+                'error'
             );
 
-            window.location.href =
-                'produto_consulta.php?codigo=' +
-                encodeURIComponent(codigo);
+            inputCodigo.focus();
+
+            return;
         }
 
-        async function abrirCamera() {
+        mostrarStatus(
+            'Consultando produto...',
+            'success'
+        );
 
-            if (cameraAtiva) {
-                return;
-            }
+        window.location.href =
+            'produto_consulta.php?codigo=' +
+            encodeURIComponent(codigo);
+    }
 
-            esconderStatus();
+    async function abrirCamera() {
 
-            cameraOverlay.classList.add('show');
-
-            try {
-
-                html5QrCode = new Html5Qrcode('reader');
-
-                cameraAtiva = true;
-
-                await html5QrCode.start(
-
-                    {
-                        facingMode: {
-                            exact: "environment"
-                        }
-                    },
-
-                    {
-                        fps: 15,
-
-                        aspectRatio: 1.777,
-
-                        disableFlip: false,
-
-                        rememberLastUsedCamera: true,
-
-                        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-
-                        formatsToSupport: [
-
-                            Html5QrcodeSupportedFormats.CODE_128,
-
-                            Html5QrcodeSupportedFormats.CODE_39,
-
-                            Html5QrcodeSupportedFormats.CODE_93,
-
-                            Html5QrcodeSupportedFormats.CODABAR,
-
-                            Html5QrcodeSupportedFormats.EAN_13,
-
-                            Html5QrcodeSupportedFormats.EAN_8,
-
-                            Html5QrcodeSupportedFormats.UPC_A,
-
-                            Html5QrcodeSupportedFormats.UPC_E
-                        ],
-
-                        qrbox: function(w, h) {
-
-                            const tamanho = Math.min(
-                                w * 0.85,
-                                h * 0.35,
-                                450
-                            );
-
-                            return {
-                                width: tamanho,
-                                height: 180
-                            };
-                        }
-                    },
-
-                    async function(decodedText) {
-
-                            const codigo = normalizarCodigo(decodedText);
-
-                            const agora = Date.now();
-
-                            if (!codigo) {
-                                return;
-                            }
-
-                            if (
-                                codigo === ultimoCodigoLido &&
-                                (agora - ultimoTempoLeitura) < 2500
-                            ) {
-                                return;
-                            }
-
-                            ultimoCodigoLido = codigo;
-
-                            ultimoTempoLeitura = agora;
-
-                            inputCodigo.value = codigo;
-
-                            if (navigator.vibrate) {
-                                navigator.vibrate(150);
-                            }
-
-                            mostrarStatus(
-                                'Código de barras lido com sucesso.',
-                                'success'
-                            );
-
-                            await fecharCamera();
-
-                            setTimeout(() => {
-                                consultarProduto();
-                            }, 400);
-                        },
-
-                        function() {}
-                );
-
-            } catch (erro) {
-
-                console.error(erro);
-
-                cameraOverlay.classList.remove('show');
-
-                cameraAtiva = false;
-
-                mostrarStatus(
-                    'Não foi possível acessar a câmera.',
-                    'error'
-                );
-            }
+        if (cameraAtiva) {
+            return;
         }
 
-        async function fecharCamera() {
+        esconderStatus();
+
+        cameraOverlay.classList.add('show');
+
+        try {
+
+            html5QrCode = new Html5Qrcode('reader');
+
+            cameraAtiva = true;
+
+            await html5QrCode.start(
+
+                {
+                    facingMode: {
+                        exact: "environment"
+                    }
+                },
+
+                {
+                    fps: 15,
+
+                    aspectRatio: 1.777,
+
+                    disableFlip: false,
+
+                    rememberLastUsedCamera: true,
+
+                    supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+
+                    formatsToSupport: [
+
+                        Html5QrcodeSupportedFormats.CODE_128,
+
+                        Html5QrcodeSupportedFormats.CODE_39,
+
+                        Html5QrcodeSupportedFormats.CODE_93,
+
+                        Html5QrcodeSupportedFormats.CODABAR,
+
+                        Html5QrcodeSupportedFormats.EAN_13,
+
+                        Html5QrcodeSupportedFormats.EAN_8,
+
+                        Html5QrcodeSupportedFormats.UPC_A,
+
+                        Html5QrcodeSupportedFormats.UPC_E
+                    ],
+
+                    qrbox: function (w, h) {
+
+                        const tamanho = Math.min(
+                            w * 0.85,
+                            h * 0.35,
+                            450
+                        );
+
+                        return {
+                            width: tamanho,
+                            height: 180
+                        };
+                    }
+                },
+
+                async function (decodedText) {
+
+                    const codigo = normalizarCodigo(decodedText);
+
+                    const agora = Date.now();
+
+                    if (!codigo) {
+                        return;
+                    }
+
+                    if (
+                        codigo === ultimoCodigoLido &&
+                        (agora - ultimoTempoLeitura) < 2500
+                    ) {
+                        return;
+                    }
+
+                    ultimoCodigoLido = codigo;
+
+                    ultimoTempoLeitura = agora;
+
+                    inputCodigo.value = codigo;
+
+                    if (navigator.vibrate) {
+                        navigator.vibrate(150);
+                    }
+
+                    mostrarStatus(
+                        'Código de barras lido com sucesso.',
+                        'success'
+                    );
+
+                    await fecharCamera();
+
+                    setTimeout(() => {
+                        consultarProduto();
+                    }, 400);
+                },
+
+                function () {}
+            );
+
+        } catch (erro) {
+
+            console.error(erro);
 
             cameraOverlay.classList.remove('show');
+
+            cameraAtiva = false;
+
+            mostrarStatus(
+                'Não foi possível acessar a câmera.',
+                'error'
+            );
+        }
+    }
+
+    async function fecharCamera() {
+
+        cameraOverlay.classList.remove('show');
+
+        if (html5QrCode && cameraAtiva) {
+
+            try {
+                await html5QrCode.stop();
+            } catch (e) {}
+
+            try {
+                await html5QrCode.clear();
+            } catch (e) {}
+        }
+
+        html5QrCode = null;
+
+        cameraAtiva = false;
+    }
+
+    btnCamera.addEventListener(
+        'click',
+        abrirCamera
+    );
+
+    btnConsultar.addEventListener(
+        'click',
+        consultarProduto
+    );
+
+    btnFecharCamera.addEventListener(
+        'click',
+        fecharCamera
+    );
+
+    inputCodigo.addEventListener(
+        'input',
+        function () {
+
+            const codigo = normalizarCodigo(this.value);
+
+            if (codigo.length >= 8) {
+
+                clearTimeout(window.autoConsultaTimer);
+
+                window.autoConsultaTimer = setTimeout(() => {
+
+                    consultarProduto();
+
+                }, 700);
+            }
+        }
+    );
+
+    inputCodigo.addEventListener(
+        'keydown',
+        function (e) {
+
+            if (e.key === 'Enter') {
+
+                e.preventDefault();
+
+                consultarProduto();
+            }
+        }
+    );
+
+    window.addEventListener(
+        'beforeunload',
+        function () {
 
             if (html5QrCode && cameraAtiva) {
 
                 try {
-                    await html5QrCode.stop();
-                } catch (e) {}
-
-                try {
-                    await html5QrCode.clear();
+                    html5QrCode.stop();
                 } catch (e) {}
             }
-
-            html5QrCode = null;
-
-            cameraAtiva = false;
         }
+    );
 
-        btnCamera.addEventListener(
-            'click',
-            abrirCamera
-        );
+    inputCodigo.focus();
 
-        btnConsultar.addEventListener(
-            'click',
-            consultarProduto
-        );
-
-        btnFecharCamera.addEventListener(
-            'click',
-            fecharCamera
-        );
-
-        inputCodigo.addEventListener(
-            'input',
-            function() {
-
-                const codigo = normalizarCodigo(this.value);
-
-                if (codigo.length >= 8) {
-
-                    clearTimeout(window.autoConsultaTimer);
-
-                    window.autoConsultaTimer = setTimeout(() => {
-
-                        consultarProduto();
-
-                    }, 700);
-                }
-            }
-        );
-
-        inputCodigo.addEventListener(
-            'keydown',
-            function(e) {
-
-                if (e.key === 'Enter') {
-
-                    e.preventDefault();
-
-                    consultarProduto();
-                }
-            }
-        );
-
-        window.addEventListener(
-            'beforeunload',
-            function() {
-
-                if (html5QrCode && cameraAtiva) {
-
-                    try {
-                        html5QrCode.stop();
-                    } catch (e) {}
-                }
-            }
-        );
-
-        inputCodigo.focus();
-    </script>
+</script>
 
 </body>
 
