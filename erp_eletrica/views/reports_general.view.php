@@ -108,8 +108,10 @@
                 <div class="card-header bg-white border-0 py-3 px-4">
                     <h6 class="mb-0 fw-bold"><i class="fas fa-chart-area me-2 text-primary"></i>Evolução de Faturamento</h6>
                 </div>
-                <div class="card-body px-4 pb-4" style="min-height: 280px;">
-                    <canvas id="salesChart"></canvas>
+                <div class="card-body px-4 pb-4">
+                    <div style="position: relative; height: 260px; width: 100%;">
+                        <canvas id="salesChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -122,7 +124,9 @@
                     <?php if (empty($categories_chart)): ?>
                         <div class="text-center py-5 text-muted small"><i class="fas fa-chart-pie fa-2x mb-2 d-block opacity-25"></i>Sem dados no período</div>
                     <?php else: ?>
-                        <canvas id="categoriesChart"></canvas>
+                        <div style="position: relative; height: 260px; width: 100%;">
+                            <canvas id="categoriesChart"></canvas>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -210,7 +214,9 @@
                     <?php if (empty($payment_chart)): ?>
                         <div class="text-center py-4 text-muted small"><i class="fas fa-credit-card fa-2x mb-2 d-block opacity-25"></i>Sem dados</div>
                     <?php else: ?>
-                        <canvas id="paymentChart"></canvas>
+                        <div style="position: relative; height: 180px; width: 100%;">
+                            <canvas id="paymentChart"></canvas>
+                        </div>
                         <div class="mt-3">
                             <?php foreach ($payment_chart as $pm): ?>
                             <div class="d-flex justify-content-between align-items-center mb-2 small">
