@@ -257,8 +257,13 @@ if ($codigoBusca === '') {
 <html lang="pt-BR">
 
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
     <title>Consulta de Produto</title>
 
     <style>
@@ -266,13 +271,13 @@ if ($codigoBusca === '') {
             --azul: #294f87;
             --azul-escuro: #18365f;
             --amarelo: #f2c318;
-            --fundo: #c1cad8;
+            --fundo: #bcc6d5;
             --texto: #243a5a;
-            --texto-suave: #687892;
+            --texto-suave: #6d7b90;
+            --verde: #1f9b5f;
             --branco: #ffffff;
-            --verde: #1fa463;
-            --cinza-box: #f5f8fc;
-            --borda: #dbe3ee;
+            --borda: #d9e2ee;
+            --box: #f7faff;
             --sombra: 0 18px 45px rgba(17, 38, 70, .18);
         }
 
@@ -305,72 +310,66 @@ if ($codigoBusca === '') {
             width: 100%;
             max-width: 1200px;
             background: #fff;
-            border-radius: 28px;
+            border-radius: 30px;
             overflow: hidden;
             box-shadow: var(--sombra);
         }
 
         .top {
-            background: var(--azul);
-            padding: 30px 20px;
+            background: linear-gradient(180deg, #264b81 0%, #1b3d6c 100%);
+            padding: 34px 20px 30px;
             text-align: center;
+            position: relative;
         }
 
-        .top img {
-            max-width: 280px;
-            width: 100%;
-            object-fit: contain;
-        }
-
-        .bar {
+        .top::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
             height: 6px;
             background: var(--amarelo);
         }
 
+        .logo-title {
+            color: #fff;
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .logo-subtitle {
+            color: rgba(255, 255, 255, .92);
+            margin-top: 8px;
+            font-size: 1rem;
+        }
+
         .content {
-            padding: 32px;
-        }
-
-        .error-box {
-            background: #fff5f5;
-            border: 1px solid #ffd2d2;
-            border-radius: 22px;
             padding: 34px;
-            text-align: center;
-        }
-
-        .error-box h1 {
-            color: #d14040;
-            margin-bottom: 10px;
-            font-size: 2rem;
-        }
-
-        .error-box p {
-            color: #8b4b4b;
-            margin-bottom: 20px;
-            line-height: 1.7;
         }
 
         .layout {
             display: grid;
             grid-template-columns: 430px 1fr;
-            gap: 28px;
+            gap: 30px;
         }
 
         .image-card {
             background: #f8fbff;
             border: 1px solid var(--borda);
-            border-radius: 24px;
+            border-radius: 26px;
             padding: 24px;
-            min-height: 500px;
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 520px;
         }
 
         .image-card img {
             width: 100%;
-            max-height: 440px;
+            max-height: 460px;
             object-fit: contain;
         }
 
@@ -382,22 +381,40 @@ if ($codigoBusca === '') {
 
         .badge {
             align-self: flex-start;
-            background: #eaf7ef;
+            background: #ebf7ef;
             color: var(--verde);
-            border: 1px solid #cae8d5;
+            border: 1px solid #cce8d6;
             border-radius: 999px;
             padding: 10px 16px;
             font-size: .82rem;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: .6px;
         }
 
         .product-title {
-            font-size: 2.3rem;
-            line-height: 1.2;
-            font-weight: 900;
+            font-size: 2.4rem;
+            line-height: 1.15;
             color: var(--azul-escuro);
+            font-weight: 900;
+        }
+
+        .stock-highlight {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            width: fit-content;
+            background: #eef7ff;
+            border: 1px solid #d5e5f7;
+            color: var(--azul-escuro);
+            border-radius: 18px;
+            padding: 14px 18px;
+            font-size: 1rem;
+            font-weight: 800;
+        }
+
+        .stock-highlight strong {
+            font-size: 1.15rem;
+            color: var(--verde);
         }
 
         .price-main {
@@ -411,16 +428,15 @@ if ($codigoBusca === '') {
         .price-main small {
             display: block;
             margin-bottom: 10px;
-            font-size: .95rem;
             text-transform: uppercase;
+            font-size: .9rem;
             opacity: .9;
-            letter-spacing: 1px;
             font-weight: 700;
         }
 
         .price-main strong {
             display: block;
-            font-size: 3.5rem;
+            font-size: 3.6rem;
             line-height: 1;
             font-weight: 900;
         }
@@ -432,7 +448,7 @@ if ($codigoBusca === '') {
         }
 
         .price-box {
-            background: var(--cinza-box);
+            background: var(--box);
             border: 1px solid var(--borda);
             border-radius: 18px;
             padding: 18px;
@@ -440,15 +456,15 @@ if ($codigoBusca === '') {
 
         .price-box span {
             display: block;
-            font-size: .82rem;
+            font-size: .8rem;
             text-transform: uppercase;
-            color: var(--texto-suave);
             margin-bottom: 8px;
-            font-weight: 700;
+            color: var(--texto-suave);
+            font-weight: 800;
         }
 
         .price-box strong {
-            font-size: 1.35rem;
+            font-size: 1.3rem;
             color: var(--azul-escuro);
         }
 
@@ -462,19 +478,20 @@ if ($codigoBusca === '') {
             background: #f8fbff;
             border: 1px solid var(--borda);
             border-radius: 18px;
-            padding: 16px;
+            padding: 18px;
         }
 
         .meta span {
             display: block;
             font-size: .78rem;
             text-transform: uppercase;
-            color: var(--texto-suave);
             margin-bottom: 6px;
+            color: var(--texto-suave);
             font-weight: 800;
         }
 
         .meta strong {
+            display: block;
             font-size: 1.05rem;
             color: var(--texto);
             word-break: break-word;
@@ -488,8 +505,8 @@ if ($codigoBusca === '') {
         }
 
         .description h3 {
-            margin-bottom: 10px;
             color: var(--azul-escuro);
+            margin-bottom: 10px;
             text-transform: uppercase;
             font-size: 1rem;
         }
@@ -499,40 +516,24 @@ if ($codigoBusca === '') {
             line-height: 1.7;
         }
 
-        .footer-stock {
-            margin-top: 24px;
-            background: #eef6ff;
-            border: 1px solid #d5e4f5;
-            border-radius: 18px;
-            padding: 18px;
-            text-align: center;
-            font-size: 1rem;
-        }
-
-        .footer-stock strong {
-            color: var(--azul-escuro);
-        }
-
         .actions {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 14px;
-            flex-wrap: wrap;
+            margin-top: 6px;
         }
 
         .btn {
-            flex: 1;
-            min-width: 220px;
             height: 58px;
             border-radius: 16px;
             border: none;
-            font-size: 1rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            cursor: pointer;
             text-decoration: none;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: .98rem;
+            font-weight: 800;
+            text-transform: uppercase;
             transition: .2s ease;
         }
 
@@ -546,12 +547,32 @@ if ($codigoBusca === '') {
         }
 
         .btn-secondary {
-            background: #e9eef6;
+            background: #e8eef6;
             color: var(--azul-escuro);
         }
 
         .btn-secondary:hover {
             background: #dce5f1;
+        }
+
+        .error-box {
+            background: #fff5f5;
+            border: 1px solid #ffd3d3;
+            border-radius: 22px;
+            padding: 34px;
+            text-align: center;
+        }
+
+        .error-box h1 {
+            color: #d13e3e;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .error-box p {
+            color: #8b4b4b;
+            line-height: 1.7;
+            margin-bottom: 22px;
         }
 
         @media (max-width: 980px) {
@@ -561,7 +582,7 @@ if ($codigoBusca === '') {
             }
 
             .image-card {
-                min-height: 340px;
+                min-height: 320px;
             }
 
             .product-title {
@@ -587,13 +608,24 @@ if ($codigoBusca === '') {
                 padding: 18px;
             }
 
+            .logo-title {
+                font-size: 2rem;
+            }
+
+            .product-title {
+                font-size: 1.6rem;
+            }
+
             .meta-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
                 grid-template-columns: 1fr;
             }
 
             .btn {
                 width: 100%;
-                min-width: unset;
             }
 
             .price-main {
@@ -604,11 +636,17 @@ if ($codigoBusca === '') {
                 font-size: 2.3rem;
             }
 
-            .product-title {
-                font-size: 1.55rem;
+            .image-card {
+                padding: 16px;
+                min-height: 260px;
+            }
+
+            .image-card img {
+                max-height: 260px;
             }
         }
     </style>
+
 </head>
 
 <body>
@@ -618,18 +656,16 @@ if ($codigoBusca === '') {
         <main class="card">
 
             <div class="top">
-                <img
-                    src="assets/img/logo-centro-eletricista.png"
-                    alt="Centro do Eletricista"
-                    onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
 
-                <div class="logo-fallback" id="logoFallback">
-                    <strong>CENTRO DO ELETRICISTA</strong>
-                    <span>Consulta rápida de produtos</span>
+                <div class="logo-title">
+                    CENTRO DO ELETRICISTA
                 </div>
-            </div>
 
-            <div class="bar"></div>
+                <div class="logo-subtitle">
+                    Consulta rápida de produtos
+                </div>
+
+            </div>
 
             <div class="content">
 
@@ -641,8 +677,12 @@ if ($codigoBusca === '') {
 
                         <p><?= h($erro) ?></p>
 
-                        <a href="consulta_produto.php" class="btn btn-primary">
+                        <a
+                            href="consulta_produto.php"
+                            class="btn btn-primary">
+
                             Voltar para consulta
+
                         </a>
 
                     </div>
@@ -652,27 +692,20 @@ if ($codigoBusca === '') {
                     <?php
 
                     $nome = (string)($produto['nome'] ?? '');
-
                     $codigo = (string)($produto['codigo'] ?? '');
-
                     $cean = (string)($produto['cean'] ?? '');
-
                     $categoria = (string)($produto['categoria'] ?? '');
-
                     $unidade = (string)($produto['unidade'] ?? 'UN');
-
                     $descricao = trim((string)($produto['descricao'] ?? ''));
+                    $quantidade = (float)($produto['quantidade'] ?? 0);
 
-                    $quantidade = (int)($produto['quantidade'] ?? 0);
-
-                    $imagem = primeiraImagemDoCampo((string)($produto['imagens'] ?? ''));
+                    $imagem = primeiraImagemDoCampo(
+                        (string)($produto['imagens'] ?? '')
+                    );
 
                     $preco1 = (float)($produto['preco_venda'] ?? 0);
-
                     $preco2 = (float)($produto['preco_venda_2'] ?? 0);
-
                     $preco3 = (float)($produto['preco_venda_3'] ?? 0);
-
                     $precoAtacado = (float)($produto['preco_venda_atacado'] ?? 0);
 
                     ?>
@@ -680,7 +713,11 @@ if ($codigoBusca === '') {
                     <div class="layout">
 
                         <div class="image-card">
-                            <img src="<?= h($imagem) ?>" alt="<?= h($nome) ?>">
+
+                            <img
+                                src="<?= h($imagem) ?>"
+                                alt="<?= h($nome) ?>">
+
                         </div>
 
                         <div class="info-side">
@@ -693,9 +730,21 @@ if ($codigoBusca === '') {
                                 <?= h($nome) ?>
                             </h1>
 
+                            <div class="stock-highlight">
+
+                                Quantidade em estoque:
+
+                                <strong>
+                                    <?= number_format($quantidade, 0, ',', '.') ?>
+                                </strong>
+
+                            </div>
+
                             <div class="price-main">
 
-                                <small>Preço principal</small>
+                                <small>
+                                    Preço principal
+                                </small>
 
                                 <strong>
                                     <?= h(moneyBR($preco1)) ?>
@@ -706,18 +755,33 @@ if ($codigoBusca === '') {
                             <div class="prices-grid">
 
                                 <div class="price-box">
+
                                     <span>Preço 2</span>
-                                    <strong><?= h(moneyBR($preco2)) ?></strong>
+
+                                    <strong>
+                                        <?= h(moneyBR($preco2)) ?>
+                                    </strong>
+
                                 </div>
 
                                 <div class="price-box">
+
                                     <span>Preço 3</span>
-                                    <strong><?= h(moneyBR($preco3)) ?></strong>
+
+                                    <strong>
+                                        <?= h(moneyBR($preco3)) ?>
+                                    </strong>
+
                                 </div>
 
                                 <div class="price-box">
+
                                     <span>Atacado</span>
-                                    <strong><?= h(moneyBR($precoAtacado)) ?></strong>
+
+                                    <strong>
+                                        <?= h(moneyBR($precoAtacado)) ?>
+                                    </strong>
+
                                 </div>
 
                             </div>
@@ -725,58 +789,86 @@ if ($codigoBusca === '') {
                             <div class="meta-grid">
 
                                 <div class="meta">
+
                                     <span>Código interno</span>
-                                    <strong><?= h($codigo ?: '-') ?></strong>
+
+                                    <strong>
+                                        <?= h($codigo ?: '-') ?>
+                                    </strong>
+
                                 </div>
 
                                 <div class="meta">
+
                                     <span>Código de barras</span>
-                                    <strong><?= h($cean ?: '-') ?></strong>
+
+                                    <strong>
+                                        <?= h($cean ?: '-') ?>
+                                    </strong>
+
                                 </div>
 
                                 <div class="meta">
+
                                     <span>Categoria</span>
-                                    <strong><?= h($categoria ?: '-') ?></strong>
+
+                                    <strong>
+                                        <?= h($categoria ?: '-') ?>
+                                    </strong>
+
                                 </div>
 
                                 <div class="meta">
+
                                     <span>Unidade</span>
-                                    <strong><?= h($unidade ?: 'UN') ?></strong>
+
+                                    <strong>
+                                        <?= h($unidade ?: 'UN') ?>
+                                    </strong>
+
                                 </div>
 
                             </div>
 
                             <div class="description">
 
-                                <h3>Descrição do produto</h3>
+                                <h3>
+                                    Descrição do produto
+                                </h3>
 
                                 <p>
-                                    <?= h($descricao !== '' ? $descricao : 'Sem descrição cadastrada.') ?>
+
+                                    <?= h(
+                                        $descricao !== ''
+                                            ? $descricao
+                                            : 'Sem descrição cadastrada.'
+                                    ) ?>
+
                                 </p>
 
                             </div>
 
                             <div class="actions">
 
-                                <a href="consulta_produto.php" class="btn btn-primary">
+                                <a
+                                    href="consulta_produto.php"
+                                    class="btn btn-primary">
+
                                     Consultar outro produto
+
                                 </a>
 
-                                <a href="javascript:history.back()" class="btn btn-secondary">
+                                <a
+                                    href="javascript:history.back()"
+                                    class="btn btn-secondary">
+
                                     Voltar
+
                                 </a>
 
                             </div>
 
                         </div>
-
-                    </div>
-
-                    <div class="footer-stock">
-
-                        Estoque disponível:
-                        <strong><?= (int)$quantidade ?></strong>
-                        unidade(s)
 
                     </div>
 
