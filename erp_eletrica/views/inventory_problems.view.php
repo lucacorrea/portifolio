@@ -1,3 +1,17 @@
+<?php if (isset($_GET['msg'])): ?>
+    <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+        <i class="fas fa-check-circle me-2"></i> <?= htmlspecialchars($_GET['msg']) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
+<?php if (isset($_GET['error'])): ?>
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i> <?= htmlspecialchars($_GET['error']) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
 <!-- Stats Cards -->
 <div class="row g-3 mb-4 row-cols-1 row-cols-sm-2 row-cols-md-5">
     <div class="col">
@@ -74,7 +88,7 @@
 </div>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
+    <div class="card-body p-0" style="min-height: 300px;">
         <div class="table-responsive" style="overflow: visible;">
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light">
@@ -120,7 +134,7 @@
                                 </span>
                             </td>
                             <td class="text-end pe-4">
-                                <div class="dropup">
+                                <div class="dropdown">
                                     <button class="btn btn-light btn-sm border shadow-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                         Mudar Status
                                     </button>

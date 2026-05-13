@@ -1,3 +1,17 @@
+<?php if (isset($_GET['msg'])): ?>
+    <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+        <i class="fas fa-check-circle me-2"></i> <?= htmlspecialchars($_GET['msg']) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
+<?php if (isset($_GET['error'])): ?>
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i> <?= htmlspecialchars($_GET['error']) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
 <!-- Page Header -->
 <div class="row g-3 mb-4 row-cols-1 row-cols-sm-2 row-cols-md-4">
     <div class="col">
