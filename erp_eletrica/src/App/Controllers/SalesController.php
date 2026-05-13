@@ -50,7 +50,7 @@ class SalesController extends BaseController {
                     $db->exec("ALTER TABLE produtos ADD COLUMN preco_variavel TINYINT(1) DEFAULT 0");
                     $hasPVariavel = true;
                 }
-                $db->exec("UPDATE produtos SET preco_variavel = 1 WHERE codigo = '7423' OR id = 8930");
+                $db->exec("UPDATE produtos SET preco_variavel = 1, codigo = '00000' WHERE codigo = '7423' OR id = 8930");
             } catch (\Exception $e) {}
 
             $join = "LEFT JOIN";

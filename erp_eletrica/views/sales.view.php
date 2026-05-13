@@ -982,13 +982,14 @@ function renderCart() {
             <td class="ps-4 fw-bold text-muted">#${item.id}</td>
             <td>
                 <div>${item.nome}</div>
+                ${!item.preco_variavel ? `
                 <div class="mt-1">
                     <select class="form-select form-select-sm d-inline-block w-auto py-0 extra-small border-primary border-opacity-25" onchange="updatePriceTier(${index}, this.value)">
                         <option value="1" ${item.price_tier == 1 ? 'selected' : ''}>Preço 1 (R$ ${item.price1.toFixed(2).replace('.', ',')})</option>
                         <option value="2" ${item.price_tier == 2 ? 'selected' : ''}>Preço 2 (R$ ${item.price2.toFixed(2).replace('.', ',')})</option>
                         <option value="3" ${item.price_tier == 3 ? 'selected' : ''}>Preço 3 (R$ ${item.price3.toFixed(2).replace('.', ',')})</option>
                     </select>
-                </div>
+                </div>` : ''}
             </td>
             <td class="text-center">
                 <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" step="any" onchange="updateQty(${index}, this.value)">
