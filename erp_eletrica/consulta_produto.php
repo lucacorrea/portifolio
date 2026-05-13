@@ -574,7 +574,6 @@ declare(strict_types=1);
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <script>
-
         const inputCodigo = document.getElementById('codigo');
 
         const btnCamera = document.getElementById('btnCamera');
@@ -620,10 +619,10 @@ declare(strict_types=1);
 
             const codigo = normalizarCodigo(inputCodigo.value);
 
-            if (!codigo || codigo.length < 2) {
+            if (!codigo || codigo.length < 3) {
 
                 mostrarStatus(
-                    'Informe um código válido.',
+                    'Informe um código de barras válido.',
                     'error'
                 );
 
@@ -656,14 +655,18 @@ declare(strict_types=1);
 
                 html5QrCode = new Html5Qrcode('reader');
 
+                cameraAtiva = true;
+
                 await html5QrCode.start(
 
                     {
-                        facingMode: "environment"
+                        facingMode: {
+                            exact: "environment"
+                        }
                     },
 
                     {
-                        fps: 10,
+                        fps: 15,
 
                         aspectRatio: 1.777,
 
@@ -671,13 +674,17 @@ declare(strict_types=1);
 
                         rememberLastUsedCamera: true,
 
-                        formatsToSupport: [
+                        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
 
-                            Html5QrcodeSupportedFormats.QR_CODE,
+                        formatsToSupport: [
 
                             Html5QrcodeSupportedFormats.CODE_128,
 
                             Html5QrcodeSupportedFormats.CODE_39,
+
+                            Html5QrcodeSupportedFormats.CODE_93,
+
+                            Html5QrcodeSupportedFormats.CODABAR,
 
                             Html5QrcodeSupportedFormats.EAN_13,
 
@@ -688,67 +695,70 @@ declare(strict_types=1);
                             Html5QrcodeSupportedFormats.UPC_E
                         ],
 
-                        qrbox: (w, h) => {
+                        qrbox: function(w, h) {
 
                             const tamanho = Math.min(
-                                w * 0.72,
-                                h * 0.42,
-                                420
+                                w * 0.85,
+                                h * 0.35,
+                                450
                             );
 
                             return {
                                 width: tamanho,
-                                height: tamanho
+                                height: 180
                             };
                         }
                     },
 
-                    async (decodedText) => {
+                    async function(decodedText) {
 
-                        const codigo = normalizarCodigo(decodedText);
+                            const codigo = normalizarCodigo(decodedText);
 
-                        const agora = Date.now();
+                            const agora = Date.now();
 
-                        if (!codigo) {
-                            return;
-                        }
+                            if (!codigo) {
+                                return;
+                            }
 
-                        if (
-                            codigo === ultimoCodigoLido &&
-                            (agora - ultimoTempoLeitura) < 2000
-                        ) {
-                            return;
-                        }
+                            if (
+                                codigo === ultimoCodigoLido &&
+                                (agora - ultimoTempoLeitura) < 2500
+                            ) {
+                                return;
+                            }
 
-                        ultimoCodigoLido = codigo;
+                            ultimoCodigoLido = codigo;
 
-                        ultimoTempoLeitura = agora;
+                            ultimoTempoLeitura = agora;
 
-                        inputCodigo.value = codigo;
+                            inputCodigo.value = codigo;
 
-                        if (navigator.vibrate) {
-                            navigator.vibrate(120);
-                        }
+                            if (navigator.vibrate) {
+                                navigator.vibrate(150);
+                            }
 
-                        mostrarStatus(
-                            'Código lido com sucesso. Clique em "Consultar produto".',
-                            'success'
-                        );
+                            mostrarStatus(
+                                'Código de barras lido com sucesso.',
+                                'success'
+                            );
 
-                        await fecharCamera();
-                    },
+                            await fecharCamera();
 
-                    () => {}
+                            setTimeout(() => {
+                                consultarProduto();
+                            }, 400);
+                        },
 
+                        function() {}
                 );
-
-                cameraAtiva = true;
 
             } catch (erro) {
 
                 console.error(erro);
 
                 cameraOverlay.classList.remove('show');
+
+                cameraAtiva = false;
 
                 mostrarStatus(
                     'Não foi possível acessar a câmera.',
@@ -793,8 +803,27 @@ declare(strict_types=1);
         );
 
         inputCodigo.addEventListener(
+            'input',
+            function() {
+
+                const codigo = normalizarCodigo(this.value);
+
+                if (codigo.length >= 8) {
+
+                    clearTimeout(window.autoConsultaTimer);
+
+                    window.autoConsultaTimer = setTimeout(() => {
+
+                        consultarProduto();
+
+                    }, 700);
+                }
+            }
+        );
+
+        inputCodigo.addEventListener(
             'keydown',
-            (e) => {
+            function(e) {
 
                 if (e.key === 'Enter') {
 
@@ -807,7 +836,7 @@ declare(strict_types=1);
 
         window.addEventListener(
             'beforeunload',
-            () => {
+            function() {
 
                 if (html5QrCode && cameraAtiva) {
 
@@ -819,7 +848,6 @@ declare(strict_types=1);
         );
 
         inputCodigo.focus();
-
     </script>
 
 </body>
