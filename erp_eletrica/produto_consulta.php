@@ -334,7 +334,7 @@ if ($codigoBusca === '') {
 
         .logo-title {
             color: #fff;
-            font-size: 3rem;
+            font-size: 1.8rem;
             font-weight: 900;
             letter-spacing: 1px;
             text-transform: uppercase;
