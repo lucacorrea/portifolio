@@ -74,7 +74,7 @@
 </div>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-body p-0" style="min-height: 450px;">
+    <div class="card-body p-0">
         <div class="table-responsive" style="overflow: visible;">
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light">
@@ -120,8 +120,8 @@
                                 </span>
                             </td>
                             <td class="text-end pe-4">
-                                <div class="btn-group">
-                                    <button class="btn btn-light btn-sm border shadow-sm dropdown-toggle" data-bs-toggle="dropdown">
+                                <div class="dropup">
+                                    <button class="btn btn-light btn-sm border shadow-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                         Mudar Status
                                     </button>
                                     <ul class="dropdown-menu shadow-lg border-0">
