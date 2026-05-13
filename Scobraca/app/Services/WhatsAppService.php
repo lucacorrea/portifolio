@@ -46,6 +46,17 @@ function whatsapp_api_base_url(): string
     return rtrim((string) env('WHATSAPP_API_URL', ''), '/');
 }
 
+function whatsapp_provider(): string
+{
+    $provider = strtolower(trim((string) env('WHATSAPP_PROVIDER', '')));
+
+    if ($provider === '' && trim((string) env('WHATSAPP_BRIDGE_URL', '')) !== '') {
+        return 'bridge';
+    }
+
+    return in_array($provider, ['bridge', 'baileys'], true) ? 'bridge' : 'evolution';
+}
+
 function whatsapp_api_key(): string
 {
     return trim((string) env('WHATSAPP_API_KEY', ''));
@@ -54,6 +65,37 @@ function whatsapp_api_key(): string
 function whatsapp_api_configured(): bool
 {
     return whatsapp_api_base_url() !== '' && whatsapp_api_key() !== '';
+}
+
+function whatsapp_bridge_base_url(): string
+{
+    return rtrim((string) env('WHATSAPP_BRIDGE_URL', ''), '/');
+}
+
+function whatsapp_bridge_token(): string
+{
+    return trim((string) env('WHATSAPP_BRIDGE_TOKEN', ''));
+}
+
+function whatsapp_bridge_configured(): bool
+{
+    return whatsapp_bridge_base_url() !== '';
+}
+
+function whatsapp_integration_configured(): bool
+{
+    return whatsapp_provider() === 'bridge'
+        ? whatsapp_bridge_configured()
+        : whatsapp_api_configured();
+}
+
+function whatsapp_config_error_message(): string
+{
+    if (whatsapp_provider() === 'bridge') {
+        return 'Configure WHATSAPP_PROVIDER=bridge e WHATSAPP_BRIDGE_URL no .env.';
+    }
+
+    return 'Configure WHATSAPP_API_URL e WHATSAPP_API_KEY no .env.';
 }
 
 function whatsapp_default_instance_name(int $empresaId): string
@@ -194,7 +236,7 @@ function whatsapp_api_request(string $method, string $path, ?array $payload = nu
             'http_code' => 0,
             'data' => null,
             'raw' => '',
-            'error' => 'Configure WHATSAPP_API_URL e WHATSAPP_API_KEY no .env.',
+            'error' => whatsapp_config_error_message(),
         ];
     }
 
@@ -254,6 +296,79 @@ function whatsapp_api_request(string $method, string $path, ?array $payload = nu
     ];
 }
 
+function whatsapp_bridge_request(string $method, string $path, ?array $payload = null): array
+{
+    if (!whatsapp_bridge_configured()) {
+        return [
+            'ok' => false,
+            'http_code' => 0,
+            'data' => null,
+            'raw' => '',
+            'error' => whatsapp_config_error_message(),
+        ];
+    }
+
+    $url = whatsapp_bridge_base_url() . '/' . ltrim($path, '/');
+    $timeout = max(3, (int) env('WHATSAPP_BRIDGE_TIMEOUT', env('WHATSAPP_API_TIMEOUT', '15')));
+    $token = whatsapp_bridge_token();
+    $authHeader = trim((string) env('WHATSAPP_BRIDGE_AUTH_HEADER', 'Authorization')) ?: 'Authorization';
+
+    $headers = ['Accept: application/json'];
+
+    if ($token !== '') {
+        $headerValue = strcasecmp($authHeader, 'Authorization') === 0
+            ? 'Bearer ' . $token
+            : $token;
+        $headers[] = $authHeader . ': ' . $headerValue;
+    }
+
+    $options = [
+        'method' => strtoupper($method),
+        'header' => implode("\r\n", $headers),
+        'ignore_errors' => true,
+        'timeout' => $timeout,
+    ];
+
+    if ($payload !== null) {
+        $options['header'] .= "\r\nContent-Type: application/json";
+        $options['content'] = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    $context = stream_context_create(['http' => $options]);
+    $raw = @file_get_contents($url, false, $context);
+    $responseHeaders = $http_response_header ?? [];
+    $httpCode = 0;
+
+    foreach ($responseHeaders as $header) {
+        if (preg_match('#^HTTP/\S+\s+(\d{3})#', $header, $matches)) {
+            $httpCode = (int) $matches[1];
+            break;
+        }
+    }
+
+    if ($raw === false) {
+        return [
+            'ok' => false,
+            'http_code' => $httpCode,
+            'data' => null,
+            'raw' => '',
+            'error' => 'Falha ao comunicar com a bridge de WhatsApp.',
+        ];
+    }
+
+    $decoded = json_decode($raw, true);
+    $data = is_array($decoded) ? $decoded : ['raw' => $raw];
+    $ok = $httpCode >= 200 && $httpCode < 300;
+
+    return [
+        'ok' => $ok,
+        'http_code' => $httpCode,
+        'data' => $data,
+        'raw' => $raw,
+        'error' => $ok ? null : whatsapp_api_error_message($data, $httpCode),
+    ];
+}
+
 function whatsapp_api_error_message(array $data, int $httpCode): string
 {
     foreach (['message', 'error', 'response', 'details'] as $key) {
@@ -288,7 +403,7 @@ function whatsapp_find_first_value(array $data, array $keys): ?string
 
 function whatsapp_extract_qr_image(array $data): ?string
 {
-    $value = whatsapp_find_first_value($data, ['base64', 'qrcode', 'qrCode', 'qr_code', 'image']);
+    $value = whatsapp_find_first_value($data, ['base64', 'qr', 'qrcode', 'qrCode', 'qr_code', 'image']);
 
     if ($value === null) {
         return null;
@@ -325,18 +440,76 @@ function whatsapp_extract_connection_state(array $data): string
     };
 }
 
+function whatsapp_extract_bridge_state(array $data): string
+{
+    if (array_key_exists('connected', $data) && (bool) $data['connected']) {
+        return 'conectado';
+    }
+
+    $status = strtolower((string) ($data['status'] ?? ''));
+
+    return match ($status) {
+        'connected', 'open', 'conectado' => 'conectado',
+        'starting', 'connecting', 'waiting_qr', 'qrcode', 'qr', 'gerando', 'reconnecting', 'conectando' => 'conectando',
+        'offline', 'error', 'erro' => 'erro',
+        'disconnected', 'desconectado', 'close', 'closed' => 'desconectado',
+        default => 'desconectado',
+    };
+}
+
 function whatsapp_refresh_connection(int $empresaId): array
 {
     $connection = whatsapp_get_connection($empresaId);
 
-    if (!whatsapp_api_configured()) {
+    if (!whatsapp_integration_configured()) {
         whatsapp_update_connection($empresaId, [
             'status' => 'erro',
-            'ultimo_erro' => 'Configure WHATSAPP_API_URL e WHATSAPP_API_KEY no .env.',
+            'ultimo_erro' => whatsapp_config_error_message(),
             'ultima_sincronizacao' => date('Y-m-d H:i:s'),
         ]);
 
         return ['ok' => false, 'message' => 'Integração de WhatsApp não configurada.'];
+    }
+
+    if (whatsapp_provider() === 'bridge') {
+        $response = whatsapp_bridge_request('GET', '/status');
+
+        if (!$response['ok']) {
+            whatsapp_update_connection($empresaId, [
+                'status' => 'erro',
+                'ultimo_erro' => $response['error'],
+                'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+            ]);
+
+            return ['ok' => false, 'message' => (string) $response['error']];
+        }
+
+        $status = whatsapp_extract_bridge_state($response['data']);
+        $connectedNumber = whatsapp_normalize_phone((string) ($response['data']['number'] ?? ''));
+        $qrCode = $connection['qr_code'] ?? null;
+        $qrImage = $connection['qr_code_imagem'] ?? null;
+
+        if ($status !== 'conectado') {
+            $qrResponse = whatsapp_bridge_request('GET', '/qrcode');
+
+            if ($qrResponse['ok']) {
+                $qrCode = whatsapp_find_first_value($qrResponse['data'], ['code', 'qrCode', 'qrcode']);
+                $qrImage = whatsapp_extract_qr_image($qrResponse['data']);
+            }
+        }
+
+        whatsapp_update_connection($empresaId, [
+            'status' => $status,
+            'telefone_conectado' => $connectedNumber ?: ($connection['telefone_conectado'] ?? null),
+            'ultimo_erro' => null,
+            'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+            'conectado_em' => $status === 'conectado' ? date('Y-m-d H:i:s') : null,
+            'qr_code' => $status === 'conectado' ? null : $qrCode,
+            'qr_code_imagem' => $status === 'conectado' ? null : $qrImage,
+            'pairing_code' => null,
+        ]);
+
+        return ['ok' => true, 'message' => 'Status atualizado.', 'status' => $status];
     }
 
     $instance = (string) ($connection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId));
@@ -381,13 +554,63 @@ function whatsapp_connect_instance(int $empresaId, string $instanceName, string 
         'ultima_sincronizacao' => date('Y-m-d H:i:s'),
     ]);
 
-    if (!whatsapp_api_configured()) {
+    if (!whatsapp_integration_configured()) {
         whatsapp_update_connection($empresaId, [
             'status' => 'erro',
-            'ultimo_erro' => 'Configure WHATSAPP_API_URL e WHATSAPP_API_KEY no .env.',
+            'ultimo_erro' => whatsapp_config_error_message(),
         ]);
 
         return ['ok' => false, 'message' => 'Integração de WhatsApp não configurada.'];
+    }
+
+    if (whatsapp_provider() === 'bridge') {
+        $statusResponse = whatsapp_bridge_request('GET', '/status');
+
+        if ($statusResponse['ok'] && whatsapp_extract_bridge_state($statusResponse['data']) === 'conectado') {
+            whatsapp_update_connection($empresaId, [
+                'status' => 'conectado',
+                'qr_code' => null,
+                'qr_code_imagem' => null,
+                'pairing_code' => null,
+                'ultimo_erro' => null,
+                'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+                'conectado_em' => date('Y-m-d H:i:s'),
+            ]);
+
+            return ['ok' => true, 'message' => 'WhatsApp já conectado na bridge.'];
+        }
+
+        $qrResponse = whatsapp_bridge_request('GET', '/qrcode');
+
+        if (!$qrResponse['ok']) {
+            whatsapp_update_connection($empresaId, [
+                'status' => 'erro',
+                'ultimo_erro' => $qrResponse['error'],
+                'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+            ]);
+
+            return ['ok' => false, 'message' => (string) $qrResponse['error']];
+        }
+
+        $qrImage = whatsapp_extract_qr_image($qrResponse['data']);
+        $qrCode = whatsapp_find_first_value($qrResponse['data'], ['code', 'qrCode', 'qrcode']);
+        $message = (string) ($qrResponse['data']['message'] ?? '');
+
+        whatsapp_update_connection($empresaId, [
+            'status' => 'conectando',
+            'qr_code' => $qrCode,
+            'qr_code_imagem' => $qrImage,
+            'pairing_code' => null,
+            'ultimo_erro' => null,
+            'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+        ]);
+
+        return [
+            'ok' => true,
+            'message' => $qrImage !== null || $qrCode !== null
+                ? 'QR Code gerado pela bridge. Leia com o WhatsApp da empresa.'
+                : ($message !== '' ? $message : 'Bridge conectada. Aguarde o QR Code e atualize o status.'),
+        ];
     }
 
     $createResponse = whatsapp_api_request('POST', '/instance/create', [
@@ -449,7 +672,19 @@ function whatsapp_disconnect_instance(int $empresaId): array
     $connection = whatsapp_get_connection($empresaId);
     $instance = (string) ($connection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId));
 
-    if (whatsapp_api_configured()) {
+    if (whatsapp_provider() === 'bridge' && whatsapp_bridge_configured()) {
+        $response = whatsapp_bridge_request('GET', '/logout');
+
+        if (!$response['ok'] && !in_array((int) $response['http_code'], [400, 404], true)) {
+            whatsapp_update_connection($empresaId, [
+                'status' => 'erro',
+                'ultimo_erro' => $response['error'],
+                'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+            ]);
+
+            return ['ok' => false, 'message' => (string) $response['error']];
+        }
+    } elseif (whatsapp_api_configured()) {
         $response = whatsapp_api_request('DELETE', '/instance/logout/' . rawurlencode($instance));
 
         if (!$response['ok'] && !in_array((int) $response['http_code'], [400, 404], true)) {
@@ -563,8 +798,8 @@ function whatsapp_send_text(
         $connection = whatsapp_get_connection($empresaId);
     }
 
-    if (!whatsapp_api_configured() || ($connection['status'] ?? '') !== 'conectado') {
-        $message = !whatsapp_api_configured()
+    if (!whatsapp_integration_configured() || ($connection['status'] ?? '') !== 'conectado') {
+        $message = !whatsapp_integration_configured()
             ? 'Integração de WhatsApp não configurada.'
             : 'WhatsApp da empresa não está conectado.';
 
@@ -573,7 +808,6 @@ function whatsapp_send_text(
         return ['ok' => false, 'message' => $message, 'envio_id' => $envioId];
     }
 
-    $instance = (string) ($connection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId));
     $payload = [
         'number' => $telefoneNormalizado,
         'text' => $mensagem,
@@ -581,7 +815,15 @@ function whatsapp_send_text(
         'linkPreview' => false,
     ];
 
-    $response = whatsapp_api_request('POST', '/message/sendText/' . rawurlencode($instance), $payload);
+    if (whatsapp_provider() === 'bridge') {
+        $response = whatsapp_bridge_request('POST', '/send-message', [
+            'number' => $telefoneNormalizado,
+            'text' => $mensagem,
+        ]);
+    } else {
+        $instance = (string) ($connection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId));
+        $response = whatsapp_api_request('POST', '/message/sendText/' . rawurlencode($instance), $payload);
+    }
 
     if (!$response['ok']) {
         whatsapp_update_envio_status($envioId, 'falhou', [

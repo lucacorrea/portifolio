@@ -14,7 +14,8 @@ if (!$empresaId) {
 }
 
 $connection = whatsapp_get_connection($empresaId);
-$apiConfigured = whatsapp_api_configured();
+$integrationConfigured = whatsapp_integration_configured();
+$providerLabel = whatsapp_provider() === 'bridge' ? 'Bridge Baileys' : 'Evolution API';
 
 $stmt = db()->prepare(
     "SELECT
@@ -82,9 +83,9 @@ $pairingCode = (string) ($connection['pairing_code'] ?? '');
         <?php require APP_PATH . '/Includes/topbar.php'; ?>
         <?php require APP_PATH . '/Includes/flash.php'; ?>
 
-        <?php if (!$apiConfigured): ?>
+        <?php if (!$integrationConfigured): ?>
             <div class="alert alert-danger">
-                Configure <code>WHATSAPP_API_URL</code> e <code>WHATSAPP_API_KEY</code> no <code>.env</code> para gerar QR Code e enviar mensagens.
+                <?= e(whatsapp_config_error_message()) ?> Provedor atual: <strong><?= e($providerLabel) ?></strong>.
             </div>
         <?php endif; ?>
 
@@ -125,12 +126,12 @@ $pairingCode = (string) ($connection['pairing_code'] ?? '');
                         <input type="hidden" name="acao" value="gerar_qr">
                         <input type="hidden" name="instancia_nome" value="<?= e($connection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId)) ?>">
                         <input type="hidden" name="telefone_conectado" value="<?= e($connection['telefone_conectado'] ?? '') ?>">
-                        <button class="btn btn-primary" type="submit" <?= !$apiConfigured ? 'disabled' : '' ?>>Gerar QR Code</button>
+                        <button class="btn btn-primary" type="submit" <?= !$integrationConfigured ? 'disabled' : '' ?>>Gerar QR Code</button>
                     </form>
                     <form method="post" action="<?= e(public_url('/actions/app/whatsapp_conexao.php')) ?>">
                         <?= csrf_field() ?>
                         <input type="hidden" name="acao" value="atualizar_status">
-                        <button class="btn" type="submit" <?= !$apiConfigured ? 'disabled' : '' ?>>Atualizar status</button>
+                        <button class="btn" type="submit" <?= !$integrationConfigured ? 'disabled' : '' ?>>Atualizar status</button>
                     </form>
                     <form method="post" action="<?= e(public_url('/actions/app/whatsapp_conexao.php')) ?>">
                         <?= csrf_field() ?>

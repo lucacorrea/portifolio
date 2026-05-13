@@ -129,9 +129,12 @@ Para ativar a conexão com WhatsApp e cobranças automáticas, execute:
 database/migrations/2026_05_13_whatsapp_conexoes.sql
 ```
 
-Configure também o provedor compatível com Evolution API no `.env`:
+Configure também um provedor de WhatsApp no `.env`.
+
+Opção 1: Evolution API:
 
 ```text
+WHATSAPP_PROVIDER=evolution
 WHATSAPP_API_URL=https://sua-api-whatsapp.com
 WHATSAPP_API_KEY=sua-chave-secreta
 WHATSAPP_API_AUTH_HEADER=apikey
@@ -139,6 +142,27 @@ WHATSAPP_INSTANCE_PREFIX=fluxpay
 WHATSAPP_INTEGRATION=WHATSAPP-BAILEYS
 WHATSAPP_CRON_TOKEN=um-token-longo-e-aleatorio
 ```
+
+Opção 2: Bridge Baileys, no mesmo modelo usado pelo Tático GPS:
+
+```text
+WHATSAPP_PROVIDER=bridge
+WHATSAPP_BRIDGE_URL=https://sua-bridge-whatsapp.com
+WHATSAPP_BRIDGE_TOKEN=um-token-seguro-da-bridge
+WHATSAPP_BRIDGE_AUTH_HEADER=Authorization
+WHATSAPP_CRON_TOKEN=um-token-longo-e-aleatorio
+```
+
+Para rodar a bridge incluída no projeto:
+
+```bash
+cd bridge
+npm install
+set WHATSAPP_BRIDGE_TOKEN=um-token-seguro-da-bridge
+npm start
+```
+
+Em produção, mantenha a bridge como processo persistente, por exemplo com PM2 ou serviço equivalente, e exponha somente por HTTPS.
 
 A empresa conecta o WhatsApp em `/app/conexao.php`, lendo o QR Code com o celular da empresa. O envio automático processa eventos de cobrança 10 dias antes, 5 dias antes, no vencimento e 7 dias após atraso. Para automatizar de fato, configure um cron diário chamando:
 
