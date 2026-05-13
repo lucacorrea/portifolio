@@ -11,6 +11,49 @@ const path = require('path');
 const pino = require('pino');
 const qrcode = require('qrcode');
 
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  const content = fs.readFileSync(filePath, 'utf8');
+
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf('=');
+
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+
+    if (
+      !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)
+      || process.env[key] !== undefined
+      || (!key.startsWith('WHATSAPP_') && key !== 'PORT' && key !== 'BRIDGE_TOKEN')
+    ) {
+      continue;
+    }
+
+    let value = trimmed.slice(separatorIndex + 1).trim();
+
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+
+    process.env[key] = value;
+  }
+}
+
+loadEnvFile(path.resolve(__dirname, '..', '.env'));
+loadEnvFile(path.resolve(__dirname, '.env'));
+
 const app = express();
 const port = Number(process.env.PORT || process.env.WHATSAPP_BRIDGE_PORT || 8080);
 const authDir = process.env.WHATSAPP_BRIDGE_AUTH_DIR || path.join(__dirname, 'auth_info_baileys');

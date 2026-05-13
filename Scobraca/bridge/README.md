@@ -21,7 +21,6 @@ Authorization: Bearer SEU_TOKEN
 
 ```bash
 npm install
-set WHATSAPP_BRIDGE_TOKEN=um-token-seguro
 npm start
 ```
 
@@ -32,5 +31,7 @@ WHATSAPP_PROVIDER=bridge
 WHATSAPP_BRIDGE_URL=http://localhost:8080
 WHATSAPP_BRIDGE_TOKEN=um-token-seguro
 ```
+
+Ao iniciar, a bridge carrega automaticamente o `.env` da raiz do projeto e, se existir, um `.env` dentro da própria pasta `bridge`.
 
 Em produção, rode a bridge como processo persistente e use HTTPS.
