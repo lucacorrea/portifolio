@@ -905,7 +905,9 @@ function addToCart(product) {
     const qtyInput = document.getElementById('pdvQty');
     const qtyToAdd = parseFloat(qtyInput.value) || 1;
 
-    const existing = cart.find(i => i.id === product.id);
+    // Se for preço variável, vamos garantir que o valor inicial seja 0 ou o preço base para facilitar a edição
+    const existing = cart.find(i => i.id === product.id && (parseInt(product.preco_variavel) !== 1));
+    
     if (existing) {
         existing.qty += qtyToAdd;
     } else {
@@ -921,31 +923,40 @@ function addToCart(product) {
             qty: qtyToAdd,
             imagens: product.imagens
         });
-
     }
     
     pdvSearch.value = '';
-    qtyInput.value = 1; // Reseta para 1 após adicionar
+    qtyInput.value = 1; 
     searchResults.classList.add('d-none');
     searchResults.innerHTML = '';
     currentSearchResults = [];
     pdvSearchIndex = -1;
-    isAuthorized = false; // Reset auth on new items
+    isAuthorized = false; 
     renderCart();
 
-    // Focus price input if it's a variable price product
-    if (product.preco_variavel) {
+    // Lógica de Foco para Preço Variável (7423)
+    if (parseInt(product.preco_variavel) === 1) {
         setTimeout(() => {
             const rows = cartTable.querySelectorAll('tr');
             const lastRow = rows[rows.length - 1];
             if (lastRow) {
-                const priceInput = lastRow.querySelector('input[type="number"][onchange*="updateItemPrice"]');
+                const priceInput = lastRow.querySelector('input.price-variable-input');
                 if (priceInput) {
                     priceInput.focus();
                     priceInput.select();
+                    
+                    // Listener especial: ao dar Enter no preço, volta para a busca
+                    priceInput.onkeydown = (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            pdvSearch.focus();
+                        }
+                    };
                 }
             }
-        }, 200);
+        }, 100);
+    } else {
+        pdvSearch.focus();
     }
 }
 
@@ -986,7 +997,7 @@ function renderCart() {
                 ${item.preco_variavel ? 
                     `<div class="input-group input-group-sm justify-content-end">
                         <span class="input-group-text bg-white border-0 extra-small px-1">R$</span>
-                        <input type="number" class="form-control form-control-sm text-end border-primary fw-bold" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updateItemPrice(${index}, this.value)">
+                        <input type="number" class="form-control form-control-sm text-end border-primary fw-bold price-variable-input" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updateItemPrice(${index}, this.value)">
                     </div>` : 
                     `R$ ${item.price.toFixed(2).replace('.', ',')}`
                 }
