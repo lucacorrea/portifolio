@@ -43,6 +43,16 @@ class SalesController extends BaseController {
             $hasPV2 = in_array('preco_venda_2', $columns);
             $hasPV3 = in_array('preco_venda_3', $columns);
             $hasPVariavel = in_array('preco_variavel', $columns);
+            
+            // AUTO-FIX: Force product 7423 to be variable price
+            try {
+                if (!$hasPVariavel) {
+                    $db->exec("ALTER TABLE produtos ADD COLUMN preco_variavel TINYINT(1) DEFAULT 0");
+                    $hasPVariavel = true;
+                }
+                $db->exec("UPDATE produtos SET preco_variavel = 1 WHERE codigo = '7423' OR id = 8930");
+            } catch (\Exception $e) {}
+
             $join = "LEFT JOIN";
 
             $selectCols = [
