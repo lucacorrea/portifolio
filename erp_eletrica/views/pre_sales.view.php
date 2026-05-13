@@ -263,7 +263,7 @@ function showPvPreview(p) {
 }
 
 function addToPVCart(product) {
-    const existing = pvCart.find(i => i.id === product.id);
+    const existing = pvCart.find(i => i.id === product.id && (parseInt(product.preco_variavel) !== 1));
     if (existing) {
         existing.qty++;
     } else {
@@ -274,6 +274,7 @@ function addToPVCart(product) {
             price1: parseFloat(product.preco_venda),
             price2: parseFloat(product.preco_venda_2 || 0),
             price3: parseFloat(product.preco_venda_3 || 0),
+            preco_variavel: parseInt(product.preco_variavel) === 1,
             price_tier: 1,
             qty: 1,
             imagens: product.imagens
@@ -282,6 +283,25 @@ function addToPVCart(product) {
     
     pvSearchInput.value = '';
     pvSearchResults.classList.add('d-none');
+    renderPVCart();
+
+    // Auto-focus price if it's variable
+    if (parseInt(product.preco_variavel) === 1) {
+        setTimeout(() => {
+            const lastRow = pvCartTable.querySelector('tr:last-child');
+            if (lastRow) {
+                const priceInput = lastRow.querySelector('input[onchange*="updatePVPrice"]');
+                if (priceInput) {
+                    priceInput.focus();
+                    priceInput.select();
+                }
+            }
+        }, 100);
+    }
+}
+
+function updatePVPrice(index, val) {
+    pvCart[index].price = Math.max(0, parseFloat(val));
     renderPVCart();
 }
 
