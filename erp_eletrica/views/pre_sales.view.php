@@ -305,18 +305,24 @@ function renderPVCart() {
             <td class="ps-4 fw-bold text-muted">#${item.id}</td>
             <td>
                 <div class="fw-bold">${item.nome}</div>
+                ${!item.preco_variavel ? `
                 <div class="mt-1">
-                    <select class="form-select form-select-sm py-0 extra-small" style="width: auto; height: 24px; font-size: 0.75rem;" onchange="changePVPriceTier(${index}, this.value)">
+                    <select class="form-select form-select-sm py-0 extra-small border-primary border-opacity-25" style="width: auto; height: 24px; font-size: 0.75rem;" onchange="changePVPriceTier(${index}, this.value)">
                         <option value="1" ${item.price_tier == 1 ? 'selected' : ''}>Preço 1 (R$ ${item.price1.toFixed(2).replace('.', ',')})</option>
                         <option value="2" ${item.price_tier == 2 ? 'selected' : ''}>Preço 2 (R$ ${item.price2.toFixed(2).replace('.', ',')})</option>
                         <option value="3" ${item.price_tier == 3 ? 'selected' : ''}>Preço 3 (R$ ${item.price3.toFixed(2).replace('.', ',')})</option>
                     </select>
-                </div>
+                </div>` : ''}
             </td>
             <td class="text-center">
-                <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" onchange="updatePVQty(${index}, this.value)">
+                <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" step="any" onchange="updatePVQty(${index}, this.value)">
             </td>
-            <td class="text-end">R$ ${item.price.toFixed(2).replace('.', ',')}</td>
+            <td class="text-end">
+                ${item.preco_variavel ? 
+                    `<input type="number" class="form-control form-control-sm text-end d-inline-block border-primary fw-bold" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updatePVPrice(${index}, this.value)">` : 
+                    `R$ ${item.price.toFixed(2).replace('.', ',')}`
+                }
+            </td>
             <td class="text-end fw-bold">R$ ${subtotal.toFixed(2).replace('.', ',')}</td>
             <td class="text-center">
                 <button class="btn btn-sm btn-link text-danger p-0" onclick="removeFromPVCart(${index})"><i class="fas fa-times"></i></button>
