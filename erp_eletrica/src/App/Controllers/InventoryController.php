@@ -154,4 +154,51 @@ class InventoryController extends BaseController {
         $whereFilial = (!$isMatriz && $filialId) ? " AND $filialCol = $filialId" : "";
         return $db->query("SELECT COUNT(*) FROM $table WHERE ($condition) $whereFilial")->fetchColumn() ?: 0;
     }
+
+    public function problems() {
+        $problemModel = new \App\Models\ProductProblem();
+        $problems = $problemModel->all();
+        $statusLabels = $problemModel->getStatusLabels();
+
+        $this->render('inventory_problems', [
+            'problems' => $problems,
+            'statusLabels' => $statusLabels,
+            'title' => 'Controle de Avarias',
+            'pageTitle' => 'Produtos com Problemas / Defeitos'
+        ]);
+    }
+
+    public function saveProblem() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            validateCsrf($_POST['csrf_token'] ?? '');
+            try {
+                $this->service->registerProblem($_POST);
+                $this->redirect('estoque.php?action=problems&msg=Avaria registrada com sucesso');
+            } catch (\Exception $e) {
+                $this->redirect('estoque.php?error=' . urlencode($e->getMessage()));
+            }
+        }
+    }
+
+    public function updateProblemStatus() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            validateCsrf($_POST['csrf_token'] ?? '');
+            $id = (int)$_POST['id'];
+            $status = $_POST['status'];
+            
+            $problemModel = new \App\Models\ProductProblem();
+            $problemModel->update($id, ['status' => $status]);
+            
+            $this->redirect('estoque.php?action=problems&msg=Status atualizado com sucesso');
+        }
+    }
+
+    public function deleteProblem() {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id > 0) {
+            $problemModel = new \App\Models\ProductProblem();
+            $problemModel->delete($id);
+            $this->redirect('estoque.php?action=problems&msg=Registro de avaria removido');
+        }
+    }
 }

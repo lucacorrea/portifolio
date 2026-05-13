@@ -68,6 +68,9 @@
             <button class="btn btn-outline-secondary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#movementModal">
                 <i class="fas fa-right-left me-2"></i>Movimentar
             </button>
+            <a href="estoque.php?action=problems" class="btn btn-outline-danger fw-bold flex-grow-1">
+                <i class="fas fa-exclamation-triangle me-2"></i>Produtos c/ Problema
+            </a>
         </div>
     </div>
 </div>
@@ -170,6 +173,9 @@
                                     </a></li>
                                     <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'saida')">
                                         <i class="fas fa-minus-circle text-danger me-2"></i>Saída
+                                    </a></li>
+                                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openProblemModal(<?= $p['id'] ?>, '<?= addslashes($p['nome']) ?>')">
+                                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>Reportar Defeito
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><h6 class="dropdown-header text-uppercase small opacity-50">Gestão</h6></li>
@@ -431,6 +437,53 @@
     </div>
 </div>
 
+<!-- Problem Report Modal -->
+<div class="modal fade" id="problemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" action="estoque.php?action=save_problem" method="POST">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Reportar Produto com Problema</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                <input type="hidden" name="produto_id" id="prob_produto_id">
+                
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Produto</label>
+                    <input type="text" id="prob_produto_nome" class="form-control bg-light" readonly>
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Quantidade com Problema</label>
+                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required placeholder="0,00">
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="subtrair_estoque" value="1" id="prob_subtrair" checked>
+                            <label class="form-check-label small fw-bold" for="prob_subtrair">Retirar do estoque atual</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-bold">Descreva o Problema / Defeito</label>
+                        <textarea name="motivo" class="form-control shadow-sm" rows="3" required placeholder="Ex: Tela trincada, Não liga, Devolução de cliente com defeito..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning mt-3 mb-0 small">
+                    <i class="fas fa-info-circle me-1"></i> 
+                    Ao retirar do estoque, o saldo disponível para venda será diminuído imediatamente.
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger px-4 fw-bold">Registrar Problema</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function editProduct(product) {
     const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
@@ -510,6 +563,14 @@ function openMovement(productId, type) {
     form.querySelector('select[name="tipo"]').value = type;
     modal.show();
 }
+
+function openProblemModal(productId, productName) {
+    const modal = new bootstrap.Modal(document.getElementById('problemModal'));
+    document.getElementById('prob_produto_id').value = productId;
+    document.getElementById('prob_produto_nome').value = productName;
+    modal.show();
+}
+
 
 // Debounced Auto-submit for inventory search
 let inventorySearchTimer;
