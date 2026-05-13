@@ -70,26 +70,40 @@ declare(strict_types=1);
             background: linear-gradient(135deg, #294f87 0%, #18365f 100%);
             padding: 34px 22px 28px;
             text-align: center;
+            position: relative;
         }
 
         .logo-wrap {
+            min-height: 110px;
             display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-wrap img {
+            max-width: 300px;
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .logo-fallback {
+            display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             color: #fff;
         }
 
-        .logo-wrap strong {
-            font-size: 2rem;
-            font-weight: 900;
-            letter-spacing: .5px;
+        .logo-fallback strong {
+            font-size: 1.7rem;
+            line-height: 1.1;
         }
 
-        .logo-wrap span {
+        .logo-fallback span {
             margin-top: 8px;
-            font-size: 1rem;
-            opacity: .95;
+            opacity: .92;
+            font-size: .95rem;
         }
 
         .bar {
@@ -266,6 +280,7 @@ declare(strict_types=1);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 12px;
             padding: 18px 14px;
             background: linear-gradient(to bottom, rgba(0, 0, 0, .78), rgba(0, 0, 0, 0));
         }
@@ -294,6 +309,7 @@ declare(strict_types=1);
             border-radius: 15px;
             font-size: 1.4rem;
             cursor: pointer;
+            backdrop-filter: blur(5px);
         }
 
         #reader {
@@ -301,10 +317,12 @@ declare(strict_types=1);
             inset: 0;
             width: 100%;
             height: 100%;
+            overflow: hidden;
             background: #000;
         }
 
-        #reader video {
+        #reader video,
+        #reader canvas {
             width: 100% !important;
             height: 100% !important;
             object-fit: cover !important;
@@ -332,7 +350,7 @@ declare(strict_types=1);
             height: 2px;
             background: #ff3b3b;
             box-shadow: 0 0 12px rgba(255, 59, 59, .9);
-            animation: scanLine 2s linear infinite;
+            animation: scanLine 2.2s linear infinite;
         }
 
         @keyframes scanLine {
@@ -362,12 +380,17 @@ declare(strict_types=1);
             text-align: center;
             font-size: .94rem;
             line-height: 1.45;
+            backdrop-filter: blur(8px);
         }
 
         @media (max-width: 768px) {
 
             body {
                 padding: 12px;
+            }
+
+            .page {
+                min-height: auto;
             }
 
             .content {
@@ -378,12 +401,35 @@ declare(strict_types=1);
                 font-size: 1.55rem;
             }
 
+            .subtitle {
+                font-size: .95rem;
+            }
+
             .buttons {
                 grid-template-columns: 1fr;
             }
 
             .btn {
                 width: 100%;
+            }
+
+            .scan-guide {
+                width: 86vw;
+                height: 86vw;
+            }
+
+            @keyframes scanLine {
+                0% {
+                    transform: translateY(-90px);
+                }
+
+                50% {
+                    transform: translateY(90px);
+                }
+
+                100% {
+                    transform: translateY(-90px);
+                }
             }
         }
     </style>
@@ -398,8 +444,17 @@ declare(strict_types=1);
             <div class="top">
 
                 <div class="logo-wrap">
-                    <strong>CENTRO DO ELETRICISTA</strong>
-                    <span>Consulta rápida de produtos</span>
+
+                    <img
+                        src="assets/img/logo-centro-eletricista.png"
+                        alt="Centro do Eletricista"
+                        onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
+
+                    <div class="logo-fallback" id="logoFallback">
+                        <strong>CENTRO DO ELETRICISTA</strong>
+                        <span>Consulta rápida de produtos</span>
+                    </div>
+
                 </div>
 
             </div>
@@ -413,7 +468,8 @@ declare(strict_types=1);
                 </h1>
 
                 <p class="subtitle">
-                    Escaneie ou digite o código do produto.
+                    Escaneie um código de barras ou QR Code usando a câmera
+                    do aparelho, ou digite manualmente o código do produto.
                 </p>
 
                 <div class="field">
@@ -459,11 +515,13 @@ declare(strict_types=1);
 
                 <div class="tip-box">
 
-                    <h3>Leitura automática</h3>
+                    <h3>Importante</h3>
 
                     <p>
-                        O sistema consulta automaticamente ao ler QR Code,
-                        código de barras ou ao digitar manualmente.
+                        Agora o sistema NÃO abre automaticamente ao ler o código.
+                        Após escanear, o código será preenchido no campo e você
+                        poderá confirmar clicando em
+                        <strong>Consultar produto</strong>.
                     </p>
 
                 </div>
@@ -485,7 +543,7 @@ declare(strict_types=1);
                 <strong>Leitor ativo</strong>
 
                 <span>
-                    Aponte para o código
+                    Aponte a câmera para o código de barras
                 </span>
 
             </div>
@@ -508,12 +566,12 @@ declare(strict_types=1);
         </div>
 
         <div class="camera-footer">
-            Centralize o código na área destacada.
+            Centralize o código na área destacada para realizar a leitura.
         </div>
 
     </div>
 
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
 
     <script>
 
@@ -533,13 +591,22 @@ declare(strict_types=1);
 
         let cameraAtiva = false;
 
-        let timeoutDigitacao = null;
+        let ultimoCodigoLido = '';
+
+        let ultimoTempoLeitura = 0;
 
         function mostrarStatus(texto, tipo = 'info') {
 
             statusBox.className = 'status show ' + tipo;
 
             statusBox.textContent = texto;
+        }
+
+        function esconderStatus() {
+
+            statusBox.className = 'status';
+
+            statusBox.textContent = '';
         }
 
         function normalizarCodigo(valor) {
@@ -549,11 +616,9 @@ declare(strict_types=1);
                 .replace(/\s+/g, '');
         }
 
-        function consultarProduto(codigoManual = null) {
+        function consultarProduto() {
 
-            const codigo = normalizarCodigo(
-                codigoManual || inputCodigo.value
-            );
+            const codigo = normalizarCodigo(inputCodigo.value);
 
             if (!codigo || codigo.length < 2) {
 
@@ -561,6 +626,8 @@ declare(strict_types=1);
                     'Informe um código válido.',
                     'error'
                 );
+
+                inputCodigo.focus();
 
                 return;
             }
@@ -581,37 +648,28 @@ declare(strict_types=1);
                 return;
             }
 
+            esconderStatus();
+
             cameraOverlay.classList.add('show');
 
             try {
 
-                html5QrCode = new Html5Qrcode("reader");
-
-                cameraAtiva = true;
+                html5QrCode = new Html5Qrcode('reader');
 
                 await html5QrCode.start(
 
                     {
-                        facingMode: {
-                            exact: "environment"
-                        }
+                        facingMode: "environment"
                     },
 
                     {
-                        fps: 15,
-
-                        qrbox: {
-                            width: 300,
-                            height: 300
-                        },
+                        fps: 10,
 
                         aspectRatio: 1.777,
 
-                        rememberLastUsedCamera: true,
+                        disableFlip: false,
 
-                        supportedScanTypes: [
-                            Html5QrcodeScanType.SCAN_TYPE_CAMERA
-                        ],
+                        rememberLastUsedCamera: true,
 
                         formatsToSupport: [
 
@@ -628,16 +686,43 @@ declare(strict_types=1);
                             Html5QrcodeSupportedFormats.UPC_A,
 
                             Html5QrcodeSupportedFormats.UPC_E
-                        ]
+                        ],
+
+                        qrbox: (w, h) => {
+
+                            const tamanho = Math.min(
+                                w * 0.72,
+                                h * 0.42,
+                                420
+                            );
+
+                            return {
+                                width: tamanho,
+                                height: tamanho
+                            };
+                        }
                     },
 
                     async (decodedText) => {
 
                         const codigo = normalizarCodigo(decodedText);
 
+                        const agora = Date.now();
+
                         if (!codigo) {
                             return;
                         }
+
+                        if (
+                            codigo === ultimoCodigoLido &&
+                            (agora - ultimoTempoLeitura) < 2000
+                        ) {
+                            return;
+                        }
+
+                        ultimoCodigoLido = codigo;
+
+                        ultimoTempoLeitura = agora;
 
                         inputCodigo.value = codigo;
 
@@ -646,33 +731,29 @@ declare(strict_types=1);
                         }
 
                         mostrarStatus(
-                            'Código identificado com sucesso.',
+                            'Código lido com sucesso. Clique em "Consultar produto".',
                             'success'
                         );
 
                         await fecharCamera();
-
-                        setTimeout(() => {
-                            consultarProduto(codigo);
-                        }, 300);
                     },
 
                     () => {}
 
                 );
 
+                cameraAtiva = true;
+
             } catch (erro) {
 
                 console.error(erro);
 
-                mostrarStatus(
-                    'Erro ao acessar câmera.',
-                    'error'
-                );
-
                 cameraOverlay.classList.remove('show');
 
-                cameraAtiva = false;
+                mostrarStatus(
+                    'Não foi possível acessar a câmera.',
+                    'error'
+                );
             }
         }
 
@@ -680,7 +761,7 @@ declare(strict_types=1);
 
             cameraOverlay.classList.remove('show');
 
-            if (html5QrCode) {
+            if (html5QrCode && cameraAtiva) {
 
                 try {
                     await html5QrCode.stop();
@@ -703,32 +784,12 @@ declare(strict_types=1);
 
         btnConsultar.addEventListener(
             'click',
-            () => consultarProduto()
+            consultarProduto
         );
 
         btnFecharCamera.addEventListener(
             'click',
             fecharCamera
-        );
-
-        inputCodigo.addEventListener(
-            'input',
-            () => {
-
-                clearTimeout(timeoutDigitacao);
-
-                timeoutDigitacao = setTimeout(() => {
-
-                    const codigo = normalizarCodigo(
-                        inputCodigo.value
-                    );
-
-                    if (codigo.length >= 4) {
-                        consultarProduto(codigo);
-                    }
-
-                }, 700);
-            }
         );
 
         inputCodigo.addEventListener(
@@ -746,12 +807,12 @@ declare(strict_types=1);
 
         window.addEventListener(
             'beforeunload',
-            async () => {
+            () => {
 
-                if (html5QrCode) {
+                if (html5QrCode && cameraAtiva) {
 
                     try {
-                        await html5QrCode.stop();
+                        html5QrCode.stop();
                     } catch (e) {}
                 }
             }
