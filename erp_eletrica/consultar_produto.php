@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 | CONEXÃO
 |--------------------------------------------------------------------------
 */
-require_once __DIR__ . '/../src/App/Config/Database.php';
+require_once __DIR__ . '/config.php';
 
 if (!isset($pdo) || !($pdo instanceof PDO)) {
 
