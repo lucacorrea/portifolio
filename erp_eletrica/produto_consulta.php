@@ -859,7 +859,7 @@ if ($codigoBusca === '') {
                                 </a>
 
                                 <a
-                                    href="javascript:history.back()"
+                                    href="consulta_produto.php"
                                     class="btn btn-secondary">
 
                                     Voltar
