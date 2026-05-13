@@ -87,9 +87,9 @@
     </div>
 </div>
 
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-0" style="min-height: 450px;">
-        <div class="table-responsive" style="overflow: visible;">
+<div class="card border-0 shadow-sm" style="overflow: visible !important;">
+    <div class="card-body p-0" style="min-height: 450px; overflow: visible !important;">
+        <div class="table-responsive" style="overflow: visible !important;">
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light">
                     <tr>
