@@ -73,7 +73,13 @@ function whatsapp_api_configured(): bool
 
 function whatsapp_bridge_base_url(): string
 {
-    return rtrim((string) env('WHATSAPP_BRIDGE_URL', ''), '/');
+    $configuredUrl = rtrim((string) env('WHATSAPP_BRIDGE_URL', ''), '/');
+
+    if ($configuredUrl !== '') {
+        return $configuredUrl;
+    }
+
+    return whatsapp_provider() === 'bridge' ? 'http://127.0.0.1:8080' : '';
 }
 
 function whatsapp_bridge_token(): string
@@ -96,7 +102,7 @@ function whatsapp_integration_configured(): bool
 function whatsapp_config_error_message(): string
 {
     if (whatsapp_provider() === 'bridge') {
-        return 'Configure WHATSAPP_PROVIDER=bridge e WHATSAPP_BRIDGE_URL no .env.';
+        return 'Configure WHATSAPP_PROVIDER=bridge e, se a bridge não estiver no mesmo servidor, informe WHATSAPP_BRIDGE_URL no .env.';
     }
 
     return 'Configure WHATSAPP_API_URL e WHATSAPP_API_KEY no .env.';

@@ -153,6 +153,8 @@ WHATSAPP_BRIDGE_AUTH_HEADER=Authorization
 WHATSAPP_CRON_TOKEN=um-token-longo-e-aleatorio
 ```
 
+Quando `WHATSAPP_PROVIDER=bridge` e `WHATSAPP_BRIDGE_URL` ficar vazio, o sistema usa `http://127.0.0.1:8080` como padrão.
+
 Para rodar a bridge incluída no projeto:
 
 ```bash
