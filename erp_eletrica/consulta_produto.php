@@ -574,6 +574,7 @@ declare(strict_types=1);
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <script>
+
         const inputCodigo = document.getElementById('codigo');
 
         const btnCamera = document.getElementById('btnCamera');
@@ -593,8 +594,6 @@ declare(strict_types=1);
         let ultimoCodigoLido = '';
 
         let ultimoTempoLeitura = 0;
-
-        let autoConsultaTimer = null;
 
         function mostrarStatus(texto, tipo = 'info') {
 
@@ -621,7 +620,7 @@ declare(strict_types=1);
 
             const codigo = normalizarCodigo(inputCodigo.value);
 
-            if (!codigo || codigo.length < 3) {
+            if (!codigo || codigo.length < 2) {
 
                 mostrarStatus(
                     'Informe um código válido.',
@@ -657,8 +656,6 @@ declare(strict_types=1);
 
                 html5QrCode = new Html5Qrcode('reader');
 
-                cameraAtiva = true;
-
                 await html5QrCode.start(
 
                     {
@@ -666,7 +663,7 @@ declare(strict_types=1);
                     },
 
                     {
-                        fps: 20,
+                        fps: 10,
 
                         aspectRatio: 1.777,
 
@@ -674,103 +671,84 @@ declare(strict_types=1);
 
                         rememberLastUsedCamera: true,
 
-                        experimentalFeatures: {
-                            useBarCodeDetectorIfSupported: true
-                        },
-
                         formatsToSupport: [
 
-                            // QR CODE
                             Html5QrcodeSupportedFormats.QR_CODE,
 
-                            // CÓDIGOS DE BARRAS
                             Html5QrcodeSupportedFormats.CODE_128,
+
                             Html5QrcodeSupportedFormats.CODE_39,
-                            Html5QrcodeSupportedFormats.CODE_93,
-                            Html5QrcodeSupportedFormats.CODABAR,
+
                             Html5QrcodeSupportedFormats.EAN_13,
+
                             Html5QrcodeSupportedFormats.EAN_8,
+
                             Html5QrcodeSupportedFormats.UPC_A,
+
                             Html5QrcodeSupportedFormats.UPC_E
                         ],
 
-                        qrbox: function(w, h) {
+                        qrbox: (w, h) => {
+
+                            const tamanho = Math.min(
+                                w * 0.72,
+                                h * 0.42,
+                                420
+                            );
 
                             return {
-                                width: Math.min(w * 0.90, 500),
-                                height: 220
+                                width: tamanho,
+                                height: tamanho
                             };
                         }
                     },
 
-                    async function(decodedText, decodedResult) {
+                    async (decodedText) => {
 
-                            const codigo = normalizarCodigo(decodedText);
+                        const codigo = normalizarCodigo(decodedText);
 
-                            const agora = Date.now();
+                        const agora = Date.now();
 
-                            if (!codigo) {
-                                return;
-                            }
-
-                            // evita várias leituras seguidas
-                            if (
-                                codigo === ultimoCodigoLido &&
-                                (agora - ultimoTempoLeitura) < 3000
-                            ) {
-                                return;
-                            }
-
-                            ultimoCodigoLido = codigo;
-
-                            ultimoTempoLeitura = agora;
-
-                            inputCodigo.value = codigo;
-
-                            console.log('Código lido:', codigo);
-
-                            console.log(decodedResult);
-
-                            if (navigator.vibrate) {
-                                navigator.vibrate(200);
-                            }
-
-                            mostrarStatus(
-                                'Código detectado com sucesso.',
-                                'success'
-                            );
-
-                            // fecha câmera
-                            await fecharCamera();
-
-                            // consulta automática
-                            clearTimeout(autoConsultaTimer);
-
-                            autoConsultaTimer = setTimeout(() => {
-
-                                consultarProduto();
-
-                            }, 500);
-                        },
-
-                        function(errorMessage) {
-
-                            // ignora erros contínuos da câmera
+                        if (!codigo) {
+                            return;
                         }
+
+                        if (
+                            codigo === ultimoCodigoLido &&
+                            (agora - ultimoTempoLeitura) < 2000
+                        ) {
+                            return;
+                        }
+
+                        ultimoCodigoLido = codigo;
+
+                        ultimoTempoLeitura = agora;
+
+                        inputCodigo.value = codigo;
+
+                        if (navigator.vibrate) {
+                            navigator.vibrate(120);
+                        }
+
+                        mostrarStatus(
+                            'Código lido com sucesso. Clique em "Consultar produto".',
+                            'success'
+                        );
+
+                        await fecharCamera();
+                    },
+
+                    () => {}
+
                 );
 
-                mostrarStatus(
-                    'Aponte para o QR Code ou código de barras.',
-                    'info'
-                );
+                cameraAtiva = true;
 
             } catch (erro) {
 
                 console.error(erro);
 
                 cameraOverlay.classList.remove('show');
-
-                cameraAtiva = false;
 
                 mostrarStatus(
                     'Não foi possível acessar a câmera.',
@@ -786,22 +764,12 @@ declare(strict_types=1);
             if (html5QrCode && cameraAtiva) {
 
                 try {
-
                     await html5QrCode.stop();
-
-                } catch (e) {
-
-                    console.log(e);
-                }
+                } catch (e) {}
 
                 try {
-
                     await html5QrCode.clear();
-
-                } catch (e) {
-
-                    console.log(e);
-                }
+                } catch (e) {}
             }
 
             html5QrCode = null;
@@ -824,30 +792,9 @@ declare(strict_types=1);
             fecharCamera
         );
 
-        // CONSULTA AUTOMÁTICA AO DIGITAR
-        inputCodigo.addEventListener(
-            'input',
-            function() {
-
-                const codigo = normalizarCodigo(this.value);
-
-                clearTimeout(autoConsultaTimer);
-
-                if (codigo.length >= 8) {
-
-                    autoConsultaTimer = setTimeout(() => {
-
-                        consultarProduto();
-
-                    }, 900);
-                }
-            }
-        );
-
-        // ENTER CONSULTA
         inputCodigo.addEventListener(
             'keydown',
-            function(e) {
+            (e) => {
 
                 if (e.key === 'Enter') {
 
@@ -858,23 +805,21 @@ declare(strict_types=1);
             }
         );
 
-        // FECHA CÂMERA AO SAIR
         window.addEventListener(
             'beforeunload',
-            function() {
+            () => {
 
                 if (html5QrCode && cameraAtiva) {
 
                     try {
-
                         html5QrCode.stop();
-
                     } catch (e) {}
                 }
             }
         );
 
         inputCodigo.focus();
+
     </script>
 
 </body>
