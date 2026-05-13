@@ -130,6 +130,8 @@ $status = (string) ($connection['status'] ?? 'desconectado');
 $qrImage = (string) ($connection['qr_code_imagem'] ?? '');
 $hasQrToken = trim((string) ($connection['qr_code'] ?? '')) !== '';
 $pairingCode = (string) ($connection['pairing_code'] ?? '');
+$shouldRenderQrToken = $status !== 'conectado' && $qrImage === '' && $hasQrToken;
+$qrVendorPath = PUBLIC_PATH . '/assets/vendor/qrcode.min.js';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -292,7 +294,47 @@ $pairingCode = (string) ($connection['pairing_code'] ?? '');
         </section>
     </main>
 </div>
-<script src="<?= e(asset_url('/assets/vendor/qrcode.min.js')) ?>" defer></script>
-<script src="<?= e(asset_url('/assets/js/whatsapp-qr.js')) ?>" defer></script>
+<?php if ($shouldRenderQrToken && is_file($qrVendorPath)): ?>
+<script>
+<?= file_get_contents($qrVendorPath) ?>
+</script>
+<?php endif; ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var target = document.querySelector('[data-whatsapp-qr-code]');
+
+    if (!target) {
+        return;
+    }
+
+    var code = target.getAttribute('data-whatsapp-qr-code') || '';
+
+    if (!code) {
+        return;
+    }
+
+    if (!window.QRCode) {
+        target.textContent = 'Não foi possível carregar o renderizador do QR Code.';
+        return;
+    }
+
+    target.textContent = '';
+
+    try {
+        new window.QRCode(target, {
+            text: code,
+            width: 280,
+            height: 280,
+            colorDark: '#1a2c3e',
+            colorLight: '#ffffff',
+            correctLevel: window.QRCode.CorrectLevel.H
+        });
+
+        target.removeAttribute('title');
+    } catch (error) {
+        target.textContent = 'Não foi possível renderizar o QR Code.';
+    }
+});
+</script>
 </body>
 </html>
