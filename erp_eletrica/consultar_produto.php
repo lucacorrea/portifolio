@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 ini_set('display_errors', 1);
@@ -6,6 +7,12 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 header('Content-Type: application/json; charset=utf-8');
+
+/*
+|--------------------------------------------------------------------------
+| MÉTODO
+|--------------------------------------------------------------------------
+*/
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
@@ -24,7 +31,20 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 | CONEXÃO
 |--------------------------------------------------------------------------
 */
-require_once __DIR__ . '/config.php';
+
+require_once __DIR__ . '/../src/App/Config/Database.php';
+
+/*
+|--------------------------------------------------------------------------
+| AJUSTE CONFORME SUA CONEXÃO
+|--------------------------------------------------------------------------
+| Caso seu Database.php use:
+| $conn
+| $db
+| Database::connect()
+| troque abaixo.
+|--------------------------------------------------------------------------
+*/
 
 if (!isset($pdo) || !($pdo instanceof PDO)) {
 
@@ -32,13 +52,21 @@ if (!isset($pdo) || !($pdo instanceof PDO)) {
 
     echo json_encode([
         'ok' => false,
-        'message' => 'Conexão com o banco não disponível.'
+        'message' => 'Conexão PDO não encontrada.'
     ], JSON_UNESCAPED_UNICODE);
 
     exit;
 }
 
-$codigo = trim((string)($_POST['codigo'] ?? ''));
+/*
+|--------------------------------------------------------------------------
+| CÓDIGO
+|--------------------------------------------------------------------------
+*/
+
+$codigo = isset($_POST['codigo'])
+    ? trim((string)$_POST['codigo'])
+    : '';
 
 if ($codigo === '') {
 
@@ -58,49 +86,73 @@ if ($codigo === '') {
 |--------------------------------------------------------------------------
 */
 
-function appBasePath(): string
+function startsWith($texto, $inicio)
 {
-    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    return substr($texto, 0, strlen($inicio)) === $inicio;
+}
+
+function appBasePath()
+{
+    $scriptName = isset($_SERVER['SCRIPT_NAME'])
+        ? str_replace('\\', '/', $_SERVER['SCRIPT_NAME'])
+        : '';
+
     $dir = rtrim(dirname($scriptName), '/');
 
     if ($dir === '' || $dir === '.') {
         return '';
     }
 
-    return preg_replace('#/api$#', '', $dir) ?: '';
+    return preg_replace('#/api$#', '', $dir);
 }
 
-function baseUrl(): string
+function baseUrl()
 {
-    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $https = (
+        !empty($_SERVER['HTTPS']) &&
+        $_SERVER['HTTPS'] !== 'off'
+    );
 
     $scheme = $https ? 'https' : 'http';
 
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $host = isset($_SERVER['HTTP_HOST'])
+        ? $_SERVER['HTTP_HOST']
+        : 'localhost';
 
     return $scheme . '://' . $host;
 }
 
-function formatarMoeda($valor): string
+function formatarMoeda($valor)
 {
     return 'R$ ' . number_format((float)$valor, 2, ',', '.');
 }
 
-function placeholderImagem(): string
+function placeholderImagem()
 {
-    $svg = <<<SVG
-<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600">
-    <rect width="100%" height="100%" fill="#eef3f9"/>
-    <rect x="80" y="80" width="440" height="440" rx="28" fill="#dbe4ef"/>
-    <text x="50%" y="46%" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" fill="#294f87" font-weight="700">SEM IMAGEM</text>
-    <text x="50%" y="54%" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#62708a">Produto sem foto cadastrada</text>
-</svg>
-SVG;
+    $svg = '
+    <svg xmlns="http://www.w3.org/2000/svg" width="600" height="600">
+        <rect width="100%" height="100%" fill="#eef3f9"/>
+        <rect x="80" y="80" width="440" height="440" rx="28" fill="#dbe4ef"/>
+        <text x="50%" y="46%" text-anchor="middle"
+        font-family="Arial"
+        font-size="34"
+        fill="#294f87"
+        font-weight="700">
+        SEM IMAGEM
+        </text>
+
+        <text x="50%" y="54%" text-anchor="middle"
+        font-family="Arial"
+        font-size="22"
+        fill="#62708a">
+        Produto sem foto cadastrada
+        </text>
+    </svg>';
 
     return 'data:image/svg+xml;charset=UTF-8,' . rawurlencode($svg);
 }
 
-function normalizarImagemUrl(?string $imagem): string
+function normalizarImagemUrl($imagem)
 {
     $imagem = trim((string)$imagem);
 
@@ -110,19 +162,22 @@ function normalizarImagemUrl(?string $imagem): string
 
     if (
         preg_match('#^https?://#i', $imagem) ||
-        str_starts_with($imagem, 'data:')
+        startsWith($imagem, 'data:')
     ) {
         return $imagem;
     }
 
-    if (str_starts_with($imagem, '//')) {
+    if (startsWith($imagem, '//')) {
 
-        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        $https = (
+            !empty($_SERVER['HTTPS']) &&
+            $_SERVER['HTTPS'] !== 'off'
+        );
 
         return ($https ? 'https:' : 'http:') . $imagem;
     }
 
-    if (str_starts_with($imagem, '/')) {
+    if (startsWith($imagem, '/')) {
         return baseUrl() . $imagem;
     }
 
@@ -131,7 +186,7 @@ function normalizarImagemUrl(?string $imagem): string
     return baseUrl() . appBasePath() . '/' . $imagem;
 }
 
-function primeiraImagemDoCampo(?string $imagens): string
+function primeiraImagemDoCampo($imagens)
 {
     $imagens = trim((string)$imagens);
 
@@ -148,7 +203,6 @@ function primeiraImagemDoCampo(?string $imagens): string
 
         if (
             isset($json['url']) &&
-            is_string($json['url']) &&
             trim($json['url']) !== ''
         ) {
             return normalizarImagemUrl($json['url']);
@@ -156,7 +210,6 @@ function primeiraImagemDoCampo(?string $imagens): string
 
         if (
             isset($json['imagem']) &&
-            is_string($json['imagem']) &&
             trim($json['imagem']) !== ''
         ) {
             return normalizarImagemUrl($json['imagem']);
@@ -174,22 +227,22 @@ function primeiraImagemDoCampo(?string $imagens): string
             if (is_array($item)) {
 
                 if (
-                    !empty($item['url']) &&
-                    is_string($item['url'])
+                    isset($item['url']) &&
+                    trim($item['url']) !== ''
                 ) {
                     return normalizarImagemUrl($item['url']);
                 }
 
                 if (
-                    !empty($item['imagem']) &&
-                    is_string($item['imagem'])
+                    isset($item['imagem']) &&
+                    trim($item['imagem']) !== ''
                 ) {
                     return normalizarImagemUrl($item['imagem']);
                 }
 
                 if (
-                    !empty($item['path']) &&
-                    is_string($item['path'])
+                    isset($item['path']) &&
+                    trim($item['path']) !== ''
                 ) {
                     return normalizarImagemUrl($item['path']);
                 }
@@ -203,7 +256,7 @@ function primeiraImagemDoCampo(?string $imagens): string
 
         foreach ($partes as $parte) {
 
-            $parte = trim((string)$parte);
+            $parte = trim($parte);
 
             if ($parte !== '') {
                 return normalizarImagemUrl($parte);
@@ -214,26 +267,15 @@ function primeiraImagemDoCampo(?string $imagens): string
     return normalizarImagemUrl($imagens);
 }
 
+/*
+|--------------------------------------------------------------------------
+| CONSULTA
+|--------------------------------------------------------------------------
+*/
+
 try {
 
-    /*
-    |--------------------------------------------------------------------------
-    | NORMALIZA CÓDIGO
-    |--------------------------------------------------------------------------
-    */
-
     $codigoBusca = preg_replace('/[\s\-]+/', '', $codigo);
-
-    /*
-    |--------------------------------------------------------------------------
-    | CONSULTA PRODUTO
-    |--------------------------------------------------------------------------
-    | Busca:
-    | - CEAN
-    | - CODIGO
-    | - QRCODE
-    |--------------------------------------------------------------------------
-    */
 
     $sql = "
         SELECT
@@ -263,25 +305,13 @@ try {
 
         WHERE
 
-            REPLACE(REPLACE(TRIM(COALESCE(cean, '')), ' ', ''), '-', '') = :codigo
+            REPLACE(REPLACE(TRIM(IFNULL(cean, '')), ' ', ''), '-', '') = :codigo
 
-            OR REPLACE(REPLACE(TRIM(COALESCE(codigo, '')), ' ', ''), '-', '') = :codigo
+            OR REPLACE(REPLACE(TRIM(IFNULL(codigo, '')), ' ', ''), '-', '') = :codigo
 
-            OR REPLACE(REPLACE(TRIM(COALESCE(qrcode, '')), ' ', ''), '-', '') = :codigo
+            OR REPLACE(REPLACE(TRIM(IFNULL(qrcode, '')), ' ', ''), '-', '') = :codigo
 
-        ORDER BY
-
-            CASE
-
-                WHEN REPLACE(REPLACE(TRIM(COALESCE(cean, '')), ' ', ''), '-', '') = :codigo THEN 0
-
-                WHEN REPLACE(REPLACE(TRIM(COALESCE(codigo, '')), ' ', ''), '-', '') = :codigo THEN 1
-
-                ELSE 2
-
-            END,
-
-            id DESC
+        ORDER BY id DESC
 
         LIMIT 1
     ";
@@ -300,7 +330,7 @@ try {
 
         echo json_encode([
             'ok' => false,
-            'message' => 'Produto não encontrado para este código.'
+            'message' => 'Produto não encontrado.'
         ], JSON_UNESCAPED_UNICODE);
 
         exit;
@@ -312,10 +342,10 @@ try {
     |--------------------------------------------------------------------------
     */
 
-    $preco1 = (float)($produto['preco_venda'] ?? 0);
-    $preco2 = (float)($produto['preco_venda_2'] ?? 0);
-    $preco3 = (float)($produto['preco_venda_3'] ?? 0);
-    $precoAtacado = (float)($produto['preco_venda_atacado'] ?? 0);
+    $preco1 = (float)$produto['preco_venda'];
+    $preco2 = (float)$produto['preco_venda_2'];
+    $preco3 = (float)$produto['preco_venda_3'];
+    $precoAtacado = (float)$produto['preco_venda_atacado'];
 
     /*
     |--------------------------------------------------------------------------
@@ -331,43 +361,46 @@ try {
             ? (int)$produto['filial_id']
             : null,
 
-        'codigo' => (string)($produto['codigo'] ?? ''),
+        'codigo' => (string)$produto['codigo'],
 
-        'cean' => (string)($produto['cean'] ?? ''),
+        'cean' => (string)$produto['cean'],
 
-        'qrcode' => (string)($produto['qrcode'] ?? ''),
+        'qrcode' => (string)$produto['qrcode'],
 
-        'nome' => (string)($produto['nome'] ?? ''),
+        'nome' => (string)$produto['nome'],
 
-        'unidade' => (string)($produto['unidade'] ?? 'UN'),
+        'unidade' => (string)$produto['unidade'],
 
-        'descricao' => (string)($produto['descricao'] ?? ''),
+        'descricao' => (string)$produto['descricao'],
 
-        'categoria' => (string)($produto['categoria'] ?? ''),
+        'categoria' => (string)$produto['categoria'],
 
-        'ncm' => (string)($produto['ncm'] ?? ''),
+        'ncm' => (string)$produto['ncm'],
 
-        'cest' => (string)($produto['cest'] ?? ''),
+        'cest' => (string)$produto['cest'],
 
-        'estoque' => (int)($produto['quantidade'] ?? 0),
+        'estoque' => (int)$produto['quantidade'],
 
-        'estoque_minimo' => (int)($produto['estoque_minimo'] ?? 0),
+        'estoque_minimo' => (int)$produto['estoque_minimo'],
 
         /*
         |--------------------------------------------------------------------------
-        | PREÇO PRINCIPAL EM DESTAQUE
+        | PREÇO PRINCIPAL
         |--------------------------------------------------------------------------
         */
 
         'preco_destaque' => [
+
             'titulo' => 'Preço Principal',
+
             'valor' => $preco1,
+
             'formatado' => formatarMoeda($preco1)
         ],
 
         /*
         |--------------------------------------------------------------------------
-        | VARIAÇÕES DE PREÇO
+        | TODOS OS PREÇOS
         |--------------------------------------------------------------------------
         */
 
@@ -409,7 +442,7 @@ try {
         */
 
         'imagem' => primeiraImagemDoCampo(
-            (string)($produto['imagens'] ?? '')
+            $produto['imagens']
         )
     ];
 
@@ -431,9 +464,13 @@ try {
 
         'ok' => false,
 
-        'message' => 'Erro interno ao consultar o produto.',
+        'message' => 'Erro interno.',
 
-        'debug' => $e->getMessage()
+        'erro' => $e->getMessage(),
+
+        'linha' => $e->getLine(),
+
+        'arquivo' => $e->getFile()
 
     ], JSON_UNESCAPED_UNICODE);
 
