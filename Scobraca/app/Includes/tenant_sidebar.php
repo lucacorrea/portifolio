@@ -6,6 +6,7 @@ $tenantNavItems = [
     ['/app/cobrancas.php', 'Cobranças', '<path d="M7 3h10l4 4v14H3V3h4z"></path><path d="M17 3v5h5"></path><path d="M8 13h8"></path><path d="M8 17h5"></path>', ['/app/cobrancas.php', '/app/cobrancas-cadastro.php']],
     ['/app/pagamentos.php', 'Pagamentos', '<path d="M4 7h16v10H4z"></path><path d="M4 11h16"></path><path d="M8 15h3"></path>', ['/app/pagamentos.php', '/app/pagamentos-cadastro.php']],
     ['/app/mensagens.php', 'Mensagens', '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>', ['/app/mensagens.php', '/app/mensagens-enviar.php']],
+    ['/app/conexao.php', 'Conexão', '<path d="M7 17a5 5 0 0 1 0-10"></path><path d="M17 7a5 5 0 0 1 0 10"></path><path d="M8 12h8"></path><path d="M11 9l-3 3 3 3"></path><path d="M13 9l3 3-3 3"></path>', ['/app/conexao.php']],
     ['/app/relatorios.php', 'Relatórios', '<path d="M4 19V5"></path><path d="M4 19h16"></path><path d="M8 16v-5"></path><path d="M12 16V8"></path><path d="M16 16v-3"></path>', ['/app/relatorios.php']],
     ['/app/usuarios.php', 'Usuários', '<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>', ['/app/usuarios.php', '/app/usuarios-cadastro.php']],
     ['/app/suporte.php', 'Suporte', '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path>', ['/app/suporte.php', '/app/suporte-chat.php']],

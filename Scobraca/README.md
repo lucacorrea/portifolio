@@ -123,6 +123,31 @@ database/migrations/2026_05_11_suporte_chamados.sql
 
 Essa migração cria `suporte_chamados` e `suporte_mensagens`. A empresa abre chamados em `/app/suporte.php` e conversa em `/app/suporte-chat.php?id=ID`; o administrador acompanha a fila em `/admin/suporte.php` e atende em `/admin/suporte-chat.php?id=ID`.
 
+Para ativar a conexão com WhatsApp e cobranças automáticas, execute:
+
+```text
+database/migrations/2026_05_13_whatsapp_conexoes.sql
+```
+
+Configure também o provedor compatível com Evolution API no `.env`:
+
+```text
+WHATSAPP_API_URL=https://sua-api-whatsapp.com
+WHATSAPP_API_KEY=sua-chave-secreta
+WHATSAPP_API_AUTH_HEADER=apikey
+WHATSAPP_INSTANCE_PREFIX=fluxpay
+WHATSAPP_INTEGRATION=WHATSAPP-BAILEYS
+WHATSAPP_CRON_TOKEN=um-token-longo-e-aleatorio
+```
+
+A empresa conecta o WhatsApp em `/app/conexao.php`, lendo o QR Code com o celular da empresa. O envio automático processa eventos de cobrança 10 dias antes, 5 dias antes, no vencimento e 7 dias após atraso. Para automatizar de fato, configure um cron diário chamando:
+
+```text
+/cron/processar_whatsapp_cobrancas.php?token=SEU_TOKEN
+```
+
+O sistema não grava chave da API de WhatsApp em tela ou banco; a chave deve ficar apenas no `.env`.
+
 ## Pagamentos parciais
 
 O sistema permite registrar pagamento parcial de uma cobrança. Na tela de pagamentos, selecione a cobrança e informe qualquer valor menor ou igual ao saldo. O pagamento fica no histórico, a cobrança continua em aberto/vencida enquanto houver saldo e muda para `Paga` quando o total recebido alcançar o valor da parcela.
