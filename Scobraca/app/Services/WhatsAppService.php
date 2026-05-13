@@ -54,7 +54,11 @@ function whatsapp_provider(): string
         return 'bridge';
     }
 
-    return in_array($provider, ['bridge', 'baileys'], true) ? 'bridge' : 'evolution';
+    if ($provider === '' || in_array($provider, ['bridge', 'baileys'], true)) {
+        return 'bridge';
+    }
+
+    return 'evolution';
 }
 
 function whatsapp_api_key(): string

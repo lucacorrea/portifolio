@@ -1,0 +1,4 @@
+.env
+/bridge/node_modules/
+/bridge/auth_info_baileys/
+/storage/logs/*.log
