@@ -280,30 +280,19 @@ class Product extends BaseModel {
         $hasPrecoAtacado  = $this->columnExists('preco_venda_atacado');
         $hasImagens       = $this->columnExists('imagens');
         
-        // Ensure column exists (self-healing)
+        // Ensure columns exist (self-healing)
         if (!$this->columnExists('preco_variavel')) {
             try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN preco_variavel TINYINT(1) DEFAULT 0"); } catch (\Exception $e) {}
         }
-        $hasPrecoVariavel = true;
-
-        
-        if (!$this->columnExists('preco_variavel')) {
-            try { 
-                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN preco_variavel TINYINT(1) DEFAULT 0"); 
-                $hasPrecoVariavel = true;
-            } catch (\Exception $e) { $hasPrecoVariavel = false; }
-        } else {
-            $hasPrecoVariavel = true;
-        }
-
         if (!$this->columnExists('cean')) {
-            try { 
-                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN cean VARCHAR(50) DEFAULT 'SEM GTIN'"); 
-                $hasCean = true;
-            } catch (\Exception $e) { $hasCean = false; }
-        } else {
-            $hasCean = true;
+            try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN cean VARCHAR(100) DEFAULT NULL"); } catch (\Exception $e) {}
         }
+        if (!$this->columnExists('qrcode')) {
+            try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN qrcode VARCHAR(150) DEFAULT NULL"); } catch (\Exception $e) {}
+        }
+
+        $hasPrecoVariavel = true;
+        $hasCean = true;
         
         if (!$this->columnExists('fornecedor_id')) {
             try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN fornecedor_id INT NULL"); } catch (\Exception $e) {}

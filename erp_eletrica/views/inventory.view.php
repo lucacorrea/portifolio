@@ -226,17 +226,26 @@
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id" id="edit_id">
                 <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Código Interno</label>
-                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" value="<?= (new \App\Models\Product())->getNextCode() ?>">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Cód. Barras (EAN)</label>
-                        <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="Opcional">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
-                        <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome">
+                    <!-- Identificadores de Código -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Código Interno *</label>
+                            <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" oninput="toggleProductCodeViews(this.value)">
+                        </div>
+                        <div class="col-md-4 group-extra-codes">
+                            <label class="form-label small fw-bold">Cód. de Barras (EAN)</label>
+                            <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="Opcional">
+                        </div>
+                        <div class="col-md-5 group-extra-codes">
+                            <label class="form-label small fw-bold">QR Code</label>
+                            <input type="text" name="qrcode" id="edit_qrcode" class="form-control shadow-sm" placeholder="Opcional">
+                        </div>
+                        
+                        <!-- Nome ocupará linha inteira se for 00000, ou o resto se não for -->
+                        <div class="col-md-12" id="div_edit_nome">
+                            <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
+                            <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome" placeholder="Ex: Lâmpada LED 12W">
+                        </div>
                     </div>
                     
                     <!-- Campo de Foto -->
@@ -524,15 +533,11 @@ function editProduct(product) {
     document.getElementById('edit_preco_venda_atacado').value = product.preco_venda_atacado || '';
     document.getElementById('edit_estoque_minimo').value = parseFloat(product.estoque_minimo || 0);
     document.getElementById('edit_preco_variavel').checked = product.preco_variavel == 1;
-
-    // Toggle Preço Variável visibility based on product code
-    const divPrecoVariavel = document.getElementById('div_preco_variavel');
-    if (product.codigo == '7423') {
-        divPrecoVariavel.style.setProperty('display', 'flex', 'important');
-    } else {
-        divPrecoVariavel.style.setProperty('display', 'none', 'important');
-    }
+    document.getElementById('edit_qrcode').value = product.qrcode || '';
     
+    // Toggle views based on code (00000 vs others)
+    toggleProductCodeViews(product.codigo);
+
     // Fiscal Fields
     document.getElementById('edit_cean').value = product.cean || '';
     document.getElementById('edit_cest').value = product.cest || '';
@@ -749,5 +754,31 @@ function updateFormVisibility() {
     
     document.getElementById('div_peso').style.display = hideDimensions ? 'none' : '';
     document.getElementById('div_dimensoes').style.display = hideDimensions ? 'none' : '';
+}
+function toggleProductCodeViews(code) {
+    const isDiversos = (code === '00000' || code === '7423');
+    const extraCodes = document.querySelectorAll('.group-extra-codes');
+    const divNome = document.getElementById('div_edit_nome');
+    const divPrecoVariavel = document.getElementById('div_preco_variavel');
+
+    if (isDiversos) {
+        extraCodes.forEach(el => el.classList.add('d-none'));
+        if (divNome) {
+            divNome.classList.remove('col-md-6');
+            divNome.classList.add('col-md-12');
+        }
+        if (divPrecoVariavel) {
+            divPrecoVariavel.style.setProperty('display', 'flex', 'important');
+        }
+    } else {
+        extraCodes.forEach(el => el.classList.remove('d-none'));
+        if (divNome) {
+            divNome.classList.remove('col-md-12');
+            divNome.classList.add('col-md-12');
+        }
+        if (divPrecoVariavel) {
+            divPrecoVariavel.style.setProperty('display', 'none', 'important');
+        }
+    }
 }
 </script>
