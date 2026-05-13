@@ -7,7 +7,7 @@ require_platform_admin();
 verify_csrf();
 
 $nome = trim($_POST['nome'] ?? '');
-$cnpj = trim($_POST['cnpj'] ?? '');
+$cnpj = only_digits((string) ($_POST['cnpj'] ?? ''));
 $email = trim($_POST['email'] ?? '');
 $telefone = trim($_POST['telefone'] ?? '');
 $planoId = (int) ($_POST['plano_id'] ?? 0);
@@ -23,6 +23,11 @@ if ($nome === '' || $email === '' || $usuarioNome === '' || $usuarioEmail === ''
     redirect('/admin/empresas-cadastro.php');
 }
 
+if ($cnpj !== '' && !cnpj_valido($cnpj)) {
+    flash('error', 'Informe um CNPJ válido para a empresa.');
+    redirect('/admin/empresas-cadastro.php');
+}
+
 if (!filter_var($usuarioEmail, FILTER_VALIDATE_EMAIL) || !$usuarioDocumentoTipo || !documento_cpf_cnpj_valido($usuarioDocumento)) {
     flash('error', 'Informe e-mail e CPF/CNPJ válidos para o usuário principal.');
     redirect('/admin/empresas-cadastro.php');
@@ -34,6 +39,17 @@ if (!in_array($status, $permitidos, true)) {
 }
 
 $pdo = db();
+
+if ($cnpj !== '') {
+    $stmt = $pdo->prepare("SELECT id FROM empresas WHERE REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(cnpj, ''), '.', ''), '/', ''), '-', ''), ' ', '') = :cnpj LIMIT 1");
+    $stmt->execute([':cnpj' => $cnpj]);
+
+    if ($stmt->fetch()) {
+        flash('error', 'Já existe uma empresa cadastrada com este CNPJ.');
+        redirect('/admin/empresas-cadastro.php');
+    }
+}
+
 $pdo->beginTransaction();
 
 try {

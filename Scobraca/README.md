@@ -6,6 +6,7 @@ Esta é uma estrutura inicial do FluxPay como SaaS multiempresa.
 
 - Área do **Admin da Plataforma** para gerenciar empresas, planos, assinaturas e usuários locatários.
 - Área da **Empresa Locatária** para os usuários da empresa acessarem o sistema.
+- Checkout público real para criar empresa, administrador e assinatura inicial com validação server-side.
 - Suporte com chamados, mensagens e status compartilhados entre empresa e administração.
 - Banco de dados com `empresa_id` nas tabelas principais.
 - Login com rotas separadas por contexto:
@@ -174,13 +175,21 @@ A empresa conecta o WhatsApp em `/app/conexao.php`, lendo o QR Code com o celula
 
 O sistema não grava chave da API de WhatsApp em tela ou banco; a chave deve ficar apenas no `.env`.
 
+Para usar o checkout público em bases já existentes, execute também:
+
+```text
+database/migrations/2026_05_13_checkout_empresa_cnpj_unique.sql
+```
+
+Antes de aplicar essa migração, revise se não há empresas duplicadas com o mesmo CNPJ. O checkout usa esse índice, junto aos índices únicos de `usuarios.email` e `usuarios.documento`, para evitar duplicidade mesmo com requisições concorrentes.
+
 ## Pagamentos parciais
 
 O sistema permite registrar pagamento parcial de uma cobrança. Na tela de pagamentos, selecione a cobrança e informe qualquer valor menor ou igual ao saldo. O pagamento fica no histórico, a cobrança continua em aberto/vencida enquanto houver saldo e muda para `Paga` quando o total recebido alcançar o valor da parcela.
 
 ## Landing page FluxPay
 
-A landing pública está em `public/index.php`. O checkout demonstrativo separado está em `public/checkout.php`. Ambos usam:
+A landing pública está em `public/index.php`. O checkout público separado está em `public/checkout.php`. Ele cria empresa, administrador e assinatura inicial em status `teste` reaproveitando as tabelas `empresas`, `usuarios`, `planos` e `assinaturas`. Ambos usam:
 
 ```text
 public/assets/css/style.css
@@ -209,10 +218,10 @@ Depois acesse `http://localhost:8000`.
 ### Onde alterar
 
 - Textos, planos, depoimentos, FAQ e seções: `public/index.php`.
-- Fluxo visual de checkout, resumo do pedido e campos da compra: `public/checkout.php`.
+- Fluxo real de checkout, resumo do pedido e campos da assinatura: `public/checkout.php`.
 - Visual, responsividade e animações CSS: `public/assets/css/style.css`.
-- Mega menu, carrossel, FAQ, contadores, parallax leve, formulários e checkout demonstrativo: `public/assets/js/main.js`.
+- Mega menu, carrossel, FAQ, contadores, parallax leve e validações auxiliares dos formulários: `public/assets/js/main.js`.
 - Favicon e imagem de compartilhamento: `public/assets/icons/favicon.svg` e `public/assets/img/fluxpay-og.svg`.
 
 O formulário da landing não envia dados reais nesta versão. A função `handleLeadSubmit()` em `public/assets/js/main.js` está preparada para conectar um endpoint futuro da FluxPay.
-O checkout também não processa pagamentos reais. A função `initCheckoutPage()` contém o ponto marcado com TODO para conectar gateway, criação de assinatura e validações server-side.
+O checkout cria a assinatura inicial em status `teste`. A cobrança recorrente deve ser conciliada pelo administrador da plataforma conforme o provedor de pagamento utilizado.

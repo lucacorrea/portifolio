@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS empresas (
     status ENUM('teste','ativa','bloqueada','cancelada') NOT NULL DEFAULT 'teste',
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_em DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_empresas_cnpj (cnpj),
     INDEX idx_empresas_plano (plano_id),
     INDEX idx_empresas_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
