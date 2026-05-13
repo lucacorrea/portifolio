@@ -96,16 +96,14 @@ declare(strict_types=1);
         }
 
         .logo-fallback strong {
-            font-size: 2rem;
+            font-size: 1.7rem;
             line-height: 1.1;
-            font-weight: 900;
-            letter-spacing: .5px;
         }
 
         .logo-fallback span {
-            margin-top: 10px;
+            margin-top: 8px;
             opacity: .92;
-            font-size: .96rem;
+            font-size: .95rem;
         }
 
         .bar {
@@ -150,7 +148,7 @@ declare(strict_types=1);
 
         .field input {
             width: 100%;
-            height: 64px;
+            height: 62px;
             border: 1px solid var(--borda);
             border-radius: 16px;
             background: #f7f9fc;
@@ -159,7 +157,7 @@ declare(strict_types=1);
             color: var(--texto);
             outline: none;
             transition: .2s ease;
-            font-weight: 700;
+            font-weight: 600;
         }
 
         .field input:focus {
@@ -168,28 +166,11 @@ declare(strict_types=1);
             box-shadow: 0 0 0 4px rgba(41, 79, 135, .12);
         }
 
-        .produto-nao-encontrado {
-            display: none;
-            margin-top: 12px;
-            padding: 14px 16px;
-            border-radius: 14px;
-            background: #fff3f3;
-            border: 1px solid #ffd1d1;
-            color: #bf3f3f;
-            font-size: .94rem;
-            font-weight: 700;
-            line-height: 1.5;
-        }
-
-        .produto-nao-encontrado.show {
-            display: block;
-        }
-
         .buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 14px;
-            margin-top: 10px;
+            margin-top: 8px;
         }
 
         .btn {
@@ -408,6 +389,10 @@ declare(strict_types=1);
                 padding: 12px;
             }
 
+            .page {
+                min-height: auto;
+            }
+
             .content {
                 padding: 26px 18px 22px;
             }
@@ -466,13 +451,8 @@ declare(strict_types=1);
                         onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
 
                     <div class="logo-fallback" id="logoFallback">
-
                         <strong>CENTRO DO ELETRICISTA</strong>
-
-                        <span>
-                            Consulta rápida de produtos
-                        </span>
-
+                        <span>Consulta rápida de produtos</span>
                     </div>
 
                 </div>
@@ -504,14 +484,6 @@ declare(strict_types=1);
                         autocomplete="off"
                         inputmode="text"
                         placeholder="Digite ou leia o código">
-
-                    <div
-                        class="produto-nao-encontrado"
-                        id="produtoNaoEncontrado">
-
-                        Produto não cadastrado no sistema.
-
-                    </div>
 
                 </div>
 
@@ -546,10 +518,10 @@ declare(strict_types=1);
                     <h3>Importante</h3>
 
                     <p>
-                        O sistema consulta automaticamente quando um código
-                        válido é digitado manualmente.
-                        Ao escanear pela câmera, o código será preenchido
-                        automaticamente no campo.
+                        Agora o sistema NÃO abre automaticamente ao ler o código.
+                        Após escanear, o código será preenchido no campo e você
+                        poderá confirmar clicando em
+                        <strong>Consultar produto</strong>.
                     </p>
 
                 </div>
@@ -615,8 +587,6 @@ declare(strict_types=1);
 
         const statusBox = document.getElementById('statusBox');
 
-        const produtoNaoEncontrado = document.getElementById('produtoNaoEncontrado');
-
         let html5QrCode = null;
 
         let cameraAtiva = false;
@@ -624,8 +594,6 @@ declare(strict_types=1);
         let ultimoCodigoLido = '';
 
         let ultimoTempoLeitura = 0;
-
-        let timeoutConsulta = null;
 
         function mostrarStatus(texto, tipo = 'info') {
 
@@ -641,16 +609,6 @@ declare(strict_types=1);
             statusBox.textContent = '';
         }
 
-        function mostrarProdutoNaoEncontrado() {
-
-            produtoNaoEncontrado.classList.add('show');
-        }
-
-        function esconderProdutoNaoEncontrado() {
-
-            produtoNaoEncontrado.classList.remove('show');
-        }
-
         function normalizarCodigo(valor) {
 
             return String(valor || '')
@@ -661,8 +619,6 @@ declare(strict_types=1);
         function consultarProduto() {
 
             const codigo = normalizarCodigo(inputCodigo.value);
-
-            esconderProdutoNaoEncontrado();
 
             if (!codigo || codigo.length < 2) {
 
@@ -681,39 +637,9 @@ declare(strict_types=1);
                 'success'
             );
 
-            fetch(
+            window.location.href =
                 'produto_consulta.php?codigo=' +
-                encodeURIComponent(codigo),
-                {
-                    method: 'GET'
-                }
-            )
-            .then(response => response.text())
-            .then(html => {
-
-                if (
-                    html.includes('Produto não localizado') ||
-                    html.includes('Produto não encontrado')
-                ) {
-
-                    esconderStatus();
-
-                    mostrarProdutoNaoEncontrado();
-
-                    return;
-                }
-
-                window.location.href =
-                    'produto_consulta.php?codigo=' +
-                    encodeURIComponent(codigo);
-            })
-            .catch(() => {
-
-                mostrarStatus(
-                    'Erro ao consultar produto.',
-                    'error'
-                );
-            });
+                encodeURIComponent(codigo);
         }
 
         async function abrirCamera() {
@@ -723,8 +649,6 @@ declare(strict_types=1);
             }
 
             esconderStatus();
-
-            esconderProdutoNaoEncontrado();
 
             cameraOverlay.classList.add('show');
 
@@ -807,13 +731,11 @@ declare(strict_types=1);
                         }
 
                         mostrarStatus(
-                            'Código lido com sucesso.',
+                            'Código lido com sucesso. Clique em "Consultar produto".',
                             'success'
                         );
 
                         await fecharCamera();
-
-                        consultarProduto();
                     },
 
                     () => {}
@@ -871,37 +793,12 @@ declare(strict_types=1);
         );
 
         inputCodigo.addEventListener(
-            'input',
-            () => {
-
-                esconderProdutoNaoEncontrado();
-
-                esconderStatus();
-
-                clearTimeout(timeoutConsulta);
-
-                const codigo = normalizarCodigo(inputCodigo.value);
-
-                if (codigo.length >= 3) {
-
-                    timeoutConsulta = setTimeout(() => {
-
-                        consultarProduto();
-
-                    }, 900);
-                }
-            }
-        );
-
-        inputCodigo.addEventListener(
             'keydown',
             (e) => {
 
                 if (e.key === 'Enter') {
 
                     e.preventDefault();
-
-                    clearTimeout(timeoutConsulta);
 
                     consultarProduto();
                 }
