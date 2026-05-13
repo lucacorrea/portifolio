@@ -161,8 +161,28 @@ CREATE TABLE IF NOT EXISTS whatsapp_envios (
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_whatsapp_empresa (empresa_id),
     INDEX idx_whatsapp_cliente (cliente_id),
+    INDEX idx_whatsapp_cobranca_tipo (empresa_id, cobranca_id, tipo),
     INDEX idx_whatsapp_criado (criado_em),
     INDEX idx_whatsapp_status (status_envio)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS whatsapp_conexoes (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    empresa_id INT UNSIGNED NOT NULL,
+    instancia_nome VARCHAR(100) NOT NULL,
+    telefone_conectado VARCHAR(30) DEFAULT NULL,
+    status ENUM('desconectado','conectando','conectado','erro') NOT NULL DEFAULT 'desconectado',
+    qr_code TEXT DEFAULT NULL,
+    qr_code_imagem MEDIUMTEXT DEFAULT NULL,
+    pairing_code VARCHAR(40) DEFAULT NULL,
+    ultimo_erro TEXT DEFAULT NULL,
+    ultima_sincronizacao DATETIME DEFAULT NULL,
+    conectado_em DATETIME DEFAULT NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_whatsapp_conexoes_empresa (empresa_id),
+    UNIQUE KEY uq_whatsapp_conexoes_instancia (instancia_nome),
+    INDEX idx_whatsapp_conexoes_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS suporte_chamados (

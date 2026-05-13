@@ -34,16 +34,17 @@ $clientes = $stmt->fetchAll();
                     </div>
                     <a class="btn" href="<?= e(public_url('/app/mensagens.php')) ?>">Voltar para listagem</a>
                 </div>
-                <form class="form-stack">
+                <form class="form-stack" method="post" action="<?= e(public_url('/actions/app/enviar_mensagem.php')) ?>" data-whatsapp-message-form>
+                    <?= csrf_field() ?>
                     <label>Cliente
-                        <select name="cliente_id">
+                        <select name="cliente_id" data-whatsapp-client>
                             <option value="">Contato avulso</option>
                             <?php foreach ($clientes as $cliente): ?>
-                                <option value="<?= (int) $cliente['id'] ?>"><?= e($cliente['nome']) ?> · <?= e($cliente['telefone']) ?></option>
+                                <option value="<?= (int) $cliente['id'] ?>" data-telefone="<?= e($cliente['telefone']) ?>"><?= e($cliente['nome']) ?> · <?= e($cliente['telefone']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </label>
-                    <label>Telefone<input name="telefone" placeholder="(00) 00000-0000"></label>
+                    <label>Telefone<input name="telefone" data-whatsapp-phone placeholder="(00) 00000-0000"></label>
                     <label>Tipo
                         <select name="tipo">
                             <option value="lembrete">Lembrete de vencimento</option>
@@ -52,8 +53,8 @@ $clientes = $stmt->fetchAll();
                             <option value="manual">Mensagem manual</option>
                         </select>
                     </label>
-                    <label>Mensagem<textarea name="mensagem" rows="7">Olá, tudo bem? Passando para lembrar sobre sua mensalidade. Qualquer dúvida, estamos à disposição.</textarea></label>
-                    <button type="button" class="btn btn-primary">Enviar mensagem</button>
+                    <label>Mensagem<textarea name="mensagem" rows="7" maxlength="2000">Olá, tudo bem? Passando para lembrar sobre sua mensalidade. Qualquer dúvida, estamos à disposição.</textarea></label>
+                    <button type="submit" class="btn btn-primary">Enviar mensagem</button>
                 </form>
             </article>
 

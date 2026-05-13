@@ -16,7 +16,7 @@ function db(): PDO
     $host = env('DB_HOST', 'localhost');
     $dbname = env('DB_NAME', 'u784961086_fluxo');
     $user = env('DB_USER', 'u784961086_fluxo');
-    $pass = env('DB_PASS', '7@vh63IBd');
+    $pass = env('DB_PASS', 'uiBgsgTF&9S#');
     $charset = env('DB_CHARSET', 'utf8mb4');
 
     $dsn = "mysql:host={$host};dbname={$dbname};charset={$charset}";

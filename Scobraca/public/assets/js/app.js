@@ -227,4 +227,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         syncPaymentCharge();
     });
+
+    document.querySelectorAll('[data-whatsapp-message-form]').forEach((form) => {
+        const clientSelect = form.querySelector('[data-whatsapp-client]');
+        const phoneInput = form.querySelector('[data-whatsapp-phone]');
+
+        if (!clientSelect || !phoneInput) {
+            return;
+        }
+
+        clientSelect.addEventListener('change', () => {
+            const option = clientSelect.selectedOptions[0];
+
+            if (!option || option.value === '') {
+                phoneInput.value = '';
+                phoneInput.readOnly = false;
+                return;
+            }
+
+            phoneInput.value = option.dataset.telefone || '';
+            phoneInput.readOnly = true;
+        });
+    });
 });
