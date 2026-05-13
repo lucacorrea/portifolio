@@ -40,9 +40,24 @@ class SalesController extends BaseController {
             $columns = $stmtCols->fetchAll(\PDO::FETCH_COLUMN);
             
             $hasCean = in_array('cean', $columns);
+            $hasQrCode = in_array('qrcode', $columns);
             $hasPV2 = in_array('preco_venda_2', $columns);
             $hasPV3 = in_array('preco_venda_3', $columns);
             $hasPVariavel = in_array('preco_variavel', $columns);
+            
+            // AUTO-FIX: Force product 7423 to be variable price
+            try {
+                if (!$hasPVariavel) {
+                    $db->exec("ALTER TABLE produtos ADD COLUMN preco_variavel TINYINT(1) DEFAULT 0");
+                    $hasPVariavel = true;
+                }
+                if (!$hasQrCode) {
+                    $db->exec("ALTER TABLE produtos ADD COLUMN qrcode VARCHAR(150) DEFAULT NULL");
+                    $hasQrCode = true;
+                }
+                $db->exec("UPDATE produtos SET preco_variavel = 1, codigo = '00000' WHERE codigo = '7423' OR id = 8930");
+            } catch (\Exception $e) {}
+
             $join = "LEFT JOIN";
 
             $selectCols = [
@@ -52,6 +67,7 @@ class SalesController extends BaseController {
             if ($hasPV2) $selectCols[] = "p.preco_venda_2"; else $selectCols[] = "0 as preco_venda_2";
             if ($hasPV3) $selectCols[] = "p.preco_venda_3"; else $selectCols[] = "0 as preco_venda_3";
             if ($hasCean) $selectCols[] = "p.cean"; else $selectCols[] = "'' as cean";
+            if ($hasQrCode) $selectCols[] = "p.qrcode"; else $selectCols[] = "'' as qrcode";
             if ($hasPVariavel) $selectCols[] = "p.preco_variavel"; else $selectCols[] = "0 as preco_variavel";
 
             $whereParts = ["p.nome LIKE ?", "p.codigo LIKE ?", "p.codigo = ?"];
@@ -60,11 +76,19 @@ class SalesController extends BaseController {
                 $whereParts[] = "p.cean = ?";
                 $paramsProd[] = $term;
             }
+            if ($hasQrCode) {
+                $whereParts[] = "p.qrcode = ?";
+                $paramsProd[] = $term;
+            }
 
             $orderCase = "CASE WHEN p.codigo = ?";
             $orderParams = [$term];
             if ($hasCean) {
                 $orderCase .= " OR p.cean = ?";
+                $orderParams[] = $term;
+            }
+            if ($hasQrCode) {
+                $orderCase .= " OR p.qrcode = ?";
                 $orderParams[] = $term;
             }
             $orderCase .= " THEN 1 WHEN p.codigo LIKE ? THEN 2 ELSE 3 END";

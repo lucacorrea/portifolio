@@ -1,3 +1,17 @@
+<?php if (isset($_GET['msg'])): ?>
+    <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+        <i class="fas fa-check-circle me-2"></i> <?= htmlspecialchars($_GET['msg']) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
+<?php if (isset($_GET['error'])): ?>
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i> <?= htmlspecialchars($_GET['error']) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
 <!-- Page Header -->
 <div class="row g-3 mb-4 row-cols-1 row-cols-sm-2 row-cols-md-4">
     <div class="col">
@@ -68,6 +82,9 @@
             <button class="btn btn-outline-secondary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#movementModal">
                 <i class="fas fa-right-left me-2"></i>Movimentar
             </button>
+            <a href="estoque.php?action=problems" class="btn btn-outline-danger fw-bold flex-grow-1">
+                <i class="fas fa-exclamation-triangle me-2"></i>Produtos c/ Problema
+            </a>
         </div>
     </div>
 </div>
@@ -103,9 +120,9 @@
 </style>
 
 <!-- Products Table -->
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-        <div class="table-responsive">
+<div class="card border-0 shadow-sm" style="overflow: visible !important;">
+    <div class="card-body p-0" style="min-height: 450px; overflow: visible !important;">
+        <div class="table-responsive" style="overflow: visible !important;">
             <table class="table table-hover align-middle mb-0" id="inventoryTable">
                 <thead class="bg-light">
                     <tr>
@@ -171,6 +188,9 @@
                                     <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openMovement(<?= $p['id'] ?>, 'saida')">
                                         <i class="fas fa-minus-circle text-danger me-2"></i>Saída
                                     </a></li>
+                                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="openProblemModal(<?= $p['id'] ?>, '<?= addslashes($p['nome']) ?>')">
+                                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>Reportar Defeito
+                                    </a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><h6 class="dropdown-header text-uppercase small opacity-50">Gestão</h6></li>
                                     <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)">
@@ -206,17 +226,26 @@
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id" id="edit_id">
                 <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Código Interno</label>
-                        <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" value="<?= (new \App\Models\Product())->getNextCode() ?>">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Cód. Barras (EAN)</label>
-                        <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="Opcional">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
-                        <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome">
+                    <!-- Identificadores de Código -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Código Interno *</label>
+                            <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" oninput="toggleProductCodeViews(this.value)">
+                        </div>
+                        <div class="col-md-4 group-extra-codes">
+                            <label class="form-label small fw-bold">Cód. de Barras (EAN)</label>
+                            <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="Opcional">
+                        </div>
+                        <div class="col-md-5 group-extra-codes">
+                            <label class="form-label small fw-bold">QR Code</label>
+                            <input type="text" name="qrcode" id="edit_qrcode" class="form-control shadow-sm" placeholder="Opcional">
+                        </div>
+                        
+                        <!-- Nome ocupará linha inteira se for 00000, ou o resto se não for -->
+                        <div class="col-md-12" id="div_edit_nome">
+                            <label class="form-label small fw-bold">Nome / Descrição do Material *</label>
+                            <input type="text" name="nome" class="form-control shadow-sm" required id="edit_nome" placeholder="Ex: Lâmpada LED 12W">
+                        </div>
                     </div>
                     
                     <!-- Campo de Foto -->
@@ -282,9 +311,11 @@
                         <label class="form-label small fw-bold">Preço de Custo (R$) *</label>
                         <input type="number" step="0.01" min="0" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço de Venda (R$) *</label>
                         <input type="number" step="0.01" min="0" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
+                    <div class="col-md-3 d-flex align-items-end" id="div_preco_variavel" style="display: none !important;">
                         <div class="form-check form-switch mb-2">
                             <input class="form-check-input" type="checkbox" name="preco_variavel" value="1" id="edit_preco_variavel">
                             <label class="form-check-label small fw-bold text-primary" for="edit_preco_variavel">Preço Variável (PDV)</label>
@@ -431,6 +462,53 @@
     </div>
 </div>
 
+<!-- Problem Report Modal -->
+<div class="modal fade" id="problemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" action="estoque.php?action=save_problem" method="POST">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Reportar Produto com Problema</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                <input type="hidden" name="produto_id" id="prob_produto_id">
+                
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Produto</label>
+                    <input type="text" id="prob_produto_nome" class="form-control bg-light" readonly>
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Quantidade com Problema</label>
+                        <input type="number" step="0.01" name="quantidade" class="form-control shadow-sm" required placeholder="0,00">
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="subtrair_estoque" value="1" id="prob_subtrair" checked>
+                            <label class="form-check-label small fw-bold" for="prob_subtrair">Retirar do estoque atual</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-bold">Descreva o Problema / Defeito</label>
+                        <textarea name="motivo" class="form-control shadow-sm" rows="3" required placeholder="Ex: Tela trincada, Não liga, Devolução de cliente com defeito..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning mt-3 mb-0 small">
+                    <i class="fas fa-info-circle me-1"></i> 
+                    Ao retirar do estoque, o saldo disponível para venda será diminuído imediatamente.
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger px-4 fw-bold">Registrar Problema</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function editProduct(product) {
     const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
@@ -455,8 +533,11 @@ function editProduct(product) {
     document.getElementById('edit_preco_venda_atacado').value = product.preco_venda_atacado || '';
     document.getElementById('edit_estoque_minimo').value = parseFloat(product.estoque_minimo || 0);
     document.getElementById('edit_preco_variavel').checked = product.preco_variavel == 1;
-
+    document.getElementById('edit_qrcode').value = product.qrcode || '';
     
+    // Toggle views based on code (00000 vs others)
+    toggleProductCodeViews(product.codigo);
+
     // Fiscal Fields
     document.getElementById('edit_cean').value = product.cean || '';
     document.getElementById('edit_cest').value = product.cest || '';
@@ -511,6 +592,14 @@ function openMovement(productId, type) {
     modal.show();
 }
 
+function openProblemModal(productId, productName) {
+    const modal = new bootstrap.Modal(document.getElementById('problemModal'));
+    document.getElementById('prob_produto_id').value = productId;
+    document.getElementById('prob_produto_nome').value = productName;
+    modal.show();
+}
+
+
 // Debounced Auto-submit for inventory search
 let inventorySearchTimer;
 document.getElementById('productSearch').addEventListener('input', function() {
@@ -531,6 +620,16 @@ if (window.location.search.includes('q=')) {
 
 // NCM Search Logic with Inline Dropdown Autocomplete
 let ncmDebounceTimer;
+
+// Handle manual code entry for Preço Variável toggle
+document.getElementById('edit_codigo').addEventListener('input', function(e) {
+    const divPrecoVariavel = document.getElementById('div_preco_variavel');
+    if (e.target.value == '7423') {
+        divPrecoVariavel.style.setProperty('display', 'flex', 'important');
+    } else {
+        divPrecoVariavel.style.setProperty('display', 'none', 'important');
+    }
+});
 
 function searchNcmInline(term, force = false) {
     const dropdown = document.getElementById('ncmDropdown');
@@ -655,5 +754,31 @@ function updateFormVisibility() {
     
     document.getElementById('div_peso').style.display = hideDimensions ? 'none' : '';
     document.getElementById('div_dimensoes').style.display = hideDimensions ? 'none' : '';
+}
+function toggleProductCodeViews(code) {
+    const isDiversos = (code === '00000' || code === '7423');
+    const extraCodes = document.querySelectorAll('.group-extra-codes');
+    const divNome = document.getElementById('div_edit_nome');
+    const divPrecoVariavel = document.getElementById('div_preco_variavel');
+
+    if (isDiversos) {
+        extraCodes.forEach(el => el.classList.add('d-none'));
+        if (divNome) {
+            divNome.classList.remove('col-md-6');
+            divNome.classList.add('col-md-12');
+        }
+        if (divPrecoVariavel) {
+            divPrecoVariavel.style.setProperty('display', 'flex', 'important');
+        }
+    } else {
+        extraCodes.forEach(el => el.classList.remove('d-none'));
+        if (divNome) {
+            divNome.classList.remove('col-md-12');
+            divNome.classList.add('col-md-12');
+        }
+        if (divPrecoVariavel) {
+            divPrecoVariavel.style.setProperty('display', 'none', 'important');
+        }
+    }
 }
 </script>

@@ -263,7 +263,7 @@ function showPvPreview(p) {
 }
 
 function addToPVCart(product) {
-    const existing = pvCart.find(i => i.id === product.id);
+    const existing = pvCart.find(i => i.id === product.id && (parseInt(product.preco_variavel) !== 1));
     if (existing) {
         existing.qty++;
     } else {
@@ -274,6 +274,7 @@ function addToPVCart(product) {
             price1: parseFloat(product.preco_venda),
             price2: parseFloat(product.preco_venda_2 || 0),
             price3: parseFloat(product.preco_venda_3 || 0),
+            preco_variavel: parseInt(product.preco_variavel) === 1,
             price_tier: 1,
             qty: 1,
             imagens: product.imagens
@@ -282,6 +283,25 @@ function addToPVCart(product) {
     
     pvSearchInput.value = '';
     pvSearchResults.classList.add('d-none');
+    renderPVCart();
+
+    // Auto-focus price if it's variable
+    if (parseInt(product.preco_variavel) === 1) {
+        setTimeout(() => {
+            const lastRow = pvCartTable.querySelector('tr:last-child');
+            if (lastRow) {
+                const priceInput = lastRow.querySelector('input[onchange*="updatePVPrice"]');
+                if (priceInput) {
+                    priceInput.focus();
+                    priceInput.select();
+                }
+            }
+        }, 100);
+    }
+}
+
+function updatePVPrice(index, val) {
+    pvCart[index].price = Math.max(0, parseFloat(val));
     renderPVCart();
 }
 
@@ -305,18 +325,24 @@ function renderPVCart() {
             <td class="ps-4 fw-bold text-muted">#${item.id}</td>
             <td>
                 <div class="fw-bold">${item.nome}</div>
+                ${!item.preco_variavel ? `
                 <div class="mt-1">
-                    <select class="form-select form-select-sm py-0 extra-small" style="width: auto; height: 24px; font-size: 0.75rem;" onchange="changePVPriceTier(${index}, this.value)">
+                    <select class="form-select form-select-sm py-0 extra-small border-primary border-opacity-25" style="width: auto; height: 24px; font-size: 0.75rem;" onchange="changePVPriceTier(${index}, this.value)">
                         <option value="1" ${item.price_tier == 1 ? 'selected' : ''}>Preço 1 (R$ ${item.price1.toFixed(2).replace('.', ',')})</option>
                         <option value="2" ${item.price_tier == 2 ? 'selected' : ''}>Preço 2 (R$ ${item.price2.toFixed(2).replace('.', ',')})</option>
                         <option value="3" ${item.price_tier == 3 ? 'selected' : ''}>Preço 3 (R$ ${item.price3.toFixed(2).replace('.', ',')})</option>
                     </select>
-                </div>
+                </div>` : ''}
             </td>
             <td class="text-center">
-                <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" onchange="updatePVQty(${index}, this.value)">
+                <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" step="any" onchange="updatePVQty(${index}, this.value)">
             </td>
-            <td class="text-end">R$ ${item.price.toFixed(2).replace('.', ',')}</td>
+            <td class="text-end">
+                ${item.preco_variavel ? 
+                    `<input type="number" class="form-control form-control-sm text-end d-inline-block border-primary fw-bold" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updatePVPrice(${index}, this.value)">` : 
+                    `R$ ${item.price.toFixed(2).replace('.', ',')}`
+                }
+            </td>
             <td class="text-end fw-bold">R$ ${subtotal.toFixed(2).replace('.', ',')}</td>
             <td class="text-center">
                 <button class="btn btn-sm btn-link text-danger p-0" onclick="removeFromPVCart(${index})"><i class="fas fa-times"></i></button>

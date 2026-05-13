@@ -128,7 +128,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
         <?php endif; ?>
 
-        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin']) && !($_SESSION['is_temporary'] ?? false)): ?>
+        <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin', 'gerente']) && !($_SESSION['is_temporary'] ?? false)): ?>
         <div class="px-3 mt-4 mb-2 text-uppercase text-muted opacity-50 fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">Gestão Estratégica</div>
         
         <a href="custos.php" class="nav-link <?= $current_page == 'custos.php' ? 'active' : '' ?>">
@@ -139,6 +139,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <a href="inteligencia.php" class="nav-link <?= ($current_page == 'inteligencia.php' && ($_GET['action'] ?? '') != 'productivity') ? 'active' : '' ?>">
             <i class="fas fa-brain"></i> <span>Inteligência BI</span>
+        </a>
+        <a href="relatorios_gerais.php" class="nav-link <?= $current_page == 'relatorios_gerais.php' ? 'active' : '' ?>">
+            <i class="fas fa-chart-bar text-info"></i> <span class="fw-bold">Relatórios Gerais</span>
         </a>
         <?php endif; ?>
 

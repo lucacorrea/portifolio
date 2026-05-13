@@ -154,4 +154,99 @@ class InventoryController extends BaseController {
         $whereFilial = (!$isMatriz && $filialId) ? " AND $filialCol = $filialId" : "";
         return $db->query("SELECT COUNT(*) FROM $table WHERE ($condition) $whereFilial")->fetchColumn() ?: 0;
     }
+
+    public function problems() {
+        $problemModel = new \App\Models\ProductProblem();
+        
+        $filters = [
+            'q' => $_GET['q'] ?? '',
+            'status' => $_GET['status'] ?? ''
+        ];
+
+        // Custom filter logic for problems
+        $sql = "SELECT pp.*, p.nome as produto_nome, p.codigo as produto_codigo, u.nome as usuario_nome 
+                FROM produtos_problema pp 
+                JOIN produtos p ON pp.produto_id = p.id 
+                LEFT JOIN usuarios u ON pp.usuario_id = u.id 
+                WHERE 1=1";
+        
+        $params = [];
+        $filialId = $_SESSION['filial_id'] ?? null;
+        if ($filialId && !($_SESSION['is_matriz'] ?? false)) {
+            $sql .= " AND pp.filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        if ($filters['q']) {
+            $sql .= " AND (p.nome LIKE ? OR p.codigo LIKE ? OR pp.motivo LIKE ?)";
+            $params[] = "%{$filters['q']}%";
+            $params[] = "%{$filters['q']}%";
+            $params[] = "%{$filters['q']}%";
+        }
+
+        if ($filters['status']) {
+            $sql .= " AND pp.status = ?";
+            $params[] = $filters['status'];
+        }
+
+        $sql .= " ORDER BY pp.data_registro DESC";
+        $problems = $problemModel->query($sql, $params)->fetchAll();
+        
+        $statusLabels = $problemModel->getStatusLabels();
+        
+        // Stats for the view
+        $stats = [
+            'total' => count($problems),
+            'pendente' => 0,
+            'devolvido' => 0,
+            'descartado' => 0,
+            'consertado' => 0
+        ];
+        foreach ($problems as $p) {
+            $stats[$p['status']]++;
+        }
+
+        $this->render('inventory_problems', [
+            'problems' => $problems,
+            'statusLabels' => $statusLabels,
+            'filters' => $filters,
+            'stats' => $stats,
+            'title' => 'Controle de Avarias',
+            'pageTitle' => 'Produtos com Problemas / Defeitos'
+        ]);
+    }
+
+    public function saveProblem() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            validateCsrf($_POST['csrf_token'] ?? '');
+            try {
+                $this->service->registerProblem($_POST);
+                $this->redirect('estoque.php?action=problems&msg=Avaria registrada com sucesso');
+            } catch (\Exception $e) {
+                $this->redirect('estoque.php?error=' . urlencode($e->getMessage()));
+            }
+        }
+    }
+
+    public function updateProblemStatus() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            validateCsrf($_POST['csrf_token'] ?? '');
+            $id = (int)$_POST['id'];
+            $status = $_POST['status'];
+            
+            $problemModel = new \App\Models\ProductProblem();
+            $problemModel->update($id, ['status' => $status]);
+            
+            $this->redirect('estoque.php?action=problems&msg=Status atualizado com sucesso');
+        }
+    }
+
+    public function deleteProblem() {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id > 0) {
+            $problemModel = new \App\Models\ProductProblem();
+            $problemModel->delete($id);
+            $this->redirect('estoque.php?action=problems&msg=Registro de avaria removido');
+        }
+    }
 }

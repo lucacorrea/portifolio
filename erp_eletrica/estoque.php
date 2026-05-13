@@ -24,6 +24,22 @@ switch ($action) {
         \App\Services\AuthService::checkPermission('estoque', 'visualizar');
         $controller->movimentacoes();
         break;
+    case 'problems':
+        \App\Services\AuthService::checkPermission('estoque', 'visualizar');
+        $controller->problems();
+        break;
+    case 'save_problem':
+        \App\Services\AuthService::checkPermission('estoque', 'editar');
+        $controller->saveProblem();
+        break;
+    case 'update_problem_status':
+        \App\Services\AuthService::checkPermission('estoque', 'editar');
+        $controller->updateProblemStatus();
+        break;
+    case 'delete_problem':
+        \App\Services\AuthService::checkPermission('estoque', 'excluir');
+        $controller->deleteProblem();
+        break;
     default:
         \App\Services\AuthService::checkPermission('estoque', 'visualizar');
         $controller->index();
