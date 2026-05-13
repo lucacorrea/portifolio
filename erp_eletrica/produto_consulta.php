@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/conexao.php';
+require_once __DIR__ . '/config.php';
 
 if (!isset($pdo) || !($pdo instanceof PDO)) {
     die('Conexão com banco não disponível.');
