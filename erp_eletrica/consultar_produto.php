@@ -1,6 +1,9 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+
+declare(strict_types=1);
+
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 header('Content-Type: application/json; charset=utf-8');
@@ -27,29 +30,33 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 |--------------------------------------------------------------------------
 | CONEXÃO
 |--------------------------------------------------------------------------
+| AQUI ESTÁ A CORREÇÃO PRINCIPAL
+|--------------------------------------------------------------------------
+| Seu sistema usa config.php
+| e nele já existe:
+|
+| $pdo = $database->getConnection();
+|--------------------------------------------------------------------------
 */
 
-require_once __DIR__ . 'config.php';
+require_once __DIR__ . '/../config.php';
 
 /*
 |--------------------------------------------------------------------------
-| AJUSTE CONFORME SUA CONEXÃO
-|--------------------------------------------------------------------------
-| Caso seu Database.php use:
-| $conn
-| $db
-| Database::connect()
-| troque abaixo.
+| VALIDA PDO
 |--------------------------------------------------------------------------
 */
 
-if (!isset($pdo) || !($pdo instanceof PDO)) {
+if (
+    !isset($pdo) ||
+    !($pdo instanceof PDO)
+) {
 
     http_response_code(500);
 
     echo json_encode([
         'ok' => false,
-        'message' => 'Conexão PDO não encontrada.'
+        'message' => 'PDO não encontrado no config.php'
     ], JSON_UNESCAPED_UNICODE);
 
     exit;
@@ -130,20 +137,32 @@ function placeholderImagem()
     <svg xmlns="http://www.w3.org/2000/svg" width="600" height="600">
         <rect width="100%" height="100%" fill="#eef3f9"/>
         <rect x="80" y="80" width="440" height="440" rx="28" fill="#dbe4ef"/>
-        <text x="50%" y="46%" text-anchor="middle"
-        font-family="Arial"
-        font-size="34"
-        fill="#294f87"
-        font-weight="700">
-        SEM IMAGEM
+
+        <text
+            x="50%"
+            y="46%"
+            text-anchor="middle"
+            font-family="Arial"
+            font-size="34"
+            fill="#294f87"
+            font-weight="700">
+
+            SEM IMAGEM
+
         </text>
 
-        <text x="50%" y="54%" text-anchor="middle"
-        font-family="Arial"
-        font-size="22"
-        fill="#62708a">
-        Produto sem foto cadastrada
+        <text
+            x="50%"
+            y="54%"
+            text-anchor="middle"
+            font-family="Arial"
+            font-size="22"
+            fill="#62708a">
+
+            Produto sem foto cadastrada
+
         </text>
+
     </svg>';
 
     return 'data:image/svg+xml;charset=UTF-8,' . rawurlencode($svg);
@@ -272,15 +291,31 @@ function primeiraImagemDoCampo($imagens)
 
 try {
 
+    /*
+    |--------------------------------------------------------------------------
+    | NORMALIZA CÓDIGO
+    |--------------------------------------------------------------------------
+    */
+
     $codigoBusca = preg_replace('/[\s\-]+/', '', $codigo);
 
+    /*
+    |--------------------------------------------------------------------------
+    | SQL
+    |--------------------------------------------------------------------------
+    */
+
     $sql = "
+
         SELECT
+
             id,
             filial_id,
+
             codigo,
             cean,
             qrcode,
+
             nome,
             unidade,
             descricao,
@@ -321,6 +356,12 @@ try {
 
     $produto = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    /*
+    |--------------------------------------------------------------------------
+    | NÃO ENCONTRADO
+    |--------------------------------------------------------------------------
+    */
+
     if (!$produto) {
 
         http_response_code(404);
@@ -339,10 +380,10 @@ try {
     |--------------------------------------------------------------------------
     */
 
-    $preco1 = (float)$produto['preco_venda'];
-    $preco2 = (float)$produto['preco_venda_2'];
-    $preco3 = (float)$produto['preco_venda_3'];
-    $precoAtacado = (float)$produto['preco_venda_atacado'];
+    $preco1 = (float)($produto['preco_venda'] ?? 0);
+    $preco2 = (float)($produto['preco_venda_2'] ?? 0);
+    $preco3 = (float)($produto['preco_venda_3'] ?? 0);
+    $precoAtacado = (float)($produto['preco_venda_atacado'] ?? 0);
 
     /*
     |--------------------------------------------------------------------------
@@ -358,27 +399,27 @@ try {
             ? (int)$produto['filial_id']
             : null,
 
-        'codigo' => (string)$produto['codigo'],
+        'codigo' => (string)($produto['codigo'] ?? ''),
 
-        'cean' => (string)$produto['cean'],
+        'cean' => (string)($produto['cean'] ?? ''),
 
-        'qrcode' => (string)$produto['qrcode'],
+        'qrcode' => (string)($produto['qrcode'] ?? ''),
 
-        'nome' => (string)$produto['nome'],
+        'nome' => (string)($produto['nome'] ?? ''),
 
-        'unidade' => (string)$produto['unidade'],
+        'unidade' => (string)($produto['unidade'] ?? 'UN'),
 
-        'descricao' => (string)$produto['descricao'],
+        'descricao' => (string)($produto['descricao'] ?? ''),
 
-        'categoria' => (string)$produto['categoria'],
+        'categoria' => (string)($produto['categoria'] ?? ''),
 
-        'ncm' => (string)$produto['ncm'],
+        'ncm' => (string)($produto['ncm'] ?? ''),
 
-        'cest' => (string)$produto['cest'],
+        'cest' => (string)($produto['cest'] ?? ''),
 
-        'estoque' => (int)$produto['quantidade'],
+        'estoque' => (int)($produto['quantidade'] ?? 0),
 
-        'estoque_minimo' => (int)$produto['estoque_minimo'],
+        'estoque_minimo' => (int)($produto['estoque_minimo'] ?? 0),
 
         /*
         |--------------------------------------------------------------------------
@@ -443,6 +484,12 @@ try {
         )
     ];
 
+    /*
+    |--------------------------------------------------------------------------
+    | SUCESSO
+    |--------------------------------------------------------------------------
+    */
+
     echo json_encode([
 
         'ok' => true,
@@ -461,7 +508,7 @@ try {
 
         'ok' => false,
 
-        'message' => 'Erro interno.',
+        'message' => 'Erro interno do servidor.',
 
         'erro' => $e->getMessage(),
 
