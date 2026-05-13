@@ -43,7 +43,7 @@ class ReportsController
 
     private function getKPIs($filial_id, $start, $end)
     {
-        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'pago'";
+        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'concluido'";
         $params = [':start' => $start . ' 00:00:00', ':end' => $end . ' 23:59:59'];
 
         if ($filial_id !== 'all') {
@@ -54,7 +54,7 @@ class ReportsController
         $sql = "SELECT 
                     COUNT(v.id) as total_vendas,
                     SUM(v.valor_total) as faturamento,
-                    SUM(v.desconto) as total_descontos,
+                    SUM(v.desconto_total) as total_descontos,
                     AVG(v.valor_total) as ticket_medio
                 FROM vendas v 
                 $where";
@@ -64,9 +64,10 @@ class ReportsController
         $kpis = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Cálculo de Lucro Estimado (Faturamento - Custo dos itens)
-        $sqlLucro = "SELECT SUM(vi.quantidade * vi.preco_custo) as total_custo 
+        $sqlLucro = "SELECT SUM(vi.quantidade * p.preco_custo) as total_custo 
                      FROM vendas_itens vi 
                      JOIN vendas v ON vi.venda_id = v.id 
+                     JOIN produtos p ON vi.produto_id = p.id
                      $where";
         $stmtLucro = $this->db->prepare($sqlLucro);
         $stmtLucro->execute($params);
@@ -79,7 +80,7 @@ class ReportsController
 
     private function getSalesChartData($filial_id, $start, $end)
     {
-        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'pago'";
+        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'concluido'";
         $params = [':start' => $start . ' 00:00:00', ':end' => $end . ' 23:59:59'];
 
         if ($filial_id !== 'all') {
@@ -100,7 +101,7 @@ class ReportsController
 
     private function getTopProducts($filial_id, $start, $end)
     {
-        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'pago'";
+        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'concluido'";
         $params = [':start' => $start . ' 00:00:00', ':end' => $end . ' 23:59:59'];
 
         if ($filial_id !== 'all') {
@@ -124,7 +125,7 @@ class ReportsController
 
     private function getTopSellers($filial_id, $start, $end)
     {
-        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'pago'";
+        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'concluido'";
         $params = [':start' => $start . ' 00:00:00', ':end' => $end . ' 23:59:59'];
 
         if ($filial_id !== 'all') {
@@ -146,7 +147,7 @@ class ReportsController
 
     private function getCategoriesChartData($filial_id, $start, $end)
     {
-        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'pago'";
+        $where = "WHERE v.data_venda BETWEEN :start AND :end AND v.status = 'concluido'";
         $params = [':start' => $start . ' 00:00:00', ':end' => $end . ' 23:59:59'];
 
         if ($filial_id !== 'all') {
