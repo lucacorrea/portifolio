@@ -13,6 +13,69 @@ if (!$empresaId) {
     exit('Empresa não identificada.');
 }
 
+$conexaoPagePath = '/app/conexao.php';
+$conexaoActionUrl = public_url($conexaoPagePath);
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    verify_csrf();
+
+    $action = (string) ($_POST['acao'] ?? '');
+    $connection = whatsapp_get_connection($empresaId);
+    $instanceName = whatsapp_sanitize_instance_name((string) ($_POST['instancia_nome'] ?? ($connection['instancia_nome'] ?? '')), $empresaId);
+    $phone = (string) ($_POST['telefone_conectado'] ?? ($connection['telefone_conectado'] ?? ''));
+
+    try {
+        if ($action === 'salvar') {
+            whatsapp_update_connection($empresaId, [
+                'instancia_nome' => $instanceName,
+                'telefone_conectado' => whatsapp_normalize_phone($phone) ?: null,
+                'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+            ]);
+
+            flash('success', 'Dados da conexão atualizados.');
+            redirect($conexaoPagePath);
+        }
+
+        if ($action === 'gerar_qr') {
+            $result = whatsapp_connect_instance($empresaId, $instanceName, $phone);
+            flash($result['ok'] ? 'success' : 'error', $result['message']);
+            redirect($conexaoPagePath);
+        }
+
+        if ($action === 'atualizar_status') {
+            $result = whatsapp_refresh_connection($empresaId);
+            flash($result['ok'] ? 'success' : 'error', $result['message']);
+            redirect($conexaoPagePath);
+        }
+
+        if ($action === 'desconectar') {
+            $result = whatsapp_disconnect_instance($empresaId);
+            flash($result['ok'] ? 'success' : 'error', $result['message']);
+            redirect($conexaoPagePath);
+        }
+
+        if ($action === 'processar_cobrancas') {
+            $summary = whatsapp_processar_cobrancas_empresa($empresaId);
+            flash(
+                'success',
+                'Processamento concluído: '
+                . (int) $summary['enviadas'] . ' enviadas, '
+                . (int) $summary['falhas'] . ' falhas, '
+                . (int) $summary['duplicadas'] . ' duplicadas ignoradas e '
+                . (int) $summary['sem_telefone'] . ' sem telefone válido.'
+            );
+            redirect($conexaoPagePath);
+        }
+    } catch (Throwable $e) {
+        error_log('[WHATSAPP CONEXAO PAGE] ' . $e->getMessage());
+        flash('error', 'Não foi possível processar a conexão do WhatsApp. Verifique a configuração e tente novamente.');
+        redirect($conexaoPagePath);
+    }
+
+    flash('error', 'Ação inválida para conexão do WhatsApp.');
+    redirect($conexaoPagePath);
+}
+
 $connection = whatsapp_get_connection($empresaId);
 $integrationConfigured = whatsapp_integration_configured();
 $providerLabel = whatsapp_provider() === 'bridge' ? 'Bridge Baileys' : 'Evolution API';
@@ -106,7 +169,7 @@ $pairingCode = (string) ($connection['pairing_code'] ?? '');
                     <span class="badge <?= e(whatsapp_status_badge($status)) ?>"><?= e(whatsapp_status_label($status)) ?></span>
                 </div>
 
-                <form class="form-stack" method="post" action="<?= e(public_url('/actions/app/whatsapp_conexao.php')) ?>">
+                <form class="form-stack" method="post" action="<?= e($conexaoActionUrl) ?>">
                     <?= csrf_field() ?>
                     <input type="hidden" name="acao" value="salvar">
                     <label>Nome da instância
@@ -121,19 +184,19 @@ $pairingCode = (string) ($connection['pairing_code'] ?? '');
                 </form>
 
                 <div class="connection-actions">
-                    <form method="post" action="<?= e(public_url('/actions/app/whatsapp_conexao.php')) ?>">
+                    <form method="post" action="<?= e($conexaoActionUrl) ?>">
                         <?= csrf_field() ?>
                         <input type="hidden" name="acao" value="gerar_qr">
                         <input type="hidden" name="instancia_nome" value="<?= e($connection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId)) ?>">
                         <input type="hidden" name="telefone_conectado" value="<?= e($connection['telefone_conectado'] ?? '') ?>">
                         <button class="btn btn-primary" type="submit" <?= !$integrationConfigured ? 'disabled' : '' ?>>Gerar QR Code</button>
                     </form>
-                    <form method="post" action="<?= e(public_url('/actions/app/whatsapp_conexao.php')) ?>">
+                    <form method="post" action="<?= e($conexaoActionUrl) ?>">
                         <?= csrf_field() ?>
                         <input type="hidden" name="acao" value="atualizar_status">
                         <button class="btn" type="submit" <?= !$integrationConfigured ? 'disabled' : '' ?>>Atualizar status</button>
                     </form>
-                    <form method="post" action="<?= e(public_url('/actions/app/whatsapp_conexao.php')) ?>">
+                    <form method="post" action="<?= e($conexaoActionUrl) ?>">
                         <?= csrf_field() ?>
                         <input type="hidden" name="acao" value="desconectar">
                         <button class="btn btn-secondary" type="submit">Desconectar</button>
@@ -196,7 +259,7 @@ $pairingCode = (string) ($connection['pairing_code'] ?? '');
                     <div><strong>Telefone validado</strong><span>Números locais recebem DDI 55 automaticamente.</span></div>
                     <div><strong>Execução por cron</strong><span>Use <code>/cron/processar_whatsapp_cobrancas.php?token=SEU_TOKEN</code> diariamente.</span></div>
                 </div>
-                <form class="connection-actions" method="post" action="<?= e(public_url('/actions/app/whatsapp_conexao.php')) ?>">
+                <form class="connection-actions" method="post" action="<?= e($conexaoActionUrl) ?>">
                     <?= csrf_field() ?>
                     <input type="hidden" name="acao" value="processar_cobrancas">
                     <button class="btn btn-primary" type="submit">Processar cobranças agora</button>
