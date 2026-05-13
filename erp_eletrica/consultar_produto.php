@@ -8,11 +8,14 @@ error_reporting(E_ALL);
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+
     http_response_code(405);
+
     echo json_encode([
         'ok' => false,
         'message' => 'Método não permitido.'
     ], JSON_UNESCAPED_UNICODE);
+
     exit;
 }
 
@@ -20,32 +23,40 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 |--------------------------------------------------------------------------
 | CONEXÃO
 |--------------------------------------------------------------------------
-| Ajuste o caminho abaixo conforme seu projeto.
-| Exemplo mais comum:
-| require_once __DIR__ . '/../conexao.php';
-|--------------------------------------------------------------------------
 */
 require_once __DIR__ . '/../src/App/Config/Database.php';
 
 if (!isset($pdo) || !($pdo instanceof PDO)) {
+
     http_response_code(500);
+
     echo json_encode([
         'ok' => false,
         'message' => 'Conexão com o banco não disponível.'
     ], JSON_UNESCAPED_UNICODE);
+
     exit;
 }
 
 $codigo = trim((string)($_POST['codigo'] ?? ''));
 
 if ($codigo === '') {
+
     http_response_code(422);
+
     echo json_encode([
         'ok' => false,
         'message' => 'Código não informado.'
     ], JSON_UNESCAPED_UNICODE);
+
     exit;
 }
+
+/*
+|--------------------------------------------------------------------------
+| HELPERS
+|--------------------------------------------------------------------------
+*/
 
 function appBasePath(): string
 {
@@ -62,10 +73,17 @@ function appBasePath(): string
 function baseUrl(): string
 {
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
     $scheme = $https ? 'https' : 'http';
+
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
     return $scheme . '://' . $host;
+}
+
+function formatarMoeda($valor): string
+{
+    return 'R$ ' . number_format((float)$valor, 2, ',', '.');
 }
 
 function placeholderImagem(): string
@@ -90,12 +108,17 @@ function normalizarImagemUrl(?string $imagem): string
         return placeholderImagem();
     }
 
-    if (preg_match('#^https?://#i', $imagem) || str_starts_with($imagem, 'data:')) {
+    if (
+        preg_match('#^https?://#i', $imagem) ||
+        str_starts_with($imagem, 'data:')
+    ) {
         return $imagem;
     }
 
     if (str_starts_with($imagem, '//')) {
+
         $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
         return ($https ? 'https:' : 'http:') . $imagem;
     }
 
@@ -104,6 +127,7 @@ function normalizarImagemUrl(?string $imagem): string
     }
 
     $imagem = ltrim($imagem, './');
+
     return baseUrl() . appBasePath() . '/' . $imagem;
 }
 
@@ -117,30 +141,56 @@ function primeiraImagemDoCampo(?string $imagens): string
 
     $json = json_decode($imagens, true);
 
-    if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
-        if (isset($json['url']) && is_string($json['url']) && trim($json['url']) !== '') {
+    if (
+        json_last_error() === JSON_ERROR_NONE &&
+        is_array($json)
+    ) {
+
+        if (
+            isset($json['url']) &&
+            is_string($json['url']) &&
+            trim($json['url']) !== ''
+        ) {
             return normalizarImagemUrl($json['url']);
         }
 
-        if (isset($json['imagem']) && is_string($json['imagem']) && trim($json['imagem']) !== '') {
+        if (
+            isset($json['imagem']) &&
+            is_string($json['imagem']) &&
+            trim($json['imagem']) !== ''
+        ) {
             return normalizarImagemUrl($json['imagem']);
         }
 
         foreach ($json as $item) {
-            if (is_string($item) && trim($item) !== '') {
+
+            if (
+                is_string($item) &&
+                trim($item) !== ''
+            ) {
                 return normalizarImagemUrl($item);
             }
 
             if (is_array($item)) {
-                if (!empty($item['url']) && is_string($item['url'])) {
+
+                if (
+                    !empty($item['url']) &&
+                    is_string($item['url'])
+                ) {
                     return normalizarImagemUrl($item['url']);
                 }
 
-                if (!empty($item['imagem']) && is_string($item['imagem'])) {
+                if (
+                    !empty($item['imagem']) &&
+                    is_string($item['imagem'])
+                ) {
                     return normalizarImagemUrl($item['imagem']);
                 }
 
-                if (!empty($item['path']) && is_string($item['path'])) {
+                if (
+                    !empty($item['path']) &&
+                    is_string($item['path'])
+                ) {
                     return normalizarImagemUrl($item['path']);
                 }
             }
@@ -150,8 +200,11 @@ function primeiraImagemDoCampo(?string $imagens): string
     $partes = preg_split('/[\r\n,;|]+/', $imagens);
 
     if (is_array($partes)) {
+
         foreach ($partes as $parte) {
+
             $parte = trim((string)$parte);
+
             if ($parte !== '') {
                 return normalizarImagemUrl($parte);
             }
@@ -162,15 +215,25 @@ function primeiraImagemDoCampo(?string $imagens): string
 }
 
 try {
+
     /*
     |--------------------------------------------------------------------------
-    | BUSCA
-    |--------------------------------------------------------------------------
-    | Procura primeiro por CEAN e também aceita CODIGO.
-    | Remove espaços e hífens para não falhar quando o leitor vier formatado.
+    | NORMALIZA CÓDIGO
     |--------------------------------------------------------------------------
     */
+
     $codigoBusca = preg_replace('/[\s\-]+/', '', $codigo);
+
+    /*
+    |--------------------------------------------------------------------------
+    | CONSULTA PRODUTO
+    |--------------------------------------------------------------------------
+    | Busca:
+    | - CEAN
+    | - CODIGO
+    | - QRCODE
+    |--------------------------------------------------------------------------
+    */
 
     $sql = "
         SELECT
@@ -178,70 +241,202 @@ try {
             filial_id,
             codigo,
             cean,
+            qrcode,
             nome,
             unidade,
             descricao,
             imagens,
             categoria,
-            preco_venda
+
+            preco_venda,
+            preco_venda_2,
+            preco_venda_3,
+            preco_venda_atacado,
+
+            quantidade,
+            estoque_minimo,
+
+            ncm,
+            cest
+
         FROM produtos
+
         WHERE
+
             REPLACE(REPLACE(TRIM(COALESCE(cean, '')), ' ', ''), '-', '') = :codigo
+
             OR REPLACE(REPLACE(TRIM(COALESCE(codigo, '')), ' ', ''), '-', '') = :codigo
+
+            OR REPLACE(REPLACE(TRIM(COALESCE(qrcode, '')), ' ', ''), '-', '') = :codigo
+
         ORDER BY
+
             CASE
+
                 WHEN REPLACE(REPLACE(TRIM(COALESCE(cean, '')), ' ', ''), '-', '') = :codigo THEN 0
-                ELSE 1
+
+                WHEN REPLACE(REPLACE(TRIM(COALESCE(codigo, '')), ' ', ''), '-', '') = :codigo THEN 1
+
+                ELSE 2
+
             END,
+
             id DESC
+
         LIMIT 1
     ";
 
     $stmt = $pdo->prepare($sql);
+
     $stmt->bindValue(':codigo', $codigoBusca, PDO::PARAM_STR);
+
     $stmt->execute();
 
     $produto = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$produto) {
+
         http_response_code(404);
+
         echo json_encode([
             'ok' => false,
             'message' => 'Produto não encontrado para este código.'
         ], JSON_UNESCAPED_UNICODE);
+
         exit;
     }
 
-    $precoVenda = (float)($produto['preco_venda'] ?? 0);
+    /*
+    |--------------------------------------------------------------------------
+    | PREÇOS
+    |--------------------------------------------------------------------------
+    */
+
+    $preco1 = (float)($produto['preco_venda'] ?? 0);
+    $preco2 = (float)($produto['preco_venda_2'] ?? 0);
+    $preco3 = (float)($produto['preco_venda_3'] ?? 0);
+    $precoAtacado = (float)($produto['preco_venda_atacado'] ?? 0);
+
+    /*
+    |--------------------------------------------------------------------------
+    | SAÍDA
+    |--------------------------------------------------------------------------
+    */
 
     $saida = [
-        'id'                     => (int)$produto['id'],
-        'filial_id'              => isset($produto['filial_id']) ? (int)$produto['filial_id'] : null,
-        'codigo'                 => (string)($produto['codigo'] ?? ''),
-        'cean'                   => (string)($produto['cean'] ?? ''),
-        'nome'                   => (string)($produto['nome'] ?? ''),
-        'unidade'                => (string)($produto['unidade'] ?? 'UN'),
-        'descricao'              => (string)($produto['descricao'] ?? ''),
-        'categoria'              => (string)($produto['categoria'] ?? ''),
-        'preco_venda'            => $precoVenda,
-        'preco_venda_formatado'  => 'R$ ' . number_format($precoVenda, 2, ',', '.'),
-        'imagem'                 => primeiraImagemDoCampo((string)($produto['imagens'] ?? '')),
+
+        'id' => (int)$produto['id'],
+
+        'filial_id' => isset($produto['filial_id'])
+            ? (int)$produto['filial_id']
+            : null,
+
+        'codigo' => (string)($produto['codigo'] ?? ''),
+
+        'cean' => (string)($produto['cean'] ?? ''),
+
+        'qrcode' => (string)($produto['qrcode'] ?? ''),
+
+        'nome' => (string)($produto['nome'] ?? ''),
+
+        'unidade' => (string)($produto['unidade'] ?? 'UN'),
+
+        'descricao' => (string)($produto['descricao'] ?? ''),
+
+        'categoria' => (string)($produto['categoria'] ?? ''),
+
+        'ncm' => (string)($produto['ncm'] ?? ''),
+
+        'cest' => (string)($produto['cest'] ?? ''),
+
+        'estoque' => (int)($produto['quantidade'] ?? 0),
+
+        'estoque_minimo' => (int)($produto['estoque_minimo'] ?? 0),
+
+        /*
+        |--------------------------------------------------------------------------
+        | PREÇO PRINCIPAL EM DESTAQUE
+        |--------------------------------------------------------------------------
+        */
+
+        'preco_destaque' => [
+            'titulo' => 'Preço Principal',
+            'valor' => $preco1,
+            'formatado' => formatarMoeda($preco1)
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | VARIAÇÕES DE PREÇO
+        |--------------------------------------------------------------------------
+        */
+
+        'precos' => [
+
+            [
+                'tipo' => 'Preço 1',
+                'principal' => true,
+                'valor' => $preco1,
+                'formatado' => formatarMoeda($preco1)
+            ],
+
+            [
+                'tipo' => 'Preço 2',
+                'principal' => false,
+                'valor' => $preco2,
+                'formatado' => formatarMoeda($preco2)
+            ],
+
+            [
+                'tipo' => 'Preço 3',
+                'principal' => false,
+                'valor' => $preco3,
+                'formatado' => formatarMoeda($preco3)
+            ],
+
+            [
+                'tipo' => 'Atacado',
+                'principal' => false,
+                'valor' => $precoAtacado,
+                'formatado' => formatarMoeda($precoAtacado)
+            ]
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | IMAGEM
+        |--------------------------------------------------------------------------
+        */
+
+        'imagem' => primeiraImagemDoCampo(
+            (string)($produto['imagens'] ?? '')
+        )
     ];
 
     echo json_encode([
+
         'ok' => true,
+
         'produto' => $saida
+
     ], JSON_UNESCAPED_UNICODE);
+
     exit;
 
 } catch (Throwable $e) {
+
     http_response_code(500);
+
     echo json_encode([
+
         'ok' => false,
+
         'message' => 'Erro interno ao consultar o produto.',
+
         'debug' => $e->getMessage()
+
     ], JSON_UNESCAPED_UNICODE);
+
     exit;
 }
-
 ?>
