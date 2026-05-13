@@ -620,7 +620,13 @@ if ($codigoBusca === '') {
             <div class="top">
                 <img
                     src="assets/img/logo-centro-eletricista.png"
-                    alt="Centro do Eletricista">
+                    alt="Centro do Eletricista"
+                    onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
+
+                <div class="logo-fallback" id="logoFallback">
+                    <strong>CENTRO DO ELETRICISTA</strong>
+                    <span>Consulta rápida de produtos</span>
+                </div>
             </div>
 
             <div class="bar"></div>
