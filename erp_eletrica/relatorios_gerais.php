@@ -1,6 +1,6 @@
 <?php
 require_once 'config.php';
-require_once 'auth.php';
+checkAuth(['admin', 'gerente']);
 
 use App\Controllers\ReportsController;
 

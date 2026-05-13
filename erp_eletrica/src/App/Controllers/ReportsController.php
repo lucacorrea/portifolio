@@ -16,9 +16,9 @@ class ReportsController
 
     public function index()
     {
-        $user = $_SESSION['user'];
-        $isAdmin = ($user['nivel'] === 'admin');
-        $filial_id = $isAdmin ? ($_GET['filial_id'] ?? 'all') : $user['filial_id'];
+        $nivel = $_SESSION['usuario_nivel'] ?? 'vendedor';
+        $isAdmin = ($nivel === 'admin');
+        $filial_id = $isAdmin ? ($_GET['filial_id'] ?? 'all') : ($_SESSION['filial_id'] ?? 0);
         
         $startDate = $_GET['start_date'] ?? date('Y-m-01');
         $endDate = $_GET['end_date'] ?? date('Y-m-d');
