@@ -279,7 +279,12 @@ class Product extends BaseModel {
         $hasPrecoVenda3   = $this->columnExists('preco_venda_3');
         $hasPrecoAtacado  = $this->columnExists('preco_venda_atacado');
         $hasImagens       = $this->columnExists('imagens');
-        $hasPrecoVariavel = $this->columnExists('preco_variavel');
+        
+        // Ensure column exists (self-healing)
+        if (!$this->columnExists('preco_variavel')) {
+            try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN preco_variavel TINYINT(1) DEFAULT 0"); } catch (\Exception $e) {}
+        }
+        $hasPrecoVariavel = true;
 
         
         if (!$this->columnExists('preco_variavel')) {
