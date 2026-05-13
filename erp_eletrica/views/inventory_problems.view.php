@@ -1,9 +1,75 @@
+<!-- Stats Cards -->
+<div class="row g-3 mb-4 row-cols-1 row-cols-sm-2 row-cols-md-5">
+    <div class="col">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted extra-small fw-bold text-uppercase mb-1">Total Registrado</div>
+                <h4 class="mb-0 fw-bold"><?= $stats['total'] ?></h4>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100 border-start border-warning border-4 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted extra-small fw-bold text-uppercase mb-1 text-warning">Pendentes</div>
+                <h4 class="mb-0 fw-bold"><?= $stats['pendente'] ?></h4>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100 border-start border-primary border-4 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted extra-small fw-bold text-uppercase mb-1 text-primary">Devolvidos</div>
+                <h4 class="mb-0 fw-bold"><?= $stats['devolvido'] ?></h4>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100 border-start border-success border-4 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted extra-small fw-bold text-uppercase mb-1 text-success">Consertados</div>
+                <h4 class="mb-0 fw-bold"><?= $stats['consertado'] ?></h4>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100 border-start border-danger border-4 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted extra-small fw-bold text-uppercase mb-1 text-danger">Descartados</div>
+                <h4 class="mb-0 fw-bold"><?= $stats['descartado'] ?></h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Bar -->
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body d-flex justify-content-between align-items-center py-3">
-        <h5 class="mb-0 fw-bold text-secondary">Controle de Produtos com Problema / Defeito</h5>
-        <a href="estoque.php" class="btn btn-outline-secondary btn-sm fw-bold">
-            <i class="fas fa-arrow-left me-2"></i>Voltar ao Estoque
-        </a>
+    <div class="card-body py-3">
+        <form method="GET" action="estoque.php" class="row g-3">
+            <input type="hidden" name="action" value="problems">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" name="q" class="form-control border-start-0" placeholder="Pesquisar por material ou motivo..." value="<?= htmlspecialchars($filters['q'] ?? '') ?>">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos Status</option>
+                    <?php foreach ($statusLabels as $key => $info): ?>
+                        <option value="<?= $key ?>" <?= ($filters['status'] ?? '') == $key ? 'selected' : '' ?>><?= $info['label'] ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary fw-bold w-100">Filtrar</button>
+                <a href="estoque.php" class="btn btn-outline-secondary fw-bold">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -26,7 +92,7 @@
                         <tr>
                             <td colspan="6" class="text-center py-5 text-muted">
                                 <i class="fas fa-check-circle fa-3x mb-3 opacity-25"></i>
-                                <p class="mb-0">Nenhum produto com problema registrado.</p>
+                                <p class="mb-0">Nenhum registro encontrado para os filtros aplicados.</p>
                             </td>
                         </tr>
                     <?php else: ?>
@@ -46,10 +112,10 @@
                                 </span>
                             </td>
                             <td>
-                                <div class="text-muted small" style="max-width: 250px;"><?= nl2br(htmlspecialchars($p['motivo'])) ?></div>
+                                <div class="text-muted small" style="max-width: 350px; white-space: normal;"><?= nl2br(htmlspecialchars($p['motivo'])) ?></div>
                             </td>
                             <td>
-                                <span class="badge bg-<?= $statusLabels[$p['status']]['class'] ?> text-uppercase" style="font-size: 0.7rem;">
+                                <span class="badge bg-<?= $statusLabels[$p['status']]['class'] ?> text-uppercase px-2" style="font-size: 0.65rem;">
                                     <?= $statusLabels[$p['status']]['label'] ?>
                                 </span>
                             </td>

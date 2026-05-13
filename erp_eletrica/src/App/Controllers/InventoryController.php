@@ -157,12 +157,60 @@ class InventoryController extends BaseController {
 
     public function problems() {
         $problemModel = new \App\Models\ProductProblem();
-        $problems = $problemModel->all();
+        
+        $filters = [
+            'q' => $_GET['q'] ?? '',
+            'status' => $_GET['status'] ?? ''
+        ];
+
+        // Custom filter logic for problems
+        $sql = "SELECT pp.*, p.nome as produto_nome, p.codigo as produto_codigo, u.nome as usuario_nome 
+                FROM produtos_problema pp 
+                JOIN produtos p ON pp.produto_id = p.id 
+                LEFT JOIN usuarios u ON pp.usuario_id = u.id 
+                WHERE 1=1";
+        
+        $params = [];
+        $filialId = $_SESSION['filial_id'] ?? null;
+        if ($filialId && !($_SESSION['is_matriz'] ?? false)) {
+            $sql .= " AND pp.filial_id = ?";
+            $params[] = $filialId;
+        }
+
+        if ($filters['q']) {
+            $sql .= " AND (p.nome LIKE ? OR p.codigo LIKE ? OR pp.motivo LIKE ?)";
+            $params[] = "%{$filters['q']}%";
+            $params[] = "%{$filters['q']}%";
+            $params[] = "%{$filters['q']}%";
+        }
+
+        if ($filters['status']) {
+            $sql .= " AND pp.status = ?";
+            $params[] = $filters['status'];
+        }
+
+        $sql .= " ORDER BY pp.data_registro DESC";
+        $problems = $problemModel->query($sql, $params)->fetchAll();
+        
         $statusLabels = $problemModel->getStatusLabels();
+        
+        // Stats for the view
+        $stats = [
+            'total' => count($problems),
+            'pendente' => 0,
+            'devolvido' => 0,
+            'descartado' => 0,
+            'consertado' => 0
+        ];
+        foreach ($problems as $p) {
+            $stats[$p['status']]++;
+        }
 
         $this->render('inventory_problems', [
             'problems' => $problems,
             'statusLabels' => $statusLabels,
+            'filters' => $filters,
+            'stats' => $stats,
             'title' => 'Controle de Avarias',
             'pageTitle' => 'Produtos com Problemas / Defeitos'
         ]);

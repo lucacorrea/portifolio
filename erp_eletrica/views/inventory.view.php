@@ -288,9 +288,11 @@
                         <label class="form-label small fw-bold">Preço de Custo (R$) *</label>
                         <input type="number" step="0.01" min="0" name="preco_custo" class="form-control shadow-sm" required id="edit_preco_custo">
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Preço de Venda (R$) *</label>
                         <input type="number" step="0.01" min="0" name="preco_venda" class="form-control shadow-sm border-primary" required id="edit_preco_venda">
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
+                    <div class="col-md-3 d-flex align-items-end" id="div_preco_variavel" style="display: none !important;">
                         <div class="form-check form-switch mb-2">
                             <input class="form-check-input" type="checkbox" name="preco_variavel" value="1" id="edit_preco_variavel">
                             <label class="form-check-label small fw-bold text-primary" for="edit_preco_variavel">Preço Variável (PDV)</label>
@@ -509,6 +511,13 @@ function editProduct(product) {
     document.getElementById('edit_estoque_minimo').value = parseFloat(product.estoque_minimo || 0);
     document.getElementById('edit_preco_variavel').checked = product.preco_variavel == 1;
 
+    // Toggle Preço Variável visibility based on product code
+    const divPrecoVariavel = document.getElementById('div_preco_variavel');
+    if (product.codigo == '7423') {
+        divPrecoVariavel.style.setProperty('display', 'flex', 'important');
+    } else {
+        divPrecoVariavel.style.setProperty('display', 'none', 'important');
+    }
     
     // Fiscal Fields
     document.getElementById('edit_cean').value = product.cean || '';
@@ -592,6 +601,16 @@ if (window.location.search.includes('q=')) {
 
 // NCM Search Logic with Inline Dropdown Autocomplete
 let ncmDebounceTimer;
+
+// Handle manual code entry for Preço Variável toggle
+document.getElementById('edit_codigo').addEventListener('input', function(e) {
+    const divPrecoVariavel = document.getElementById('div_preco_variavel');
+    if (e.target.value == '7423') {
+        divPrecoVariavel.style.setProperty('display', 'flex', 'important');
+    } else {
+        divPrecoVariavel.style.setProperty('display', 'none', 'important');
+    }
+});
 
 function searchNcmInline(term, force = false) {
     const dropdown = document.getElementById('ncmDropdown');
