@@ -16,8 +16,221 @@ if (!$empresaId) {
 $conexaoPagePath = '/app/conexao.php';
 $conexaoActionUrl = public_url($conexaoPagePath);
 
+function conexao_json_response(array $payload, int $httpCode = 200): never
+{
+    http_response_code($httpCode);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function conexao_verify_ajax_csrf(): void
+{
+    $token = (string) ($_POST['_csrf_token'] ?? '');
+    $sessionToken = (string) ($_SESSION['_csrf_token'] ?? '');
+
+    if ($token === '' || $sessionToken === '' || !hash_equals($sessionToken, $token)) {
+        conexao_json_response([
+            'success' => false,
+            'message' => 'Sessão expirada. Recarregue a página e tente novamente.',
+        ], 419);
+    }
+}
+
+function conexao_ajax_status(int $empresaId): never
+{
+    if (!whatsapp_integration_configured()) {
+        whatsapp_update_connection($empresaId, [
+            'status' => 'erro',
+            'ultimo_erro' => whatsapp_config_error_message(),
+            'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+        ]);
+
+        conexao_json_response([
+            'connected' => false,
+            'status' => 'offline',
+            'appStatus' => 'erro',
+            'number' => null,
+            'message' => whatsapp_config_error_message(),
+        ]);
+    }
+
+    if (whatsapp_provider() !== 'bridge') {
+        $result = whatsapp_refresh_connection($empresaId);
+        $connection = whatsapp_get_connection($empresaId);
+        $status = (string) ($connection['status'] ?? 'desconectado');
+
+        conexao_json_response([
+            'connected' => $status === 'conectado',
+            'status' => $status,
+            'appStatus' => $status,
+            'number' => $connection['telefone_conectado'] ?? null,
+            'message' => $result['message'] ?? null,
+        ]);
+    }
+
+    $response = whatsapp_bridge_request('GET', '/status');
+
+    if (!$response['ok']) {
+        whatsapp_update_connection($empresaId, [
+            'status' => 'erro',
+            'ultimo_erro' => $response['error'],
+            'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+        ]);
+
+        conexao_json_response([
+            'connected' => false,
+            'status' => 'offline',
+            'appStatus' => 'erro',
+            'number' => null,
+            'message' => (string) $response['error'],
+        ]);
+    }
+
+    $data = is_array($response['data']) ? $response['data'] : [];
+    $appStatus = whatsapp_extract_bridge_state($data);
+    $connected = $appStatus === 'conectado';
+    $connectedNumber = whatsapp_normalize_phone((string) ($data['number'] ?? ''));
+    $currentConnection = whatsapp_get_connection($empresaId);
+
+    whatsapp_update_connection($empresaId, [
+        'status' => $appStatus,
+        'telefone_conectado' => $connectedNumber ?: ($currentConnection['telefone_conectado'] ?? null),
+        'ultimo_erro' => null,
+        'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+        'conectado_em' => $connected ? date('Y-m-d H:i:s') : null,
+        'qr_code' => $connected ? null : ($currentConnection['qr_code'] ?? null),
+        'qr_code_imagem' => $connected ? null : ($currentConnection['qr_code_imagem'] ?? null),
+        'pairing_code' => null,
+    ]);
+
+    conexao_json_response([
+        'connected' => $connected,
+        'status' => (string) ($data['status'] ?? ($connected ? 'connected' : 'disconnected')),
+        'appStatus' => $appStatus,
+        'number' => $connectedNumber ?: ($data['number'] ?? null),
+        'message' => $data['message'] ?? null,
+    ]);
+}
+
+function conexao_ajax_qrcode(int $empresaId): never
+{
+    if (!whatsapp_integration_configured()) {
+        conexao_json_response([
+            'qr' => null,
+            'code' => null,
+            'status' => 'offline',
+            'message' => whatsapp_config_error_message(),
+        ]);
+    }
+
+    if (whatsapp_provider() !== 'bridge') {
+        $connection = whatsapp_get_connection($empresaId);
+        $result = whatsapp_connect_instance(
+            $empresaId,
+            (string) ($connection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId)),
+            (string) ($connection['telefone_conectado'] ?? '')
+        );
+        $connection = whatsapp_get_connection($empresaId);
+
+        conexao_json_response([
+            'qr' => $connection['qr_code_imagem'] ?? null,
+            'code' => $connection['qr_code'] ?? null,
+            'status' => $connection['status'] ?? 'desconectado',
+            'message' => $result['message'] ?? null,
+        ]);
+    }
+
+    $response = whatsapp_bridge_request('GET', '/qrcode');
+
+    if (!$response['ok']) {
+        whatsapp_update_connection($empresaId, [
+            'status' => 'erro',
+            'ultimo_erro' => $response['error'],
+            'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+        ]);
+
+        conexao_json_response([
+            'qr' => null,
+            'code' => null,
+            'status' => 'offline',
+            'message' => (string) $response['error'],
+        ]);
+    }
+
+    $data = is_array($response['data']) ? $response['data'] : [];
+    $qrImage = whatsapp_extract_qr_image($data);
+    $qrCode = whatsapp_find_first_value($data, ['code', 'qrCode', 'qrcode']);
+    $appStatus = whatsapp_extract_bridge_state($data);
+
+    if (($qrImage !== null || $qrCode !== null) && $appStatus !== 'conectado') {
+        $appStatus = 'conectando';
+    }
+
+    $connected = $appStatus === 'conectado';
+
+    whatsapp_update_connection($empresaId, [
+        'status' => $appStatus,
+        'qr_code' => $connected ? null : $qrCode,
+        'qr_code_imagem' => $connected ? null : $qrImage,
+        'pairing_code' => null,
+        'ultimo_erro' => null,
+        'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+        'conectado_em' => $connected ? date('Y-m-d H:i:s') : null,
+    ]);
+
+    conexao_json_response([
+        'qr' => $connected ? null : $qrImage,
+        'code' => $connected ? null : $qrCode,
+        'status' => (string) ($data['status'] ?? ($connected ? 'connected' : 'waiting_qr')),
+        'appStatus' => $appStatus,
+        'connected' => $connected,
+        'message' => $data['message'] ?? ($connected ? 'Já conectado' : null),
+    ]);
+}
+
+function conexao_ajax_logout(int $empresaId): never
+{
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+        conexao_json_response([
+            'success' => false,
+            'message' => 'Método inválido para desconectar o WhatsApp.',
+        ], 405);
+    }
+
+    conexao_verify_ajax_csrf();
+    $result = whatsapp_disconnect_instance($empresaId);
+
+    conexao_json_response([
+        'success' => (bool) $result['ok'],
+        'status' => $result['ok'] ? 'disconnected' : 'error',
+        'message' => (string) $result['message'],
+    ], $result['ok'] ? 200 : 500);
+}
+
+if (isset($_GET['whatsapp_ajax'])) {
+    $ajaxAction = (string) $_GET['whatsapp_ajax'];
+
+    if ($ajaxAction === 'status') {
+        conexao_ajax_status($empresaId);
+    }
+
+    if ($ajaxAction === 'qrcode') {
+        conexao_ajax_qrcode($empresaId);
+    }
+
+    if ($ajaxAction === 'logout') {
+        conexao_ajax_logout($empresaId);
+    }
+
+    conexao_json_response([
+        'success' => false,
+        'message' => 'Ação AJAX inválida para conexão do WhatsApp.',
+    ], 400);
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    verify_csrf();
+    verify_csrf($conexaoPagePath);
 
     $action = (string) ($_POST['acao'] ?? '');
     $connection = whatsapp_get_connection($empresaId);
@@ -130,7 +343,6 @@ $status = (string) ($connection['status'] ?? 'desconectado');
 $qrImage = (string) ($connection['qr_code_imagem'] ?? '');
 $hasQrToken = trim((string) ($connection['qr_code'] ?? '')) !== '';
 $pairingCode = (string) ($connection['pairing_code'] ?? '');
-$shouldRenderQrToken = $status !== 'conectado' && $qrImage === '' && $hasQrToken;
 $qrVendorPath = PUBLIC_PATH . '/assets/vendor/qrcode.min.js';
 ?>
 <!doctype html>
@@ -155,7 +367,7 @@ $qrVendorPath = PUBLIC_PATH . '/assets/vendor/qrcode.min.js';
         <?php endif; ?>
 
         <section class="grid four">
-            <article class="card metric accent-blue"><span>Status</span><strong><?= e(whatsapp_status_label($status)) ?></strong><small class="metric-note"><?= e(!empty($connection['ultima_sincronizacao']) ? data_hora_br($connection['ultima_sincronizacao']) : 'Ainda não sincronizado') ?></small></article>
+            <article class="card metric accent-blue"><span>Status</span><strong id="whatsapp-status-text"><?= e(whatsapp_status_label($status)) ?></strong><small class="metric-note" id="whatsapp-status-sync"><?= e(!empty($connection['ultima_sincronizacao']) ? data_hora_br($connection['ultima_sincronizacao']) : 'Ainda não sincronizado') ?></small></article>
             <article class="card metric accent-green"><span>Enviadas</span><strong><?= (int) ($stats['enviados'] ?? 0) ?></strong><small class="metric-note">Mensagens com sucesso</small></article>
             <article class="card metric accent-yellow"><span>Pendentes</span><strong><?= (int) ($stats['pendentes'] ?? 0) ?></strong><small class="metric-note">Aguardando processamento</small></article>
             <article class="card metric accent-red"><span>Falhas</span><strong><?= (int) ($stats['falhas'] ?? 0) ?></strong><small class="metric-note">Revisar conexão/API</small></article>
@@ -168,7 +380,7 @@ $qrVendorPath = PUBLIC_PATH . '/assets/vendor/qrcode.min.js';
                         <h2>WhatsApp da empresa</h2>
                         <p class="muted">Use uma instância por empresa para isolar sessões e envios.</p>
                     </div>
-                    <span class="badge <?= e(whatsapp_status_badge($status)) ?>"><?= e(whatsapp_status_label($status)) ?></span>
+                    <span class="badge <?= e(whatsapp_status_badge($status)) ?>" id="whatsapp-status-badge"><?= e(whatsapp_status_label($status)) ?></span>
                 </div>
 
                 <form class="form-stack" method="post" action="<?= e($conexaoActionUrl) ?>">
@@ -186,31 +398,15 @@ $qrVendorPath = PUBLIC_PATH . '/assets/vendor/qrcode.min.js';
                 </form>
 
                 <div class="connection-actions">
-                    <form method="post" action="<?= e($conexaoActionUrl) ?>">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="acao" value="gerar_qr">
-                        <input type="hidden" name="instancia_nome" value="<?= e($connection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId)) ?>">
-                        <input type="hidden" name="telefone_conectado" value="<?= e($connection['telefone_conectado'] ?? '') ?>">
-                        <button class="btn btn-primary" type="submit" <?= !$integrationConfigured ? 'disabled' : '' ?>>Gerar QR Code</button>
-                    </form>
-                    <form method="post" action="<?= e($conexaoActionUrl) ?>">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="acao" value="atualizar_status">
-                        <button class="btn" type="submit" <?= !$integrationConfigured ? 'disabled' : '' ?>>Atualizar status</button>
-                    </form>
-                    <form method="post" action="<?= e($conexaoActionUrl) ?>">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="acao" value="desconectar">
-                        <button class="btn btn-secondary" type="submit">Desconectar</button>
-                    </form>
+                    <button class="btn btn-primary" type="button" id="btn-gerar-qr" <?= !$integrationConfigured ? 'disabled' : '' ?>>Gerar QR Code</button>
+                    <button class="btn" type="button" id="btn-atualizar-status" <?= !$integrationConfigured ? 'disabled' : '' ?>>Atualizar status</button>
+                    <button class="btn btn-secondary" type="button" id="btn-desconectar">Desconectar</button>
                 </div>
 
-                <?php if (!empty($connection['ultimo_erro'])): ?>
-                    <div class="connection-warning">
+                <div class="connection-warning" id="whatsapp-warning" style="<?= !empty($connection['ultimo_erro']) ? '' : 'display: none;' ?>">
                         <strong>Último erro</strong>
-                        <span><?= e($connection['ultimo_erro']) ?></span>
-                    </div>
-                <?php endif; ?>
+                        <span id="whatsapp-warning-text"><?= e($connection['ultimo_erro'] ?? '') ?></span>
+                </div>
             </article>
 
             <article class="card qr-card">
@@ -224,25 +420,23 @@ $qrVendorPath = PUBLIC_PATH . '/assets/vendor/qrcode.min.js';
                     <?php endif; ?>
                 </div>
 
-                <div class="qr-box">
-                    <?php if ($status === 'conectado'): ?>
-                        <div class="qr-empty success-state">
-                            <strong>WhatsApp conectado</strong>
-                            <span>As cobranças automáticas já podem usar esta sessão.</span>
-                        </div>
-                    <?php elseif ($qrImage !== ''): ?>
-                        <img class="qr-image" src="<?= e($qrImage) ?>" alt="QR Code para conectar WhatsApp">
-                    <?php elseif ($hasQrToken): ?>
-                        <div class="qr-render-wrap">
-                            <div class="qr-render" data-whatsapp-qr-code="<?= e((string) $connection['qr_code']) ?>" aria-label="QR Code para conectar WhatsApp"></div>
-                            <span>Leia este QR Code no WhatsApp da empresa.</span>
-                        </div>
-                    <?php else: ?>
-                        <div class="qr-empty">
-                            <strong>Nenhum QR Code gerado</strong>
-                            <span>Clique em Gerar QR Code para iniciar a conexão.</span>
-                        </div>
-                    <?php endif; ?>
+                <div class="qr-box" id="qrcode-container">
+                    <div class="qr-empty success-state" id="qr-connected" style="<?= $status === 'conectado' ? '' : 'display: none;' ?>">
+                        <strong>WhatsApp conectado</strong>
+                        <span>As cobranças automáticas já podem usar esta sessão.</span>
+                    </div>
+
+                    <img class="qr-image" id="qrcode-img" src="<?= e($qrImage) ?>" alt="QR Code para conectar WhatsApp" style="<?= $qrImage !== '' && $status !== 'conectado' ? '' : 'display: none;' ?>">
+
+                    <div class="qr-render-wrap" id="qr-render-wrap" style="<?= $qrImage === '' && $hasQrToken && $status !== 'conectado' ? '' : 'display: none;' ?>">
+                        <div class="qr-render" id="qr-render" data-whatsapp-qr-code="<?= e((string) ($connection['qr_code'] ?? '')) ?>" aria-label="QR Code para conectar WhatsApp"></div>
+                        <span>Leia este QR Code no WhatsApp da empresa.</span>
+                    </div>
+
+                    <div class="qr-empty" id="qr-placeholder" style="<?= $status !== 'conectado' && $qrImage === '' && !$hasQrToken ? '' : 'display: none;' ?>">
+                        <strong>Aguardando QR Code</strong>
+                        <span id="qr-placeholder-text">O código será carregado automaticamente.</span>
+                    </div>
                 </div>
             </article>
         </section>
@@ -294,47 +488,341 @@ $qrVendorPath = PUBLIC_PATH . '/assets/vendor/qrcode.min.js';
         </section>
     </main>
 </div>
-<?php if ($shouldRenderQrToken && is_file($qrVendorPath)): ?>
+<?php if (is_file($qrVendorPath)): ?>
 <script>
 <?= file_get_contents($qrVendorPath) ?>
 </script>
 <?php endif; ?>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    var target = document.querySelector('[data-whatsapp-qr-code]');
+(function () {
+    var endpoints = {
+        status: <?= json_encode($conexaoActionUrl . '?whatsapp_ajax=status', JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>,
+        qrcode: <?= json_encode($conexaoActionUrl . '?whatsapp_ajax=qrcode', JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>,
+        logout: <?= json_encode($conexaoActionUrl . '?whatsapp_ajax=logout', JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
+    };
+    var csrfToken = <?= json_encode(csrf_token(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    var statusTimer = null;
+    var statusLoading = false;
+    var qrLoading = false;
 
-    if (!target) {
-        return;
+    function byId(id) {
+        return document.getElementById(id);
     }
 
-    var code = target.getAttribute('data-whatsapp-qr-code') || '';
-
-    if (!code) {
-        return;
+    function display(element, show) {
+        if (element) {
+            element.style.display = show ? '' : 'none';
+        }
     }
 
-    if (!window.QRCode) {
-        target.textContent = 'Não foi possível carregar o renderizador do QR Code.';
-        return;
+    function nowBr() {
+        try {
+            return new Intl.DateTimeFormat('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(new Date()).replace(',', '');
+        } catch (error) {
+            return '';
+        }
     }
 
-    target.textContent = '';
+    function setWarning(message) {
+        var warning = byId('whatsapp-warning');
+        var text = byId('whatsapp-warning-text');
 
-    try {
-        new window.QRCode(target, {
-            text: code,
-            width: 280,
-            height: 280,
-            colorDark: '#1a2c3e',
-            colorLight: '#ffffff',
-            correctLevel: window.QRCode.CorrectLevel.H
+        if (text) {
+            text.textContent = message || '';
+        }
+
+        display(warning, Boolean(message));
+    }
+
+    function setStatusVisual(label, statusClass) {
+        var text = byId('whatsapp-status-text');
+        var sync = byId('whatsapp-status-sync');
+        var badge = byId('whatsapp-status-badge');
+
+        if (text) {
+            text.textContent = label;
+        }
+
+        if (sync) {
+            sync.textContent = nowBr();
+        }
+
+        if (badge) {
+            badge.className = 'badge ' + statusClass;
+            badge.textContent = label;
+        }
+    }
+
+    function setQrPlaceholder(title, message) {
+        var placeholder = byId('qr-placeholder');
+        var placeholderText = byId('qr-placeholder-text');
+        var placeholderTitle = placeholder ? placeholder.querySelector('strong') : null;
+
+        if (placeholderTitle) {
+            placeholderTitle.textContent = title;
+        }
+
+        if (placeholderText) {
+            placeholderText.textContent = message || '';
+        }
+
+        display(byId('qr-connected'), false);
+        display(byId('qrcode-img'), false);
+        display(byId('qr-render-wrap'), false);
+        display(placeholder, true);
+    }
+
+    function setQrConnected() {
+        display(byId('qr-placeholder'), false);
+        display(byId('qrcode-img'), false);
+        display(byId('qr-render-wrap'), false);
+        display(byId('qr-connected'), true);
+    }
+
+    function setQrImage(src) {
+        var image = byId('qrcode-img');
+
+        if (image) {
+            image.src = src;
+        }
+
+        display(byId('qr-placeholder'), false);
+        display(byId('qr-render-wrap'), false);
+        display(byId('qr-connected'), false);
+        display(image, true);
+    }
+
+    function setQrCode(code) {
+        var target = byId('qr-render');
+
+        if (!target || !code) {
+            setQrPlaceholder('QR Code indisponível', 'A bridge não retornou um QR Code válido.');
+            return;
+        }
+
+        if (!window.QRCode) {
+            setQrPlaceholder('Renderizador indisponível', 'Não foi possível carregar o renderizador do QR Code.');
+            return;
+        }
+
+        target.textContent = '';
+        target.setAttribute('data-whatsapp-qr-code', code);
+
+        try {
+            new window.QRCode(target, {
+                text: code,
+                width: 280,
+                height: 280,
+                colorDark: '#1a2c3e',
+                colorLight: '#ffffff',
+                correctLevel: window.QRCode.CorrectLevel.H
+            });
+            target.removeAttribute('title');
+        } catch (error) {
+            setQrPlaceholder('QR Code indisponível', 'Não foi possível renderizar o QR Code.');
+            return;
+        }
+
+        display(byId('qr-placeholder'), false);
+        display(byId('qrcode-img'), false);
+        display(byId('qr-connected'), false);
+        display(byId('qr-render-wrap'), true);
+    }
+
+    function requestJson(url, options) {
+        var requestOptions = options || {};
+        requestOptions.credentials = 'same-origin';
+        requestOptions.headers = Object.assign({
+            'Accept': 'application/json'
+        }, requestOptions.headers || {});
+
+        return fetch(url, requestOptions).then(function (response) {
+            return response.text().then(function (text) {
+                var data = {};
+
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (error) {
+                    throw new Error('Resposta inválida do servidor.');
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Não foi possível comunicar com a tela de conexão.');
+                }
+
+                return data;
+            });
         });
-
-        target.removeAttribute('title');
-    } catch (error) {
-        target.textContent = 'Não foi possível renderizar o QR Code.';
     }
-});
+
+    function applyStatus(data) {
+        var rawStatus = data.status || '';
+        var appStatus = data.appStatus || rawStatus;
+        var connected = Boolean(data.connected);
+        var label = 'Desconectado';
+        var badgeClass = 'pendente';
+
+        if (connected) {
+            label = data.number ? 'Conectado (' + data.number + ')' : 'Conectado';
+            badgeClass = 'ativa';
+            setStatusVisual(label, badgeClass);
+            setQrConnected();
+            setWarning('');
+            return { connected: true, offline: false };
+        }
+
+        if (rawStatus === 'offline' || appStatus === 'erro') {
+            label = rawStatus === 'offline' ? 'Bridge offline' : 'Erro de conexão';
+            badgeClass = 'vencida';
+            setWarning(data.message || 'Falha ao comunicar com a bridge de WhatsApp.');
+            setQrPlaceholder('Bridge offline', 'Verifique se a bridge Node.js está rodando.');
+        } else if (appStatus === 'conectando' || rawStatus === 'waiting_qr' || rawStatus === 'connecting') {
+            label = 'Aguardando leitura';
+            badgeClass = 'pendente';
+            setWarning('');
+        } else {
+            setWarning('');
+        }
+
+        setStatusVisual(label, badgeClass);
+        return { connected: false, offline: rawStatus === 'offline' || appStatus === 'erro' };
+    }
+
+    function updateStatus(loadQr) {
+        if (statusLoading) {
+            return Promise.resolve();
+        }
+
+        statusLoading = true;
+
+        return requestJson(endpoints.status)
+            .then(function (data) {
+                var state = applyStatus(data);
+
+                if (!state.connected && !state.offline && loadQr) {
+                    return fetchQRCode();
+                }
+
+                return null;
+            })
+            .catch(function (error) {
+                setStatusVisual('Erro de conexão', 'vencida');
+                setWarning(error.message || 'Erro na API PHP.');
+                setQrPlaceholder('Erro na API PHP', 'Recarregue a página e tente novamente.');
+            })
+            .finally(function () {
+                statusLoading = false;
+            });
+    }
+
+    function fetchQRCode() {
+        if (qrLoading) {
+            return Promise.resolve();
+        }
+
+        qrLoading = true;
+        setQrPlaceholder('Aguardando QR Code', 'Gerando código de conexão...');
+
+        return requestJson(endpoints.qrcode)
+            .then(function (data) {
+                if (data.connected || data.message === 'Já conectado') {
+                    setQrConnected();
+                    return updateStatus(false);
+                }
+
+                if (data.qr) {
+                    setStatusVisual('Aguardando leitura', 'pendente');
+                    setWarning('');
+                    setQrImage(data.qr);
+                    return null;
+                }
+
+                if (data.code) {
+                    setStatusVisual('Aguardando leitura', 'pendente');
+                    setWarning('');
+                    setQrCode(data.code);
+                    return null;
+                }
+
+                if (data.status === 'offline') {
+                    setStatusVisual('Bridge offline', 'vencida');
+                    setWarning(data.message || 'Falha ao comunicar com a bridge de WhatsApp.');
+                    setQrPlaceholder('Bridge offline', 'Verifique se a bridge Node.js está rodando.');
+                    return null;
+                }
+
+                setQrPlaceholder('Aguardando QR Code', data.message || 'A bridge ainda está gerando o código.');
+                return null;
+            })
+            .catch(function (error) {
+                setWarning(error.message || 'Erro ao buscar QR Code.');
+                setQrPlaceholder('Erro ao buscar QR Code', error.message || 'Tente novamente em alguns segundos.');
+            })
+            .finally(function () {
+                qrLoading = false;
+            });
+    }
+
+    function disconnectWhatsApp() {
+        if (!confirm('Tem certeza que deseja desconectar o WhatsApp?')) {
+            return;
+        }
+
+        requestJson(endpoints.logout, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: '_csrf_token=' + encodeURIComponent(csrfToken)
+        })
+            .then(function () {
+                setStatusVisual('Desconectado', 'pendente');
+                setWarning('');
+                setQrPlaceholder('Aguardando QR Code', 'Gerando nova sessão de conexão...');
+                return fetchQRCode();
+            })
+            .catch(function (error) {
+                setWarning(error.message || 'Não foi possível desconectar o WhatsApp.');
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var btnQr = byId('btn-gerar-qr');
+        var btnStatus = byId('btn-atualizar-status');
+        var btnLogout = byId('btn-desconectar');
+
+        if (btnQr) {
+            btnQr.addEventListener('click', fetchQRCode);
+        }
+
+        if (btnStatus) {
+            btnStatus.addEventListener('click', function () {
+                updateStatus(true);
+            });
+        }
+
+        if (btnLogout) {
+            btnLogout.addEventListener('click', disconnectWhatsApp);
+        }
+
+        updateStatus(true);
+        statusTimer = window.setInterval(function () {
+            updateStatus(true);
+        }, 5000);
+
+        window.addEventListener('beforeunload', function () {
+            if (statusTimer) {
+                window.clearInterval(statusTimer);
+            }
+        });
+    });
+})();
 </script>
 </body>
 </html>
