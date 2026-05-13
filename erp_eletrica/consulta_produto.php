@@ -7,7 +7,6 @@ declare(strict_types=1);
 <html lang="pt-BR">
 
 <head>
-
     <meta charset="UTF-8">
 
     <meta
@@ -71,6 +70,7 @@ declare(strict_types=1);
             background: linear-gradient(135deg, #294f87 0%, #18365f 100%);
             padding: 34px 22px 28px;
             text-align: center;
+            position: relative;
         }
 
         .logo-wrap {
@@ -96,10 +96,8 @@ declare(strict_types=1);
         }
 
         .logo-fallback strong {
-            font-size: 1.8rem;
+            font-size: 1.7rem;
             line-height: 1.1;
-            font-weight: 900;
-            letter-spacing: .5px;
         }
 
         .logo-fallback span {
@@ -135,7 +133,7 @@ declare(strict_types=1);
         }
 
         .field {
-            margin-bottom: 14px;
+            margin-bottom: 18px;
         }
 
         .field label {
@@ -159,7 +157,7 @@ declare(strict_types=1);
             color: var(--texto);
             outline: none;
             transition: .2s ease;
-            font-weight: 700;
+            font-weight: 600;
         }
 
         .field input:focus {
@@ -168,36 +166,11 @@ declare(strict_types=1);
             box-shadow: 0 0 0 4px rgba(41, 79, 135, .12);
         }
 
-        .mensagem-produto {
-            margin-top: 10px;
-            padding: 14px 16px;
-            border-radius: 14px;
-            font-size: .94rem;
-            font-weight: 700;
-            display: none;
-        }
-
-        .mensagem-produto.show {
-            display: block;
-        }
-
-        .mensagem-produto.erro {
-            background: #fff2f2;
-            border: 1px solid #ffd7d7;
-            color: var(--vermelho);
-        }
-
-        .mensagem-produto.sucesso {
-            background: #edf9f1;
-            border: 1px solid #caecd5;
-            color: #1e7c47;
-        }
-
         .buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 14px;
-            margin-top: 18px;
+            margin-top: 8px;
         }
 
         .btn {
@@ -232,6 +205,38 @@ declare(strict_types=1);
 
         .btn-secondary:hover {
             background: #dce6f1;
+        }
+
+        .status {
+            margin-top: 18px;
+            display: none;
+            border-radius: 16px;
+            padding: 16px 18px;
+            font-weight: 700;
+            line-height: 1.5;
+            font-size: .95rem;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.info {
+            background: #eef4ff;
+            border: 1px solid #d7e4ff;
+            color: #2c4f86;
+        }
+
+        .status.error {
+            background: #fff2f2;
+            border: 1px solid #ffd7d7;
+            color: #b33a3a;
+        }
+
+        .status.success {
+            background: #edf9f1;
+            border: 1px solid #caecd5;
+            color: #1e7c47;
         }
 
         .tip-box {
@@ -275,6 +280,7 @@ declare(strict_types=1);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 12px;
             padding: 18px 14px;
             background: linear-gradient(to bottom, rgba(0, 0, 0, .78), rgba(0, 0, 0, 0));
         }
@@ -383,6 +389,10 @@ declare(strict_types=1);
                 padding: 12px;
             }
 
+            .page {
+                min-height: auto;
+            }
+
             .content {
                 padding: 26px 18px 22px;
             }
@@ -423,7 +433,6 @@ declare(strict_types=1);
             }
         }
     </style>
-
 </head>
 
 <body>
@@ -476,10 +485,6 @@ declare(strict_types=1);
                         inputmode="text"
                         placeholder="Digite ou leia o código">
 
-                    <div
-                        id="mensagemProduto"
-                        class="mensagem-produto"></div>
-
                 </div>
 
                 <div class="buttons">
@@ -504,13 +509,19 @@ declare(strict_types=1);
 
                 </div>
 
+                <div
+                    class="status info"
+                    id="statusBox"></div>
+
                 <div class="tip-box">
 
-                    <h3>Leitura automática</h3>
+                    <h3>Importante</h3>
 
                     <p>
-                        Ao escanear ou digitar um código válido,
-                        o sistema abrirá automaticamente o produto.
+                        Agora o sistema NÃO abre automaticamente ao ler o código.
+                        Após escanear, o código será preenchido no campo e você
+                        poderá confirmar clicando em
+                        <strong>Consultar produto</strong>.
                     </p>
 
                 </div>
@@ -532,7 +543,7 @@ declare(strict_types=1);
                 <strong>Leitor ativo</strong>
 
                 <span>
-                    Aponte a câmera para o código
+                    Aponte a câmera para o código de barras
                 </span>
 
             </div>
@@ -555,14 +566,15 @@ declare(strict_types=1);
         </div>
 
         <div class="camera-footer">
-            Centralize o código na área destacada.
+            Centralize o código na área destacada para realizar a leitura.
         </div>
 
     </div>
 
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
 
     <script>
+
         const inputCodigo = document.getElementById('codigo');
 
         const btnCamera = document.getElementById('btnCamera');
@@ -573,19 +585,29 @@ declare(strict_types=1);
 
         const cameraOverlay = document.getElementById('cameraOverlay');
 
-        const mensagemProduto = document.getElementById('mensagemProduto');
+        const statusBox = document.getElementById('statusBox');
 
         let html5QrCode = null;
 
         let cameraAtiva = false;
 
-        let timerDigitacao = null;
-
         let ultimoCodigoLido = '';
 
         let ultimoTempoLeitura = 0;
 
-        let redirecionando = false;
+        function mostrarStatus(texto, tipo = 'info') {
+
+            statusBox.className = 'status show ' + tipo;
+
+            statusBox.textContent = texto;
+        }
+
+        function esconderStatus() {
+
+            statusBox.className = 'status';
+
+            statusBox.textContent = '';
+        }
 
         function normalizarCodigo(valor) {
 
@@ -594,47 +616,25 @@ declare(strict_types=1);
                 .replace(/\s+/g, '');
         }
 
-        function mostrarMensagem(texto, tipo = 'erro') {
+        function consultarProduto() {
 
-            mensagemProduto.className =
-                'mensagem-produto show ' + tipo;
-
-            mensagemProduto.textContent = texto;
-        }
-
-        function esconderMensagem() {
-
-            mensagemProduto.className =
-                'mensagem-produto';
-
-            mensagemProduto.textContent = '';
-        }
-
-        function consultarProduto(codigoRecebido = null) {
-
-            if (redirecionando) {
-                return;
-            }
-
-            const codigo = normalizarCodigo(
-                codigoRecebido || inputCodigo.value
-            );
+            const codigo = normalizarCodigo(inputCodigo.value);
 
             if (!codigo || codigo.length < 2) {
 
-                mostrarMensagem(
+                mostrarStatus(
                     'Informe um código válido.',
-                    'erro'
+                    'error'
                 );
+
+                inputCodigo.focus();
 
                 return;
             }
 
-            redirecionando = true;
-
-            mostrarMensagem(
+            mostrarStatus(
                 'Consultando produto...',
-                'sucesso'
+                'success'
             );
 
             window.location.href =
@@ -648,7 +648,7 @@ declare(strict_types=1);
                 return;
             }
 
-            esconderMensagem();
+            esconderStatus();
 
             cameraOverlay.classList.add('show');
 
@@ -659,9 +659,7 @@ declare(strict_types=1);
                 await html5QrCode.start(
 
                     {
-                        facingMode: {
-                            ideal: "environment"
-                        }
+                        facingMode: "environment"
                     },
 
                     {
@@ -669,12 +667,9 @@ declare(strict_types=1);
 
                         aspectRatio: 1.777,
 
-                        rememberLastUsedCamera: true,
+                        disableFlip: false,
 
-                        qrbox: {
-                            width: 280,
-                            height: 280
-                        },
+                        rememberLastUsedCamera: true,
 
                         formatsToSupport: [
 
@@ -691,43 +686,59 @@ declare(strict_types=1);
                             Html5QrcodeSupportedFormats.UPC_A,
 
                             Html5QrcodeSupportedFormats.UPC_E
-                        ]
+                        ],
+
+                        qrbox: (w, h) => {
+
+                            const tamanho = Math.min(
+                                w * 0.72,
+                                h * 0.42,
+                                420
+                            );
+
+                            return {
+                                width: tamanho,
+                                height: tamanho
+                            };
+                        }
                     },
 
                     async (decodedText) => {
 
-                            const codigo =
-                                normalizarCodigo(decodedText);
+                        const codigo = normalizarCodigo(decodedText);
 
-                            const agora = Date.now();
+                        const agora = Date.now();
 
-                            if (!codigo) {
-                                return;
-                            }
+                        if (!codigo) {
+                            return;
+                        }
 
-                            if (
-                                codigo === ultimoCodigoLido &&
-                                (agora - ultimoTempoLeitura) < 2000
-                            ) {
-                                return;
-                            }
+                        if (
+                            codigo === ultimoCodigoLido &&
+                            (agora - ultimoTempoLeitura) < 2000
+                        ) {
+                            return;
+                        }
 
-                            ultimoCodigoLido = codigo;
+                        ultimoCodigoLido = codigo;
 
-                            ultimoTempoLeitura = agora;
+                        ultimoTempoLeitura = agora;
 
-                            inputCodigo.value = codigo;
+                        inputCodigo.value = codigo;
 
-                            if (navigator.vibrate) {
-                                navigator.vibrate(120);
-                            }
+                        if (navigator.vibrate) {
+                            navigator.vibrate(120);
+                        }
 
-                            await fecharCamera();
+                        mostrarStatus(
+                            'Código lido com sucesso. Clique em "Consultar produto".',
+                            'success'
+                        );
 
-                            consultarProduto(codigo);
-                        },
+                        await fecharCamera();
+                    },
 
-                        () => {}
+                    () => {}
 
                 );
 
@@ -739,9 +750,9 @@ declare(strict_types=1);
 
                 cameraOverlay.classList.remove('show');
 
-                mostrarMensagem(
+                mostrarStatus(
                     'Não foi possível acessar a câmera.',
-                    'erro'
+                    'error'
                 );
             }
         }
@@ -766,30 +777,6 @@ declare(strict_types=1);
             cameraAtiva = false;
         }
 
-        function verificarDigitacaoAutomatica() {
-
-            clearTimeout(timerDigitacao);
-
-            timerDigitacao = setTimeout(() => {
-
-                const codigo =
-                    normalizarCodigo(inputCodigo.value);
-
-                if (codigo.length >= 3) {
-
-                    consultarProduto(codigo);
-
-                } else {
-
-                    mostrarMensagem(
-                        'Produto não cadastrado no sistema.',
-                        'erro'
-                    );
-                }
-
-            }, 900);
-        }
-
         btnCamera.addEventListener(
             'click',
             abrirCamera
@@ -797,22 +784,12 @@ declare(strict_types=1);
 
         btnConsultar.addEventListener(
             'click',
-            () => consultarProduto()
+            consultarProduto
         );
 
         btnFecharCamera.addEventListener(
             'click',
             fecharCamera
-        );
-
-        inputCodigo.addEventListener(
-            'input',
-            () => {
-
-                esconderMensagem();
-
-                verificarDigitacaoAutomatica();
-            }
         );
 
         inputCodigo.addEventListener(
@@ -842,6 +819,7 @@ declare(strict_types=1);
         );
 
         inputCodigo.focus();
+
     </script>
 
 </body>
