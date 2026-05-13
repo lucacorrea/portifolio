@@ -25,6 +25,10 @@ let connectingPromise = null;
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 app.use((req, res, next) => {
   if (!bridgeToken) {
     next();
@@ -116,6 +120,12 @@ app.get('/status', (_req, res) => {
 app.get('/qrcode', async (_req, res) => {
   if (!sock && connectionStatus !== 'connected') {
     await connectToWhatsApp();
+  }
+
+  const startedAt = Date.now();
+
+  while (!qrCodeBase64 && connectionStatus !== 'connected' && Date.now() - startedAt < 12000) {
+    await sleep(500);
   }
 
   if (qrCodeBase64) {

@@ -309,7 +309,10 @@ function whatsapp_bridge_request(string $method, string $path, ?array $payload =
     }
 
     $url = whatsapp_bridge_base_url() . '/' . ltrim($path, '/');
-    $timeout = max(3, (int) env('WHATSAPP_BRIDGE_TIMEOUT', env('WHATSAPP_API_TIMEOUT', '15')));
+    $configuredTimeout = (int) env('WHATSAPP_BRIDGE_TIMEOUT', env('WHATSAPP_API_TIMEOUT', '15'));
+    $timeout = str_starts_with('/' . ltrim($path, '/'), '/qrcode')
+        ? max(25, $configuredTimeout)
+        : max(3, $configuredTimeout);
     $token = whatsapp_bridge_token();
     $authHeader = trim((string) env('WHATSAPP_BRIDGE_AUTH_HEADER', 'Authorization')) ?: 'Authorization';
 
@@ -457,6 +460,42 @@ function whatsapp_extract_bridge_state(array $data): string
     };
 }
 
+function whatsapp_bridge_fetch_qr_with_retry(int $attempts = 5, int $sleepMicroseconds = 1000000, int $maxSeconds = 18): array
+{
+    $lastResponse = [
+        'ok' => false,
+        'http_code' => 0,
+        'data' => null,
+        'raw' => '',
+        'error' => 'QR Code ainda não foi gerado pela bridge.',
+    ];
+
+    $deadline = time() + $maxSeconds;
+
+    for ($attempt = 1; $attempt <= $attempts && time() <= $deadline; $attempt++) {
+        $response = whatsapp_bridge_request('GET', '/qrcode');
+        $lastResponse = $response;
+
+        if (!$response['ok']) {
+            return $response;
+        }
+
+        $qrImage = whatsapp_extract_qr_image($response['data']);
+        $qrCode = whatsapp_find_first_value($response['data'], ['code', 'qrCode', 'qrcode']);
+        $status = whatsapp_extract_bridge_state($response['data']);
+
+        if ($qrImage !== null || $qrCode !== null || $status === 'conectado') {
+            return $response;
+        }
+
+        if ($attempt < $attempts && time() < $deadline) {
+            usleep($sleepMicroseconds);
+        }
+    }
+
+    return $lastResponse;
+}
+
 function whatsapp_refresh_connection(int $empresaId): array
 {
     $connection = whatsapp_get_connection($empresaId);
@@ -490,11 +529,20 @@ function whatsapp_refresh_connection(int $empresaId): array
         $qrImage = $connection['qr_code_imagem'] ?? null;
 
         if ($status !== 'conectado') {
-            $qrResponse = whatsapp_bridge_request('GET', '/qrcode');
+            $qrResponse = whatsapp_bridge_fetch_qr_with_retry(3, 500000);
 
             if ($qrResponse['ok']) {
                 $qrCode = whatsapp_find_first_value($qrResponse['data'], ['code', 'qrCode', 'qrcode']);
                 $qrImage = whatsapp_extract_qr_image($qrResponse['data']);
+                $qrStatus = whatsapp_extract_bridge_state($qrResponse['data']);
+
+                if ($qrStatus === 'conectado') {
+                    $status = 'conectado';
+                    $qrCode = null;
+                    $qrImage = null;
+                } elseif ($qrImage !== null || $qrCode !== null) {
+                    $status = 'conectando';
+                }
             }
         }
 
@@ -580,7 +628,7 @@ function whatsapp_connect_instance(int $empresaId, string $instanceName, string 
             return ['ok' => true, 'message' => 'WhatsApp já conectado na bridge.'];
         }
 
-        $qrResponse = whatsapp_bridge_request('GET', '/qrcode');
+        $qrResponse = whatsapp_bridge_fetch_qr_with_retry();
 
         if (!$qrResponse['ok']) {
             whatsapp_update_connection($empresaId, [
@@ -595,21 +643,27 @@ function whatsapp_connect_instance(int $empresaId, string $instanceName, string 
         $qrImage = whatsapp_extract_qr_image($qrResponse['data']);
         $qrCode = whatsapp_find_first_value($qrResponse['data'], ['code', 'qrCode', 'qrcode']);
         $message = (string) ($qrResponse['data']['message'] ?? '');
+        $qrStatus = whatsapp_extract_bridge_state($qrResponse['data']);
 
         whatsapp_update_connection($empresaId, [
-            'status' => 'conectando',
-            'qr_code' => $qrCode,
-            'qr_code_imagem' => $qrImage,
+            'status' => $qrStatus === 'conectado' ? 'conectado' : 'conectando',
+            'qr_code' => $qrStatus === 'conectado' ? null : $qrCode,
+            'qr_code_imagem' => $qrStatus === 'conectado' ? null : $qrImage,
             'pairing_code' => null,
             'ultimo_erro' => null,
             'ultima_sincronizacao' => date('Y-m-d H:i:s'),
+            'conectado_em' => $qrStatus === 'conectado' ? date('Y-m-d H:i:s') : null,
         ]);
 
+        if ($qrStatus === 'conectado') {
+            return ['ok' => true, 'message' => 'WhatsApp já conectado na bridge.'];
+        }
+
         return [
-            'ok' => true,
+            'ok' => $qrImage !== null || $qrCode !== null,
             'message' => $qrImage !== null || $qrCode !== null
                 ? 'QR Code gerado pela bridge. Leia com o WhatsApp da empresa.'
-                : ($message !== '' ? $message : 'Bridge conectada. Aguarde o QR Code e atualize o status.'),
+                : ($message !== '' ? $message : 'QR Code ainda não foi gerado pela bridge. Tente atualizar em alguns segundos.'),
         ];
     }
 
