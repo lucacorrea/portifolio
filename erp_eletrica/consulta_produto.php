@@ -677,7 +677,7 @@ declare(strict_types=1);
             }
 
             mostrarStatus(
-                'Consultando pro',
+                'Consultando produto...',
                 'success'
             );
 
