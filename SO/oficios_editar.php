@@ -420,7 +420,11 @@ include 'views/layout/header.php';
                     $qtd_input = $it['quantidade_input'] ?? format_quantity_input($it['quantidade'] ?? 1);
                     $valor_input = $it['valor_input'] ?? format_money_input($it['valor_unitario'] ?? 0);
                     $qtd_item = (float)str_replace(',', '.', (string)$qtd_input);
-                    $valor_unit_item = parse_oficio_money($valor_input) ?? 0;
+                    try {
+                        $valor_unit_item = parse_oficio_money($valor_input) ?? 0;
+                    } catch (Exception $e) {
+                        $valor_unit_item = 0;
+                    }
                     $valor_total_item = $qtd_item * $valor_unit_item;
                     ?>
                     <div class="item-row">

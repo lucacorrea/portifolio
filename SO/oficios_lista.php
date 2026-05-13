@@ -4,18 +4,29 @@ require_once 'config/functions.php';
 login_check();
 
 $page_title = "Lista de Solicitações";
+$nivel_user = strtoupper($_SESSION['nivel'] ?? '');
 
 // Filtros simples
-$where = "TRUE";
-if (isset($_GET['status']) && $_GET['status'] != '') {
-    $where .= " AND o.status = '" . $_GET['status'] . "'";
+$where_clauses = ["TRUE"];
+$params = [];
+$status_options = ['PENDENTE_ITENS', 'ENVIADO', 'EM_ANALISE', 'APROVADO', 'REPROVADO', 'ARQUIVADO'];
+
+if (isset($_GET['status']) && $_GET['status'] != '' && in_array($_GET['status'], $status_options, true)) {
+    $where_clauses[] = "o.status = ?";
+    $params[] = $_GET['status'];
 }
 if (isset($_GET['busca']) && $_GET['busca'] != '') {
-    $where .= " AND (o.numero LIKE '%" . $_GET['busca'] . "%' OR s.nome LIKE '%" . $_GET['busca'] . "%')";
+    $busca = '%' . trim((string)$_GET['busca']) . '%';
+    $where_clauses[] = "(o.numero LIKE ? OR s.nome LIKE ?)";
+    $params[] = $busca;
+    $params[] = $busca;
 }
 if (isset($_GET['secretaria_id']) && $_GET['secretaria_id'] != '') {
-    $where .= " AND o.secretaria_id = " . (int)$_GET['secretaria_id'];
+    $where_clauses[] = "o.secretaria_id = ?";
+    $params[] = (int)$_GET['secretaria_id'];
 }
+
+$where = implode(' AND ', $where_clauses);
 
 $secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll();
 
@@ -26,7 +37,8 @@ $pagina_atual = max(1, $pagina_atual);
 $offset = ($pagina_atual - 1) * $itens_por_pagina;
 
 // Contagem total para paginação
-$stmt_count = $pdo->query("SELECT COUNT(*) FROM oficios o JOIN secretarias s ON o.secretaria_id = s.id WHERE $where");
+$stmt_count = $pdo->prepare("SELECT COUNT(*) FROM oficios o JOIN secretarias s ON o.secretaria_id = s.id WHERE $where");
+$stmt_count->execute($params);
 $total_registros = (int)$stmt_count->fetchColumn();
 $total_paginas = max(1, (int)ceil($total_registros / $itens_por_pagina));
 
@@ -36,7 +48,7 @@ if ($pagina_atual > $total_paginas) {
 }
 
 // Query principal com LIMIT
-$stmt = $pdo->query("
+$stmt = $pdo->prepare("
     SELECT o.*, s.nome as secretaria, u.nome as usuario
     FROM oficios o
     JOIN secretarias s ON o.secretaria_id = s.id
@@ -45,6 +57,7 @@ $stmt = $pdo->query("
     ORDER BY o.criado_em DESC
     LIMIT $itens_por_pagina OFFSET $offset
 ");
+$stmt->execute($params);
 $oficios = $stmt->fetchAll();
 
 // Função auxiliar para manter parâmetros na URL da paginação
@@ -173,7 +186,9 @@ include 'views/layout/header.php';
                 <label class="form-label">Status</label>
                 <select name="status" class="form-control">
                     <option value="">Todos Status</option>
+                    <option value="PENDENTE_ITENS" <?php echo ($_GET['status'] ?? '') == 'PENDENTE_ITENS' ? 'selected' : ''; ?>>PENDENTE_ITENS</option>
                     <option value="ENVIADO" <?php echo ($_GET['status'] ?? '') == 'ENVIADO' ? 'selected' : ''; ?>>ENVIADO</option>
+                    <option value="EM_ANALISE" <?php echo ($_GET['status'] ?? '') == 'EM_ANALISE' ? 'selected' : ''; ?>>EM_ANALISE</option>
                     <option value="APROVADO" <?php echo ($_GET['status'] ?? '') == 'APROVADO' ? 'selected' : ''; ?>>APROVADO</option>
                     <option value="REPROVADO" <?php echo ($_GET['status'] ?? '') == 'REPROVADO' ? 'selected' : ''; ?>>REPROVADO</option>
                     <option value="ARQUIVADO" <?php echo ($_GET['status'] ?? '') == 'ARQUIVADO' ? 'selected' : ''; ?>>ARQUIVADO</option>
@@ -239,7 +254,15 @@ include 'views/layout/header.php';
                             </td>
                             <td><?php echo format_date($o['criado_em']); ?></td>
                             <td>
-                                <span class="badge badge-<?php echo strtolower($o['status'] == 'ENVIADO' ? 'pending' : ($o['status'] == 'APROVADO' ? 'approved' : 'rejected')); ?>">
+                                <?php
+                                $status_badge = 'pending';
+                                if ($o['status'] == 'APROVADO') {
+                                    $status_badge = 'approved';
+                                } elseif (in_array($o['status'], ['REPROVADO', 'ARQUIVADO'], true)) {
+                                    $status_badge = 'rejected';
+                                }
+                                ?>
+                                <span class="badge badge-<?php echo $status_badge; ?>">
                                     <?php echo htmlspecialchars($o['status'], ENT_QUOTES, 'UTF-8'); ?>
                                 </span>
                             </td>
@@ -252,8 +275,13 @@ include 'views/layout/header.php';
                                         <i class="fas fa-eye"></i>
                                     </a>
 
+                                    <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
+                                        <a href="oficios_editar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Editar Ofício e Itens">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    <?php endif; ?>
+
                                     <?php 
-                                        $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
                                         if ($o['status'] == 'ENVIADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): 
                                     ?>
                                         <a href="analisar_oficio.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Analisar">

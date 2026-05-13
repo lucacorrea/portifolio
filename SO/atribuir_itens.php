@@ -277,7 +277,7 @@ include 'views/layout/header.php';
                                 name="produtos[<?php echo $idx; ?>][qtd]"
                                 class="form-control item-qtd"
                                 required
-                               value="1">
+                                value="<?php echo htmlspecialchars((string)$qtd_item, ENT_QUOTES, 'UTF-8'); ?>">
                         </div>
 
                         <div class="form-group" style="margin:0;">
@@ -297,7 +297,7 @@ include 'views/layout/header.php';
                                 class="form-control item-valor"
                                 required
                                 placeholder="0,00"
-                               >
+                                value="<?php echo htmlspecialchars(number_format($valor_unit_item, 2, ',', '.'), ENT_QUOTES, 'UTF-8'); ?>">
                         </div>
 
                         <div class="form-group" style="margin:0;">
