@@ -54,9 +54,19 @@ if (!$oficio) {
     die("Solicitação não encontrada.");
 }
 
-$stmt_aquisicao = $pdo->prepare("SELECT id, numero_aq, status FROM aquisicoes WHERE oficio_id = ? LIMIT 1");
+$stmt_aquisicao = $pdo->prepare("SELECT id, numero_aq, status FROM aquisicoes WHERE oficio_id = ? ORDER BY id ASC");
 $stmt_aquisicao->execute([$id]);
-$aquisicao_vinculada = $stmt_aquisicao->fetch(PDO::FETCH_ASSOC);
+$aquisicoes_vinculadas = $stmt_aquisicao->fetchAll(PDO::FETCH_ASSOC);
+$total_aquisicoes_vinculadas = count($aquisicoes_vinculadas);
+
+$stmt_items = $pdo->prepare("SELECT * FROM itens_oficio WHERE oficio_id = ? ORDER BY id ASC");
+$stmt_items->execute([$id]);
+$items_existentes = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
+
+$items_existentes_by_id = [];
+foreach ($items_existentes as $item_existente) {
+    $items_existentes_by_id[(int)$item_existente['id']] = $item_existente;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -78,10 +88,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $total_calculado = 0;
 
         foreach ($produtos as $idx => $p) {
+            $item_id_original = (int)($p['id'] ?? 0);
             $nome = trim((string)($p['nome'] ?? ''));
 
             if ($nome === '') {
                 continue;
+            }
+
+            if ($item_id_original > 0 && !isset($items_existentes_by_id[$item_id_original])) {
+                throw new Exception("Um dos itens enviados não pertence a esta solicitação.");
             }
 
             $qtd = (float)str_replace(',', '.', (string)($p['qtd'] ?? 0));
@@ -100,6 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $total_calculado += ($qtd * $valor_unitario);
 
             $itens_sanitizados[] = [
+                'id_original' => $item_id_original,
                 'produto' => $nome,
                 'quantidade' => $qtd,
                 'unidade' => $unidade,
@@ -113,6 +129,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($valor_orcamento !== null && $valor_orcamento > 0 && abs($total_calculado - $valor_orcamento) > 0.02) {
             throw new Exception("O valor total dos itens deve ser exatamente igual ao orçamento previsto de R$ " . number_format($valor_orcamento, 2, ',', '.'));
+        }
+
+        if ($total_aquisicoes_vinculadas > 1) {
+            foreach ($itens_sanitizados as $item) {
+                if ((int)$item['id_original'] <= 0) {
+                    throw new Exception("Este ofício possui múltiplas aquisições. Para adicionar item novo, ajuste a aquisição específica para definir qual fornecedor irá atendê-lo.");
+                }
+            }
         }
 
         $pdo->beginTransaction();
@@ -133,6 +157,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             VALUES (?, ?, ?, ?, ?)
         ");
 
+        $item_id_map = [];
+        $itens_reinseridos = [];
+
         foreach ($itens_sanitizados as $item) {
             $stmt_item->execute([
                 $id,
@@ -141,21 +168,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $item['unidade'],
                 $item['valor_unitario'],
             ]);
+
+            $novo_item_id = (int)$pdo->lastInsertId();
+            $item['id_novo'] = $novo_item_id;
+            $itens_reinseridos[] = $item;
+
+            if ((int)$item['id_original'] > 0) {
+                $item_id_map[(int)$item['id_original']] = $novo_item_id;
+            }
         }
 
-        if (!empty($aquisicao_vinculada)) {
-            $aquisicao_id = (int)$aquisicao_vinculada['id'];
+        if ($total_aquisicoes_vinculadas === 1) {
+            $aquisicao_id = (int)$aquisicoes_vinculadas[0]['id'];
 
             $pdo->prepare("DELETE FROM itens_aquisicao WHERE aquisicao_id = ?")->execute([$aquisicao_id]);
 
             $stmt_item_aquisicao = $pdo->prepare("
-                INSERT INTO itens_aquisicao (aquisicao_id, produto, quantidade, valor_unitario)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO itens_aquisicao (aquisicao_id, oficio_item_id, produto, quantidade, valor_unitario)
+                VALUES (?, ?, ?, ?, ?)
             ");
 
-            foreach ($itens_sanitizados as $item) {
+            foreach ($itens_reinseridos as $item) {
                 $stmt_item_aquisicao->execute([
                     $aquisicao_id,
+                    (int)$item['id_novo'],
                     $item['produto'],
                     $item['quantidade'],
                     $item['valor_unitario'],
@@ -164,14 +200,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->prepare("UPDATE aquisicoes SET valor_total = ? WHERE id = ?")
                 ->execute([$total_calculado, $aquisicao_id]);
+        } elseif ($total_aquisicoes_vinculadas > 1) {
+            $stmt_aq_items = $pdo->prepare("
+                SELECT ia.*
+                FROM itens_aquisicao ia
+                JOIN aquisicoes a ON a.id = ia.aquisicao_id
+                WHERE a.oficio_id = ?
+                ORDER BY ia.id ASC
+            ");
+            $stmt_aq_items->execute([$id]);
+            $itens_aquisicao = $stmt_aq_items->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($itens_aquisicao as $item_aq) {
+                if (empty($item_aq['oficio_item_id'])) {
+                    throw new Exception("As aquisições deste ofício não possuem vínculo técnico com os itens originais. Edite cada aquisição individualmente para evitar inconsistência entre fornecedores.");
+                }
+            }
+
+            $itens_por_original = [];
+            foreach ($itens_reinseridos as $item) {
+                $itens_por_original[(int)$item['id_original']] = $item;
+            }
+
+            $stmt_update_item_aq = $pdo->prepare("
+                UPDATE itens_aquisicao
+                SET oficio_item_id = ?, produto = ?, quantidade = ?, valor_unitario = ?
+                WHERE id = ?
+            ");
+            $stmt_delete_item_aq = $pdo->prepare("DELETE FROM itens_aquisicao WHERE id = ?");
+
+            foreach ($itens_aquisicao as $item_aq) {
+                $old_item_id = (int)$item_aq['oficio_item_id'];
+
+                if (!isset($itens_por_original[$old_item_id], $item_id_map[$old_item_id])) {
+                    $stmt_delete_item_aq->execute([(int)$item_aq['id']]);
+                    continue;
+                }
+
+                $item = $itens_por_original[$old_item_id];
+                $stmt_update_item_aq->execute([
+                    (int)$item_id_map[$old_item_id],
+                    $item['produto'],
+                    $item['quantidade'],
+                    $item['valor_unitario'],
+                    (int)$item_aq['id'],
+                ]);
+            }
+
+            $stmt_recalc_aq = $pdo->prepare("
+                UPDATE aquisicoes
+                SET valor_total = (
+                    SELECT COALESCE(SUM(quantidade * valor_unitario), 0)
+                    FROM itens_aquisicao
+                    WHERE aquisicao_id = ?
+                )
+                WHERE id = ?
+            ");
+
+            foreach ($aquisicoes_vinculadas as $aq) {
+                $stmt_recalc_aq->execute([(int)$aq['id'], (int)$aq['id']]);
+            }
         }
 
         log_action($pdo, "EDITAR_OFICIO", "Solicitação {$oficio['numero']} editada para {$numero_manual}");
         $pdo->commit();
 
         $msg = "Solicitação {$numero_manual} atualizada com sucesso.";
-        if (!empty($aquisicao_vinculada)) {
-            $msg .= " A aquisição " . $aquisicao_vinculada['numero_aq'] . " também foi sincronizada.";
+        if ($total_aquisicoes_vinculadas === 1) {
+            $msg .= " A aquisição " . $aquisicoes_vinculadas[0]['numero_aq'] . " também foi sincronizada.";
+        } elseif ($total_aquisicoes_vinculadas > 1) {
+            $msg .= " As aquisições vinculadas também foram sincronizadas.";
         }
 
         flash_message('success', $msg);
@@ -185,10 +283,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Erro ao editar: " . $e->getMessage();
     }
 }
-
-$stmt_items = $pdo->prepare("SELECT * FROM itens_oficio WHERE oficio_id = ? ORDER BY id ASC");
-$stmt_items->execute([$id]);
-$items_existentes = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
 
 $stmt_resumo = $pdo->prepare("
     SELECT
@@ -209,6 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $items_form = [];
     foreach (($_POST['produtos'] ?? []) as $p) {
         $items_form[] = [
+            'id' => (int)($p['id'] ?? 0),
             'produto' => $p['nome'] ?? '',
             'quantidade_input' => $p['qtd'] ?? '1',
             'unidade' => $p['unidade'] ?? 'UN',
@@ -342,11 +437,17 @@ include 'views/layout/header.php';
             <div class="alert alert-danger"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
 
-        <?php if (!empty($aquisicao_vinculada)): ?>
+        <?php if ($total_aquisicoes_vinculadas === 1): ?>
             <div class="alert alert-warning">
                 Esta solicitação já possui a aquisição
-                <strong><?php echo htmlspecialchars($aquisicao_vinculada['numero_aq'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                <strong><?php echo htmlspecialchars($aquisicoes_vinculadas[0]['numero_aq'], ENT_QUOTES, 'UTF-8'); ?></strong>
                 gerada. Ao salvar, os itens e o valor total dessa aquisição serão atualizados junto com o ofício.
+            </div>
+        <?php elseif ($total_aquisicoes_vinculadas > 1): ?>
+            <div class="alert alert-warning">
+                Esta solicitação já possui
+                <strong><?php echo (int)$total_aquisicoes_vinculadas; ?> aquisições</strong>
+                geradas. Ao salvar, os itens já vinculados serão atualizados nas respectivas aquisições. Itens novos devem ser incluídos na aquisição específica do fornecedor.
             </div>
         <?php endif; ?>
 
@@ -449,6 +550,8 @@ include 'views/layout/header.php';
                     $valor_total_item = $qtd_item * $valor_unit_item;
                     ?>
                     <div class="item-row">
+                        <input type="hidden" name="produtos[<?php echo $idx; ?>][id]" value="<?php echo (int)($it['id'] ?? 0); ?>">
+
                         <div class="form-group" style="margin:0;">
                             <label class="form-label">Nº</label>
                             <input type="text" class="form-control item-seq" value="<?php echo $idx + 1; ?>" readonly>
@@ -635,6 +738,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = document.createElement('div');
             row.className = 'item-row';
             row.innerHTML = `
+                <input type="hidden" name="produtos[${index}][id]" value="0">
+
                 <div class="form-group" style="margin:0;">
                     <label class="form-label">Nº</label>
                     <input type="text" class="form-control item-seq" value="${index + 1}" readonly>
