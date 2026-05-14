@@ -29,6 +29,7 @@ function format_date_excel($date)
 $busca = trim((string)($_GET['busca'] ?? ''));
 $status = trim((string)($_GET['status'] ?? ''));
 $secretaria_id = trim((string)($_GET['secretaria_id'] ?? ''));
+$fornecedor_id = trim((string)($_GET['fornecedor_id'] ?? ''));
 $data_inicio = trim((string)($_GET['data_inicio'] ?? ''));
 $data_fim = trim((string)($_GET['data_fim'] ?? ''));
 $export = trim((string)($_GET['export'] ?? ''));
@@ -63,6 +64,11 @@ if ($secretaria_id !== '') {
     $params[':secretaria_id'] = (int)$secretaria_id;
 }
 
+if ($fornecedor_id !== '') {
+    $where_parts[] = "a.fornecedor_id = :fornecedor_id";
+    $params[':fornecedor_id'] = (int)$fornecedor_id;
+}
+
 if ($data_inicio_valida) {
     $where_parts[] = "a.criado_em >= :data_inicio";
     $params[':data_inicio'] = $data_inicio . ' 00:00:00';
@@ -76,12 +82,23 @@ if ($data_fim_valida) {
 $where = implode(' AND ', $where_parts);
 
 $secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
+$fornecedores_list = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
 
 $nome_secretaria_filtro = 'Todas';
 if ($secretaria_id !== '') {
     foreach ($secretarias_list as $sec) {
         if ((string)$sec['id'] === (string)$secretaria_id) {
             $nome_secretaria_filtro = $sec['nome'];
+            break;
+        }
+    }
+}
+
+$nome_fornecedor_filtro = 'Todos';
+if ($fornecedor_id !== '') {
+    foreach ($fornecedores_list as $fornecedor) {
+        if ((string)$fornecedor['id'] === (string)$fornecedor_id) {
+            $nome_fornecedor_filtro = $fornecedor['nome'];
             break;
         }
     }
@@ -184,7 +201,8 @@ if ($export === 'excel') {
                 <td colspan="3" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($nome_secretaria_filtro); ?></td>
             </tr>
             <tr>
-                <td colspan="6" class="sub-info left"><strong>Registros:</strong> <?php echo count($aquisicoes_export); ?></td>
+                <td colspan="3" class="sub-info left"><strong>Fornecedor:</strong> <?php echo h($nome_fornecedor_filtro); ?></td>
+                <td colspan="3" class="sub-info left"><strong>Registros:</strong> <?php echo count($aquisicoes_export); ?></td>
             </tr>
 
             <tr class="spacer"><td colspan="6"></td></tr>
@@ -284,10 +302,29 @@ include 'views/layout/header.php';
 <style>
     .filtros-grid {
         display: grid;
-        grid-row-gap: 1rem;
-        grid-column-gap: 1.5rem;
-        grid-template-columns: 1.25fr 1fr 1.25fr .9fr .9fr auto;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 1rem;
         align-items: end;
+    }
+
+    .filtro-busca {
+        grid-column: span 3;
+    }
+
+    .filtro-status {
+        grid-column: span 2;
+    }
+
+    .filtro-secretaria {
+        grid-column: span 3;
+    }
+
+    .filtro-fornecedor {
+        grid-column: span 4;
+    }
+
+    .filtro-data {
+        grid-column: span 2;
     }
 
     .filtros-acoes {
@@ -296,6 +333,30 @@ include 'views/layout/header.php';
         align-items: center;
         justify-content: flex-end;
         flex-wrap: nowrap;
+        grid-column: span 8;
+    }
+
+    .filtros-acoes .btn {
+        min-height: 40px;
+        justify-content: center;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 1200px) {
+        .filtro-busca,
+        .filtro-fornecedor {
+            grid-column: span 6;
+        }
+
+        .filtro-status,
+        .filtro-secretaria,
+        .filtro-data {
+            grid-column: span 3;
+        }
+
+        .filtros-acoes {
+            grid-column: span 6;
+        }
     }
 
     .lista-header {
@@ -355,6 +416,15 @@ include 'views/layout/header.php';
     @media (max-width: 768px) {
         .filtros-grid {
             grid-template-columns: 1fr;
+        }
+
+        .filtro-busca,
+        .filtro-status,
+        .filtro-secretaria,
+        .filtro-fornecedor,
+        .filtro-data,
+        .filtros-acoes {
+            grid-column: span 1;
         }
 
         .lista-header {
@@ -507,7 +577,7 @@ include 'views/layout/header.php';
         </h3>
 
         <form action="" method="GET" class="filtros-grid">
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-busca" style="margin-bottom: 0;">
                 <label class="form-label">Termo de busca</label>
                 <input
                     type="text"
@@ -517,7 +587,7 @@ include 'views/layout/header.php';
                     value="<?php echo htmlspecialchars($_GET['busca'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-status" style="margin-bottom: 0;">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-control">
                     <option value="">Todos Status</option>
@@ -526,7 +596,7 @@ include 'views/layout/header.php';
                 </select>
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-secretaria" style="margin-bottom: 0;">
                 <label class="form-label">Secretaria</label>
                 <select name="secretaria_id" class="form-control">
                     <option value="">Todas as Secretarias</option>
@@ -538,7 +608,22 @@ include 'views/layout/header.php';
                 </select>
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-fornecedor" style="margin-bottom: 0;">
+                <label class="form-label">Fornecedor</label>
+                <select name="fornecedor_id" class="form-control">
+                    <option value="">Todos os Fornecedores</option>
+                    <?php foreach ($fornecedores_list as $fornecedor): ?>
+                        <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id == $fornecedor['id'] ? 'selected' : ''; ?>>
+                            <?php echo h($fornecedor['nome']); ?>
+                            <?php if (!empty($fornecedor['cnpj'])): ?>
+                                (<?php echo h($fornecedor['cnpj']); ?>)
+                            <?php endif; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group filtro-data" style="margin-bottom: 0;">
                 <label class="form-label">Data inicial</label>
                 <input
                     type="date"
@@ -547,7 +632,7 @@ include 'views/layout/header.php';
                     value="<?php echo h($data_inicio); ?>">
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-data" style="margin-bottom: 0;">
                 <label class="form-label">Data final</label>
                 <input
                     type="date"
@@ -558,7 +643,7 @@ include 'views/layout/header.php';
 
             <div class="form-group filtros-acoes" style="margin-bottom: 0;">
                 <button type="submit" class="btn btn-outline btn-sm" title="Filtrar">
-                    <i class="fas fa-search"></i>
+                    <i class="fas fa-search"></i> Filtrar
                 </button>
 
                 <button
@@ -571,7 +656,7 @@ include 'views/layout/header.php';
                 </button>
 
                 <a href="aquisicoes_lista.php" class="btn btn-outline btn-sm" title="Limpar Filtros">
-                    <i class="fas fa-eraser" style="margin: 0;"></i>
+                    <i class="fas fa-eraser"></i> Limpar
                 </a>
             </div>
         </form>
