@@ -104,7 +104,12 @@ $sql_select = "
     WHERE $where
 ";
 
-$sql_order = " ORDER BY a.criado_em DESC, a.id DESC";
+$sql_order = "
+    ORDER BY
+        CAST(SUBSTRING_INDEX(REPLACE(REPLACE(UPPER(TRIM(a.numero_aq)), 'AQ-', ''), 'AQ', ''), '-', 1) AS UNSIGNED) ASC,
+        CAST(SUBSTRING_INDEX(REPLACE(REPLACE(UPPER(TRIM(a.numero_aq)), 'AQ-', ''), 'AQ', ''), '-', -1) AS UNSIGNED) ASC,
+        a.id ASC
+";
 
 if ($export === 'excel') {
     $stmt_export = $pdo->prepare($sql_select . $sql_order);
