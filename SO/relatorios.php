@@ -193,7 +193,7 @@ $sql_secretarias = "
     INNER JOIN secretarias s ON o.secretaria_id = s.id
     WHERE $where
     GROUP BY s.id, s.nome
-    ORDER BY total_valor DESC, s.nome ASC
+    ORDER BY data_referencia ASC, s.nome ASC
 ";
 
 $stmt_secretarias = $pdo->prepare($sql_secretarias);
