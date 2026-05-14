@@ -97,6 +97,17 @@ if (!isset($_SESSION['usuario_id'])) {
         <button class="tab-btn" onclick="switchTab('recurso-cumprimento')"><i class="fas fa-balance-scale-right"></i> Recurso - Cumprimento</button>
     </div>
 
+    <!-- Banner de filtro do mês -->
+    <div id="banner-mes" style="display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); border-radius: 12px; padding: 0.85rem 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 15px rgba(37,99,235,0.25);">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i class="fas fa-calendar-alt" style="color: #93c5fd; font-size: 1.2rem;"></i>
+            <span style="color: #fff; font-weight: 600; font-size: 0.95rem;">Exibindo processos com prazo em <span id="label-mes-atual" style="color: #93c5fd;"></span></span>
+        </div>
+        <button id="btn-toggle-mes" onclick="toggleFiltroMes()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 0.45rem 1.1rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.28)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+            <i class="fas fa-eye"></i> Ver Todos
+        </button>
+    </div>
+
     <!-- Aba Ciência -->
     <div id="tab-ciencia" class="tab-content active">
         <section class="data-section">
@@ -228,12 +239,15 @@ if (!isset($_SESSION['usuario_id'])) {
 <script src="assets/js/script.js?v=74"></script>
 <script>
     let todosProcessos = [];
+    let filtrarPorMesAtual = true; // Começa filtrando pelo mês atual
     
     // Estados para cada aba
     let stateCiencia = { pagina: 1, itens: 10 };
     let stateCumprimento = { pagina: 1, itens: 10 };
     let stateRecursoCiencia = { pagina: 1, itens: 10 };
     let stateRecursoCumprimento = { pagina: 1, itens: 10 };
+
+    const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
     function switchTab(tab) {
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -243,7 +257,37 @@ if (!isset($_SESSION['usuario_id'])) {
         event.currentTarget.classList.add('active');
     }
 
+    function toggleFiltroMes() {
+        filtrarPorMesAtual = !filtrarPorMesAtual;
+        const btn = document.getElementById('btn-toggle-mes');
+        const banner = document.getElementById('banner-mes');
+        if (filtrarPorMesAtual) {
+            btn.innerHTML = '<i class="fas fa-eye"></i> Ver Todos';
+            banner.style.background = 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)';
+        } else {
+            btn.innerHTML = '<i class="fas fa-calendar-alt"></i> Filtrar Mês Atual';
+            banner.style.background = 'linear-gradient(135deg, #374151 0%, #6b7280 100%)';
+        }
+        // Reset páginas e re-renderiza
+        stateCiencia.pagina = 1;
+        stateCumprimento.pagina = 1;
+        stateRecursoCiencia.pagina = 1;
+        stateRecursoCumprimento.pagina = 1;
+        renderTodasAbas();
+    }
+
+    function renderTodasAbas() {
+        renderTabelaTipos('CIÊNCIA', 'lista-ciencia', 'filtro-ciencia', 'paginacao-ciencia', stateCiencia);
+        renderTabelaTipos('CUMPRIMENTO', 'lista-cumprimento', 'filtro-cumprimento', 'paginacao-cumprimento', stateCumprimento);
+        renderTabelaTipos('RECURSO - CIÊNCIA', 'lista-recurso-ciencia', 'filtro-recurso-ciencia', 'paginacao-recurso-ciencia', stateRecursoCiencia);
+        renderTabelaTipos('RECURSO - CUMPRIMENTO', 'lista-recurso-cumprimento', 'filtro-recurso-cumprimento', 'paginacao-recurso-cumprimento', stateRecursoCumprimento);
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
+        // Exibe o nome do mês atual no banner
+        const agora = new Date();
+        document.getElementById('label-mes-atual').textContent = MESES_PT[agora.getMonth()] + ' de ' + agora.getFullYear();
+
         await carregarProcessosTipos();
 
         document.getElementById('filtro-ciencia').addEventListener('input', () => {
@@ -313,11 +357,7 @@ if (!isset($_SESSION['usuario_id'])) {
         }
 
         todosProcessos = dados;
-        
-        renderTabelaTipos('CIÊNCIA', 'lista-ciencia', 'filtro-ciencia', 'paginacao-ciencia', stateCiencia);
-        renderTabelaTipos('CUMPRIMENTO', 'lista-cumprimento', 'filtro-cumprimento', 'paginacao-cumprimento', stateCumprimento);
-        renderTabelaTipos('RECURSO - CIÊNCIA', 'lista-recurso-ciencia', 'filtro-recurso-ciencia', 'paginacao-recurso-ciencia', stateRecursoCiencia);
-        renderTabelaTipos('RECURSO - CUMPRIMENTO', 'lista-recurso-cumprimento', 'filtro-recurso-cumprimento', 'paginacao-recurso-cumprimento', stateRecursoCumprimento);
+        renderTodasAbas();
     }
 
     function renderTabelaTipos(tipoProcesso, tbodyId, filtroId, pagId, stateObj) {
@@ -327,6 +367,31 @@ if (!isset($_SESSION['usuario_id'])) {
 
         const inputBusca = document.getElementById(filtroId);
         let filtrados = todosProcessos.filter(p => (p.tipo_processo || 'CIÊNCIA') === tipoProcesso);
+
+        // Filtra pelo mês atual do prazo_final
+        if (filtrarPorMesAtual) {
+            const agora = new Date();
+            const mesAtual = agora.getMonth() + 1;  // 1-indexed
+            const anoAtual = agora.getFullYear();
+            filtrados = filtrados.filter(p => {
+                const prazo = String(p.final_prazo || '');
+                if (!prazo || prazo.length < 7 || prazo.startsWith('0001')) return false;
+                // Suporta formatos YYYY-MM-DD ou DD/MM/YYYY
+                let mes, ano;
+                if (prazo.includes('-')) {
+                    const partes = prazo.split('-');
+                    ano = parseInt(partes[0], 10);
+                    mes = parseInt(partes[1], 10);
+                } else if (prazo.includes('/')) {
+                    const partes = prazo.split('/');
+                    mes = parseInt(partes[1], 10);
+                    ano = parseInt(partes[2], 10);
+                } else {
+                    return false;
+                }
+                return mes === mesAtual && ano === anoAtual;
+            });
+        }
 
         if (inputBusca && inputBusca.value) {
             const query = inputBusca.value.toUpperCase();
