@@ -186,6 +186,29 @@ CREATE TABLE IF NOT EXISTS whatsapp_conexoes (
     INDEX idx_whatsapp_conexoes_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS whatsapp_comprovantes (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    empresa_id INT UNSIGNED NOT NULL,
+    cliente_id INT UNSIGNED DEFAULT NULL,
+    cobranca_id INT UNSIGNED DEFAULT NULL,
+    mensagem_id VARCHAR(120) NOT NULL,
+    remetente VARCHAR(30) NOT NULL,
+    mime_type VARCHAR(80) DEFAULT NULL,
+    valor_detectado DECIMAL(10,2) DEFAULT NULL,
+    data_detectada DATE DEFAULT NULL,
+    status_processamento ENUM('recebido','pendente','confirmado','recusado','erro') NOT NULL DEFAULT 'recebido',
+    motivo TEXT DEFAULT NULL,
+    resposta_ia TEXT DEFAULT NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_whatsapp_comprovante_msg (empresa_id, mensagem_id),
+    INDEX idx_whatsapp_comprovantes_empresa (empresa_id),
+    INDEX idx_whatsapp_comprovantes_cliente (cliente_id),
+    INDEX idx_whatsapp_comprovantes_cobranca (cobranca_id),
+    INDEX idx_whatsapp_comprovantes_status (status_processamento),
+    INDEX idx_whatsapp_comprovantes_criado (criado_em)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS suporte_chamados (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     empresa_id INT UNSIGNED NOT NULL,

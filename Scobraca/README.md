@@ -151,6 +151,8 @@ WHATSAPP_PROVIDER=bridge
 WHATSAPP_BRIDGE_URL=https://sua-bridge-whatsapp.com
 WHATSAPP_BRIDGE_TOKEN=um-token-seguro-da-bridge
 WHATSAPP_BRIDGE_AUTH_HEADER=Authorization
+WHATSAPP_WEBHOOK_URL=https://seudominio.com.br/webhooks/whatsapp_comprovante.php
+WHATSAPP_WEBHOOK_TOKEN=um-token-seguro-da-bridge
 WHATSAPP_CRON_TOKEN=um-token-longo-e-aleatorio
 ```
 
@@ -167,13 +169,23 @@ npm start
 
 Em produção, mantenha a bridge como processo persistente, por exemplo com PM2 ou serviço equivalente, e exponha somente por HTTPS.
 
-A empresa conecta o WhatsApp em `/app/conexao.php`, lendo o QR Code com o celular da empresa. O envio automático processa eventos de cobrança 10 dias antes, 5 dias antes, no vencimento e 7 dias após atraso. Para automatizar de fato, configure um cron diário chamando:
+A empresa conecta o WhatsApp em `/app/conexao.php`, lendo o QR Code com o celular da empresa. A bridge usa uma sessão por instância/empresa, então empresas diferentes não compartilham o mesmo diretório de autenticação.
+
+O envio automático processa eventos de cobrança 10 dias antes, 5 dias antes, no vencimento e 7 dias após atraso. Para automatizar de fato, configure um cron diário chamando:
 
 ```text
 /cron/processar_whatsapp_cobrancas.php?token=SEU_TOKEN
 ```
 
-O sistema não grava chave da API de WhatsApp em tela ou banco; a chave deve ficar apenas no `.env`.
+Para leitura automática de comprovantes recebidos no WhatsApp, configure a chave Gemini em `/app/configuracoes.php`. A bridge encaminha imagens e PDFs recebidos para `/webhooks/whatsapp_comprovante.php`; o webhook valida o token, identifica a empresa pela instância, encontra o cliente pelo telefone, analisa o comprovante e só baixa pagamento automaticamente quando encontra uma cobrança aberta compatível. Caso não consiga validar com segurança, registra o comprovante como pendente para conferência manual.
+
+Execute também a migração:
+
+```text
+database/migrations/2026_05_13_whatsapp_comprovantes.sql
+```
+
+O sistema não grava chave da API de WhatsApp em tela ou banco; a chave deve ficar apenas no `.env`. A chave Gemini pode ser salva por empresa na tela de configurações, pois faz parte da automação da empresa locatária.
 
 Para usar o checkout público em bases já existentes, execute também:
 

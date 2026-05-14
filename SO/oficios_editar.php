@@ -54,17 +54,12 @@ if (!$oficio) {
     die("Solicitação não encontrada.");
 }
 
-$stmt_aquisicao = $pdo->prepare("SELECT id, numero_aq FROM aquisicoes WHERE oficio_id = ? LIMIT 1");
+$stmt_aquisicao = $pdo->prepare("SELECT id, numero_aq, status FROM aquisicoes WHERE oficio_id = ? LIMIT 1");
 $stmt_aquisicao->execute([$id]);
 $aquisicao_vinculada = $stmt_aquisicao->fetch(PDO::FETCH_ASSOC);
-$edicao_bloqueada = !empty($aquisicao_vinculada);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        if ($edicao_bloqueada) {
-            throw new Exception("Esta solicitação já possui aquisição gerada e não pode ter itens alterados por aqui.");
-        }
-
         $numero_manual = mb_strtoupper(trim($_POST['numero_oficio'] ?? ''), 'UTF-8');
         $valor_orcamento = parse_oficio_money($_POST['valor_orcamento'] ?? '');
         $produtos = $_POST['produtos'] ?? [];
@@ -148,10 +143,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
         }
 
+        if (!empty($aquisicao_vinculada)) {
+            $aquisicao_id = (int)$aquisicao_vinculada['id'];
+
+            $pdo->prepare("DELETE FROM itens_aquisicao WHERE aquisicao_id = ?")->execute([$aquisicao_id]);
+
+            $stmt_item_aquisicao = $pdo->prepare("
+                INSERT INTO itens_aquisicao (aquisicao_id, produto, quantidade, valor_unitario)
+                VALUES (?, ?, ?, ?)
+            ");
+
+            foreach ($itens_sanitizados as $item) {
+                $stmt_item_aquisicao->execute([
+                    $aquisicao_id,
+                    $item['produto'],
+                    $item['quantidade'],
+                    $item['valor_unitario'],
+                ]);
+            }
+
+            $pdo->prepare("UPDATE aquisicoes SET valor_total = ? WHERE id = ?")
+                ->execute([$total_calculado, $aquisicao_id]);
+        }
+
         log_action($pdo, "EDITAR_OFICIO", "Solicitação {$oficio['numero']} editada para {$numero_manual}");
         $pdo->commit();
 
-        flash_message('success', "Solicitação {$numero_manual} atualizada com sucesso.");
+        $msg = "Solicitação {$numero_manual} atualizada com sucesso.";
+        if (!empty($aquisicao_vinculada)) {
+            $msg .= " A aquisição " . $aquisicao_vinculada['numero_aq'] . " também foi sincronizada.";
+        }
+
+        flash_message('success', $msg);
         header("Location: oficios_visualizar.php?id={$id}");
         exit();
     } catch (Exception $e) {
@@ -319,11 +342,11 @@ include 'views/layout/header.php';
             <div class="alert alert-danger"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
 
-        <?php if ($edicao_bloqueada): ?>
+        <?php if (!empty($aquisicao_vinculada)): ?>
             <div class="alert alert-warning">
                 Esta solicitação já possui a aquisição
                 <strong><?php echo htmlspecialchars($aquisicao_vinculada['numero_aq'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                gerada. Para evitar divergência de dados, a edição dos itens está bloqueada.
+                gerada. Ao salvar, os itens e o valor total dessa aquisição serão atualizados junto com o ofício.
             </div>
         <?php endif; ?>
 
@@ -337,7 +360,6 @@ include 'views/layout/header.php';
                         class="form-control"
                         value="<?php echo htmlspecialchars($numero_value, ENT_QUOTES, 'UTF-8'); ?>"
                         oninput="this.value = this.value.toUpperCase()"
-                        <?php echo $edicao_bloqueada ? 'disabled' : ''; ?>
                         required>
                 </div>
 
@@ -349,8 +371,7 @@ include 'views/layout/header.php';
                         id="valor-orcamento"
                         class="form-control"
                         placeholder="0,00"
-                        value="<?php echo htmlspecialchars($orcamento_value, ENT_QUOTES, 'UTF-8'); ?>"
-                        <?php echo $edicao_bloqueada ? 'disabled' : ''; ?>>
+                        value="<?php echo htmlspecialchars($orcamento_value, ENT_QUOTES, 'UTF-8'); ?>">
                 </div>
             </div>
 
@@ -441,8 +462,7 @@ include 'views/layout/header.php';
                                 class="form-control"
                                 required
                                 placeholder="Ex: Papel A4"
-                                value="<?php echo htmlspecialchars($it['produto'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
-                                <?php echo $edicao_bloqueada ? 'disabled' : ''; ?>>
+                                value="<?php echo htmlspecialchars($it['produto'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                         </div>
 
                         <div class="form-group" style="margin:0;">
@@ -454,8 +474,7 @@ include 'views/layout/header.php';
                                 name="produtos[<?php echo $idx; ?>][qtd]"
                                 class="form-control item-qtd"
                                 required
-                                value="<?php echo htmlspecialchars((string)$qtd_input, ENT_QUOTES, 'UTF-8'); ?>"
-                                <?php echo $edicao_bloqueada ? 'disabled' : ''; ?>>
+                                value="<?php echo htmlspecialchars((string)$qtd_input, ENT_QUOTES, 'UTF-8'); ?>">
                         </div>
 
                         <div class="form-group" style="margin:0;">
@@ -464,8 +483,7 @@ include 'views/layout/header.php';
                                 type="text"
                                 name="produtos[<?php echo $idx; ?>][unidade]"
                                 class="form-control"
-                                value="<?php echo htmlspecialchars($it['unidade'] ?? 'UN', ENT_QUOTES, 'UTF-8'); ?>"
-                                <?php echo $edicao_bloqueada ? 'disabled' : ''; ?>>
+                                value="<?php echo htmlspecialchars($it['unidade'] ?? 'UN', ENT_QUOTES, 'UTF-8'); ?>">
                         </div>
 
                         <div class="form-group" style="margin:0;">
@@ -476,8 +494,7 @@ include 'views/layout/header.php';
                                 class="form-control item-valor"
                                 required
                                 placeholder="0,00"
-                                value="<?php echo htmlspecialchars($valor_input, ENT_QUOTES, 'UTF-8'); ?>"
-                                <?php echo $edicao_bloqueada ? 'disabled' : ''; ?>>
+                                value="<?php echo htmlspecialchars($valor_input, ENT_QUOTES, 'UTF-8'); ?>">
                         </div>
 
                         <div class="form-group" style="margin:0;">
@@ -493,8 +510,7 @@ include 'views/layout/header.php';
                             <button
                                 type="button"
                                 class="btn btn-outline btn-sm remove-item"
-                                style="color:red; border-color:#ff000033;"
-                                <?php echo $edicao_bloqueada ? 'disabled' : ''; ?>>
+                                style="color:red; border-color:#ff000033;">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -506,16 +522,14 @@ include 'views/layout/header.php';
                 type="button"
                 class="btn btn-outline"
                 id="add-item"
-                style="margin-bottom: 2rem;"
-                <?php echo $edicao_bloqueada ? 'disabled' : ''; ?>>
+                style="margin-bottom: 2rem;">
                 <i class="fas fa-plus"></i> Adicionar Mais Itens
             </button>
 
             <div class="edit-actions">
                 <button
                     type="submit"
-                    class="btn btn-primary btn-lg"
-                    <?php echo $edicao_bloqueada ? 'disabled' : ''; ?>>
+                    class="btn btn-primary btn-lg">
                     <i class="fas fa-save"></i> Salvar Alterações
                 </button>
             </div>
