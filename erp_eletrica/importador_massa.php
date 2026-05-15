@@ -163,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                 let todosOsProdutos = [];
                 let rowCount = 0;
 
-                // Percorrer TODAS as abas (Table 1, Table 2, etc...)
+                
                 const logContent = document.getElementById('logContent');
                 const progressBar = document.getElementById('importProgressBar');
 
@@ -175,17 +175,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                     const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
                     let sheetCount = 0;
 
-                    rows.forEach(row => {
-                        // Colunas: [0]# [1]Código [2]Produto [3]NCM [4]Estoque [5]Unidade [6]Ult.Movim. [7]Preço Custo [8]Total Custo [9]Preço Venda [10]Total Venda
+                    // --- Detecta automaticamente a linha de cabeçalho ---
+                    let idxCodigo = -1, idxNome = -1, idxNcm = -1;
+                    let idxEstoque = -1, idxUnidade = -1, idxCusto = -1, idxVenda = -1;
+                    let headerRowIdx = -1;
+
+                    for (let r = 0; r < Math.min(rows.length, 10); r++) {
+                        const row = rows[r];
+                        if (!row) continue;
+                        const rowStr = row.map(c => c ? c.toString().toLowerCase() : '');
+                        // Procura colunas pelos nomes do cabeçalho
+                        const hasCodigo  = rowStr.some(c => c.includes('código') || c === 'codigo');
+                        const hasProduto = rowStr.some(c => c === 'produto' || c.includes('produto'));
+                        if (hasCodigo && hasProduto) {
+                            headerRowIdx = r;
+                            rowStr.forEach((cell, idx) => {
+                                if (cell.includes('código') || cell === 'codigo') idxCodigo  = idx;
+                                if (cell === 'produto' || cell === 'nome')        idxNome    = idx;
+                                if (cell === 'ncm')                               idxNcm     = idx;
+                                if (cell === 'estoque')                           idxEstoque = idx;
+                                if (cell.includes('unidade'))                     idxUnidade = idx;
+                                if (cell.includes('custo') && !cell.includes('total')) idxCusto = idx;
+                                if (cell.includes('venda') && !cell.includes('total')) idxVenda = idx;
+                            });
+                            addLog(`✅ Cabeçalho detectado na linha ${r+1}: Código[${idxCodigo}] Produto[${idxNome}] NCM[${idxNcm}] Estoque[${idxEstoque}] Unidade[${idxUnidade}] Custo[${idxCusto}] Venda[${idxVenda}]`);
+                            break;
+                        }
+                    }
+
+                    // Fallback para índices fixos se não achou cabeçalho
+                    if (idxCodigo < 0) { idxCodigo=1; idxNome=2; idxNcm=3; idxEstoque=4; idxUnidade=5; idxCusto=7; idxVenda=9; }
+
+                    rows.forEach((row, rowIdx) => {
+                        if (rowIdx <= headerRowIdx) return; // pula título e cabeçalho
                         if (!row || row.length < 3) return;
                         
-                        const codigo = row[1] ? row[1].toString().trim() : '';
-                        const nome   = row[2] ? row[2].toString().trim() : '';
+                        const codigo = row[idxCodigo] != null ? row[idxCodigo].toString().trim() : '';
+                        const nome   = row[idxNome]   != null ? row[idxNome].toString().trim()   : '';
                         
-                        // Ignora linhas de cabeçalho ou sem produto
-                        if (!nome || nome.toLowerCase() === 'produto' || nome.toLowerCase().includes('tabela')) return;
-                        if (nome.toLowerCase().includes('código') || nome.toLowerCase().includes('venda')) return;
-                        if (!codigo || codigo.toLowerCase() === 'código' || codigo.toLowerCase() === 'codigo') return;
+                        // Ignora linhas vazias ou de rodapé
+                        if (!nome && !codigo) return;
+                        if (!nome) return;
                         
                         // Limpa números formato PT-BR
                         const parseNumber = (val) => {
@@ -198,11 +228,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                         todosOsProdutos.push({
                             codigo:      codigo || 'IMP-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
                             nome:        nome,
-                            ncm:         row[3] ? row[3].toString().trim() : '',
-                            estoque:     parseNumber(row[4]),
-                            unidade:     row[5] ? row[5].toString().trim() : 'UN',
-                            preco_custo: parseNumber(row[7]),
-                            preco_venda: parseNumber(row[9]),
+                            ncm:         idxNcm     >= 0 && row[idxNcm]     ? row[idxNcm].toString().trim()     : '',
+                            estoque:     parseNumber(idxEstoque >= 0 ? row[idxEstoque] : ''),
+                            unidade:     idxUnidade >= 0 && row[idxUnidade] ? row[idxUnidade].toString().trim() : 'UN',
+                            preco_custo: parseNumber(idxCusto   >= 0 ? row[idxCusto]   : ''),
+                            preco_venda: parseNumber(idxVenda   >= 0 ? row[idxVenda]   : ''),
                             categoria:   'Diversos'
                         });
                         sheetCount++;
@@ -222,9 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
 
                 document.getElementById('loadingText').innerText = `Enviando ${todosOsProdutos.length} produtos para o Banco de Dados...`;
 
-                // Submeter para o PHP usando chunks de 300 produtos para segurança se for gigantesco, ou tudo de uma vez.
-                // Como não deve ter mais que 2000 produtos em 158 pgs, 1 request só funciona bem.
-                const response = await fetch('importador_massa.php?action=importar_json', {
+const response = await fetch('importador_massa.php?action=importar_json', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(todosOsProdutos)
