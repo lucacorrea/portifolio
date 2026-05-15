@@ -36,6 +36,7 @@
 
 html {
     min-height: 100%;
+    background: var(--color-bg);
 }
 
 body {
@@ -73,6 +74,9 @@ button {
 
 .app-shell {
     min-height: 100vh;
+    background:
+        radial-gradient(circle at top right, rgba(221, 235, 255, 0.72), transparent 34rem),
+        var(--color-bg);
 }
 
 .sidebar-overlay {
@@ -236,6 +240,7 @@ button {
 .main-content {
     min-width: 0;
     min-height: 100vh;
+    background: transparent;
 }
 
 .topbar {
@@ -363,6 +368,9 @@ button {
 
 .dashboard-page,
 .page-section {
+    width: 100%;
+    max-width: 1480px;
+    margin: 0 auto;
     padding: 18px 16px 32px;
 }
 
@@ -378,6 +386,18 @@ button {
         linear-gradient(90deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0));
     padding: 24px;
     box-shadow: var(--shadow-md);
+}
+
+.dashboard-hero::before {
+    content: "";
+    position: absolute;
+    top: -88px;
+    right: -68px;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.46);
+    filter: blur(2px);
 }
 
 .dashboard-hero::after {
@@ -414,7 +434,7 @@ button {
 }
 
 .dashboard-hero h1 {
-    font-size: clamp(30px, 4vw, 46px);
+    font-size: 32px;
 }
 
 .dashboard-hero p {
@@ -493,6 +513,7 @@ button {
 .metric-card {
     position: relative;
     overflow: hidden;
+    min-width: 0;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
@@ -581,7 +602,7 @@ button {
     display: block;
     margin-top: 5px;
     color: var(--color-text);
-    font-size: clamp(24px, 3vw, 30px);
+    font-size: 28px;
     line-height: 1.1;
 }
 
@@ -616,6 +637,7 @@ button {
 .chart-card,
 .transactions-card,
 .quick-actions-card {
+    min-width: 0;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
     background: var(--color-surface);
@@ -637,6 +659,10 @@ button {
 
 .chart-container {
     min-height: 310px;
+}
+
+.apexcharts-canvas {
+    max-width: 100%;
 }
 
 .donut-container {
@@ -1019,6 +1045,14 @@ button {
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: end;
         padding: 30px;
+    }
+
+    .dashboard-hero h1 {
+        font-size: 46px;
+    }
+
+    .metric-value {
+        font-size: 30px;
     }
 
     .metric-grid {

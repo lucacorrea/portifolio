@@ -52,16 +52,23 @@ final class AuthService
 
     public function login(array $user): void
     {
-        Session::regenerate();
-        Session::putMany([
+        $sessionData = [
             'user_id' => (int) $user['id'],
             'igreja_id' => (int) $user['igreja_id'],
+            'igreja_nome' => (string) ($user['igreja_nome'] ?? 'Igreja cadastrada'),
             'user_name' => (string) $user['nome'],
             'user_email' => (string) $user['email'],
             'user_role' => (string) $user['papel'],
             'authenticated_at' => time(),
             'last_activity_at' => time(),
-        ]);
+        ];
+
+        if (!empty($user['igreja_logo_url'])) {
+            $sessionData['igreja_logo_url'] = (string) $user['igreja_logo_url'];
+        }
+
+        Session::regenerate();
+        Session::putMany($sessionData);
     }
 
     public function logout(): void

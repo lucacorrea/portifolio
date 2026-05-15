@@ -7,12 +7,19 @@ use App\Core\View;
 $appName = Config::get('app.name', 'Igreja Tefe Financeiro');
 $userName = Session::get('user_name');
 $userRole = Session::get('user_role');
-$churchName = Session::get('igreja_nome')
+$churchName = trim((string) (Session::get('igreja_nome')
     ?? Session::get('church_name')
-    ?? 'Igreja cadastrada';
+    ?? 'Igreja cadastrada'));
+$churchName = $churchName !== '' ? $churchName : 'Igreja cadastrada';
 $churchLogo = Session::get('igreja_logo_url')
     ?? Session::get('igreja_logo')
     ?? Session::get('church_logo');
+$cssVersion = is_file(BASE_PATH . '/public/assets/css/app.css')
+    ? (string) filemtime(BASE_PATH . '/public/assets/css/app.css')
+    : (string) time();
+$jsVersion = is_file(BASE_PATH . '/public/assets/js/app.js')
+    ? (string) filemtime(BASE_PATH . '/public/assets/js/app.js')
+    : $cssVersion;
 $monthNames = [
     1 => 'Janeiro',
     2 => 'Fevereiro',
@@ -55,7 +62,7 @@ $makeInitials = static function (string $name): string {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= View::e(($title ?? 'Sistema') . ' | ' . $appName) ?></title>
-    <link rel="stylesheet" href="<?= \App\Core\View::e(url('/assets/css/app.css')) ?>">
+    <link rel="stylesheet" href="<?= \App\Core\View::e(url('/assets/css/app.css?v=' . $cssVersion)) ?>">
 </head>
 <body>
     <div class="sidebar-overlay" data-sidebar-overlay></div>
@@ -147,7 +154,7 @@ $makeInitials = static function (string $name): string {
 
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="<?= \App\Core\View::e(url('/assets/js/app.js')) ?>" defer></script>
+    <script src="<?= \App\Core\View::e(url('/assets/js/app.js?v=' . $jsVersion)) ?>" defer></script>
     <script>
         if (window.lucide) {
             lucide.createIcons();

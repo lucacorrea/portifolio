@@ -11,10 +11,20 @@ final class Usuario extends Model
     public function findActiveByEmail(string $email): ?array
     {
         $statement = $this->db->prepare(
-            'SELECT id, igreja_id, nome, email, senha_hash, papel, ativo
-             FROM usuarios
-             WHERE email = :email
-               AND ativo = 1
+            'SELECT u.id,
+                    u.igreja_id,
+                    u.nome,
+                    u.email,
+                    u.senha_hash,
+                    u.papel,
+                    u.ativo,
+                    i.nome AS igreja_nome,
+                    NULL AS igreja_logo_url
+             FROM usuarios u
+             INNER JOIN igrejas i ON i.id = u.igreja_id
+             WHERE u.email = :email
+               AND u.ativo = 1
+               AND i.status = \'ativa\'
              LIMIT 1'
         );
 
