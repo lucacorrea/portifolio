@@ -1346,39 +1346,6 @@ button {
     background: linear-gradient(90deg, var(--color-danger), rgba(200, 77, 77, 0.24));
 }
 
-.demo-banner {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    border: 1px solid rgba(128, 87, 199, 0.18);
-    border-radius: var(--radius-lg);
-    background: linear-gradient(135deg, var(--color-purple-soft), #ffffff);
-    box-shadow: var(--shadow-sm);
-    margin-top: 18px;
-    padding: 16px;
-}
-
-.demo-banner svg {
-    width: 22px;
-    height: 22px;
-    flex: 0 0 22px;
-    color: var(--color-purple);
-}
-
-.demo-banner strong,
-.demo-banner span {
-    display: block;
-}
-
-.demo-banner strong {
-    color: var(--color-text);
-}
-
-.demo-banner span {
-    margin-top: 3px;
-    color: var(--color-muted);
-}
-
 .report-alert {
     margin-top: 18px;
 }

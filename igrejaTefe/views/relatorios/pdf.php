@@ -62,7 +62,7 @@ $formatDate = static function (?string $date): string {
                 <p class="muted">Período: <?= View::e((string) ($report['periodoLabel'] ?? '')) ?></p>
             </div>
             <div>
-                <span class="badge"><?= !empty($report['isDemo']) ? 'Demonstração' : 'Dados reais' ?></span>
+                <span class="badge">Dados reais</span>
                 <p class="muted">Gerado em <?= View::e((string) ($report['generatedAt'] ?? '')) ?></p>
             </div>
         </header>

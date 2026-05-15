@@ -1,57 +1,65 @@
 <?php
 
-$chartData = [
-    'months' => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-    'entradas' => [7000, 10000, 15000, 5000, 65000, 25000],
-    'saidas' => [5000, 7000, 9000, 2000, 35000, 15000],
+$dashboard = is_array($dashboard ?? null) ? $dashboard : [];
+$metricData = is_array($dashboard['metrics'] ?? null) ? $dashboard['metrics'] : [];
+$chartData = is_array($dashboard['chartData'] ?? null) ? $dashboard['chartData'] : [
+    'months' => [],
+    'entradas' => [],
+    'saidas' => [],
     'categorias' => [],
     'categoriasValores' => [],
 ];
+$transactions = is_array($dashboard['transactions'] ?? null) ? $dashboard['transactions'] : [];
+$formatCurrency = static fn (float $value): string => 'R$ ' . number_format($value, 2, ',', '.');
+$helperText = static fn (int $count): string => $count > 0
+    ? $count . ' registro(s) no banco neste mês.'
+    : 'Sem movimentações neste período.';
+$badgeText = static fn (int $count, string $filled = 'Mês atual'): string => $count > 0 ? $filled : 'Sem dados';
+$totalMovements = (int) ($metricData['movimentacoes_qtd'] ?? 0);
+$saldo = (float) ($metricData['saldo_mes'] ?? 0);
 
 $metrics = [
     [
         'label' => 'Entradas do mês',
-        'value' => 'R$ 5.000,00',
-        'helper' => 'Movimentações neste período.',
-        'badge' => 'Mês atual',
+        'value' => $formatCurrency((float) ($metricData['entradas_mes'] ?? 0)),
+        'helper' => $helperText((int) ($metricData['entradas_qtd'] ?? 0)),
+        'badge' => $badgeText((int) ($metricData['entradas_qtd'] ?? 0)),
         'icon' => 'arrow-down-circle',
         'tone' => 'success',
     ],
     [
         'label' => 'Dízimos',
-        'value' => 'R$ 5.000,00',
-        'helper' => 'Movimentações neste período.',
-        'badge' => 'Mês atual',
+        'value' => $formatCurrency((float) ($metricData['dizimos'] ?? 0)),
+        'helper' => $helperText((int) ($metricData['dizimos_qtd'] ?? 0)),
+        'badge' => $badgeText((int) ($metricData['dizimos_qtd'] ?? 0)),
         'icon' => 'hand-coins',
         'tone' => 'info',
     ],
     [
         'label' => 'Ofertas',
-        'value' => 'R$ 5.000,00',
-        'helper' => 'Movimentações neste período.',
-        'badge' => 'Mês atual',
+        'value' => $formatCurrency((float) ($metricData['ofertas'] ?? 0)),
+        'helper' => $helperText((int) ($metricData['ofertas_qtd'] ?? 0)),
+        'badge' => $badgeText((int) ($metricData['ofertas_qtd'] ?? 0)),
         'icon' => 'gift',
         'tone' => 'purple',
     ],
     [
         'label' => 'Saídas do mês',
-        'value' => 'R$ 5.000,00',
-        'helper' => 'Movimentações neste período.',
-        'badge' => 'Mês atual',
+        'value' => $formatCurrency((float) ($metricData['saidas_mes'] ?? 0)),
+        'helper' => $helperText((int) ($metricData['saidas_qtd'] ?? 0)),
+        'badge' => $badgeText((int) ($metricData['saidas_qtd'] ?? 0)),
         'icon' => 'arrow-up-circle',
         'tone' => 'danger',
     ],
     [
         'label' => 'Saldo do mês',
-        'value' => 'R$ 10.000,00',
-        'helper' => 'Movimentações neste período.',
-        'badge' => 'Atualizado',
+        'value' => $formatCurrency($saldo),
+        'helper' => $totalMovements > 0 ? 'Calculado com entradas e saídas reais.' : 'Sem movimentações neste período.',
+        'badge' => $totalMovements > 0 ? 'Atualizado' : 'Sem dados',
         'icon' => 'wallet',
-        'tone' => 'warning',
+        'tone' => $saldo < 0 ? 'danger' : 'warning',
     ],
 ];
-
-$transactions = [];
 ?>
 
 <section class="dashboard-page">
@@ -77,6 +85,10 @@ $transactions = [];
             </a>
         </div>
     </div>
+
+    <?php if (is_string($dashboard['loadError'] ?? null)): ?>
+        <div class="alert error"><?= \App\Core\View::e($dashboard['loadError']) ?></div>
+    <?php endif; ?>
 
     <div class="metric-grid">
         <?php foreach ($metrics as $metric): ?>

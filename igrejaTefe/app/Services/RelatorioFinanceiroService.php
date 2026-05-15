@@ -6,7 +6,6 @@ namespace App\Services;
 
 use App\Core\Database;
 use App\Models\Categoria;
-use DateInterval;
 use DateTimeImmutable;
 use PDO;
 use Throwable;
@@ -21,14 +20,10 @@ final class RelatorioFinanceiroService
         $movimentos = [];
 
         try {
-            $categorias = $filters['demo']
-                ? $this->demoCategories()
-                : $this->realCategories($igrejaId);
-            $movimentos = $filters['demo']
-                ? $this->demoMovements($filters)
-                : $this->realMovements($igrejaId, $filters);
+            $categorias = $this->realCategories($igrejaId);
+            $movimentos = $this->realMovements($igrejaId, $filters);
         } catch (Throwable) {
-            $loadError = 'Não foi possível carregar os dados reais para o relatório.';
+            $loadError = 'Não foi possível carregar os dados financeiros do banco para o relatório.';
         }
 
         $movimentos = $this->applyFilters($movimentos, $filters);
@@ -39,7 +34,6 @@ final class RelatorioFinanceiroService
 
         return [
             'filters' => $filters,
-            'isDemo' => $filters['demo'],
             'loadError' => $loadError,
             'generatedAt' => date('d/m/Y H:i'),
             'periodoLabel' => $this->formatDate($filters['data_inicio']) . ' a ' . $this->formatDate($filters['data_fim']),
@@ -59,7 +53,6 @@ final class RelatorioFinanceiroService
                 'tipo' => $filters['tipo'],
                 'categoria_id' => $filters['categoria_id'] ?: '',
                 'forma_pagamento' => $filters['forma_pagamento'] ?? '',
-                'demo' => $filters['demo'] ? '1' : '0',
             ]),
             'pageQuery' => http_build_query([
                 'data_inicio' => $filters['data_inicio'],
@@ -67,7 +60,6 @@ final class RelatorioFinanceiroService
                 'tipo' => $filters['tipo'],
                 'categoria_id' => $filters['categoria_id'] ?: '',
                 'forma_pagamento' => $filters['forma_pagamento'] ?? '',
-                'demo' => $filters['demo'] ? '1' : '0',
                 'per_page' => $filters['per_page'],
                 'daily_page' => $filters['daily_page'],
             ]),
@@ -77,7 +69,6 @@ final class RelatorioFinanceiroService
                 'tipo' => $filters['tipo'],
                 'categoria_id' => $filters['categoria_id'] ?: '',
                 'forma_pagamento' => $filters['forma_pagamento'] ?? '',
-                'demo' => $filters['demo'] ? '1' : '0',
                 'per_page' => $filters['per_page'],
                 'page' => $filters['page'],
             ]),
@@ -110,7 +101,6 @@ final class RelatorioFinanceiroService
             'tipo' => in_array($tipo, ['todos', 'entrada', 'saida'], true) ? $tipo : 'todos',
             'categoria_id' => max(0, (int) ($input['categoria_id'] ?? 0)),
             'forma_pagamento' => $forma !== '' ? $forma : null,
-            'demo' => (string) ($input['demo'] ?? '1') !== '0',
             'page' => max(1, $page),
             'per_page' => $perPage,
             'daily_page' => max(1, $dailyPage),
@@ -144,14 +134,10 @@ final class RelatorioFinanceiroService
             return [];
         }
 
-        try {
-            return array_values(array_filter(
-                (new Categoria())->listByChurch($igrejaId),
-                static fn (array $categoria): bool => (int) $categoria['ativo'] === 1
-            ));
-        } catch (Throwable) {
-            return [];
-        }
+        return array_values(array_filter(
+            (new Categoria())->listByChurch($igrejaId),
+            static fn (array $categoria): bool => (int) $categoria['ativo'] === 1
+        ));
     }
 
     private function realMovements(int $igrejaId, array $filters): array
@@ -269,57 +255,6 @@ final class RelatorioFinanceiroService
                 'valor' => (float) $row['valor'],
             ];
         }, $statement->fetchAll());
-    }
-
-    private function demoCategories(): array
-    {
-        return [
-            ['id' => 101, 'nome' => 'Missões', 'cor' => '#8057C7', 'ativo' => 1],
-            ['id' => 102, 'nome' => 'Manutenção', 'cor' => '#286CC8', 'ativo' => 1],
-            ['id' => 103, 'nome' => 'Energia e água', 'cor' => '#9C7422', 'ativo' => 1],
-            ['id' => 104, 'nome' => 'Eventos', 'cor' => '#2FAF8F', 'ativo' => 1],
-            ['id' => 105, 'nome' => 'Ajuda social', 'cor' => '#C84D4D', 'ativo' => 1],
-        ];
-    }
-
-    private function demoMovements(array $filters): array
-    {
-        $start = new DateTimeImmutable($filters['data_inicio']);
-        $items = [
-            ['entrada', 1, 'Dízimos', 0, '#286CC8', 'Culto de domingo', 'Dízimos recebidos no culto da manhã', 'pix', 4250.00],
-            ['entrada', 3, 'Ofertas', 0, '#8057C7', 'Culto de celebração', 'Ofertas gerais da semana', 'dinheiro', 1380.50],
-            ['saida', 4, 'Energia e água', 103, '#9C7422', 'Amazonas Energia', 'Conta de energia do templo', 'boleto', 742.90],
-            ['saida', 5, 'Manutenção', 102, '#286CC8', 'Construtora Local', 'Reparo de iluminação e pintura', 'pix', 1280.00],
-            ['entrada', 7, 'Dízimos', 0, '#286CC8', 'Contribuições online', 'Dízimos via transferência', 'transferencia', 3100.00],
-            ['saida', 8, 'Ajuda social', 105, '#C84D4D', 'Famílias assistidas', 'Cestas básicas e apoio emergencial', 'dinheiro', 960.00],
-            ['saida', 10, 'Missões', 101, '#8057C7', 'Projeto Ribeirinho', 'Apoio mensal ao campo missionário', 'pix', 1500.00],
-            ['entrada', 12, 'Ofertas', 0, '#8057C7', 'Campanha missionária', 'Oferta direcionada para missões', 'pix', 2240.00],
-            ['saida', 14, 'Eventos', 104, '#2FAF8F', 'Mercado Central', 'Itens para encontro de famílias', 'cartao', 685.35],
-            ['entrada', 15, 'Dízimos', 0, '#286CC8', 'Culto de ensino', 'Dízimos e contribuições presenciais', 'dinheiro', 1960.00],
-            ['saida', 17, 'Manutenção', 102, '#286CC8', 'Técnico de som', 'Revisão de mesa e microfones', 'pix', 430.00],
-            ['entrada', 19, 'Ofertas', 0, '#8057C7', 'Oferta especial', 'Oferta para manutenção do templo', 'cartao', 980.00],
-            ['saida', 21, 'Energia e água', 103, '#9C7422', 'Serviço de água', 'Conta de água do mês', 'boleto', 238.20],
-            ['entrada', 23, 'Dízimos', 0, '#286CC8', 'Contribuições recorrentes', 'Dízimos recorrentes cadastrados', 'transferencia', 2860.00],
-            ['saida', 25, 'Eventos', 104, '#2FAF8F', 'Comunicação visual', 'Materiais de divulgação do congresso', 'pix', 520.00],
-            ['saida', 27, 'Ajuda social', 105, '#C84D4D', 'Ação comunitária', 'Medicamentos e transporte solidário', 'dinheiro', 390.00],
-        ];
-
-        return array_map(static function (array $item, int $index) use ($start): array {
-            $date = $start->add(new DateInterval('P' . $item[1] . 'D'))->format('Y-m-d');
-
-            return [
-                'id' => 'D-' . str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
-                'movimento' => $item[0],
-                'data' => $date,
-                'categoria_nome' => $item[2],
-                'categoria_id' => $item[3],
-                'categoria_cor' => $item[4],
-                'pessoa' => $item[5],
-                'descricao' => $item[6],
-                'forma_pagamento' => $item[7],
-                'valor' => $item[8],
-            ];
-        }, $items, array_keys($items));
     }
 
     private function applyFilters(array $movimentos, array $filters): array

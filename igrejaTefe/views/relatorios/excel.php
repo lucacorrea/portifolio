@@ -30,7 +30,7 @@ $formatDate = static function (?string $date): string {
     <h1><?= View::e((string) $churchName) ?> - Relatório financeiro</h1>
     <p>Período: <?= View::e((string) ($report['periodoLabel'] ?? '')) ?></p>
     <p>Gerado em: <?= View::e((string) ($report['generatedAt'] ?? '')) ?></p>
-    <p>Origem: <?= !empty($report['isDemo']) ? 'Dados demonstrativos' : 'Dados reais' ?></p>
+    <p>Origem: Dados reais do banco</p>
 
     <h2>Resumo</h2>
     <table>

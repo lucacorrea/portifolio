@@ -75,16 +75,6 @@ foreach ($dailyAll as $day) {
         </div>
     </div>
 
-    <?php if (!empty($report['isDemo'])): ?>
-        <div class="demo-banner">
-            <i data-lucide="presentation"></i>
-            <div>
-                <strong>Modo demonstração ativo</strong>
-                <span>Os valores exibidos são fictícios para apresentação ao cliente. Altere o filtro para “Dados reais” quando quiser consultar o banco.</span>
-            </div>
-        </div>
-    <?php endif; ?>
-
     <?php if (is_string($report['loadError'] ?? null)): ?>
         <div class="alert error report-alert"><?= \App\Core\View::e($report['loadError']) ?></div>
     <?php endif; ?>
@@ -135,13 +125,6 @@ foreach ($dailyAll as $day) {
                 </select>
             </label>
             <label>
-                Origem dos dados
-                <select name="demo">
-                    <option value="1" <?= !empty($filters['demo']) ? 'selected' : '' ?>>Demonstração</option>
-                    <option value="0" <?= empty($filters['demo']) ? 'selected' : '' ?>>Dados reais</option>
-                </select>
-            </label>
-            <label>
                 Linhas por página
                 <select name="per_page">
                     <?php foreach ([10, 15, 25, 50] as $perPageOption): ?>
@@ -158,7 +141,7 @@ foreach ($dailyAll as $day) {
                 <i data-lucide="filter"></i>
                 Aplicar filtros
             </button>
-            <a class="button secondary" href="<?= \App\Core\View::e(url('/relatorios?demo=1')) ?>">
+            <a class="button secondary" href="<?= \App\Core\View::e(url('/relatorios')) ?>">
                 <i data-lucide="rotate-ccw"></i>
                 Limpar
             </a>
@@ -224,7 +207,7 @@ foreach ($dailyAll as $day) {
                 <div class="empty-state compact-empty">
                     <i data-lucide="line-chart"></i>
                     <strong>Nenhum dado no período</strong>
-                    <p>Ajuste os filtros ou ative a demonstração para apresentar o relatório ao cliente.</p>
+                    <p>Ajuste os filtros ou registre entradas e saídas para alimentar o relatório.</p>
                 </div>
             <?php else: ?>
                 <div class="daily-flow-list">
@@ -376,7 +359,7 @@ foreach ($dailyAll as $day) {
             <div class="empty-state">
                 <i data-lucide="inbox"></i>
                 <strong>Nenhuma movimentação encontrada</strong>
-                <p>Use os filtros acima para ampliar o período ou alternar entre dados reais e demonstração.</p>
+                <p>Use os filtros acima para ampliar o período ou registre novas movimentações.</p>
             </div>
         <?php else: ?>
             <div class="transactions-table-wrap">
