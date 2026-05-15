@@ -66,6 +66,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     }
     exit;
 }
+
+// Recriar produto DIVERSOS padrão
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'seed_defaults') {
+    $filialId = (int)($_SESSION['filial_id'] ?? 1);
+    try {
+        // Verifica se a coluna preco_variavel existe
+        $cols = $db->query("SHOW COLUMNS FROM produtos LIKE 'preco_variavel'")->fetchAll();
+        if (empty($cols)) {
+            $db->exec("ALTER TABLE produtos ADD COLUMN preco_variavel TINYINT(1) DEFAULT 0 AFTER preco_venda");
+        }
+
+        // Remove o antigo se existir na filial e recria
+        $db->prepare("DELETE FROM produtos WHERE codigo = '7423' AND filial_id = ?")->execute([$filialId]);
+        $db->prepare("
+            INSERT INTO produtos (filial_id, codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, preco_variavel, ncm, cean, cfop_interno, cfop_externo, csosn, origem)
+            VALUES (?, '7423', 'DIVERSOS', 'UN', 'Diversos', 0.00, 0.00, 9999, 'simples', 1, '', '7423', '5102', '6102', '102', 0)
+        ")->execute([$filialId]);
+        echo json_encode(['success' => true, 'msg' => 'Produto DIVERSOS (7423) recriado com sucesso!']);
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -134,10 +157,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                     </div>
                 </div>
                 
-                <div class="text-center mt-4">
+                <div class="text-center mt-4 d-flex justify-content-center gap-3 flex-wrap">
                     <a href="estoque.php" class="btn btn-light border shadow-sm fw-bold">
                         <i class="fas fa-arrow-left me-2"></i> Voltar ao ERP Principal
                     </a>
+                    <button type="button" onclick="recriarDiversos()" class="btn btn-outline-warning fw-bold shadow-sm">
+                        <i class="fas fa-plus-circle me-2"></i> Recriar Produto DIVERSOS (7423)
+                    </button>
                 </div>
             </div>
         </div>
@@ -300,6 +326,21 @@ const response = await fetch('importador_massa.php?action=importar_json', {
 
     function showAlert(msg, type) {
         document.getElementById('alertArea').innerHTML = `<div class="alert alert-${type} fw-bold shadow-sm">${msg}</div>`;
+    }
+
+    async function recriarDiversos() {
+        if (!confirm('Isso vai recriar o produto DIVERSOS (código 7423) na sua filial. Continuar?')) return;
+        try {
+            const res = await fetch('importador_massa.php?action=seed_defaults', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('<i class="fas fa-check-circle me-2"></i>' + data.msg, 'success');
+            } else {
+                showAlert('Erro: ' + data.error, 'danger');
+            }
+        } catch (e) {
+            showAlert('Erro ao conectar: ' + e.message, 'danger');
+        }
     }
     </script>
 </body>
