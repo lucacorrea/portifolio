@@ -2,7 +2,7 @@
 
 $chartData = [
     'months' => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-    'entradas' => [5000, 5000, 5000, 5000, 5000, 5000],
+    'entradas' => [7000, 10000, 15000, 5000, 65000, 25000],
     'saidas' => [5000, 5000, 5000, 5000, 5000, 5000],
     'categorias' => [],
     'categoriasValores' => [],
