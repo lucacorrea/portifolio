@@ -17,8 +17,8 @@ $appName = Config::get('app.name', 'Igreja Tefe Financeiro');
     <main class="auth-shell">
         <section class="auth-panel">
             <a class="brand" href="<?= \App\Core\View::e(url('/')) ?>">
-                <span class="brand-mark">IT</span>
-                <span><?= View::e($appName) ?></span>
+                <span class="brand-mark">SF</span>
+                <span>Gestão Financeira</span>
             </a>
 
             <?= $content ?>
