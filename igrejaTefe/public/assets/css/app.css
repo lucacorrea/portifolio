@@ -177,6 +177,21 @@ h1 {
     background: var(--color-primary-dark);
 }
 
+.button.ghost {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    width: 100%;
+}
+
+.button.ghost:hover {
+    background: #1d2939;
+}
+
+.logout-form {
+    margin-top: 24px;
+}
+
 .status-grid {
     display: grid;
     gap: 16px;
@@ -239,6 +254,19 @@ h1 {
     margin-bottom: 0;
 }
 
+.alert {
+    border-radius: 6px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+}
+
+.alert.error {
+    background: #fef3f2;
+    border: 1px solid #fecdca;
+    color: #b42318;
+}
+
 .form-stack {
     display: grid;
     gap: 16px;
@@ -262,6 +290,16 @@ h1 {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(21, 94, 239, 0.15);
     outline: none;
+}
+
+.auth-link {
+    color: var(--color-muted);
+    margin: 18px 0 0;
+}
+
+.auth-link a {
+    color: var(--color-primary);
+    font-weight: 700;
 }
 
 @media (min-width: 760px) {
@@ -295,4 +333,3 @@ h1 {
         padding: 32px;
     }
 }
-

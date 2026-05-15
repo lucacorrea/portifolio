@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+use App\Core\Config;
 use App\Core\Response;
 use App\Core\Session;
 
@@ -15,7 +16,17 @@ final class AuthMiddleware implements MiddlewareInterface
             return Response::redirect('/login');
         }
 
+        $lifetime = (int) Config::get('security.session.lifetime', 7200);
+        $lastActivity = (int) Session::get('last_activity_at', time());
+
+        if ($lifetime > 0 && (time() - $lastActivity) > $lifetime) {
+            Session::destroy();
+
+            return Response::redirect('/login');
+        }
+
+        Session::put('last_activity_at', time());
+
         return null;
     }
 }
-

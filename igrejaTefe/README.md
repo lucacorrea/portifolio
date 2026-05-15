@@ -72,3 +72,30 @@ relacionamentos e isolamento estrutural por `igreja_id`.
 
 Para criar um usuário suporte, use o seed `database/seeds/002_usuario_suporte.sql` com um hash
 gerado localmente. Não coloque a senha em texto puro nos arquivos do projeto.
+
+## Login
+
+Fluxo implementado:
+
+- Página principal com link para `/login`.
+- Login por `igreja_id`, email e senha.
+- Validação de senha com `password_verify()`.
+- Regeneração da sessão após autenticação.
+- Proteção de rotas privadas por sessão.
+- Logout via `POST /logout` com CSRF.
+- Mensagem genérica para credenciais inválidas.
+- Registro de tentativas em `tentativas_login`.
+
+Para testar com o usuário suporte:
+
+1. Rode o SQL inicial.
+2. Crie uma igreja em `igrejas`.
+3. Gere o hash da senha localmente.
+4. Rode `database/seeds/002_usuario_suporte.sql`.
+5. Acesse `/login` com:
+
+```text
+Código da igreja: 1
+Email: suporte@igreja.local
+Senha: a senha usada para gerar o hash
+```

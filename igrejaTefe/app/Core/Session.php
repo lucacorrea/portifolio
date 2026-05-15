@@ -42,10 +42,40 @@ final class Session
         $_SESSION[$key] = $value;
     }
 
+    public static function putMany(array $values): void
+    {
+        self::start();
+
+        foreach ($values as $key => $value) {
+            $_SESSION[$key] = $value;
+        }
+    }
+
     public static function forget(string $key): void
     {
         self::start();
         unset($_SESSION[$key]);
+    }
+
+    public static function flash(string $key, mixed $value): void
+    {
+        self::start();
+        $_SESSION['_flash'][$key] = $value;
+    }
+
+    public static function pullFlash(string $key, mixed $default = null): mixed
+    {
+        self::start();
+
+        $value = $_SESSION['_flash'][$key] ?? $default;
+        unset($_SESSION['_flash'][$key]);
+
+        return $value;
+    }
+
+    public static function isAuthenticated(): bool
+    {
+        return (bool) self::get('user_id');
     }
 
     public static function regenerate(): void

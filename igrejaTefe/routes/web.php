@@ -19,7 +19,16 @@ $router->get('/', [HomeController::class, 'index']);
 $router->get('/login', [AuthController::class, 'login']);
 $router->get('/registro', [AuthController::class, 'register']);
 $router->post('/login', [AuthController::class, 'attemptLogin'], [CsrfMiddleware::class]);
+$router->post('/logout', [AuthController::class, 'logout'], [
+    AuthMiddleware::class,
+    CsrfMiddleware::class,
+]);
 $router->post('/registro', [AuthController::class, 'storeRegister'], [CsrfMiddleware::class]);
+
+$router->get('/me', [AuthController::class, 'me'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+]);
 
 $router->get('/dashboard', [DashboardController::class, 'index'], [
     AuthMiddleware::class,

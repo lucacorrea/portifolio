@@ -1,9 +1,12 @@
 <?php
 
 use App\Core\Config;
+use App\Core\Session;
 use App\Core\View;
 
 $appName = Config::get('app.name', 'Igreja Tefe Financeiro');
+$userName = Session::get('user_name');
+$userRole = Session::get('user_role');
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -29,6 +32,13 @@ $appName = Config::get('app.name', 'Igreja Tefe Financeiro');
                 <a href="/relatorios">Relatórios</a>
                 <a href="/configuracoes">Configurações</a>
             </nav>
+
+            <?php if ($userName): ?>
+                <form class="logout-form" method="post" action="/logout">
+                    <input type="hidden" name="_csrf_token" value="<?= Session::csrfToken() ?>">
+                    <button class="button ghost" type="submit">Sair</button>
+                </form>
+            <?php endif; ?>
         </aside>
 
         <main class="main-content">
@@ -40,7 +50,13 @@ $appName = Config::get('app.name', 'Igreja Tefe Financeiro');
                 </button>
                 <div>
                     <strong><?= View::e($title ?? 'Sistema') ?></strong>
-                    <span>Base multi-igreja com segurança por sessão</span>
+                    <span>
+                        <?php if ($userName): ?>
+                            <?= View::e($userName) ?> · <?= View::e($userRole) ?>
+                        <?php else: ?>
+                            Base multi-igreja com segurança por sessão
+                        <?php endif; ?>
+                    </span>
                 </div>
             </header>
 
@@ -51,4 +67,3 @@ $appName = Config::get('app.name', 'Igreja Tefe Financeiro');
     <script src="/assets/js/app.js" defer></script>
 </body>
 </html>
-
