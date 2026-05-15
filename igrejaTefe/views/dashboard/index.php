@@ -43,7 +43,7 @@ $metrics = [
     ],
     [
         'label' => 'Saldo do mês',
-        'value' => 'R$ 0,00',
+        'value' => 'R$ 10.000,00',
         'helper' => 'Sem movimentações neste período.',
         'badge' => 'Atualizado',
         'icon' => 'wallet',
