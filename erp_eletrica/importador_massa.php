@@ -30,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
         
         $stmtCheck  = $db->prepare("SELECT id FROM produtos WHERE codigo = ? AND filial_id = ?");
         $stmtInsert = $db->prepare("
-            INSERT INTO produtos (filial_id, codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, ncm, cean, cfop_interno, cfop_externo, csosn, origem) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'simples', ?, ?, '5102', '6102', '102', 0)
+            INSERT INTO produtos (filial_id, codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, ncm, cean, cfop_interno, cfop_externo, csosn, origem, estoque_minimo) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'simples', ?, ?, '5102', '6102', '102', 0, 1)
         ");
         $stmtUpdate = $db->prepare("
             UPDATE produtos SET nome = ?, categoria = ?, preco_custo = ?, preco_venda = ?, quantidade = quantidade + ?, unidade = ?, ncm = ? WHERE codigo = ? AND filial_id = ?
