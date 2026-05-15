@@ -69,7 +69,9 @@ function conexao_ajax_status(int $empresaId): never
         ]);
     }
 
-    $response = whatsapp_bridge_request('GET', '/status');
+    $currentConnection = whatsapp_get_connection($empresaId);
+    $instanceName = (string) ($currentConnection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId));
+    $response = whatsapp_bridge_request('GET', whatsapp_bridge_instance_path('/status', $instanceName));
 
     if (!$response['ok']) {
         whatsapp_update_connection($empresaId, [
@@ -91,8 +93,6 @@ function conexao_ajax_status(int $empresaId): never
     $appStatus = whatsapp_extract_bridge_state($data);
     $connected = $appStatus === 'conectado';
     $connectedNumber = whatsapp_normalize_phone((string) ($data['number'] ?? ''));
-    $currentConnection = whatsapp_get_connection($empresaId);
-
     whatsapp_update_connection($empresaId, [
         'status' => $appStatus,
         'telefone_conectado' => $connectedNumber ?: ($currentConnection['telefone_conectado'] ?? null),
@@ -141,7 +141,9 @@ function conexao_ajax_qrcode(int $empresaId): never
         ]);
     }
 
-    $response = whatsapp_bridge_request('GET', '/qrcode');
+    $connection = whatsapp_get_connection($empresaId);
+    $instanceName = (string) ($connection['instancia_nome'] ?? whatsapp_default_instance_name($empresaId));
+    $response = whatsapp_bridge_request('GET', whatsapp_bridge_instance_path('/qrcode', $instanceName));
 
     if (!$response['ok']) {
         whatsapp_update_connection($empresaId, [

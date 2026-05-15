@@ -26,6 +26,13 @@ try {
         echo "Coluna valor_unitario adicionada em itens_oficio.<br>";
     }
 
+    $stmt = $pdo->query("SHOW COLUMNS FROM itens_aquisicao LIKE 'oficio_item_id'");
+    if (!$stmt->fetch()) {
+        $pdo->exec("ALTER TABLE itens_aquisicao ADD COLUMN oficio_item_id INT NULL AFTER aquisicao_id");
+        $pdo->exec("CREATE INDEX idx_itens_aquisicao_oficio_item ON itens_aquisicao (oficio_item_id)");
+        echo "Coluna oficio_item_id adicionada em itens_aquisicao.<br>";
+    }
+
     echo "<h1>Migracao de producao concluida com sucesso!</h1>";
 
 } catch (PDOException $e) {

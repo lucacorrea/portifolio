@@ -56,6 +56,12 @@ try {
                 }
             }
         }
+
+        $query = $pdo->query("SHOW COLUMNS FROM itens_aquisicao LIKE 'oficio_item_id'");
+        if (!$query->fetch()) {
+            $pdo->exec("ALTER TABLE itens_aquisicao ADD COLUMN oficio_item_id INT NULL AFTER aquisicao_id");
+            $pdo->exec("CREATE INDEX idx_itens_aquisicao_oficio_item ON itens_aquisicao (oficio_item_id)");
+        }
     } catch (PDOException $e) {
         // Ignora erros se houver falhas menores na migração
     }

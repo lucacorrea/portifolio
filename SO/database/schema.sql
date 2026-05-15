@@ -73,9 +73,11 @@ CREATE TABLE IF NOT EXISTS aquisicoes (
 CREATE TABLE IF NOT EXISTS itens_aquisicao (
     id INT AUTO_INCREMENT PRIMARY KEY,
     aquisicao_id INT NOT NULL,
+    oficio_item_id INT NULL,
     produto VARCHAR(255) NOT NULL,
     quantidade DECIMAL(10,2) NOT NULL,
     valor_unitario DECIMAL(15,2) NOT NULL,
+    INDEX idx_itens_aquisicao_oficio_item (oficio_item_id),
     FOREIGN KEY (aquisicao_id) REFERENCES aquisicoes(id) ON DELETE CASCADE
 );
 
@@ -108,4 +110,3 @@ INSERT INTO usuarios (nome, usuario, senha, nivel) VALUES
 ('Suporte Técnico', 'suporte', '$2y$10$0Aw4ie.N1y1atk5dLMohYOVQGOKS04fQK95ggn6HN2AGMhvGqbv2O', 'SUPORTE'),
 ('Prefeito Administrativo', 'admin', '$2y$10$0Aw4ie.N1y1atk5dLMohYOVQGOKS04fQK95ggn6HN2AGMhvGqbv2O', 'ADMIN'),
 ('Recepcionista Central', 'func', '$2y$10$0Aw4ie.N1y1atk5dLMohYOVQGOKS04fQK95ggn6HN2AGMhvGqbv2O', 'FUNCIONARIO');
-INSERT INTO itens_aquisicao (aquisicao_id, produto, quantidade, valor_unitario) VALUES

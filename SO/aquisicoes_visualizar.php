@@ -48,7 +48,13 @@ $stmt_items = $pdo->prepare("
                 SELECT io.unidade
                 FROM itens_oficio io
                 WHERE io.oficio_id = :oficio_id
-                  AND TRIM(UPPER(io.produto)) = TRIM(UPPER(ia.produto))
+                  AND (
+                      io.id = ia.oficio_item_id
+                      OR (
+                          ia.oficio_item_id IS NULL
+                          AND TRIM(UPPER(io.produto)) = TRIM(UPPER(ia.produto))
+                      )
+                  )
                 ORDER BY io.id ASC
                 LIMIT 1
             ),
