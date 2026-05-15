@@ -339,6 +339,7 @@ try {
                 } else {
                     $delimiter = ",";
                 }
+                
 
                 $mapeamento = [];
                 foreach ($cabecalho as $index => $col) {

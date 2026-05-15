@@ -28,28 +28,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
         
         $stmtCheck = $db->prepare("SELECT id FROM produtos WHERE codigo = ?");
         $stmtInsert = $db->prepare("
-            INSERT INTO produtos (codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, cean, cfop_interno, cfop_externo, csosn, origem) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'simples', ?, '5102', '6102', '102', 0)
+            INSERT INTO produtos (codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, ncm, cean, cfop_interno, cfop_externo, csosn, origem) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'simples', ?, ?, '5102', '6102', '102', 0)
         ");
         $stmtUpdate = $db->prepare("
-            UPDATE produtos SET nome = ?, categoria = ?, preco_custo = ?, preco_venda = ?, quantidade = quantidade + ?, unidade = ? WHERE codigo = ?
+            UPDATE produtos SET nome = ?, categoria = ?, preco_custo = ?, preco_venda = ?, quantidade = quantidade + ?, unidade = ?, ncm = ? WHERE codigo = ?
         ");
 
         foreach ($produtos as $p) {
             $nome = $p['nome'];
             $codigo = $p['codigo'] ?: ('IMP' . time() . rand(100, 999));
-            $categoria = $p['categoria'];
+            $categoria = $p['categoria'] ?: 'Diversos';
             $precoCusto = (float)$p['preco_custo'];
             $precoVenda = (float)$p['preco_venda'];
             $estoque = (float)$p['estoque'];
-            $unidade = substr($p['unidade'], 0, 3);
+            $unidade = substr($p['unidade'] ?: 'UN', 0, 3);
+            $ncm = $p['ncm'] ?: '';
 
             $stmtCheck->execute([$codigo]);
             if ($stmtCheck->fetchColumn()) {
-                $stmtUpdate->execute([$nome, $categoria, $precoCusto, $precoVenda, $estoque, $unidade, $codigo]);
+                $stmtUpdate->execute([$nome, $categoria, $precoCusto, $precoVenda, $estoque, $unidade, $ncm, $codigo]);
                 $updated++;
             } else {
-                $stmtInsert->execute([$codigo, $nome, $unidade, $categoria, $precoCusto, $precoVenda, $estoque, $codigo]);
+                $stmtInsert->execute([$codigo, $nome, $unidade, $categoria, $precoCusto, $precoVenda, $estoque, 'simples', $ncm, $codigo]);
                 $inserted++;
             }
         }
@@ -175,15 +176,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                     let sheetCount = 0;
 
                     rows.forEach(row => {
-                        // Relaxamos a regra: basta ter um nome na coluna B (index 1)
-                        if (!row || row.length < 2) return;
+                        // Colunas: [0]# [1]Código [2]Produto [3]NCM [4]Estoque [5]Unidade [6]Ult.Movim. [7]Preço Custo [8]Total Custo [9]Preço Venda [10]Total Venda
+                        if (!row || row.length < 3) return;
                         
-                        const nome = row[1] ? row[1].toString().trim() : '';
-                        const codigo = row[2] ? row[2].toString().trim() : '';
+                        const codigo = row[1] ? row[1].toString().trim() : '';
+                        const nome   = row[2] ? row[2].toString().trim() : '';
                         
-                        // Ignora se for cabeçalho
+                        // Ignora linhas de cabeçalho ou sem produto
                         if (!nome || nome.toLowerCase() === 'produto' || nome.toLowerCase().includes('tabela')) return;
                         if (nome.toLowerCase().includes('código') || nome.toLowerCase().includes('venda')) return;
+                        if (!codigo || codigo.toLowerCase() === 'código' || codigo.toLowerCase() === 'codigo') return;
                         
                         // Limpa números formato PT-BR
                         const parseNumber = (val) => {
@@ -194,13 +196,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                         };
 
                         todosOsProdutos.push({
-                            nome: nome,
-                            codigo: codigo || 'IMP-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
-                            categoria: row[3] ? row[3].toString().trim() : 'Diversos',
-                            estoque: parseNumber(row[5]),
+                            codigo:      codigo || 'IMP-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
+                            nome:        nome,
+                            ncm:         row[3] ? row[3].toString().trim() : '',
+                            estoque:     parseNumber(row[4]),
+                            unidade:     row[5] ? row[5].toString().trim() : 'UN',
                             preco_custo: parseNumber(row[7]),
-                            preco_venda: parseNumber(row[8]),
-                            unidade: row[9] ? row[9].toString().trim() : 'UN'
+                            preco_venda: parseNumber(row[9]),
+                            categoria:   'Diversos'
                         });
                         sheetCount++;
                         rowCount++;
