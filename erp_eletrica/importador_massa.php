@@ -193,21 +193,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                         if (hasCodigo && hasProduto) {
                             headerRowIdx = r;
                             rowStr.forEach((cell, idx) => {
-                                if (cell.includes('código') || cell === 'codigo')          idxCodigo  = idx;
-                                if ((cell.includes('produto') || cell === 'nome') && idxNome < 0) idxNome = idx;
-                                if (cell === 'ncm')                                        idxNcm     = idx;
-                                if (cell.includes('estoque') || cell.includes('saldo'))   idxEstoque = idx;
-                                if (cell.includes('unidade'))                              idxUnidade = idx;
-                                if (cell.includes('custo') && !cell.includes('total'))    idxCusto   = idx;
-                                if (cell.includes('venda') && !cell.includes('total'))    idxVenda   = idx;
+                                // IMPORTANTE: else if garante que uma célula como
+                                // "Código do Produto" não vire código E nome ao mesmo tempo
+                                if (cell.includes('código') || cell === 'codigo') {
+                                    idxCodigo = idx;
+                                } else if ((cell.includes('produto') || cell === 'nome') && idxNome < 0) {
+                                    idxNome = idx;
+                                } else if (cell === 'ncm') {
+                                    idxNcm = idx;
+                                } else if (cell.includes('estoque') || cell.includes('saldo')) {
+                                    idxEstoque = idx;
+                                } else if (cell.includes('unidade')) {
+                                    idxUnidade = idx;
+                                } else if (cell.includes('custo') && !cell.includes('total')) {
+                                    idxCusto = idx;
+                                } else if (cell.includes('venda') && !cell.includes('total')) {
+                                    idxVenda = idx;
+                                }
                             });
-                            addLog(`✅ Cabeçalho detectado na linha ${r+1}: Código[${idxCodigo}] Produto[${idxNome}] NCM[${idxNcm}] Estoque[${idxEstoque}] Unidade[${idxUnidade}] Custo[${idxCusto}] Venda[${idxVenda}]`);
+                            addLog(`✅ Cabeçalho L${r+1}: Cód[${idxCodigo}] Nome[${idxNome}] NCM[${idxNcm}] Estoque[${idxEstoque}] Unidade[${idxUnidade}] Custo[${idxCusto}] Venda[${idxVenda}]`);
                             break;
                         }
                     }
 
-                    // Fallback para índices fixos se não achou cabeçalho
-                    if (idxCodigo < 0) { idxCodigo=1; idxNome=2; idxNcm=3; idxEstoque=4; idxUnidade=5; idxCusto=7; idxVenda=9; }
+                    // Fallback para índices fixos se algum campo crítico não foi detectado
+                    if (idxCodigo < 0 || idxNome < 0) { idxCodigo=1; idxNome=2; idxNcm=3; idxEstoque=4; idxUnidade=5; idxCusto=7; idxVenda=9; }
 
                     rows.forEach((row, rowIdx) => {
                         if (rowIdx <= headerRowIdx) return; // pula título e cabeçalho
