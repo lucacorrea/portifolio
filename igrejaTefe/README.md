@@ -69,3 +69,6 @@ SOURCE database/seeds/001_categorias_padrao.sql
 
 Datas futuras devem ser bloqueadas no backend. O banco valida integridade, valores positivos,
 relacionamentos e isolamento estrutural por `igreja_id`.
+
+Para criar um usuário suporte, use o seed `database/seeds/002_usuario_suporte.sql` com um hash
+gerado localmente. Não coloque a senha em texto puro nos arquivos do projeto.
