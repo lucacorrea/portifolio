@@ -111,6 +111,12 @@ $makeInitials = static function (string $name): string {
                     <i data-lucide="file-text"></i>
                     <span>Relatórios</span>
                 </a>
+                <?php if ($userRole === 'admin'): ?>
+                    <a class="nav-item<?= $isActive('/usuarios') ?>" href="<?= View::e(url('/usuarios')) ?>">
+                        <i data-lucide="users"></i>
+                        <span>Usuários</span>
+                    </a>
+                <?php endif; ?>
                 <a class="nav-item<?= $isActive('/configuracoes') ?>" href="<?= View::e(url('/configuracoes')) ?>">
                     <i data-lucide="settings"></i>
                     <span>Configurações</span>

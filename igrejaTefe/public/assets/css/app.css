@@ -869,6 +869,10 @@ button {
     background: linear-gradient(135deg, #ffffff 0%, rgba(238, 244, 248, 0.92) 55%, rgba(255, 243, 204, 0.48) 100%);
 }
 
+.users-hero {
+    background: linear-gradient(135deg, #ffffff 0%, rgba(221, 235, 255, 0.74) 54%, rgba(239, 228, 255, 0.62) 100%);
+}
+
 .module-hero::after {
     content: "";
     position: absolute;
@@ -995,6 +999,86 @@ button {
     cursor: not-allowed;
     opacity: 0.62;
     transform: none;
+}
+
+.role-helper-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.role-helper-grid div {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fbfdff;
+    padding: 14px;
+}
+
+.role-helper-grid strong,
+.role-helper-grid span {
+    display: block;
+}
+
+.role-helper-grid span {
+    margin-top: 3px;
+    color: var(--color-muted);
+}
+
+.user-row-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+}
+
+.small-avatar {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border-radius: 11px;
+}
+
+.table-action-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.link-button {
+    border: 0;
+    background: transparent;
+    color: var(--color-primary-dark);
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0;
+}
+
+.danger-link {
+    color: var(--color-danger);
+}
+
+.check-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+}
+
+.check-row input {
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+    accent-color: var(--color-primary);
+}
+
+.form-note {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-soft);
+    color: var(--color-muted);
+    margin: 0;
+    padding: 12px 14px;
 }
 
 .category-pill {
@@ -1608,7 +1692,8 @@ button {
     .category-overview-grid,
     .category-grid,
     .filter-fields,
-    .settings-readonly-grid {
+    .settings-readonly-grid,
+    .role-helper-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 

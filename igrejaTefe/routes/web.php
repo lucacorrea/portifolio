@@ -10,8 +10,10 @@ use App\Controllers\EntradaController;
 use App\Controllers\HomeController;
 use App\Controllers\RelatorioController;
 use App\Controllers\SaidaController;
+use App\Controllers\UsuarioController;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\CsrfMiddleware;
+use App\Middleware\RoleMiddleware;
 use App\Middleware\TenantMiddleware;
 
 $router->get('/', [HomeController::class, 'index']);
@@ -96,6 +98,52 @@ $router->get('/relatorios/exportar/excel', [RelatorioController::class, 'exportE
 $router->get('/relatorios/exportar/pdf', [RelatorioController::class, 'exportPdf'], [
     AuthMiddleware::class,
     TenantMiddleware::class,
+]);
+
+$router->get('/usuarios', [UsuarioController::class, 'index'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    RoleMiddleware::allow(['admin']),
+]);
+
+$router->get('/usuarios/criar', [UsuarioController::class, 'create'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    RoleMiddleware::allow(['admin']),
+]);
+
+$router->post('/usuarios', [UsuarioController::class, 'store'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    RoleMiddleware::allow(['admin']),
+    CsrfMiddleware::class,
+]);
+
+$router->get('/usuarios/editar', [UsuarioController::class, 'edit'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    RoleMiddleware::allow(['admin']),
+]);
+
+$router->post('/usuarios/atualizar', [UsuarioController::class, 'update'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    RoleMiddleware::allow(['admin']),
+    CsrfMiddleware::class,
+]);
+
+$router->post('/usuarios/desativar', [UsuarioController::class, 'deactivate'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    RoleMiddleware::allow(['admin']),
+    CsrfMiddleware::class,
+]);
+
+$router->post('/usuarios/ativar', [UsuarioController::class, 'activate'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    RoleMiddleware::allow(['admin']),
+    CsrfMiddleware::class,
 ]);
 
 $router->get('/configuracoes', [ConfiguracaoController::class, 'index'], [
