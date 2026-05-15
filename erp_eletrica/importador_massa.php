@@ -23,34 +23,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     $updated = 0;
     $errors = 0;
     
+    $filialId = (int)($_SESSION['filial_id'] ?? 1);
+    
     try {
         $db->beginTransaction();
         
-        $stmtCheck = $db->prepare("SELECT id FROM produtos WHERE codigo = ?");
+        $stmtCheck  = $db->prepare("SELECT id FROM produtos WHERE codigo = ? AND filial_id = ?");
         $stmtInsert = $db->prepare("
-            INSERT INTO produtos (codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, ncm, cean, cfop_interno, cfop_externo, csosn, origem) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'simples', ?, ?, '5102', '6102', '102', 0)
+            INSERT INTO produtos (filial_id, codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, ncm, cean, cfop_interno, cfop_externo, csosn, origem) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'simples', ?, ?, '5102', '6102', '102', 0)
         ");
         $stmtUpdate = $db->prepare("
-            UPDATE produtos SET nome = ?, categoria = ?, preco_custo = ?, preco_venda = ?, quantidade = quantidade + ?, unidade = ?, ncm = ? WHERE codigo = ?
+            UPDATE produtos SET nome = ?, categoria = ?, preco_custo = ?, preco_venda = ?, quantidade = quantidade + ?, unidade = ?, ncm = ? WHERE codigo = ? AND filial_id = ?
         ");
 
         foreach ($produtos as $p) {
-            $nome = $p['nome'];
-            $codigo = $p['codigo'] ?: ('IMP' . time() . rand(100, 999));
+            $nome      = $p['nome'];
+            $codigo    = $p['codigo'] ?: ('IMP' . time() . rand(100, 999));
             $categoria = $p['categoria'] ?: 'Diversos';
             $precoCusto = (float)$p['preco_custo'];
             $precoVenda = (float)$p['preco_venda'];
-            $estoque = (float)$p['estoque'];
-            $unidade = substr($p['unidade'] ?: 'UN', 0, 3);
-            $ncm = $p['ncm'] ?: '';
+            $estoque    = (float)$p['estoque'];
+            $unidade    = substr($p['unidade'] ?: 'UN', 0, 3);
+            $ncm        = $p['ncm'] ?: '';
 
-            $stmtCheck->execute([$codigo]);
+            $stmtCheck->execute([$codigo, $filialId]);
             if ($stmtCheck->fetchColumn()) {
-                $stmtUpdate->execute([$nome, $categoria, $precoCusto, $precoVenda, $estoque, $unidade, $ncm, $codigo]);
+                $stmtUpdate->execute([$nome, $categoria, $precoCusto, $precoVenda, $estoque, $unidade, $ncm, $codigo, $filialId]);
                 $updated++;
             } else {
-                $stmtInsert->execute([$codigo, $nome, $unidade, $categoria, $precoCusto, $precoVenda, $estoque, 'simples', $ncm, $codigo]);
+                // filial_id, codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, ncm, cean
+                $stmtInsert->execute([$filialId, $codigo, $nome, $unidade, $categoria, $precoCusto, $precoVenda, $estoque, $ncm, $codigo]);
                 $inserted++;
             }
         }
@@ -186,17 +189,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                         const rowStr = row.map(c => c ? c.toString().toLowerCase() : '');
                         // Procura colunas pelos nomes do cabeçalho
                         const hasCodigo  = rowStr.some(c => c.includes('código') || c === 'codigo');
-                        const hasProduto = rowStr.some(c => c === 'produto' || c.includes('produto'));
+                        const hasProduto = rowStr.some(c => c.includes('produto') || c === 'nome');
                         if (hasCodigo && hasProduto) {
                             headerRowIdx = r;
                             rowStr.forEach((cell, idx) => {
-                                if (cell.includes('código') || cell === 'codigo') idxCodigo  = idx;
-                                if (cell === 'produto' || cell === 'nome')        idxNome    = idx;
-                                if (cell === 'ncm')                               idxNcm     = idx;
-                                if (cell === 'estoque')                           idxEstoque = idx;
-                                if (cell.includes('unidade'))                     idxUnidade = idx;
-                                if (cell.includes('custo') && !cell.includes('total')) idxCusto = idx;
-                                if (cell.includes('venda') && !cell.includes('total')) idxVenda = idx;
+                                if (cell.includes('código') || cell === 'codigo')          idxCodigo  = idx;
+                                if ((cell.includes('produto') || cell === 'nome') && idxNome < 0) idxNome = idx;
+                                if (cell === 'ncm')                                        idxNcm     = idx;
+                                if (cell.includes('estoque') || cell.includes('saldo'))   idxEstoque = idx;
+                                if (cell.includes('unidade'))                              idxUnidade = idx;
+                                if (cell.includes('custo') && !cell.includes('total'))    idxCusto   = idx;
+                                if (cell.includes('venda') && !cell.includes('total'))    idxVenda   = idx;
                             });
                             addLog(`✅ Cabeçalho detectado na linha ${r+1}: Código[${idxCodigo}] Produto[${idxNome}] NCM[${idxNcm}] Estoque[${idxEstoque}] Unidade[${idxUnidade}] Custo[${idxCusto}] Venda[${idxVenda}]`);
                             break;
