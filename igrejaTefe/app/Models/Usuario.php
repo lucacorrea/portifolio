@@ -8,19 +8,17 @@ final class Usuario extends Model
 {
     protected string $table = 'usuarios';
 
-    public function findActiveByEmailAndIgreja(int $igrejaId, string $email): ?array
+    public function findActiveByEmail(string $email): ?array
     {
         $statement = $this->db->prepare(
             'SELECT id, igreja_id, nome, email, senha_hash, papel, ativo
              FROM usuarios
-             WHERE igreja_id = :igreja_id
-               AND email = :email
+             WHERE email = :email
                AND ativo = 1
              LIMIT 1'
         );
 
         $statement->execute([
-            'igreja_id' => $igrejaId,
             'email' => strtolower(trim($email)),
         ]);
 

@@ -14,4 +14,5 @@ CREATE DATABASE IF NOT EXISTS igreja_tefe
 USE igreja_tefe;
 
 SOURCE database/migrations/001_create_core_schema.sql
+SOURCE database/migrations/002_enforce_unique_user_email.sql
 SOURCE database/seeds/001_categorias_padrao.sql

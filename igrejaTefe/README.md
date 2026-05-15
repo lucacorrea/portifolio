@@ -77,8 +77,10 @@ gerado localmente. Não coloque a senha em texto puro nos arquivos do projeto.
 
 Fluxo implementado:
 
-- Página principal com link para `/login`.
-- Login por `igreja_id`, email e senha.
+- Página principal redirecionando para `/login`.
+- Login por email e senha.
+- `igreja_id` carregado automaticamente a partir do usuário encontrado pelo email.
+- Email de usuário é globalmente único no banco.
 - Validação de senha com `password_verify()`.
 - Regeneração da sessão após autenticação.
 - Proteção de rotas privadas por sessão.
@@ -95,7 +97,9 @@ Para testar com o usuário suporte:
 5. Acesse `/login` com:
 
 ```text
-Código da igreja: 1
 Email: suporte@igreja.local
 Senha: a senha usada para gerar o hash
 ```
+
+Observação: o banco impede emails duplicados em `usuarios`, então cada email identifica uma única
+igreja no login.

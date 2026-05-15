@@ -8,7 +8,7 @@ $old = is_array($old ?? null) ? $old : [];
 <div class="auth-copy">
     <p class="eyebrow">Acesso</p>
     <h1>Entrar</h1>
-    <p>Use seu email, senha e o código da igreja para acessar o painel financeiro.</p>
+    <p>Use o email cadastrado na igreja e sua senha para acessar o painel financeiro.</p>
 </div>
 
 <?php if (!empty($error)): ?>
@@ -19,19 +19,6 @@ $old = is_array($old ?? null) ? $old : [];
 
 <form class="form-stack" method="post" action="<?= View::e(url('/login')) ?>">
     <input type="hidden" name="_csrf_token" value="<?= Session::csrfToken() ?>">
-
-    <label>
-        Código da igreja
-        <input
-            type="number"
-            name="igreja_id"
-            min="1"
-            inputmode="numeric"
-            autocomplete="organization"
-            value="<?= View::e($old['igreja_id'] ?? '1') ?>"
-            required
-        >
-    </label>
 
     <label>
         Email

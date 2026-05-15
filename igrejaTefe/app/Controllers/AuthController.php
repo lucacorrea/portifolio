@@ -20,10 +20,6 @@ final class AuthController
 
     public function login(): Response
     {
-        if (Session::isAuthenticated()) {
-            return Response::redirect(url('/dashboard'));
-        }
-
         return Response::html(View::render('auth/login', [
             'title' => 'Entrar',
             'error' => Session::pullFlash('auth_error'),
@@ -40,12 +36,10 @@ final class AuthController
 
     public function attemptLogin(): Response
     {
-        $igrejaId = (int) ($_POST['igreja_id'] ?? 0);
         $email = trim((string) ($_POST['email'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
 
         $user = $this->auth->attempt(
-            $igrejaId,
             $email,
             $password,
             $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
@@ -55,7 +49,6 @@ final class AuthController
         if ($user === null) {
             Session::flash('auth_error', 'Email ou senha inválidos.');
             Session::flash('old_login', [
-                'igreja_id' => $igrejaId > 0 ? (string) $igrejaId : '',
                 'email' => $email,
             ]);
 

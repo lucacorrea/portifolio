@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     atualizado_em TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id),
-    UNIQUE KEY uk_usuarios_igreja_email (igreja_id, email),
+    UNIQUE KEY uk_usuarios_email (email),
     UNIQUE KEY uk_usuarios_id_igreja (id, igreja_id),
     KEY idx_usuarios_igreja (igreja_id),
     KEY idx_usuarios_ativo (ativo),

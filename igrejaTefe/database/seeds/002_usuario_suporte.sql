@@ -9,8 +9,7 @@
 --   SET @suporte_nome := 'Suporte';
 --   SET @suporte_email := 'suporte@igreja.local';
 --
--- This script never stores a plain-text password and is idempotent by
--- (igreja_id, email).
+-- This script never stores a plain-text password and is idempotent by email.
 
 SET @suporte_igreja_id := COALESCE(@suporte_igreja_id, 1);
 SET @suporte_nome := COALESCE(NULLIF(@suporte_nome, ''), 'Suporte');
@@ -22,6 +21,12 @@ SELECT
         WHEN @suporte_senha_hash IS NULL THEN 'ERRO: defina @suporte_senha_hash antes de executar o seed.'
         WHEN CHAR_LENGTH(@suporte_senha_hash) < 50 THEN 'ERRO: @suporte_senha_hash parece invalido para password_hash.'
         WHEN NOT EXISTS (SELECT 1 FROM igrejas WHERE id = @suporte_igreja_id) THEN 'ERRO: @suporte_igreja_id nao existe em igrejas.'
+        WHEN EXISTS (
+            SELECT 1
+            FROM usuarios
+            WHERE email = @suporte_email
+              AND igreja_id <> @suporte_igreja_id
+        ) THEN 'ERRO: email de suporte ja pertence a outra igreja.'
         ELSE 'OK: seed de suporte pronto para inserir/atualizar usuario.'
     END AS validacao_seed_suporte;
 
@@ -47,14 +52,20 @@ WHERE @suporte_senha_hash IS NOT NULL
       FROM igrejas
       WHERE id = @suporte_igreja_id
   )
+  AND NOT EXISTS (
+      SELECT 1
+      FROM usuarios
+      WHERE email = @suporte_email
+        AND igreja_id <> @suporte_igreja_id
+  )
 ON DUPLICATE KEY UPDATE
-    nome = @suporte_nome,
-    senha_hash = @suporte_senha_hash,
-    papel = 'admin',
-    ativo = 1,
+    nome = IF(igreja_id = @suporte_igreja_id, @suporte_nome, nome),
+    senha_hash = IF(igreja_id = @suporte_igreja_id, @suporte_senha_hash, senha_hash),
+    papel = IF(igreja_id = @suporte_igreja_id, 'admin', papel),
+    ativo = IF(igreja_id = @suporte_igreja_id, 1, ativo),
     atualizado_em = CURRENT_TIMESTAMP;
 
 SELECT id, igreja_id, nome, email, papel, ativo, criado_em, atualizado_em
 FROM usuarios
-WHERE igreja_id = @suporte_igreja_id
-  AND email = @suporte_email;
+WHERE email = @suporte_email
+  AND igreja_id = @suporte_igreja_id;

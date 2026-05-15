@@ -19,11 +19,11 @@ final class AuthService
         $this->usuarios = $usuarios;
     }
 
-    public function attempt(int $igrejaId, string $email, string $password, string $ip, string $userAgent): ?array
+    public function attempt(string $email, string $password, string $ip, string $userAgent): ?array
     {
         $email = strtolower(trim($email));
 
-        if ($igrejaId <= 0 || $email === '' || $password === '') {
+        if ($email === '' || $password === '') {
             return null;
         }
 
@@ -31,7 +31,7 @@ final class AuthService
             return null;
         }
 
-        $user = $this->usuarios()->findActiveByEmailAndIgreja($igrejaId, $email);
+        $user = $this->usuarios()->findActiveByEmail($email);
         $validPassword = $user !== null && password_verify($password, (string) $user['senha_hash']);
 
         $this->recordLoginAttempt($email, $ip, $userAgent, $validPassword);
