@@ -1069,6 +1069,10 @@ button {
     padding: 18px;
 }
 
+.advanced-report-filter {
+    align-items: start;
+}
+
 .report-filter-card h2 {
     margin: 0;
     color: var(--color-text);
@@ -1091,6 +1095,7 @@ button {
 }
 
 .filter-fields input,
+.filter-fields select,
 .settings-readonly-grid input {
     width: 100%;
     min-height: 46px;
@@ -1101,12 +1106,37 @@ button {
     padding: 10px 12px;
 }
 
+.filter-fields select {
+    background: var(--color-surface);
+}
+
+.report-filter-fields {
+    grid-template-columns: 1fr;
+}
+
+.report-filter-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .report-metrics {
     grid-template-columns: 1fr;
 }
 
 .report-grid {
     margin-top: 18px;
+}
+
+.report-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.secondary-report-grid {
+    align-items: start;
 }
 
 .report-insight-list {
@@ -1142,6 +1172,121 @@ button {
 .settings-preference-list {
     display: grid;
     gap: 10px;
+}
+
+.detailed-category-list .category-expense-item {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+}
+
+.detailed-category-list small {
+    color: var(--color-muted);
+}
+
+.payment-summary-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.payment-summary-grid div {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fbfdff;
+    padding: 14px;
+}
+
+.payment-summary-grid span,
+.payment-summary-grid small {
+    display: block;
+    color: var(--color-muted);
+}
+
+.payment-summary-grid strong {
+    display: block;
+    margin: 5px 0 2px;
+    color: var(--color-text);
+    font-size: 18px;
+}
+
+.daily-flow-list {
+    display: grid;
+    gap: 12px;
+}
+
+.daily-flow-item {
+    display: grid;
+    gap: 7px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fbfdff;
+    padding: 14px;
+}
+
+.daily-flow-item strong {
+    color: var(--color-text);
+}
+
+.daily-flow-item small {
+    color: var(--color-muted);
+}
+
+.daily-bars {
+    display: grid;
+    gap: 5px;
+}
+
+.daily-bar {
+    display: block;
+    height: 9px;
+    min-width: 24px;
+    border-radius: 999px;
+}
+
+.daily-bar-success {
+    background: linear-gradient(90deg, var(--color-success), rgba(47, 175, 143, 0.28));
+}
+
+.daily-bar-danger {
+    background: linear-gradient(90deg, var(--color-danger), rgba(200, 77, 77, 0.24));
+}
+
+.demo-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border: 1px solid rgba(128, 87, 199, 0.18);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, var(--color-purple-soft), #ffffff);
+    box-shadow: var(--shadow-sm);
+    margin-top: 18px;
+    padding: 16px;
+}
+
+.demo-banner svg {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    color: var(--color-purple);
+}
+
+.demo-banner strong,
+.demo-banner span {
+    display: block;
+}
+
+.demo-banner strong {
+    color: var(--color-text);
+}
+
+.demo-banner span {
+    margin-top: 3px;
+    color: var(--color-muted);
+}
+
+.report-alert {
+    margin-top: 18px;
 }
 
 .settings-grid {
@@ -1376,7 +1521,8 @@ button {
     }
 
     .module-hero-actions,
-    .form-actions {
+    .form-actions,
+    .report-filter-actions {
         flex-direction: row;
         flex-wrap: wrap;
     }
@@ -1395,6 +1541,14 @@ button {
     }
 
     .field-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .report-filter-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .payment-summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -1448,7 +1602,23 @@ button {
         align-items: end;
     }
 
+    .advanced-report-filter {
+        grid-template-columns: 1fr;
+    }
+
+    .report-filter-fields {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .report-metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .report-detail-grid {
+        grid-template-columns: minmax(0, 1.25fr) minmax(330px, 0.75fr);
+    }
+
+    .payment-summary-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
@@ -1470,6 +1640,10 @@ button {
 
     .metric-grid {
         grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .metric-grid.report-metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .dashboard-grid {

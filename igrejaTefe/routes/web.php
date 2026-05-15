@@ -88,6 +88,16 @@ $router->get('/relatorios', [RelatorioController::class, 'index'], [
     TenantMiddleware::class,
 ]);
 
+$router->get('/relatorios/exportar/excel', [RelatorioController::class, 'exportExcel'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+]);
+
+$router->get('/relatorios/exportar/pdf', [RelatorioController::class, 'exportPdf'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+]);
+
 $router->get('/configuracoes', [ConfiguracaoController::class, 'index'], [
     AuthMiddleware::class,
     TenantMiddleware::class,
