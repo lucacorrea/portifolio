@@ -1289,6 +1289,59 @@ button {
     margin-top: 18px;
 }
 
+.pagination-nav {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: 1px solid var(--color-border);
+    margin-top: 16px;
+    padding-top: 16px;
+}
+
+.pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pagination-button {
+    display: inline-flex;
+    min-width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: 13px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-weight: 800;
+    transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.pagination-button:hover {
+    border-color: rgba(47, 175, 143, 0.34);
+    transform: translateY(-1px);
+}
+
+.pagination-button.is-active {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: #ffffff;
+}
+
+.pagination-button.is-disabled {
+    color: var(--color-muted);
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.pagination-button svg {
+    width: 18px;
+    height: 18px;
+}
+
 .settings-grid {
     display: grid;
     grid-template-columns: 1fr;

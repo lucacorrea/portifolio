@@ -6,9 +6,18 @@ $summary = is_array($report['summary'] ?? null) ? $report['summary'] : [];
 $categorias = is_array($report['categorias'] ?? null) ? $report['categorias'] : [];
 $formasPagamento = is_array($report['formasPagamento'] ?? null) ? $report['formasPagamento'] : [];
 $daily = is_array($report['daily'] ?? null) ? $report['daily'] : [];
-$movimentos = is_array($report['movimentos'] ?? null) ? $report['movimentos'] : [];
+$movimentos = is_array($report['movimentosPaginados'] ?? null) ? $report['movimentosPaginados'] : [];
+$pagination = is_array($report['pagination'] ?? null) ? $report['pagination'] : [
+    'current_page' => 1,
+    'per_page' => 10,
+    'total' => count($movimentos),
+    'total_pages' => 1,
+    'from' => count($movimentos) > 0 ? 1 : 0,
+    'to' => count($movimentos),
+];
 $categoryOptions = is_array($report['categoryOptions'] ?? null) ? $report['categoryOptions'] : [];
 $query = (string) ($report['query'] ?? '');
+$pageQuery = (string) ($report['pageQuery'] ?? $query);
 $formatCurrency = static fn (float $value): string => 'R$ ' . number_format($value, 2, ',', '.');
 $formatPercent = static fn (float $value): string => number_format($value, 1, ',', '.') . '%';
 $formatDate = static function (?string $date): string {
@@ -28,6 +37,7 @@ $paymentLabel = static function (?string $payment): string {
         'outro' => 'Outro',
     ][$payment] ?? ucfirst(str_replace('_', ' ', $payment));
 };
+$pageUrl = static fn (int $page): string => url('/relatorios?' . ($pageQuery !== '' ? $pageQuery . '&' : '') . 'page=' . $page);
 $maxDaily = 1.0;
 foreach ($daily as $day) {
     $maxDaily = max($maxDaily, (float) $day['entradas'], (float) $day['saidas']);
@@ -118,6 +128,16 @@ foreach ($daily as $day) {
                 <select name="demo">
                     <option value="1" <?= !empty($filters['demo']) ? 'selected' : '' ?>>Demonstração</option>
                     <option value="0" <?= empty($filters['demo']) ? 'selected' : '' ?>>Dados reais</option>
+                </select>
+            </label>
+            <label>
+                Linhas por página
+                <select name="per_page">
+                    <?php foreach ([10, 15, 25, 50] as $perPageOption): ?>
+                        <option value="<?= \App\Core\View::e((string) $perPageOption) ?>" <?= (int) ($filters['per_page'] ?? 10) === $perPageOption ? 'selected' : '' ?>>
+                            <?= \App\Core\View::e((string) $perPageOption) ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
             </label>
         </div>
@@ -301,7 +321,10 @@ foreach ($daily as $day) {
                 <span class="section-kicker">Auditoria</span>
                 <h2>Movimentações detalhadas</h2>
             </div>
-            <span class="badge badge-muted"><?= \App\Core\View::e((string) count($movimentos)) ?> lançamento(s)</span>
+            <span class="badge badge-muted">
+                <?= \App\Core\View::e((string) $pagination['from']) ?>-<?= \App\Core\View::e((string) $pagination['to']) ?>
+                de <?= \App\Core\View::e((string) $pagination['total']) ?>
+            </span>
         </div>
 
         <?php if ($movimentos === []): ?>
@@ -350,6 +373,37 @@ foreach ($daily as $day) {
                     </tbody>
                 </table>
             </div>
+
+            <?php if ((int) $pagination['total_pages'] > 1): ?>
+                <nav class="pagination-nav" aria-label="Paginação de movimentações">
+                    <a class="pagination-button <?= (int) $pagination['current_page'] <= 1 ? 'is-disabled' : '' ?>"
+                       href="<?= \App\Core\View::e($pageUrl(max(1, (int) $pagination['current_page'] - 1))) ?>"
+                       aria-label="Página anterior">
+                        <i data-lucide="chevron-left"></i>
+                    </a>
+
+                    <div class="pagination-pages">
+                        <?php
+                        $currentPage = (int) $pagination['current_page'];
+                        $totalPages = (int) $pagination['total_pages'];
+                        $startPage = max(1, $currentPage - 2);
+                        $endPage = min($totalPages, $currentPage + 2);
+                        ?>
+                        <?php for ($pageNumber = $startPage; $pageNumber <= $endPage; $pageNumber++): ?>
+                            <a class="pagination-button <?= $pageNumber === $currentPage ? 'is-active' : '' ?>"
+                               href="<?= \App\Core\View::e($pageUrl($pageNumber)) ?>">
+                                <?= \App\Core\View::e((string) $pageNumber) ?>
+                            </a>
+                        <?php endfor; ?>
+                    </div>
+
+                    <a class="pagination-button <?= (int) $pagination['current_page'] >= (int) $pagination['total_pages'] ? 'is-disabled' : '' ?>"
+                       href="<?= \App\Core\View::e($pageUrl(min((int) $pagination['total_pages'], (int) $pagination['current_page'] + 1))) ?>"
+                       aria-label="Próxima página">
+                        <i data-lucide="chevron-right"></i>
+                    </a>
+                </nav>
+            <?php endif; ?>
         <?php endif; ?>
     </article>
 </section>

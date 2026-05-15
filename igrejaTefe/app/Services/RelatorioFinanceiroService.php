@@ -33,6 +33,7 @@ final class RelatorioFinanceiroService
 
         $movimentos = $this->applyFilters($movimentos, $filters);
         usort($movimentos, static fn (array $a, array $b): int => strcmp($b['data'], $a['data']));
+        $pagination = $this->paginate($movimentos, $filters);
 
         return [
             'filters' => $filters,
@@ -45,6 +46,8 @@ final class RelatorioFinanceiroService
             'formasPagamento' => $this->paymentSummary($movimentos),
             'daily' => $this->dailySummary($movimentos),
             'movimentos' => $movimentos,
+            'movimentosPaginados' => $pagination['items'],
+            'pagination' => $pagination['meta'],
             'categoryOptions' => $categorias,
             'query' => http_build_query([
                 'data_inicio' => $filters['data_inicio'],
@@ -53,6 +56,15 @@ final class RelatorioFinanceiroService
                 'categoria_id' => $filters['categoria_id'] ?: '',
                 'forma_pagamento' => $filters['forma_pagamento'] ?? '',
                 'demo' => $filters['demo'] ? '1' : '0',
+            ]),
+            'pageQuery' => http_build_query([
+                'data_inicio' => $filters['data_inicio'],
+                'data_fim' => $filters['data_fim'],
+                'tipo' => $filters['tipo'],
+                'categoria_id' => $filters['categoria_id'] ?: '',
+                'forma_pagamento' => $filters['forma_pagamento'] ?? '',
+                'demo' => $filters['demo'] ? '1' : '0',
+                'per_page' => $filters['per_page'],
             ]),
         ];
     }
@@ -68,6 +80,12 @@ final class RelatorioFinanceiroService
 
         $tipo = (string) ($input['tipo'] ?? 'todos');
         $forma = trim((string) ($input['forma_pagamento'] ?? ''));
+        $perPage = (int) ($input['per_page'] ?? 10);
+        $page = (int) ($input['page'] ?? 1);
+
+        if (!in_array($perPage, [10, 15, 25, 50], true)) {
+            $perPage = 10;
+        }
 
         return [
             'data_inicio' => $start,
@@ -76,6 +94,29 @@ final class RelatorioFinanceiroService
             'categoria_id' => max(0, (int) ($input['categoria_id'] ?? 0)),
             'forma_pagamento' => $forma !== '' ? $forma : null,
             'demo' => (string) ($input['demo'] ?? '1') !== '0',
+            'page' => max(1, $page),
+            'per_page' => $perPage,
+        ];
+    }
+
+    private function paginate(array $items, array $filters): array
+    {
+        $total = count($items);
+        $perPage = (int) $filters['per_page'];
+        $totalPages = max(1, (int) ceil($total / $perPage));
+        $currentPage = min((int) $filters['page'], $totalPages);
+        $offset = ($currentPage - 1) * $perPage;
+
+        return [
+            'items' => array_slice($items, $offset, $perPage),
+            'meta' => [
+                'current_page' => $currentPage,
+                'per_page' => $perPage,
+                'total' => $total,
+                'total_pages' => $totalPages,
+                'from' => $total > 0 ? $offset + 1 : 0,
+                'to' => min($offset + $perPage, $total),
+            ],
         ];
     }
 
