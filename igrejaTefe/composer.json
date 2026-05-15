@@ -1,0 +1,21 @@
+{
+  "name": "igreja-tefe/sistema-financeiro",
+  "description": "MVP de sistema financeiro multi-igreja com PHP, MySQL e MVC leve.",
+  "type": "project",
+  "license": "proprietary",
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/"
+    }
+  },
+  "require": {
+    "php": "^8.2"
+  },
+  "scripts": {
+    "serve": "php -S localhost:8000 -t public"
+  },
+  "config": {
+    "sort-packages": true
+  }
+}
+
