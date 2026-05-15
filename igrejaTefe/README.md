@@ -45,3 +45,27 @@ ou:
 ```bash
 php -S localhost:8000 -t public
 ```
+
+## Banco de dados
+
+O SQL inicial está em:
+
+- `database/init.sql`
+- `database/migrations/001_create_core_schema.sql`
+- `database/seeds/001_categorias_padrao.sql`
+
+Para criar a base em MySQL 8+ a partir da raiz do projeto:
+
+```bash
+mysql -u root -p < database/init.sql
+```
+
+O seed de categorias padrão depende de uma igreja já criada. Para aplicar em uma igreja específica:
+
+```sql
+SET @igreja_id := 1;
+SOURCE database/seeds/001_categorias_padrao.sql
+```
+
+Datas futuras devem ser bloqueadas no backend. O banco valida integridade, valores positivos,
+relacionamentos e isolamento estrutural por `igreja_id`.

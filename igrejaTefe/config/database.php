@@ -10,9 +10,9 @@ return [
             'driver' => 'mysql',
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'igreja_tefe'),
-            'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
+            'database' => env('DB_DATABASE', 'u784961086_igrejatefe'),
+            'username' => env('DB_USERNAME', 'u784961086_igrejatefe'),
+            'password' => env('DB_PASSWORD', 'Jsv@Ax0F1f4$'),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'options' => [
