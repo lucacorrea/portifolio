@@ -41,6 +41,3 @@ $old = is_array($old ?? null) ? $old : [];
     <button class="button primary" type="submit">Entrar</button>
 </form>
 
-<p class="auth-link">
-    Primeiro acesso? <a href="<?= View::e(url('/registro')) ?>">Criar igreja e administrador</a>
-</p>
