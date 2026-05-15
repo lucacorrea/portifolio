@@ -80,6 +80,24 @@ if (!function_exists('load_env_file')) {
     }
 }
 
+if (!function_exists('url')) {
+    function url(string $path = ''): string
+    {
+        if ($path !== '' && preg_match('/^https?:\/\//', $path) === 1) {
+            return $path;
+        }
+
+        $basePath = rtrim((string) ($_SERVER['APP_BASE_PATH'] ?? ''), '/');
+        $path = '/' . ltrim($path, '/');
+
+        if ($path === '/') {
+            return $basePath === '' ? '/' : $basePath . '/';
+        }
+
+        return $basePath . $path;
+    }
+}
+
 load_env_file(BASE_PATH . '/.env');
 
 Config::load([
@@ -96,4 +114,3 @@ $router = new Router();
 require BASE_PATH . '/routes/web.php';
 
 return $router;
-

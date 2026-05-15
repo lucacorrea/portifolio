@@ -21,7 +21,7 @@ final class AuthController
     public function login(): Response
     {
         if (Session::isAuthenticated()) {
-            return Response::redirect('/dashboard');
+            return Response::redirect(url('/dashboard'));
         }
 
         return Response::html(View::render('auth/login', [
@@ -59,19 +59,19 @@ final class AuthController
                 'email' => $email,
             ]);
 
-            return Response::redirect('/login');
+            return Response::redirect(url('/login'));
         }
 
         $this->auth->login($user);
 
-        return Response::redirect('/dashboard');
+        return Response::redirect(url('/dashboard'));
     }
 
     public function logout(): Response
     {
         $this->auth->logout();
 
-        return Response::redirect('/login');
+        return Response::redirect(url('/login'));
     }
 
     public function me(): Response

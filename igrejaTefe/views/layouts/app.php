@@ -14,27 +14,27 @@ $userRole = Session::get('user_role');
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= View::e(($title ?? 'Sistema') . ' | ' . $appName) ?></title>
-    <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="<?= \App\Core\View::e(url('/assets/css/app.css')) ?>">
 </head>
 <body>
     <div class="app-shell">
         <aside class="sidebar" data-sidebar>
-            <a class="brand" href="/">
+            <a class="brand" href="<?= \App\Core\View::e(url('/')) ?>">
                 <span class="brand-mark">IT</span>
                 <span><?= View::e($appName) ?></span>
             </a>
 
             <nav class="nav-list" aria-label="Navegação principal">
-                <a href="/dashboard">Dashboard</a>
-                <a href="/entradas">Entradas</a>
-                <a href="/saidas">Saídas</a>
-                <a href="/categorias">Categorias</a>
-                <a href="/relatorios">Relatórios</a>
-                <a href="/configuracoes">Configurações</a>
+                <a href="<?= \App\Core\View::e(url('/dashboard')) ?>">Dashboard</a>
+                <a href="<?= \App\Core\View::e(url('/entradas')) ?>">Entradas</a>
+                <a href="<?= \App\Core\View::e(url('/saidas')) ?>">Saídas</a>
+                <a href="<?= \App\Core\View::e(url('/categorias')) ?>">Categorias</a>
+                <a href="<?= \App\Core\View::e(url('/relatorios')) ?>">Relatórios</a>
+                <a href="<?= \App\Core\View::e(url('/configuracoes')) ?>">Configurações</a>
             </nav>
 
             <?php if ($userName): ?>
-                <form class="logout-form" method="post" action="/logout">
+                <form class="logout-form" method="post" action="<?= \App\Core\View::e(url('/logout')) ?>">
                     <input type="hidden" name="_csrf_token" value="<?= Session::csrfToken() ?>">
                     <button class="button ghost" type="submit">Sair</button>
                 </form>
@@ -64,6 +64,6 @@ $userRole = Session::get('user_role');
         </main>
     </div>
 
-    <script src="/assets/js/app.js" defer></script>
+    <script src="<?= \App\Core\View::e(url('/assets/js/app.js')) ?>" defer></script>
 </body>
 </html>

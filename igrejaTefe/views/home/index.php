@@ -4,7 +4,7 @@
             <p class="eyebrow">Sistema financeiro</p>
             <h1>Gestão financeira para igrejas</h1>
         </div>
-        <a class="button primary" href="/login">Acessar sistema</a>
+        <a class="button primary" href="<?= \App\Core\View::e(url('/login')) ?>">Acessar sistema</a>
     </div>
 
     <div class="status-grid">

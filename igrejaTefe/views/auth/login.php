@@ -17,7 +17,7 @@ $old = is_array($old ?? null) ? $old : [];
     </div>
 <?php endif; ?>
 
-<form class="form-stack" method="post" action="/login">
+<form class="form-stack" method="post" action="<?= View::e(url('/login')) ?>">
     <input type="hidden" name="_csrf_token" value="<?= Session::csrfToken() ?>">
 
     <label>
@@ -55,5 +55,5 @@ $old = is_array($old ?? null) ? $old : [];
 </form>
 
 <p class="auth-link">
-    Primeiro acesso? <a href="/registro">Criar igreja e administrador</a>
+    Primeiro acesso? <a href="<?= View::e(url('/registro')) ?>">Criar igreja e administrador</a>
 </p>

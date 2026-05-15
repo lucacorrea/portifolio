@@ -11,12 +11,12 @@ $appName = Config::get('app.name', 'Igreja Tefe Financeiro');
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= View::e(($title ?? 'Acesso') . ' | ' . $appName) ?></title>
-    <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="<?= \App\Core\View::e(url('/assets/css/app.css')) ?>">
 </head>
 <body class="auth-page">
     <main class="auth-shell">
         <section class="auth-panel">
-            <a class="brand" href="/">
+            <a class="brand" href="<?= \App\Core\View::e(url('/')) ?>">
                 <span class="brand-mark">IT</span>
                 <span><?= View::e($appName) ?></span>
             </a>
@@ -26,4 +26,3 @@ $appName = Config::get('app.name', 'Igreja Tefe Financeiro');
     </main>
 </body>
 </html>
-

@@ -13,7 +13,7 @@ final class AuthMiddleware implements MiddlewareInterface
     public function handle(): ?Response
     {
         if (!Session::get('user_id')) {
-            return Response::redirect('/login');
+            return Response::redirect(url('/login'));
         }
 
         $lifetime = (int) Config::get('security.session.lifetime', 7200);
@@ -22,7 +22,7 @@ final class AuthMiddleware implements MiddlewareInterface
         if ($lifetime > 0 && (time() - $lastActivity) > $lifetime) {
             Session::destroy();
 
-            return Response::redirect('/login');
+            return Response::redirect(url('/login'));
         }
 
         Session::put('last_activity_at', time());

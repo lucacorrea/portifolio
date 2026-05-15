@@ -8,7 +8,7 @@ use App\Core\Session;
     <p>Esta tela criará a igreja e o usuário administrador na fase de autenticação.</p>
 </div>
 
-<form class="form-stack" method="post" action="/registro">
+<form class="form-stack" method="post" action="<?= \App\Core\View::e(url('/registro')) ?>">
     <input type="hidden" name="_csrf_token" value="<?= Session::csrfToken() ?>">
 
     <label>
