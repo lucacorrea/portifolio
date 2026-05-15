@@ -56,4 +56,42 @@ final class Entrada extends Model
             'quantidade' => 0,
         ];
     }
+
+    public function create(array $data): int
+    {
+        $statement = $this->db->prepare(
+            'INSERT INTO entradas (
+                igreja_id,
+                usuario_id,
+                tipo,
+                valor,
+                descricao,
+                contribuinte_nome,
+                forma_pagamento,
+                data_entrada
+            ) VALUES (
+                :igreja_id,
+                :usuario_id,
+                :tipo,
+                :valor,
+                :descricao,
+                :contribuinte_nome,
+                :forma_pagamento,
+                :data_entrada
+            )'
+        );
+
+        $statement->execute([
+            'igreja_id' => $data['igreja_id'],
+            'usuario_id' => $data['usuario_id'],
+            'tipo' => $data['tipo'],
+            'valor' => $data['valor'],
+            'descricao' => $data['descricao'],
+            'contribuinte_nome' => $data['contribuinte_nome'],
+            'forma_pagamento' => $data['forma_pagamento'],
+            'data_entrada' => $data['data_entrada'],
+        ]);
+
+        return (int) $this->db->lastInsertId();
+    }
 }

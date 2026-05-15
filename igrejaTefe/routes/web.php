@@ -45,14 +45,42 @@ $router->get('/entradas/criar', [EntradaController::class, 'create'], [
     TenantMiddleware::class,
 ]);
 
+$router->post('/entradas', [EntradaController::class, 'store'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    CsrfMiddleware::class,
+]);
+
 $router->get('/saidas', [SaidaController::class, 'index'], [
     AuthMiddleware::class,
     TenantMiddleware::class,
 ]);
 
+$router->get('/saidas/criar', [SaidaController::class, 'create'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+]);
+
+$router->post('/saidas', [SaidaController::class, 'store'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    CsrfMiddleware::class,
+]);
+
 $router->get('/categorias', [CategoriaController::class, 'index'], [
     AuthMiddleware::class,
     TenantMiddleware::class,
+]);
+
+$router->get('/categorias/criar', [CategoriaController::class, 'create'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+]);
+
+$router->post('/categorias', [CategoriaController::class, 'store'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+    CsrfMiddleware::class,
 ]);
 
 $router->get('/relatorios', [RelatorioController::class, 'index'], [

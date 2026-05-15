@@ -84,6 +84,10 @@ $formatLabel = static function (?string $value): string {
             <span class="badge badge-success"><?= \App\Core\View::e((string) count($entradas)) ?> registro(s)</span>
         </div>
 
+        <?php if (is_string($success ?? null)): ?>
+            <div class="alert success"><?= \App\Core\View::e($success) ?></div>
+        <?php endif; ?>
+
         <?php if (is_string($loadError ?? null)): ?>
             <div class="alert error"><?= \App\Core\View::e($loadError) ?></div>
         <?php endif; ?>

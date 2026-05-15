@@ -13,6 +13,10 @@ final class Igreja extends Model
         $statement = $this->db->prepare(
             'SELECT id,
                     nome,
+                    cnpj,
+                    email,
+                    telefone,
+                    status,
                     NULL AS logo_url
              FROM igrejas
              WHERE id = :id
