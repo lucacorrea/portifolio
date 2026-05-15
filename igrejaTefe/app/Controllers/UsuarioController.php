@@ -8,6 +8,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\Usuario;
+use App\Support\Pagination;
 use Throwable;
 
 final class UsuarioController
@@ -17,10 +18,22 @@ final class UsuarioController
     public function index(): Response
     {
         $usuarios = [];
+        $summary = [
+            'total' => 0,
+            'ativos' => 0,
+            'inativos' => 0,
+        ];
+        $paginationInput = Pagination::fromRequest($_GET);
+        $pagination = Pagination::meta(0, $paginationInput['page'], $paginationInput['per_page']);
         $loadError = null;
 
         try {
-            $usuarios = (new Usuario())->listByChurch((int) Session::get('igreja_id', 0));
+            $igrejaId = (int) Session::get('igreja_id', 0);
+            $usuario = new Usuario();
+            $summary = $usuario->statusSummaryByChurch($igrejaId);
+            $pagination = Pagination::meta((int) $summary['total'], $paginationInput['page'], $paginationInput['per_page']);
+            $offset = ((int) $pagination['current_page'] - 1) * (int) $pagination['per_page'];
+            $usuarios = $usuario->paginateByChurch($igrejaId, (int) $pagination['per_page'], $offset);
         } catch (Throwable) {
             $loadError = 'Não foi possível carregar os usuários agora.';
         }
@@ -28,6 +41,8 @@ final class UsuarioController
         return Response::html(View::render('usuarios/index', [
             'title' => 'Usuários',
             'usuarios' => $usuarios,
+            'summary' => $summary,
+            'pagination' => $pagination,
             'loadError' => $loadError,
             'success' => Session::pullFlash('usuario_success'),
             'currentUserId' => (int) Session::get('user_id', 0),

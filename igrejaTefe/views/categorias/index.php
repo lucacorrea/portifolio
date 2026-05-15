@@ -1,8 +1,25 @@
 <?php
 
 $categorias = is_array($categorias ?? null) ? $categorias : [];
-$ativas = array_values(array_filter($categorias, static fn (array $categoria): bool => (int) $categoria['ativo'] === 1));
-$inativas = count($categorias) - count($ativas);
+$summary = is_array($summary ?? null) ? $summary : [
+    'total' => count($categorias),
+    'ativas' => count(array_filter($categorias, static fn (array $categoria): bool => (int) $categoria['ativo'] === 1)),
+    'inativas' => 0,
+];
+$summary['inativas'] = (int) ($summary['inativas'] ?? max(0, (int) $summary['total'] - (int) $summary['ativas']));
+$pagination = is_array($pagination ?? null) ? $pagination : [
+    'current_page' => 1,
+    'per_page' => 10,
+    'total' => count($categorias),
+    'total_pages' => 1,
+    'from' => count($categorias) > 0 ? 1 : 0,
+    'to' => count($categorias),
+    'per_page_options' => [10, 15, 25, 50],
+];
+$pageUrl = static fn (int $page): string => url('/categorias?' . http_build_query([
+    'per_page' => (int) $pagination['per_page'],
+    'page' => $page,
+]));
 ?>
 
 <section class="page-section module-page">
@@ -28,13 +45,13 @@ $inativas = count($categorias) - count($ativas);
     <div class="category-overview-grid">
         <article class="status-card">
             <span>Categorias ativas</span>
-            <strong><?= \App\Core\View::e((string) count($ativas)) ?></strong>
+            <strong><?= \App\Core\View::e((string) ((int) $summary['ativas'])) ?></strong>
             <p>Disponíveis para classificar novas saídas.</p>
         </article>
 
         <article class="status-card">
             <span>Inativas</span>
-            <strong><?= \App\Core\View::e((string) $inativas) ?></strong>
+            <strong><?= \App\Core\View::e((string) ((int) $summary['inativas'])) ?></strong>
             <p>Preservadas para histórico e consistência de relatórios.</p>
         </article>
     </div>
@@ -45,7 +62,7 @@ $inativas = count($categorias) - count($ativas);
                 <span class="section-kicker">Organização</span>
                 <h2>Categorias cadastradas</h2>
             </div>
-            <span class="badge badge-muted"><?= \App\Core\View::e((string) count($categorias)) ?> total</span>
+            <span class="badge badge-muted"><?= \App\Core\View::e((string) $pagination['total']) ?> total</span>
         </div>
 
         <?php if (is_string($success ?? null)): ?>
@@ -54,6 +71,27 @@ $inativas = count($categorias) - count($ativas);
 
         <?php if (is_string($loadError ?? null)): ?>
             <div class="alert error"><?= \App\Core\View::e($loadError) ?></div>
+        <?php endif; ?>
+
+        <?php if ((int) $pagination['total'] > 0): ?>
+            <div class="table-toolbar">
+                <span>
+                    Exibindo <?= \App\Core\View::e((string) $pagination['from']) ?>-<?= \App\Core\View::e((string) $pagination['to']) ?>
+                    de <?= \App\Core\View::e((string) $pagination['total']) ?>
+                </span>
+                <form class="table-page-size" method="get" action="<?= \App\Core\View::e(url('/categorias')) ?>">
+                    <label>
+                        Linhas
+                        <select name="per_page" onchange="this.form.submit()">
+                            <?php foreach ($pagination['per_page_options'] as $perPageOption): ?>
+                                <option value="<?= \App\Core\View::e((string) $perPageOption) ?>" <?= (int) $pagination['per_page'] === (int) $perPageOption ? 'selected' : '' ?>>
+                                    <?= \App\Core\View::e((string) $perPageOption) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                </form>
+            </div>
         <?php endif; ?>
 
         <?php if ($categorias === []): ?>
@@ -81,6 +119,37 @@ $inativas = count($categorias) - count($ativas);
                     </article>
                 <?php endforeach; ?>
             </div>
+
+            <?php if ((int) $pagination['total_pages'] > 1): ?>
+                <nav class="pagination-nav" aria-label="Paginação de categorias">
+                    <a class="pagination-button <?= (int) $pagination['current_page'] <= 1 ? 'is-disabled' : '' ?>"
+                       href="<?= \App\Core\View::e($pageUrl(max(1, (int) $pagination['current_page'] - 1))) ?>"
+                       aria-label="Página anterior">
+                        <i data-lucide="chevron-left"></i>
+                    </a>
+
+                    <div class="pagination-pages">
+                        <?php
+                        $currentPage = (int) $pagination['current_page'];
+                        $totalPages = (int) $pagination['total_pages'];
+                        $startPage = max(1, $currentPage - 2);
+                        $endPage = min($totalPages, $currentPage + 2);
+                        ?>
+                        <?php for ($pageNumber = $startPage; $pageNumber <= $endPage; $pageNumber++): ?>
+                            <a class="pagination-button <?= $pageNumber === $currentPage ? 'is-active' : '' ?>"
+                               href="<?= \App\Core\View::e($pageUrl($pageNumber)) ?>">
+                                <?= \App\Core\View::e((string) $pageNumber) ?>
+                            </a>
+                        <?php endfor; ?>
+                    </div>
+
+                    <a class="pagination-button <?= (int) $pagination['current_page'] >= (int) $pagination['total_pages'] ? 'is-disabled' : '' ?>"
+                       href="<?= \App\Core\View::e($pageUrl(min((int) $pagination['total_pages'], (int) $pagination['current_page'] + 1))) ?>"
+                       aria-label="Próxima página">
+                        <i data-lucide="chevron-right"></i>
+                    </a>
+                </nav>
+            <?php endif; ?>
         <?php endif; ?>
     </article>
 </section>

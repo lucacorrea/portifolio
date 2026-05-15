@@ -8,6 +8,53 @@ final class Saida extends Model
 {
     protected string $table = 'saidas';
 
+    public function paginateByChurch(int $igrejaId, int $limit, int $offset): array
+    {
+        $limit = max(1, min($limit, 100));
+        $offset = max(0, $offset);
+
+        $statement = $this->db->prepare(
+            "SELECT s.id,
+                    s.categoria_id,
+                    s.valor,
+                    s.descricao,
+                    s.fornecedor,
+                    s.forma_pagamento,
+                    s.data_saida,
+                    s.criado_em,
+                    c.nome AS categoria_nome,
+                    c.cor AS categoria_cor
+             FROM saidas s
+             INNER JOIN categorias c
+                ON c.id = s.categoria_id
+               AND c.igreja_id = s.igreja_id
+             WHERE s.igreja_id = :igreja_id
+             ORDER BY s.data_saida DESC, s.id DESC
+             LIMIT {$limit} OFFSET {$offset}"
+        );
+
+        $statement->execute([
+            'igreja_id' => $igrejaId,
+        ]);
+
+        return $statement->fetchAll();
+    }
+
+    public function countByChurch(int $igrejaId): int
+    {
+        $statement = $this->db->prepare(
+            'SELECT COUNT(*)
+             FROM saidas
+             WHERE igreja_id = :igreja_id'
+        );
+
+        $statement->execute([
+            'igreja_id' => $igrejaId,
+        ]);
+
+        return (int) $statement->fetchColumn();
+    }
+
     public function listLatestByChurch(int $igrejaId, int $limit = 25): array
     {
         $limit = max(1, min($limit, 100));

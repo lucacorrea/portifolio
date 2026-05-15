@@ -8,6 +8,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\Categoria;
+use App\Support\Pagination;
 use Throwable;
 
 final class CategoriaController
@@ -15,10 +16,22 @@ final class CategoriaController
     public function index(): Response
     {
         $categorias = [];
+        $summary = [
+            'total' => 0,
+            'ativas' => 0,
+            'inativas' => 0,
+        ];
+        $paginationInput = Pagination::fromRequest($_GET);
+        $pagination = Pagination::meta(0, $paginationInput['page'], $paginationInput['per_page']);
         $loadError = null;
 
         try {
-            $categorias = (new Categoria())->listByChurch((int) Session::get('igreja_id', 0));
+            $igrejaId = (int) Session::get('igreja_id', 0);
+            $categoria = new Categoria();
+            $summary = $categoria->statusSummaryByChurch($igrejaId);
+            $pagination = Pagination::meta((int) $summary['total'], $paginationInput['page'], $paginationInput['per_page']);
+            $offset = ((int) $pagination['current_page'] - 1) * (int) $pagination['per_page'];
+            $categorias = $categoria->paginateByChurch($igrejaId, (int) $pagination['per_page'], $offset);
         } catch (Throwable) {
             $loadError = 'Não foi possível carregar as categorias agora.';
         }
@@ -26,6 +39,8 @@ final class CategoriaController
         return Response::html(View::render('categorias/index', [
             'title' => 'Categorias',
             'categorias' => $categorias,
+            'summary' => $summary,
+            'pagination' => $pagination,
             'loadError' => $loadError,
             'success' => Session::pullFlash('categoria_success'),
         ]));

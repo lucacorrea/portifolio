@@ -8,6 +8,71 @@ final class Usuario extends Model
 {
     protected string $table = 'usuarios';
 
+    public function paginateByChurch(int $igrejaId, int $limit, int $offset): array
+    {
+        $limit = max(1, min($limit, 100));
+        $offset = max(0, $offset);
+
+        $statement = $this->db->prepare(
+            "SELECT id,
+                    nome,
+                    email,
+                    papel,
+                    ativo,
+                    ultimo_login_em,
+                    criado_em,
+                    atualizado_em
+             FROM usuarios
+             WHERE igreja_id = :igreja_id
+             ORDER BY ativo DESC, nome ASC
+             LIMIT {$limit} OFFSET {$offset}"
+        );
+
+        $statement->execute([
+            'igreja_id' => $igrejaId,
+        ]);
+
+        return $statement->fetchAll();
+    }
+
+    public function countByChurch(int $igrejaId): int
+    {
+        $statement = $this->db->prepare(
+            'SELECT COUNT(*)
+             FROM usuarios
+             WHERE igreja_id = :igreja_id'
+        );
+
+        $statement->execute([
+            'igreja_id' => $igrejaId,
+        ]);
+
+        return (int) $statement->fetchColumn();
+    }
+
+    public function statusSummaryByChurch(int $igrejaId): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT COUNT(*) AS total,
+                    COALESCE(SUM(CASE WHEN ativo = 1 THEN 1 ELSE 0 END), 0) AS ativos
+             FROM usuarios
+             WHERE igreja_id = :igreja_id'
+        );
+
+        $statement->execute([
+            'igreja_id' => $igrejaId,
+        ]);
+        $summary = $statement->fetch() ?: ['total' => 0, 'ativos' => 0];
+        $total = (int) $summary['total'];
+        $ativos = (int) $summary['ativos'];
+
+        return [
+            'total' => $total,
+            'ativos' => $ativos,
+            'inativos' => max(0, $total - $ativos),
+        ];
+    }
+
     public function listByChurch(int $igrejaId): array
     {
         $statement = $this->db->prepare(

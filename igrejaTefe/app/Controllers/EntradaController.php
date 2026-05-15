@@ -8,6 +8,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
 use App\Models\Entrada;
+use App\Support\Pagination;
 use DateTimeImmutable;
 use Throwable;
 
@@ -21,12 +22,17 @@ final class EntradaController
             'total' => 0,
             'quantidade' => 0,
         ];
+        $paginationInput = Pagination::fromRequest($_GET);
+        $pagination = Pagination::meta(0, $paginationInput['page'], $paginationInput['per_page']);
         $loadError = null;
 
         if ($igrejaId > 0) {
             try {
                 $entrada = new Entrada();
-                $entradas = $entrada->listLatestByChurch($igrejaId);
+                $total = $entrada->countByChurch($igrejaId);
+                $pagination = Pagination::meta($total, $paginationInput['page'], $paginationInput['per_page']);
+                $offset = ((int) $pagination['current_page'] - 1) * (int) $pagination['per_page'];
+                $entradas = $entrada->paginateByChurch($igrejaId, (int) $pagination['per_page'], $offset);
                 $summary = $entrada->currentMonthSummary($igrejaId);
             } catch (Throwable) {
                 $loadError = 'Não foi possível carregar as entradas agora.';
@@ -37,6 +43,7 @@ final class EntradaController
             'title' => 'Entradas',
             'entradas' => $entradas,
             'summary' => $summary,
+            'pagination' => $pagination,
             'loadError' => $loadError,
             'success' => Session::pullFlash('entrada_success'),
         ]));

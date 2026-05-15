@@ -8,6 +8,48 @@ final class Entrada extends Model
 {
     protected string $table = 'entradas';
 
+    public function paginateByChurch(int $igrejaId, int $limit, int $offset): array
+    {
+        $limit = max(1, min($limit, 100));
+        $offset = max(0, $offset);
+
+        $statement = $this->db->prepare(
+            "SELECT id,
+                    tipo,
+                    valor,
+                    descricao,
+                    contribuinte_nome,
+                    forma_pagamento,
+                    data_entrada,
+                    criado_em
+             FROM entradas
+             WHERE igreja_id = :igreja_id
+             ORDER BY data_entrada DESC, id DESC
+             LIMIT {$limit} OFFSET {$offset}"
+        );
+
+        $statement->execute([
+            'igreja_id' => $igrejaId,
+        ]);
+
+        return $statement->fetchAll();
+    }
+
+    public function countByChurch(int $igrejaId): int
+    {
+        $statement = $this->db->prepare(
+            'SELECT COUNT(*)
+             FROM entradas
+             WHERE igreja_id = :igreja_id'
+        );
+
+        $statement->execute([
+            'igreja_id' => $igrejaId,
+        ]);
+
+        return (int) $statement->fetchColumn();
+    }
+
     public function listLatestByChurch(int $igrejaId, int $limit = 25): array
     {
         $limit = max(1, min($limit, 100));

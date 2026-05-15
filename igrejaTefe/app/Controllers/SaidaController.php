@@ -9,6 +9,7 @@ use App\Core\Session;
 use App\Core\View;
 use App\Models\Categoria;
 use App\Models\Saida;
+use App\Support\Pagination;
 use DateTimeImmutable;
 use Throwable;
 
@@ -22,12 +23,17 @@ final class SaidaController
             'total' => 0,
             'quantidade' => 0,
         ];
+        $paginationInput = Pagination::fromRequest($_GET);
+        $pagination = Pagination::meta(0, $paginationInput['page'], $paginationInput['per_page']);
         $loadError = null;
 
         if ($igrejaId > 0) {
             try {
                 $saida = new Saida();
-                $saidas = $saida->listLatestByChurch($igrejaId);
+                $total = $saida->countByChurch($igrejaId);
+                $pagination = Pagination::meta($total, $paginationInput['page'], $paginationInput['per_page']);
+                $offset = ((int) $pagination['current_page'] - 1) * (int) $pagination['per_page'];
+                $saidas = $saida->paginateByChurch($igrejaId, (int) $pagination['per_page'], $offset);
                 $summary = $saida->currentMonthSummary($igrejaId);
             } catch (Throwable) {
                 $loadError = 'Não foi possível carregar as saídas agora.';
@@ -38,6 +44,7 @@ final class SaidaController
             'title' => 'Saídas',
             'saidas' => $saidas,
             'summary' => $summary,
+            'pagination' => $pagination,
             'loadError' => $loadError,
             'success' => Session::pullFlash('saida_success'),
         ]));

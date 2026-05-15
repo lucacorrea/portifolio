@@ -730,10 +730,60 @@ button {
 
 .transactions-table-wrap {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 14px;
+    padding-bottom: 4px;
+}
+
+.transactions-table-wrap::-webkit-scrollbar {
+    height: 10px;
+}
+
+.transactions-table-wrap::-webkit-scrollbar-track {
+    background: var(--color-surface-soft);
+    border-radius: 999px;
+}
+
+.transactions-table-wrap::-webkit-scrollbar-thumb {
+    background: #c9d4e2;
+    border-radius: 999px;
+}
+
+.table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-surface-soft);
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 700;
+    margin: 12px 0 16px;
+    padding: 10px 12px;
+}
+
+.table-page-size label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.table-page-size select {
+    min-height: 36px;
+    border: 1px solid var(--color-border);
+    border-radius: 11px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-weight: 800;
+    padding: 6px 28px 6px 10px;
 }
 
 .transactions-table {
     width: 100%;
+    min-width: 920px;
     border-collapse: collapse;
 }
 
@@ -741,6 +791,8 @@ button {
 .transactions-table td {
     padding: 14px 12px;
     text-align: left;
+    vertical-align: top;
+    white-space: nowrap;
 }
 
 .transactions-table th {
@@ -1610,6 +1662,7 @@ button {
     .transactions-table td,
     .transactions-table tr {
         display: block;
+        min-width: 0;
     }
 
     .transactions-table thead {
@@ -1628,6 +1681,8 @@ button {
         justify-content: space-between;
         gap: 16px;
         padding: 9px 4px;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 
     .transactions-table td::before {
