@@ -5,7 +5,16 @@ $filters = is_array($report['filters'] ?? null) ? $report['filters'] : [];
 $summary = is_array($report['summary'] ?? null) ? $report['summary'] : [];
 $categorias = is_array($report['categorias'] ?? null) ? $report['categorias'] : [];
 $formasPagamento = is_array($report['formasPagamento'] ?? null) ? $report['formasPagamento'] : [];
-$daily = is_array($report['daily'] ?? null) ? $report['daily'] : [];
+$dailyAll = is_array($report['daily'] ?? null) ? $report['daily'] : [];
+$daily = is_array($report['dailyPaginado'] ?? null) ? $report['dailyPaginado'] : [];
+$dailyPagination = is_array($report['dailyPagination'] ?? null) ? $report['dailyPagination'] : [
+    'current_page' => 1,
+    'per_page' => 4,
+    'total' => count($daily),
+    'total_pages' => 1,
+    'from' => count($daily) > 0 ? 1 : 0,
+    'to' => count($daily),
+];
 $movimentos = is_array($report['movimentosPaginados'] ?? null) ? $report['movimentosPaginados'] : [];
 $pagination = is_array($report['pagination'] ?? null) ? $report['pagination'] : [
     'current_page' => 1,
@@ -18,6 +27,7 @@ $pagination = is_array($report['pagination'] ?? null) ? $report['pagination'] : 
 $categoryOptions = is_array($report['categoryOptions'] ?? null) ? $report['categoryOptions'] : [];
 $query = (string) ($report['query'] ?? '');
 $pageQuery = (string) ($report['pageQuery'] ?? $query);
+$dailyPageQuery = (string) ($report['dailyPageQuery'] ?? $query);
 $formatCurrency = static fn (float $value): string => 'R$ ' . number_format($value, 2, ',', '.');
 $formatPercent = static fn (float $value): string => number_format($value, 1, ',', '.') . '%';
 $formatDate = static function (?string $date): string {
@@ -38,8 +48,9 @@ $paymentLabel = static function (?string $payment): string {
     ][$payment] ?? ucfirst(str_replace('_', ' ', $payment));
 };
 $pageUrl = static fn (int $page): string => url('/relatorios?' . ($pageQuery !== '' ? $pageQuery . '&' : '') . 'page=' . $page);
+$dailyPageUrl = static fn (int $page): string => url('/relatorios?' . ($dailyPageQuery !== '' ? $dailyPageQuery . '&' : '') . 'daily_page=' . $page);
 $maxDaily = 1.0;
-foreach ($daily as $day) {
+foreach ($dailyAll as $day) {
     $maxDaily = max($maxDaily, (float) $day['entradas'], (float) $day['saidas']);
 }
 ?>
@@ -197,16 +208,19 @@ foreach ($daily as $day) {
     </div>
 
     <div class="report-detail-grid">
-        <article class="chart-card chart-card-wide">
+        <article class="chart-card chart-card-wide daily-flow-card">
             <div class="chart-header">
                 <div>
                     <span class="section-kicker">Fluxo diário</span>
                     <h2>Entradas e saídas por data</h2>
                 </div>
-                <span class="badge badge-muted"><?= \App\Core\View::e((string) count($daily)) ?> dia(s)</span>
+                <span class="badge badge-muted">
+                    <?= \App\Core\View::e((string) $dailyPagination['from']) ?>-<?= \App\Core\View::e((string) $dailyPagination['to']) ?>
+                    de <?= \App\Core\View::e((string) $dailyPagination['total']) ?> dia(s)
+                </span>
             </div>
 
-            <?php if ($daily === []): ?>
+            <?php if ($dailyAll === []): ?>
                 <div class="empty-state compact-empty">
                     <i data-lucide="line-chart"></i>
                     <strong>Nenhum dado no período</strong>
@@ -228,6 +242,37 @@ foreach ($daily as $day) {
                         </div>
                     <?php endforeach; ?>
                 </div>
+
+                <?php if ((int) $dailyPagination['total_pages'] > 1): ?>
+                    <nav class="pagination-nav compact-pagination" aria-label="Paginação do fluxo diário">
+                        <a class="pagination-button <?= (int) $dailyPagination['current_page'] <= 1 ? 'is-disabled' : '' ?>"
+                           href="<?= \App\Core\View::e($dailyPageUrl(max(1, (int) $dailyPagination['current_page'] - 1))) ?>"
+                           aria-label="Página anterior do fluxo diário">
+                            <i data-lucide="chevron-left"></i>
+                        </a>
+
+                        <div class="pagination-pages">
+                            <?php
+                            $currentDailyPage = (int) $dailyPagination['current_page'];
+                            $totalDailyPages = (int) $dailyPagination['total_pages'];
+                            $startDailyPage = max(1, $currentDailyPage - 1);
+                            $endDailyPage = min($totalDailyPages, $currentDailyPage + 1);
+                            ?>
+                            <?php for ($dailyPageNumber = $startDailyPage; $dailyPageNumber <= $endDailyPage; $dailyPageNumber++): ?>
+                                <a class="pagination-button <?= $dailyPageNumber === $currentDailyPage ? 'is-active' : '' ?>"
+                                   href="<?= \App\Core\View::e($dailyPageUrl($dailyPageNumber)) ?>">
+                                    <?= \App\Core\View::e((string) $dailyPageNumber) ?>
+                                </a>
+                            <?php endfor; ?>
+                        </div>
+
+                        <a class="pagination-button <?= (int) $dailyPagination['current_page'] >= (int) $dailyPagination['total_pages'] ? 'is-disabled' : '' ?>"
+                           href="<?= \App\Core\View::e($dailyPageUrl(min((int) $dailyPagination['total_pages'], (int) $dailyPagination['current_page'] + 1))) ?>"
+                           aria-label="Próxima página do fluxo diário">
+                            <i data-lucide="chevron-right"></i>
+                        </a>
+                    </nav>
+                <?php endif; ?>
             <?php endif; ?>
         </article>
 

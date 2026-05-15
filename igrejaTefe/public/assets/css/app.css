@@ -1215,6 +1215,16 @@ button {
     gap: 12px;
 }
 
+.daily-flow-card {
+    display: flex;
+    min-height: 520px;
+    flex-direction: column;
+}
+
+.daily-flow-card .daily-flow-list {
+    flex: 1;
+}
+
 .daily-flow-item {
     display: grid;
     gap: 7px;
@@ -1340,6 +1350,15 @@ button {
 .pagination-button svg {
     width: 18px;
     height: 18px;
+}
+
+.compact-pagination {
+    justify-content: space-between;
+}
+
+.compact-pagination .pagination-button {
+    min-width: 36px;
+    height: 36px;
 }
 
 .settings-grid {

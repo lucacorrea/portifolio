@@ -33,7 +33,9 @@ final class RelatorioFinanceiroService
 
         $movimentos = $this->applyFilters($movimentos, $filters);
         usort($movimentos, static fn (array $a, array $b): int => strcmp($b['data'], $a['data']));
-        $pagination = $this->paginate($movimentos, $filters);
+        $daily = $this->dailySummary($movimentos);
+        $pagination = $this->paginate($movimentos, $filters['page'], $filters['per_page']);
+        $dailyPagination = $this->paginate($daily, $filters['daily_page'], $filters['daily_per_page']);
 
         return [
             'filters' => $filters,
@@ -44,7 +46,9 @@ final class RelatorioFinanceiroService
             'summary' => $this->summary($movimentos),
             'categorias' => $this->categorySummary($movimentos),
             'formasPagamento' => $this->paymentSummary($movimentos),
-            'daily' => $this->dailySummary($movimentos),
+            'daily' => $daily,
+            'dailyPaginado' => $dailyPagination['items'],
+            'dailyPagination' => $dailyPagination['meta'],
             'movimentos' => $movimentos,
             'movimentosPaginados' => $pagination['items'],
             'pagination' => $pagination['meta'],
@@ -65,6 +69,17 @@ final class RelatorioFinanceiroService
                 'forma_pagamento' => $filters['forma_pagamento'] ?? '',
                 'demo' => $filters['demo'] ? '1' : '0',
                 'per_page' => $filters['per_page'],
+                'daily_page' => $filters['daily_page'],
+            ]),
+            'dailyPageQuery' => http_build_query([
+                'data_inicio' => $filters['data_inicio'],
+                'data_fim' => $filters['data_fim'],
+                'tipo' => $filters['tipo'],
+                'categoria_id' => $filters['categoria_id'] ?: '',
+                'forma_pagamento' => $filters['forma_pagamento'] ?? '',
+                'demo' => $filters['demo'] ? '1' : '0',
+                'per_page' => $filters['per_page'],
+                'page' => $filters['page'],
             ]),
         ];
     }
@@ -82,6 +97,8 @@ final class RelatorioFinanceiroService
         $forma = trim((string) ($input['forma_pagamento'] ?? ''));
         $perPage = (int) ($input['per_page'] ?? 10);
         $page = (int) ($input['page'] ?? 1);
+        $dailyPage = (int) ($input['daily_page'] ?? 1);
+        $dailyPerPage = 4;
 
         if (!in_array($perPage, [10, 15, 25, 50], true)) {
             $perPage = 10;
@@ -96,15 +113,16 @@ final class RelatorioFinanceiroService
             'demo' => (string) ($input['demo'] ?? '1') !== '0',
             'page' => max(1, $page),
             'per_page' => $perPage,
+            'daily_page' => max(1, $dailyPage),
+            'daily_per_page' => $dailyPerPage,
         ];
     }
 
-    private function paginate(array $items, array $filters): array
+    private function paginate(array $items, int $page, int $perPage): array
     {
         $total = count($items);
-        $perPage = (int) $filters['per_page'];
         $totalPages = max(1, (int) ceil($total / $perPage));
-        $currentPage = min((int) $filters['page'], $totalPages);
+        $currentPage = min(max(1, $page), $totalPages);
         $offset = ($currentPage - 1) * $perPage;
 
         return [
