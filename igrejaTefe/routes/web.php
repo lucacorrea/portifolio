@@ -40,6 +40,11 @@ $router->get('/entradas', [EntradaController::class, 'index'], [
     TenantMiddleware::class,
 ]);
 
+$router->get('/entradas/criar', [EntradaController::class, 'create'], [
+    AuthMiddleware::class,
+    TenantMiddleware::class,
+]);
+
 $router->get('/saidas', [SaidaController::class, 'index'], [
     AuthMiddleware::class,
     TenantMiddleware::class,

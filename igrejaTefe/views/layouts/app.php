@@ -36,7 +36,14 @@ $monthNames = [
 ];
 $currentMonth = $monthNames[(int) date('n')] . ' ' . date('Y');
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-$isActive = static fn (string $path): string => str_ends_with(rtrim($currentPath, '/'), $path) ? ' is-active' : '';
+$isActive = static function (string $path) use ($currentPath): string {
+    $normalizedCurrent = rtrim($currentPath, '/') ?: '/';
+    $normalizedPath = rtrim($path, '/') ?: '/';
+
+    return $normalizedCurrent === $normalizedPath || str_starts_with($normalizedCurrent, $normalizedPath . '/')
+        ? ' is-active'
+        : '';
+};
 $makeInitials = static function (string $name): string {
     $words = preg_split('/\s+/', trim($name)) ?: [];
     $initials = '';
