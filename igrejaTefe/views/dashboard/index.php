@@ -138,36 +138,7 @@ $metrics = [
             </div>
         </article>
 
-        <article class="quick-actions-card">
-            <div class="chart-header">
-                <div>
-                    <span class="section-kicker">Atalhos</span>
-                    <h2>Ações rápidas</h2>
-                </div>
-            </div>
-            <div class="quick-action-list">
-                <a class="quick-action-item" href="<?= \App\Core\View::e(url('/entradas')) ?>">
-                    <span><i data-lucide="arrow-down-circle"></i></span>
-                    <strong>Registrar entrada</strong>
-                    <small>Dízimos, ofertas e contribuições.</small>
-                </a>
-                <a class="quick-action-item" href="<?= \App\Core\View::e(url('/saidas')) ?>">
-                    <span><i data-lucide="arrow-up-circle"></i></span>
-                    <strong>Registrar saída</strong>
-                    <small>Despesas e pagamentos da igreja.</small>
-                </a>
-                <a class="quick-action-item" href="<?= \App\Core\View::e(url('/relatorios')) ?>">
-                    <span><i data-lucide="file-text"></i></span>
-                    <strong>Ver relatórios</strong>
-                    <small>Resumo por período e exportações.</small>
-                </a>
-                <a class="quick-action-item" href="<?= \App\Core\View::e(url('/categorias')) ?>">
-                    <span><i data-lucide="tags"></i></span>
-                    <strong>Gerenciar categorias</strong>
-                    <small>Organize despesas por finalidade.</small>
-                </a>
-            </div>
-        </article>
+        
     </div>
 
     <article class="transactions-card">
