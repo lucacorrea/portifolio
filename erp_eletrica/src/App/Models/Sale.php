@@ -120,7 +120,7 @@ class Sale extends BaseModel {
 
         if ($sale) {
             $sale['itens'] = $this->query("
-                SELECT i.*, p.nome as produto_nome, p.unidade 
+                SELECT i.*, p.nome as produto_nome, p.unidade, p.codigo 
                 FROM vendas_itens i 
                 JOIN produtos p ON i.produto_id = p.id 
                 WHERE i.venda_id = ?

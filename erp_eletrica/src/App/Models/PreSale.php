@@ -57,7 +57,7 @@ class PreSale extends BaseModel {
         
         if ($pv) {
             $pv['itens'] = $this->query("
-                SELECT i.*, p.nome as produto_nome, p.unidade, p.imagens,
+                SELECT i.*, p.nome as produto_nome, p.unidade, p.imagens, p.codigo,
                        p.preco_venda, p.preco_venda_2, p.preco_venda_3
                 FROM pre_venda_itens i 
                 JOIN produtos p ON i.produto_id = p.id 

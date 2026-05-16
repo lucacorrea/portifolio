@@ -65,7 +65,7 @@
                     <table class="table table-hover align-middle mb-0" id="cartTable">
                         <thead class="bg-light sticky-top">
                             <tr>
-                                <th class="ps-4" width="80">Item</th>
+                                <th class="ps-4" width="100">Cód. Interno</th>
                                 <th>Produto</th>
                                 <th class="text-center" width="120">Qtd</th>
                                 <th class="text-end" width="120">Unitário</th>
@@ -932,6 +932,7 @@ function addToCart(product) {
     } else {
         cart.push({
             id: product.id,
+            codigo: product.codigo,
             nome: product.nome,
             price: parseFloat(product.preco_venda),
             price1: parseFloat(product.preco_venda),
@@ -998,7 +999,7 @@ function renderCart() {
         const row = document.createElement('tr');
         row.onmouseover = () => showPreview(item);
         row.innerHTML = `
-            <td class="ps-4 fw-bold text-muted">#${item.id}</td>
+            <td class="ps-4 fw-bold text-muted">${item.codigo || '#' + item.id}</td>
             <td>
                 <div>${item.nome}</div>
                 ${!item.preco_variavel ? `
@@ -1347,6 +1348,7 @@ async function importPreSale(code) {
     if (pv) {
         cart = pv.itens.map(i => ({
             id: i.produto_id,
+            codigo: i.codigo,
             nome: i.produto_nome,
             price: parseFloat(i.preco_unitario),
             price1: parseFloat(i.preco_venda || 0),
