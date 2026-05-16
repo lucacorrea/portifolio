@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../app/bootstrap.php';
 
 use FluxEmpresa\Core\Auth;
+use FluxEmpresa\Core\Csrf;
 
 Auth::requireLogin();
 
@@ -19,7 +20,13 @@ $user = Auth::user();
 <body>
     <header class="topbar">
         <strong>FluxEmpresa</strong>
-        <span><?= h($user['nome'] ?? 'Usuário') ?> • <?= h($user['perfil'] ?? '') ?></span>
+        <div class="topbar-actions">
+            <span><?= h($user['nome'] ?? 'Usuário') ?> • <?= h($user['perfil'] ?? '') ?></span>
+            <form class="logout-form" method="post" action="logout.php">
+                <?= Csrf::field() ?>
+                <button type="submit">Sair</button>
+            </form>
+        </div>
     </header>
 
     <main class="container">

@@ -135,6 +135,24 @@ form button {
     gap: 16px;
 }
 
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.logout-form {
+    margin: 0;
+}
+
+.logout-form button {
+    width: auto;
+    margin-top: 0;
+    padding: 10px 14px;
+    background: #e2e8f0;
+    color: var(--text);
+}
+
 .container {
     width: min(1180px, calc(100% - 32px));
     margin: 32px auto;
