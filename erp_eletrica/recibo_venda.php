@@ -280,7 +280,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
             .wrapper {
                 box-shadow: none;
                 border-radius: 0;
-                margin: 0 auto;
+                margin: 20px !important;
                 max-width: unset;
                 width: 78mm;
                 padding: 0;
