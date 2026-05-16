@@ -168,8 +168,7 @@ class CaixaController extends BaseController {
                 ]);
             }
 
-            $movementModel = new CashierMovement();
-            $movementModel->create([
+            $movementId = $movementModel->create([
                 'caixa_id' => $caixaId,
                 'tipo' => $tipo,
                 'valor' => $valor,
@@ -183,7 +182,7 @@ class CaixaController extends BaseController {
                 'ip' => $_SERVER['REMOTE_ADDR'],
                 'horario' => date('H:i:s')
             ]);
-            header('Location: caixa.php?success=Movimentação registrada.');
+            header('Location: caixa.php?success=Movimentação registrada.&print_mov_id=' . $movementId);
             exit;
         }
     }

@@ -22,6 +22,17 @@
                         });
                     </script>
                 <?php endif; ?>
+
+                <?php if (isset($_GET['print_mov_id'])): ?>
+                    <a href="caixa_imprimir_mov.php?id=<?= (int)$_GET['print_mov_id'] ?>" target="_blank" class="btn btn-dark btn-sm fw-bold px-3">
+                        <i class="fas fa-print me-2"></i>Imprimir Comprovante
+                    </a>
+                    <script>
+                        window.addEventListener('load', function() {
+                            window.open('caixa_imprimir_mov.php?id=<?= (int)$_GET['print_mov_id'] ?>', '_blank');
+                        });
+                    </script>
+                <?php endif; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="position: static; padding: 0.5rem;"></button>
             </div>
         </div>
