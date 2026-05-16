@@ -37,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     <!-- PWA Support -->
     <link rel="manifest" href="manifest_gerar.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="public/img/app-icon.png">
+    <link rel="icon" type="image/png" href="public/img/app-icon.png">
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -334,6 +334,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         let deferredPrompt;
         const btnInstall = document.getElementById('btnInstallApp');
 
+        // Detect device
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+        if (isIOS && !isStandalone) {
+            btnInstall.style.display = 'block';
+            btnInstall.innerHTML = '<i class="fab fa-apple"></i> INSTALAR NO IPHONE';
+            btnInstall.onclick = () => {
+                alert('No iPhone:\n1. Clique no ícone de compartilhar (quadrado com seta pra cima)\n2. Selecione "Adicionar à Tela de Início"\n3. Clique em "Adicionar"');
+            };
+        }
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
@@ -341,6 +353,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         });
 
         btnInstall.addEventListener('click', async () => {
+            if (isIOS) return;
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;

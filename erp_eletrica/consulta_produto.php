@@ -14,8 +14,8 @@ declare(strict_types=1);
     <!-- PWA Support -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="public/img/app-icon.png">
+    <link rel="icon" type="image/png" href="public/img/app-icon.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
@@ -973,6 +973,18 @@ declare(strict_types=1);
         let deferredPrompt;
         const btnInstall = document.getElementById('btnInstallApp');
 
+        // Detect device
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+        if (isIOS && !isStandalone) {
+            btnInstall.style.display = 'flex';
+            btnInstall.innerHTML = '<i class="fab fa-apple"></i> INSTALAR NO IPHONE';
+            btnInstall.onclick = () => {
+                alert('No iPhone:\n1. Clique no ícone de compartilhar (quadrado com seta pra cima)\n2. Selecione "Adicionar à Tela de Início"\n3. Clique em "Adicionar"');
+            };
+        }
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
@@ -980,6 +992,7 @@ declare(strict_types=1);
         });
 
         btnInstall.addEventListener('click', async () => {
+            if (isIOS) return; // Handled by onclick above
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
