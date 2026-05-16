@@ -853,12 +853,16 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         });
       }
 
-      // Auto-print on load
+      // Auto-print on load and close after
       window.addEventListener('load', function() {
         setTimeout(() => {
           window.print();
-        }, 800); // Slightly longer delay for QR code to render
+        }, 800);
       });
+
+      window.onafterprint = function() {
+        window.close();
+      };
     })();
   </script>
 </body>
