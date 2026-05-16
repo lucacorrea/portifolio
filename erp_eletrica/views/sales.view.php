@@ -1532,7 +1532,7 @@ async function cancelSaleAction() {
     if (authInput) authInput.value = '';
     
     backToCancelChoices();
-    bootstrap.Modal.getInstance(document.getElementById('modalSaleManager')).hide();
+    bootstrap.Modal.getOrCreateInstance('#modalSaleManager').hide();
     bootstrap.Modal.getOrCreateInstance('#modalTripleCancel').show();
 }
 
@@ -1613,8 +1613,8 @@ async function openExchangeFlow() {
     exchangeState.vendaId = activeManageId;
     document.getElementById('exchangeSaleId').innerText = activeManageId;
     
-    bootstrap.Modal.getInstance(document.getElementById('modalSaleManager')).hide();
-    new bootstrap.Modal(document.getElementById('modalExchangeFlow')).show();
+    bootstrap.Modal.getOrCreateInstance('#modalSaleManager').hide();
+    bootstrap.Modal.getOrCreateInstance('#modalExchangeFlow').show();
     
     document.getElementById('exchangeStep2').classList.add('d-none');
     document.getElementById('exchangeStep3').classList.add('d-none');
@@ -1785,7 +1785,7 @@ async function checkDiscountAuth() {
 
     if (discountPercent > 0.01 && !isAuthorized) {
         await loadAdmins();
-        new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
+        bootstrap.Modal.getOrCreateInstance('#modalDiscountAuth').show();
         btnCheckout.disabled = true;
     } else {
         btnCheckout.disabled = cart.length === 0;
@@ -1828,19 +1828,24 @@ function updateDiscountUI() {
 }
 
 async function loadAdmins() {
-    const res = await fetch('vendas.php?action=list_admins');
-    authAdmins = await res.json();
-    
-    if (authAdmins.length > 0) {
-        const admin = authAdmins[0]; // Auto-select the first admin
-        authSupervisorId = admin.id;
+    try {
+        const res = await fetch('vendas.php?action=list_admins');
+        if (!res.ok) throw new Error('API Error');
+        authAdmins = await res.json();
         
-        const input = document.getElementById('authCredential');
-        const label = document.getElementById('authLabel');
-        
-        input.type = 'text'; // Allow both password (text) and numeric codes
-        input.placeholder = 'Senha ou Código (Ex: 123456)';
-        label.innerText = 'SENHA OU CÓDIGO DE AUTORIZAÇÃO';
+        if (authAdmins.length > 0) {
+            const admin = authAdmins[0]; // Auto-select the first admin
+            authSupervisorId = admin.id;
+            
+            const input = document.getElementById('authCredential');
+            const label = document.getElementById('authLabel');
+            
+            input.type = 'text'; // Allow both password (text) and numeric codes
+            input.placeholder = 'Senha ou Código (Ex: 123456)';
+            label.innerText = 'SENHA OU CÓDIGO DE AUTORIZAÇÃO';
+        }
+    } catch (err) {
+        console.error("Erro ao carregar admins:", err);
     }
 }
 
@@ -1862,7 +1867,7 @@ async function validateAuthorization() {
     if (result.success) {
         isAuthorized = true;
         authSupervisorCredential = credential;
-        bootstrap.Modal.getInstance(document.getElementById('modalDiscountAuth')).hide();
+        bootstrap.Modal.getOrCreateInstance('#modalDiscountAuth').hide();
         renderCart();
         
         // Focus and select the discount field so the user can type immediately
@@ -1894,7 +1899,7 @@ btnCheckout.onclick = async () => {
     if (discountPercent > 0 && !isAuthorized && currentUserLevel !== 'admin') {
         alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
         await loadAdmins();
-        new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
+        bootstrap.Modal.getOrCreateInstance('#modalDiscountAuth').show();
         return;
     }
 
@@ -2140,7 +2145,7 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
     clearCustomer();
     
     const modalEl = document.getElementById('modalSuccess');
-    const modal = new bootstrap.Modal(modalEl);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modalEl.addEventListener('hidden.bs.modal', () => {
         location.reload();
     });
