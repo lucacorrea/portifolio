@@ -739,6 +739,14 @@ function updateCheckoutButtonState() {
     }
 
     const payment = document.querySelector('input[name="payment"]:checked')?.value;
+    const discountPercent = getCurrentDiscountPercentage();
+    
+    // If there is a discount and user is not admin and not authorized, keep it disabled
+    if (discountPercent > 0.01 && !isAuthorized && currentUserLevel !== 'admin') {
+        btnCheckout.disabled = true;
+        return;
+    }
+
     if (payment === 'dinheiro') {
         const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
         const total = parseFloat(finalTotalText) || 0;
@@ -1791,17 +1799,24 @@ let authSupervisorId = null;
 let authSupervisorCredential = null;
 let authAdmins = [];
 
-async function checkDiscountAuth() {
+function getCurrentDiscountPercentage() {
     const isMoneyMode = document.getElementById('discountModeToggle').checked;
     const discountInput = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     
-    let discountPercent = isMoneyMode ? (subtotal > 0 ? (discountInput / subtotal) * 100 : 0) : discountInput;
+    if (isMoneyMode) {
+        return subtotal > 0 ? (discountInput / subtotal) * 100 : 0;
+    }
+    return discountInput;
+}
+
+async function checkDiscountAuth() {
+    const discountPercent = getCurrentDiscountPercentage();
     
     // Admins don't need authorization modal for themselves
     if (currentUserLevel === 'admin') {
         isAuthorized = true;
-        btnCheckout.disabled = cart.length === 0;
+        updateCheckoutButtonState();
         return;
     }
 
@@ -1810,7 +1825,7 @@ async function checkDiscountAuth() {
         bootstrap.Modal.getOrCreateInstance('#modalDiscountAuth').show();
         btnCheckout.disabled = true;
     } else {
-        btnCheckout.disabled = cart.length === 0;
+        updateCheckoutButtonState();
     }
 }
 
@@ -1916,9 +1931,9 @@ function resetDiscount() {
 btnCheckout.onclick = async () => {
     if (cart.length === 0) return;
     
-    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
+    const discountPercent = getCurrentDiscountPercentage();
     
-    if (discountPercent > 0 && !isAuthorized && currentUserLevel !== 'admin') {
+    if (discountPercent > 0.01 && !isAuthorized && currentUserLevel !== 'admin') {
         alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
         await loadAdmins();
         bootstrap.Modal.getOrCreateInstance('#modalDiscountAuth').show();
@@ -2312,11 +2327,7 @@ document.getElementById('pdvQty').addEventListener('keydown', (e) => {
     }
 });
 
-// Missing intercepter to prevent default browser behavior for numeric/percentage inputs
-function interceptDiscount(e) {
-    // Only prevents scroll or other unwanted interactions if needed, but here ensures focus
-    if (e.type === 'focus') e.target.select();
-}
+// No-op interceptDiscount removal
 </script>
 
 <style>
