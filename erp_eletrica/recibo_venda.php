@@ -411,30 +411,33 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
         </div>
     </div>
 
-    <!-- Barra de ações -->
-    <div class="actions" aria-label="Ações">
+    <!-- Barra de ações (oculta se for iframe para impressão silenciosa) -->
+    <div class="actions" aria-label="Ações" id="print-actions">
         <button class="btn btn-secondary" onclick="window.close()">← Fechar</button>
         <button id="btn-print" class="btn btn-primary" type="button">🖨️ Imprimir</button>
     </div>
 
     <script>
         (function() {
+            const isIframe = window.self !== window.top;
             const btnPrint = document.getElementById('btn-print');
+            const actions = document.getElementById('print-actions');
+            
+            if (isIframe && actions) {
+                actions.style.display = 'none';
+            }
+
             if (btnPrint) {
                 btnPrint.addEventListener('click', function() {
                     window.print();
                 });
             }
             
-            // Auto-print on load with a faster approach
             function triggerPrint() {
-                // Focus the window to ensure print command is received
                 window.focus();
                 window.print();
                 
-                // If this is a popup (not an iframe), we can try to close it after printing
-                if (window.opener || window.name === 'print_popup') {
-                    // Note: window.print() is blocking, so this runs after print dialog closes
+                if (!isIframe && (window.opener || window.name === 'print_popup')) {
                     setTimeout(() => window.close(), 500);
                 }
             }

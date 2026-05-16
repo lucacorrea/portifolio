@@ -574,7 +574,7 @@
             iframe.style.visibility = 'hidden';
             document.body.appendChild(iframe);
         }
-        iframe.src = 'recibo_venda.php?id=' + saleId;
+        iframe.src = 'recibo_venda.php?id=' + saleId + '&t=' + Date.now();
     }
 
     async function abrirPagar(id) {
