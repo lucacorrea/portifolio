@@ -2189,6 +2189,22 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
     
     const modalEl = document.getElementById('modalSuccess');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    // Atalhos de teclado: Enter imprime e sai, Esc apenas sai
+    modalEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const btn = modalEl.querySelector('.btn-primary, .btn-success');
+            if (btn && !btn.disabled) {
+                btn.click();
+            }
+            modal.hide();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            modal.hide();
+        }
+    });
+
     modalEl.addEventListener('hidden.bs.modal', () => {
         location.reload();
     });
