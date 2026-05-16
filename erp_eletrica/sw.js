@@ -11,7 +11,7 @@
  *  7. Cache PERSISTE entre sessões — abrir uma vez já salva pra sempre
  */
 
-const CACHE_NAME = 'erp-v7';
+const CACHE_NAME = 'erp-v8';
 
 // Páginas que devem ser pré-cacheadas e funcionar offline
 const CRITICAL_PAGES = [
@@ -27,7 +27,7 @@ const CRITICAL_ASSETS = [
     'public/css/corporate.css',
     'public/js/offline-bridge.js',
     'public/js/corporate.js',
-    'public/img/app-icon.png',
+    'logo_sistema_erp_eletrica.PNG',
     'manifest.json',
     'script.js',
     'style.css'
