@@ -217,10 +217,21 @@
                         <span class="text-muted">Subtotal</span>
                         <span class="fw-bold" id="totalSub">R$ 0,00</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted">Desconto (%)</span>
-                        <div style="width: 80px;">
-                            <input type="number" id="discountPercent" class="form-control form-control-sm text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" max="100" step="0.1" onfocus="interceptDiscount(event)" onmousedown="interceptDiscount(event)" onkeydown="interceptDiscount(event)" oninput="renderCart()">
+                    <!-- Discount Controls -->
+                    <div class="mb-3 p-3 bg-white border rounded shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted small fw-bold text-uppercase">Modo Desconto</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="discountModeToggle" onchange="toggleDiscountMode()">
+                                <label class="form-check-label extra-small fw-bold text-uppercase text-primary" for="discountModeToggle" id="discountModeLabel">PORCENTAGEM (%)</label>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted fw-bold" id="discountInputLabel">Desconto (%)</span>
+                            <div class="input-group input-group-sm" style="width: 140px;">
+                                <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold" id="discountSymbol">%</span>
+                                <input type="number" id="discountPercent" class="form-control text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" step="0.1" onfocus="this.select()" oninput="renderCart()">
+                            </div>
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
@@ -1012,8 +1023,20 @@ function renderCart() {
         cartTable.appendChild(row);
     });
 
-    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
-    const discountVal = total * (discountPercent / 100);
+    const isMoneyMode = document.getElementById('discountModeToggle').checked;
+    const discountInput = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
+    
+    let discountVal = 0;
+    let discountPercent = 0;
+
+    if (isMoneyMode) {
+        discountVal = discountInput;
+        discountPercent = total > 0 ? (discountVal / total) * 100 : 0;
+    } else {
+        discountPercent = discountInput;
+        discountVal = total * (discountPercent / 100);
+    }
+
     const baseVal = total - discountVal;
 
     const payment = document.querySelector('input[name="payment"]:checked').value;
@@ -1737,7 +1760,11 @@ let authSupervisorCredential = null;
 let authAdmins = [];
 
 async function checkDiscountAuth() {
-    const discount = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
+    const isMoneyMode = document.getElementById('discountModeToggle').checked;
+    const discountInput = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
+    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    
+    let discountPercent = isMoneyMode ? (subtotal > 0 ? (discountInput / subtotal) * 100 : 0) : discountInput;
     
     // Admins don't need authorization modal for themselves
     if (currentUserLevel === 'admin') {
@@ -1746,13 +1773,38 @@ async function checkDiscountAuth() {
         return;
     }
 
-    if (discount > 0 && !isAuthorized) {
+    if (discountPercent > 0.01 && !isAuthorized) {
         await loadAdmins();
         new bootstrap.Modal(document.getElementById('modalDiscountAuth')).show();
         btnCheckout.disabled = true;
     } else {
         btnCheckout.disabled = cart.length === 0;
     }
+}
+
+function toggleDiscountMode() {
+    const isMoney = document.getElementById('discountModeToggle').checked;
+    const label = document.getElementById('discountModeLabel');
+    const inputLabel = document.getElementById('discountInputLabel');
+    const symbol = document.getElementById('discountSymbol');
+    const input = document.getElementById('discountPercent');
+
+    if (isMoney) {
+        label.innerText = 'DINHEIRO (R$)';
+        label.classList.replace('text-primary', 'text-success');
+        inputLabel.innerText = 'Desconto (R$)';
+        symbol.innerText = 'R$';
+        input.step = '0.01';
+        input.max = ''; // No max for money discount
+    } else {
+        label.innerText = 'PORCENTAGEM (%)';
+        label.classList.replace('text-success', 'text-primary');
+        inputLabel.innerText = 'Desconto (%)';
+        symbol.innerText = '%';
+        input.step = '0.1';
+        input.max = '100';
+    }
+    renderCart();
 }
 
 async function loadAdmins() {
@@ -1903,9 +1955,12 @@ async function confirmarCheckoutFiado() {
 }
 
 async function processarCheckout() {
-    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
+    const isMoneyMode = document.getElementById('discountModeToggle').checked;
+    const discountInput = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const baseVal = subtotal * (1 - (discountPercent / 100));
+
+    let discountPercent = isMoneyMode ? (subtotal > 0 ? (discountInput / subtotal) * 100 : 0) : discountInput;
+    const baseVal = subtotal - (isMoneyMode ? discountInput : (subtotal * (discountInput / 100)));
     const payment = document.querySelector('input[name="payment"]:checked').value;
     const taxaCartaoPercent = (payment.includes('cartao')) ? (parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
     const total = baseVal + (baseVal * (taxaCartaoPercent / 100));
