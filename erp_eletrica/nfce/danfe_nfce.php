@@ -675,7 +675,10 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
       </div>
     <?php endif; ?>
     <header class="center">
-      <h2 class="nome_empresa"><?= htmlspecialchars($emit_xFant ?: $emit_xNome, ENT_QUOTES, 'UTF-8') ?></h2>
+      <h2 class="nome_empresa" style="margin-bottom: 0;">CENTRO DO ELETRICISTA</h2>
+      <div class="small fw-bold" style="text-transform: uppercase; margin-top: -2px; margin-bottom: 4px;">
+        <?= htmlspecialchars($emit_xFant ?: $emit_xNome, ENT_QUOTES, 'UTF-8') ?>
+      </div>
       <div class="small">
         CNPJ: <?= htmlspecialchars($emit_CNPJ, ENT_QUOTES, 'UTF-8') ?>
         &middot;
