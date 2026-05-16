@@ -1,0 +1,18 @@
+{
+  "name": "ERP Elétrica — Gerador",
+  "short_name": "Gerar Código",
+  "description": "Gerador de códigos de autorização",
+  "start_url": "gerar_codigo.php",
+  "display": "standalone",
+  "background_color": "#cbd5e1",
+  "theme_color": "#2b4c7d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "public/img/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -9,11 +9,14 @@ declare(strict_types=1);
 <head>
     <meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0">
-
     <title>Leitor de Código e QR Code</title>
+
+    <!-- PWA Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="public/img/app-icon.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
         :root {
@@ -447,6 +450,37 @@ declare(strict_types=1);
                 }
             }
         }
+
+        .btn-install {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f9d55;
+            color: #fff;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 50px;
+            font-weight: 800;
+            box-shadow: 0 10px 30px rgba(31, 157, 85, 0.4);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn-install:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        .btn-install i {
+            font-size: 1.1rem;
+        }
     </style>
 </head>
 
@@ -598,6 +632,10 @@ declare(strict_types=1);
         </div>
 
     </div>
+
+    <button id="btnInstallApp" class="btn-install">
+        <i class="fas fa-cloud-download-alt"></i> INSTALAR NO CELULAR
+    </button>
 
     <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -922,6 +960,39 @@ declare(strict_types=1);
         );
 
         inputCodigo.focus();
+
+        // PWA Installation Logic
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW registrado!', reg))
+                    .catch(err => console.log('Erro SW', err));
+            });
+        }
+
+        let deferredPrompt;
+        const btnInstall = document.getElementById('btnInstallApp');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            btnInstall.style.display = 'flex';
+        });
+
+        btnInstall.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                btnInstall.style.display = 'none';
+            }
+            deferredPrompt = null;
+        });
+
+        window.addEventListener('appinstalled', () => {
+            btnInstall.style.display = 'none';
+            deferredPrompt = null;
+        });
 
     </script>
 
