@@ -301,7 +301,10 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
 <body>
     <div class="wrapper" role="document" aria-label="Recibo Não Fiscal">
         <header class="center">
-            <h2><?= htmlspecialchars($venda['filial_nome'] ?? 'ERP Elétrica') ?></h2>
+            <h2>CENTRO DO ELETRICISTA</h2>
+            <div class="small" style="text-transform: uppercase; margin-top: -2px; margin-bottom: 4px;">
+                <?= htmlspecialchars($venda['filial_nome'] ?? '') ?>
+            </div>
             <div class="small">
                 <?php if (!empty($venda['filial_cnpj'])): ?>CNPJ: <?= htmlspecialchars($venda['filial_cnpj']) ?><br><?php endif; ?>
                 <?php if (!empty($venda['filial_endereco'])): ?>

@@ -83,7 +83,8 @@ if (!$xmlRaw) {
         @media print{body{background:#fff;} .wrapper{box-shadow:none;border-radius:0;margin:0;max-width:unset;width:75mm;padding:0;} .actions{display:none;}}
     </style></head><body>
     <div class="wrapper">
-        <div class="center" style="font-size:15px;font-weight:700;text-transform:uppercase;"><?= htmlspecialchars($venda['filial_nome'] ?? 'ERP Elétrica') ?></div>
+        <div class="center" style="font-size:15px;font-weight:700;text-transform:uppercase;">CENTRO DO ELETRICISTA</div>
+        <div class="small center" style="text-transform:uppercase; margin-bottom: 5px;"><?= htmlspecialchars($venda['filial_nome'] ?? '') ?></div>
         <?php if (!empty($venda['filial_cnpj'])): ?>
         <div class="small center">CNPJ: <?= htmlspecialchars($venda['filial_cnpj']) ?></div>
         <?php endif; ?>
@@ -282,7 +283,10 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
 <body>
 <div class="wrapper" role="document" aria-label="DANFE NFC-e">
     <header class="center">
-        <h2><?= htmlspecialchars($emit_xFant ?: $emit_xNome) ?></h2>
+        <h2>CENTRO DO ELETRICISTA</h2>
+        <div class="small center" style="text-transform: uppercase; margin-top: -2px; margin-bottom: 4px;">
+            <?= htmlspecialchars($emit_xFant ?: $emit_xNome) ?>
+        </div>
         <div class="small">CNPJ: <?= htmlspecialchars($emit_CNPJ) ?> &nbsp; IE: <?= htmlspecialchars($emit_IE) ?></div>
         <div class="small"><?= htmlspecialchars($end_txt) ?></div>
         <div class="hr"></div>
