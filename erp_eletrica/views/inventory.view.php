@@ -76,7 +76,7 @@
             </select>
         </form>
         <div class="d-flex gap-2 w-100 w-md-auto">
-            <button class="btn btn-primary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#newProductModal">
+            <button class="btn btn-primary fw-bold flex-grow-1" onclick="openNewProduct()">
                 <i class="fas fa-plus me-2"></i>Novo
             </button>
             <button class="btn btn-outline-secondary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#movementModal">
@@ -510,6 +510,27 @@
 </div>
 
 <script>
+function openNewProduct() {
+    const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
+    const form = document.querySelector('#newProductModal form');
+    form.reset();
+    
+    document.getElementById('edit_id').value = '';
+    document.getElementById('edit_codigo').value = '<?= $nextCode ?>';
+    
+    // Clear image preview
+    document.getElementById('edit_preview').src = '';
+    document.getElementById('edit_preview').classList.add('d-none');
+    document.getElementById('preview-icon').classList.remove('d-none');
+    
+    document.querySelector('#newProductModal .modal-title').innerText = 'Novo Material';
+    
+    // Reset code-dependent views
+    toggleProductCodeViews('<?= $nextCode ?>');
+    
+    modal.show();
+}
+
 function editProduct(product) {
     const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
     document.getElementById('edit_id').value = product.id;

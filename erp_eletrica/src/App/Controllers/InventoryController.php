@@ -47,6 +47,8 @@ class InventoryController extends BaseController {
         $supplierModel = new \App\Models\Supplier();
         $suppliers = $supplierModel->all("nome_fantasia ASC");
 
+        $nextCode = $productModel->getNextCode();
+
         $this->render('inventory', [
             'stats' => $stats,
             'products' => $products,
@@ -55,7 +57,8 @@ class InventoryController extends BaseController {
             'movements' => $movements,
             'categories' => $categories,
             'suppliers' => $suppliers,
-            'filters' => $filters
+            'filters' => $filters,
+            'nextCode' => $nextCode
         ]);
     }
 
