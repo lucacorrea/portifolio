@@ -1,0 +1,24 @@
+Options -Indexes
+RewriteEngine On
+
+# Bloqueia acesso direto a arquivos sensíveis
+<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|README\.md|IMPLEMENTACAO\.md)$">
+    Require all denied
+</FilesMatch>
+
+# Bloqueia acesso direto a pastas internas
+RewriteRule ^(app|database|storage)(/.*)?$ - [F,L]
+
+# Se o arquivo ou pasta não existir na raiz, roteia para public
+RewriteCond %{REQUEST_URI} !/fluxEmpresa/public/
+RewriteCond %{DOCUMENT_ROOT}/fluxEmpresa/public/$1 -f [OR]
+RewriteCond %{DOCUMENT_ROOT}/fluxEmpresa/public/$1 -d
+RewriteRule ^(.+)$ public/$1 [L]
+
+# Entrada principal
+RewriteRule ^$ public/index.php [L]
+
+# Rotas PHP simples: /login.php -> /public/login.php
+RewriteCond %{REQUEST_URI} !/fluxEmpresa/public/
+RewriteCond %{DOCUMENT_ROOT}/fluxEmpresa/public/$1 -f
+RewriteRule ^(.+\.php)$ public/$1 [L]
