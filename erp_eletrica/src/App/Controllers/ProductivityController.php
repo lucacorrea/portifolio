@@ -5,7 +5,7 @@ use App\Models\BaseModel;
 
 class ProductivityController extends BaseController {
     public function index() {
-        checkAuth(['admin', 'gerente']);
+        checkAuth(['admin', 'master']);
         
         $db = \App\Config\Database::getInstance()->getConnection();
         

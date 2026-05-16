@@ -1,6 +1,6 @@
 <?php
 require_once 'config.php';
-checkAuth(['admin', 'gerente']);
+checkAuth(['admin', 'master']);
 
 $controller = new \App\Controllers\ReportsController();
 $controller->index();

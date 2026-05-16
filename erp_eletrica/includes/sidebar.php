@@ -134,6 +134,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="custos.php" class="nav-link <?= $current_page == 'custos.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie"></i> <span>Centro de Custos</span>
         </a>
+        
+        <?php if (in_array(trim(strtolower($_SESSION['usuario_nivel'] ?? '')), ['admin', 'master'])): ?>
         <a href="inteligencia.php?action=productivity" class="nav-link <?= ($current_page == 'inteligencia.php' && ($_GET['action'] ?? '') == 'productivity') ? 'active' : '' ?>">
             <i class="fas fa-medal"></i> <span>Produtividade & Auditoria</span>
         </a>
@@ -143,6 +145,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="relatorios_gerais.php" class="nav-link <?= $current_page == 'relatorios_gerais.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-bar text-info"></i> <span class="fw-bold">Relatórios Gerais</span>
         </a>
+        <?php endif; ?>
         <?php endif; ?>
 
         <?php if (in_array($_SESSION['usuario_nivel'] ?? '', ['admin']) && !($_SESSION['is_temporary'] ?? false)): ?>
