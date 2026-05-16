@@ -2192,11 +2192,17 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
     const modalEl = document.getElementById('modalSuccess');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
 
-    // Atalhos de teclado: Enter imprime e sai, Esc apenas sai
+    // Ensure the modal has focus for keyboard events
+    modalEl.addEventListener('shown.bs.modal', () => {
+        modalEl.focus();
+    });
+
+    // Atalhos de teclado: Enter aciona a ação principal (Imprimir/Emitir), Esc fecha
     modalEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            const btn = modalEl.querySelector('.btn-primary, .btn-success');
+            // Pega o primeiro botão que não seja o link de fechar (Ação Principal: Imprimir ou Emitir)
+            const btn = modalEl.querySelector('.d-grid .btn:not(.btn-link)');
             if (btn && !btn.disabled) {
                 btn.click();
             }
