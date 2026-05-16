@@ -267,23 +267,24 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
 
         @page {
             size: 80mm auto;
-            margin: 3mm
+            margin: 0;
         }
 
         @media print {
 
             html,
             body {
-                background: #fff
+                background: #fff;
+                width: 80mm;
             }
 
             .wrapper {
                 box-shadow: none;
                 border-radius: 0;
-                margin: 20px !important;
+                margin: 0 auto !important;
                 max-width: unset;
-                width: 78mm;
-                padding: 0;
+                width: 72mm;
+                padding: 4mm 0;
                 font-size: 14px;
             }
 
