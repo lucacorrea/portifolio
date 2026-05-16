@@ -9,11 +9,11 @@
     <title>Instalar Consulta de Preços - ERP Elétrica</title>
     
     <!-- PWA Support -->
-    <link rel="manifest" href="manifest.json?v=2">
+    <link rel="manifest" href="manifest.json?v=3">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="logo_sistema_erp_eletrica.PNG?v=2">
-    <link rel="icon" type="image/png" href="logo_sistema_erp_eletrica.PNG?v=2">
+    <link rel="apple-touch-icon" href="app-icon-ce.png?v=3">
+    <link rel="icon" type="image/png" href="app-icon-ce.png?v=3">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
@@ -124,7 +124,7 @@
 <body>
     <div class="container">
         <div class="app-icon">
-            <img src="logo_sistema_erp_eletrica.PNG?v=2" alt="Icon">
+            <img src="app-icon-ce.png?v=3" alt="Icon">
         </div>
         <h1>App Consulta</h1>
         <p>Tenha o leitor de preços da Elétrica sempre à mão na sua tela inicial.</p>
