@@ -331,16 +331,18 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
 
         <table class="tbl small" aria-label="Itens">
             <colgroup>
-                <col style="width:8%">
-                <col style="width:34%">
+                <col style="width:7%">
+                <col style="width:18%">
+                <col style="width:25%">
                 <col style="width:10%">
                 <col style="width:8%">
-                <col style="width:18%">
-                <col style="width:22%">
+                <col style="width:16%">
+                <col style="width:16%">
             </colgroup>
             <thead>
                 <tr>
                     <th class="left">#</th>
+                    <th class="left">Cód</th>
                     <th class="left">Produto</th>
                     <th class="right">Qtd</th>
                     <th class="left">Un</th>
@@ -354,7 +356,8 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
                 ?>
                     <tr>
                         <td class="left"><?= $idx++ ?></td>
-                        <td class="left"><?= htmlspecialchars(mb_strimwidth($it['nome'], 0, 22, '..')) ?></td>
+                        <td class="left small"><?= htmlspecialchars($it['codigo']) ?></td>
+                        <td class="left"><?= htmlspecialchars(mb_strimwidth($it['nome'], 0, 20, '..')) ?></td>
                         <td class="right"><?= formatarQuantidade($it['quantidade']) ?></td>
                         <td class="left"><?= htmlspecialchars($it['unidade'] ?? 'UN') ?></td>
                         <td class="right"><?= number_format($it['preco_unitario'],2,',','.') ?></td>

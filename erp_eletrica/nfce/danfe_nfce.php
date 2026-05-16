@@ -423,7 +423,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
   <style>
   :root {
     --ticket-screen-max: 384px;
-    --ticket-print-width: 80mm;
+    --ticket-print-width: 72mm;
     --pad: 10px;
     --qr: 190px;
     --accent: #1a73e8;
@@ -586,16 +586,16 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
   }
 
   @page {
-    size: 80mm auto;
+    size: 72mm auto;
     margin: 0;
   }
 
   @media print {
     html,
     body {
-      width: 80mm !important;
-      min-width: 80mm !important;
-      max-width: 80mm !important;
+      width: 72mm !important;
+      min-width: 72mm !important;
+      max-width: 72mm !important;
       height: auto !important;
       min-height: 0 !important;
       margin: 0 !important;
@@ -621,8 +621,8 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
       position: absolute !important;
       left: 0 !important;
       top: 0 !important;
-      width: 80mm !important;
-      max-width: 80mm !important;
+      width: 72mm !important;
+      max-width: 72mm !important;
       margin: 0 !important;
       padding: 3mm 2mm 0 2mm !important;
       border: none !important;
@@ -690,8 +690,18 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     </header>
 
     <table class="tbl small">
+      <colgroup>
+        <col style="width:7%">
+        <col style="width:18%">
+        <col style="width:30%">
+        <col style="width:15%">
+        <col style="width:15%">
+        <col style="width:15%">
+      </colgroup>
       <thead>
         <tr>
+          <th class="left">#</th>
+          <th class="left">Cód</th>
           <th class="left">Descrição</th>
           <th class="right">Qtde</th>
           <th class="right">V.Unit</th>
@@ -699,8 +709,10 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($itens as $it): ?>
+        <?php $idx = 1; foreach ($itens as $it): ?>
           <tr>
+            <td class="left"><?= $idx++ ?></td>
+            <td class="left small"><?= htmlspecialchars($it['cProd'], ENT_QUOTES, 'UTF-8') ?></td>
             <td><?= htmlspecialchars($it['xProd'], ENT_QUOTES, 'UTF-8') ?></td>
             <td class="right"><?= formatarQuantidade($it['qCom']) ?><br><?= htmlspecialchars($it['uCom'], ENT_QUOTES, 'UTF-8') ?></td>
             <td class="right"><?= $it['vUn'] ?></td>
