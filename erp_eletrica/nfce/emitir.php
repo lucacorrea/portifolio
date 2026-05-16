@@ -74,7 +74,7 @@ if ($venda_id) {
     try {
         // Se itens ainda não vieram via POST (ex: auto_emit), busca do banco u784961086_pdv
         if (empty($itens)) {
-            $sti = $pdo->prepare("SELECT i.*, p.nome as produto_nome, p.unidade as p_unidade, p.ncm as p_ncm, p.origem as p_origem, p.cest as p_cest
+            $sti = $pdo->prepare("SELECT i.*, p.nome as produto_nome, p.codigo as produto_codigo, p.unidade as p_unidade, p.ncm as p_ncm, p.origem as p_origem, p.cest as p_cest
                                     FROM vendas_itens i 
                                     JOIN produtos p ON i.produto_id = p.id 
                                    WHERE i.venda_id = :id ORDER BY i.id");
@@ -82,6 +82,7 @@ if ($venda_id) {
             while ($r = $sti->fetch()) {
                 $itens[] = [
                     'desc'   => (string)($r['produto_nome'] ?? $r['produto_id']),
+                    'codigo' => (string)($r['produto_codigo'] ?? $r['produto_id']),
                     'qtd'    => (float)$r['quantidade'],
                     'vun'    => (float)$r['preco_unitario'],
                     'ncm'    => (string)($r['ncm'] ?: $r['p_ncm'] ?: '21069090'),
@@ -116,6 +117,7 @@ foreach ($itens as $it) {
     if ($d !== '' && $q > 0) {
         $_norm[] = [
             'desc'  => $d, 'qtd' => $q, 'vun' => $v,
+            'codigo'=> (string)($it['codigo'] ?? $i++), // Fallback to index if no code
             'unid'  => (string)($it['unid'] ?? $it['unidade'] ?? 'UN'),
             'ncm'   => (string)($it['ncm'] ?? '21069090'),
             'cfop'  => (string)($it['cfop'] ?? '5102'),
@@ -274,7 +276,7 @@ $detXML = ''; $i=1; $vProd=0;
 foreach ($itens as $it) {
     $vL = round($it['qtd'] * $it['vun'], 2);
     $vProd += $vL;
-    $detXML .= '<det nItem="'.$i.'"><prod><cProd>'.$i.'</cProd><cEAN>SEM GTIN</cEAN><xProd>'.e($it['desc']).'</xProd><NCM>'.$it['ncm'].'</NCM><CFOP>'.$it['cfop'].'</CFOP><uCom>'.e($it['unid']).'</uCom><qCom>'.number_format($it['qtd'],4,'.','').'</qCom><vUnCom>'.number_format($it['vun'],10,'.','').'</vUnCom><vProd>'.number_format($vL,2,'.','').'</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>'.e($it['unid']).'</uTrib><qTrib>'.number_format($it['qtd'],4,'.','').'</qTrib><vUnTrib>'.number_format($it['vun'],10,'.','').'</vUnTrib><indTot>1</indTot></prod><imposto><ICMS><ICMSSN102><orig>'.$it['origem'].'</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISNT><CST>07</CST></PISNT></PIS><COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS></imposto></det>';
+    $detXML .= '<det nItem="'.$i.'"><prod><cProd>'.e($it['codigo']).'</cProd><cEAN>SEM GTIN</cEAN><xProd>'.e($it['desc']).'</xProd><NCM>'.$it['ncm'].'</NCM><CFOP>'.$it['cfop'].'</CFOP><uCom>'.e($it['unid']).'</uCom><qCom>'.number_format($it['qtd'],4,'.','').'</qCom><vUnCom>'.number_format($it['vun'],10,'.','').'</vUnCom><vProd>'.number_format($vL,2,'.','').'</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>'.e($it['unid']).'</uTrib><qTrib>'.number_format($it['qtd'],4,'.','').'</qTrib><vUnTrib>'.number_format($it['vun'],10,'.','').'</vUnTrib><indTot>1</indTot></prod><imposto><ICMS><ICMSSN102><orig>'.$it['origem'].'</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISNT><CST>07</CST></PISNT></PIS><COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS></imposto></det>';
     $i++;
 }
 
