@@ -79,8 +79,12 @@ if (!$xmlRaw) {
         .actions{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px;background:#fff;border-top:1px solid #e5e7eb;display:flex;gap:10px;justify-content:center;}
         .btn{appearance:none;border:0;border-radius:10px;padding:11px 20px;font-family:system-ui,sans-serif;font-weight:600;cursor:pointer;font-size:14px;}
         .btn-primary{background:#2563eb;color:#fff;} .btn-secondary{background:#6b7280;color:#fff;}
-        @page{size:80mm auto;margin:3mm;}
-        @media print{body{background:#fff;} .wrapper{box-shadow:none;border-radius:0;margin:0 auto;max-width:unset;width:78mm;padding:0;font-size:14px;} .actions{display:none;}}
+        @page { size: 72mm auto; margin: 0; }
+        @media print { 
+            body { background:#fff; width: 72mm; margin: 0; padding: 0; } 
+            .wrapper { box-shadow:none; border-radius:0; margin: 0 auto !important; max-width:unset; width:68mm; padding: 4mm 0; font-size:14px; } 
+            .actions { display:none; }
+        }
     </style></head><body>
     <div class="wrapper">
         <div class="center" style="font-size:15px;font-weight:700;text-transform:uppercase;">CENTRO DO ELETRICISTA</div>
@@ -277,8 +281,13 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
         .actions{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px env(safe-area-inset-right) calc(10px + env(safe-area-inset-bottom)) env(safe-area-inset-left);background:#fff;border-top:1px solid #e5e7eb;display:flex;gap:10px;justify-content:center}
         .btn{appearance:none;border:0;border-radius:10px;padding:11px 16px;font-family:system-ui,sans-serif;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
         .btn-primary{background:var(--accent);color:#fff} .btn-secondary{background:#6b7280;color:#fff}
-        @page{size:80mm auto;margin:3mm}
-        @media print{html,body{background:#fff} .wrapper{box-shadow:none;border-radius:0;margin:0 auto;max-width:unset;width:78mm;padding:0;font-size:14px;} .actions{display:none} .qr{width:210px;height:210px}}
+        @page { size: 72mm auto; margin: 0; }
+        @media print { 
+            html, body { background:#fff; width: 72mm; margin: 0; padding: 0; } 
+            .wrapper { box-shadow:none; border-radius:0; margin: 0 auto !important; max-width:unset; width:68mm; padding: 4mm 0; font-size:14px; } 
+            .actions { display:none; } 
+            .qr { width:180px; height:180px; }
+        }
     </style>
 </head>
 <body>
