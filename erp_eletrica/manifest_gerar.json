@@ -1,4 +1,5 @@
 {
+  "id": "erp-eletrica-gerador",
   "name": "ERP Elétrica — Gerador",
   "short_name": "Gerar Código",
   "description": "Gerador de códigos de autorização",
