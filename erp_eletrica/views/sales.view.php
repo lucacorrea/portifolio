@@ -1054,7 +1054,7 @@ function renderCart() {
         discountVal = total * (discountPercent / 100);
     }
 
-    const baseVal = total - discountVal;
+    const baseVal = Math.max(0, total - discountVal);
 
     const payment = document.querySelector('input[name="payment"]:checked').value;
     const taxPercent = (payment.includes('cartao')) ? (parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
@@ -1811,6 +1811,7 @@ function getCurrentDiscountPercentage() {
 }
 
 async function checkDiscountAuth() {
+    const discountInput = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const discountPercent = getCurrentDiscountPercentage();
     
     // Admins don't need authorization modal for themselves
@@ -1820,7 +1821,8 @@ async function checkDiscountAuth() {
         return;
     }
 
-    if (discountPercent > 0.01 && !isAuthorized) {
+    // Trigger modal if there is ANY discount and not yet authorized
+    if (discountInput > 0 && !isAuthorized) {
         await loadAdmins();
         bootstrap.Modal.getOrCreateInstance('#modalDiscountAuth').show();
         btnCheckout.disabled = true;
