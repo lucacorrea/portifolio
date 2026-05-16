@@ -12,8 +12,8 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="public/img/app-icon.png">
-    <link rel="icon" type="image/png" href="public/img/app-icon.png">
+    <link rel="apple-touch-icon" href="logo_sistema_erp_eletrica.PNG">
+    <link rel="icon" type="image/png" href="logo_sistema_erp_eletrica.PNG">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
@@ -124,7 +124,7 @@
 <body>
     <div class="container">
         <div class="app-icon">
-            <img src="public/img/app-icon.png" alt="Icon">
+            <img src="logo_sistema_erp_eletrica.PNG" alt="Icon">
         </div>
         <h1>App Consulta</h1>
         <p>Tenha o leitor de preços da Elétrica sempre à mão na sua tela inicial.</p>

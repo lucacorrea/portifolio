@@ -9,7 +9,7 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "public/img/app-icon.png",
+      "src": "logo_sistema_erp_eletrica.PNG",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
