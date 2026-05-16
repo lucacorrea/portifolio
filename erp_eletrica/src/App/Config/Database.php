@@ -15,6 +15,9 @@ class Database {
             $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             $this->connection->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+            
+            // Sync timezone with Brazil (UTC-3)
+            $this->connection->exec("SET time_zone = '-03:00'");
         } catch (PDOException $e) {
             die("Connection error: " . $e->getMessage());
         }
