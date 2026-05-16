@@ -80,7 +80,7 @@ if (!$xmlRaw) {
         .btn{appearance:none;border:0;border-radius:10px;padding:11px 20px;font-family:system-ui,sans-serif;font-weight:600;cursor:pointer;font-size:14px;}
         .btn-primary{background:#2563eb;color:#fff;} .btn-secondary{background:#6b7280;color:#fff;}
         @page{size:80mm auto;margin:3mm;}
-        @media print{body{background:#fff;} .wrapper{box-shadow:none;border-radius:0;margin:0;max-width:unset;width:75mm;padding:0;} .actions{display:none;}}
+        @media print{body{background:#fff;} .wrapper{box-shadow:none;border-radius:0;margin:0 auto;max-width:unset;width:78mm;padding:0;font-size:14px;} .actions{display:none;}}
     </style></head><body>
     <div class="wrapper">
         <div class="center" style="font-size:15px;font-weight:700;text-transform:uppercase;">CENTRO DO ELETRICISTA</div>
@@ -277,7 +277,7 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
         .btn{appearance:none;border:0;border-radius:10px;padding:11px 16px;font-family:system-ui,sans-serif;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
         .btn-primary{background:var(--accent);color:#fff} .btn-secondary{background:#6b7280;color:#fff}
         @page{size:80mm auto;margin:3mm}
-        @media print{html,body{background:#fff} .wrapper{box-shadow:none;border-radius:0;margin:0;max-width:unset;width:75mm;padding:0} .actions{display:none} .qr{width:210px;height:210px}}
+        @media print{html,body{background:#fff} .wrapper{box-shadow:none;border-radius:0;margin:0 auto;max-width:unset;width:78mm;padding:0;font-size:14px;} .actions{display:none} .qr{width:210px;height:210px}}
     </style>
 </head>
 <body>

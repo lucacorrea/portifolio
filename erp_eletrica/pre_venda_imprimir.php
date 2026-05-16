@@ -16,13 +16,16 @@ if (!$pv) {
     <meta charset="UTF-8">
     <title>Ficha de Pré-Venda - <?= $pv['codigo'] ?></title>
     <style>
-        body { font-family: 'Courier New', Courier, monospace; width: 80mm; margin: 0; padding: 10px; font-size: 12px; }
+        body { font-family: 'Courier New', Courier, monospace; width: 78mm; margin: 0 auto; padding: 10px; font-size: 14px; }
         .text-center { text-align: center; }
         .header { border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-        .code { font-size: 24px; font-weight: bold; border: 1px solid #000; padding: 10px; display: inline-block; margin: 10px 0; }
+        .code { font-size: 28px; font-weight: bold; border: 1px solid #000; padding: 10px; display: inline-block; margin: 10px 0; }
         .items { border-bottom: 1px dashed #000; margin-bottom: 10px; padding-bottom: 10px; }
-        .footer { font-size: 10px; }
-        @media print { .no-print { display: none; } }
+        .footer { font-size: 11px; }
+        @media print { 
+            .no-print { display: none; } 
+            body { margin: 0 auto; width: 78mm; }
+        }
     </style>
 </head>
 <body onload="window.print()">
