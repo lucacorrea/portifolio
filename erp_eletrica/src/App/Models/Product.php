@@ -240,9 +240,15 @@ class Product extends BaseModel {
         // Na verdade, o ON DUPLICATE deve lidar com isso.
         
         if ($type == 'saida') {
-             return $this->query("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = ?", [$qty, $id, $filialId]);
+            return $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) 
+                                 VALUES (?, ?, ?) 
+                                 ON DUPLICATE KEY UPDATE quantidade = quantidade - ?", 
+                                 [$id, $filialId, -(float)$qty, $qty]);
         } else {
-             return $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantidade = quantidade + ?", [$id, $filialId, $qty, $qty]);
+            return $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) 
+                                 VALUES (?, ?, ?) 
+                                 ON DUPLICATE KEY UPDATE quantidade = quantidade + ?", 
+                                 [$id, $filialId, (float)$qty, $qty]);
         }
     }
 
@@ -304,10 +310,11 @@ class Product extends BaseModel {
         if (!empty($data['id'])) {
             // --- UPDATE ---
             $sets   = ['codigo = ?', 'ncm = ?', 'nome = ?', 'unidade = ?', 'categoria = ?',
-                       'preco_custo = ?', 'preco_venda = ?', 'estoque_minimo = ?'];
+                       'preco_custo = ?', 'preco_venda = ?', 'quantidade = ?', 'estoque_minimo = ?'];
             $params = [
                 $data['codigo'], $data['ncm'] ?? null, $data['nome'], $data['unidade'],
-                $data['categoria'], $data['preco_custo'], $data['preco_venda'], $data['estoque_minimo'],
+                $data['categoria'], $data['preco_custo'], $data['preco_venda'],
+                $data['quantidade'] ?? 0, $data['estoque_minimo'],
             ];
 
             if ($hasCean)        { $sets[] = 'cean = ?';          $params[] = $data['cean'] ?? 'SEM GTIN'; }
@@ -332,11 +339,11 @@ class Product extends BaseModel {
             $params[] = $data['id'];
             $res = $this->query("UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = ?", $params);
 
-            // ATUALIZA ESTOQUE MÍNIMO NA FILIAL
-            $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, estoque_minimo) 
-                          VALUES (?, ?, ?) 
-                          ON DUPLICATE KEY UPDATE estoque_minimo = ?", 
-                          [$data['id'], $filialId, $data['estoque_minimo'], $data['estoque_minimo']]);
+            // ATUALIZA ESTOQUE NA FILIAL
+            $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo) 
+                          VALUES (?, ?, ?, ?) 
+                          ON DUPLICATE KEY UPDATE quantidade = ?, estoque_minimo = ?", 
+                          [$data['id'], $filialId, $data['quantidade'] ?? 0, $data['estoque_minimo'], $data['quantidade'] ?? 0, $data['estoque_minimo']]);
 
             return $res;
 
