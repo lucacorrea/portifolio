@@ -281,8 +281,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">ID ou E-mail Corporativo</label>
-                    <input type="text" name="email" class="form-control" placeholder="000000 ou usuario@empresa.com" required>
+                    <label class="form-label">ID, E-mail ou Nome</label>
+                    <input type="text" name="email" class="form-control" placeholder="Digite seu ID, e-mail ou nome" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Senha Técnica</label>

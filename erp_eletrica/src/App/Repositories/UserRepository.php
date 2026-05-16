@@ -4,9 +4,9 @@ namespace App\Repositories;
 class UserRepository extends BaseRepository {
     protected $table = 'usuarios';
 
-    public function findByEmail(string $email) {
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE email = ? AND ativo = 1");
-        $stmt->execute([$email]);
+    public function findByIdentifier(string $identifier) {
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE (email = ? OR id = ? OR LOWER(nome) = LOWER(?)) AND ativo = 1");
+        $stmt->execute([$identifier, $identifier, $identifier]);
         return $stmt->fetch();
     }
 

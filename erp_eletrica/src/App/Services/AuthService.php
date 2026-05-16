@@ -9,7 +9,7 @@ class AuthService extends BaseService {
     }
 
     public function login(string $email, string $password, int $filialId = 0) {
-        $user = $this->repository->findByEmail($email);
+        $user = $this->repository->findByIdentifier($email);
         $tempLoginService = new \App\Services\TemporaryLoginService();
         $tempUser = null;
         
