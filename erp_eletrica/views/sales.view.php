@@ -2237,6 +2237,12 @@ function imprimirRecibo(saleId) {
         document.body.appendChild(iframe);
     }
     iframe.src = url;
+
+    // Auto-hide modal after print triggered
+    const modalEl = document.getElementById('modalSuccess');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    }
 }
 
 async function issueNFCe(saleId) {
@@ -2244,15 +2250,15 @@ async function issueNFCe(saleId) {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Aberta central de emissão SEFAZ...';
 
-    // Open emitir.php directly which handles the Sefaz XML+SOAP and then redirects to the final DANFE.
-    // This replicates the original robust behaviour fully.
     const url = `nfce/emitir.php?venda_id=${saleId}`;
     window.open(url, '_blank', 'width=800,height=900,toolbar=0,menubar=0,location=0');
     
     setTimeout(() => {
-        btn.innerHTML = '<i class="fas fa-check me-2"></i>Emitindo em nova janela...';
-        btn.className = 'btn btn-outline-success btn-lg fw-bold py-3 w-100';
-    }, 1500);
+        const modalEl = document.getElementById('modalSuccess');
+        if (modalEl) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        }
+    }, 1000);
 }
 
 // Keyboard Hotkeys
