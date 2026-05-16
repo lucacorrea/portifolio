@@ -2194,10 +2194,7 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
     });
     modal.show();
 
-    // For non-fiscal online: auto-open print window
-    if (!isFiscal && !isOffline && !isContingencia) {
-        setTimeout(() => imprimirRecibo(saleId), 400);
-    }
+
 }
 
 function imprimirRecibo(saleId) {
