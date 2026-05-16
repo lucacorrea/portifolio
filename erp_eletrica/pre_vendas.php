@@ -16,6 +16,9 @@ switch($action) {
     case 'list_pending':
         $controller->list_pending();
         break;
+    case 'delete':
+        $controller->delete();
+        break;
     default:
         $controller->index();
         break;

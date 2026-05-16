@@ -96,6 +96,23 @@ class PreSaleController extends BaseController {
         exit;
     }
 
+    public function delete() {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            echo json_encode(['success' => false, 'error' => 'ID não informado']);
+            exit;
+        }
+        
+        $model = new PreSale();
+        try {
+            $success = $model->delete($id);
+            echo json_encode(['success' => $success]);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     public function list_pending() {
         $db = \App\Config\Database::getInstance()->getConnection();
         $term = trim($_GET['term'] ?? '');

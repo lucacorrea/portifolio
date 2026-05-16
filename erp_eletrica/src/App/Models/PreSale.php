@@ -126,4 +126,9 @@ class PreSale extends BaseModel {
 
         return true;
     }
+
+    public function delete($id) {
+        $this->query("DELETE FROM pre_venda_itens WHERE pre_venda_id = ?", [$id]);
+        return parent::delete($id);
+    }
 }

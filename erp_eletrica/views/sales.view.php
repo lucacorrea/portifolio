@@ -1323,8 +1323,11 @@ async function loadPendingPreSales() {
                 <td>${pv.cliente_nome || 'Consumidor Final'}</td>
                 <td class="fw-bold">R$ ${parseFloat(pv.valor_total).toFixed(2).replace('.', ',')}</td>
                 <td class="small text-muted">${pv.vendedor_nome}</td>
-                <td class="text-end pe-4">
+                <td class="text-end pe-4 d-flex gap-2 justify-content-end">
                     <button class="btn btn-sm btn-primary fw-bold" onclick="importPreSale('${pv.codigo}')">CARREGAR</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deletePreSale(${pv.id})" title="Excluir Pré-Venda">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
                 </td>
             `;
             list.appendChild(row);
@@ -1338,6 +1341,25 @@ async function loadPendingPreSales() {
     } catch (err) {
         console.error("PDV: Erro ao carregar pré-vendas:", err);
         alert("Erro ao carregar pré-vendas. Verifique o console.");
+    }
+}
+
+async function deletePreSale(id) {
+    if (!confirm('Deseja realmente excluir esta pré-venda permanentemente?')) return;
+    
+    try {
+        const res = await fetch(`pre_vendas.php?action=delete&id=${id}`);
+        const data = await res.json();
+        
+        if (data.success) {
+            // Refresh list
+            loadPendingPreSales();
+        } else {
+            alert('Erro ao excluir: ' + (data.error || 'Erro desconhecido'));
+        }
+    } catch (err) {
+        console.error("PDV: Erro ao excluir pré-venda:", err);
+        alert("Erro de conexão ao excluir.");
     }
 }
 
