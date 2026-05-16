@@ -65,7 +65,8 @@
                     <table class="table table-hover align-middle mb-0" id="cartTable">
                         <thead class="bg-light sticky-top">
                             <tr>
-                                <th class="ps-4" width="100">Cód. Interno</th>
+                                <th class="ps-4" width="40">#</th>
+                                <th width="100">Cód. Interno</th>
                                 <th>Produto</th>
                                 <th class="text-center" width="120">Qtd</th>
                                 <th class="text-end" width="120">Unitário</th>
@@ -1008,7 +1009,8 @@ function renderCart() {
         const row = document.createElement('tr');
         row.onmouseover = () => showPreview(item);
         row.innerHTML = `
-            <td class="ps-4 fw-bold text-muted">${item.codigo || '#' + item.id}</td>
+            <td class="ps-4 fw-bold text-muted">${index + 1}</td>
+            <td class="fw-bold text-muted small">${item.codigo || '#' + item.id}</td>
             <td>
                 <div>${item.nome}</div>
                 ${!item.preco_variavel ? `

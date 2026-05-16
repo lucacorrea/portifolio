@@ -105,11 +105,12 @@ if (!$xmlRaw) {
         <div class="hr"></div>
         <?php if ($venda): ?>
         <table class="tbl small">
-            <colgroup><col style="width:45%"><col style="width:10%"><col style="width:10%"><col style="width:17%"><col style="width:18%"></colgroup>
-            <thead><tr><th class="left">Produto</th><th class="right">Qtd</th><th>Un</th><th class="right">Unit</th><th class="right">Total</th></tr></thead>
+            <colgroup><col style="width:8%"><col style="width:37%"><col style="width:10%"><col style="width:10%"><col style="width:17%"><col style="width:18%"></colgroup>
+            <thead><tr><th class="left">#</th><th class="left">Produto</th><th class="right">Qtd</th><th>Un</th><th class="right">Unit</th><th class="right">Total</th></tr></thead>
             <tbody>
-            <?php foreach ($itens as $it): $sub = $it['quantidade']*$it['preco_unitario']; ?>
+            <?php $idx = 1; foreach ($itens as $it): $sub = $it['quantidade']*$it['preco_unitario']; ?>
             <tr>
+                <td class="left"><?= $idx++ ?></td>
                 <td class="left"><?= htmlspecialchars(mb_strimwidth($it['nome'],0,20,'..')) ?></td>
                 <td class="right"><?= number_format($it['quantidade'],2,',','.') ?></td>
                 <td class="center"><?= htmlspecialchars($it['unidade']??'UN') ?></td>
@@ -295,12 +296,13 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
     </header>
 
     <table class="tbl small" aria-label="Itens">
-        <colgroup><col style="width:16%"><col style="width:42%"><col style="width:10%"><col style="width:8%"><col style="width:12%"><col style="width:12%"></colgroup>
-        <thead><tr><th class="left">Cód</th><th class="left">Descrição</th><th class="right">Qtde</th><th class="right">Un</th><th class="right">V.Unit</th><th class="right">V.Total</th></tr></thead>
+        <colgroup><col style="width:8%"><col style="width:12%"><col style="width:38%"><col style="width:10%"><col style="width:8%"><col style="width:12%"><col style="width:12%"></colgroup>
+        <thead><tr><th class="left">#</th><th class="left">Cód</th><th class="left">Descrição</th><th class="right">Qtde</th><th class="right">Un</th><th class="right">V.Unit</th><th class="right">V.Total</th></tr></thead>
         <tbody>
-            <?php
-    $itens = $dom->getElementsByTagNameNS($ns, 'det');
-    foreach($itens as $item):
+    <?php
+    $itemsXml = $dom->getElementsByTagNameNS($ns, 'det');
+    $idx = 1;
+    foreach($itemsXml as $item):
         $prod = $item->getElementsByTagNameNS($ns, 'prod')->item(0);
         if(!$prod) continue;
         $cProd = $prod->getElementsByTagNameNS($ns, 'cProd')->item(0)->nodeValue;
@@ -311,7 +313,9 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
         $vTot  = $prod->getElementsByTagNameNS($ns, 'vProd')->item(0)->nodeValue;
     ?>
     <tr>
-        <td class="left small"><?= htmlspecialchars($cProd) ?><br><?= htmlspecialchars(lm_($xProd)) ?></td>
+        <td class="left small"><?= $idx++ ?></td>
+        <td class="left small"><?= htmlspecialchars($cProd) ?></td>
+        <td class="left small"><?= htmlspecialchars(lm_($xProd)) ?></td>
         <td class="right small"><?= number_format($qCom, 3, ',', '.') ?> <?= htmlspecialchars(lm_($uCom)) ?></td>
         <td class="right small"><?= br_($vUn) ?></td>
         <td class="right small"><?= br_($vTot) ?></td>

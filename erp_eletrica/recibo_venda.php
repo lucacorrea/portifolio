@@ -331,14 +331,16 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
 
         <table class="tbl small" aria-label="Itens">
             <colgroup>
-                <col style="width:40%">
+                <col style="width:8%">
+                <col style="width:34%">
                 <col style="width:10%">
-                <col style="width:10%">
+                <col style="width:8%">
                 <col style="width:18%">
                 <col style="width:22%">
             </colgroup>
             <thead>
                 <tr>
+                    <th class="left">#</th>
                     <th class="left">Produto</th>
                     <th class="right">Qtd</th>
                     <th class="left">Un</th>
@@ -347,10 +349,11 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($itens as $it): 
+                <?php $idx = 1; foreach ($itens as $it): 
                     $subtotal = $it['quantidade'] * $it['preco_unitario'];
                 ?>
                     <tr>
+                        <td class="left"><?= $idx++ ?></td>
                         <td class="left"><?= htmlspecialchars(mb_strimwidth($it['nome'], 0, 22, '..')) ?></td>
                         <td class="right"><?= formatarQuantidade($it['quantidade']) ?></td>
                         <td class="left"><?= htmlspecialchars($it['unidade'] ?? 'UN') ?></td>
