@@ -795,6 +795,10 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 
     <div class="hr"></div>
 
+    <div class="center small" style="font-weight: bold; margin-bottom: 5px;">
+      "Dai graças ao Senhor sempre, Amem"
+    </div>
+
     <?php if ($protInfo): ?>
       <div class="small center"><?= htmlspecialchars($protInfo, ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>

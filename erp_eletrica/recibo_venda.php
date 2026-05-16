@@ -398,6 +398,10 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
 
         <div class="hr"></div>
 
+        <div class="center small" style="color:#111; font-weight: bold; margin-bottom: 5px;">
+            "Dai graças ao Senhor sempre, Amem"
+        </div>
+
         <div class="center small" style="color:#888;">
             Este documento não tem validade fiscal.<br>Obrigado pela preferência!
         </div>
