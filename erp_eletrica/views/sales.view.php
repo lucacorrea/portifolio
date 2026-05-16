@@ -2257,10 +2257,12 @@ async function issueNFCe(saleId) {
 
 // Keyboard Hotkeys
 document.addEventListener('keydown', (e) => {
-    // F2: Checkout
-    if (e.key === 'F2') {
-        e.preventDefault();
-        btnCheckout.click();
+    // F2 ou Enter (fora da busca): Finalizar Venda
+    if (e.key === 'F2' || (e.key === 'Enter' && document.activeElement.id !== 'pdvSearch' && document.activeElement.id !== 'pdvQty')) {
+        if (!btnCheckout.disabled) {
+            e.preventDefault();
+            btnCheckout.click();
+        }
     }
     // F4: Search
     if (e.key === 'F4') {
