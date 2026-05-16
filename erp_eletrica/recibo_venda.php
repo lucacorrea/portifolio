@@ -266,7 +266,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
         }
 
         @page {
-            size: 80mm auto;
+            size: 72mm auto;
             margin: 0;
         }
 
@@ -275,7 +275,9 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
             html,
             body {
                 background: #fff;
-                width: 80mm;
+                width: 72mm;
+                margin: 0;
+                padding: 0;
             }
 
             .wrapper {
@@ -283,7 +285,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
                 border-radius: 0;
                 margin: 0 auto !important;
                 max-width: unset;
-                width: 72mm;
+                width: 68mm;
                 padding: 4mm 0;
                 font-size: 14px;
             }
@@ -293,8 +295,8 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
             }
 
             .qr {
-                width: 210px;
-                height: 210px
+                width: 180px;
+                height: 180px
             }
         }
     </style>
