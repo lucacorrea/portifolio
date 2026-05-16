@@ -286,6 +286,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
                 margin: 0 auto !important;
                 max-width: unset;
                 width: 72mm;
+                zoom: 113% !important;
                 padding: 4mm 0;
                 font-size: 14px;
             }
