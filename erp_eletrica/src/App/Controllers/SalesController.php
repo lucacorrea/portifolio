@@ -263,12 +263,24 @@ class SalesController extends BaseController {
                         $userModel = new \App\Models\User();
                         $isValid = false;
 
-                        // 1. Try as a Password/PIN for a specific user
-                        if ($userModel->validateAuth($supervisorId, $supervisorCredential)) {
+                        // 1. Try as a Password/PIN for a specific user (if provided)
+                        if ($supervisorId && $userModel->validateAuth($supervisorId, $supervisorCredential)) {
                             $isValid = true;
                         } 
-                        // 2. Try as a 6-digit code (fallback)
+                        // 2. Try as an Admin Password/PIN for ANY admin in the branch
                         else {
+                            $admins = $userModel->findAdmins();
+                            foreach ($admins as $admin) {
+                                if ($userModel->validateAuth($admin['id'], $supervisorCredential)) {
+                                    $isValid = true;
+                                    $supervisorId = $admin['id'];
+                                    break;
+                                }
+                            }
+                        }
+
+                        // 3. Try as a 6-digit code (fallback)
+                        if (!$isValid) {
                             $authService = new \App\Services\AuthorizationService();
                             if ($authService->validateAndUse($supervisorCredential, 'desconto', $_SESSION['filial_id'] ?? 1)) {
                                 $isValid = true;
@@ -874,15 +886,33 @@ class SalesController extends BaseController {
             }
 
             $userModel = new \App\Models\User();
-            if ($userModel->validateAuth($userId, $credential)) {
+            $isValid = false;
+
+            // 1. Try as a Password/PIN for the suggested admin
+            if ($userId && $userModel->validateAuth($userId, $credential)) {
+                $isValid = true;
+            } 
+            // 2. Try as an Admin Password/PIN for ANY admin
+            else {
+                $admins = $userModel->findAdmins();
+                foreach ($admins as $admin) {
+                    if ($userModel->validateAuth($admin['id'], $credential)) {
+                        $isValid = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($isValid) {
                 echo json_encode(['success' => true]);
             } else {
-                // Fallback: Check if it's a 6-digit code for "desconto"
+                // Fallback: Check if it's a 6-digit code for "desconto" (Validate ONLY, don't use yet)
                 $authService = new \App\Services\AuthorizationService();
-                if ($authService->validateAndUse($credential, 'desconto', $_SESSION['filial_id'] ?? 1)) {
+                $check = $authService->validateOnly($credential, 'desconto', $_SESSION['filial_id'] ?? 1);
+                if ($check['success']) {
                     echo json_encode(['success' => true]);
                 } else {
-                    echo json_encode(['success' => false, 'error' => 'Senha ou Código de autorização inválido/expirado.']);
+                    echo json_encode(['success' => false, 'error' => $check['error'] ?? 'Senha ou Código de autorização inválido/expirado.']);
                 }
             }
             exit;

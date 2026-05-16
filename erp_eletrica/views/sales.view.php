@@ -742,9 +742,10 @@ function updateCheckoutButtonState() {
     const discountPercent = getCurrentDiscountPercentage();
     
     // If there is a discount and user is not admin and not authorized, keep it disabled
+    // If there is a discount and user is not admin and not authorized, 
+    // we keep it enabled so they can click and trigger the authorization modal
     if (discountPercent > 0.01 && !isAuthorized && currentUserLevel !== 'admin') {
-        btnCheckout.disabled = true;
-        return;
+        btnCheckout.disabled = false;
     }
 
     if (payment === 'dinheiro') {
@@ -1083,7 +1084,7 @@ function renderCart() {
         }
     }
 
-    checkDiscountAuth();
+    // checkDiscountAuth(); // Removed: Auth now happens on Checkout click
     calculateChange();
     updateCheckoutButtonState();
 }
@@ -1917,6 +1918,9 @@ async function validateAuthorization() {
         }, 500);
         
         alert('Desconto autorizado com sucesso!');
+        
+        // Auto-continue to checkout
+        btnCheckout.click();
     } else {
         alert('Erro: ' + result.error);
     }
