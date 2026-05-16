@@ -239,14 +239,14 @@ class SalesController extends BaseController {
                 $supervisorId = null;
                 $authCode = $data['auth_code'] ?? null;
 
-                if ($requestedDiscount > 0 && $_SESSION['usuario_nivel'] !== 'admin') {
+                if ($requestedDiscount > 0 && !in_array($_SESSION['usuario_nivel'], ['admin', 'gerente'])) {
                     $isValid = false;
 
                     if ($authCode) {
                         $authService = new \App\Services\AuthorizationService();
                         if ($authService->validateAndUse($authCode, 'desconto', $_SESSION['filial_id'] ?? 1)) {
                             $isValid = true;
-                            $supervisorId = 0;
+                            $supervisorId = null;
                             $audit = new \App\Services\AuditLogService();
                             $audit->record('Uso de código de desconto', 'vendas', null, null, $authCode);
                         }
@@ -284,7 +284,7 @@ class SalesController extends BaseController {
                             $authService = new \App\Services\AuthorizationService();
                             if ($authService->validateAndUse($supervisorCredential, 'desconto', $_SESSION['filial_id'] ?? 1)) {
                                 $isValid = true;
-                                $supervisorId = 0; 
+                                $supervisorId = null; 
                             }
                         }
 
@@ -294,8 +294,8 @@ class SalesController extends BaseController {
 
                         if ($supervisorId > 0) {
                             $supervisor = $db->query("SELECT nivel FROM usuarios WHERE id = " . (int)$supervisorId)->fetch();
-                            if (!$supervisor || $supervisor['nivel'] !== 'admin') {
-                                throw new \Exception("Apenas administradores podem autorizar descontos.");
+                            if (!$supervisor || !in_array($supervisor['nivel'], ['admin', 'gerente'])) {
+                                throw new \Exception("Apenas administradores ou gerentes podem autorizar descontos.");
                             }
                         }
                         $isValid = true;

@@ -36,7 +36,7 @@ class User extends BaseModel {
     public function findAdmins() {
         $filialId = $_SESSION['filial_id'] ?? null;
         
-        $sql = "SELECT id, nome, auth_type, auth_pin FROM {$this->table} WHERE nivel = 'admin' AND ativo = 1";
+        $sql = "SELECT id, nome, auth_type, auth_pin FROM {$this->table} WHERE nivel IN ('admin', 'gerente') AND ativo = 1";
         
         // 1. Try exact branch match
         if ($filialId) {
