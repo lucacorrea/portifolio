@@ -49,6 +49,7 @@ class AuthorizationService extends BaseService {
         $this->repository->create([
             'tipo' => $tipo,
             'codigo' => $codigo,
+            
             'usuario_autorizador_id' => $usuarioAutorizadorId,
             'validade' => $validade,
             'filial_id' => $filialId,
