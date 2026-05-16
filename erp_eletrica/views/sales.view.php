@@ -217,20 +217,25 @@
                         <span class="text-muted">Subtotal</span>
                         <span class="fw-bold" id="totalSub">R$ 0,00</span>
                     </div>
-                    <!-- Discount Controls -->
-                    <div class="mb-3 p-3 bg-white border rounded shadow-sm">
+                    <!-- Premium Discount Controls -->
+                    <div class="mb-4 p-3 bg-white border rounded shadow-lg" style="border-left: 5px solid #10b981 !important;">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted small fw-bold text-uppercase">Modo Desconto</span>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="discountModeToggle" onchange="toggleDiscountMode()">
-                                <label class="form-check-label extra-small fw-bold text-uppercase text-primary" for="discountModeToggle" id="discountModeLabel">PORCENTAGEM (%)</label>
+                            <span class="text-muted small fw-bold text-uppercase">Modo de Desconto</span>
+                            <div class="discount-toggle-container shadow-sm" onclick="toggleDiscountModeClick()">
+                                <div id="discountSlider" class="discount-toggle-slider to-money"></div>
+                                <div id="optMoney" class="discount-toggle-option active">DINHEIRO</div>
+                                <div id="optPercent" class="discount-toggle-option">PORCENTAGEM</div>
+                                <input type="checkbox" id="discountModeToggle" class="d-none" checked onchange="updateDiscountUI()">
                             </div>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted fw-bold" id="discountInputLabel">Desconto (%)</span>
-                            <div class="input-group input-group-sm" style="width: 140px;">
-                                <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold" id="discountSymbol">%</span>
-                                <input type="number" id="discountPercent" class="form-control text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" step="0.1" onfocus="this.select()" oninput="renderCart()">
+                            <div>
+                                <span class="d-block fw-bold" id="discountInputLabel" style="color: #10b981;">Desconto (R$)</span>
+                                <small class="text-muted extra-small">Valor fixo abatido do total</small>
+                            </div>
+                            <div class="input-group input-group-lg" style="width: 160px;">
+                                <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold" id="discountSymbol">R$</span>
+                                <input type="number" id="discountPercent" class="form-control text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" step="0.01" onfocus="this.select()" oninput="renderCart()">
                             </div>
                         </div>
                     </div>
@@ -642,6 +647,9 @@ const productPreviewName = document.getElementById('productPreviewName');
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadRecentSales();
+    
+    // Initialize Discount UI
+    updateDiscountUI();
     
     // Check initial payment method
     const initialPayment = document.querySelector('input[name="payment"]:checked');
@@ -1782,27 +1790,37 @@ async function checkDiscountAuth() {
     }
 }
 
-function toggleDiscountMode() {
+function toggleDiscountModeClick() {
+    const cb = document.getElementById('discountModeToggle');
+    cb.checked = !cb.checked;
+    updateDiscountUI();
+}
+
+function updateDiscountUI() {
     const isMoney = document.getElementById('discountModeToggle').checked;
-    const label = document.getElementById('discountModeLabel');
+    const slider = document.getElementById('discountSlider');
+    const optMoney = document.getElementById('optMoney');
+    const optPercent = document.getElementById('optPercent');
     const inputLabel = document.getElementById('discountInputLabel');
     const symbol = document.getElementById('discountSymbol');
     const input = document.getElementById('discountPercent');
 
     if (isMoney) {
-        label.innerText = 'DINHEIRO (R$)';
-        label.classList.replace('text-primary', 'text-success');
+        slider.className = 'discount-toggle-slider to-money';
+        optMoney.classList.add('active');
+        optPercent.classList.remove('active');
         inputLabel.innerText = 'Desconto (R$)';
+        inputLabel.style.color = '#10b981';
         symbol.innerText = 'R$';
         input.step = '0.01';
-        input.max = ''; // No max for money discount
     } else {
-        label.innerText = 'PORCENTAGEM (%)';
-        label.classList.replace('text-success', 'text-primary');
+        slider.className = 'discount-toggle-slider to-percent';
+        optMoney.classList.remove('active');
+        optPercent.classList.add('active');
         inputLabel.innerText = 'Desconto (%)';
+        inputLabel.style.color = '#3b82f6';
         symbol.innerText = '%';
         input.step = '0.1';
-        input.max = '100';
     }
     renderCart();
 }
@@ -2286,4 +2304,51 @@ function interceptDiscount(e) {
     }
     .extra-small { font-size: 0.75rem; }
     .uppercase { text-transform: uppercase; }
+
+    /* Premium Discount Toggle Styles */
+    .discount-toggle-container {
+        display: flex;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 12px;
+        position: relative;
+        user-select: none;
+        width: 180px;
+        cursor: pointer;
+    }
+
+    .discount-toggle-option {
+        flex: 1;
+        text-align: center;
+        padding: 6px 0;
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: #64748b;
+        z-index: 2;
+        transition: all 0.3s ease;
+    }
+
+    .discount-toggle-option.active {
+        color: #fff !important;
+    }
+
+    .discount-toggle-slider {
+        position: absolute;
+        width: calc(50% - 4px);
+        height: calc(100% - 8px);
+        border-radius: 10px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        z-index: 1;
+    }
+
+    .discount-toggle-slider.to-money {
+        transform: translateX(0);
+        background: #10b981; /* Success Green */
+    }
+
+    .discount-toggle-slider.to-percent {
+        transform: translateX(100%);
+        background: #3b82f6; /* Primary Blue */
+    }
 </style>
