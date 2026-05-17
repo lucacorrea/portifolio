@@ -25,7 +25,7 @@
       <div>
         <span class="badge">Área administrativa</span>
         <h1 class="section-title">Entrar</h1>
-        <p class="muted">Tela visual do MVP. A autenticação real será criada apenas na etapa de backend.</p>
+      
       </div>
       <label class="form-group full">
         <span>E-mail</span>
