@@ -1,13 +1,24 @@
 <?php
-// Configuração base do MVP Arte&Flor.
-// Nesta fase não há banco de dados. Os dados vêm de JSON local.
+// Configuração base do MVP visual Arte&Flor.
+// Nesta etapa as páginas .php funcionam como front-end demonstrativo.
 
 const SITE_NAME = 'Arte&Flor';
 const SITE_DESCRIPTION = 'Catálogo de vendas de flores, arranjos, vasos e presentes em Coari-AM.';
 const WHATSAPP_NUMBER = '5597000000000';
-const BASE_URL = './';
+
+function base_url(): string
+{
+    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/arteFlor/index.php');
+    $dir = rtrim(dirname($scriptName), '/');
+
+    if (str_ends_with($dir, '/admin')) {
+        $dir = rtrim(dirname($dir), '/');
+    }
+
+    return ($dir === '' || $dir === '.') ? '/' : $dir . '/';
+}
 
 function asset(string $path): string
 {
-    return BASE_URL . 'assets/' . ltrim($path, '/');
+    return base_url() . 'assets/' . ltrim($path, '/');
 }
