@@ -1,0 +1,6 @@
+[
+  {"produto": "Rosas vermelhas", "tipo": "Entrada", "quantidade": 24, "responsavel": "Atendimento", "data": "17/05/2026"},
+  {"produto": "Buquê Tons Pastel", "tipo": "Saída", "quantidade": 2, "responsavel": "Loja", "data": "17/05/2026"},
+  {"produto": "Orquidea em Vaso", "tipo": "Ajuste", "quantidade": 1, "responsavel": "Estoque", "data": "16/05/2026"},
+  {"produto": "Folhagens", "tipo": "Perda", "quantidade": 3, "responsavel": "Producao", "data": "16/05/2026"}
+]

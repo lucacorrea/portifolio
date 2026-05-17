@@ -2,7 +2,31 @@
 $pageTitle = 'Blog';
 $activePage = 'blog';
 require_once __DIR__ . '/includes/header.php';
+
+$posts = load_json('posts.json');
 ?>
-<section class="page-header"><div class="container"><h1 class="section-title">Blog Arte&Flor</h1><p class="section-subtitle">Conteúdos para ajudar o cliente a escolher e conservar flores.</p></div></section>
-<section class="section"><div class="container grid-3"><article class="card"><span class="badge">Cuidados</span><h3>Como conservar flores por mais tempo</h3><p class="muted">Dicas simples para manter buquês bonitos por mais dias.</p><a class="btn btn-soft" href="post.php">Ler mais</a></article><article class="card"><span class="badge">Presentes</span><h3>Como escolher flores para aniversário</h3><p class="muted">Sugestões delicadas para cada estilo de pessoa.</p><a class="btn btn-soft" href="post.php">Ler mais</a></article><article class="card"><span class="badge">Datas especiais</span><h3>Flores para Dia das Mães</h3><p class="muted">Ideias para demonstrar carinho com elegância.</p><a class="btn btn-soft" href="post.php">Ler mais</a></article></div></section>
+<section class="page-hero" style="--page-image: url('https://images.unsplash.com/photo-1468327768560-75b778cbb551?auto=format&fit=crop&w=1600&q=80');">
+  <div class="container">
+    <span class="badge">Conteúdo demonstrativo</span>
+    <h1 class="section-title">Blog Arte&Flor</h1>
+    <p class="section-subtitle">Dicas de cuidado, ideias de presentes e conteúdos para fortalecer a presença digital da floricultura.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container grid-3">
+    <?php foreach ($posts as $post): ?>
+      <article class="card blog-card">
+        <img src="<?= e($post['imagem']) ?>" alt="<?= e($post['alt']) ?>" loading="lazy">
+        <div class="blog-card-body">
+          <span class="eyebrow"><?= e($post['categoria']) ?></span>
+          <h2><?= e($post['titulo']) ?></h2>
+          <p class="muted"><?= e($post['resumo']) ?></p>
+          <small class="muted"><?= e($post['data']) ?></small>
+          <a class="btn btn-soft" href="<?= site_url('post.php?slug=' . rawurlencode($post['slug'])) ?>">Ler mais</a>
+        </div>
+      </article>
+    <?php endforeach; ?>
+  </div>
+</section>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

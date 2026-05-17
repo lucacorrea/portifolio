@@ -1,0 +1,29 @@
+[
+  {
+    "codigo": "AF-1025",
+    "cliente": "Maria Clara",
+    "status": "Em preparo",
+    "pagamento": "Pix",
+    "entrega": "Entrega hoje, 16h as 18h",
+    "total": 189.9,
+    "itens": "Arranjo Floral Premium"
+  },
+  {
+    "codigo": "AF-1024",
+    "cliente": "Ana Beatriz",
+    "status": "Pedido recebido",
+    "pagamento": "Presencial",
+    "entrega": "Retirada na loja",
+    "total": 119.9,
+    "itens": "Buquê Tons Pastel"
+  },
+  {
+    "codigo": "AF-1021",
+    "cliente": "Joao Pedro",
+    "status": "Finalizado",
+    "pagamento": "Dinheiro",
+    "entrega": "Entregue no bairro Centro",
+    "total": 59.9,
+    "itens": "Mini Buquê Delicado"
+  }
+]

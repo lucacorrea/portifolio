@@ -1,16 +1,79 @@
-const summary = document.getElementById('checkoutSummary');
-const totalEl = document.getElementById('checkoutTotal');
-const form = document.getElementById('checkoutForm');
-const cartCheckout = ArteFlor.getCart();
-const totalCheckout = cartCheckout.reduce((sum, item) => sum + item.preco * item.qty, 0);
+(function () {
+  const renderSummary = () => {
+    const summary = document.getElementById('checkoutSummary');
+    const total = document.getElementById('checkoutTotal');
 
-summary.innerHTML = cartCheckout.length ? cartCheckout.map((item) => `<p>${item.qty}x ${item.nome} - ${ArteFlor.formatMoney(item.preco * item.qty)}</p>`).join('') : '<p class="muted">Carrinho vazio.</p>';
-totalEl.textContent = ArteFlor.formatMoney(totalCheckout);
+    if (!summary || !total || !window.ArteFlor) {
+      return;
+    }
 
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const data = Object.fromEntries(new FormData(form).entries());
-  const itens = cartCheckout.map((item) => `- ${item.qty}x ${item.nome} (${ArteFlor.formatMoney(item.preco * item.qty)})`).join('\n');
-  const message = `Olá, vim pelo catálogo da Arte&Flor.\n\nPedido:\n${itens || 'Sem itens no carrinho'}\n\nTotal: ${ArteFlor.formatMoney(totalCheckout)}\n\nCliente: ${data.nome}\nWhatsApp: ${data.whatsapp}\nRecebimento: ${data.recebimento}\nBairro: ${data.bairro}\nEndereço: ${data.endereco}\nPagamento: ${data.pagamento}\nObservações: ${data.observacoes || 'Nenhuma'}`;
-  window.open(`https://wa.me/5597000000000?text=${encodeURIComponent(message)}`, '_blank');
-});
+    const cart = ArteFlor.getCart();
+    const value = cart.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 0), 0);
+
+    if (!cart.length) {
+      summary.innerHTML = '<div class="empty-state">Carrinho vazio. Você ainda pode enviar uma solicitação manual pelo WhatsApp.</div>';
+    } else {
+      summary.innerHTML = cart.map((item) => `
+        <div class="summary-line">
+          <span>${item.qty}x ${item.nome}</span>
+          <strong>${ArteFlor.money(Number(item.preco || 0) * Number(item.qty || 0))}</strong>
+        </div>
+      `).join('');
+    }
+
+    total.textContent = ArteFlor.money(value);
+  };
+
+  const buildMessage = (data, cart, total) => {
+    const items = cart.length
+      ? cart.map((item) => `- ${item.qty}x ${item.nome} (${ArteFlor.money(Number(item.preco || 0) * Number(item.qty || 0))})`).join('\n')
+      : '- Pedido sem itens no carrinho. Cliente deseja atendimento manual.';
+
+    return [
+      'Olá, vim pelo site da Arte&Flor.',
+      '',
+      'Pedido:',
+      items,
+      '',
+      `Total demonstrativo: ${ArteFlor.money(total)}`,
+      '',
+      `Cliente: ${data.nome || '-'}`,
+      `WhatsApp: ${data.whatsapp || '-'}`,
+      `Recebimento: ${data.recebimento || '-'}`,
+      `Data desejada: ${data.data || '-'}`,
+      `Horário desejado: ${data.horario || '-'}`,
+      `Bairro: ${data.bairro || '-'}`,
+      `Endereço: ${data.endereco || '-'}`,
+      `Referência: ${data.referencia || '-'}`,
+      `Pagamento: ${data.pagamento || '-'}`,
+      `Mensagem para cartão: ${data.cartao || 'Nenhuma'}`,
+      `Observações: ${data.observacoes || 'Nenhuma'}`
+    ].join('\n');
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('checkoutForm');
+    renderSummary();
+
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const cart = ArteFlor.getCart();
+      const total = cart.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 0), 0);
+      const data = Object.fromEntries(new FormData(form).entries());
+      const codigo = `AF-${String(Date.now()).slice(-5)}`;
+
+      ArteFlor.saveOrder({
+        codigo,
+        status: 'Pedido recebido',
+        pagamento: data.pagamento,
+        total,
+        itensResumo: cart.length ? cart.map((item) => `${item.qty}x ${item.nome}`).join(', ') : 'Atendimento manual',
+        criadoEm: new Date().toISOString()
+      });
+
+      window.open(ArteFlor.whatsappUrl(buildMessage(data, cart, total)), '_blank', 'noopener');
+      ArteFlor.toast(`Pedido #${codigo} gerado para WhatsApp.`);
+    });
+  });
+})();

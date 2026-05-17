@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "slug": "como-conservar-flores-por-mais-tempo",
+    "titulo": "Como conservar flores por mais tempo",
+    "categoria": "Cuidados",
+    "data": "12 maio 2026",
+    "resumo": "Cuidados simples para manter buquês e arranjos bonitos por mais dias.",
+    "imagem": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1200&q=80",
+    "alt": "Flores em tons suaves para artigo de cuidados",
+    "conteudo": [
+      "Flores naturais duram mais quando ficam em local fresco, longe de sol direto e de correntes de ar intensas.",
+      "Troque a agua diariamente, lave o recipiente e corte a ponta dos caules em diagonal para melhorar a absorcao.",
+      "Remova folhas que ficam submersas e descarte petalas danificadas. Esse cuidado evita mau cheiro e ajuda o arranjo a permanecer bonito."
+    ]
+  },
+  {
+    "id": 2,
+    "slug": "flores-para-presentear-em-aniversarios",
+    "titulo": "Flores para presentear em aniversarios",
+    "categoria": "Presentes",
+    "data": "08 maio 2026",
+    "resumo": "Sugestoes elegantes para escolher flores de acordo com o estilo da pessoa.",
+    "imagem": "https://images.unsplash.com/photo-1468327768560-75b778cbb551?auto=format&fit=crop&w=1200&q=80",
+    "alt": "Arranjo floral colorido para aniversario",
+    "conteudo": [
+      "Para aniversários, buquês em tons claros comunicam delicadeza, enquanto arranjos coloridos deixam o presente mais festivo.",
+      "Adicionar um cartao personalizado transforma uma escolha simples em uma experiencia mais memoravel.",
+      "Quando houver duvida, opte por composicoes equilibradas, com folhagens e flores de boa durabilidade."
+    ]
+  },
+  {
+    "id": 3,
+    "slug": "datas-especiais-com-flores",
+    "titulo": "Como planejar presentes florais para datas especiais",
+    "categoria": "Datas especiais",
+    "data": "02 maio 2026",
+    "resumo": "Organização de encomendas para Dia das Mães, aniversários e homenagens.",
+    "imagem": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=1200&q=80",
+    "alt": "Arranjo floral sofisticado para data especial",
+    "conteudo": [
+      "Em datas de alta procura, encomendar com antecedencia aumenta as chances de conseguir as flores e cores desejadas.",
+      "Informe horario, bairro, mensagem do cartao e preferencias de cor no pedido. Esses detalhes facilitam a preparacao.",
+      "A Arte&Flor pode sugerir alternativas caso alguma flor nao esteja disponivel no dia."
+    ]
+  }
+]

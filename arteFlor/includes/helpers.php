@@ -1,10 +1,10 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-function load_json(string $file): array
+function load_json($file)
 {
     $path = __DIR__ . '/../assets/data/' . $file;
-    if (!file_exists($path)) {
+    if (!is_file($path)) {
         return [];
     }
 
@@ -14,17 +14,23 @@ function load_json(string $file): array
     return is_array($data) ? $data : [];
 }
 
-function money_br(float|int $value): string
+function money_br($value)
 {
     return 'R$ ' . number_format((float) $value, 2, ',', '.');
 }
 
-function whatsapp_url(string $message): string
+function whatsapp_url($message)
 {
     return 'https://wa.me/' . WHATSAPP_NUMBER . '?text=' . rawurlencode($message);
 }
 
-function e(string $value): string
+function e($value)
 {
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
+function product_price($produto)
+{
+    $promotional = (float) ($produto['preco_promocional'] ?? 0);
+    return $promotional > 0 ? $promotional : (float) ($produto['preco'] ?? 0);
 }
