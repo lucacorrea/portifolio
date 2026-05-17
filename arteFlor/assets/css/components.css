@@ -1,0 +1,21 @@
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 22px; border-radius: var(--raio-botao); border: 0; text-decoration: none; font-weight: 800; cursor: pointer; transition: .2s ease; }
+.btn-primary { background: var(--verde-principal); color: #fff; box-shadow: 0 8px 20px rgba(79,143,107,.22); }
+.btn-primary:hover { background: var(--verde-principal-hover); transform: translateY(-1px); }
+.btn-outline { border: 1px solid var(--verde-principal); color: var(--verde-principal); background: transparent; }
+.btn-soft { background: var(--verde-menta); color: var(--verde-principal); }
+.card { background: #fff; border: 1px solid var(--borda-suave); border-radius: var(--raio-card); box-shadow: var(--sombra-card); padding: 22px; }
+.card:hover { box-shadow: var(--sombra-card-hover); }
+.product-card { padding: 0; overflow: hidden; }
+.product-img { aspect-ratio: 4/3; display: grid; place-items: center; font-size: 4rem; background: linear-gradient(135deg, var(--verde-menta), var(--rosa-floral-suave)); }
+.product-body { padding: 18px; }
+.badge { display: inline-flex; align-items: center; padding: 5px 11px; border-radius: var(--raio-botao); background: var(--verde-menta); color: var(--verde-principal); font-size: .78rem; font-weight: 800; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0; }
+.filter-pill { border: 1px solid var(--borda-suave); background: #fff; border-radius: var(--raio-botao); padding: 9px 15px; cursor: pointer; font-weight: 700; }
+.form-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
+.form-group { display: grid; gap: 6px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group input, .form-group select, .form-group textarea { border: 1px solid var(--borda-suave); border-radius: 14px; padding: 12px 14px; background: #fff; }
+.table-wrap { overflow-x: auto; background: #fff; border-radius: var(--raio-card); border: 1px solid var(--borda-suave); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--borda-suave); }
+th { color: var(--grafite-medio); font-size: .85rem; }
