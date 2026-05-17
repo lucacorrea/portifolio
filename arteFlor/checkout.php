@@ -5,928 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Checkout | Arte&Flor</title>
   <meta name="description" content="Checkout demonstrativo Arte&Flor com Pix visual e envio do pedido pelo WhatsApp.">
-
-  <style>
-    :root {
-      --verde-principal: #4F8F6B;
-      --verde-hover: #3D7254;
-      --verde-profundo: #254736;
-      --verde-pastel: #DDEBDD;
-      --verde-menta: #EAF6EA;
-      --creme: #FFF8F0;
-      --creme-2: #F6EBDD;
-      --rosa: #F5C6D6;
-      --rosa-suave: #FBE8EF;
-      --vinho: #8A4A5B;
-      --marrom: #B48A63;
-      --branco: #FFFFFF;
-      --texto: #303030;
-      --texto-suave: #666666;
-      --borda: rgba(79, 143, 107, .16);
-      --sombra: 0 18px 50px rgba(65, 48, 35, .10);
-      --sombra-forte: 0 28px 80px rgba(65, 48, 35, .16);
-      --raio: 26px;
-      --raio-menor: 16px;
-      --fonte-titulo: Georgia, "Times New Roman", serif;
-      --fonte: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      min-height: 100vh;
-      font-family: var(--fonte);
-      color: var(--texto);
-      background:
-        radial-gradient(circle at 10% 10%, rgba(245, 198, 214, .32), transparent 28rem),
-        radial-gradient(circle at 88% 12%, rgba(79, 143, 107, .26), transparent 30rem),
-        linear-gradient(180deg, var(--creme), #fffdf9 48%, var(--verde-menta));
-      line-height: 1.6;
-      overflow-x: hidden;
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      pointer-events: none;
-      opacity: .45;
-      background-image:
-        linear-gradient(rgba(79, 143, 107, .05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(79, 143, 107, .05) 1px, transparent 1px);
-      background-size: 42px 42px;
-      mask-image: linear-gradient(to bottom, #000, transparent 75%);
-    }
-
-    a {
-      color: inherit;
-    }
-
-    img {
-      max-width: 100%;
-      display: block;
-    }
-
-    button,
-    input,
-    select,
-    textarea {
-      font: inherit;
-    }
-
-    button {
-      cursor: pointer;
-      border: 0;
-    }
-
-    .container {
-      width: min(1180px, calc(100% - 36px));
-      margin: 0 auto;
-    }
-
-    .site-header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(255, 255, 255, .86);
-      backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--borda);
-      box-shadow: 0 10px 30px rgba(65, 48, 35, .05);
-    }
-
-    .header-inner {
-      min-height: 76px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-    }
-
-    .brand {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      text-decoration: none;
-      font-family: var(--fonte-titulo);
-      font-weight: 800;
-      font-size: 1.45rem;
-      color: var(--verde-principal);
-      white-space: nowrap;
-    }
-
-    .brand span span {
-      color: var(--vinho);
-    }
-
-    .brand-icon {
-      width: 46px;
-      height: 46px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, var(--verde-menta), var(--verde-pastel));
-      box-shadow: inset 0 0 0 1px rgba(79, 143, 107, .18);
-    }
-
-    .main-nav {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, .7);
-      border: 1px solid var(--borda);
-    }
-
-    .main-nav a {
-      text-decoration: none;
-      padding: 9px 14px;
-      border-radius: 999px;
-      color: var(--texto-suave);
-      font-weight: 800;
-      font-size: .9rem;
-      transition: .2s;
-    }
-
-    .main-nav a:hover,
-    .main-nav a.active {
-      background: var(--verde-menta);
-      color: var(--verde-hover);
-    }
-
-    .menu-toggle {
-      display: none;
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: var(--verde-menta);
-      color: var(--verde-profundo);
-      font-weight: 900;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      min-height: 46px;
-      padding: 12px 22px;
-      border-radius: 999px;
-      font-weight: 900;
-      text-decoration: none;
-      transition: .22s ease;
-      border: 1px solid transparent;
-    }
-
-    .btn-primary {
-      color: #fff;
-      background: linear-gradient(135deg, var(--verde-principal), var(--verde-hover));
-      box-shadow: 0 16px 34px rgba(79, 143, 107, .24);
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 22px 54px rgba(79, 143, 107, .32);
-    }
-
-    .btn-soft {
-      color: var(--verde-hover);
-      background: var(--verde-menta);
-      border-color: rgba(79, 143, 107, .16);
-    }
-
-    .btn-soft:hover {
-      background: var(--verde-pastel);
-      transform: translateY(-2px);
-    }
-
-    .btn-outline {
-      color: var(--verde-hover);
-      border-color: rgba(79, 143, 107, .35);
-      background: rgba(255, 255, 255, .5);
-    }
-
-    .btn-outline:hover {
-      background: #fff;
-      transform: translateY(-2px);
-    }
-
-    .page-hero {
-      position: relative;
-      padding: clamp(52px, 8vw, 92px) 0;
-      overflow: hidden;
-      border-bottom: 1px solid var(--borda);
-      background:
-        radial-gradient(circle at 82% 20%, rgba(245, 198, 214, .30), transparent 22rem),
-        linear-gradient(135deg, rgba(234, 246, 234, .96), rgba(255, 248, 240, .96));
-    }
-
-    .checkout-hero-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 360px;
-      gap: 32px;
-      align-items: center;
-    }
-
-    .badge,
-    .eyebrow,
-    .status {
-      display: inline-flex;
-      width: fit-content;
-      align-items: center;
-      gap: 7px;
-      padding: 7px 12px;
-      border-radius: 999px;
-      background: linear-gradient(135deg, var(--verde-menta), #fff);
-      color: var(--verde-hover);
-      border: 1px solid var(--borda);
-      font-size: .75rem;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-    }
-
-    .badge::before,
-    .status::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--verde-principal);
-    }
-
-    .status.is-paid {
-      color: #14532d;
-      background: #dcfce7;
-      border-color: #86efac;
-    }
-
-    .status.is-waiting {
-      color: #92400e;
-      background: #fef3c7;
-      border-color: #fde68a;
-    }
-
-    .section-title {
-      margin-top: 14px;
-      font-family: var(--fonte-titulo);
-      font-size: clamp(2.4rem, 5vw, 4.8rem);
-      line-height: 1;
-      letter-spacing: -.04em;
-      color: var(--verde-profundo);
-    }
-
-    .section-subtitle {
-      max-width: 720px;
-      margin-top: 16px;
-      color: var(--texto-suave);
-      font-size: 1.08rem;
-    }
-
-    .checkout-hero-aside {
-      padding: 24px;
-      border-radius: var(--raio);
-      background:
-        linear-gradient(rgba(37, 71, 54, .08), rgba(37, 71, 54, .08)),
-        url("https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=700&q=80") center/cover;
-      min-height: 250px;
-      display: grid;
-      align-content: end;
-      gap: 10px;
-      box-shadow: var(--sombra);
-      overflow: hidden;
-      position: relative;
-    }
-
-    .checkout-hero-aside::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, transparent 30%, rgba(37, 71, 54, .65));
-    }
-
-    .checkout-hero-aside span {
-      position: relative;
-      z-index: 1;
-      width: fit-content;
-      padding: 9px 12px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, .18);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, .32);
-      backdrop-filter: blur(12px);
-      font-weight: 900;
-    }
-
-    .section {
-      padding: clamp(52px, 7vw, 90px) 0;
-    }
-
-    .checkout-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
-      gap: 28px;
-      align-items: start;
-    }
-
-    .card {
-      background: rgba(255, 255, 255, .9);
-      border: 1px solid var(--borda);
-      border-radius: var(--raio);
-      box-shadow: var(--sombra);
-      padding: clamp(22px, 3vw, 34px);
-    }
-
-    .checkout-summary {
-      position: sticky;
-      top: 100px;
-    }
-
-    .checkout-intro {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 20px;
-      align-items: start;
-      margin-bottom: 26px;
-    }
-
-    .checkout-intro h2,
-    .checkout-summary h2,
-    .pix-panel-header h2 {
-      font-family: var(--fonte-titulo);
-      color: var(--verde-profundo);
-      font-size: clamp(1.6rem, 3vw, 2.2rem);
-      margin-top: 8px;
-    }
-
-    .checkout-intro p,
-    .muted {
-      color: var(--texto-suave);
-    }
-
-    .checkout-step-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .checkout-step-list span {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 8px 11px;
-      border-radius: 999px;
-      background: var(--verde-menta);
-      color: var(--verde-hover);
-      font-size: .82rem;
-      font-weight: 800;
-    }
-
-    .checkout-step-list strong {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: #fff;
-      color: var(--verde-hover);
-      font-size: .72rem;
-    }
-
-    .checkout-step-list .is-active {
-      color: #fff;
-      background: var(--verde-principal);
-    }
-
-    .checkout-block {
-      border: 1px solid rgba(79, 143, 107, .16);
-      border-radius: 22px;
-      padding: 22px;
-      margin-top: 18px;
-      background: rgba(255, 255, 255, .58);
-    }
-
-    .checkout-block legend {
-      padding: 0 10px;
-      font-weight: 900;
-      color: var(--verde-profundo);
-    }
-
-    .checkout-block legend span {
-      margin-right: 8px;
-      color: var(--vinho);
-    }
-
-    .checkout-block-note {
-      color: var(--texto-suave);
-      margin: 0 0 14px;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .form-group {
-      display: grid;
-      gap: 7px;
-      color: var(--verde-profundo);
-      font-weight: 850;
-    }
-
-    .form-group.full {
-      grid-column: 1 / -1;
-    }
-
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-      width: 100%;
-      border: 1px solid rgba(79, 143, 107, .18);
-      border-radius: 16px;
-      padding: 13px 15px;
-      background: rgba(255, 255, 255, .94);
-      color: var(--texto);
-      outline: none;
-      transition: .2s;
-    }
-
-    .form-group textarea {
-      min-height: 110px;
-      resize: vertical;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus {
-      border-color: var(--verde-principal);
-      box-shadow: 0 0 0 4px rgba(79, 143, 107, .10);
-      background: #fff;
-    }
-
-    .payment-options {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    .payment-option {
-      position: relative;
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 12px;
-      align-items: start;
-      padding: 16px;
-      border-radius: 20px;
-      border: 1px solid rgba(79, 143, 107, .16);
-      background: rgba(255, 255, 255, .78);
-      transition: .2s;
-      cursor: pointer;
-    }
-
-    .payment-option:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 32px rgba(65, 48, 35, .08);
-    }
-
-    .payment-option input {
-      margin-top: 6px;
-      accent-color: var(--verde-principal);
-    }
-
-    .payment-option span {
-      display: grid;
-      gap: 3px;
-    }
-
-    .payment-option em {
-      width: fit-content;
-      padding: 5px 9px;
-      border-radius: 999px;
-      background: var(--verde-menta);
-      color: var(--verde-hover);
-      font-size: .7rem;
-      font-style: normal;
-      font-weight: 950;
-      letter-spacing: .06em;
-    }
-
-    .payment-option strong {
-      color: var(--verde-profundo);
-      font-size: 1rem;
-    }
-
-    .payment-option small {
-      color: var(--texto-suave);
-      line-height: 1.4;
-    }
-
-    .payment-option:has(input:checked) {
-      border-color: var(--verde-principal);
-      background:
-        radial-gradient(circle at top right, rgba(245, 198, 214, .24), transparent 10rem),
-        rgba(234, 246, 234, .92);
-      box-shadow: 0 16px 42px rgba(79, 143, 107, .16);
-    }
-
-    .payment-option-featured {
-      border-color: rgba(138, 74, 91, .24);
-    }
-
-    .pix-checkout-panel {
-      margin-top: 18px;
-      padding: 24px;
-      border-radius: 24px;
-      background:
-        radial-gradient(circle at top right, rgba(245, 198, 214, .28), transparent 14rem),
-        linear-gradient(135deg, rgba(234, 246, 234, .94), rgba(255, 255, 255, .92));
-      border: 1px solid rgba(79, 143, 107, .18);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .65), var(--sombra);
-      animation: pixEnter .25s ease;
-    }
-
-    .pix-checkout-panel[hidden] {
-      display: none !important;
-    }
-
-    @keyframes pixEnter {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .pix-panel-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 22px;
-    }
-
-    .pix-panel-grid {
-      display: grid;
-      grid-template-columns: 260px minmax(0, 1fr);
-      gap: 22px;
-      align-items: stretch;
-    }
-
-    .pix-qr-demo {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 1;
-      border-radius: 28px;
-      padding: 22px;
-      background:
-        linear-gradient(90deg, rgba(79, 143, 107, .13) 50%, transparent 50%),
-        linear-gradient(rgba(79, 143, 107, .13) 50%, transparent 50%),
-        #fff;
-      background-size: 22px 22px;
-      border: 1px solid rgba(79, 143, 107, .22);
-      box-shadow: inset 0 0 0 14px rgba(234, 246, 234, .72);
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 8px;
-      overflow: hidden;
-    }
-
-    .pix-qr-demo span {
-      border-radius: 7px;
-      background: var(--verde-profundo);
-      opacity: .88;
-    }
-
-    .pix-qr-demo span:nth-child(2n) {
-      background: var(--verde-principal);
-    }
-
-    .pix-qr-demo span:nth-child(3n) {
-      opacity: .16;
-      background: transparent;
-      border: 1px solid rgba(79, 143, 107, .25);
-    }
-
-    .pix-qr-demo strong {
-      position: absolute;
-      inset: 50%;
-      width: 78px;
-      height: 78px;
-      translate: -50% -50%;
-      border-radius: 22px;
-      display: grid;
-      place-items: center;
-      color: var(--verde-profundo);
-      background: #fff;
-      border: 1px solid rgba(79, 143, 107, .20);
-      box-shadow: 0 10px 26px rgba(37, 71, 54, .16);
-      font-weight: 950;
-      letter-spacing: .08em;
-    }
-
-    .pix-payment-box {
-      display: grid;
-      gap: 12px;
-      align-content: start;
-      padding: 18px;
-      border-radius: 22px;
-      background: rgba(255, 255, 255, .78);
-      border: 1px solid rgba(79, 143, 107, .14);
-    }
-
-    .pix-payment-box small {
-      color: var(--texto-suave);
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      font-size: .7rem;
-    }
-
-    .pix-payment-box strong {
-      color: var(--verde-profundo);
-      font-size: 1.05rem;
-    }
-
-    .pix-payment-box code {
-      display: block;
-      max-height: 92px;
-      overflow: auto;
-      white-space: normal;
-      word-break: break-all;
-      padding: 13px;
-      border-radius: 16px;
-      color: var(--verde-profundo);
-      background: var(--verde-menta);
-      border: 1px dashed rgba(79, 143, 107, .35);
-      font-size: .82rem;
-      line-height: 1.5;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 6px;
-    }
-
-    .checkout-submit-row {
-      margin-top: 22px;
-      display: grid;
-      gap: 8px;
-    }
-
-    .checkout-submit-row p {
-      color: var(--texto-suave);
-      font-size: .92rem;
-    }
-
-    .checkout-summary h2 {
-      font-family: var(--fonte-titulo);
-      color: var(--verde-profundo);
-      font-size: 2rem;
-      margin-top: 10px;
-    }
-
-    .checkout-summary-item {
-      display: grid;
-      grid-template-columns: 64px minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: center;
-      padding: 12px;
-      margin: 14px 0;
-      border-radius: 18px;
-      background: rgba(234, 246, 234, .55);
-      border: 1px solid rgba(79, 143, 107, .12);
-    }
-
-    .checkout-summary-item img {
-      width: 64px;
-      height: 64px;
-      object-fit: cover;
-      border-radius: 16px;
-    }
-
-    .checkout-summary-item strong {
-      color: var(--verde-profundo);
-    }
-
-    .checkout-summary-item span {
-      display: block;
-      color: var(--texto-suave);
-      font-size: .88rem;
-    }
-
-    .checkout-summary-item b {
-      color: var(--vinho);
-      white-space: nowrap;
-    }
-
-    .empty-state {
-      padding: 18px;
-      border-radius: 18px;
-      border: 1px dashed rgba(79, 143, 107, .35);
-      background: rgba(234, 246, 234, .45);
-      margin: 14px 0;
-    }
-
-    .summary-line {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 13px 0;
-      border-top: 1px solid rgba(79, 143, 107, .12);
-      color: var(--texto-suave);
-    }
-
-    .summary-line strong {
-      color: var(--verde-profundo);
-    }
-
-    .price {
-      color: var(--vinho) !important;
-      font-size: 1.45rem;
-      font-weight: 950;
-    }
-
-    .checkout-demo-button {
-      width: 100%;
-      margin-top: 14px;
-    }
-
-    .checkout-next-step {
-      margin-top: 18px;
-      padding: 16px;
-      border-radius: 18px;
-      background: var(--rosa-suave);
-      border: 1px solid rgba(138, 74, 91, .12);
-    }
-
-    .checkout-next-step strong {
-      color: var(--vinho);
-    }
-
-    .checkout-next-step p {
-      color: var(--texto-suave);
-      margin-top: 4px;
-    }
-
-    .toast {
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
-      z-index: 200;
-      max-width: min(380px, calc(100% - 36px));
-      padding: 14px 16px;
-      border-radius: 18px;
-      color: var(--verde-profundo);
-      background: rgba(255, 255, 255, .94);
-      border: 1px solid var(--borda);
-      box-shadow: var(--sombra-forte);
-      font-weight: 850;
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(10px);
-      transition: .25s ease;
-    }
-
-    .toast.is-visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    @media (max-width: 980px) {
-      .main-nav {
-        position: fixed;
-        top: 76px;
-        left: 18px;
-        right: 18px;
-        display: none;
-        flex-direction: column;
-        align-items: stretch;
-        border-radius: 24px;
-        box-shadow: var(--sombra-forte);
-      }
-
-      .main-nav.open {
-        display: flex;
-      }
-
-      .main-nav a {
-        text-align: center;
-        padding: 13px;
-      }
-
-      .menu-toggle {
-        display: grid;
-        place-items: center;
-      }
-
-      .checkout-hero-grid,
-      .checkout-layout,
-      .pix-panel-grid,
-      .checkout-intro {
-        grid-template-columns: 1fr;
-      }
-
-      .checkout-summary {
-        position: static;
-      }
-
-      .checkout-step-list {
-        justify-content: flex-start;
-      }
-
-      .payment-options {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .container {
-        width: min(100% - 24px, 1180px);
-      }
-
-      .header-inner {
-        min-height: 66px;
-      }
-
-      .brand {
-        font-size: 1.2rem;
-      }
-
-      .brand-icon {
-        width: 40px;
-        height: 40px;
-      }
-
-      .page-hero {
-        padding: 44px 0;
-      }
-
-      .checkout-hero-aside {
-        min-height: 210px;
-      }
-
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .checkout-block,
-      .card {
-        border-radius: 22px;
-        padding: 18px;
-      }
-
-      .checkout-summary-item {
-        grid-template-columns: 1fr;
-      }
-
-      .checkout-summary-item img {
-        width: 100%;
-        height: 160px;
-      }
-
-      .actions,
-      .checkout-submit-row {
-        grid-template-columns: 1fr;
-      }
-
-      .actions .btn,
-      .checkout-submit-row .btn {
-        width: 100%;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/arteFlor/assets/css/checkout.css">
 </head>
 
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="index.html">
+      <a class="brand" href="/arteFlor/index.php">
         <span class="brand-icon">🌿</span>
         <span>Arte<span>&</span>Flor</span>
       </a>
 
       <nav class="main-nav" aria-label="Navegação principal">
-        <a href="index.html">Início</a>
-        <a href="catalogo.html">Catálogo</a>
-        <a href="blog.html">Blog</a>
-        <a href="cliente.html">Área do cliente</a>
-        <a class="active" href="checkout.html">Checkout</a>
+        <a href="/arteFlor/index.php">Início</a>
+        <a href="/arteFlor/catalogo.php">Catálogo</a>
+        <a href="/arteFlor/blog.php">Blog</a>
+        <a href="/arteFlor/cliente.php">Área do cliente</a>
+        <a class="active" href="/arteFlor/checkout.php">Checkout</a>
       </nav>
 
       <button class="menu-toggle" type="button" data-menu-toggle aria-label="Abrir menu">☰</button>
@@ -965,15 +60,19 @@
             </div>
 
             <div class="checkout-step-list" aria-label="Etapas do checkout">
-              <span class="is-active"><strong>1</strong> Cliente</span>
-              <span><strong>2</strong> Entrega</span>
-              <span><strong>3</strong> Pagamento</span>
-              <span><strong>4</strong> Envio</span>
+              <span class="is-active" data-step-indicator="1"><strong>1</strong> Cliente</span>
+              <span data-step-indicator="2"><strong>2</strong> Entrega</span>
+              <span data-step-indicator="3"><strong>3</strong> Pagamento</span>
+              <span data-step-indicator="4"><strong>4</strong> Revisão</span>
             </div>
           </div>
 
-          <fieldset class="checkout-block">
+          <fieldset class="checkout-block checkout-step-panel" data-checkout-step="1">
             <legend><span>01</span> Cliente</legend>
+            <p class="checkout-block-note">
+              Comece pelos dados de contato para a loja confirmar o pedido com agilidade.
+            </p>
+
             <div class="form-grid">
               <label class="form-group">
                 <span>Nome completo</span>
@@ -985,10 +84,19 @@
                 <input name="whatsapp" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000" required>
               </label>
             </div>
+
+            <div class="checkout-step-actions">
+              <span class="checkout-step-note">Etapa 1 de 4</span>
+              <button class="btn btn-primary" type="button" data-next-step>Continuar para entrega</button>
+            </div>
           </fieldset>
 
-          <fieldset class="checkout-block">
+          <fieldset class="checkout-block checkout-step-panel" data-checkout-step="2" hidden>
             <legend><span>02</span> Entrega</legend>
+            <p class="checkout-block-note">
+              Informe como a cliente quer receber o arranjo e quando a loja deve preparar o pedido.
+            </p>
+
             <div class="form-grid">
               <label class="form-group full">
                 <span>Endereço</span>
@@ -1023,9 +131,15 @@
                 <input name="horario" type="time" required>
               </label>
             </div>
+
+            <div class="checkout-step-actions">
+              <button class="btn btn-outline" type="button" data-prev-step>Voltar</button>
+              <span class="checkout-step-note">Etapa 2 de 4</span>
+              <button class="btn btn-primary" type="button" data-next-step>Ir para pagamento</button>
+            </div>
           </fieldset>
 
-          <fieldset class="checkout-block">
+          <fieldset class="checkout-block checkout-step-panel" data-checkout-step="3" hidden>
             <legend><span>03</span> Pagamento</legend>
             <p class="checkout-block-note">
               Selecione uma forma de pagamento. Ao escolher Pix, o QR Code demonstrativo aparecerá automaticamente.
@@ -1068,55 +182,65 @@
                 </span>
               </label>
             </div>
-          </fieldset>
 
-          <div class="pix-checkout-panel form-group full" data-pix-panel hidden>
-            <div class="pix-panel-header">
-              <div>
-                <span class="badge">Pix</span>
-                <h2>Pagamento via Pix</h2>
-                <p class="muted">
-                  Prévia visual do pagamento. O QR Code abaixo é fictício para apresentação.
-                </p>
-              </div>
-
-              <span class="status is-waiting" data-pix-status>Aguardando pagamento</span>
-            </div>
-
-            <div class="pix-panel-grid">
-              <div class="pix-qr-demo" role="img" aria-label="QR Code Pix demonstrativo">
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <strong>PIX</strong>
-              </div>
-
-              <div class="pix-payment-box">
-                <small>Chave Pix demonstrativa</small>
-                <strong id="pixKey">arteflor@pix.demo</strong>
-
-                <small>Código copia e cola</small>
-                <code data-pix-code>
-00020126580014BR.GOV.BCB.PIX0136arteflor-demo-checkout5204000053039865802BR5910ARTE E FLOR6005COARI62070503***6304DEMO
-                </code>
-
-                <div class="actions">
-                  <button class="btn btn-soft" type="button" data-copy-pix>Copiar código Pix</button>
-                  <button class="btn btn-primary" type="button" data-system-finish>Finalizar no sistema</button>
+            <div class="pix-checkout-panel form-group full" data-pix-panel hidden>
+              <div class="pix-panel-header">
+                <div>
+                  <span class="badge">Pix</span>
+                  <h2>Pagamento via Pix</h2>
+                  <p class="muted">
+                    Prévia visual do pagamento. O QR Code abaixo é fictício para apresentação.
+                  </p>
                 </div>
 
-                <p class="muted" data-system-result>
-                  Ao finalizar no sistema, a venda fica marcada como paga apenas nesta demonstração.
-                </p>
+                <span class="status is-waiting" data-pix-status>Aguardando pagamento</span>
+              </div>
+
+              <div class="pix-panel-grid">
+                <div class="pix-qr-demo" role="img" aria-label="QR Code Pix demonstrativo">
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                  <strong>PIX</strong>
+                </div>
+
+                <div class="pix-payment-box">
+                  <small>Chave Pix demonstrativa</small>
+                  <strong id="pixKey">arteflor@pix.demo</strong>
+
+                  <small>Código copia e cola</small>
+                  <code data-pix-code>
+00020126580014BR.GOV.BCB.PIX0136arteflor-demo-checkout5204000053039865802BR5910ARTE E FLOR6005COARI62070503***6304DEMO
+                  </code>
+
+                  <div class="actions">
+                    <button class="btn btn-soft" type="button" data-copy-pix>Copiar código Pix</button>
+                    <button class="btn btn-primary" type="button" data-system-finish>Finalizar no sistema</button>
+                  </div>
+
+                  <p class="muted" data-system-result>
+                    Ao finalizar no sistema, a venda fica marcada como paga apenas nesta demonstração.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <fieldset class="checkout-block">
+            <div class="checkout-step-actions">
+              <button class="btn btn-outline" type="button" data-prev-step>Voltar</button>
+              <span class="checkout-step-note">Etapa 3 de 4</span>
+              <button class="btn btn-primary" type="button" data-next-step>Revisar pedido</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="checkout-block checkout-step-panel" data-checkout-step="4" hidden>
             <legend><span>04</span> Mensagem e observações</legend>
+            <p class="checkout-block-note">
+              Finalize com uma mensagem para o cartão e confira o resumo antes de enviar pelo WhatsApp.
+            </p>
+
             <div class="form-grid">
               <label class="form-group full">
                 <span>Mensagem para cartão</span>
@@ -1128,12 +252,23 @@
                 <textarea name="observacoes" placeholder="Preferência de flores, cores, embalagem, troco ou instruções de entrega"></textarea>
               </label>
             </div>
-          </fieldset>
 
-          <div class="checkout-submit-row">
-            <button class="btn btn-primary" type="submit">Enviar pedido pelo WhatsApp</button>
-            <p>O pedido será aberto no WhatsApp com todos os dados preenchidos.</p>
-          </div>
+            <div class="checkout-review-box" data-review-box aria-live="polite">
+              <strong>Resumo para conferência</strong>
+              <p>Os principais dados do pedido aparecerão aqui antes do envio.</p>
+            </div>
+
+            <div class="checkout-final-note">
+              <strong>Pronto para enviar</strong>
+              <p>Ao clicar no botão abaixo, o pedido será aberto no WhatsApp com todos os dados preenchidos.</p>
+            </div>
+
+            <div class="checkout-step-actions checkout-step-actions-final">
+              <button class="btn btn-outline" type="button" data-prev-step>Voltar</button>
+              <span class="checkout-step-note">Etapa 4 de 4</span>
+              <button class="btn btn-primary" type="submit">Enviar pedido pelo WhatsApp</button>
+            </div>
+          </fieldset>
         </form>
 
         <aside class="card checkout-summary">
@@ -1337,9 +472,16 @@
         const loadDemoButton = $('[data-load-demo-order]');
         const menuToggle = $('[data-menu-toggle]');
         const mainNav = $('.main-nav');
+        const reviewBox = $('[data-review-box]');
+        const stepPanels = $$('[data-checkout-step]');
+        const stepIndicators = $$('[data-step-indicator]');
+        const nextStepButtons = $$('[data-next-step]');
+        const prevStepButtons = $$('[data-prev-step]');
+        const dateInput = form?.querySelector('input[name="data"]');
 
         let systemFinished = false;
         let systemOrderCode = '';
+        let currentStep = 1;
 
         menuToggle?.addEventListener('click', () => {
           mainNav?.classList.toggle('open');
@@ -1347,11 +489,18 @@
 
         renderSummary();
 
-        const togglePixPanel = () => {
+        if (dateInput) {
+          const today = new Date();
+          today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+          dateInput.min = today.toISOString().slice(0, 10);
+        }
+
+        const togglePixPanel = ({ scroll = false } = {}) => {
           const isPix = form ? getPaymentValue(form) === 'Pix' : false;
+          const shouldShowPixPanel = isPix && currentStep === 3;
 
           if (pixPanel) {
-            pixPanel.hidden = !isPix;
+            pixPanel.hidden = !shouldShowPixPanel;
           }
 
           if (!isPix && pixStatus) {
@@ -1360,10 +509,79 @@
             pixStatus.classList.add('is-waiting');
           }
 
-          if (isPix) {
+          if (shouldShowPixPanel && scroll) {
             setTimeout(() => {
               pixPanel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 80);
+          }
+        };
+
+        const getStepPanel = (step) => {
+          return Array.from(stepPanels).find((panel) => Number(panel.dataset.checkoutStep) === step);
+        };
+
+        const validateStep = (step) => {
+          const panel = getStepPanel(step);
+          if (!panel) return true;
+
+          const fields = Array.from(panel.querySelectorAll('input, select, textarea'))
+            .filter((field) => !field.disabled);
+
+          for (const field of fields) {
+            if (!field.checkValidity()) {
+              field.reportValidity();
+              return false;
+            }
+          }
+
+          return true;
+        };
+
+        const renderReview = () => {
+          if (!form || !reviewBox) return;
+
+          const data = Object.fromEntries(new FormData(form).entries());
+          const cart = getCart();
+          const total = getCartTotal(cart);
+          const paymentLabel = data.pagamento === 'Pix' && systemFinished
+            ? `Pix confirmado (${systemOrderCode})`
+            : (data.pagamento || '-');
+
+          reviewBox.innerHTML = `
+            <strong>Resumo para conferência</strong>
+            <div class="checkout-review-grid">
+              <span><small>Cliente</small><b>${escapeHtml(data.nome || '-')}</b></span>
+              <span><small>WhatsApp</small><b>${escapeHtml(data.whatsapp || '-')}</b></span>
+              <span><small>Recebimento</small><b>${escapeHtml(data.recebimento || '-')}</b></span>
+              <span><small>Data e horário</small><b>${escapeHtml(data.data || '-')} às ${escapeHtml(data.horario || '-')}</b></span>
+              <span><small>Pagamento</small><b>${escapeHtml(paymentLabel)}</b></span>
+              <span><small>Total</small><b>${money(total)}</b></span>
+            </div>
+            <p>${cart.length ? 'Resumo baseado nos itens do carrinho local.' : 'Pedido sem itens no carrinho; será tratado como atendimento personalizado.'}</p>
+          `;
+        };
+
+        const showStep = (step, { scroll = true } = {}) => {
+          currentStep = Math.min(Math.max(step, 1), 4);
+
+          stepPanels.forEach((panel) => {
+            panel.hidden = Number(panel.dataset.checkoutStep) !== currentStep;
+          });
+
+          stepIndicators.forEach((indicator) => {
+            const indicatorStep = Number(indicator.dataset.stepIndicator);
+            indicator.classList.toggle('is-active', indicatorStep === currentStep);
+            indicator.classList.toggle('is-complete', indicatorStep < currentStep);
+          });
+
+          togglePixPanel();
+
+          if (currentStep === 4) {
+            renderReview();
+          }
+
+          if (scroll) {
+            form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         };
 
@@ -1402,19 +620,41 @@
           }
 
           toast(`Venda ${systemOrderCode} finalizada no sistema demonstrativo.`);
+          renderReview();
         };
 
         paymentMethods.forEach((input) => {
-          input.addEventListener('change', togglePixPanel);
+          input.addEventListener('change', () => togglePixPanel({ scroll: true }));
         });
 
-        togglePixPanel();
+        nextStepButtons.forEach((button) => {
+          button.addEventListener('click', () => {
+            if (!validateStep(currentStep)) {
+              toast('Preencha os campos obrigatórios para continuar.');
+              return;
+            }
+
+            showStep(currentStep + 1);
+          });
+        });
+
+        prevStepButtons.forEach((button) => {
+          button.addEventListener('click', () => {
+            showStep(currentStep - 1);
+          });
+        });
+
+        showStep(1, { scroll: false });
 
         loadDemoButton?.addEventListener('click', () => {
           setCart(demoItems);
           renderSummary();
+          renderReview();
           toast('Pedido de apresentação carregado no resumo.');
         });
+
+        form?.addEventListener('input', renderReview);
+        form?.addEventListener('change', renderReview);
 
         copyPixButton?.addEventListener('click', async () => {
           const code = pixCode?.textContent?.trim() || '';
@@ -1437,6 +677,11 @@
 
         form?.addEventListener('submit', (event) => {
           event.preventDefault();
+
+          if (!validateStep(currentStep)) {
+            toast('Revise os campos obrigatórios antes de enviar.');
+            return;
+          }
 
           const cart = getCart();
           const total = getCartTotal(cart);
