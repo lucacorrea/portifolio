@@ -53,7 +53,75 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('checkoutForm');
+    const paymentMethod = document.querySelector('[data-payment-method]');
+    const pixPanel = document.querySelector('[data-pix-panel]');
+    const pixStatus = document.querySelector('[data-pix-status]');
+    const pixCode = document.querySelector('[data-pix-code]');
+    const copyPixButton = document.querySelector('[data-copy-pix]');
+    const finishSystemButton = document.querySelector('[data-system-finish]');
+    const systemResult = document.querySelector('[data-system-result]');
+    let systemFinished = false;
+    let systemOrderCode = '';
+
     renderSummary();
+
+    const togglePixPanel = () => {
+      const isPix = paymentMethod?.value === 'Pix';
+      if (pixPanel) {
+        pixPanel.hidden = !isPix;
+      }
+    };
+
+    const saveDemoSale = () => {
+      const cart = ArteFlor.getCart();
+      const total = cart.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 0), 0);
+      const sales = JSON.parse(localStorage.getItem('arteflor_demo_sales') || '[]');
+
+      systemOrderCode = `AF-${String(Date.now()).slice(-6)}`;
+      systemFinished = true;
+
+      sales.unshift({
+        codigo: systemOrderCode,
+        status: 'Venda finalizada no sistema',
+        pagamento: 'Pix',
+        total,
+        itens: cart,
+        criadoEm: new Date().toISOString()
+      });
+      localStorage.setItem('arteflor_demo_sales', JSON.stringify(sales.slice(0, 10)));
+
+      if (pixStatus) {
+        pixStatus.textContent = 'Pagamento confirmado';
+      }
+      if (systemResult) {
+        systemResult.textContent = `Venda ${systemOrderCode} finalizada no sistema demonstrativo. Nenhum pagamento real foi processado.`;
+      }
+      if (finishSystemButton) {
+        finishSystemButton.textContent = 'Venda finalizada';
+        finishSystemButton.disabled = true;
+      }
+      ArteFlor.toast(`Venda ${systemOrderCode} finalizada no sistema demonstrativo.`);
+    };
+
+    paymentMethod?.addEventListener('change', togglePixPanel);
+    togglePixPanel();
+
+    copyPixButton?.addEventListener('click', async () => {
+      const code = pixCode?.textContent?.trim() || '';
+
+      try {
+        await navigator.clipboard.writeText(code);
+        if (systemResult) {
+          systemResult.textContent = 'Código Pix demonstrativo copiado.';
+        }
+      } catch (error) {
+        if (systemResult) {
+          systemResult.textContent = 'Não foi possível copiar automaticamente. Selecione e copie o código manualmente.';
+        }
+      }
+    });
+
+    finishSystemButton?.addEventListener('click', saveDemoSale);
 
     form?.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -62,6 +130,9 @@
       const total = cart.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 0), 0);
       const data = Object.fromEntries(new FormData(form).entries());
       const codigo = `AF-${String(Date.now()).slice(-5)}`;
+      const pixInfo = data.pagamento === 'Pix'
+        ? `\nStatus Pix demonstrativo: ${systemFinished ? `finalizado no sistema (${systemOrderCode})` : 'QR Code exibido, confirmação pendente'}`
+        : '';
 
       ArteFlor.saveOrder({
         codigo,
@@ -72,7 +143,7 @@
         criadoEm: new Date().toISOString()
       });
 
-      window.open(ArteFlor.whatsappUrl(buildMessage(data, cart, total)), '_blank', 'noopener');
+      window.open(ArteFlor.whatsappUrl(`${buildMessage(data, cart, total)}${pixInfo}`), '_blank', 'noopener');
       ArteFlor.toast(`Pedido #${codigo} gerado para WhatsApp.`);
     });
   });

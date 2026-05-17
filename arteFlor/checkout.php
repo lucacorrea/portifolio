@@ -52,13 +52,45 @@ require_once __DIR__ . '/includes/header.php';
       </label>
       <label class="form-group">
         <span>Forma de pagamento</span>
-        <select name="pagamento" required>
+        <select name="pagamento" data-payment-method required>
+          <option value="">Selecione a forma</option>
           <option>Pix</option>
           <option>Presencial</option>
           <option>Dinheiro</option>
           <option>Cartão na entrega</option>
         </select>
       </label>
+      <div class="pix-checkout-panel form-group full" data-pix-panel hidden>
+        <div class="pix-panel-header">
+          <div>
+            <span class="badge">Pix demonstrativo</span>
+            <h2>QR Code Pix para apresentação</h2>
+            <p class="muted">Este QR Code é apenas visual. Nenhum pagamento real será processado nesta etapa do MVP.</p>
+          </div>
+          <span class="status" data-pix-status>Aguardando pagamento</span>
+        </div>
+
+        <div class="pix-panel-grid">
+          <div class="pix-qr-demo" role="img" aria-label="QR Code Pix demonstrativo">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <strong>PIX</strong>
+          </div>
+
+          <div class="pix-payment-box">
+            <small>Chave Pix demonstrativa</small>
+            <strong>arteflor@pix.demo</strong>
+            <small>Código copia e cola</small>
+            <code data-pix-code>00020126580014BR.GOV.BCB.PIX0136arteflor-demo-checkout5204000053039865802BR5910ARTE E FLOR6005COARI62070503***6304DEMO</code>
+            <div class="actions">
+              <button class="btn btn-soft" type="button" data-copy-pix>Copiar código Pix</button>
+              <button class="btn btn-primary" type="button" data-system-finish>Finalizar no sistema</button>
+            </div>
+            <p class="muted" data-system-result>Ao finalizar no sistema, salvaremos apenas uma venda simulada neste navegador.</p>
+          </div>
+        </div>
+      </div>
       <label class="form-group full">
         <span>Mensagem para cartão</span>
         <textarea name="cartao" placeholder="Mensagem que acompanha o presente"></textarea>

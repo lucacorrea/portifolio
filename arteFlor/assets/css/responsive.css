@@ -27,6 +27,15 @@
     height: auto;
     aspect-ratio: 4 / 3;
   }
+
+  .pix-panel-header,
+  .pix-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pix-panel-header {
+    display: grid;
+  }
 }
 
 @media (min-width: 700px) {
