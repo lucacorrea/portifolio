@@ -1,34 +1,10 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Checkout | Arte&Flor</title>
-  <meta name="description" content="Checkout demonstrativo Arte&Flor com Pix visual e envio do pedido pelo WhatsApp.">
-  <link rel="stylesheet" href="/arteFlor/assets/css/checkout.css">
-</head>
-
-<body>
-  <header class="site-header">
-    <div class="container header-inner">
-      <a class="brand" href="/arteFlor/index.php">
-        <span class="brand-icon">🌿</span>
-        <span>Arte<span>&</span>Flor</span>
-      </a>
-
-      <nav class="main-nav" aria-label="Navegação principal">
-        <a href="/arteFlor/index.php">Início</a>
-        <a href="/arteFlor/catalogo.php">Catálogo</a>
-        <a href="/arteFlor/blog.php">Blog</a>
-        <a href="/arteFlor/cliente.php">Área do cliente</a>
-        <a class="active" href="/arteFlor/checkout.php">Checkout</a>
-      </nav>
-
-      <button class="menu-toggle" type="button" data-menu-toggle aria-label="Abrir menu">☰</button>
-    </div>
-  </header>
-
-  <main>
+<?php
+$pageTitle = 'Checkout';
+$activePage = 'checkout';
+$bodyClass = 'checkout-page';
+$pageStyles = ['css/checkout.css'];
+require_once __DIR__ . '/includes/header.php';
+?>
     <section class="page-hero checkout-hero">
       <div class="container">
         <div class="checkout-hero-grid">
@@ -307,10 +283,6 @@
         </aside>
       </div>
     </section>
-  </main>
-
-  <div class="toast" data-toast></div>
-
   <script>
     (function () {
       const WHATSAPP_NUMBER = '5597000000000'; // TROQUE AQUI PELO WHATSAPP DA LOJA
@@ -376,10 +348,10 @@
         if (!toastEl) return;
 
         toastEl.textContent = message;
-        toastEl.classList.add('is-visible');
+        toastEl.classList.add('show');
 
         setTimeout(() => {
-          toastEl.classList.remove('is-visible');
+          toastEl.classList.remove('show');
         }, 3200);
       };
 
@@ -470,8 +442,6 @@
         const finishSystemButton = $('[data-system-finish]');
         const systemResult = $('[data-system-result]');
         const loadDemoButton = $('[data-load-demo-order]');
-        const menuToggle = $('[data-menu-toggle]');
-        const mainNav = $('.main-nav');
         const reviewBox = $('[data-review-box]');
         const stepPanels = $$('[data-checkout-step]');
         const stepIndicators = $$('[data-step-indicator]');
@@ -482,10 +452,6 @@
         let systemFinished = false;
         let systemOrderCode = '';
         let currentStep = 1;
-
-        menuToggle?.addEventListener('click', () => {
-          mainNav?.classList.toggle('open');
-        });
 
         renderSummary();
 
@@ -710,5 +676,4 @@
       });
     })();
   </script>
-</body>
-</html>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

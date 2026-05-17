@@ -20,6 +20,9 @@ $bodyClass = $bodyClass ?? '';
   <link rel="stylesheet" href="<?= asset('css/components.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/pages.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/responsive.css') ?>">
+  <?php foreach (($pageStyles ?? []) as $style): ?>
+    <link rel="stylesheet" href="<?= asset($style) ?>">
+  <?php endforeach; ?>
 </head>
 <body class="<?= e($bodyClass) ?>">
 <header class="site-header">
