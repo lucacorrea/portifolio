@@ -38,8 +38,25 @@
   }
 
   .checkout-step-list,
-  .payment-options {
+  .payment-options,
+  .checkout-hero-grid {
     grid-template-columns: 1fr;
+  }
+
+  .checkout-hero {
+    padding: 30px 0;
+  }
+
+  .checkout-hero-aside {
+    min-width: 0;
+  }
+
+  .checkout-form-card,
+  .checkout-block,
+  .checkout-intro,
+  .pix-checkout-panel,
+  .checkout-submit-row {
+    border-radius: 12px;
   }
 
   .checkout-summary-item {
@@ -48,6 +65,18 @@
 
   .checkout-summary-item b {
     grid-column: 2;
+  }
+}
+
+@media (max-width: 780px) {
+  .checkout-hero-grid,
+  .payment-options,
+  .pix-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-summary {
+    position: static;
   }
 }
 

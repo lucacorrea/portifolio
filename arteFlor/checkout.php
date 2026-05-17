@@ -1,24 +1,34 @@
 <?php
 $pageTitle = 'Checkout';
 $activePage = 'catalogo';
+$bodyClass = 'checkout-page';
 require_once __DIR__ . '/includes/header.php';
 ?>
 <section class="page-hero checkout-hero">
   <div class="container">
-    <span class="badge">Checkout demonstrativo</span>
-    <h1 class="section-title">Finalizar pedido</h1>
-    <p class="section-subtitle">Uma experiência de compra organizada para a cliente visualizar o fluxo completo: pedido, entrega, pagamento, Pix demonstrativo e envio pelo WhatsApp.</p>
+    <div class="checkout-hero-grid">
+      <div>
+        <span class="badge">Finalização segura</span>
+        <h1 class="section-title">Finalizar pedido</h1>
+        <p class="section-subtitle">Revise os itens, informe a entrega e escolha a forma de pagamento para enviar o pedido pronto ao atendimento da Arte&Flor.</p>
+      </div>
+      <div class="checkout-hero-aside" aria-label="Resumo da experiência">
+        <span>Pedido organizado</span>
+        <span>Pix visual</span>
+        <span>Envio por WhatsApp</span>
+      </div>
+    </div>
   </div>
 </section>
 
-<section class="section">
+<section class="section checkout-section">
   <div class="container checkout-layout">
     <form class="card checkout-form-card" id="checkoutForm">
       <div class="checkout-intro">
         <div>
           <span class="eyebrow">Pedido Arte&Flor</span>
-          <h2>Dados para atendimento</h2>
-          <p>Os campos abaixo montam uma mensagem pronta para a loja confirmar disponibilidade, entrega e pagamento.</p>
+          <h2>Dados do pedido</h2>
+          <p>Preencha as informações para gerar uma solicitação clara para a loja.</p>
         </div>
         <div class="checkout-step-list" aria-label="Etapas do checkout">
           <span class="is-active"><strong>1</strong> Cliente</span>
@@ -81,19 +91,19 @@ require_once __DIR__ . '/includes/header.php';
         <div class="payment-options">
           <label class="payment-option payment-option-featured">
             <input type="radio" name="pagamento" value="Pix" data-payment-method required>
-            <span><strong>Pix com QR Code</strong><small>Código copia e cola, status visual e venda simulada.</small></span>
+            <span><em>PIX</em><strong>Pix com QR Code</strong><small>Código copia e cola, status visual e venda simulada.</small></span>
           </label>
           <label class="payment-option">
             <input type="radio" name="pagamento" value="Presencial" data-payment-method>
-            <span><strong>Presencial</strong><small>Para pagar na retirada ou diretamente com a loja.</small></span>
+            <span><em>LOJA</em><strong>Presencial</strong><small>Para pagar na retirada ou diretamente com a loja.</small></span>
           </label>
           <label class="payment-option">
             <input type="radio" name="pagamento" value="Dinheiro" data-payment-method>
-            <span><strong>Dinheiro</strong><small>O cliente pode informar troco nas observações.</small></span>
+            <span><em>R$</em><strong>Dinheiro</strong><small>O cliente pode informar troco nas observações.</small></span>
           </label>
           <label class="payment-option">
             <input type="radio" name="pagamento" value="Cartão na entrega" data-payment-method>
-            <span><strong>Cartão na entrega</strong><small>Simulação para pagamento na maquininha.</small></span>
+            <span><em>CARD</em><strong>Cartão na entrega</strong><small>Simulação para pagamento na maquininha.</small></span>
           </label>
         </div>
       </fieldset>
@@ -101,9 +111,9 @@ require_once __DIR__ . '/includes/header.php';
       <div class="pix-checkout-panel form-group full" data-pix-panel hidden>
         <div class="pix-panel-header">
           <div>
-            <span class="badge">Pix demonstrativo</span>
+            <span class="badge">Pix</span>
             <h2>Pagamento via Pix</h2>
-            <p class="muted">O QR Code e o código copia e cola são fictícios, criados somente para aprovação visual da cliente.</p>
+            <p class="muted">Prévia visual do pagamento. O QR Code abaixo é fictício para apresentação.</p>
           </div>
           <span class="status" data-pix-status>Aguardando pagamento</span>
         </div>
@@ -146,7 +156,7 @@ require_once __DIR__ . '/includes/header.php';
 
       <div class="checkout-submit-row">
         <button class="btn btn-primary" type="submit">Enviar pedido pelo WhatsApp</button>
-        <p>O envio abre o WhatsApp com uma mensagem pronta. Nenhuma cobrança real é feita.</p>
+        <p>O pedido será aberto no WhatsApp com todos os dados preenchidos.</p>
       </div>
     </form>
 
@@ -162,7 +172,7 @@ require_once __DIR__ . '/includes/header.php';
         <strong>Próximo passo</strong>
         <p>Depois de preencher o formulário, o sistema monta uma mensagem organizada para o WhatsApp da loja.</p>
       </div>
-      <p class="muted">Demonstração sem banco de dados, login real ou pagamento real.</p>
+      <p class="muted">Pagamento real e backend serão conectados na próxima etapa.</p>
     </aside>
   </div>
 </section>
