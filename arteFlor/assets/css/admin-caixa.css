@@ -351,6 +351,22 @@
   color: #fff;
 }
 
+.pdv-catalog-open {
+  min-height: 50px;
+  border: 1px solid rgba(79, 143, 107, 0.24);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, var(--verde-menta), #fff);
+  color: var(--verde-principal-hover);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pdv-catalog-open:hover {
+  border-color: var(--verde-principal);
+  box-shadow: 0 12px 28px rgba(79, 143, 107, 0.10);
+}
+
 .pdv-quick-products {
   display: grid;
   grid-template-columns: 1fr;
@@ -404,6 +420,155 @@
 .pdv-product-tile b {
   color: var(--vinho-rose);
   font-size: 1rem;
+}
+
+.pdv-empty-products {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 220px;
+  border: 1px dashed #d8e1ea;
+  border-radius: 16px;
+  padding: 24px;
+  color: #697586;
+  text-align: center;
+}
+
+.pdv-empty-products strong {
+  color: #061947;
+  font-size: 1.1rem;
+}
+
+.pdv-product-modal[hidden] {
+  display: none;
+}
+
+.pdv-modal-open {
+  overflow: hidden;
+}
+
+.pdv-product-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.pdv-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(10, 24, 39, 0.48);
+  backdrop-filter: blur(6px);
+}
+
+.pdv-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(1120px, 100%);
+  max-height: min(82vh, 820px);
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.28);
+}
+
+.pdv-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #e5ebf2;
+  background:
+    radial-gradient(circle at top right, rgba(245, 198, 214, 0.18), transparent 16rem),
+    linear-gradient(135deg, #fff, var(--verde-menta));
+}
+
+.pdv-modal-header span {
+  color: var(--verde-principal-hover);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pdv-modal-header h2 {
+  margin: 4px 0;
+  color: #061947;
+  font-family: var(--fonte-titulo);
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+}
+
+.pdv-modal-header p {
+  color: #697586;
+  font-weight: 800;
+}
+
+.pdv-modal-close {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #d8e1ea;
+  border-radius: 12px;
+  background: #fff;
+  color: #061947;
+  font-size: 1.5rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pdv-modal-toolbar {
+  display: grid;
+  gap: 8px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5ebf2;
+}
+
+.pdv-modal-toolbar label {
+  color: #061947;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pdv-modal-toolbar input {
+  min-height: 48px;
+  border: 2px solid #d8e1ea;
+  border-radius: 12px;
+  padding: 11px 13px;
+  color: #061947;
+  font-weight: 800;
+  outline: none;
+}
+
+.pdv-modal-toolbar input:focus {
+  border-color: var(--verde-principal);
+  box-shadow: 0 0 0 4px rgba(79, 143, 107, 0.12);
+}
+
+.pdv-product-modal .pdv-quick-products {
+  grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+  gap: 12px;
+  max-height: none;
+  overflow: auto;
+  padding: 18px 24px 24px;
+}
+
+.pdv-product-modal .pdv-product-tile {
+  min-height: 118px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  padding: 10px;
+}
+
+.pdv-product-modal .pdv-product-tile img {
+  width: 92px;
+  height: 92px;
 }
 
 .pdv-center {

@@ -125,7 +125,9 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
             <?php endforeach; ?>
           </div>
 
-          <div class="pdv-quick-products" id="quickProducts"></div>
+          <button class="pdv-catalog-open" type="button" id="openProductCatalog">
+            Abrir catálogo de produtos
+          </button>
         </aside>
 
         <section class="pdv-center">
@@ -203,7 +205,18 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
             </div>
 
             <div class="pdv-pix-demo" id="pixPanel" hidden>
-              
+              <div class="pdv-qr" aria-label="QR Code Pix demonstrativo">
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <strong>PIX</strong>
+              </div>
+              <code id="pixCode">00020126580014BR.GOV.BCB.PIX0136arteflor-caixa-demo5204000053039865802BR5910ARTE E FLOR6005COARI62070503***6304DEMO</code>
+              <button class="pdv-btn pdv-btn-ghost" type="button" id="copyPix">Copiar Pix</button>
+            </div>
 
             <div class="pdv-received-box">
               <label for="receivedInput">Total recebido</label>
@@ -223,8 +236,43 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
         </aside>
       </section>
 
-     
+      <section class="pdv-bottom-panel">
+        <div>
+          <span>Cliente</span>
+          <input id="customerName" type="text" placeholder="Cliente balcão">
+        </div>
+        <div>
+          <span>WhatsApp</span>
+          <input id="customerPhone" type="tel" placeholder="(97) 00000-0000">
+        </div>
+        <div>
+          <span>Observação</span>
+          <input id="saleNote" type="text" placeholder="Ex: incluir cartão, retirada às 16h">
+        </div>
+        <div class="pdv-history-mini" id="salesHistory"></div>
+      </section>
     </main>
+  </div>
+
+  <div class="pdv-product-modal" id="productModal" hidden role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+    <button class="pdv-modal-backdrop" type="button" data-close-products aria-label="Fechar catálogo"></button>
+    <section class="pdv-modal-panel">
+      <header class="pdv-modal-header">
+        <div>
+          <span>Catálogo do caixa</span>
+          <h2 id="productModalTitle">Selecionar produto</h2>
+          <p id="modalCategoryText">Todos os produtos disponíveis para venda demonstrativa.</p>
+        </div>
+        <button class="pdv-modal-close" type="button" data-close-products aria-label="Fechar catálogo">×</button>
+      </header>
+
+      <div class="pdv-modal-toolbar">
+        <label for="modalProductSearch">Buscar no catálogo</label>
+        <input id="modalProductSearch" type="search" placeholder="Nome, código ou categoria">
+      </div>
+
+      <div class="pdv-quick-products" id="quickProducts"></div>
+    </section>
   </div>
 
   <div class="toast" data-toast role="status" aria-live="polite"></div>
@@ -256,6 +304,10 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
       const productPreview = $('#productPreview');
       const currentProductName = $('#currentProductName');
       const currentProductPrice = $('#currentProductPrice');
+      const productModal = $('#productModal');
+      const modalCategoryText = $('#modalCategoryText');
+      const modalProductSearch = $('#modalProductSearch');
+      const openProductCatalog = $('#openProductCatalog');
       const quickProducts = $('#quickProducts');
       const cartList = $('#cartList');
       const subtotalText = $('#subtotalText');
@@ -326,15 +378,44 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
         `;
       };
 
+      const getActiveCategoryLabel = () => {
+        const activeButton = document.querySelector('#categoryFilters button.is-active');
+        return activeButton ? activeButton.textContent.trim() : 'Todos';
+      };
+
+      const openProductsModal = () => {
+        if (!productModal) return;
+
+        const label = getActiveCategoryLabel();
+        modalCategoryText.textContent = activeCategory === 'todos'
+          ? 'Todos os produtos disponíveis para venda demonstrativa.'
+          : `Produtos da categoria ${label}.`;
+        productModal.hidden = false;
+        document.body.classList.add('pdv-modal-open');
+        renderQuickProducts();
+        window.setTimeout(() => modalProductSearch?.focus(), 40);
+      };
+
+      const closeProductsModal = () => {
+        if (!productModal) return;
+
+        productModal.hidden = true;
+        document.body.classList.remove('pdv-modal-open');
+        productSearch.focus();
+      };
+
       const renderQuickProducts = () => {
-        const term = productSearch.value.trim().toLowerCase();
+        const term = modalProductSearch.value.trim().toLowerCase();
         const filtered = products.filter((product) => {
           const categoryMatch = activeCategory === 'todos' || product.category === activeCategory;
-          const termMatch = !term || product.code.toLowerCase().includes(term) || product.name.toLowerCase().includes(term);
+          const termMatch = !term ||
+            product.code.toLowerCase().includes(term) ||
+            product.name.toLowerCase().includes(term) ||
+            product.category.toLowerCase().includes(term);
           return categoryMatch && termMatch;
         });
 
-        quickProducts.innerHTML = filtered.map((product) => `
+        quickProducts.innerHTML = filtered.length ? filtered.map((product) => `
           <button class="pdv-product-tile" type="button" data-code="${escapeHtml(product.code)}">
             <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.alt)}" loading="lazy">
             <span>
@@ -343,12 +424,18 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
               <b>${money(product.price)}</b>
             </span>
           </button>
-        `).join('');
+        `).join('') : `
+          <div class="pdv-empty-products">
+            <strong>Nenhum produto encontrado</strong>
+            <p>Revise a busca ou escolha outra categoria.</p>
+          </div>
+        `;
 
         quickProducts.querySelectorAll('[data-code]').forEach((button) => {
           button.addEventListener('click', () => {
             const product = products.find((item) => item.code === button.dataset.code);
             setSelectedProduct(product);
+            closeProductsModal();
           });
         });
       };
@@ -489,7 +576,6 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
       productSearch.addEventListener('input', () => {
         const product = findProduct(productSearch.value);
         if (product) setSelectedProduct(product);
-        renderQuickProducts();
       });
 
       productQty.addEventListener('input', () => {
@@ -535,7 +621,6 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
         productSearch.value = '';
         manualCode.value = '';
         productQty.value = 1;
-        renderQuickProducts();
         productSearch.focus();
       });
 
@@ -548,8 +633,23 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
           $$('#categoryFilters button').forEach((item) => item.classList.remove('is-active'));
           button.classList.add('is-active');
           activeCategory = button.dataset.category;
+          modalProductSearch.value = '';
           renderQuickProducts();
+          openProductsModal();
         });
+      });
+
+      openProductCatalog.addEventListener('click', openProductsModal);
+      modalProductSearch.addEventListener('input', renderQuickProducts);
+
+      $$('[data-close-products]').forEach((button) => {
+        button.addEventListener('click', closeProductsModal);
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && productModal && !productModal.hidden) {
+          closeProductsModal();
+        }
       });
 
       $$('input[name="payment"]').forEach((input) => {
