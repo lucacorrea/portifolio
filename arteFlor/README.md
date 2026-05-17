@@ -1,41 +1,48 @@
-# Arte&Flor — MVP Front Catálogo de Vendas
+# Arte&Flor — MVP PHP Catálogo de Vendas
 
-Projeto front-end demonstrativo para catálogo de vendas da floricultura Arte&Flor.
+Projeto em PHP puro para validação comercial da floricultura Arte&Flor.
 
 ## Objetivo
 
-Criar uma vitrine digital profissional para validação com a cliente, com catálogo, carrinho, checkout via WhatsApp, área do cliente, blog e área administrativa demonstrativa.
+Criar uma vitrine digital profissional para a cliente aprovar o front antes do desenvolvimento completo do backend, com catálogo, detalhes de produto, carrinho, checkout via WhatsApp, área do cliente, blog e área administrativa demonstrativa.
 
 ## Escopo atual
 
-- Somente front-end.
-- Sem backend.
-- Sem banco de dados.
-- Dados simulados em JSON.
+- PHP puro com includes reutilizáveis.
+- HTML, CSS e JavaScript organizados.
+- Sem banco de dados nesta primeira fase.
+- Dados simulados em arquivos JSON.
 - Carrinho e simulações usando localStorage.
-- Preparado para futura integração com API.
+- Preparado para futura integração com MySQL e painel administrativo real.
 
-## Estrutura
+## Estrutura proposta
 
 ```txt
 arteFlor/
-├── index.html
-├── catalogo.html
-├── produto.html
-├── carrinho.html
-├── checkout.html
-├── cliente.html
-├── blog.html
-├── post.html
+├── index.php
+├── catalogo.php
+├── produto.php
+├── carrinho.php
+├── checkout.php
+├── cliente.php
+├── blog.php
+├── post.php
 ├── admin/
-│   ├── login.html
-│   ├── dashboard.html
-│   ├── produtos.html
-│   ├── produto-form.html
-│   ├── estoque.html
-│   ├── caixa.html
-│   ├── pedidos.html
-│   └── relatorios.html
+│   ├── login.php
+│   ├── dashboard.php
+│   ├── produtos.php
+│   ├── produto-form.php
+│   ├── estoque.php
+│   ├── caixa.php
+│   ├── pedidos.php
+│   └── relatorios.php
+├── includes/
+│   ├── config.php
+│   ├── helpers.php
+│   ├── header.php
+│   ├── footer.php
+│   ├── product-card.php
+│   └── admin-sidebar.php
 ├── assets/
 │   ├── css/
 │   ├── js/
@@ -60,13 +67,26 @@ Paleta base:
 
 ## Regras do MVP
 
-1. Não criar backend nesta fase.
-2. Não criar banco nesta fase.
-3. Manter HTML, CSS e JavaScript puro.
-4. Separar CSS e JS por responsabilidade.
-5. Usar JSON local para dados fake.
+1. Usar PHP puro.
+2. Separar partes repetidas em includes.
+3. Não criar banco de dados nesta fase.
+4. Não implementar login real ainda.
+5. Usar JSON local como fonte de dados provisória.
 6. Usar localStorage para carrinho e simulações administrativas.
 7. Checkout deve gerar mensagem organizada para WhatsApp.
-8. A área admin deve parecer real, mas sem autenticação real.
-9. O layout deve ser mobile first.
-10. O front precisa estar pronto para integração futura com API.
+8. Área admin deve ser demonstrativa, mas visualmente profissional.
+9. Layout mobile first.
+10. Preparar estrutura para futura integração com MySQL, autenticação e API.
+
+## Próxima fase
+
+Depois da aprovação da cliente, transformar os JSONs em tabelas MySQL e implementar:
+
+- Autenticação segura;
+- CRUD real de produtos;
+- Upload de múltiplas imagens;
+- Controle de estoque;
+- Caixa;
+- Pedidos;
+- Relatórios;
+- Integração Pix, caso seja aprovado.
