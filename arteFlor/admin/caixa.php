@@ -203,18 +203,7 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
             </div>
 
             <div class="pdv-pix-demo" id="pixPanel" hidden>
-              <div class="pdv-qr" aria-label="QR Code Pix demonstrativo">
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <strong>PIX</strong>
-              </div>
-              <code id="pixCode">00020126580014BR.GOV.BCB.PIX0136arteflor-caixa-demo5204000053039865802BR5910ARTE E FLOR6005COARI62070503***6304DEMO</code>
-              <button class="pdv-btn pdv-btn-ghost" type="button" id="copyPix">Copiar Pix</button>
-            </div>
+              
 
             <div class="pdv-received-box">
               <label for="receivedInput">Total recebido</label>
