@@ -1,6 +1,40 @@
 (function () {
+  const demoItems = [
+    {
+      id: 1001,
+      nome: 'Buquê Tons Pastel',
+      preco: 119.9,
+      qty: 1,
+      imagem: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=500&q=80'
+    },
+    {
+      id: 1002,
+      nome: 'Cartão personalizado',
+      preco: 12,
+      qty: 1,
+      imagem: 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=500&q=80'
+    }
+  ];
+
+  const escapeHtml = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  const getCartTotal = (cart) => cart.reduce((sum, item) => (
+    sum + Number(item.preco || 0) * Number(item.qty || 0)
+  ), 0);
+
+  const getPaymentValue = (form) => {
+    const data = new FormData(form);
+    return data.get('pagamento') || '';
+  };
+
   const renderSummary = () => {
     const summary = document.getElementById('checkoutSummary');
+    const subtotal = document.getElementById('checkoutSubtotal');
     const total = document.getElementById('checkoutTotal');
 
     if (!summary || !total || !window.ArteFlor) {
@@ -8,26 +42,38 @@
     }
 
     const cart = ArteFlor.getCart();
-    const value = cart.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 0), 0);
+    const value = getCartTotal(cart);
 
     if (!cart.length) {
-      summary.innerHTML = '<div class="empty-state">Carrinho vazio. Você ainda pode enviar uma solicitação manual pelo WhatsApp.</div>';
+      summary.innerHTML = `
+        <div class="empty-state checkout-empty-state">
+          <strong>Nenhum produto no carrinho.</strong>
+          <p>Use a simulação para apresentar a experiência completa sem depender de um carrinho real.</p>
+        </div>
+      `;
     } else {
       summary.innerHTML = cart.map((item) => `
-        <div class="summary-line">
-          <span>${item.qty}x ${item.nome}</span>
-          <strong>${ArteFlor.money(Number(item.preco || 0) * Number(item.qty || 0))}</strong>
+        <div class="checkout-summary-item">
+          ${item.imagem ? `<img src="${escapeHtml(item.imagem)}" alt="Imagem de ${escapeHtml(item.nome)}" loading="lazy">` : ''}
+          <div>
+            <strong>${escapeHtml(item.nome)}</strong>
+            <span>${Number(item.qty || 0)} un. · ${ArteFlor.money(Number(item.preco || 0))}</span>
+          </div>
+          <b>${ArteFlor.money(Number(item.preco || 0) * Number(item.qty || 0))}</b>
         </div>
       `).join('');
     }
 
+    if (subtotal) {
+      subtotal.textContent = ArteFlor.money(value);
+    }
     total.textContent = ArteFlor.money(value);
   };
 
-  const buildMessage = (data, cart, total) => {
+  const buildMessage = (data, cart, total, pixStatusText) => {
     const items = cart.length
       ? cart.map((item) => `- ${item.qty}x ${item.nome} (${ArteFlor.money(Number(item.preco || 0) * Number(item.qty || 0))})`).join('\n')
-      : '- Pedido sem itens no carrinho. Cliente deseja atendimento manual.';
+      : '- Pedido personalizado sem itens no carrinho.';
 
     return [
       'Olá, vim pelo site da Arte&Flor.',
@@ -46,35 +92,45 @@
       `Endereço: ${data.endereco || '-'}`,
       `Referência: ${data.referencia || '-'}`,
       `Pagamento: ${data.pagamento || '-'}`,
+      pixStatusText ? `Status Pix demonstrativo: ${pixStatusText}` : '',
       `Mensagem para cartão: ${data.cartao || 'Nenhuma'}`,
       `Observações: ${data.observacoes || 'Nenhuma'}`
-    ].join('\n');
+    ].filter(Boolean).join('\n');
   };
 
   document.addEventListener('DOMContentLoaded', () => {
+    if (!window.ArteFlor) {
+      return;
+    }
+
     const form = document.getElementById('checkoutForm');
-    const paymentMethod = document.querySelector('[data-payment-method]');
+    const paymentMethods = document.querySelectorAll('[data-payment-method]');
     const pixPanel = document.querySelector('[data-pix-panel]');
     const pixStatus = document.querySelector('[data-pix-status]');
     const pixCode = document.querySelector('[data-pix-code]');
     const copyPixButton = document.querySelector('[data-copy-pix]');
     const finishSystemButton = document.querySelector('[data-system-finish]');
     const systemResult = document.querySelector('[data-system-result]');
+    const loadDemoButton = document.querySelector('[data-load-demo-order]');
     let systemFinished = false;
     let systemOrderCode = '';
 
     renderSummary();
 
     const togglePixPanel = () => {
-      const isPix = paymentMethod?.value === 'Pix';
+      const isPix = form ? getPaymentValue(form) === 'Pix' : false;
       if (pixPanel) {
         pixPanel.hidden = !isPix;
+      }
+
+      if (!isPix && pixStatus) {
+        pixStatus.textContent = 'Aguardando pagamento';
       }
     };
 
     const saveDemoSale = () => {
       const cart = ArteFlor.getCart();
-      const total = cart.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 0), 0);
+      const total = getCartTotal(cart);
       const sales = JSON.parse(localStorage.getItem('arteflor_demo_sales') || '[]');
 
       systemOrderCode = `AF-${String(Date.now()).slice(-6)}`;
@@ -103,8 +159,17 @@
       ArteFlor.toast(`Venda ${systemOrderCode} finalizada no sistema demonstrativo.`);
     };
 
-    paymentMethod?.addEventListener('change', togglePixPanel);
+    paymentMethods.forEach((input) => {
+      input.addEventListener('change', togglePixPanel);
+    });
     togglePixPanel();
+
+    loadDemoButton?.addEventListener('click', () => {
+      ArteFlor.setCart(demoItems);
+      ArteFlor.updateCartCount();
+      renderSummary();
+      ArteFlor.toast('Pedido de apresentação carregado no resumo.');
+    });
 
     copyPixButton?.addEventListener('click', async () => {
       const code = pixCode?.textContent?.trim() || '';
@@ -127,11 +192,11 @@
       event.preventDefault();
 
       const cart = ArteFlor.getCart();
-      const total = cart.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 0), 0);
+      const total = getCartTotal(cart);
       const data = Object.fromEntries(new FormData(form).entries());
       const codigo = `AF-${String(Date.now()).slice(-5)}`;
-      const pixInfo = data.pagamento === 'Pix'
-        ? `\nStatus Pix demonstrativo: ${systemFinished ? `finalizado no sistema (${systemOrderCode})` : 'QR Code exibido, confirmação pendente'}`
+      const pixStatusText = data.pagamento === 'Pix'
+        ? (systemFinished ? `finalizado no sistema (${systemOrderCode})` : 'QR Code exibido, confirmação pendente')
         : '';
 
       ArteFlor.saveOrder({
@@ -143,7 +208,7 @@
         criadoEm: new Date().toISOString()
       });
 
-      window.open(ArteFlor.whatsappUrl(`${buildMessage(data, cart, total)}${pixInfo}`), '_blank', 'noopener');
+      window.open(ArteFlor.whatsappUrl(buildMessage(data, cart, total, pixStatusText)), '_blank', 'noopener');
       ArteFlor.toast(`Pedido #${codigo} gerado para WhatsApp.`);
     });
   });

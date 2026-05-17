@@ -36,6 +36,19 @@
   .pix-panel-header {
     display: grid;
   }
+
+  .checkout-step-list,
+  .payment-options {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-summary-item {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .checkout-summary-item b {
+    grid-column: 2;
+  }
 }
 
 @media (min-width: 700px) {
