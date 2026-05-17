@@ -38,6 +38,14 @@
   .checkout-layout aside,
   .checkout-layout > .card:last-child { position: static; }
 
+  .pix-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pix-panel-header {
+    flex-direction: column;
+  }
+
   .admin-shell { grid-template-columns: 1fr; }
   .admin-sidebar {
     position: relative;
