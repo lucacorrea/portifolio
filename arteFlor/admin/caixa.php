@@ -234,21 +234,7 @@ $categorias = array_values(array_unique(array_map(function ($produto) {
         </aside>
       </section>
 
-      <section class="pdv-bottom-panel">
-        <div>
-          <span>Cliente</span>
-          <input id="customerName" type="text" placeholder="Cliente balcão">
-        </div>
-        <div>
-          <span>WhatsApp</span>
-          <input id="customerPhone" type="tel" placeholder="(97) 00000-0000">
-        </div>
-        <div>
-          <span>Observação</span>
-          <input id="saleNote" type="text" placeholder="Ex: incluir cartão, retirada às 16h">
-        </div>
-        <div class="pdv-history-mini" id="salesHistory"></div>
-      </section>
+     
     </main>
   </div>
 
