@@ -37,6 +37,9 @@
   border-radius: 50%;
   background: linear-gradient(135deg, var(--verde-menta), var(--verde-pastel));
   box-shadow: inset 0 0 0 1px rgba(79,143,107,.18), 0 10px 24px rgba(79,143,107,.14);
+  color: var(--verde-principal-hover);
+  font: 950 .76rem var(--fonte-corpo);
+  letter-spacing: .03em;
 }
 
 .main-nav {
@@ -249,14 +252,16 @@
   right: 22px;
   bottom: 22px;
   z-index: 120;
-  width: 60px;
-  height: 60px;
+  min-width: 60px;
+  height: 48px;
+  padding: 0 18px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 999px;
   background: #25D366;
   color: #fff;
-  font-size: 1.35rem;
+  font-size: .82rem;
+  font-weight: 950;
   text-decoration: none;
   box-shadow: 0 14px 34px rgba(37,211,102,.34);
   transition: .22s ease;
