@@ -261,9 +261,7 @@ sort($categorias);
 
 <section class="section">
   <div class="container">
-    <div class="catalog-toolbar">
-     
-    </div>
+  
 
     <div class="grid-3 product-grid-spaced" data-products-grid>
       <?php foreach ($produtos as $produto): ?>
