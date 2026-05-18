@@ -2,6 +2,7 @@
 require_once __DIR__ . '/helpers.php';
 $pageTitle = $pageTitle ?? SITE_NAME;
 $activePage = $activePage ?? 'inicio';
+$base = base_url();
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -12,7 +13,7 @@ $activePage = $activePage ?? 'inicio';
   <meta name="description" content="<?= e(SITE_DESCRIPTION) ?>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="<?= asset('css/base.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/layout.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/components.css') ?>">
@@ -22,16 +23,17 @@ $activePage = $activePage ?? 'inicio';
 <body>
 <header class="site-header">
   <div class="container header-inner">
-    <a class="brand" href="index.php" aria-label="Arte&Flor - Início">
+    <a class="brand" href="<?= $base ?>index.php" aria-label="Arte&Flor - Início">
       <span class="brand-icon">🌿</span>
       <span>Arte<span>&</span>Flor</span>
     </a>
     <nav class="main-nav" aria-label="Navegação principal">
-      <a class="<?= $activePage === 'inicio' ? 'active' : '' ?>" href="index.php">Início</a>
-      <a class="<?= $activePage === 'catalogo' ? 'active' : '' ?>" href="catalogo.php">Catálogo</a>
-      <a class="<?= $activePage === 'blog' ? 'active' : '' ?>" href="blog.php">Blog</a>
-      <a class="<?= $activePage === 'cliente' ? 'active' : '' ?>" href="cliente.php">Área do cliente</a>
-      <a href="admin/login.php">Admin</a>
+      <a class="<?= $activePage === 'inicio' ? 'active' : '' ?>" href="<?= $base ?>index.php">Início</a>
+      <a class="<?= $activePage === 'catalogo' ? 'active' : '' ?>" href="<?= $base ?>catalogo.php">Catálogo</a>
+      <a class="<?= $activePage === 'blog' ? 'active' : '' ?>" href="<?= $base ?>blog.php">Blog</a>
+      <a class="<?= $activePage === 'cliente' ? 'active' : '' ?>" href="<?= $base ?>cliente.php">Área do cliente</a>
+      <a href="<?= $base ?>carrinho.php">Carrinho <span data-cart-count>0</span></a>
+      <a href="<?= $base ?>admin/login.php">Admin</a>
     </nav>
     <a class="btn btn-primary" target="_blank" rel="noopener" href="<?= whatsapp_url('Olá, vim pelo catálogo da Arte&Flor.') ?>">WhatsApp</a>
     <button class="menu-toggle" data-menu-toggle aria-label="Abrir menu">☰</button>
