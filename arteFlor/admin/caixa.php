@@ -21,8 +21,8 @@ sort($categorias);
 
 <style>
 /* =========================================================
-   ARTE&FLOR ADMIN — PDV FULLSCREEN ORGANIZADO
-   Caixa em tela cheia, objetivo e com visualização de produto
+   ARTE&FLOR ADMIN — PDV FULLSCREEN COM TROCO
+   Tela de caixa organizada para notebook
 ========================================================= */
 
 .admin-shell:has(.pdv-fullscreen-page) {
@@ -54,7 +54,7 @@ sort($categorias);
 
 .pdv-topbar {
   display: grid;
-  grid-template-columns: 250px minmax(260px, 1fr) auto;
+  grid-template-columns: 250px minmax(300px, 1fr) auto;
   gap: 10px;
   min-height: 62px;
 }
@@ -174,7 +174,7 @@ sort($categorias);
   background: #edf3e9;
 }
 
-/* ---------- Estrutura principal ---------- */
+/* ---------- Estrutura ---------- */
 
 .pdv-workspace {
   min-height: 0;
@@ -236,12 +236,10 @@ sort($categorias);
   gap: 10px;
 }
 
-/* Produto selecionado */
-
 .pdv-selected-card {
-  min-height: 235px;
+  min-height: 225px;
   display: grid;
-  grid-template-rows: 150px auto;
+  grid-template-rows: 140px auto;
   overflow: hidden;
   border-radius: 11px;
   background: #fff;
@@ -249,7 +247,6 @@ sort($categorias);
 }
 
 .pdv-selected-image {
-  position: relative;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -304,7 +301,7 @@ sort($categorias);
   font-weight: 950;
 }
 
-/* Entrada rápida */
+/* ---------- Campos ---------- */
 
 .pdv-fast-form {
   display: grid;
@@ -344,7 +341,8 @@ sort($categorias);
 }
 
 .pdv-field input:focus,
-.pdv-field select:focus {
+.pdv-field select:focus,
+.pdv-money-input:focus {
   border-color: #4f8062;
   box-shadow: 0 0 0 3px rgba(79, 128, 98, .12);
 }
@@ -362,8 +360,7 @@ sort($categorias);
   align-items: end;
 }
 
-/* Pagamento compacto */
-
+/* Pagamento simples na esquerda */
 .pdv-payment-compact {
   align-self: end;
   display: grid;
@@ -398,11 +395,11 @@ sort($categorias);
   min-height: 36px;
 }
 
-/* ---------- Centro: venda ---------- */
+/* ---------- Centro ---------- */
 
 .pdv-sale-column {
   display: grid;
-  grid-template-rows: 42px minmax(0, 1fr) 184px;
+  grid-template-rows: 42px minmax(0, 1fr) 245px;
 }
 
 .pdv-sale-title {
@@ -451,7 +448,6 @@ sort($categorias);
   line-height: 1.45;
 }
 
-/* Itens adicionados pelo JS */
 .pdv-sale-item {
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr) auto;
@@ -497,47 +493,48 @@ sort($categorias);
   font-weight: 850;
 }
 
-/* Totais */
+/* ---------- Fechamento / Troco ---------- */
 
-.pdv-total-board {
+.pdv-close-board {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1.2fr;
   gap: 8px;
   padding: 10px;
   background: #f8f1e8;
   border-top: 1px solid rgba(32, 63, 48, .10);
 }
 
-.pdv-total-line {
-  min-height: 46px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 11px;
+.pdv-total-line,
+.pdv-cash-line {
+  min-height: 48px;
+  display: grid;
+  gap: 4px;
+  padding: 9px 11px;
   border-radius: 9px;
   background: #fff;
   border: 1px solid rgba(32, 63, 48, .10);
 }
 
-.pdv-total-line span {
+.pdv-total-line span,
+.pdv-cash-line span {
   color: #647067;
-  font-size: .74rem;
+  font-size: .7rem;
   font-weight: 900;
   letter-spacing: .04em;
   text-transform: uppercase;
 }
 
-.pdv-total-line strong {
+.pdv-total-line strong,
+.pdv-cash-line strong {
   color: #203f30;
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   font-weight: 950;
   white-space: nowrap;
 }
 
 .pdv-total-line.main {
-  grid-column: 1 / -1;
-  min-height: 64px;
+  grid-column: 1 / 3;
+  min-height: 68px;
   background: #203f30;
   border-color: #203f30;
 }
@@ -548,21 +545,70 @@ sort($categorias);
 
 .pdv-total-line.main strong {
   color: #fff;
-  font-size: clamp(2rem, 4vw, 2.85rem);
+  font-size: clamp(2rem, 4vw, 2.9rem);
   line-height: 1;
 }
 
-.pdv-discount-input {
-  width: 110px;
-  min-height: 34px;
+.pdv-change-line {
+  grid-column: 3 / 4;
+  grid-row: 1 / 3;
+  background: #fff;
+  border: 1px solid rgba(32, 63, 48, .10);
+  border-radius: 9px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  padding: 12px;
+}
+
+.pdv-change-line span {
+  color: #647067;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.pdv-change-line strong {
+  color: #82495c;
+  font-size: clamp(1.75rem, 3vw, 2.45rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.pdv-money-input {
+  width: 100%;
+  min-height: 36px;
   border-radius: 7px;
   border: 1px solid rgba(32, 63, 48, .14);
   background: #fff;
   color: #203f30;
-  text-align: right;
   padding: 0 8px;
   font-weight: 900;
+  text-align: right;
   outline: none;
+}
+
+.pdv-quick-cash {
+  grid-column: 1 / 3;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.pdv-quick-cash button {
+  min-height: 32px;
+  border-radius: 7px;
+  background: #fff;
+  border: 1px solid rgba(32, 63, 48, .12);
+  color: #203f30;
+  font-size: .74rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pdv-quick-cash button:hover {
+  background: #edf3e9;
 }
 
 .pdv-actions-row {
@@ -572,7 +618,7 @@ sort($categorias);
   gap: 8px;
 }
 
-/* ---------- Direita: produtos rápidos ---------- */
+/* ---------- Direita: produtos ---------- */
 
 .pdv-products-column {
   display: grid;
@@ -620,7 +666,6 @@ sort($categorias);
   padding: 10px;
 }
 
-/* Cards gerados pelo JS */
 .pdv-product-card {
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr);
@@ -669,8 +714,8 @@ sort($categorias);
   font-weight: 950;
 }
 
-/* Histórico oculto para não quebrar JS */
-.pdv-hidden-history {
+.pdv-hidden-history,
+.pdv-hidden-contact {
   display: none !important;
 }
 
@@ -702,12 +747,16 @@ sort($categorias);
   }
 
   .pdv-selected-card {
-    min-height: 220px;
-    grid-template-rows: 135px auto;
+    min-height: 212px;
+    grid-template-rows: 128px auto;
   }
 
   .pdv-total-line.main strong {
-    font-size: 2.35rem;
+    font-size: 2.3rem;
+  }
+
+  .pdv-change-line strong {
+    font-size: 2rem;
   }
 }
 
@@ -738,8 +787,20 @@ sort($categorias);
     max-height: 420px;
   }
 
-  .pdv-selected-card {
-    grid-template-rows: 220px auto;
+  .pdv-close-board {
+    grid-template-columns: 1fr;
+  }
+
+  .pdv-total-line.main,
+  .pdv-change-line,
+  .pdv-quick-cash,
+  .pdv-actions-row {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .pdv-actions-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>
@@ -771,7 +832,6 @@ sort($categorias);
   <script type="application/json" id="pdvProducts"><?= json_encode($pdvProdutos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
 
   <section class="pdv-workspace">
-    <!-- Produto selecionado + entrada -->
     <aside class="pdv-box pdv-entry-column">
       <div class="pdv-box-header">
         <div>
@@ -823,9 +883,11 @@ sort($categorias);
             <input data-pdv-client placeholder="Cliente balcão">
           </label>
 
+          <input class="pdv-hidden-contact" data-pdv-contact value="Balcão">
+
           <label class="pdv-field">
             <span>Forma de pagamento</span>
-            <select data-pdv-payment>
+            <select data-pdv-payment data-pdv-payment-method>
               <option>Pix</option>
               <option>Dinheiro</option>
               <option>Cartão presencial</option>
@@ -836,7 +898,6 @@ sort($categorias);
       </div>
     </aside>
 
-    <!-- Lista da venda -->
     <section class="pdv-box pdv-sale-column">
       <div class="pdv-box-header">
         <div class="pdv-sale-title">
@@ -851,7 +912,7 @@ sort($categorias);
 
       <div class="pdv-current-items" data-pdv-current></div>
 
-      <div class="pdv-total-board">
+      <div class="pdv-close-board">
         <div class="pdv-total-line">
           <span>Subtotal</span>
           <strong data-pdv-subtotal>R$ 0,00</strong>
@@ -859,12 +920,29 @@ sort($categorias);
 
         <div class="pdv-total-line">
           <span>Desconto</span>
-          <input class="pdv-discount-input" type="number" min="0" step="0.01" value="0" data-pdv-discount>
+          <input class="pdv-money-input" type="number" min="0" step="0.01" value="0" data-pdv-discount>
         </div>
 
         <div class="pdv-total-line main">
           <span>Total da venda</span>
           <strong data-pdv-total>R$ 0,00</strong>
+        </div>
+
+        <div class="pdv-cash-line">
+          <span>Valor recebido</span>
+          <input class="pdv-money-input" type="number" min="0" step="0.01" value="0" data-pdv-received>
+        </div>
+
+        <div class="pdv-quick-cash">
+          <button type="button" data-pdv-cash-exact>Valor exato</button>
+          <button type="button" data-pdv-cash-add="10">+ R$ 10</button>
+          <button type="button" data-pdv-cash-add="20">+ R$ 20</button>
+          <button type="button" data-pdv-cash-clear>Limpar</button>
+        </div>
+
+        <div class="pdv-change-line">
+          <span>Troco</span>
+          <strong data-pdv-change>R$ 0,00</strong>
         </div>
 
         <div class="pdv-actions-row">
@@ -875,7 +953,6 @@ sort($categorias);
       </div>
     </section>
 
-    <!-- Produtos rápidos -->
     <aside class="pdv-box pdv-products-column">
       <div class="pdv-box-header">
         <div>
@@ -904,10 +981,55 @@ sort($categorias);
   const selectedImage = document.querySelector('[data-pdv-selected-image]');
   const selectedName = document.querySelector('[data-pdv-selected-name]');
   const selectedPrice = document.querySelector('[data-pdv-selected-price]');
+  const totalEl = document.querySelector('[data-pdv-total]');
+  const receivedInput = document.querySelector('[data-pdv-received]');
+  const changeEl = document.querySelector('[data-pdv-change]');
+  const exactBtn = document.querySelector('[data-pdv-cash-exact]');
+  const clearBtn = document.querySelector('[data-pdv-cash-clear]');
+  const addButtons = document.querySelectorAll('[data-pdv-cash-add]');
 
-  if (!currentList || !selectedImage || !selectedName || !selectedPrice) return;
+  const money = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  });
+
+  function parseMoney(value) {
+    if (!value) return 0;
+
+    const normalized = String(value)
+      .replace(/[^\d,.-]/g, '')
+      .replace(/\./g, '')
+      .replace(',', '.');
+
+    const parsed = Number(normalized);
+
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function getTotal() {
+    return parseMoney(totalEl?.textContent || '0');
+  }
+
+  function updateChange() {
+    if (!receivedInput || !changeEl) return;
+
+    const total = getTotal();
+    const received = Number(receivedInput.value || 0);
+    const change = Math.max(0, received - total);
+
+    changeEl.textContent = money.format(change);
+
+    if (received > 0 && received < total) {
+      changeEl.textContent = `Falta ${money.format(total - received)}`;
+      changeEl.style.color = '#8b3f4d';
+    } else {
+      changeEl.style.color = '#82495c';
+    }
+  }
 
   function updateSelectedPreview() {
+    if (!currentList || !selectedImage || !selectedName || !selectedPrice) return;
+
     const items = [...currentList.querySelectorAll('.pdv-sale-item')];
     const lastItem = items[items.length - 1];
 
@@ -920,6 +1042,7 @@ sort($categorias);
       `;
       selectedName.textContent = 'Aguardando produto';
       selectedPrice.textContent = 'R$ 0,00';
+      updateChange();
       return;
     }
 
@@ -943,16 +1066,57 @@ sort($categorias);
 
     selectedName.textContent = name;
     selectedPrice.textContent = priceText || 'Item adicionado';
+    updateChange();
   }
 
-  const observer = new MutationObserver(updateSelectedPreview);
+  receivedInput?.addEventListener('input', updateChange);
 
-  observer.observe(currentList, {
-    childList: true,
-    subtree: true
+  exactBtn?.addEventListener('click', () => {
+    if (!receivedInput) return;
+    receivedInput.value = getTotal().toFixed(2);
+    updateChange();
   });
 
+  clearBtn?.addEventListener('click', () => {
+    if (!receivedInput) return;
+    receivedInput.value = '0';
+    updateChange();
+  });
+
+  addButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!receivedInput) return;
+
+      const current = Number(receivedInput.value || 0);
+      const add = Number(button.dataset.pdvCashAdd || 0);
+
+      receivedInput.value = (current + add).toFixed(2);
+      updateChange();
+    });
+  });
+
+  const observer = new MutationObserver(() => {
+    updateSelectedPreview();
+    updateChange();
+  });
+
+  if (currentList) {
+    observer.observe(currentList, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  if (totalEl) {
+    observer.observe(totalEl, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+  }
+
   updateSelectedPreview();
+  updateChange();
 })();
 </script>
 
