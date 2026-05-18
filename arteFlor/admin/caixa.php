@@ -21,11 +21,10 @@ sort($categorias);
 
 <style>
 /* =========================================================
-   ARTE&FLOR ADMIN — PDV FULLSCREEN NOTEBOOK
-   Tela de caixa em modo balcão/supermercado
+   ARTE&FLOR ADMIN — PDV FULLSCREEN ORGANIZADO
+   Caixa em tela cheia, objetivo e com visualização de produto
 ========================================================= */
 
-/* Remove cara de página admin e transforma em tela cheia */
 .admin-shell:has(.pdv-fullscreen-page) {
   grid-template-columns: 1fr !important;
   min-height: 100vh;
@@ -46,18 +45,18 @@ sort($categorias);
 .pdv-fullscreen-page {
   height: calc(100vh - 20px);
   display: grid;
-  grid-template-rows: 64px minmax(0, 1fr);
+  grid-template-rows: 62px minmax(0, 1fr);
   gap: 10px;
   color: #203f30;
 }
 
-/* ---------- Topo fullscreen ---------- */
+/* ---------- Topo ---------- */
 
 .pdv-topbar {
   display: grid;
-  grid-template-columns: 260px minmax(280px, 1fr) auto;
+  grid-template-columns: 250px minmax(260px, 1fr) auto;
   gap: 10px;
-  min-height: 64px;
+  min-height: 62px;
 }
 
 .pdv-brand-box,
@@ -77,9 +76,9 @@ sort($categorias);
 }
 
 .pdv-brand-mark {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -92,7 +91,7 @@ sort($categorias);
 .pdv-brand-box strong {
   display: block;
   color: #203f30;
-  font-size: 1rem;
+  font-size: .98rem;
   font-weight: 950;
   line-height: 1.1;
 }
@@ -101,7 +100,7 @@ sort($categorias);
   display: block;
   margin-top: 2px;
   color: #647067;
-  font-size: .78rem;
+  font-size: .76rem;
   font-weight: 750;
 }
 
@@ -117,7 +116,7 @@ sort($categorias);
 .pdv-status-box small {
   display: block;
   color: rgba(255,255,255,.72);
-  font-size: .68rem;
+  font-size: .66rem;
   font-weight: 900;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -126,7 +125,7 @@ sort($categorias);
 .pdv-status-box strong {
   display: block;
   color: #fff;
-  font-size: clamp(1.45rem, 3vw, 2.25rem);
+  font-size: clamp(1.35rem, 3vw, 2.15rem);
   font-weight: 950;
   letter-spacing: .04em;
   line-height: 1;
@@ -143,9 +142,10 @@ sort($categorias);
   min-height: 38px;
   padding: 9px 12px;
   border-radius: 9px;
-  font-size: .84rem;
+  font-size: .82rem;
   font-weight: 850;
   box-shadow: none;
+  white-space: nowrap;
 }
 
 .pdv-fullscreen-page .btn:hover {
@@ -174,12 +174,12 @@ sort($categorias);
   background: #edf3e9;
 }
 
-/* ---------- Tela principal ---------- */
+/* ---------- Estrutura principal ---------- */
 
 .pdv-workspace {
   min-height: 0;
   display: grid;
-  grid-template-columns: 290px minmax(420px, 1fr) 320px;
+  grid-template-columns: 300px minmax(430px, 1fr) 330px;
   gap: 10px;
 }
 
@@ -193,12 +193,12 @@ sort($categorias);
 }
 
 .pdv-box-header {
-  min-height: 44px;
+  min-height: 42px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   background: #dfeadd;
   border-bottom: 1px solid rgba(32, 63, 48, .10);
 }
@@ -207,15 +207,14 @@ sort($categorias);
   margin: 0;
   color: #203f30;
   font-family: var(--fonte-corpo, system-ui);
-  font-size: .96rem;
+  font-size: .94rem;
   font-weight: 950;
-  letter-spacing: -.01em;
 }
 
 .pdv-box-header span,
 .pdv-box-header small {
   color: #647067;
-  font-size: .74rem;
+  font-size: .72rem;
   font-weight: 800;
 }
 
@@ -223,42 +222,89 @@ sort($categorias);
   padding: 10px;
 }
 
-/* ---------- Coluna esquerda: entrada ---------- */
+/* ---------- Coluna esquerda ---------- */
 
 .pdv-entry-column {
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: 42px minmax(0, 1fr);
 }
 
 .pdv-entry-body {
+  min-height: 0;
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 10px;
-  height: 100%;
 }
 
-.pdv-product-preview {
-  min-height: 118px;
+/* Produto selecionado */
+
+.pdv-selected-card {
+  min-height: 235px;
+  display: grid;
+  grid-template-rows: 150px auto;
+  overflow: hidden;
+  border-radius: 11px;
+  background: #fff;
+  border: 1px solid rgba(32, 63, 48, .12);
+}
+
+.pdv-selected-image {
+  position: relative;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  overflow: hidden;
   background: linear-gradient(135deg, #edf3e9, #f8f1e8);
-  border: 1px solid rgba(32, 63, 48, .10);
+  border-bottom: 1px solid rgba(32, 63, 48, .10);
+}
+
+.pdv-selected-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pdv-selected-placeholder {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  color: #647067;
   text-align: center;
 }
 
-.pdv-product-preview strong {
-  display: block;
-  font-size: 2.4rem;
+.pdv-selected-placeholder strong {
+  color: #203f30;
+  font-size: 2.1rem;
   line-height: 1;
 }
 
-.pdv-product-preview span {
-  display: block;
-  margin-top: 4px;
-  color: #647067;
-  font-size: .78rem;
-  font-weight: 800;
+.pdv-selected-info {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
 }
+
+.pdv-selected-info small {
+  color: #647067;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.pdv-selected-info strong {
+  color: #203f30;
+  font-size: .95rem;
+  font-weight: 950;
+  line-height: 1.18;
+}
+
+.pdv-selected-info span {
+  color: #82495c;
+  font-size: .9rem;
+  font-weight: 950;
+}
+
+/* Entrada rápida */
 
 .pdv-fast-form {
   display: grid;
@@ -316,49 +362,47 @@ sort($categorias);
   align-items: end;
 }
 
-.pdv-help {
+/* Pagamento compacto */
+
+.pdv-payment-compact {
   align-self: end;
   display: grid;
-  gap: 7px;
+  gap: 8px;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: 11px;
   background: #f8f1e8;
   border: 1px solid rgba(32, 63, 48, .10);
 }
 
-.pdv-help strong {
+.pdv-payment-compact-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pdv-payment-compact-title strong {
   color: #203f30;
-  font-size: .78rem;
+  font-size: .84rem;
   font-weight: 950;
 }
 
-.pdv-shortcuts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px;
-}
-
-.pdv-shortcuts span {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 6px;
-  border-radius: 7px;
-  background: #fff;
+.pdv-payment-compact-title span {
   color: #647067;
-  font-size: .68rem;
-  font-weight: 750;
+  font-size: .72rem;
+  font-weight: 800;
 }
 
-.pdv-shortcuts b {
-  color: #203f30;
+.pdv-payment-compact .pdv-field input,
+.pdv-payment-compact .pdv-field select {
+  min-height: 36px;
 }
 
-/* ---------- Centro: lista e total ---------- */
+/* ---------- Centro: venda ---------- */
 
 .pdv-sale-column {
   display: grid;
-  grid-template-rows: 44px minmax(0, 1fr) 190px;
+  grid-template-rows: 42px minmax(0, 1fr) 184px;
 }
 
 .pdv-sale-title {
@@ -407,10 +451,10 @@ sort($categorias);
   line-height: 1.45;
 }
 
-/* Itens inseridos pelo JS */
+/* Itens adicionados pelo JS */
 .pdv-sale-item {
   display: grid;
-  grid-template-columns: 50px minmax(0, 1fr) auto;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   padding: 8px;
@@ -421,8 +465,8 @@ sort($categorias);
 
 .pdv-sale-item img,
 .pdv-sale-item > span {
-  width: 50px;
-  height: 50px;
+  width: 56px;
+  height: 56px;
   border-radius: 7px;
   object-fit: cover;
   background: #edf3e9;
@@ -430,7 +474,7 @@ sort($categorias);
 
 .pdv-sale-item strong {
   color: #203f30;
-  font-size: .86rem;
+  font-size: .88rem;
   font-weight: 950;
   line-height: 1.15;
 }
@@ -453,7 +497,8 @@ sort($categorias);
   font-weight: 850;
 }
 
-/* Total compacto para caber no notebook */
+/* Totais */
+
 .pdv-total-board {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -464,12 +509,12 @@ sort($categorias);
 }
 
 .pdv-total-line {
-  min-height: 48px;
+  min-height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 11px;
+  padding: 8px 11px;
   border-radius: 9px;
   background: #fff;
   border: 1px solid rgba(32, 63, 48, .10);
@@ -477,7 +522,7 @@ sort($categorias);
 
 .pdv-total-line span {
   color: #647067;
-  font-size: .76rem;
+  font-size: .74rem;
   font-weight: 900;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -485,14 +530,14 @@ sort($categorias);
 
 .pdv-total-line strong {
   color: #203f30;
-  font-size: 1.08rem;
+  font-size: 1.05rem;
   font-weight: 950;
   white-space: nowrap;
 }
 
 .pdv-total-line.main {
   grid-column: 1 / -1;
-  min-height: 66px;
+  min-height: 64px;
   background: #203f30;
   border-color: #203f30;
 }
@@ -503,7 +548,7 @@ sort($categorias);
 
 .pdv-total-line.main strong {
   color: #fff;
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(2rem, 4vw, 2.85rem);
   line-height: 1;
 }
 
@@ -527,127 +572,20 @@ sort($categorias);
   gap: 8px;
 }
 
-/* ---------- Direita: pagamento, rápidos e histórico ---------- */
+/* ---------- Direita: produtos rápidos ---------- */
 
-.pdv-side-column {
-  min-height: 0;
+.pdv-products-column {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) 150px;
-  gap: 10px;
-}
-
-.pdv-side-section {
-  min-height: 0;
-  overflow: hidden;
-  border-radius: 12px;
-  background: #fffdf8;
-  border: 1px solid rgba(32, 63, 48, .12);
-}
-
-.pdv-side-title {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  padding: 9px 11px;
-  background: #dfeadd;
-  border-bottom: 1px solid rgba(32, 63, 48, .10);
-}
-
-.pdv-side-title h2 {
-  margin: 0;
-  color: #203f30;
-  font-size: .92rem;
-  font-weight: 950;
-}
-
-.pdv-side-content {
-  padding: 10px;
-}
-
-.pdv-payment-content {
-  display: grid;
-  gap: 8px;
-}
-
-.pdv-payment-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.pdv-payment-grid .pdv-field:last-child {
-  grid-column: 1 / -1;
-}
-
-.pdv-pix {
-  display: grid;
-  grid-template-columns: 80px minmax(0, 1fr);
-  gap: 9px;
-  align-items: center;
-  padding: 9px;
-  border-radius: 10px;
-  background: #f8f1e8;
-  border: 1px solid rgba(32, 63, 48, .10);
-}
-
-.qr-placeholder {
-  width: 80px;
-  height: 80px;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  background:
-    linear-gradient(90deg, rgba(32, 63, 48, .10) 50%, transparent 50%),
-    linear-gradient(rgba(32, 63, 48, .10) 50%, transparent 50%),
-    #fff;
-  background-size: 16px 16px;
-  border: 1px solid rgba(32, 63, 48, .14);
-  color: #203f30;
-  font-size: 1rem;
-  font-weight: 950;
-  letter-spacing: .08em;
-  box-shadow: inset 0 0 0 7px #edf3e9;
-}
-
-.pix-key-box {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.pix-key-box small {
-  color: #647067;
-  font-size: .66rem;
-  font-weight: 900;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.pix-key-box strong {
-  color: #203f30;
-  font-size: .78rem;
-  font-weight: 950;
-  overflow-wrap: anywhere;
-}
-
-.pdv-pix .btn {
-  grid-column: 1 / -1;
-  min-height: 34px;
-}
-
-/* Produtos rápidos */
-.pdv-products-content {
-  min-height: 0;
-  height: 100%;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 8px;
+  grid-template-rows: 42px auto minmax(0, 1fr);
 }
 
 .pdv-category-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  padding: 10px;
+  background: #f8f1e8;
+  border-bottom: 1px solid rgba(32, 63, 48, .10);
 }
 
 .filter-pill {
@@ -679,13 +617,13 @@ sort($categorias);
   display: grid;
   align-content: start;
   gap: 7px;
-  padding-right: 3px;
+  padding: 10px;
 }
 
-/* Cards de produto gerados pelo JS */
+/* Cards gerados pelo JS */
 .pdv-product-card {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   padding: 7px;
@@ -703,8 +641,8 @@ sort($categorias);
 }
 
 .pdv-product-card img {
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   object-fit: cover;
   border-radius: 7px;
   background: #edf3e9;
@@ -712,7 +650,7 @@ sort($categorias);
 
 .pdv-product-card strong {
   color: #203f30;
-  font-size: .78rem;
+  font-size: .8rem;
   font-weight: 950;
   line-height: 1.15;
 }
@@ -720,95 +658,56 @@ sort($categorias);
 .pdv-product-card span,
 .pdv-product-card small {
   color: #647067;
-  font-size: .66rem;
+  font-size: .68rem;
   font-weight: 750;
 }
 
 .pdv-product-card .price,
 .pdv-product-card [class*="price"] {
   color: #82495c;
-  font-size: .8rem;
+  font-size: .82rem;
   font-weight: 950;
 }
 
-/* Histórico */
-[data-pdv-history] {
-  height: 100%;
-  overflow-y: auto;
-  display: grid;
-  align-content: start;
-  gap: 7px;
+/* Histórico oculto para não quebrar JS */
+.pdv-hidden-history {
+  display: none !important;
 }
 
-[data-pdv-history]:empty::before {
-  content: "Nenhuma venda registrada.";
-  display: block;
-  padding: 10px;
-  border-radius: 9px;
-  background: #fff;
-  border: 1px dashed rgba(32, 63, 48, .16);
-  color: #647067;
-  font-size: .78rem;
-  font-weight: 750;
-}
-
-.pdv-history-row {
-  display: grid;
-  gap: 3px;
-  padding: 8px;
-  border-radius: 9px;
-  background: #fff;
-  border: 1px solid rgba(32, 63, 48, .11);
-}
-
-.pdv-history-row strong {
-  color: #203f30;
-  font-size: .78rem;
-  font-weight: 950;
-}
-
-.pdv-history-row span,
-.pdv-history-row small {
-  color: #647067;
-  font-size: .68rem;
-  font-weight: 750;
-}
-
-/* Scroll fino */
+/* Scroll */
 .pdv-current-items::-webkit-scrollbar,
-.pdv-product-grid::-webkit-scrollbar,
-[data-pdv-history]::-webkit-scrollbar {
+.pdv-product-grid::-webkit-scrollbar {
   width: 7px;
 }
 
 .pdv-current-items::-webkit-scrollbar-thumb,
-.pdv-product-grid::-webkit-scrollbar-thumb,
-[data-pdv-history]::-webkit-scrollbar-thumb {
+.pdv-product-grid::-webkit-scrollbar-thumb {
   background: rgba(32, 63, 48, .18);
   border-radius: 10px;
 }
 
-/* ---------- Notebook menor ---------- */
+/* ---------- Notebook ---------- */
 
 @media (max-width: 1366px) {
   .pdv-workspace {
-    grid-template-columns: 270px minmax(390px, 1fr) 300px;
+    grid-template-columns: 285px minmax(400px, 1fr) 305px;
   }
 
   .pdv-topbar {
-    grid-template-columns: 240px minmax(260px, 1fr) auto;
-  }
-
-  .pdv-top-actions .btn {
-    padding-inline: 10px;
+    grid-template-columns: 235px minmax(260px, 1fr) auto;
   }
 
   .pdv-status-box strong {
-    font-size: 1.85rem;
+    font-size: 1.8rem;
+  }
+
+  .pdv-selected-card {
+    min-height: 220px;
+    grid-template-rows: 135px auto;
   }
 
   .pdv-total-line.main strong {
-    font-size: 2.45rem;
+    font-size: 2.35rem;
   }
 }
 
@@ -828,14 +727,19 @@ sort($categorias);
     grid-template-columns: 1fr;
   }
 
+  .pdv-entry-column,
   .pdv-sale-column,
-  .pdv-side-column {
+  .pdv-products-column {
     grid-template-rows: auto;
   }
 
   .pdv-current-items {
     min-height: 300px;
     max-height: 420px;
+  }
+
+  .pdv-selected-card {
+    grid-template-rows: 220px auto;
   }
 }
 </style>
@@ -846,7 +750,7 @@ sort($categorias);
       <span class="pdv-brand-mark">A&F</span>
       <div>
         <strong>Arte&Flor PDV</strong>
-        <span>Venda presencial e balcão</span>
+        <span>Venda presencial</span>
       </div>
     </div>
 
@@ -858,7 +762,8 @@ sort($categorias);
     </div>
 
     <div class="pdv-top-actions">
-      <button class="btn btn-soft" type="button" data-pdv-suspend>Suspender</button>
+      <a class="btn btn-soft" href="<?= site_url('admin/dashboard.php') ?>">Dashboard</a>
+      <button class="btn btn-outline" type="button" data-pdv-cancel>Cancelar</button>
       <button class="btn btn-primary" type="button" data-pdv-finish>Finalizar</button>
     </div>
   </section>
@@ -866,19 +771,28 @@ sort($categorias);
   <script type="application/json" id="pdvProducts"><?= json_encode($pdvProdutos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
 
   <section class="pdv-workspace">
+    <!-- Produto selecionado + entrada -->
     <aside class="pdv-box pdv-entry-column">
       <div class="pdv-box-header">
         <div>
-          <h2>Entrada rápida</h2>
-          <span>Código, SKU ou produto</span>
+          <h2>Produto selecionado</h2>
+          <span>Imagem e dados do item</span>
         </div>
       </div>
 
       <div class="pdv-box-body pdv-entry-body">
-        <div class="pdv-product-preview">
-          <div>
-            <strong>🛒</strong>
-            <span>Pronto para vender</span>
+        <div class="pdv-selected-card" data-pdv-selected-preview>
+          <div class="pdv-selected-image" data-pdv-selected-image>
+            <div class="pdv-selected-placeholder">
+              <strong>🛒</strong>
+              <span>Nenhum produto selecionado</span>
+            </div>
+          </div>
+
+          <div class="pdv-selected-info">
+            <small>Último item adicionado</small>
+            <strong data-pdv-selected-name>Aguardando produto</strong>
+            <span data-pdv-selected-price>R$ 0,00</span>
           </div>
         </div>
 
@@ -898,18 +812,31 @@ sort($categorias);
           </div>
         </div>
 
-        <div class="pdv-help">
-          <strong>Atalhos do caixa</strong>
-          <div class="pdv-shortcuts">
-            <span><b>F2</b> Buscar</span>
-            <span><b>F5</b> Nova</span>
-            <span><b>F7</b> Finalizar</span>
-            <span><b>ESC</b> Cancelar</span>
+        <div class="pdv-payment-compact">
+          <div class="pdv-payment-compact-title">
+            <strong>Pagamento</strong>
+            <span>Dados mínimos</span>
           </div>
+
+          <label class="pdv-field">
+            <span>Cliente</span>
+            <input data-pdv-client placeholder="Cliente balcão">
+          </label>
+
+          <label class="pdv-field">
+            <span>Forma de pagamento</span>
+            <select data-pdv-payment>
+              <option>Pix</option>
+              <option>Dinheiro</option>
+              <option>Cartão presencial</option>
+              <option>Pagamento na retirada</option>
+            </select>
+          </label>
         </div>
       </div>
     </aside>
 
+    <!-- Lista da venda -->
     <section class="pdv-box pdv-sale-column">
       <div class="pdv-box-header">
         <div class="pdv-sale-title">
@@ -948,76 +875,85 @@ sort($categorias);
       </div>
     </section>
 
-    <aside class="pdv-side-column">
-      <section class="pdv-side-section">
-        <div class="pdv-side-title">
-          <h2>Pagamento</h2>
-        </div>
-
-        <div class="pdv-side-content pdv-payment-content">
-          <div class="pdv-payment-grid">
-            <label class="pdv-field">
-              <span>Cliente</span>
-              <input data-pdv-client placeholder="Cliente balcão">
-            </label>
-
-            <label class="pdv-field">
-              <span>Contato</span>
-              <input data-pdv-contact placeholder="(97) 90000-0000">
-            </label>
-
-            <label class="pdv-field">
-              <span>Forma de pagamento</span>
-              <select data-pdv-payment>
-                <option>Pix</option>
-                <option>Dinheiro</option>
-                <option>Cartão presencial</option>
-                <option>Pagamento na retirada</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="pix-box pdv-pix">
-            <div class="qr-placeholder">PIX</div>
-
-            <div class="pix-key-box">
-              <small>Chave Pix</small>
-              <strong>arteflor@pix.demo</strong>
-            </div>
-
-            <button class="btn btn-soft" type="button" data-copy-value="arteflor@pix.demo">Copiar Pix</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="pdv-side-section">
-        <div class="pdv-side-title">
+    <!-- Produtos rápidos -->
+    <aside class="pdv-box pdv-products-column">
+      <div class="pdv-box-header">
+        <div>
           <h2>Produtos rápidos</h2>
+          <span>Selecione para adicionar</span>
         </div>
+      </div>
 
-        <div class="pdv-side-content pdv-products-content">
-          <div class="pdv-category-pills">
-            <button class="filter-pill active" type="button" data-pdv-category="todos">Todos</button>
-            <?php foreach ($categorias as $categoria): ?>
-              <button class="filter-pill" type="button" data-pdv-category="<?= e($categoria) ?>"><?= e($categoria) ?></button>
-            <?php endforeach; ?>
-          </div>
+      <div class="pdv-category-pills">
+        <button class="filter-pill active" type="button" data-pdv-category="todos">Todos</button>
+        <?php foreach ($categorias as $categoria): ?>
+          <button class="filter-pill" type="button" data-pdv-category="<?= e($categoria) ?>"><?= e($categoria) ?></button>
+        <?php endforeach; ?>
+      </div>
 
-          <div class="pdv-product-grid" data-pdv-product-grid></div>
-        </div>
-      </section>
-
-      <section class="pdv-side-section">
-        <div class="pdv-side-title">
-          <h2>Últimas vendas</h2>
-        </div>
-
-        <div class="pdv-side-content">
-          <div data-pdv-history></div>
-        </div>
-      </section>
+      <div class="pdv-product-grid" data-pdv-product-grid></div>
     </aside>
   </section>
+
+  <div class="pdv-hidden-history" data-pdv-history></div>
 </div>
+
+<script>
+(() => {
+  const currentList = document.querySelector('[data-pdv-current]');
+  const selectedImage = document.querySelector('[data-pdv-selected-image]');
+  const selectedName = document.querySelector('[data-pdv-selected-name]');
+  const selectedPrice = document.querySelector('[data-pdv-selected-price]');
+
+  if (!currentList || !selectedImage || !selectedName || !selectedPrice) return;
+
+  function updateSelectedPreview() {
+    const items = [...currentList.querySelectorAll('.pdv-sale-item')];
+    const lastItem = items[items.length - 1];
+
+    if (!lastItem) {
+      selectedImage.innerHTML = `
+        <div class="pdv-selected-placeholder">
+          <strong>🛒</strong>
+          <span>Nenhum produto selecionado</span>
+        </div>
+      `;
+      selectedName.textContent = 'Aguardando produto';
+      selectedPrice.textContent = 'R$ 0,00';
+      return;
+    }
+
+    const image = lastItem.querySelector('img');
+    const name = lastItem.querySelector('strong')?.textContent?.trim() || 'Produto selecionado';
+
+    const priceText = [...lastItem.querySelectorAll('span, small, strong')]
+      .map((el) => el.textContent.trim())
+      .find((text) => text.includes('R$')) || '';
+
+    if (image?.src) {
+      selectedImage.innerHTML = `<img src="${image.src}" alt="${name}">`;
+    } else {
+      selectedImage.innerHTML = `
+        <div class="pdv-selected-placeholder">
+          <strong>A&F</strong>
+          <span>Produto sem imagem</span>
+        </div>
+      `;
+    }
+
+    selectedName.textContent = name;
+    selectedPrice.textContent = priceText || 'Item adicionado';
+  }
+
+  const observer = new MutationObserver(updateSelectedPreview);
+
+  observer.observe(currentList, {
+    childList: true,
+    subtree: true
+  });
+
+  updateSelectedPreview();
+})();
+</script>
 
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>
