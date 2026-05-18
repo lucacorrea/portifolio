@@ -2223,6 +2223,7 @@ body {
     top: 78px;
     left: 20px;
     right: 20px;
+    z-index: 130;
     display: none;
     flex-direction: column;
     align-items: stretch;

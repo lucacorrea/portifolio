@@ -24,7 +24,7 @@ $base = base_url();
       <span class="brand-icon" aria-hidden="true">A&F</span>
       <span>Arte<span>&</span>Flor</span>
     </a>
-    <nav class="main-nav" aria-label="Navegação principal">
+    <nav class="main-nav" id="main-nav" aria-label="Navegação principal">
       <a class="<?= $activePage === 'inicio' ? 'active' : '' ?>" href="<?= $base ?>index.php">Início</a>
       <a class="<?= $activePage === 'catalogo' ? 'active' : '' ?>" href="<?= $base ?>catalogo.php">Catálogo</a>
       <a class="<?= $activePage === 'blog' ? 'active' : '' ?>" href="<?= $base ?>blog.php">Blog</a>
@@ -33,7 +33,7 @@ $base = base_url();
       <a href="<?= $base ?>admin/login.php">Admin</a>
     </nav>
     <a class="btn btn-outline header-support" target="_blank" rel="noopener" href="<?= whatsapp_url('Olá, preciso de atendimento da Arte&Flor.') ?>">Atendimento</a>
-    <button class="menu-toggle" data-menu-toggle aria-label="Abrir menu">Menu</button>
+    <button class="menu-toggle" type="button" data-menu-toggle aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menu">Menu</button>
   </div>
 </header>
 <main>

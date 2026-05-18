@@ -127,8 +127,44 @@
   window.ArteFlor = api;
 
   const bindMenu = () => {
-    document.querySelector('[data-menu-toggle]')?.addEventListener('click', () => {
-      document.querySelector('.main-nav')?.classList.toggle('open');
+    const button = document.querySelector('[data-menu-toggle]');
+    const nav = document.querySelector('.main-nav');
+
+    if (!button || !nav) return;
+
+    const closeMenu = () => {
+      nav.classList.remove('open');
+      button.setAttribute('aria-expanded', 'false');
+      button.setAttribute('aria-label', 'Abrir menu');
+    };
+
+    const toggleMenu = () => {
+      const isOpen = nav.classList.toggle('open');
+      button.setAttribute('aria-expanded', String(isOpen));
+      button.setAttribute('aria-label', isOpen ? 'Fechar menu' : 'Abrir menu');
+    };
+
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      toggleMenu();
+    });
+
+    nav.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', closeMenu);
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!nav.classList.contains('open')) return;
+      if (nav.contains(event.target) || button.contains(event.target)) return;
+      closeMenu();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeMenu();
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.matchMedia('(min-width: 921px)').matches) closeMenu();
     });
   };
 
