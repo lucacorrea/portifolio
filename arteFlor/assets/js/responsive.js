@@ -1,48 +1,53 @@
 (function () {
   'use strict';
 
-  function qs(selector, root = document) {
-    return root.querySelector(selector);
+  function ready(callback) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', callback);
+    } else {
+      callback();
+    }
   }
 
-  function qsa(selector, root = document) {
-    return Array.from(root.querySelectorAll(selector));
+  function createMenuButton(headerInner) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'menu-toggle';
+    button.setAttribute('aria-label', 'Abrir menu');
+    button.setAttribute('aria-expanded', 'false');
+    button.innerHTML = `
+      <span class="menu-toggle-icon" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+      <span class="menu-toggle-text">Menu</span>
+    `;
+
+    headerInner.appendChild(button);
+    return button;
   }
 
-  function ensurePublicMobileMenu() {
-    const header = qs('.site-header');
-    const nav = qs('.main-nav');
+  function initPublicMenu() {
+    const header = document.querySelector('.site-header');
+    const headerInner = document.querySelector('.header-inner') || header;
+    const nav = document.querySelector('.main-nav');
 
-    if (!header || !nav) return;
+    if (!header || !headerInner || !nav) return;
 
-    let toggle = qs('.menu-toggle');
+    let button = document.querySelector('.menu-toggle');
 
-    if (!toggle) {
-      toggle = document.createElement('button');
-      toggle.type = 'button';
-      toggle.className = 'menu-toggle';
-      toggle.setAttribute('aria-label', 'Abrir menu');
-      toggle.setAttribute('aria-expanded', 'false');
-      toggle.innerHTML = `
-        <span class="menu-toggle-icon" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-        </span>
-        <span class="menu-toggle-text">Menu</span>
-      `;
-
-      const headerInner = qs('.header-inner', header) || header;
-      headerInner.appendChild(toggle);
+    if (!button) {
+      button = createMenuButton(headerInner);
     }
 
     if (!nav.id) {
-      nav.id = 'mainNav';
+      nav.id = 'mainNavMobile';
     }
 
-    toggle.setAttribute('aria-controls', nav.id);
+    button.setAttribute('aria-controls', nav.id);
 
-    let backdrop = qs('.mobile-menu-backdrop');
+    let backdrop = document.querySelector('.mobile-menu-backdrop');
 
     if (!backdrop) {
       backdrop = document.createElement('div');
@@ -50,37 +55,58 @@
       document.body.appendChild(backdrop);
     }
 
-    function closeMenu() {
-      nav.classList.remove('open');
-      document.body.classList.remove('menu-open');
-      toggle.setAttribute('aria-expanded', 'false');
-      toggle.setAttribute('aria-label', 'Abrir menu');
+    function isOpen() {
+      return nav.classList.contains('open');
     }
 
     function openMenu() {
       nav.classList.add('open');
       document.body.classList.add('menu-open');
-      toggle.setAttribute('aria-expanded', 'true');
-      toggle.setAttribute('aria-label', 'Fechar menu');
+      button.classList.add('is-open');
+      button.setAttribute('aria-expanded', 'true');
+      button.setAttribute('aria-label', 'Fechar menu');
     }
 
-    toggle.addEventListener('click', function (event) {
+    function closeMenu() {
+      nav.classList.remove('open');
+      document.body.classList.remove('menu-open');
+      button.classList.remove('is-open');
+      button.setAttribute('aria-expanded', 'false');
+      button.setAttribute('aria-label', 'Abrir menu');
+    }
+
+    function toggleMenu(event) {
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
 
-      if (nav.classList.contains('open')) {
+      if (isOpen()) {
         closeMenu();
       } else {
         openMenu();
       }
-    });
+    }
+
+    button.addEventListener('click', toggleMenu, true);
+    button.addEventListener('touchend', toggleMenu, true);
 
     backdrop.addEventListener('click', closeMenu);
 
-    qsa('a', nav).forEach(function (link) {
+    nav.querySelectorAll('a').forEach(function (link) {
       link.addEventListener('click', function () {
         closeMenu();
       });
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!isOpen()) return;
+
+      const clickedInsideNav = nav.contains(event.target);
+      const clickedButton = button.contains(event.target);
+
+      if (!clickedInsideNav && !clickedButton) {
+        closeMenu();
+      }
     });
 
     document.addEventListener('keydown', function (event) {
@@ -96,25 +122,25 @@
     });
   }
 
-  function ensureAdminMobileMenu() {
-    const sidebar = qs('.admin-sidebar');
-    const shell = qs('.admin-shell');
+  function initAdminMenu() {
+    const sidebar = document.querySelector('.admin-sidebar');
+    const shell = document.querySelector('.admin-shell');
 
     if (!sidebar || !shell) return;
 
-    let toggle = qs('.admin-mobile-toggle');
+    let button = document.querySelector('.admin-mobile-toggle');
 
-    if (!toggle) {
-      toggle = document.createElement('button');
-      toggle.type = 'button';
-      toggle.className = 'admin-mobile-toggle';
-      toggle.setAttribute('aria-label', 'Abrir menu administrativo');
-      toggle.setAttribute('aria-expanded', 'false');
-      toggle.textContent = '☰';
-      document.body.appendChild(toggle);
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'admin-mobile-toggle';
+      button.setAttribute('aria-label', 'Abrir menu administrativo');
+      button.setAttribute('aria-expanded', 'false');
+      button.textContent = '☰';
+      document.body.appendChild(button);
     }
 
-    let backdrop = qs('.admin-mobile-backdrop');
+    let backdrop = document.querySelector('.admin-mobile-backdrop');
 
     if (!backdrop) {
       backdrop = document.createElement('div');
@@ -122,52 +148,60 @@
       document.body.appendChild(backdrop);
     }
 
-    function closeAdminMenu() {
-      document.body.classList.remove('admin-menu-open');
-      toggle.setAttribute('aria-expanded', 'false');
-      toggle.setAttribute('aria-label', 'Abrir menu administrativo');
-      toggle.textContent = '☰';
+    function isOpen() {
+      return document.body.classList.contains('admin-menu-open');
     }
 
-    function openAdminMenu() {
+    function openMenu() {
       document.body.classList.add('admin-menu-open');
-      toggle.setAttribute('aria-expanded', 'true');
-      toggle.setAttribute('aria-label', 'Fechar menu administrativo');
-      toggle.textContent = '×';
+      button.textContent = '×';
+      button.setAttribute('aria-expanded', 'true');
+      button.setAttribute('aria-label', 'Fechar menu administrativo');
     }
 
-    toggle.addEventListener('click', function (event) {
+    function closeMenu() {
+      document.body.classList.remove('admin-menu-open');
+      button.textContent = '☰';
+      button.setAttribute('aria-expanded', 'false');
+      button.setAttribute('aria-label', 'Abrir menu administrativo');
+    }
+
+    function toggleMenu(event) {
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
 
-      if (document.body.classList.contains('admin-menu-open')) {
-        closeAdminMenu();
+      if (isOpen()) {
+        closeMenu();
       } else {
-        openAdminMenu();
+        openMenu();
       }
-    });
+    }
 
-    backdrop.addEventListener('click', closeAdminMenu);
+    button.addEventListener('click', toggleMenu, true);
+    button.addEventListener('touchend', toggleMenu, true);
 
-    qsa('a', sidebar).forEach(function (link) {
-      link.addEventListener('click', closeAdminMenu);
+    backdrop.addEventListener('click', closeMenu);
+
+    sidebar.querySelectorAll('a').forEach(function (link) {
+      link.addEventListener('click', closeMenu);
     });
 
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape') {
-        closeAdminMenu();
+        closeMenu();
       }
     });
 
     window.addEventListener('resize', function () {
       if (window.innerWidth > 920) {
-        closeAdminMenu();
+        closeMenu();
       }
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    ensurePublicMobileMenu();
-    ensureAdminMobileMenu();
+  ready(function () {
+    initPublicMenu();
+    initAdminMenu();
   });
 })();
