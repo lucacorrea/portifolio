@@ -20,7 +20,9 @@
                                 <span class="input-group-text bg-white border-end-0 text-muted">
                                     <i class="fas fa-barcode"></i>
                                 </span>
-                                <input type="text" id="pv_product_search" class="form-control border-start-0 ps-0" placeholder="Pesquise por material ou código para o orçamento..." autocomplete="off">
+                                <input type="text" id="pv_product_search" class="form-control border-start-0 ps-0" placeholder="Pesquisar Produto (F4)..." autocomplete="off" style="flex: 3;">
+                                <span class="input-group-text bg-light border-start-0 text-muted extra-small fw-bold">QTD</span>
+                                <input type="number" id="pvQty" class="form-control border-start-0 text-center fw-bold" value="1" min="1" step="0.001" style="flex: 1; max-width: 90px;" title="Quantidade">
                             </div>
                             <div id="pv_search_results" class="list-group shadow-lg d-none" style="position: absolute; top: 100%; left: 0; z-index: 10000; width: 100%; max-height: 400px; overflow-y: auto;">
                                 <!-- Results will be injected here -->
@@ -225,6 +227,13 @@ pvSearchInput.addEventListener('input', async (e) => {
 });
 
 pvSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === '*') {
+        e.preventDefault();
+        document.getElementById('pvQty').focus();
+        document.getElementById('pvQty').select();
+        return;
+    }
+
     const items = pvSearchResults.querySelectorAll('.list-group-item');
     if (items.length === 0) return;
 
@@ -292,7 +301,7 @@ function renderPVSearchResults(products) {
         let titleHtml = `<div class="fw-bold text-primary">${p.nome}</div>`;
         let subTextHtml = `<small class="text-muted">Cód: ${p.id} | Un: ${p.unidade}</small>`;
         let actionText = '';
-        let clickHandler = () => addToPVCart(p);
+        let clickHandler = () => selectForPVQty(p);
 
         if (isOrcamento) {
             icon = 'fa-file-invoice text-success';
@@ -372,10 +381,24 @@ function showPvPreview(p) {
     pvPreviewName.innerText = p.nome;
 }
 
+let pendingPvProduct = null;
+
+function selectForPVQty(product) {
+    pendingPvProduct = product;
+    showPvPreview(product);
+    const qtyInput = document.getElementById('pvQty');
+    qtyInput.focus();
+    qtyInput.select();
+    pvSearchResults.classList.add('d-none');
+}
+
 function addToPVCart(product) {
+    const qtyInput = document.getElementById('pvQty');
+    const qtyToAdd = parseFloat(qtyInput.value) || 1;
+
     const existing = pvCart.find(i => i.id === product.id && (parseInt(product.preco_variavel) !== 1));
     if (existing) {
-        existing.qty++;
+        existing.qty += qtyToAdd;
     } else {
         pvCart.push({
             id: product.id,
@@ -387,12 +410,13 @@ function addToPVCart(product) {
             price3: parseFloat(product.preco_venda_3 || 0),
             preco_variavel: parseInt(product.preco_variavel) === 1,
             price_tier: 1,
-            qty: 1,
+            qty: qtyToAdd,
             imagens: product.imagens
         });
     }
     
     pvSearchInput.value = '';
+    qtyInput.value = 1;
     pvSearchResults.classList.add('d-none');
     renderPVCart();
 
@@ -408,6 +432,8 @@ function addToPVCart(product) {
                 }
             }
         }, 100);
+    } else {
+        pvSearchInput.focus();
     }
 }
 
