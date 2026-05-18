@@ -572,13 +572,6 @@ tr:hover td { background: rgba(234,246,234,.28); }
   border: 1px solid rgba(255,255,255,.72);
 }
 
-.hero-art::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 38%, rgba(37,71,54,.42));
-  z-index: -1;
-}
 
 .hero-art::after {
   content: 'Buquês • Arranjos • Presentes';
