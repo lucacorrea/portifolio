@@ -1,95 +1,103 @@
-<?php require_once __DIR__ . '/../includes/helpers.php'; ?>
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Caixa / PDV | Arte&Flor</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/pages.css">
-  <link rel="stylesheet" href="../assets/css/responsive.css">
-</head>
-<body>
-<div class="admin-shell">
-  <?php require __DIR__ . '/../includes/admin-sidebar.php'; ?>
-  <main class="admin-main">
-    <div class="admin-header">
+<?php
+$adminTitle = 'Frente de caixa';
+$activeAdmin = 'caixa';
+require_once __DIR__ . '/../includes/admin-head.php';
+$produtos = load_json('produtos.json');
+$pdvProdutos = array_map(fn($p) => [
+    'id' => (string) ($p['id'] ?? ''),
+    'sku' => $p['sku'] ?? '',
+    'nome' => $p['nome'] ?? '',
+    'categoria' => $p['categoria'] ?? '',
+    'preco' => effective_price($p),
+    'imagem' => first_image($p),
+], $produtos);
+$categorias = array_values(array_unique(array_map(fn($p) => $p['categoria'], $produtos)));
+?>
+<section class="admin-page-hero">
+  <div class="admin-page-title">
+    <span class="badge">PDV</span>
+    <h1>Frente de caixa</h1>
+    <p>Venda presencial com busca de produto, carrinho do caixa, pagamento demonstrativo e histórico local.</p>
+  </div>
+  <div class="admin-hero-actions">
+    <button class="btn btn-soft" type="button" data-pdv-suspend>Suspender venda</button>
+    <button class="btn btn-primary" type="button" data-pdv-finish>Finalizar venda</button>
+  </div>
+</section>
+
+<script type="application/json" id="pdvProducts"><?= json_encode($pdvProdutos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
+
+<section class="pdv-layout">
+  <aside class="admin-panel-card pdv-products">
+    <div class="admin-panel-header">
       <div>
-        <span class="badge">Caixa / PDV</span>
-        <h1 class="section-title">Caixa moderno</h1>
-        <p class="muted">Tela visual para registrar vendas presenciais, Pix manual, despesas e fechamento diário.</p>
+        <span class="badge">Produtos</span>
+        <h2>Busca rápida</h2>
       </div>
-      <button class="btn btn-primary" type="button">Abrir caixa</button>
+    </div>
+    <div class="pdv-search-grid">
+      <label class="admin-field"><span>Código, SKU ou nome</span><input type="search" data-pdv-search placeholder="Digite para buscar"></label>
+      <label class="admin-field"><span>Quantidade</span><input type="number" min="1" value="1" data-pdv-qty></label>
+      <button class="btn btn-primary" type="button" data-pdv-add-search>Adicionar</button>
+    </div>
+    <div class="pdv-category-pills">
+      <button class="filter-pill active" type="button" data-pdv-category="todos">Todos</button>
+      <?php foreach ($categorias as $categoria): ?>
+        <button class="filter-pill" type="button" data-pdv-category="<?= e($categoria) ?>"><?= e($categoria) ?></button>
+      <?php endforeach; ?>
+    </div>
+    <div class="pdv-product-grid" data-pdv-product-grid></div>
+  </aside>
+
+  <section class="admin-panel-card pdv-sale">
+    <div class="admin-panel-header">
+      <div>
+        <span class="badge">Venda atual</span>
+        <h2>Carrinho do caixa</h2>
+      </div>
+      <span class="status status-ok">Caixa aberto</span>
+    </div>
+    <div class="pdv-current-items" data-pdv-current></div>
+    <div class="pdv-totals">
+      <p><span>Subtotal</span><strong data-pdv-subtotal>R$ 0,00</strong></p>
+      <p><span>Desconto</span><input type="number" min="0" step="0.01" value="0" data-pdv-discount></p>
+      <p class="pdv-total"><span>Total</span><strong data-pdv-total>R$ 0,00</strong></p>
+    </div>
+    <div class="admin-action-row">
+      <button class="btn btn-soft" type="button" data-pdv-suspend>Suspender venda</button>
+      <button class="btn btn-outline" type="button" data-pdv-cancel>Cancelar venda</button>
+      <button class="btn btn-primary" type="button" data-pdv-finish>Finalizar venda</button>
+    </div>
+  </section>
+
+  <aside class="admin-panel-card pdv-side">
+    <div class="admin-panel-header">
+      <div>
+        <span class="badge">Pagamento</span>
+        <h2>Dados rápidos</h2>
+      </div>
+    </div>
+    <label class="admin-field"><span>Cliente</span><input data-pdv-client placeholder="Cliente balcão"></label>
+    <label class="admin-field"><span>Contato fictício</span><input data-pdv-contact placeholder="(97) 90000-0000"></label>
+    <label class="admin-field"><span>Forma de pagamento</span>
+      <select data-pdv-payment>
+        <option>Pix</option>
+        <option>Dinheiro</option>
+        <option>Cartão presencial</option>
+        <option>Pagamento na retirada</option>
+      </select>
+    </label>
+    <div class="pix-box pdv-pix">
+      <span class="badge">Pix demonstrativo</span>
+      <div class="qr-placeholder">PIX</div>
+      <div class="pix-key-box"><small>Chave Pix</small><strong>arteflor@pix.demo</strong></div>
+      <button class="btn btn-soft" type="button" data-copy-value="arteflor@pix.demo">Copiar chave</button>
     </div>
 
-    <section class="grid-4" style="margin-bottom:24px">
-      <div class="card kpi"><span>Saldo aberto</span><strong>R$ 680</strong></div>
-      <div class="card kpi"><span>Recebido em Pix</span><strong>R$ 420</strong></div>
-      <div class="card kpi"><span>Presencial</span><strong>R$ 260</strong></div>
-      <div class="card kpi"><span>Pedidos no caixa</span><strong>12</strong></div>
-    </section>
-
-    <section class="cashier-layout">
-      <div class="card cashier-panel">
-        <div class="cashier-topline">
-          <div>
-            <span class="badge">Venda rápida</span>
-            <h2>Registrar atendimento</h2>
-          </div>
-          <span class="status">Caixa aberto</span>
-        </div>
-
-        <div class="form-grid">
-          <label class="form-group"><span>Cliente</span><input placeholder="Nome do cliente"></label>
-          <label class="form-group"><span>WhatsApp</span><input placeholder="(97) 00000-0000"></label>
-          <label class="form-group"><span>Produto / serviço</span><input placeholder="Buquê, arranjo, entrega..."></label>
-          <label class="form-group"><span>Valor</span><input type="number" step="0.01" placeholder="149.90"></label>
-          <label class="form-group"><span>Forma de recebimento</span><select><option>Pix</option><option>Dinheiro</option><option>Cartão presencial</option><option>Pedido pelo WhatsApp</option></select></label>
-          <label class="form-group"><span>Status</span><select><option>Aguardando pagamento</option><option>Pago</option><option>Reservado</option><option>Cancelado</option></select></label>
-          <label class="form-group full"><span>Observação</span><textarea placeholder="Ex: entrega no bairro Centro às 16h, incluir cartão"></textarea></label>
-        </div>
-
-        <div class="actions">
-          <button class="btn btn-primary" type="button">Registrar venda</button>
-          <button class="btn btn-soft" type="button">Registrar despesa</button>
-          <button class="btn btn-outline" type="button">Fechar caixa</button>
-        </div>
-      </div>
-
-      <aside class="card pix-box">
-        <span class="badge">Pix manual</span>
-        <h2>Pagamento Pix</h2>
-        <p class="muted">Nesta fase é uma simulação visual. No backend real pode gerar QR Code dinâmico por API.</p>
-        <div class="qr-placeholder">PIX</div>
-        <div class="pix-key-box">
-          <small>Chave Pix demonstrativa</small>
-          <strong>arteflor@email.com</strong>
-        </div>
-        <button class="btn btn-primary" type="button">Copiar chave Pix</button>
-        <button class="btn btn-soft" type="button">Marcar como pago</button>
-      </aside>
-    </section>
-
-    <section class="card" style="margin-top:24px">
-      <div class="cashier-topline">
-        <div>
-          <h2>Movimentações do dia</h2>
-          <p class="muted">Histórico visual de recebimentos, despesas e pedidos presenciais.</p>
-        </div>
-        <button class="btn btn-soft" type="button">Exportar relatório</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <tr><th>Hora</th><th>Descrição</th><th>Forma</th><th>Status</th><th>Valor</th></tr>
-          <tr><td>09:20</td><td>Buquê Tons Pastel</td><td>Pix</td><td><span class="status">Pago</span></td><td>R$ 119,90</td></tr>
-          <tr><td>10:15</td><td>Entrega Centro</td><td>Presencial</td><td><span class="status">Pago</span></td><td>R$ 15,00</td></tr>
-          <tr><td>11:40</td><td>Cesta com Flores</td><td>WhatsApp</td><td><span class="status">Aguardando</span></td><td>R$ 229,90</td></tr>
-        </table>
-      </div>
-    </section>
-  </main>
-</div>
-</body>
-</html>
+    <div class="pdv-history">
+      <div class="admin-panel-header compact"><h2>Últimas vendas</h2></div>
+      <div data-pdv-history></div>
+    </div>
+  </aside>
+</section>
+<?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>
