@@ -148,11 +148,33 @@ $isExpired = $diffHours >= 24;
         }
 
         .badge-nf { 
-            display:inline-block; background:#fef08a; color:#854d0e; padding:4px 8px; border-radius:6px; font-size:12px; border:1px solid #fef08a; font-weight: bold;
+            display: inline-block;
+            background: #000 !important;
+            color: #fff !important;
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            border: 2px solid #000;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            margin: 4px 0;
         }
 
         .badge-expired {
-            display:inline-block; background:#fee2e2; color:#991b1b; padding:4px 8px; border-radius:6px; font-size:12px; border:1px solid #fca5a5; font-weight: bold;
+            display: inline-block;
+            background: #fee2e2 !important;
+            color: #991b1b !important;
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            border: 2px solid #991b1b;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            margin: 4px 0;
         }
 
         .actions {
@@ -281,7 +303,10 @@ $isExpired = $diffHours >= 24;
                 <?php if ($isExpired): ?>
                     <span class="badge-expired">ORÇAMENTO EXPIRADO</span>
                 <?php else: ?>
-                    <span class="badge-nf">ORÇAMENTO</span>
+                    <div style="margin-bottom: 6px;"><span class="badge-nf">ORÇAMENTO</span></div>
+                    <div style="font-size: 14px; font-weight: 900; margin: 4px 0; letter-spacing: 1px; border: 2px dashed #000; padding: 4px 8px; display: inline-block;">
+                        VÁLIDO POR 24H
+                    </div>
                 <?php endif; ?>
             </div>
             <div class="hr"></div>
@@ -348,8 +373,11 @@ $isExpired = $diffHours >= 24;
         <div class="hr"></div>
 
         <!-- Rodapé Customizado: Nesse campo embaixo onde estar escrito Consumidor põe a Validade -->
-        <div class="small"><b>Validade: <span style="font-weight: bold; font-size: 12px;"><?= $validadeOrcamento ?></span></b></div>
-        <div class="small" style="margin-top: 4px;">
+        <div style="border: 2px dashed #000; padding: 6px 10px; margin: 8px 0; text-align: center;">
+            <b style="font-size: 14px; display: block; letter-spacing: 1px; margin-bottom: 2px;">*** VÁLIDO POR 24H ***</b>
+            <span style="font-size: 12px; font-weight: bold;">Validade: <?= $validadeOrcamento ?></span>
+        </div>
+        <div class="small" style="margin-top: 6px;">
             <b>Cliente:</b> <?= htmlspecialchars($pv['cliente_nome']) ?><br>
             <?php if (!empty($pv['cliente_doc'])): ?>CPF/CNPJ: <?= htmlspecialchars($pv['cliente_doc']) ?><?php endif; ?>
         </div>
@@ -360,8 +388,9 @@ $isExpired = $diffHours >= 24;
             "Dai graças ao Senhor sempre, Amém"
         </div>
 
-        <div class="center small" style="color:#888;">
-            Este documento é um orçamento e não tem validade fiscal.<br>Válido por 24 horas a partir da data de emissão.
+        <div class="center" style="color:#111; font-weight: bold; font-size: 11px; border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px;">
+            Este documento é um orçamento e não tem validade fiscal.<br>
+            <span style="font-size: 12px; font-weight: 900; text-decoration: underline;">ORÇAMENTO VÁLIDO POR 24 HORAS</span>
         </div>
     </div>
 
