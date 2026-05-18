@@ -337,6 +337,9 @@
                         <div class="fw-bold">${s.cliente_nome || 'Consumidor'}</div>
                         <small class="text-muted extra-small">${s.cpf_cliente || ''}</small>
                     </td>
+                    <td>
+                        <div class="fw-bold-600 text-muted">${s.vendedor_nome || '—'}</div>
+                    </td>
                     <td><span class="text-uppercase small">${s.forma_pagamento.replace('_', ' ')}</span></td>
                     <td>
                         <span class="badge ${s.tipo_nota === 'fiscal' ? 'bg-info bg-opacity-10 text-info' : 'bg-light text-muted'}">
