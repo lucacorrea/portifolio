@@ -274,10 +274,7 @@ sort($categorias);
       <?php endforeach; ?>
     </div>
 
-    <div class="empty-results card" data-empty-products hidden>
-      <strong>Nenhum produto encontrado.</strong>
-      <p>Altere o termo de busca ou escolha outra categoria para continuar navegando.</p>
-    </div>
+    
   </div>
 </section>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
