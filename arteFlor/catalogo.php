@@ -262,16 +262,7 @@ sort($categorias);
 <section class="section">
   <div class="container">
     <div class="catalog-toolbar">
-      <div class="filters" role="list" aria-label="Filtros de categoria">
-        <button class="filter-pill active" type="button" data-filter="todos">Todos</button>
-        <?php foreach ($categorias as $categoria): ?>
-          <button class="filter-pill" type="button" data-filter="<?= e($categoria) ?>"><?= e($categoria) ?></button>
-        <?php endforeach; ?>
-      </div>
-      <label class="catalog-search">
-        <span class="sr-only">Buscar produto</span>
-        <input type="search" data-search placeholder="Buscar por nome, tag ou categoria">
-      </label>
+     
     </div>
 
     <div class="grid-3 product-grid-spaced" data-products-grid>
