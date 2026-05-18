@@ -49,7 +49,8 @@
                     <table class="table table-hover align-middle mb-0" id="pvCartTable">
                         <thead class="bg-light sticky-top">
                             <tr>
-                                <th class="ps-4" width="80">Item</th>
+                                <th class="ps-4" width="40">#</th>
+                                <th width="100">Cód. Interno</th>
                                 <th>Produto</th>
                                 <th class="text-center" width="120">Qtd</th>
                                 <th class="text-end" width="120">Unitário</th>
@@ -379,6 +380,7 @@ function addToPVCart(product) {
         pvCart.push({
             id: product.id,
             nome: product.nome,
+            codigo: product.codigo,
             price: parseFloat(product.preco_venda),
             price1: parseFloat(product.preco_venda),
             price2: parseFloat(product.preco_venda_2 || 0),
@@ -431,7 +433,8 @@ function renderPVCart() {
         const row = document.createElement('tr');
         row.onmouseover = () => showPvPreview(item);
         row.innerHTML = `
-            <td class="ps-4 fw-bold text-muted">#${item.id}</td>
+            <td class="ps-4 fw-bold text-muted">${index + 1}</td>
+            <td class="fw-bold text-muted small">${item.codigo || '#' + item.id}</td>
             <td>
                 <div class="fw-bold">${item.nome}</div>
                 ${!item.preco_variavel ? `
@@ -636,6 +639,7 @@ async function loadPreSaleInPreSaleScreen(code) {
         pvCart = pv.itens.map(i => ({
             id: i.produto_id,
             nome: i.produto_nome,
+            codigo: i.codigo,
             price: parseFloat(i.preco_unitario),
             price1: parseFloat(i.preco_venda || 0),
             price2: parseFloat(i.preco_venda_2 || 0),
