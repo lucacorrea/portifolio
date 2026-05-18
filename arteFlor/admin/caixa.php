@@ -14,67 +14,63 @@ $pdvProdutos = array_map(fn($p) => [
     'preco' => effective_price($p),
     'imagem' => first_image($p),
 ], $produtos);
-
-$categorias = array_values(array_unique(array_map(fn($p) => $p['categoria'], $produtos)));
-sort($categorias);
 ?>
 
 <script>
-document.body.classList.add('pdv-market-reference-mode');
+document.body.classList.add('pdv-terminal-clean-mode');
 </script>
 
 <style>
 /* =========================================================
-   ARTE&FLOR — PDV REFERÊNCIA SUPERMERCADO
-   Baseado no layout clássico de caixa: produto, código,
-   lista de venda, subtotal, recebido e troco.
+   ARTE&FLOR — PDV LIMPO SEM PRODUTOS RÁPIDOS
+   Layout estilo caixa: produto + cupom + fechamento
 ========================================================= */
 
-body.pdv-market-reference-mode .admin-shell {
+body.pdv-terminal-clean-mode .admin-shell {
   grid-template-columns: 1fr !important;
   min-height: 100vh;
-  background: #e9efe8;
+  background: #e8eee7;
 }
 
-body.pdv-market-reference-mode .admin-sidebar {
+body.pdv-terminal-clean-mode .admin-sidebar {
   display: none !important;
 }
 
-body.pdv-market-reference-mode .admin-main {
+body.pdv-terminal-clean-mode .admin-main {
   height: 100vh;
   overflow: hidden;
   padding: 8px !important;
-  background: #e9efe8;
+  background: #e8eee7;
 }
 
-.pdv-terminal {
+.pdv-clean-terminal {
   height: calc(100vh - 16px);
   display: grid;
   grid-template-rows: 64px minmax(0, 1fr);
   gap: 8px;
-  color: #173b2a;
+  color: #123f2b;
   font-family: var(--fonte-corpo, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
 }
 
-/* ---------- TOP BAR ---------- */
+/* ---------- Topo ---------- */
 
-.pdv-terminal-top {
+.pdv-clean-top {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 260px;
+  grid-template-columns: 280px minmax(0, 1fr) 280px;
   gap: 8px;
 }
 
-.pdv-brand-terminal,
-.pdv-terminal-status,
-.pdv-terminal-actions {
+.pdv-clean-brand,
+.pdv-clean-status,
+.pdv-clean-actions {
   min-height: 64px;
-  border-radius: 8px;
   overflow: hidden;
+  border-radius: 8px;
   border: 1px solid rgba(18, 63, 43, .16);
   box-shadow: 0 8px 18px rgba(20, 45, 30, .08);
 }
 
-.pdv-brand-terminal {
+.pdv-clean-brand {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -83,7 +79,7 @@ body.pdv-market-reference-mode .admin-main {
   color: #fff;
 }
 
-.pdv-terminal-logo {
+.pdv-clean-logo {
   width: 42px;
   height: 42px;
   min-width: 42px;
@@ -95,7 +91,7 @@ body.pdv-market-reference-mode .admin-main {
   font-weight: 950;
 }
 
-.pdv-brand-terminal strong {
+.pdv-clean-brand strong {
   display: block;
   color: #fff;
   font-size: 1rem;
@@ -103,7 +99,7 @@ body.pdv-market-reference-mode .admin-main {
   line-height: 1.1;
 }
 
-.pdv-brand-terminal span {
+.pdv-clean-brand span {
   display: block;
   margin-top: 2px;
   color: rgba(255,255,255,.72);
@@ -111,14 +107,14 @@ body.pdv-market-reference-mode .admin-main {
   font-weight: 750;
 }
 
-.pdv-terminal-status {
+.pdv-clean-status {
   display: grid;
   place-items: center;
   background: #fffdf7;
   text-align: center;
 }
 
-.pdv-terminal-status small {
+.pdv-clean-status small {
   display: block;
   color: #668071;
   font-size: .68rem;
@@ -127,16 +123,16 @@ body.pdv-market-reference-mode .admin-main {
   text-transform: uppercase;
 }
 
-.pdv-terminal-status strong {
+.pdv-clean-status strong {
   display: block;
   color: #123f2b;
-  font-size: clamp(1.65rem, 3vw, 2.55rem);
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
   font-weight: 950;
   letter-spacing: .06em;
   line-height: 1;
 }
 
-.pdv-terminal-actions {
+.pdv-clean-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
@@ -144,7 +140,7 @@ body.pdv-market-reference-mode .admin-main {
   background: #fffdf7;
 }
 
-.pdv-terminal .btn {
+.pdv-clean-terminal .btn {
   min-height: 38px;
   border-radius: 6px;
   padding: 8px 10px;
@@ -154,46 +150,46 @@ body.pdv-market-reference-mode .admin-main {
   white-space: nowrap;
 }
 
-.pdv-terminal .btn:hover {
+.pdv-clean-terminal .btn:hover {
   transform: none;
 }
 
-.pdv-terminal .btn-primary {
+.pdv-clean-terminal .btn-primary {
   background: #123f2b;
   border-color: #123f2b;
   color: #fff;
 }
 
-.pdv-terminal .btn-primary:hover {
+.pdv-clean-terminal .btn-primary:hover {
   background: #0d3020;
 }
 
-.pdv-terminal .btn-soft,
-.pdv-terminal .btn-outline {
+.pdv-clean-terminal .btn-soft,
+.pdv-clean-terminal .btn-outline {
   background: #fff;
   border: 1px solid rgba(18, 63, 43, .16);
   color: #123f2b;
 }
 
-.pdv-terminal .btn-soft:hover,
-.pdv-terminal .btn-outline:hover {
+.pdv-clean-terminal .btn-soft:hover,
+.pdv-clean-terminal .btn-outline:hover {
   background: #e6efe6;
 }
 
-.pdv-terminal-actions .btn-primary {
+.pdv-clean-actions .btn-primary {
   grid-column: 1 / -1;
 }
 
-/* ---------- GRID PRINCIPAL ---------- */
+/* ---------- Estrutura principal ---------- */
 
-.pdv-terminal-grid {
+.pdv-clean-grid {
   min-height: 0;
   display: grid;
-  grid-template-columns: 310px minmax(0, 1fr) 330px;
+  grid-template-columns: 315px minmax(0, 1fr) 350px;
   gap: 8px;
 }
 
-.pdv-terminal-panel {
+.pdv-clean-panel {
   min-height: 0;
   overflow: hidden;
   border-radius: 8px;
@@ -202,7 +198,7 @@ body.pdv-market-reference-mode .admin-main {
   box-shadow: 0 8px 18px rgba(20, 45, 30, .07);
 }
 
-.pdv-terminal-panel-head {
+.pdv-clean-panel-head {
   min-height: 34px;
   display: flex;
   align-items: center;
@@ -213,7 +209,7 @@ body.pdv-market-reference-mode .admin-main {
   color: #fff;
 }
 
-.pdv-terminal-panel-head h2 {
+.pdv-clean-panel-head h2 {
   margin: 0;
   color: #fff;
   font-family: var(--fonte-corpo, system-ui);
@@ -223,35 +219,35 @@ body.pdv-market-reference-mode .admin-main {
   text-transform: uppercase;
 }
 
-.pdv-terminal-panel-head span,
-.pdv-terminal-panel-head small {
+.pdv-clean-panel-head span,
+.pdv-clean-panel-head small {
   color: rgba(255,255,255,.72);
   font-size: .66rem;
   font-weight: 800;
 }
 
-.pdv-terminal-body {
+.pdv-clean-body {
   padding: 8px;
 }
 
-/* ---------- COLUNA ESQUERDA ---------- */
+/* ---------- Coluna esquerda: produto e entrada ---------- */
 
-.pdv-left-terminal {
+.pdv-product-column {
   display: grid;
   grid-template-rows: 34px minmax(0, 1fr);
 }
 
-.pdv-left-body {
+.pdv-product-column-body {
   min-height: 0;
   display: grid;
-  grid-template-rows: 250px auto auto 1fr;
+  grid-template-rows: 260px auto auto 1fr;
   gap: 8px;
 }
 
 .pdv-product-view {
   min-height: 0;
   display: grid;
-  grid-template-rows: 168px auto;
+  grid-template-rows: 176px auto;
   overflow: hidden;
   border-radius: 6px;
   background: #fff;
@@ -318,15 +314,7 @@ body.pdv-market-reference-mode .admin-main {
   font-weight: 950;
 }
 
-.pdv-code-card,
-.pdv-value-card {
-  display: grid;
-  gap: 5px;
-  padding: 8px;
-  border-radius: 6px;
-  background: #f7f1e8;
-  border: 1px solid rgba(18, 63, 43, .12);
-}
+/* ---------- Campos ---------- */
 
 .pdv-field {
   display: grid;
@@ -364,8 +352,19 @@ body.pdv-market-reference-mode .admin-main {
   box-shadow: 0 0 0 3px rgba(79, 128, 98, .14);
 }
 
+.pdv-code-card,
+.pdv-value-card,
+.pdv-payment-mini {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f7f1e8;
+  border: 1px solid rgba(18, 63, 43, .12);
+}
+
 .pdv-barcode-input input {
-  min-height: 48px;
+  min-height: 50px;
   font-size: 1rem;
   font-weight: 950;
 }
@@ -403,12 +402,7 @@ body.pdv-market-reference-mode .admin-main {
 
 .pdv-payment-mini {
   align-self: end;
-  display: grid;
-  gap: 7px;
-  padding: 8px;
-  border-radius: 6px;
   background: #eef4ea;
-  border: 1px solid rgba(18, 63, 43, .12);
 }
 
 .pdv-payment-mini-title {
@@ -429,15 +423,17 @@ body.pdv-market-reference-mode .admin-main {
   font-weight: 800;
 }
 
-.pdv-hidden {
+.pdv-hidden,
+.pdv-hidden-history,
+.pdv-hidden-products {
   display: none !important;
 }
 
-/* ---------- CENTRO / LISTA DE PRODUTOS ---------- */
+/* ---------- Centro: cupom/lista ---------- */
 
-.pdv-center-terminal {
+.pdv-coupon-column {
   display: grid;
-  grid-template-rows: 34px minmax(0, 1fr) 238px;
+  grid-template-rows: 34px minmax(0, 1fr);
 }
 
 .pdv-sale-title {
@@ -463,14 +459,15 @@ body.pdv-market-reference-mode .admin-main {
 
 .pdv-products-table {
   min-height: 0;
+  height: 100%;
   display: grid;
-  grid-template-rows: 30px minmax(0, 1fr);
+  grid-template-rows: 32px minmax(0, 1fr);
   background: #fff;
 }
 
 .pdv-table-head {
   display: grid;
-  grid-template-columns: 54px 84px minmax(0, 1fr) 70px 82px 78px;
+  grid-template-columns: 58px 84px minmax(0, 1fr) 70px 90px 78px;
   gap: 7px;
   align-items: center;
   padding: 0 9px;
@@ -495,7 +492,7 @@ body.pdv-market-reference-mode .admin-main {
 }
 
 .pdv-current-items:empty::before {
-  content: "Nenhum item lançado. Digite o código, busque pelo nome ou selecione nos produtos rápidos.";
+  content: "Nenhum item lançado. Digite o código, busque pelo nome e pressione Enter ou clique em Inserir item.";
   display: grid;
   place-items: center;
   min-height: 100%;
@@ -560,33 +557,56 @@ body.pdv-market-reference-mode .admin-main {
   font-weight: 850;
 }
 
-/* ---------- RODAPÉ: SUBTOTAL / RECEBIDO / TROCO ---------- */
+/* ---------- Direita: fechamento ---------- */
 
-.pdv-close-terminal {
+.pdv-close-column {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px 180px;
-  grid-template-rows: 64px 52px 44px 38px;
-  gap: 7px;
-  padding: 8px;
-  background: #dfeadd;
-  border-top: 1px solid rgba(18, 63, 43, .14);
+  grid-template-rows: 34px minmax(0, 1fr);
 }
 
-.pdv-total-display,
-.pdv-input-display,
-.pdv-change-display {
+.pdv-close-body {
+  min-height: 0;
   display: grid;
-  gap: 3px;
-  align-content: center;
-  padding: 8px 10px;
+  grid-template-rows: auto auto auto auto 1fr;
+  gap: 8px;
+}
+
+.pdv-big-total {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 6px;
+  background: #123f2b;
+  color: #fff;
+  border: 1px solid #123f2b;
+}
+
+.pdv-big-total span {
+  color: rgba(255,255,255,.72);
+  font-size: .74rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.pdv-big-total strong {
+  color: #fff;
+  font-size: clamp(2.4rem, 5vw, 4.25rem);
+  line-height: 1;
+  font-weight: 950;
+  text-align: right;
+}
+
+.pdv-close-card {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
   border-radius: 6px;
   background: #fff;
-  border: 1px solid rgba(18, 63, 43, .12);
+  border: 1px solid rgba(18, 63, 43, .14);
 }
 
-.pdv-total-display span,
-.pdv-input-display span,
-.pdv-change-display span {
+.pdv-close-card span {
   color: #123f2b;
   font-size: .68rem;
   font-weight: 950;
@@ -594,75 +614,42 @@ body.pdv-market-reference-mode .admin-main {
   text-transform: uppercase;
 }
 
-.pdv-total-display strong,
-.pdv-change-display strong {
+.pdv-close-card strong {
   color: #123f2b;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 950;
 }
 
-.pdv-total-display.main {
-  grid-column: 1 / 2;
-  grid-row: 1 / 3;
-  background: #fff;
+.pdv-close-card.troco {
+  background: #f7f1e8;
 }
 
-.pdv-total-display.main strong {
-  color: #123f2b;
-  font-size: clamp(2.6rem, 5vw, 4rem);
-  line-height: 1;
-  text-align: right;
-}
-
-.pdv-input-display.received {
-  grid-column: 2 / 3;
-  grid-row: 1 / 3;
-}
-
-.pdv-change-display {
-  grid-column: 3 / 4;
-  grid-row: 1 / 3;
-}
-
-.pdv-change-display strong {
+.pdv-close-card.troco strong {
   color: #81475a;
-  font-size: clamp(1.55rem, 3vw, 2.2rem);
+  font-size: clamp(1.7rem, 3vw, 2.55rem);
   line-height: 1;
-}
-
-.pdv-change-display.is-missing strong {
-  color: #8b3f4d;
-  font-size: 1.35rem;
-}
-
-.pdv-money-input {
-  min-height: 36px;
   text-align: right;
-  font-weight: 950;
 }
 
-.pdv-small-total {
-  grid-column: 1 / 2;
-  grid-row: 3 / 4;
+.pdv-close-card.troco.is-missing strong {
+  color: #8b3f4d;
+  font-size: 1.45rem;
+}
+
+.pdv-close-grid {
   display: grid;
-  grid-template-columns: 1fr 180px;
-  gap: 7px;
-}
-
-.pdv-small-total .pdv-input-display {
-  min-height: 44px;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .pdv-quick-cash {
-  grid-column: 2 / 4;
-  grid-row: 3 / 4;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
 
 .pdv-quick-cash button {
-  min-height: 38px;
+  min-height: 36px;
   border-radius: 6px;
   background: #fff;
   border: 1px solid rgba(18, 63, 43, .14);
@@ -677,132 +664,19 @@ body.pdv-market-reference-mode .admin-main {
 }
 
 .pdv-final-actions {
-  grid-column: 1 / -1;
-  grid-row: 4 / 5;
+  align-self: end;
   display: grid;
-  grid-template-columns: 1fr 1fr 1.5fr;
   gap: 7px;
 }
 
-/* ---------- DIREITA: PRODUTOS RÁPIDOS ---------- */
-
-.pdv-right-terminal {
-  display: grid;
-  grid-template-rows: 34px auto minmax(0, 1fr);
-  background: #123f2b;
+.pdv-final-actions .btn {
+  width: 100%;
+  min-height: 42px;
 }
 
-.pdv-right-terminal .pdv-terminal-panel-head {
-  background: #123f2b;
-  border-bottom-color: rgba(255,255,255,.12);
-}
+/* ---------- Scroll ---------- */
 
-.pdv-right-terminal .pdv-terminal-panel-head h2 {
-  color: #fff;
-}
-
-.pdv-right-terminal .pdv-terminal-panel-head span {
-  color: rgba(255,255,255,.72);
-}
-
-.pdv-category-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  padding: 8px;
-  background: rgba(255,255,255,.08);
-  border-bottom: 1px solid rgba(255,255,255,.12);
-}
-
-.filter-pill {
-  min-height: 28px;
-  padding: 5px 7px;
-  border-radius: 5px;
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(255,255,255,.16);
-  color: #123f2b;
-  font-size: .66rem;
-  font-weight: 900;
-  box-shadow: none;
-}
-
-.filter-pill:hover {
-  transform: none;
-  background: #eef4ea;
-}
-
-.filter-pill.active {
-  background: #dfeadd;
-  border-color: #dfeadd;
-  color: #123f2b;
-}
-
-.pdv-product-grid {
-  min-height: 0;
-  overflow-y: auto;
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  padding: 8px;
-  background: #123f2b;
-}
-
-/* Cards de produto gerados pelo JS */
-.pdv-product-card {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  gap: 7px;
-  align-items: center;
-  padding: 6px;
-  border-radius: 6px;
-  background: #fffdf7;
-  border: 1px solid rgba(255,255,255,.16);
-  text-align: left;
-  cursor: pointer;
-}
-
-.pdv-product-card:hover {
-  transform: none;
-  background: #f6efe4;
-}
-
-.pdv-product-card img {
-  width: 52px;
-  height: 52px;
-  object-fit: cover;
-  border-radius: 5px;
-  background: #dfeadd;
-}
-
-.pdv-product-card strong {
-  color: #123f2b;
-  font-size: .76rem;
-  font-weight: 950;
-  line-height: 1.15;
-}
-
-.pdv-product-card span,
-.pdv-product-card small {
-  color: #5d7165;
-  font-size: .64rem;
-  font-weight: 750;
-}
-
-.pdv-product-card .price,
-.pdv-product-card [class*="price"] {
-  color: #81475a;
-  font-size: .78rem;
-  font-weight: 950;
-}
-
-.pdv-hidden-history {
-  display: none !important;
-}
-
-/* ---------- SCROLL ---------- */
-
-.pdv-current-items::-webkit-scrollbar,
-.pdv-product-grid::-webkit-scrollbar {
+.pdv-current-items::-webkit-scrollbar {
   width: 7px;
 }
 
@@ -811,62 +685,53 @@ body.pdv-market-reference-mode .admin-main {
   border-radius: 10px;
 }
 
-.pdv-product-grid::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,.24);
-  border-radius: 10px;
-}
-
-/* ---------- NOTEBOOK ---------- */
+/* ---------- Notebook ---------- */
 
 @media (max-width: 1366px) {
-  .pdv-terminal-grid {
-    grid-template-columns: 285px minmax(0, 1fr) 305px;
+  .pdv-clean-grid {
+    grid-template-columns: 290px minmax(0, 1fr) 325px;
   }
 
-  .pdv-terminal-top {
-    grid-template-columns: 250px minmax(0, 1fr) 240px;
+  .pdv-clean-top {
+    grid-template-columns: 250px minmax(0, 1fr) 260px;
+  }
+
+  .pdv-product-column-body {
+    grid-template-rows: 235px auto auto 1fr;
   }
 
   .pdv-product-view {
-    grid-template-rows: 145px auto;
+    grid-template-rows: 152px auto;
   }
 
-  .pdv-left-body {
-    grid-template-rows: 225px auto auto 1fr;
+  .pdv-big-total strong {
+    font-size: 3.2rem;
   }
 
-  .pdv-center-terminal {
-    grid-template-rows: 34px minmax(0, 1fr) 228px;
-  }
-
-  .pdv-total-display.main strong {
-    font-size: 3.1rem;
-  }
-
-  .pdv-change-display strong {
-    font-size: 1.8rem;
+  .pdv-close-card.troco strong {
+    font-size: 2rem;
   }
 }
 
 @media (max-width: 1180px) {
-  body.pdv-market-reference-mode .admin-main {
+  body.pdv-terminal-clean-mode .admin-main {
     overflow-y: auto;
   }
 
-  .pdv-terminal {
+  .pdv-clean-terminal {
     height: auto;
     min-height: calc(100vh - 16px);
     grid-template-rows: auto auto;
   }
 
-  .pdv-terminal-top,
-  .pdv-terminal-grid {
+  .pdv-clean-top,
+  .pdv-clean-grid {
     grid-template-columns: 1fr;
   }
 
-  .pdv-left-terminal,
-  .pdv-center-terminal,
-  .pdv-right-terminal {
+  .pdv-product-column,
+  .pdv-coupon-column,
+  .pdv-close-column {
     grid-template-rows: auto;
   }
 
@@ -874,45 +739,27 @@ body.pdv-market-reference-mode .admin-main {
     min-height: 300px;
     max-height: 420px;
   }
-
-  .pdv-close-terminal,
-  .pdv-small-total,
-  .pdv-quick-cash,
-  .pdv-final-actions {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-  }
-
-  .pdv-total-display.main,
-  .pdv-input-display.received,
-  .pdv-change-display,
-  .pdv-small-total,
-  .pdv-quick-cash,
-  .pdv-final-actions {
-    grid-column: auto;
-    grid-row: auto;
-  }
 }
 </style>
 
-<div class="pdv-terminal">
-  <section class="pdv-terminal-top">
-    <div class="pdv-brand-terminal">
-      <span class="pdv-terminal-logo">A&F</span>
+<div class="pdv-clean-terminal">
+  <section class="pdv-clean-top">
+    <div class="pdv-clean-brand">
+      <span class="pdv-clean-logo">A&F</span>
       <div>
         <strong>Arte&Flor - PDV</strong>
         <span>Venda presencial</span>
       </div>
     </div>
 
-    <div class="pdv-terminal-status">
+    <div class="pdv-clean-status">
       <div>
         <small>Status operacional</small>
         <strong>CAIXA ABERTO</strong>
       </div>
     </div>
 
-    <div class="pdv-terminal-actions">
+    <div class="pdv-clean-actions">
       <a class="btn btn-soft" href="<?= site_url('admin/dashboard.php') ?>">Dashboard</a>
       <button class="btn btn-outline" type="button" data-pdv-cancel>Cancelar</button>
       <button class="btn btn-primary" type="button" data-pdv-finish>Finalizar venda</button>
@@ -921,16 +768,17 @@ body.pdv-market-reference-mode .admin-main {
 
   <script type="application/json" id="pdvProducts"><?= json_encode($pdvProdutos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
 
-  <section class="pdv-terminal-grid">
-    <aside class="pdv-terminal-panel pdv-left-terminal">
-      <div class="pdv-terminal-panel-head">
+  <section class="pdv-clean-grid">
+    <!-- Produto / entrada -->
+    <aside class="pdv-clean-panel pdv-product-column">
+      <div class="pdv-clean-panel-head">
         <div>
           <h2>Produto</h2>
           <span>Selecionado</span>
         </div>
       </div>
 
-      <div class="pdv-terminal-body pdv-left-body">
+      <div class="pdv-clean-body pdv-product-column-body">
         <div class="pdv-product-view">
           <div class="pdv-product-image" data-pdv-selected-image>
             <div class="pdv-product-placeholder">
@@ -996,8 +844,9 @@ body.pdv-market-reference-mode .admin-main {
       </div>
     </aside>
 
-    <main class="pdv-terminal-panel pdv-center-terminal">
-      <div class="pdv-terminal-panel-head">
+    <!-- Cupom -->
+    <main class="pdv-clean-panel pdv-coupon-column">
+      <div class="pdv-clean-panel-head">
         <div class="pdv-sale-title">
           <span class="pdv-sale-badge">Venda atual</span>
           <div>
@@ -1020,33 +869,38 @@ body.pdv-market-reference-mode .admin-main {
 
         <div class="pdv-current-items" data-pdv-current></div>
       </div>
+    </main>
 
-      <div class="pdv-close-terminal">
-        <div class="pdv-total-display main">
-          <span>Subtotal</span>
+    <!-- Fechamento -->
+    <aside class="pdv-clean-panel pdv-close-column">
+      <div class="pdv-clean-panel-head">
+        <div>
+          <h2>Fechamento</h2>
+          <span>Total, recebido e troco</span>
+        </div>
+      </div>
+
+      <div class="pdv-clean-body pdv-close-body">
+        <div class="pdv-big-total">
+          <span>Total da venda</span>
           <strong data-pdv-total>R$ 0,00</strong>
         </div>
 
-        <div class="pdv-input-display received">
-          <span>Total recebido</span>
-          <input class="pdv-money-input" type="number" min="0" step="0.01" value="0" data-pdv-received>
-        </div>
-
-        <div class="pdv-change-display" data-pdv-change-box>
-          <span>Troco</span>
-          <strong data-pdv-change>R$ 0,00</strong>
-        </div>
-
-        <div class="pdv-small-total">
-          <div class="pdv-input-display">
+        <div class="pdv-close-grid">
+          <div class="pdv-close-card">
             <span>Valor bruto</span>
             <strong data-pdv-subtotal>R$ 0,00</strong>
           </div>
 
-          <div class="pdv-input-display">
+          <div class="pdv-close-card">
             <span>Desconto</span>
             <input class="pdv-money-input" type="number" min="0" step="0.01" value="0" data-pdv-discount>
           </div>
+        </div>
+
+        <div class="pdv-close-card">
+          <span>Total recebido</span>
+          <input class="pdv-money-input" type="number" min="0" step="0.01" value="0" data-pdv-received>
         </div>
 
         <div class="pdv-quick-cash">
@@ -1057,33 +911,22 @@ body.pdv-market-reference-mode .admin-main {
           <button type="button" data-pdv-cash-clear>Limpar</button>
         </div>
 
+        <div class="pdv-close-card troco" data-pdv-change-box>
+          <span>Troco</span>
+          <strong data-pdv-change>R$ 0,00</strong>
+        </div>
+
         <div class="pdv-final-actions">
-          <button class="btn btn-soft" type="button" data-pdv-suspend>Suspender</button>
-          <button class="btn btn-outline" type="button" data-pdv-cancel>Cancelar</button>
+          <button class="btn btn-soft" type="button" data-pdv-suspend>Suspender venda</button>
+          <button class="btn btn-outline" type="button" data-pdv-cancel>Cancelar venda</button>
           <button class="btn btn-primary" type="button" data-pdv-finish>Finalizar venda</button>
         </div>
       </div>
-    </main>
-
-    <aside class="pdv-terminal-panel pdv-right-terminal">
-      <div class="pdv-terminal-panel-head">
-        <div>
-          <h2>Produtos rápidos</h2>
-          <span>Selecione para lançar</span>
-        </div>
-      </div>
-
-      <div class="pdv-category-pills">
-        <button class="filter-pill active" type="button" data-pdv-category="todos">Todos</button>
-        <?php foreach ($categorias as $categoria): ?>
-          <button class="filter-pill" type="button" data-pdv-category="<?= e($categoria) ?>"><?= e($categoria) ?></button>
-        <?php endforeach; ?>
-      </div>
-
-      <div class="pdv-product-grid" data-pdv-product-grid></div>
     </aside>
   </section>
 
+  <!-- Mantido escondido para não quebrar o JS do PDV, caso ele procure esses elementos -->
+  <div class="pdv-hidden-products" data-pdv-product-grid></div>
   <div class="pdv-hidden-history" data-pdv-history></div>
 </div>
 
@@ -1105,7 +948,6 @@ body.pdv-market-reference-mode .admin-main {
   const searchInput = document.querySelector('[data-pdv-search]');
   const qtyInput = document.querySelector('[data-pdv-qty]');
   const addButton = document.querySelector('[data-pdv-add-search]');
-  const productGrid = document.querySelector('[data-pdv-product-grid]');
 
   const money = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -1216,13 +1058,7 @@ body.pdv-market-reference-mode .admin-main {
   receivedInput?.addEventListener('input', updateChange);
 
   qtyInput?.addEventListener('input', () => {
-    const productCards = [...document.querySelectorAll('.pdv-product-card')];
-    const selectedCard = productCards.find((card) => {
-      const name = card.querySelector('strong')?.textContent?.trim();
-      return name && selectedName?.textContent?.trim() === name;
-    });
-
-    if (selectedCard) updateSelectedFromCard(selectedCard);
+    updateSelectedFromSale();
   });
 
   exactBtn?.addEventListener('click', () => {
@@ -1254,11 +1090,6 @@ body.pdv-market-reference-mode .admin-main {
       event.preventDefault();
       addButton?.click();
     }
-  });
-
-  productGrid?.addEventListener('click', (event) => {
-    const card = event.target.closest('.pdv-product-card');
-    if (card) updateSelectedFromCard(card);
   });
 
   const observer = new MutationObserver(() => {
