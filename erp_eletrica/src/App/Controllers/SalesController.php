@@ -332,12 +332,23 @@ class SalesController extends BaseController {
                     $cpfPersist = $data['cpf_cliente'];
                 }
 
+                // Attribute the sale to the salesperson who created the pre-sale/budget (if one is finalized)
+                $sellerId = $_SESSION['usuario_id'];
+                if (!empty($data['pv_id'])) {
+                    $stmtPV = $db->prepare("SELECT usuario_id FROM pre_vendas WHERE id = ?");
+                    $stmtPV->execute([$data['pv_id']]);
+                    $pvUser = $stmtPV->fetchColumn();
+                    if ($pvUser) {
+                        $sellerId = (int)$pvUser;
+                    }
+                }
+
                 $saleData = [
                     'cliente_id'          => $data['cliente_id'] ?? null,
                     'nome_cliente_avulso' => $data['nome_cliente_avulso'] ?? null,
                     'cpf_cliente'         => $cpfPersist,
                     'cliente_nome'        => $nomePersist,
-                    'usuario_id'          => $_SESSION['usuario_id'],
+                    'usuario_id'          => $sellerId,
                     'filial_id'           => $_SESSION['filial_id'] ?? 1,
                     'valor_total'         => $data['total'],
                     'desconto_total'      => ($data['subtotal'] * ($data['discount_percent'] / 100)),
@@ -349,9 +360,9 @@ class SalesController extends BaseController {
                     'taxa_cartao'         => isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0,
                 ];
 
-                // Get Seller Commission Data
+                // Get Seller Commission Data (using the attributed seller's ID)
                 $stmtSeller = $db->prepare("SELECT comissao_ativa, comissao_porcentagem FROM usuarios WHERE id = ?");
-                $stmtSeller->execute([$_SESSION['usuario_id']]);
+                $stmtSeller->execute([$sellerId]);
                 $seller = $stmtSeller->fetch(\PDO::FETCH_ASSOC);
                 $commActive = ($seller['comissao_ativa'] ?? 0) == 1;
                 $commRate = (float)($seller['comissao_porcentagem'] ?? 0);
