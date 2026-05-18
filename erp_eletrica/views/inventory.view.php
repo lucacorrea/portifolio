@@ -193,6 +193,9 @@
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><h6 class="dropdown-header text-uppercase small opacity-50">Gestão</h6></li>
+                                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="viewProduct(<?= htmlspecialchars(json_encode($p)) ?>)">
+                                        <i class="fas fa-eye text-info me-2"></i>Visualizar
+                                    </a></li>
                                     <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="editProduct(<?= htmlspecialchars(json_encode($p)) ?>)">
                                         <i class="fas fa-edit text-primary me-2"></i>Editar
                                     </a></li>
@@ -411,7 +414,131 @@
     </div>
 </div>
 
-<!-- Removes old modal block completely -->
+<!-- Product Details View Modal -->
+<div class="modal fade" id="viewProductModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <!-- Premium Header -->
+            <div class="modal-header bg-light border-0 py-3 px-4 d-flex align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-bold" id="view_label_codigo"></span>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 rounded-pill fw-bold" id="view_label_unidade"></span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-4" style="background-color: #fafbfc;">
+                <div class="row g-4">
+                    <!-- Left: Image & Stock Info -->
+                    <div class="col-md-5 text-center">
+                        <div class="card border-0 shadow-sm p-3 mb-3 text-center bg-white" style="border-radius: 12px; min-height: 250px; display: flex; align-items: center; justify-content: center;">
+                            <img id="view_foto" src="" class="img-fluid rounded shadow-sm d-none" style="max-height: 220px; object-fit: contain; width: 100%;">
+                            <div id="view_no_foto" class="d-flex flex-column align-items-center justify-content-center text-muted" style="height: 180px;">
+                                <i class="fas fa-image fa-3x mb-2 opacity-25"></i>
+                                <span class="small fw-semibold">Sem foto disponível</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Stock Level Card -->
+                        <div class="card border-0 shadow-sm bg-white" style="border-radius: 12px;">
+                            <div class="card-body p-3">
+                                <div class="row g-2">
+                                    <div class="col-6 border-end">
+                                        <div class="text-muted extra-small fw-bold text-uppercase mb-1">Estoque Atual</div>
+                                        <div class="fs-4 fw-bold text-dark" id="view_quantidade">0,00</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-muted extra-small fw-bold text-uppercase mb-1">Estoque Mínimo</div>
+                                        <div class="fs-4 fw-bold text-secondary" id="view_estoque_minimo">0,00</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right: Product Info & Pricing -->
+                    <div class="col-md-7">
+                        <div class="d-flex flex-column h-100">
+                            <!-- Title & Category -->
+                            <div class="mb-3 text-start">
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-3 py-1 mb-2 fw-semibold" id="view_categoria"></span>
+                                <h3 class="fw-bold text-dark mb-1" id="view_nome" style="line-height: 1.2;"></h3>
+                                <div class="text-muted small" id="view_fornecedor"></div>
+                            </div>
+
+                            <!-- Pricing Showcase (WOW Factor) -->
+                            <div class="card border-0 shadow-sm mb-3" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); border-radius: 12px; color: #fff;">
+                                <div class="card-body p-4 text-center text-sm-start">
+                                    <div class="text-white-50 extra-small fw-bold text-uppercase mb-1">Preço de Venda Principal</div>
+                                    <h2 class="fw-bold text-white mb-0 fs-1" id="view_preco_venda">R$ 0,00</h2>
+                                </div>
+                            </div>
+
+                            <!-- Pricing Tiers Grid -->
+                            <div class="card border-0 shadow-sm bg-white mb-3" style="border-radius: 12px;">
+                                <div class="card-body p-3">
+                                    <div class="row g-3 text-start">
+                                        <div class="col-6 col-sm-3 border-end">
+                                            <div class="text-muted extra-small fw-bold text-uppercase mb-1">Custo</div>
+                                            <div class="fw-bold text-danger" id="view_preco_custo">R$ 0,00</div>
+                                        </div>
+                                        <div class="col-6 col-sm-3 border-end">
+                                            <div class="text-muted extra-small fw-bold text-uppercase mb-1">Preço 2</div>
+                                            <div class="fw-bold text-dark" id="view_preco_venda_2">R$ 0,00</div>
+                                        </div>
+                                        <div class="col-6 col-sm-3 border-end">
+                                            <div class="text-muted extra-small fw-bold text-uppercase mb-1">Preço 3</div>
+                                            <div class="fw-bold text-dark" id="view_preco_venda_3">R$ 0,00</div>
+                                        </div>
+                                        <div class="col-6 col-sm-3">
+                                            <div class="text-muted extra-small fw-bold text-uppercase mb-1">Atacado</div>
+                                            <div class="fw-bold text-primary" id="view_preco_venda_atacado">R$ 0,00</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Specs / Tech Description -->
+                            <div class="card border-0 shadow-sm bg-white mb-3" style="border-radius: 12px;">
+                                <div class="card-body p-3 text-start">
+                                    <div class="text-muted extra-small fw-bold text-uppercase mb-2"><i class="fas fa-file-alt me-1"></i>Especificações / Descrição</div>
+                                    <p class="mb-0 text-dark small fw-semibold" id="view_descricao" style="line-height: 1.5; white-space: pre-wrap; min-height: 40px;"></p>
+                                </div>
+                            </div>
+
+                            <!-- Logistics & Fiscal Details -->
+                            <div class="card border-0 shadow-sm bg-white" style="border-radius: 12px;">
+                                <div class="card-body p-3">
+                                    <div class="row g-2 text-muted small text-start">
+                                        <div class="col-6">
+                                            <span class="fw-semibold">NCM:</span> <span id="view_ncm" class="text-dark font-monospace fw-bold"></span>
+                                        </div>
+                                        <div class="col-6">
+                                            <span class="fw-semibold">CEST:</span> <span id="view_cest" class="text-dark font-monospace fw-bold"></span>
+                                        </div>
+                                        <div class="col-6">
+                                            <span class="fw-semibold">Peso:</span> <span id="view_peso" class="text-dark fw-bold"></span>
+                                        </div>
+                                        <div class="col-6">
+                                            <span class="fw-semibold">Dimensões:</span> <span id="view_dimensoes" class="text-dark fw-bold"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer bg-light border-0 py-3 px-4">
+                <button type="button" class="btn btn-secondary px-4 fw-bold rounded-pill" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary px-4 fw-bold rounded-pill" id="btn_edit_from_view">
+                    <i class="fas fa-edit me-2"></i>Editar Produto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Stock Movement Modal -->
 <div class="modal fade" id="movementModal" tabindex="-1">
@@ -801,5 +928,85 @@ function toggleProductCodeViews(code) {
             divPrecoVariavel.style.setProperty('display', 'none', 'important');
         }
     }
+}
+
+function viewProduct(product) {
+    const modal = new bootstrap.Modal(document.getElementById('viewProductModal'));
+    
+    // Header labels
+    document.getElementById('view_label_codigo').innerText = '#' + product.codigo;
+    document.getElementById('view_label_unidade').innerText = product.unidade || 'UN';
+    
+    // Image resolution
+    const viewFoto = document.getElementById('view_foto');
+    const viewNoFoto = document.getElementById('view_no_foto');
+    if (product.imagens) {
+        viewFoto.src = 'public/uploads/produtos/' + product.imagens;
+        viewFoto.classList.remove('d-none');
+        viewNoFoto.classList.add('d-none');
+    } else {
+        viewFoto.src = '';
+        viewFoto.classList.add('d-none');
+        viewNoFoto.classList.remove('d-none');
+    }
+    
+    // Name, Category, Fornecedor
+    document.getElementById('view_nome').innerText = product.nome;
+    document.getElementById('view_categoria').innerText = product.categoria || 'Sem Categoria';
+    
+    // Find supplier name if any
+    let supplierName = 'Sem fornecedor cadastrado';
+    if (product.fornecedor_id) {
+        const select = document.getElementById('edit_fornecedor_id');
+        const option = select.querySelector(`option[value="${product.fornecedor_id}"]`);
+        if (option) {
+            supplierName = 'Fornecedor: ' + option.innerText;
+        }
+    }
+    document.getElementById('view_fornecedor').innerText = supplierName;
+    
+    // Stock Info
+    document.getElementById('view_quantidade').innerText = formatQty(product.quantidade);
+    document.getElementById('view_estoque_minimo').innerText = formatQty(product.estoque_minimo);
+    
+    // Primary pricing
+    document.getElementById('view_preco_venda').innerText = formatCurrency(product.preco_venda);
+    
+    // Pricing tiers
+    document.getElementById('view_preco_custo').innerText = formatCurrency(product.preco_custo);
+    document.getElementById('view_preco_venda_2').innerText = formatCurrency(product.preco_venda_2);
+    document.getElementById('view_preco_venda_3').innerText = formatCurrency(product.preco_venda_3);
+    document.getElementById('view_preco_venda_atacado').innerText = formatCurrency(product.preco_venda_atacado);
+    
+    // Specs/Description
+    document.getElementById('view_descricao').innerText = product.descricao || 'Nenhuma especificação técnica informada.';
+    
+    // Fiscal/Logistics
+    document.getElementById('view_ncm').innerText = product.ncm || '---';
+    document.getElementById('view_cest').innerText = product.cest || '---';
+    document.getElementById('view_peso').innerText = product.peso ? parseFloat(product.peso).toFixed(3) + ' kg' : '---';
+    document.getElementById('view_dimensoes').innerText = product.dimensoes || '---';
+    
+    // Bind Edit button
+    document.getElementById('btn_edit_from_view').onclick = function() {
+        // Hide view modal
+        bootstrap.Modal.getInstance(document.getElementById('viewProductModal')).hide();
+        // Wait for hide animation then open edit modal
+        setTimeout(() => {
+            editProduct(product);
+        }, 150);
+    };
+    
+    modal.show();
+}
+
+function formatQty(val) {
+    if (val === null || val === undefined || isNaN(val)) return '0,00';
+    return parseFloat(val).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
+function formatCurrency(val) {
+    if (val === null || val === undefined || isNaN(val)) return 'R$ 0,00';
+    return 'R$ ' + parseFloat(val).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 </script>
