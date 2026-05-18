@@ -33,7 +33,10 @@ $base = base_url();
       <a href="<?= $base ?>admin/login.php">Admin</a>
     </nav>
     <a class="btn btn-outline header-support" target="_blank" rel="noopener" href="<?= whatsapp_url('Olá, preciso de atendimento da Arte&Flor.') ?>">Atendimento</a>
-    <button class="menu-toggle" type="button" data-menu-toggle aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menu">Menu</button>
+    <button class="menu-toggle" type="button" data-menu-toggle aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menu">
+      <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span class="menu-toggle-text" data-menu-toggle-text>Menu</span>
+    </button>
   </div>
 </header>
 <main>

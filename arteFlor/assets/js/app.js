@@ -129,6 +129,7 @@
   const bindMenu = () => {
     const button = document.querySelector('[data-menu-toggle]');
     const nav = document.querySelector('.main-nav');
+    const buttonText = document.querySelector('[data-menu-toggle-text]');
 
     if (!button || !nav) return;
 
@@ -136,12 +137,14 @@
       nav.classList.remove('open');
       button.setAttribute('aria-expanded', 'false');
       button.setAttribute('aria-label', 'Abrir menu');
+      if (buttonText) buttonText.textContent = 'Menu';
     };
 
     const toggleMenu = () => {
       const isOpen = nav.classList.toggle('open');
       button.setAttribute('aria-expanded', String(isOpen));
       button.setAttribute('aria-label', isOpen ? 'Fechar menu' : 'Abrir menu');
+      if (buttonText) buttonText.textContent = isOpen ? 'Fechar' : 'Menu';
     };
 
     button.addEventListener('click', (event) => {
@@ -149,8 +152,10 @@
       toggleMenu();
     });
 
-    nav.querySelectorAll('a').forEach((link) => {
-      link.addEventListener('click', closeMenu);
+    nav.addEventListener('click', (event) => {
+      const link = event.target.closest('a[href]');
+      if (!link) return;
+      window.setTimeout(closeMenu, 120);
     });
 
     document.addEventListener('click', (event) => {
