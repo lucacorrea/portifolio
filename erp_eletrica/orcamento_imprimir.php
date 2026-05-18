@@ -300,14 +300,10 @@ $isExpired = $diffHours >= 24;
             </div>
             <div class="hr"></div>
             <div class="center">
-                <?php if ($isExpired): ?>
-                    <span class="badge-expired">ORÇAMENTO EXPIRADO</span>
-                <?php else: ?>
-                    <div style="margin-bottom: 6px;"><span class="badge-nf">ORÇAMENTO</span></div>
-                    <div style="font-size: 14px; font-weight: 900; margin: 4px 0; letter-spacing: 1px; border: 2px dashed #000; padding: 4px 8px; display: inline-block;">
-                        VÁLIDO POR 24H
-                    </div>
-                <?php endif; ?>
+                <div style="margin-bottom: 6px;"><span class="badge-nf">ORÇAMENTO</span></div>
+                <div style="font-size: 14px; font-weight: 900; margin: 4px 0; letter-spacing: 1px; border: 2px dashed #000; padding: 4px 8px; display: inline-block;">
+                    VÁLIDO POR 24H
+                </div>
             </div>
             <div class="hr"></div>
         </header>
@@ -374,8 +370,7 @@ $isExpired = $diffHours >= 24;
 
         <!-- Rodapé Customizado: Nesse campo embaixo onde estar escrito Consumidor põe a Validade -->
         <div style="border: 2px dashed #000; padding: 6px 10px; margin: 8px 0; text-align: center;">
-            <b style="font-size: 14px; display: block; letter-spacing: 1px; margin-bottom: 2px;">*** VÁLIDO POR 24H ***</b>
-            <span style="font-size: 12px; font-weight: bold;">Validade: <?= $validadeOrcamento ?></span>
+            <b style="font-size: 14px; display: block; letter-spacing: 1px; margin: 0;">*** VÁLIDO POR 24H ***</b>
         </div>
         <div class="small" style="margin-top: 6px;">
             <b>Cliente:</b> <?= htmlspecialchars($pv['cliente_nome']) ?><br>
@@ -389,8 +384,7 @@ $isExpired = $diffHours >= 24;
         </div>
 
         <div class="center" style="color:#111; font-weight: bold; font-size: 11px; border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px;">
-            Este documento é um orçamento e não tem validade fiscal.<br>
-            <span style="font-size: 12px; font-weight: 900; text-decoration: underline;">ORÇAMENTO VÁLIDO POR 24 HORAS</span>
+            Este documento é um orçamento e não tem validade fiscal.
         </div>
     </div>
 
