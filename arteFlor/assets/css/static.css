@@ -1,0 +1,103 @@
+.product-img img,
+.gallery-main img,
+.post-cover img,
+.client-order-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-img img { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
+.product-card:hover .product-img img { transform: scale(1.06); }
+.product-img::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 45%, rgba(37,71,54,.48));
+  z-index: 1;
+}
+
+.product-img .floating-tag {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 2;
+  background: rgba(255,255,255,.82);
+  color: var(--verde-principal-hover);
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: .72rem;
+  font-weight: 950;
+  backdrop-filter: blur(12px);
+}
+
+.product-fallback {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 120px;
+  border-radius: 30px;
+  background: rgba(255,255,255,.68);
+  color: var(--verde-principal-hover);
+  font-weight: 950;
+  font-size: 1rem;
+  letter-spacing: .04em;
+  border: 1px solid rgba(255,255,255,.76);
+}
+
+.static-page-note {
+  display: inline-flex;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(245,198,214,.24);
+  color: var(--vinho-rose);
+  font-weight: 900;
+  font-size: .82rem;
+}
+
+.feature-card {
+  min-height: 180px;
+  display: grid;
+  align-content: end;
+  background: linear-gradient(135deg, rgba(255,255,255,.88), rgba(234,246,234,.68));
+}
+
+.timeline-steps {
+  counter-reset: step;
+}
+.timeline-steps .card { min-height: 190px; }
+.timeline-steps .card::after {
+  counter-increment: step;
+  content: '0' counter(step);
+  position: absolute;
+  right: 24px;
+  top: 20px;
+  color: rgba(79,143,107,.16);
+  font-family: var(--fonte-titulo);
+  font-size: 3.4rem;
+  font-weight: 900;
+}
+
+.admin-empty-state {
+  padding: 24px;
+  border: 1px dashed rgba(79,143,107,.35);
+  border-radius: 24px;
+  background: rgba(234,246,234,.45);
+}
+
+.post-cover {
+  overflow: hidden;
+  aspect-ratio: 16/7;
+  border-radius: 32px;
+  margin: 24px 0;
+  box-shadow: var(--sombra-card);
+}
+
+@media (max-width: 640px) {
+  .cart-item { grid-template-columns: 1fr; }
+  .cart-item img { width: 100%; height: 170px; }
+}
