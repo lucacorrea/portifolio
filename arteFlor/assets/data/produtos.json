@@ -1,14 +1,242 @@
 [
-  {"id":1,"nome":"Buquê de Rosas Vermelhas","slug":"buque-rosas-vermelhas","categoria":"Buquês","preco":149.90,"preco_promocional":129.90,"descricao_curta":"Clássico e elegante para surpreender.","descricao_completa":"Buquê romântico com rosas vermelhas, folhagens naturais e acabamento delicado.","estoque":8,"status":"disponivel","destaque":true,"sob_encomenda":false,"imagens":["🌹","💐","🎀"],"tags":["Romântico","Mais vendido"]},
-  {"id":2,"nome":"Buquê Tons Pastel","slug":"buque-tons-pastel","categoria":"Buquês","preco":119.90,"preco_promocional":0,"descricao_curta":"Flores suaves em composição delicada.","descricao_completa":"Combinação floral em tons claros para presentes elegantes e femininos.","estoque":5,"status":"disponivel","destaque":true,"sob_encomenda":false,"imagens":["🌸","🌷","💐"],"tags":["Delicado"]},
-  {"id":3,"nome":"Arranjo Floral Premium","slug":"arranjo-floral-premium","categoria":"Arranjos","preco":189.90,"preco_promocional":0,"descricao_curta":"Arranjo sofisticado para homenagens.","descricao_completa":"Arranjo com flores selecionadas, ideal para aniversários, homenagens e datas especiais.","estoque":3,"status":"disponivel","destaque":true,"sob_encomenda":false,"imagens":["🌺","🌸","🌿"],"tags":["Premium"]},
-  {"id":4,"nome":"Vaso de Violeta","slug":"vaso-de-violeta","categoria":"Vasos","preco":39.90,"preco_promocional":0,"descricao_curta":"Presente delicado e acessível.","descricao_completa":"Vaso de violeta para decoração, lembrança e presentes simples com carinho.","estoque":12,"status":"disponivel","destaque":false,"sob_encomenda":false,"imagens":["🪴","🌿"],"tags":["Presente"]},
-  {"id":5,"nome":"Cesta com Flores","slug":"cesta-com-flores","categoria":"Presentes","preco":229.90,"preco_promocional":0,"descricao_curta":"Cesta personalizada com flores e mimos.","descricao_completa":"Cesta com flores, cartão e itens personalizados conforme disponibilidade.","estoque":0,"status":"sob_encomenda","destaque":true,"sob_encomenda":true,"imagens":["🧺","🌸","🎁"],"tags":["Personalizado"]},
-  {"id":6,"nome":"Plantas para Jardim","slug":"plantas-para-jardim","categoria":"Plantas","preco":24.90,"preco_promocional":0,"descricao_curta":"Opções verdes para jardins e ambientes.","descricao_completa":"Plantas naturais selecionadas para decoração, jardins e áreas externas.","estoque":20,"status":"disponivel","destaque":false,"sob_encomenda":false,"imagens":["🌱","🪴"],"tags":["Natural"]},
-  {"id":7,"nome":"Arranjo para Aniversário","slug":"arranjo-para-aniversario","categoria":"Datas especiais","preco":159.90,"preco_promocional":0,"descricao_curta":"Flores para celebrar com carinho.","descricao_completa":"Arranjo especial para aniversário, com opção de cartão personalizado.","estoque":4,"status":"disponivel","destaque":true,"sob_encomenda":false,"imagens":["🎂","🌸","🎁"],"tags":["Celebração"]},
-  {"id":8,"nome":"Buquê Personalizado","slug":"buque-personalizado","categoria":"Encomendas","preco":0,"preco_promocional":0,"descricao_curta":"Montado conforme ocasião e disponibilidade.","descricao_completa":"Buquê sob encomenda com escolha de estilo, cores e mensagem para cartão.","estoque":0,"status":"sob_encomenda","destaque":false,"sob_encomenda":true,"imagens":["💐","✍️"],"tags":["Sob encomenda"]},
-  {"id":9,"nome":"Orquídea","slug":"orquidea","categoria":"Vasos","preco":89.90,"preco_promocional":0,"descricao_curta":"Elegância natural para presentear.","descricao_completa":"Orquídea em vaso, ideal para presentes sofisticados e decoração.","estoque":6,"status":"disponivel","destaque":false,"sob_encomenda":false,"imagens":["🌺","🪴"],"tags":["Elegante"]},
-  {"id":10,"nome":"Kit Presente Romântico","slug":"kit-presente-romantico","categoria":"Presentes","preco":199.90,"preco_promocional":179.90,"descricao_curta":"Flores, cartão e presente especial.","descricao_completa":"Kit preparado para surpresas românticas com composição delicada.","estoque":2,"status":"disponivel","destaque":true,"sob_encomenda":false,"imagens":["🎁","🌹","💌"],"tags":["Romântico"]},
-  {"id":11,"nome":"Arranjo Dia das Mães","slug":"arranjo-dia-das-maes","categoria":"Datas especiais","preco":179.90,"preco_promocional":0,"descricao_curta":"Carinho em forma de flor.","descricao_completa":"Arranjo especial para Dia das Mães, com acabamento elegante e mensagem personalizada.","estoque":0,"status":"sob_encomenda","destaque":true,"sob_encomenda":true,"imagens":["🌷","💝"],"tags":["Data especial"]},
-  {"id":12,"nome":"Mini Buquê Delicado","slug":"mini-buque-delicado","categoria":"Buquês","preco":59.90,"preco_promocional":0,"descricao_curta":"Opção charmosa para pequenos gestos.","descricao_completa":"Mini buquê com flores naturais, ideal para lembranças e agradecimentos.","estoque":10,"status":"disponivel","destaque":false,"sob_encomenda":false,"imagens":["💐","🌼"],"tags":["Delicado"]}
+  {
+    "id": 1,
+    "sku": "AF-BUQ-001",
+    "nome": "Buquê de Rosas Vermelhas",
+    "slug": "buque-rosas-vermelhas",
+    "categoria": "Buquês",
+    "preco": 149.9,
+    "preco_promocional": 129.9,
+    "descricao_curta": "Clássico, romântico e elegante para surpreender.",
+    "descricao_completa": "Buquê com rosas vermelhas selecionadas, folhagens naturais, acabamento premium e opção de cartão personalizado.",
+    "estoque": 8,
+    "status": "disponivel",
+    "destaque": true,
+    "sob_encomenda": false,
+    "imagens": [
+      "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Romântico", "Mais vendido", "Rosas"]
+  },
+  {
+    "id": 2,
+    "sku": "AF-BUQ-002",
+    "nome": "Buquê Jardim Pastel",
+    "slug": "buque-jardim-pastel",
+    "categoria": "Buquês",
+    "preco": 119.9,
+    "preco_promocional": 0,
+    "descricao_curta": "Flores suaves em uma composição delicada.",
+    "descricao_completa": "Buquê em tons claros com flores da estação, ideal para aniversários, agradecimentos e gestos afetuosos.",
+    "estoque": 5,
+    "status": "disponivel",
+    "destaque": true,
+    "sob_encomenda": false,
+    "imagens": [
+      "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1487070183336-b863922373d4?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Delicado", "Aniversário", "Tons pastel"]
+  },
+  {
+    "id": 3,
+    "sku": "AF-ARR-003",
+    "nome": "Arranjo Floral Premium",
+    "slug": "arranjo-floral-premium",
+    "categoria": "Arranjos",
+    "preco": 189.9,
+    "preco_promocional": 169.9,
+    "descricao_curta": "Arranjo sofisticado para homenagens e eventos.",
+    "descricao_completa": "Composição floral com flores nobres, folhagens e base decorativa para presentear com presença e elegância.",
+    "estoque": 3,
+    "status": "disponivel",
+    "destaque": true,
+    "sob_encomenda": false,
+    "imagens": [
+      "https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1468327768560-75b778cbb551?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Premium", "Evento", "Elegante"]
+  },
+  {
+    "id": 4,
+    "sku": "AF-VAS-004",
+    "nome": "Vaso de Violeta",
+    "slug": "vaso-de-violeta",
+    "categoria": "Vasos",
+    "preco": 39.9,
+    "preco_promocional": 0,
+    "descricao_curta": "Presente delicado para casa, mesa ou escritório.",
+    "descricao_completa": "Violeta em vaso decorativo, fácil de cuidar e perfeita para lembranças afetivas e decoração leve.",
+    "estoque": 12,
+    "status": "disponivel",
+    "destaque": false,
+    "sob_encomenda": false,
+    "imagens": [
+      "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Presente", "Vaso", "Delicado"]
+  },
+  {
+    "id": 5,
+    "sku": "AF-PRE-005",
+    "nome": "Cesta Afeto com Flores",
+    "slug": "cesta-afeto-com-flores",
+    "categoria": "Presentes",
+    "preco": 229.9,
+    "preco_promocional": 0,
+    "descricao_curta": "Cesta personalizada com flores, cartão e mimos.",
+    "descricao_completa": "Cesta montada sob encomenda com flores naturais, itens de presente e acabamento especial conforme disponibilidade.",
+    "estoque": 0,
+    "status": "sob_encomenda",
+    "destaque": true,
+    "sob_encomenda": true,
+    "imagens": [
+      "https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1468327768560-75b778cbb551?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Personalizado", "Cesta", "Datas especiais"]
+  },
+  {
+    "id": 6,
+    "sku": "AF-PLA-006",
+    "nome": "Kit Plantas para Jardim",
+    "slug": "kit-plantas-para-jardim",
+    "categoria": "Plantas",
+    "preco": 74.9,
+    "preco_promocional": 0,
+    "descricao_curta": "Seleção verde para renovar ambientes.",
+    "descricao_completa": "Kit com plantas naturais selecionadas para jardins, varandas e áreas internas com orientação de cuidado.",
+    "estoque": 20,
+    "status": "disponivel",
+    "destaque": false,
+    "sob_encomenda": false,
+    "imagens": [
+      "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Natural", "Jardim", "Casa"]
+  },
+  {
+    "id": 7,
+    "sku": "AF-DAT-007",
+    "nome": "Arranjo Aniversário Luz",
+    "slug": "arranjo-aniversario-luz",
+    "categoria": "Datas especiais",
+    "preco": 159.9,
+    "preco_promocional": 0,
+    "descricao_curta": "Flores alegres para celebrar com carinho.",
+    "descricao_completa": "Arranjo colorido com flores da estação, pensado para aniversário, parabéns corporativo e entregas surpresa.",
+    "estoque": 4,
+    "status": "disponivel",
+    "destaque": true,
+    "sob_encomenda": false,
+    "imagens": [
+      "https://images.unsplash.com/photo-1487070183336-b863922373d4?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Celebração", "Aniversário", "Colorido"]
+  },
+  {
+    "id": 8,
+    "sku": "AF-ENC-008",
+    "nome": "Buquê Personalizado Arte&Flor",
+    "slug": "buque-personalizado-arteflor",
+    "categoria": "Encomendas",
+    "preco": 139.9,
+    "preco_promocional": 0,
+    "descricao_curta": "Montado por estilo, cor e ocasião.",
+    "descricao_completa": "Buquê sob encomenda com curadoria da loja, escolha de paleta, mensagem para cartão e acabamento premium.",
+    "estoque": 0,
+    "status": "sob_encomenda",
+    "destaque": false,
+    "sob_encomenda": true,
+    "imagens": [
+      "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Sob encomenda", "Personalizado", "Curadoria"]
+  },
+  {
+    "id": 9,
+    "sku": "AF-VAS-009",
+    "nome": "Orquídea Branca Elegance",
+    "slug": "orquidea-branca-elegance",
+    "categoria": "Vasos",
+    "preco": 89.9,
+    "preco_promocional": 79.9,
+    "descricao_curta": "Elegância natural em vaso decorativo.",
+    "descricao_completa": "Orquídea branca em vaso, indicada para presentes sofisticados, recepções, escritórios e decoração residencial.",
+    "estoque": 6,
+    "status": "disponivel",
+    "destaque": false,
+    "sob_encomenda": false,
+    "imagens": [
+      "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1533616688419-b7a585564566?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Elegante", "Orquídea", "Vaso"]
+  },
+  {
+    "id": 10,
+    "sku": "AF-PRE-010",
+    "nome": "Kit Presente Romântico",
+    "slug": "kit-presente-romantico",
+    "categoria": "Presentes",
+    "preco": 199.9,
+    "preco_promocional": 179.9,
+    "descricao_curta": "Flores, cartão e mimo especial em um kit.",
+    "descricao_completa": "Kit romântico com composição floral, cartão personalizado e item de presente conforme disponibilidade da loja.",
+    "estoque": 2,
+    "status": "disponivel",
+    "destaque": true,
+    "sob_encomenda": false,
+    "imagens": [
+      "https://images.unsplash.com/photo-1468327768560-75b778cbb551?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Romântico", "Kit", "Promoção"]
+  },
+  {
+    "id": 11,
+    "sku": "AF-DAT-011",
+    "nome": "Arranjo Carinho de Mãe",
+    "slug": "arranjo-carinho-de-mae",
+    "categoria": "Datas especiais",
+    "preco": 179.9,
+    "preco_promocional": 0,
+    "descricao_curta": "Carinho em forma de flores para datas especiais.",
+    "descricao_completa": "Arranjo com flores claras, folhagens e acabamento elegante, preparado sob encomenda para homenagens familiares.",
+    "estoque": 0,
+    "status": "sob_encomenda",
+    "destaque": true,
+    "sob_encomenda": true,
+    "imagens": [
+      "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Data especial", "Família", "Homenagem"]
+  },
+  {
+    "id": 12,
+    "sku": "AF-BUQ-012",
+    "nome": "Mini Buquê Delicado",
+    "slug": "mini-buque-delicado",
+    "categoria": "Buquês",
+    "preco": 59.9,
+    "preco_promocional": 0,
+    "descricao_curta": "Opção charmosa para pequenos gestos.",
+    "descricao_completa": "Mini buquê com flores naturais, acabamento simples e bonito, ideal para agradecimentos, lembranças e surpresas rápidas.",
+    "estoque": 10,
+    "status": "disponivel",
+    "destaque": false,
+    "sob_encomenda": false,
+    "imagens": [
+      "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1487070183336-b863922373d4?auto=format&fit=crop&w=900&q=80"
+    ],
+    "tags": ["Delicado", "Lembrança", "Acessível"]
+  }
 ]

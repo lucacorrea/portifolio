@@ -28,3 +28,27 @@ function e(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
+
+function first_image(array $item): string
+{
+    $images = $item['imagens'] ?? [];
+    return is_array($images) && !empty($images[0]) ? (string) $images[0] : '';
+}
+
+function effective_price(array $produto): float
+{
+    $promo = (float) ($produto['preco_promocional'] ?? 0);
+    $price = (float) ($produto['preco'] ?? 0);
+
+    return $promo > 0 ? $promo : $price;
+}
+
+function status_label(string $status): string
+{
+    return match ($status) {
+        'disponivel' => 'Disponível',
+        'sob_encomenda' => 'Sob encomenda',
+        'inativo' => 'Inativo',
+        default => ucfirst(str_replace('_', ' ', $status)),
+    };
+}

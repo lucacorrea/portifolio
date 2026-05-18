@@ -1,97 +1,126 @@
-document.addEventListener('DOMContentLoaded', () => {
-  if (!window.ArteFlor) {
-    return;
-  }
-
-  const summary = document.getElementById('checkoutSummary');
-  const totalEl = document.getElementById('checkoutTotal');
+(() => {
   const form = document.getElementById('checkoutForm');
+  const summary = document.getElementById('checkoutSummary');
+  const subtotalEl = document.getElementById('checkoutSubtotal');
+  const discountEl = document.getElementById('checkoutDiscount');
+  const totalEl = document.getElementById('checkoutTotal');
   const paymentMethod = document.querySelector('[data-payment-method]');
   const pixPanel = document.querySelector('[data-pix-panel]');
   const pixStatus = document.querySelector('[data-pix-status]');
   const pixCode = document.querySelector('[data-pix-code]');
   const copyPixButton = document.querySelector('[data-copy-pix]');
-  const finishSystemButton = document.querySelector('[data-system-finish]');
-  const systemResult = document.querySelector('[data-system-result]');
+  const confirmPixButton = document.querySelector('[data-confirm-pix]');
+  const success = document.querySelector('[data-order-success]');
+  const orderCodeEl = document.querySelector('[data-order-code]');
+  let pixConfirmed = false;
 
-  if (!summary || !totalEl || !form) {
-    return;
-  }
+  if (!form || !summary || !window.ArteFlor) return;
 
-  const cartCheckout = ArteFlor.getCart();
-  const totalCheckout = cartCheckout.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 0), 0);
-  let systemFinished = false;
-  let systemOrderCode = '';
+  const renderSummary = () => {
+    const cart = ArteFlor.getCart();
+    const totals = ArteFlor.cartTotals(cart);
 
-  summary.innerHTML = cartCheckout.length
-    ? cartCheckout.map((item) => `<p>${item.qty}x ${item.nome} - ${ArteFlor.formatMoney(Number(item.preco || 0) * Number(item.qty || 0))}</p>`).join('')
-    : '<p class="muted">Carrinho vazio.</p>';
-  totalEl.textContent = ArteFlor.formatMoney(totalCheckout);
+    summary.innerHTML = cart.length ? cart.map((item) => `
+      <div class="checkout-summary-item">
+        ${item.imagem ? `<img src="${ArteFlor.escapeHtml(item.imagem)}" alt="${ArteFlor.escapeHtml(item.nome)}">` : '<span>A&F</span>'}
+        <div>
+          <strong>${Number(item.qty || 1)}x ${ArteFlor.escapeHtml(item.nome)}</strong>
+          <small>${ArteFlor.formatMoney(Number(item.preco || 0) * Number(item.qty || 1))}</small>
+        </div>
+      </div>
+    `).join('') : '<div class="empty-state small"><strong>Carrinho vazio</strong><p>Adicione produtos antes de finalizar.</p></div>';
+
+    subtotalEl.textContent = ArteFlor.formatMoney(totals.subtotal);
+    discountEl.textContent = totals.discount > 0 ? `-${ArteFlor.formatMoney(totals.discount)}` : ArteFlor.formatMoney(0);
+    totalEl.textContent = ArteFlor.formatMoney(totals.total);
+  };
 
   const togglePixPanel = () => {
     const isPix = paymentMethod?.value === 'Pix';
-    if (pixPanel) {
-      pixPanel.hidden = !isPix;
-    }
+    if (pixPanel) pixPanel.hidden = !isPix;
   };
 
-  const saveDemoSale = () => {
-    systemOrderCode = `AF-${Date.now().toString().slice(-6)}`;
-    systemFinished = true;
-
-    const sales = JSON.parse(localStorage.getItem('arteflor_demo_sales') || '[]');
-    sales.unshift({
-      codigo: systemOrderCode,
-      total: totalCheckout,
-      pagamento: paymentMethod?.value || 'Pix',
-      status: 'Venda finalizada no sistema',
-      criadoEm: new Date().toISOString(),
-      itens: cartCheckout
-    });
-    localStorage.setItem('arteflor_demo_sales', JSON.stringify(sales.slice(0, 10)));
-
+  paymentMethod?.addEventListener('change', () => {
+    pixConfirmed = false;
     if (pixStatus) {
-      pixStatus.textContent = 'Pagamento confirmado';
+      pixStatus.textContent = 'Aguardando confirmação';
+      pixStatus.classList.remove('status-ok');
+      pixStatus.classList.add('status-warn');
     }
-    if (systemResult) {
-      systemResult.textContent = `Venda ${systemOrderCode} finalizada no sistema demonstrativo. Nenhum pagamento real foi processado.`;
-    }
-    if (finishSystemButton) {
-      finishSystemButton.textContent = 'Venda finalizada';
-      finishSystemButton.disabled = true;
-    }
-  };
-
-  paymentMethod?.addEventListener('change', togglePixPanel);
-  togglePixPanel();
+    togglePixPanel();
+  });
 
   copyPixButton?.addEventListener('click', async () => {
-    const code = pixCode?.textContent?.trim() || '';
-
     try {
-      await navigator.clipboard.writeText(code);
-      if (systemResult) {
-        systemResult.textContent = 'Código Pix demonstrativo copiado.';
-      }
+      await navigator.clipboard.writeText(pixCode?.textContent?.trim() || '');
+      ArteFlor.toast('Código Pix demonstrativo copiado.');
     } catch (error) {
-      if (systemResult) {
-        systemResult.textContent = 'Não foi possível copiar automaticamente. Selecione e copie o código manualmente.';
-      }
+      ArteFlor.toast('Não foi possível copiar automaticamente.', 'warning');
     }
   });
 
-  finishSystemButton?.addEventListener('click', saveDemoSale);
+  confirmPixButton?.addEventListener('click', () => {
+    pixConfirmed = true;
+    if (pixStatus) {
+      pixStatus.textContent = 'Pagamento demonstrativo confirmado';
+      pixStatus.classList.remove('status-warn');
+      pixStatus.classList.add('status-ok');
+    }
+    ArteFlor.toast('Pagamento Pix demonstrativo confirmado.');
+  });
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
 
-    const data = Object.fromEntries(new FormData(form).entries());
-    const itens = cartCheckout.map((item) => `- ${item.qty}x ${item.nome} (${ArteFlor.formatMoney(Number(item.preco || 0) * Number(item.qty || 0))})`).join('\n');
-    const pixInfo = data.pagamento === 'Pix'
-      ? `\nStatus Pix demonstrativo: ${systemFinished ? `finalizado no sistema (${systemOrderCode})` : 'QR Code exibido, confirmação pendente'}`
-      : '';
-    const message = `Olá, vim pelo catálogo da Arte&Flor.\n\nPedido:\n${itens || 'Sem itens no carrinho'}\n\nTotal: ${ArteFlor.formatMoney(totalCheckout)}\n\nCliente: ${data.nome}\nWhatsApp: ${data.whatsapp}\nRecebimento: ${data.recebimento}\nBairro: ${data.bairro}\nEndereço: ${data.endereco}\nPagamento: ${data.pagamento}${pixInfo}\nObservações: ${data.observacoes || 'Nenhuma'}`;
+    const cart = ArteFlor.getCart();
+    if (!cart.length) {
+      ArteFlor.toast('Adicione pelo menos um produto ao carrinho.', 'warning');
+      return;
+    }
 
-    window.open(`https://wa.me/5597000000000?text=${encodeURIComponent(message)}`, '_blank');
+    const data = Object.fromEntries(new FormData(form).entries());
+    const totals = ArteFlor.cartTotals(cart);
+    const code = `#AF-${String(Math.floor(1000 + Math.random() * 9000))}`;
+    const now = new Date();
+    const paymentStatus = data.pagamento === 'Pix'
+      ? (pixConfirmed ? 'Pagamento confirmado' : 'Aguardando pagamento')
+      : 'Pagamento a confirmar';
+
+    const order = {
+      codigo: code,
+      cliente: data.nome,
+      contato: data.contato,
+      recebimento: data.recebimento,
+      endereco: data.endereco,
+      bairro: data.bairro,
+      referencia: data.referencia,
+      data: data.data,
+      horario: data.horario,
+      mensagem: data.mensagem,
+      observacoes: data.observacoes,
+      pagamento: data.pagamento,
+      pagamentoStatus: paymentStatus,
+      status: paymentStatus === 'Pagamento confirmado' ? 'Pagamento confirmado' : 'Pedido recebido',
+      origem: 'Catálogo',
+      itens: cart,
+      subtotal: totals.subtotal,
+      desconto: totals.discount,
+      total: totals.total,
+      criadoEm: now.toISOString()
+    };
+
+    ArteFlor.saveOrder(order);
+    ArteFlor.clearCart();
+    renderSummary();
+
+    if (orderCodeEl) orderCodeEl.textContent = code;
+    if (success) success.hidden = false;
+    form.reset();
+    togglePixPanel();
+    success?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    ArteFlor.toast(`Pedido ${code} finalizado no sistema.`);
   });
-});
+
+  renderSummary();
+  togglePixPanel();
+})();

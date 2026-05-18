@@ -3,7 +3,7 @@
 // Nesta etapa as páginas .php funcionam como front-end demonstrativo.
 
 const SITE_NAME = 'Arte&Flor';
-const SITE_DESCRIPTION = 'Catálogo de vendas de flores, arranjos, vasos e presentes em Coari-AM.';
+const SITE_DESCRIPTION = 'Floricultura premium com catálogo visual, carrinho, checkout demonstrativo, PDV e painel administrativo.';
 const WHATSAPP_NUMBER = '5597000000000';
 
 function base_url(): string
@@ -21,4 +21,9 @@ function base_url(): string
 function asset(string $path): string
 {
     return base_url() . 'assets/' . ltrim($path, '/');
+}
+
+function site_url(string $path = ''): string
+{
+    return base_url() . ltrim($path, '/');
 }

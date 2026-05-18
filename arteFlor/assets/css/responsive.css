@@ -2,10 +2,16 @@
   .header-inner { gap: 14px; }
   .main-nav a { padding-inline: 11px; font-size: .84rem; }
   .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-kpi-grid.six,
+  .admin-quick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pdv-layout { grid-template-columns: 1fr; }
+  .pdv-side,
+  .pdv-products,
+  .pdv-sale { min-height: auto; }
 }
 
 @media (max-width: 920px) {
-  .site-header .btn-primary { display: none; }
+  .site-header .header-support { display: none; }
   .menu-toggle { display: inline-flex; }
 
   .main-nav {
@@ -28,7 +34,14 @@
   .hero-grid,
   .product-detail,
   .checkout-layout,
-  .footer-grid {
+  .footer-grid,
+  .split-feature,
+  .confidence-grid,
+  .cart-layout,
+  .client-layout,
+  .admin-page-hero,
+  .admin-form-shell,
+  .integration-hero {
     grid-template-columns: 1fr;
   }
 
@@ -45,6 +58,29 @@
   .pix-panel-header {
     flex-direction: column;
   }
+
+  .category-grid,
+  .delivery-grid,
+  .steps-grid,
+  .blog-grid,
+  .admin-kpi-grid,
+  .admin-grid-2,
+  .admin-grid-3,
+  .integration-grid,
+  .priority-orders {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-toolbar,
+  .admin-command-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .featured-post { grid-column: auto; }
+  .cart-summary,
+  .checkout-side,
+  .client-search-card,
+  .admin-side-card { position: static; }
 
   .admin-shell { grid-template-columns: 1fr; }
   .admin-sidebar {
@@ -71,19 +107,70 @@
 
   .grid-3,
   .grid-4,
-  .form-grid {
+  .form-grid,
+  .category-grid,
+  .delivery-grid,
+  .steps-grid,
+  .blog-grid,
+  .client-order-meta,
+  .admin-kpi-grid,
+  .admin-kpi-grid.six,
+  .admin-quick-grid,
+  .admin-grid-2,
+  .admin-grid-3,
+  .integration-grid,
+  .priority-orders,
+  .admin-form-grid,
+  .pdv-product-grid {
     grid-template-columns: 1fr;
   }
 
   .actions { flex-direction: column; align-items: stretch; }
   .actions .btn { width: 100%; }
 
+  .section-heading,
+  .page-header-grid,
+  .admin-panel-header,
+  .client-order-head {
+    flex-direction: column;
+  }
+
+  .cart-item,
+  .pdv-sale-item {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .cart-thumb,
+  .cart-thumb img,
+  .pdv-sale-item img,
+  .pdv-sale-item > span {
+    width: 100%;
+    height: 170px;
+  }
+
+  .order-timeline {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-thumbs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .product-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pdv-search-grid {
+    grid-template-columns: 1fr;
+  }
+
   .product-body { padding: 18px; }
   .gallery-main { border-radius: 28px; }
   .admin-main { padding: 18px; }
   .admin-header { flex-direction: column; align-items: stretch; }
   .admin-sidebar nav { grid-template-columns: 1fr; }
-  .whatsapp-float { width: 54px; height: 54px; right: 16px; bottom: 16px; }
+  .whatsapp-float { height: 44px; right: 16px; bottom: 16px; }
 }
 
 @media (max-width: 420px) {
