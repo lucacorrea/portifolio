@@ -655,6 +655,15 @@ include 'views/layout/header.php';
                     <i class="fas fa-file-excel"></i> Excel
                 </button>
 
+                <button
+                    type="submit"
+                    formaction="aquisicoes_imprimir_lote.php"
+                    formtarget="_blank"
+                    class="btn btn-outline btn-sm"
+                    title="Imprimir aquisições filtradas">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+
                 <a href="aquisicoes_lista.php" class="btn btn-outline btn-sm" title="Limpar Filtros">
                     <i class="fas fa-eraser"></i> Limpar
                 </a>

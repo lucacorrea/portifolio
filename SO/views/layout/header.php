@@ -383,7 +383,7 @@ if (isset($pdo)) {
                                 <?php endif; ?>
 
                                 <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
-                                    <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicao_editar.php', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php']); ?>">
+                                    <li class="nav-item <?php echo isActive(['aquisicoes_lista.php', 'aquisicao_editar.php', 'aquisicoes_visualizar.php', 'aquisicoes_editar.php', 'aquisicoes_imprimir_lote.php']); ?>">
                                         <a href="aquisicoes_lista.php" class="nav-link">
                                             <i class="fas fa-shopping-bag"></i> Aquisições
                                         </a>
