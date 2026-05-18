@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="<?= asset('css/pages.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/admin-premium.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/responsive.css') ?>">
+  <link rel="stylesheet" href="<?= asset('css/premium-final.css') ?>">
 </head>
 <body class="admin-login-body">
 <main class="admin-login-shell">

@@ -23,11 +23,12 @@
         const lineTotal = Number(item.preco || 0) * Number(item.qty || 1);
         const image = item.imagem
           ? `<img src="${ArteFlor.escapeHtml(item.imagem)}" alt="${ArteFlor.escapeHtml(item.nome)}">`
-          : `<div class="cart-thumb fallback">A&F</div>`;
+          : `A&F`;
+        const thumbClass = item.imagem ? 'cart-thumb' : 'cart-thumb fallback';
 
         return `
           <article class="cart-item" data-cart-row="${ArteFlor.escapeHtml(item.id)}">
-            <div class="cart-thumb">${image}</div>
+            <div class="${thumbClass}">${image}</div>
             <div class="cart-item-info">
               <strong>${ArteFlor.escapeHtml(item.nome)}</strong>
               <span>${ArteFlor.escapeHtml(item.categoria || 'Produto Arte&Flor')}</span>

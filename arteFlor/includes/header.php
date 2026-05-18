@@ -21,6 +21,7 @@ $base = base_url();
   <link rel="stylesheet" href="<?= asset('css/pages.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/static.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/responsive.css') ?>">
+  <link rel="stylesheet" href="<?= asset('css/premium-final.css') ?>">
 </head>
 <body>
 <header class="site-header">

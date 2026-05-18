@@ -21,6 +21,7 @@ $pageScripts = $pageScripts ?? [];
   <link rel="stylesheet" href="<?= asset('css/static.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/admin-premium.css') ?>">
   <link rel="stylesheet" href="<?= asset('css/responsive.css') ?>">
+  <link rel="stylesheet" href="<?= asset('css/premium-final.css') ?>">
 </head>
 <body class="admin-premium-body">
 <div class="admin-shell">
