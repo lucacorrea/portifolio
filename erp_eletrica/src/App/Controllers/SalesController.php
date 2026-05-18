@@ -58,7 +58,7 @@ class SalesController extends BaseController {
                 $db->exec("UPDATE produtos SET preco_variavel = 1, codigo = '00000' WHERE codigo = '7423' OR id = 8930");
             } catch (\Exception $e) {}
 
-            $join = "LEFT JOIN";
+            $join = ($isMatriz || (int)$filialId === 1) ? "LEFT JOIN" : "INNER JOIN";
 
             $selectCols = [
                 "p.id", "p.nome", "p.preco_venda", "p.unidade", "p.imagens", "p.codigo",
