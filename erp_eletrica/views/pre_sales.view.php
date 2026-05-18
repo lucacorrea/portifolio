@@ -723,6 +723,23 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         loadPendingOrcamentosModal();
     }
+    if (e.key === 'F4') {
+        e.preventDefault();
+        pvSearchInput.focus();
+        pvSearchInput.select();
+    }
+});
+
+// If user presses Enter in Qty, focus search
+document.getElementById('pvQty').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        if (pendingPvProduct) {
+            addToPVCart(pendingPvProduct);
+            pendingPvProduct = null;
+        }
+        pvSearchInput.focus();
+    }
 });
 function toggleManualName(val) {
     const container = document.getElementById('manual_name_container');
