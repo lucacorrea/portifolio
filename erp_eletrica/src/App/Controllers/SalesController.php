@@ -118,6 +118,7 @@ class SalesController extends BaseController {
         $sqlPV = "
             SELECT pv.id, pv.codigo, pv.valor_total as preco_venda, 
                    COALESCE(c.nome, $avulsoCol, 'Consumidor') as nome, 
+                   COALESCE(c.nome, $avulsoCol, 'Consumidor') as cliente_nome, 
                    'UN' as unidade, '' as imagens, 'pre_sale' as type,
                    pv.created_at
             FROM pre_vendas pv 
@@ -132,11 +133,13 @@ class SalesController extends BaseController {
 
         $termLike = "%$term%";
         $termInt = (int)$term;
-        $sqlPV .= " AND (LOWER(pv.codigo) LIKE ? OR pv.id = ? OR LOWER(c.nome) LIKE ? OR LOWER($avulsoCol) LIKE ?) ";
+        $sqlPV .= " AND (LOWER(pv.codigo) LIKE ? OR pv.id = ? OR LOWER(c.nome) LIKE ? OR LOWER($avulsoCol) LIKE ? OR pv.cpf_cliente LIKE ? OR c.cpf_cnpj LIKE ?) ";
         $paramsPV[] = strtolower($termLike);
         $paramsPV[] = $termInt;
         $paramsPV[] = strtolower($termLike);
         $paramsPV[] = strtolower($termLike);
+        $paramsPV[] = $termLike;
+        $paramsPV[] = $termLike;
         
         $sqlPV .= " LIMIT 5";
         
