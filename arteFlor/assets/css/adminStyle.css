@@ -1513,3 +1513,313 @@ body:has(.admin-shell),
     gap: 4px;
   }
 }
+/* =========================================================
+   ARTE&FLOR ADMIN — SIDEBAR PROFISSIONAL
+   Escopo somente para a área administrativa
+========================================================= */
+
+.admin-sidebar {
+  width: 286px;
+  min-width: 286px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+  padding: 18px 16px;
+  background: #fbf8f2;
+  border-right: 1px solid rgba(38, 67, 50, .12);
+  box-shadow: 8px 0 28px rgba(45, 55, 48, .04);
+  backdrop-filter: none;
+}
+
+.admin-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(38, 67, 50, .18);
+  border-radius: 10px;
+}
+
+/* Topo da sidebar */
+
+.admin-sidebar-top {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 18px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(38, 67, 50, .10);
+}
+
+.admin-sidebar .brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 48px;
+  padding: 6px 4px;
+  text-decoration: none;
+  color: #203f30;
+  font-family: var(--fonte-titulo);
+  font-size: 1.28rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.admin-sidebar .brand span span {
+  color: #8b4c5f;
+}
+
+.admin-sidebar .brand-icon {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #dfeadd;
+  color: #203f30;
+  border: 1px solid rgba(38, 67, 50, .12);
+  box-shadow: none;
+  font-family: var(--fonte-corpo);
+  font-size: .82rem;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+
+/* Card da loja */
+
+.admin-store-card {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(38, 67, 50, .12);
+  box-shadow: 0 8px 22px rgba(45, 55, 48, .045);
+}
+
+.admin-store-card strong {
+  color: #203f30;
+  font-size: .94rem;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.admin-store-card small {
+  color: #647067;
+  font-size: .8rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* Menu */
+
+.admin-menu {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-menu-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 8px 7px;
+  color: #8a755f;
+  font-size: .68rem;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.admin-menu-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(138, 117, 95, .18);
+}
+
+/* Links */
+
+.admin-menu a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 42px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 11px;
+  color: #4d5a52;
+  text-decoration: none;
+  font-size: .91rem;
+  font-weight: 850;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  background: transparent;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.admin-menu a::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  min-width: 7px;
+  border-radius: 50%;
+  background: rgba(38, 67, 50, .22);
+}
+
+.admin-menu a:hover {
+  color: #203f30;
+  background: #f1eadf;
+  border-color: rgba(38, 67, 50, .10);
+  box-shadow: none;
+  transform: none;
+}
+
+.admin-menu a:hover::before {
+  background: #4f8062;
+}
+
+.admin-menu a.active {
+  color: #ffffff;
+  background: #203f30;
+  border-color: #203f30;
+  box-shadow: 0 10px 24px rgba(32, 63, 48, .16);
+}
+
+.admin-menu a.active::before {
+  background: #ffffff;
+}
+
+.admin-menu a.active::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  width: 5px;
+  height: 18px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .45);
+}
+
+/* Destaque para links de cadastro */
+
+.admin-menu a[href*="produto-form"],
+.admin-menu a[href*="categoria-form"],
+.admin-menu a[href*="cliente-form"],
+.admin-menu a[href*="cupom-form"] {
+  color: #5e665f;
+  font-size: .86rem;
+  padding-left: 28px;
+}
+
+.admin-menu a[href*="produto-form"]::before,
+.admin-menu a[href*="categoria-form"]::before,
+.admin-menu a[href*="cliente-form"]::before,
+.admin-menu a[href*="cupom-form"]::before {
+  width: 6px;
+  height: 6px;
+  background: rgba(139, 76, 95, .35);
+}
+
+.admin-menu a[href*="produto-form"].active,
+.admin-menu a[href*="categoria-form"].active,
+.admin-menu a[href*="cliente-form"].active,
+.admin-menu a[href*="cupom-form"].active {
+  color: #fff;
+  background: #8b4c5f;
+  border-color: #8b4c5f;
+}
+
+.admin-menu a[href*="produto-form"].active::before,
+.admin-menu a[href*="categoria-form"].active::before,
+.admin-menu a[href*="cliente-form"].active::before,
+.admin-menu a[href*="cupom-form"].active::before {
+  background: #fff;
+}
+
+/* Link para catálogo público */
+
+.admin-menu a[href*="index.php"] {
+  margin-top: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(38, 67, 50, .12);
+  color: #203f30;
+}
+
+.admin-menu a[href*="index.php"]::before {
+  background: #8b4c5f;
+}
+
+.admin-menu a[href*="index.php"]:hover {
+  background: #edf3e9;
+  border-color: rgba(38, 67, 50, .18);
+}
+
+/* Ajuste no shell administrativo */
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: 286px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #f8f5ee;
+}
+
+/* Responsivo */
+
+@media (max-width: 980px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid rgba(38, 67, 50, .12);
+    box-shadow: 0 8px 24px rgba(45, 55, 48, .04);
+  }
+
+  .admin-sidebar-top {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+    align-items: center;
+  }
+
+  .admin-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .admin-menu-label {
+    grid-column: 1 / -1;
+    margin-top: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-sidebar {
+    padding: 14px;
+  }
+
+  .admin-sidebar-top {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-menu {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-menu a {
+    min-height: 44px;
+  }
+}
