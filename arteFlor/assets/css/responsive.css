@@ -35,7 +35,7 @@
     pointer-events: none;
     transform: translateY(-8px);
     visibility: hidden;
-    transition: opacity .2s ease, transform .2s ease, visibility .2s ease;
+    transition: opacity .2s ease, transform .2s ease;
   }
 
   .main-nav.open {

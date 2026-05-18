@@ -303,11 +303,13 @@ body {
 .toast-root {
   position: fixed;
   right: 18px;
+  top: auto;
   bottom: 18px;
   z-index: 9999;
   display: grid;
   gap: 10px;
   width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
 }
 
 .toast {
@@ -319,6 +321,7 @@ body {
   box-shadow: 0 26px 70px rgba(65,48,35,.16);
   font-weight: 900;
   animation: toastIn .24s ease;
+  pointer-events: auto;
 }
 
 .toast-warning { border-color: rgba(183,121,31,.32); background: #fff9df; }

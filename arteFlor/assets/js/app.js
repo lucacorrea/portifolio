@@ -156,7 +156,7 @@
       const link = event.target.closest('a[href]');
       if (!link) return;
 
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || (link.target && link.target !== '_self') || link.hasAttribute('download')) {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || (link.target && link.target !== '_self') || link.hasAttribute('download')) {
         window.setTimeout(closeMenu, 120);
         return;
       }
