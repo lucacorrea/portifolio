@@ -309,7 +309,7 @@ function renderPVSearchResults(products) {
             titleHtml = `<div class="fw-bold text-success" style="font-weight: 900; font-size: 1.05em;">ORÇAMENTO</div>`;
             subTextHtml = `
                 <div class="fw-bold ${validityColor}" style="font-weight: bold; margin-top: 2px;">${validityText}</div>
-                <small class="text-muted">Nº: ${p.codigo} | Cliente: ${p.nome}</small>
+                <small class="text-muted">Nº: ${p.codigo} | Cliente: ${p.cliente_nome || p.nome}</small>
             `;
             actionText = isValid ? '<small class="text-success extra-small fw-bold">CLIQUE PARA CARREGAR</small>' : '<small class="text-danger extra-small fw-bold">EXPIRADO</small>';
             
