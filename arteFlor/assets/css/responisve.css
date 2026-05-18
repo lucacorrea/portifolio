@@ -1,0 +1,468 @@
+/* =========================================================
+   ARTE&FLOR — RESPONSIVO FINAL
+   Corrige menu mobile, cliques, botões, admin e telas menores.
+   Carregar DEPOIS do CSS principal.
+========================================================= */
+
+/* ---------- Segurança contra elementos decorativos bloqueando clique ---------- */
+
+body::before,
+body::after,
+.hero::before,
+.hero::after,
+.page-header::after,
+.card::before,
+.product-img::before,
+.product-img::after {
+  pointer-events: none !important;
+}
+
+/* Garante que links/botões fiquem clicáveis */
+a,
+button,
+.btn,
+input,
+select,
+textarea,
+.main-nav,
+.menu-toggle,
+.admin-menu,
+.admin-sidebar {
+  pointer-events: auto;
+}
+
+/* Evita bug de clique no iOS/Android */
+a,
+button,
+.btn,
+.menu-toggle,
+.filter-pill {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(33, 63, 49, .12);
+}
+
+/* ---------- Header mobile público ---------- */
+
+@media (max-width: 920px) {
+  body.menu-open {
+    overflow: hidden;
+  }
+
+  .site-header {
+    z-index: 5000;
+  }
+
+  .header-inner {
+    position: relative;
+    min-height: 68px;
+    gap: 12px;
+  }
+
+  .brand {
+    min-width: 0;
+    max-width: calc(100vw - 96px);
+    overflow: hidden;
+  }
+
+  .brand > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .menu-toggle {
+    display: inline-flex !important;
+    position: relative;
+    z-index: 5100;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 12px;
+    background: #fffdf8;
+    border: 1px solid rgba(33, 63, 49, .16);
+    color: #213f31;
+    box-shadow: none;
+  }
+
+  .menu-toggle-text {
+    display: none;
+  }
+
+  .menu-toggle-icon {
+    width: 20px;
+    height: 15px;
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .menu-toggle-icon span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .main-nav {
+    position: fixed !important;
+    top: 76px !important;
+    left: 14px !important;
+    right: 14px !important;
+    z-index: 5050 !important;
+
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 8px;
+
+    max-height: calc(100dvh - 92px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    padding: 12px;
+    border-radius: 16px;
+    background: #fffdf8;
+    border: 1px solid rgba(33, 63, 49, .14);
+    box-shadow: 0 18px 48px rgba(33, 45, 38, .18);
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    pointer-events: none;
+
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease,
+      visibility 180ms ease;
+  }
+
+  .main-nav.open,
+  body.menu-open .main-nav {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .main-nav a {
+    width: 100%;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid rgba(33, 63, 49, .10);
+
+    color: #213f31;
+    font-size: .94rem;
+    font-weight: 900;
+    text-decoration: none;
+  }
+
+  .main-nav a::after {
+    content: "›";
+    color: #557f63;
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  .main-nav a.active,
+  .main-nav a:hover {
+    background: #edf4ea;
+    border-color: rgba(33, 63, 49, .18);
+    color: #213f31;
+  }
+
+  .site-header .header-support {
+    display: none !important;
+  }
+
+  .mobile-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 5040;
+    display: none;
+    background: rgba(18, 32, 24, .34);
+    backdrop-filter: blur(2px);
+  }
+
+  body.menu-open .mobile-menu-backdrop {
+    display: block;
+  }
+}
+
+/* ---------- Layout público mobile ---------- */
+
+@media (max-width: 920px) {
+  .container {
+    width: min(100% - 28px, var(--container));
+  }
+
+  .hero-grid,
+  .product-detail,
+  .checkout-layout,
+  .cart-layout,
+  .client-layout,
+  .footer-grid,
+  .split-feature,
+  .confidence-grid,
+  .page-header-grid,
+  .catalog-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .page-header-grid,
+  .section-heading {
+    align-items: stretch;
+  }
+
+  .catalog-mini-summary,
+  .cart-summary,
+  .checkout-side,
+  .client-search-card {
+    position: static !important;
+    width: 100%;
+  }
+
+  .grid-3,
+  .grid-4,
+  .category-grid,
+  .delivery-grid,
+  .steps-grid,
+  .blog-grid,
+  .integration-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .actions {
+    align-items: stretch;
+  }
+
+  .actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    width: min(100% - 22px, var(--container));
+  }
+
+  .section {
+    padding: 40px 0;
+  }
+
+  .page-header {
+    padding: 38px 0;
+  }
+
+  .section-title,
+  .page-header .section-title {
+    font-size: clamp(2rem, 11vw, 3rem);
+  }
+
+  .grid-3,
+  .grid-4,
+  .category-grid,
+  .delivery-grid,
+  .steps-grid,
+  .blog-grid,
+  .integration-grid,
+  .form-grid,
+  .product-meta-grid,
+  .admin-kpi-grid,
+  .admin-kpi-grid.six,
+  .admin-quick-grid,
+  .admin-grid-2,
+  .admin-grid-3,
+  .priority-orders {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card,
+  .product-card,
+  .cart-list,
+  .cart-summary,
+  .checkout-form,
+  .checkout-side .card,
+  .catalog-toolbar {
+    border-radius: 14px;
+  }
+
+  .product-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cart-item,
+  .checkout-summary-item {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cart-thumb,
+  .cart-thumb img,
+  .checkout-summary-item img,
+  .checkout-summary-item span {
+    width: 100% !important;
+    height: 170px !important;
+  }
+
+  .qty-control {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .filter-pill {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .whatsapp-float {
+    right: 14px;
+    bottom: 14px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 14px;
+    z-index: 4500;
+  }
+}
+
+/* ---------- Admin mobile ---------- */
+
+@media (max-width: 920px) {
+  .admin-shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-main {
+    padding: 14px !important;
+  }
+
+  .admin-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0;
+    z-index: 6000;
+    width: min(86vw, 340px);
+    height: 100dvh !important;
+    min-width: 0;
+
+    overflow-y: auto;
+    padding: 16px;
+
+    background: #fffdf8;
+    border-right: 1px solid rgba(33, 63, 49, .14);
+    box-shadow: 20px 0 50px rgba(33, 45, 38, .20);
+
+    transform: translateX(-105%);
+    transition: transform 190ms ease;
+  }
+
+  body.admin-menu-open .admin-sidebar {
+    transform: translateX(0);
+  }
+
+  .admin-sidebar-top {
+    padding-top: 48px;
+  }
+
+  .admin-menu {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 6px;
+  }
+
+  .admin-menu a {
+    min-height: 44px;
+    border-radius: 10px;
+  }
+
+  .admin-mobile-toggle {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 6200;
+
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+
+    border-radius: 12px;
+    background: #213f31;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .18);
+    box-shadow: 0 12px 28px rgba(33, 45, 38, .20);
+
+    font-size: 1.2rem;
+    font-weight: 950;
+  }
+
+  .admin-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 5900;
+    display: none;
+    background: rgba(18, 32, 24, .36);
+    backdrop-filter: blur(2px);
+  }
+
+  body.admin-menu-open .admin-mobile-backdrop {
+    display: block;
+  }
+
+  .admin-header,
+  .admin-page-hero,
+  .admin-panel-header,
+  .section-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-tabs,
+  .table-actions {
+    width: 100%;
+  }
+
+  .admin-tabs a,
+  .table-actions a,
+  .table-actions button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .table-wrap,
+  .admin-data-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 720px;
+  }
+}
+
+/* ---------- PDV mobile: não travar clique nem rolagem ---------- */
+
+@media (max-width: 1180px) {
+  body.pdv-terminal-clean-mode .admin-main,
+  body.pdv-market-reference-mode .admin-main,
+  body.pdv-market-mode .admin-main,
+  body.pdv-fullscreen-mode .admin-main {
+    height: auto !important;
+    min-height: 100vh;
+    overflow-y: auto !important;
+  }
+
+  .pdv-clean-terminal,
+  .pdv-terminal,
+  .pdv-market-page,
+  .pdv-fullscreen-page {
+    height: auto !important;
+    min-height: calc(100vh - 16px);
+  }
+}
