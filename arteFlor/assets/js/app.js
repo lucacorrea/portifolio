@@ -155,7 +155,19 @@
     nav.addEventListener('click', (event) => {
       const link = event.target.closest('a[href]');
       if (!link) return;
-      window.setTimeout(closeMenu, 120);
+
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || (link.target && link.target !== '_self') || link.hasAttribute('download')) {
+        window.setTimeout(closeMenu, 120);
+        return;
+      }
+
+      event.preventDefault();
+      const destination = link.href;
+      closeMenu();
+
+      if (destination && destination !== window.location.href) {
+        window.location.assign(destination);
+      }
     });
 
     document.addEventListener('click', (event) => {
