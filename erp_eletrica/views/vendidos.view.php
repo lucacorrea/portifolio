@@ -89,6 +89,7 @@
                         <th>ID</th>
                         <th>Data/Hora</th>
                         <th>Cliente</th>
+                        <th>Vendedor</th>
                         <th>Pagamento</th>
                         <th>Tipo</th>
                         <th>Total</th>
@@ -309,7 +310,7 @@
             params.append('page', page);
             params.append('action', 'sold_search');
 
-            salesList.innerHTML = '<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>';
+            salesList.innerHTML = '<tr><td colspan="9" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>';
 
             try {
                 const response = await fetch('vendidos.php?' + params.toString());
@@ -318,13 +319,13 @@
                 renderPagination(data);
                 if (page === 1) updateStats(data.sales);
             } catch (err) {
-                salesList.innerHTML = '<tr><td colspan="8" class="text-center py-5 text-danger">Erro ao carregar dados.</td></tr>';
+                salesList.innerHTML = '<tr><td colspan="9" class="text-center py-5 text-danger">Erro ao carregar dados.</td></tr>';
             }
         }
 
         function renderTable(sales) {
             if (!sales || sales.length === 0) {
-                salesList.innerHTML = '<tr><td colspan="8" class="text-center py-5">Nenhuma venda encontrada para os filtros aplicados.</td></tr>';
+                salesList.innerHTML = '<tr><td colspan="9" class="text-center py-5">Nenhuma venda encontrada para os filtros aplicados.</td></tr>';
                 return;
             }
 
