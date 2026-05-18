@@ -111,9 +111,21 @@
                     A pré-venda reserva o estoque temporariamente e gera um código para o caixa.
                 </div>
 
-                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-white mb-2" style="background-color: var(--erp-primary) !important;" onclick="generatePreSale()">
+                <button class="btn btn-lg w-100 py-3 fw-bold shadow-sm border-0 text-white mb-2" style="background-color: var(--erp-primary) !important;" onclick="generatePreSale(false)">
                     <i class="fas fa-check-circle me-2"></i>CONFIRMAR PRÉ-VENDA (F9)
                 </button>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <button class="btn btn-outline-success fw-bold w-100 py-2 shadow-sm d-flex align-items-center justify-content-center" onclick="generatePreSale(true)" id="btnSavePvOrcamento" title="Salvar Orçamento (F3)">
+                            <i class="fas fa-file-invoice me-2"></i><span class="small ms-1">Orçamento</span> (F3)
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-outline-dark fw-bold w-100 py-2 shadow-sm d-flex align-items-center justify-content-center" onclick="loadPendingOrcamentosModal()" title="Listar Orçamentos (F8)">
+                            <i class="fas fa-list-alt me-2"></i><span class="small ms-1">Listar Orç.</span> (F8)
+                        </button>
+                    </div>
+                </div>
                 <button class="btn btn-outline-danger w-100 py-2 fw-bold shadow-sm border-0" onclick="if(confirm('Tem certeza que deseja cancelar o orçamento atual e limpar a tela?')) location.reload()">
                     <i class="fas fa-times me-2"></i>CANCELAR E LIMPAR
                 </button>
@@ -150,7 +162,40 @@
     </div>
 </div>
 
+<!-- Modal: Pending Orcamentos -->
+<div class="modal fade" id="modalPendingOrcamentos" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-file-invoice me-2 text-white"></i>Orçamentos Salvos (Validade 24h)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Código</th>
+                                <th>Cliente</th>
+                                <th>Valor</th>
+                                <th>Criado Em</th>
+                                <th>Validade</th>
+                                <th class="text-end pe-4">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listPendingOrcamentos">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+let currentPvId = null;
+let currentPvCode = null;
 let pvCart = [];
 let pvSearchIndex = -1;
 let currentPvSearchResults = [];
@@ -237,17 +282,81 @@ function renderPVSearchResults(products) {
     products.forEach(p => {
         const item = document.createElement('button');
         item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3';
+        
+        const isPV = p.type === 'pre_sale';
+        const isOrcamento = isPV && p.codigo && p.codigo.startsWith('ORC-');
+        
+        let icon = 'fa-box text-primary';
+        let badge = '';
+        let titleHtml = `<div class="fw-bold text-primary">${p.nome}</div>`;
+        let subTextHtml = `<small class="text-muted">Cód: ${p.id} | Un: ${p.unidade}</small>`;
+        let actionText = '';
+        let clickHandler = () => addToPVCart(p);
+
+        if (isOrcamento) {
+            icon = 'fa-file-invoice text-success';
+            
+            // Check budget validity (24 hours)
+            const createdAt = new Date(p.created_at.replace(/-/g, "/"));
+            const now = new Date();
+            const diffHours = (now - createdAt) / (1000 * 60 * 60);
+            const isValid = diffHours < 24;
+            
+            const validityText = isValid ? 'Validade 24h' : 'Orçamento Inválido';
+            const validityColor = isValid ? 'text-success' : 'text-danger';
+            
+            titleHtml = `<div class="fw-bold text-success" style="font-weight: 900; font-size: 1.05em;">ORÇAMENTO</div>`;
+            subTextHtml = `
+                <div class="fw-bold ${validityColor}" style="font-weight: bold; margin-top: 2px;">${validityText}</div>
+                <small class="text-muted">Nº: ${p.codigo} | Cliente: ${p.nome}</small>
+            `;
+            actionText = isValid ? '<small class="text-success extra-small fw-bold">CLIQUE PARA CARREGAR</small>' : '<small class="text-danger extra-small fw-bold">EXPIRADO</small>';
+            
+            clickHandler = (e) => {
+                e.preventDefault();
+                if (!isValid) {
+                    alert("Este orçamento expirou e não pode ser importado.");
+                    return;
+                }
+                loadPreSaleInPreSaleScreen(p.codigo);
+                pvSearchInput.value = '';
+                pvSearchResults.classList.add('d-none');
+            };
+        } else if (isPV) {
+            icon = 'fa-file-invoice-dollar text-warning';
+            badge = '<span class="badge bg-warning text-dark extra-small ms-2">PRÉ-VENDA</span>';
+            titleHtml = `<div class="fw-bold text-warning">${p.nome} ${badge}</div>`;
+            subTextHtml = `<small class="text-muted">Cód: ${p.codigo || p.id} | Un: ${p.unidade}</small>`;
+            actionText = '<small class="text-success extra-small fw-bold">CLIQUE PARA CARREGAR</small>';
+            
+            clickHandler = (e) => {
+                e.preventDefault();
+                loadPreSaleInPreSaleScreen(p.codigo);
+                pvSearchInput.value = '';
+                pvSearchResults.classList.add('d-none');
+            };
+        }
+
         item.innerHTML = `
-            <div>
-                <div class="fw-bold text-primary">${p.nome}</div>
-                <small class="text-muted">Cód: ${p.id} | Un: ${p.unidade}</small>
+            <div class="d-flex align-items-center">
+                <i class="fas ${icon} fs-4 me-3 opacity-75"></i>
+                <div>
+                    ${titleHtml}
+                    ${subTextHtml}
+                </div>
             </div>
             <div class="text-end">
                 <div class="fw-bold">R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</div>
+                ${actionText}
             </div>
         `;
-        item.onmouseover = () => showPvPreview(p);
-        item.onclick = () => addToPVCart(p);
+        
+        if (isPV) {
+            item.onclick = clickHandler;
+        } else {
+            item.onmouseover = () => showPvPreview(p);
+            item.onclick = clickHandler;
+        }
         pvSearchResults.appendChild(item);
     });
     pvSearchResults.classList.remove('d-none');
@@ -377,30 +486,192 @@ function removeFromPVCart(index) {
     renderPVCart();
 }
 
-async function generatePreSale() {
-    if (pvCart.length === 0) return;
+async function generatePreSale(isOrcamento = false) {
+    if (pvCart.length === 0) {
+        alert("O carrinho está vazio.");
+        return;
+    }
     
     const data = {
+        id: currentPvId,
+        codigo: currentPvCode,
         cliente_id: document.getElementById('pv_cliente_id').value || null,
         nome_cliente_avulso: document.getElementById('pv_nome_cliente_avulso').value || null,
         cpf_cliente: document.getElementById('pv_cpf_cliente').value || null,
         items: pvCart,
-        valor_total: pvCart.reduce((acc, i) => acc + (i.price * i.qty), 0)
+        valor_total: pvCart.reduce((acc, i) => acc + (i.price * i.qty), 0),
+        is_orcamento: isOrcamento
     };
 
-    const res = await fetch('pre_vendas.php?action=save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
+    try {
+        const res = await fetch('pre_vendas.php?action=save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
 
-    const result = await res.json();
-    if (result.success) {
-        document.getElementById('pv_generated_code').innerText = result.codigo;
-        const modal = new bootstrap.Modal(document.getElementById('modal-pv-success'));
-        modal.show();
-    } else {
-        alert('Erro ao gerar pré-venda: ' + result.error);
+        const result = await res.json();
+        if (result.success) {
+            if (isOrcamento) {
+                alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}`);
+                window.open('orcamento_imprimir.php?code=' + result.codigo, '_blank', 'width=400,height=600');
+                location.reload();
+            } else {
+                document.getElementById('pv_generated_code').innerText = result.codigo;
+                const modal = new bootstrap.Modal(document.getElementById('modal-pv-success'));
+                modal.show();
+            }
+        } else {
+            alert('Erro ao processar: ' + (result.error || 'Erro desconhecido'));
+        }
+    } catch (err) {
+        console.error("Erro ao salvar pré-venda/orçamento:", err);
+        alert("Erro de conexão ao salvar.");
+    }
+}
+
+async function loadPendingOrcamentosModal() {
+    console.log("Pré-Venda: Carregando orçamentos pendentes...");
+    const term = '';
+    
+    try {
+        const res = await fetch(`pre_vendas.php?action=list_pending&tipo=orcamento&term=${encodeURIComponent(term)}`);
+        if (!res.ok) throw new Error("Falha ao comunicar com pre_vendas.php");
+        
+        const data = await res.json();
+        const list = document.getElementById('listPendingOrcamentos');
+        if (!list) return;
+        
+        list.innerHTML = '';
+
+        if (data.error) {
+            list.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">
+                <i class="fas fa-exclamation-circle me-1"></i> Erro no servidor: ${data.error}
+            </td></tr>`;
+            return;
+        }
+
+        const pvs = Array.isArray(data) ? data : [];
+        
+        if (pvs.length === 0) {
+            list.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum orçamento encontrado.</td></tr>';
+        }
+
+        pvs.forEach(pv => {
+            const createdAt = new Date(pv.created_at.replace(/-/g, "/"));
+            const now = new Date();
+            const diffHours = (now - createdAt) / (1000 * 60 * 60);
+            const isValid = diffHours < 24;
+            const validityText = isValid ? 'Validade 24h' : 'Orçamento Inválido';
+            const validityClass = isValid ? 'text-success fw-bold' : 'text-danger fw-bold';
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="ps-4 fw-bold text-success">${pv.codigo}</td>
+                <td>${pv.cliente_nome || 'Consumidor Final'}</td>
+                <td class="fw-bold">R$ ${parseFloat(pv.valor_total).toFixed(2).replace('.', ',')}</td>
+                <td class="small text-muted">${new Date(pv.created_at).toLocaleString('pt-BR')}</td>
+                <td class="${validityClass}">${validityText}</td>
+                <td class="text-end pe-4 d-flex gap-2 justify-content-end">
+                    <button class="btn btn-sm btn-success fw-bold" onclick="importOrcamento('${pv.codigo}', ${isValid})" ${!isValid ? 'disabled' : ''}>CARREGAR</button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="printOrcamento('${pv.codigo}')" title="Imprimir Orçamento">
+                        <i class="fas fa-print"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteOrcamento(${pv.id})" title="Excluir Orçamento">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            `;
+            list.appendChild(row);
+        });
+        
+        const modalEl = document.getElementById('modalPendingOrcamentos');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    } catch (err) {
+        console.error("Pré-Venda: Erro ao carregar orçamentos:", err);
+        alert("Erro ao carregar orçamentos. Verifique o console.");
+    }
+}
+
+function printOrcamento(code) {
+    window.open('orcamento_imprimir.php?code=' + code, '_blank', 'width=400,height=600');
+}
+
+function importOrcamento(code, isValid) {
+    if (!isValid) {
+        alert("Este orçamento expirou e não pode ser importado.");
+        return;
+    }
+    loadPreSaleInPreSaleScreen(code);
+    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalPendingOrcamentos'));
+    if (modalInstance) modalInstance.hide();
+}
+
+async function deleteOrcamento(id) {
+    if (!confirm('Deseja realmente excluir este orçamento permanentemente?')) return;
+    
+    try {
+        const res = await fetch(`pre_vendas.php?action=delete&id=${id}`);
+        const data = await res.json();
+        
+        if (data.success) {
+            loadPendingOrcamentosModal();
+        } else {
+            alert('Erro ao excluir: ' + (data.error || 'Erro desconhecido'));
+        }
+    } catch (err) {
+        console.error("Pré-Venda: Erro ao excluir orçamento:", err);
+        alert("Erro de conexão ao excluir.");
+    }
+}
+
+async function loadPreSaleInPreSaleScreen(code) {
+    const res = await fetch(`pre_vendas.php?action=get_by_code&code=${code}`);
+    const pv = await res.json();
+    
+    if (pv) {
+        pvCart = pv.itens.map(i => ({
+            id: i.produto_id,
+            nome: i.produto_nome,
+            price: parseFloat(i.preco_unitario),
+            price1: parseFloat(i.preco_venda || 0),
+            price2: parseFloat(i.preco_venda_2 || 0),
+            price3: parseFloat(i.preco_venda_3 || 0),
+            preco_variavel: parseInt(i.preco_variavel) === 1,
+            price_tier: parseInt(i.preco_tier || 1),
+            qty: parseFloat(i.quantidade),
+            imagens: i.imagens
+        }));
+        
+        currentPvId = pv.id;
+        currentPvCode = pv.codigo;
+        
+        // Load customer
+        if (pv.cliente_id) {
+            const select = document.getElementById('pv_cliente_id');
+            let option = Array.from(select.options).find(o => o.value == pv.cliente_id);
+            if (!option) {
+                option = new Option(pv.cliente_nome, pv.cliente_id);
+                select.add(option);
+            }
+            select.value = pv.cliente_id;
+            toggleManualName(pv.cliente_id);
+        } else if (pv.nome_cliente_avulso) {
+            document.getElementById('pv_cliente_id').value = "";
+            toggleManualName("");
+            document.getElementById('pv_nome_cliente_avulso').value = pv.nome_cliente_avulso;
+            document.getElementById('pv_cpf_cliente').value = pv.cliente_doc || "";
+        } else {
+            document.getElementById('pv_cliente_id').value = "";
+            toggleManualName("");
+            document.getElementById('pv_nome_cliente_avulso').value = "";
+            document.getElementById('pv_cpf_cliente').value = "";
+        }
+        
+        renderPVCart();
     }
 }
 
@@ -411,7 +682,16 @@ function printPVSlip() {
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'F9') {
-        generatePreSale();
+        e.preventDefault();
+        generatePreSale(false);
+    }
+    if (e.key === 'F3') {
+        e.preventDefault();
+        generatePreSale(true);
+    }
+    if (e.key === 'F8') {
+        e.preventDefault();
+        loadPendingOrcamentosModal();
     }
 });
 function toggleManualName(val) {

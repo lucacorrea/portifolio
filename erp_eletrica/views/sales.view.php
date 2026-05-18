@@ -30,7 +30,7 @@
                                 <!-- Results will be injected here -->
                             </div>
                         </div>
-                        <!-- Quick Actions Bar (F9/F10) for Mobile/Desktop -->
+                        <!-- Quick Actions Bar (F3/F8/F9/F10) for Mobile/Desktop -->
                         <div class="row g-2 mt-2">
                             <div class="col-6 col-sm-auto">
                                 <button class="btn btn-outline-primary fw-bold w-100 px-3 py-2 shadow-sm d-flex align-items-center justify-content-center" onclick="loadPendingPreSales()" title="Importar Pré-Venda (F9)">
@@ -40,6 +40,16 @@
                             <div class="col-6 col-sm-auto">
                                 <button class="btn btn-outline-info fw-bold w-100 px-3 py-2 shadow-sm d-flex align-items-center justify-content-center" onclick="saveCurrentSaleAsPreSale()" id="btnPauseSale" title="Pausar Venda (F10)">
                                     <i class="fas fa-pause-circle me-2"></i><span class="d-none d-sm-inline">Pausar</span> (F10)
+                                </button>
+                            </div>
+                            <div class="col-6 col-sm-auto">
+                                <button class="btn btn-outline-success fw-bold w-100 px-3 py-2 shadow-sm d-flex align-items-center justify-content-center" onclick="saveCurrentSaleAsOrcamento()" id="btnSaveOrcamento" title="Criar Orçamento (F3)">
+                                    <i class="fas fa-file-invoice me-2"></i><span class="d-none d-sm-inline">Orçamento</span> (F3)
+                                </button>
+                            </div>
+                            <div class="col-6 col-sm-auto">
+                                <button class="btn btn-outline-dark fw-bold w-100 px-3 py-2 shadow-sm d-flex align-items-center justify-content-center" onclick="loadPendingOrcamentosModal()" title="Listar Orçamentos (F8)">
+                                    <i class="fas fa-list-alt me-2"></i><span class="d-none d-sm-inline">Listar Orç.</span> (F8)
                                 </button>
                             </div>
                         </div>
@@ -301,6 +311,37 @@
                             </tr>
                         </thead>
                         <tbody id="listPendingPVs">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Pending Orcamentos -->
+<div class="modal fade" id="modalPendingOrcamentos" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-file-invoice me-2 text-white"></i>Orçamentos Salvos (Validade 24h)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Código</th>
+                                <th>Cliente</th>
+                                <th>Valor</th>
+                                <th>Criado Em</th>
+                                <th>Validade</th>
+                                <th class="text-end pe-4">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listPendingOrcamentos">
                             <!-- Injected via JS -->
                         </tbody>
                     </table>
@@ -878,33 +919,78 @@ function renderSearchResults(products) {
         item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between py-3';
         
         const isPV = p.type === 'pre_sale';
-        const icon = isPV ? 'fa-file-invoice-dollar text-warning' : 'fa-box text-primary';
-        const badge = isPV ? '<span class="badge bg-warning text-dark extra-small ms-2">PRÉ-VENDA</span>' : '';
-
-        item.innerHTML = `
-            <div class="d-flex align-items-center">
-                <i class="fas ${icon} fs-4 me-3 opacity-75"></i>
-                <div>
-                    <div class="fw-bold ${isPV ? 'text-warning' : 'text-primary'}">${p.nome} ${badge}</div>
-                    <small class="text-muted">Cód: ${p.codigo || p.id} | Un: ${p.unidade}</small>
-                </div>
-            </div>
-            <div class="text-end">
-                <div class="fw-bold">R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</div>
-                ${isPV ? '<small class="text-success extra-small fw-bold">CLIQUE PARA IMPORTAR</small>' : ''}
-            </div>
-        `;
+        const isOrcamento = isPV && p.codigo && p.codigo.startsWith('ORC-');
         
-        if (isPV) {
-            item.onclick = (e) => {
+        let icon = 'fa-box text-primary';
+        let badge = '';
+        let titleHtml = `<div class="fw-bold text-primary">${p.nome}</div>`;
+        let subTextHtml = `<small class="text-muted">Cód: ${p.codigo || p.id} | Un: ${p.unidade}</small>`;
+        let actionText = '';
+        let clickHandler = () => selectForQty(p);
+
+        if (isOrcamento) {
+            icon = 'fa-file-invoice text-success';
+            
+            // Check budget validity (24 hours)
+            const createdAt = new Date(p.created_at.replace(/-/g, "/"));
+            const now = new Date();
+            const diffHours = (now - createdAt) / (1000 * 60 * 60);
+            const isValid = diffHours < 24;
+            
+            const validityText = isValid ? 'Validade 24h' : 'Orçamento Inválido';
+            const validityColor = isValid ? 'text-success' : 'text-danger';
+            
+            titleHtml = `<div class="fw-bold text-success" style="font-weight: 900; font-size: 1.05em;">ORÇAMENTO</div>`;
+            subTextHtml = `
+                <div class="fw-bold ${validityColor}" style="font-weight: bold; margin-top: 2px;">${validityText}</div>
+                <small class="text-muted">Nº: ${p.codigo} | Cliente: ${p.nome}</small>
+            `;
+            actionText = isValid ? '<small class="text-success extra-small fw-bold">CLIQUE PARA IMPORTAR</small>' : '<small class="text-danger extra-small fw-bold">EXPIRADO</small>';
+            
+            clickHandler = (e) => {
+                e.preventDefault();
+                if (!isValid) {
+                    alert("Este orçamento expirou e não pode ser importado.");
+                    return;
+                }
+                importPreSale(p.codigo);
+                pdvSearch.value = '';
+                searchResults.classList.add('d-none');
+            };
+        } else if (isPV) {
+            icon = 'fa-file-invoice-dollar text-warning';
+            badge = '<span class="badge bg-warning text-dark extra-small ms-2">PRÉ-VENDA</span>';
+            titleHtml = `<div class="fw-bold text-warning">${p.nome} ${badge}</div>`;
+            subTextHtml = `<small class="text-muted">Cód: ${p.codigo || p.id} | Un: ${p.unidade}</small>`;
+            actionText = '<small class="text-success extra-small fw-bold">CLIQUE PARA IMPORTAR</small>';
+            
+            clickHandler = (e) => {
                 e.preventDefault();
                 importPreSale(p.codigo);
                 pdvSearch.value = '';
                 searchResults.classList.add('d-none');
             };
+        }
+
+        item.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas ${icon} fs-4 me-3 opacity-75"></i>
+                <div>
+                    ${titleHtml}
+                    ${subTextHtml}
+                </div>
+            </div>
+            <div class="text-end">
+                <div class="fw-bold">R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</div>
+                ${actionText}
+            </div>
+        `;
+        
+        if (isPV) {
+            item.onclick = clickHandler;
         } else {
             item.onmouseover = () => showPreview(p);
-            item.onclick = () => selectForQty(p);
+            item.onclick = clickHandler;
         }
         
         searchResults.appendChild(item);
@@ -1304,7 +1390,7 @@ async function loadPendingPreSales() {
     const term = '';
     
     try {
-        const res = await fetch(`pre_vendas.php?action=list_pending&term=${encodeURIComponent(term)}`);
+        const res = await fetch(`pre_vendas.php?action=list_pending&tipo=pre_venda&term=${encodeURIComponent(term)}`);
         if (!res.ok) throw new Error("Falha ao comunicar com pre_vendas.php");
         
         const data = await res.json();
@@ -1481,6 +1567,164 @@ async function saveCurrentSaleAsPreSale() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
+    }
+}
+
+async function saveCurrentSaleAsOrcamento() {
+    if (cart.length === 0) {
+        alert("O carrinho está vazio.");
+        return;
+    }
+
+    const btn = document.getElementById('btnSaveOrcamento');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+
+    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
+    const total = subtotal * (1 - (discountPercent / 100));
+
+    const data = {
+        id: currentPvId,
+        codigo: currentPvCode,
+        cliente_id: selectedCustomerId,
+        nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
+        cpf_cliente: selectedCustomerCPF,
+        valor_total: total,
+        items: cart,
+        is_orcamento: true
+    };
+
+    try {
+        const res = await fetch('pre_vendas.php?action=save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}`);
+            
+            // Open print window
+            window.open('orcamento_imprimir.php?code=' + result.codigo, '_blank', 'width=400,height=600');
+            
+            // Clear current sale
+            cart = [];
+            currentPvId = null;
+            currentPvCode = null;
+            clearCustomer();
+            document.getElementById('discountPercent').value = 0;
+            renderCart();
+            pdvSearch.focus();
+        } else {
+            alert('Erro ao gerar orçamento: ' + (result.error || 'Erro desconhecido'));
+        }
+    } catch (err) {
+        console.error("PDV: Erro ao salvar orçamento:", err);
+        alert("Erro de conexão ao salvar.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+async function loadPendingOrcamentosModal() {
+    console.log("PDV: Carregando orçamentos pendentes...");
+    const term = '';
+    
+    try {
+        const res = await fetch(`pre_vendas.php?action=list_pending&tipo=orcamento&term=${encodeURIComponent(term)}`);
+        if (!res.ok) throw new Error("Falha ao comunicar com pre_vendas.php");
+        
+        const data = await res.json();
+        const list = document.getElementById('listPendingOrcamentos');
+        if (!list) return;
+        
+        list.innerHTML = '';
+
+        if (data.error) {
+            list.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">
+                <i class="fas fa-exclamation-circle me-1"></i> Erro no servidor: ${data.error}
+            </td></tr>`;
+            return;
+        }
+
+        const pvs = Array.isArray(data) ? data : [];
+        
+        if (pvs.length === 0) {
+            list.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum orçamento encontrado.</td></tr>';
+        }
+
+        pvs.forEach(pv => {
+            const createdAt = new Date(pv.created_at.replace(/-/g, "/"));
+            const now = new Date();
+            const diffHours = (now - createdAt) / (1000 * 60 * 60);
+            const isValid = diffHours < 24;
+            const validityText = isValid ? 'Validade 24h' : 'Orçamento Inválido';
+            const validityClass = isValid ? 'text-success fw-bold' : 'text-danger fw-bold';
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="ps-4 fw-bold text-success">${pv.codigo}</td>
+                <td>${pv.cliente_nome || 'Consumidor Final'}</td>
+                <td class="fw-bold">R$ ${parseFloat(pv.valor_total).toFixed(2).replace('.', ',')}</td>
+                <td class="small text-muted">${new Date(pv.created_at).toLocaleString('pt-BR')}</td>
+                <td class="${validityClass}">${validityText}</td>
+                <td class="text-end pe-4 d-flex gap-2 justify-content-end">
+                    <button class="btn btn-sm btn-success fw-bold" onclick="importOrcamento('${pv.codigo}', ${isValid})" ${!isValid ? 'disabled' : ''}>CARREGAR</button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="printOrcamento('${pv.codigo}')" title="Imprimir Orçamento">
+                        <i class="fas fa-print"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteOrcamento(${pv.id})" title="Excluir Orçamento">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            `;
+            list.appendChild(row);
+        });
+        
+        const modalEl = document.getElementById('modalPendingOrcamentos');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    } catch (err) {
+        console.error("PDV: Erro ao carregar orçamentos:", err);
+        alert("Erro ao carregar orçamentos. Verifique o console.");
+    }
+}
+
+function printOrcamento(code) {
+    window.open('orcamento_imprimir.php?code=' + code, '_blank', 'width=400,height=600');
+}
+
+function importOrcamento(code, isValid) {
+    if (!isValid) {
+        alert("Este orçamento expirou e não pode ser importado.");
+        return;
+    }
+    importPreSale(code);
+    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalPendingOrcamentos'));
+    if (modalInstance) modalInstance.hide();
+}
+
+async function deleteOrcamento(id) {
+    if (!confirm('Deseja realmente excluir este orçamento permanentemente?')) return;
+    
+    try {
+        const res = await fetch(`pre_vendas.php?action=delete&id=${id}`);
+        const data = await res.json();
+        
+        if (data.success) {
+            loadPendingOrcamentosModal();
+        } else {
+            alert('Erro ao excluir: ' + (data.error || 'Erro desconhecido'));
+        }
+    } catch (err) {
+        console.error("PDV: Erro ao excluir orçamento:", err);
+        alert("Erro de conexão ao excluir.");
     }
 }
 
@@ -2275,6 +2519,11 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         pdvSearch.focus();
     }
+    // F3: Save Budget / Orçamento
+    if (e.key === 'F3') {
+        e.preventDefault();
+        saveCurrentSaleAsOrcamento();
+    }
     // F9: Pre-sales (Changed from F8)
     if (e.key === 'F9') {
         e.preventDefault();
@@ -2301,7 +2550,13 @@ document.addEventListener('keydown', (e) => {
     }
     if (e.key === 'F8') {
         e.preventDefault();
-        document.getElementById('pay_fiado').click();
+        // If focus is in payment received field, click pay fiado, otherwise load budgets modal
+        const isCheckoutActive = document.activeElement && (document.activeElement.id === 'valorRecebido' || document.activeElement.id === 'discountPercent' || document.activeElement.id === 'discountValue');
+        if (isCheckoutActive) {
+            document.getElementById('pay_fiado').click();
+        } else {
+            loadPendingOrcamentosModal();
+        }
     }
     if (e.key === 'F11') {
         e.preventDefault();

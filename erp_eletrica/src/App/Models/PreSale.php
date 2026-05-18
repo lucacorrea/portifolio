@@ -5,7 +5,8 @@ class PreSale extends BaseModel {
     protected $table = 'pre_vendas';
 
     public function create($data) {
-        $codigo = 'PV-' . strtoupper(substr(uniqid(), -6));
+        $prefix = (!empty($data['is_orcamento'])) ? 'ORC-' : 'PV-';
+        $codigo = $prefix . strtoupper(substr(uniqid(), -6));
         $hasAvulso = $this->columnExists('nome_cliente_avulso');
         $hasCpfCliente = $this->columnExists('cpf_cliente');
         

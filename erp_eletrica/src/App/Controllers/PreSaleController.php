@@ -116,6 +116,7 @@ class PreSaleController extends BaseController {
     public function list_pending() {
         $db = \App\Config\Database::getInstance()->getConnection();
         $term = trim($_GET['term'] ?? '');
+        $tipo = trim($_GET['tipo'] ?? '');
         $model = new PreSale();
         
         $filialId = $_SESSION['filial_id'] ?? 1;
@@ -135,6 +136,12 @@ class PreSaleController extends BaseController {
             WHERE 1=1 ";
         
         $params = [];
+
+        if ($tipo === 'orcamento') {
+            $sql .= " AND pv.codigo LIKE 'ORC-%' ";
+        } else if ($tipo === 'pre_venda') {
+            $sql .= " AND pv.codigo LIKE 'PV-%' ";
+        }
         
         if (!$isMatriz) {
             $sql .= " AND pv.filial_id = ? ";

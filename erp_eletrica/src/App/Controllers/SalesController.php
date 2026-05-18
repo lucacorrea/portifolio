@@ -118,7 +118,8 @@ class SalesController extends BaseController {
         $sqlPV = "
             SELECT pv.id, pv.codigo, pv.valor_total as preco_venda, 
                    COALESCE(c.nome, $avulsoCol, 'Consumidor') as nome, 
-                   'UN' as unidade, '' as imagens, 'pre_sale' as type
+                   'UN' as unidade, '' as imagens, 'pre_sale' as type,
+                   pv.created_at
             FROM pre_vendas pv 
             LEFT JOIN clientes c ON pv.cliente_id = c.id 
             WHERE pv.status = 'pendente' ";
