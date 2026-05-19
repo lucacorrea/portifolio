@@ -4,7 +4,7 @@ require_once 'config/functions.php';
 login_check();
 view_check();
 
-$page_title = "Ofícios por Secretaria";
+$page_title = "Aquisições por Secretaria";
 
 if (!function_exists('h')) {
     function h($value)
@@ -50,17 +50,17 @@ if ($forn_id !== '') {
 }
 
 if ($produto !== '') {
-    $where[] = "(ia.produto LIKE :produto OR io.produto LIKE :produto)";
+    $where[] = "ia.produto LIKE :produto";
     $params[':produto'] = '%' . $produto . '%';
 }
 
 if ($periodo_inicio !== '') {
-    $where[] = "o.criado_em >= :inicio";
+    $where[] = "a.criado_em >= :inicio";
     $params[':inicio'] = $periodo_inicio . ' 00:00:00';
 }
 
 if ($periodo_fim !== '') {
-    $where[] = "o.criado_em <= :fim";
+    $where[] = "a.criado_em <= :fim";
     $params[':fim'] = $periodo_fim . ' 23:59:59';
 }
 
@@ -70,32 +70,22 @@ $sql = "
     SELECT
         o.id,
         o.numero,
-        o.criado_em,
+        a.id AS aquisicao_id,
+        a.numero_aq,
+        a.criado_em AS data_aquisicao,
         COALESCE(f.nome, '-') AS fornecedor,
+        COALESCE(SUM(ia.quantidade), 0) AS quantidade_total,
+        COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS valor_total
 
-        -- quantidade correta (itens do ofício)
-        (
-            SELECT COALESCE(SUM(io2.quantidade), 0)
-            FROM itens_oficio io2
-            WHERE io2.oficio_id = o.id
-        ) AS quantidade_total,
-
-        -- valor correto (itens da aquisição)
-        (
-            SELECT COALESCE(SUM(ia2.quantidade * ia2.valor_unitario), 0)
-            FROM aquisicoes a2
-            LEFT JOIN itens_aquisicao ia2 ON ia2.aquisicao_id = a2.id
-            WHERE a2.oficio_id = o.id
-        ) AS valor_total
-
-    FROM oficios o
-    LEFT JOIN aquisicoes a ON a.oficio_id = o.id
-    LEFT JOIN fornecedores f ON f.id = a.fornecedor_id
+    FROM aquisicoes a
+    INNER JOIN oficios o ON a.oficio_id = o.id
+    INNER JOIN fornecedores f ON f.id = a.fornecedor_id
+    LEFT JOIN itens_aquisicao ia ON ia.aquisicao_id = a.id
 
     WHERE $whereSql
 
-    GROUP BY o.id, o.numero, o.criado_em, f.nome
-    ORDER BY o.criado_em DESC, o.numero DESC
+    GROUP BY a.id, a.numero_aq, a.criado_em, o.id, o.numero, f.nome
+    ORDER BY a.criado_em ASC, a.id ASC
 ";
 
 $stmt = $pdo->prepare($sql);
@@ -231,7 +221,7 @@ include 'views/layout/header.php';
 
     .modern-table {
         width: 100%;
-        min-width: 980px;
+        min-width: 1120px;
         border-collapse: separate;
         border-spacing: 0;
     }
@@ -301,7 +291,7 @@ include 'views/layout/header.php';
 
     @media (max-width: 768px) {
         .modern-table {
-            min-width: 900px;
+            min-width: 1040px;
         }
     }
 
@@ -336,8 +326,8 @@ include 'views/layout/header.php';
                     <i class="fas fa-folder-open"></i>
                 </div>
                 <div>
-                    <h3>Ofícios da Secretaria</h3>
-                    <p><?php echo h($secretaria['nome']); ?></p>
+                    <h3>Aquisições da Secretaria</h3>
+                    <p><?php echo h($secretaria['nome']); ?> - dados pela data da aquisição</p>
                 </div>
             </div>
 
@@ -355,11 +345,12 @@ include 'views/layout/header.php';
                 <table class="modern-table">
                     <thead>
                         <tr>
+                            <th class="text-nowrap">Nº Aquisição</th>
                             <th class="text-nowrap">Número do Ofício</th>
                             <th class="text-nowrap">Fornecedor</th>
                             <th class="text-right text-nowrap">Quantidade</th>
                             <th class="text-right text-nowrap">Valor Total</th>
-                            <th class="text-nowrap">Data</th>
+                            <th class="text-nowrap">Data da Aquisição</th>
                             <th class="text-center text-nowrap" style="width:140px;">Ação</th>
                         </tr>
                     </thead>
@@ -367,16 +358,17 @@ include 'views/layout/header.php';
                         <?php if (!empty($oficios)): ?>
                             <?php foreach ($oficios as $of): ?>
                                 <tr>
+                                    <td class="oficio-number text-nowrap"><?php echo h($of['numero_aq']); ?></td>
                                     <td class="oficio-number text-nowrap"><?php echo h($of['numero']); ?></td>
                                     <td class="text-nowrap"><?php echo h($of['fornecedor']); ?></td>
                                     <td class="text-right text-nowrap"><?php echo number_format((int)$of['quantidade_total'], 0, ',', '.'); ?></td>
                                     <td class="text-right text-nowrap">
                                         <span class="badge-money"><?php echo format_money($of['valor_total']); ?></span>
                                     </td>
-                                    <td class="text-nowrap"><?php echo !empty($of['criado_em']) ? date('d/m/Y H:i', strtotime($of['criado_em'])) : '-'; ?></td>
+                                    <td class="text-nowrap"><?php echo !empty($of['data_aquisicao']) ? date('d/m/Y H:i', strtotime($of['data_aquisicao'])) : '-'; ?></td>
                                     <td class="text-center text-nowrap">
                                         <a
-                                            href="relatorios_oficio_detalhes.php?id=<?php echo (int)$of['id']; ?>"
+                                            href="aquisicoes_visualizar.php?id=<?php echo (int)$of['aquisicao_id']; ?>"
                                             class="btn btn-primary btn-sm">
                                             <i class="fas fa-eye"></i> Ver
                                         </a>
@@ -385,8 +377,8 @@ include 'views/layout/header.php';
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" class="empty-state">
-                                    Nenhum ofício encontrado para esta secretaria.
+                                <td colspan="7" class="empty-state">
+                                    Nenhuma aquisição encontrada para esta secretaria.
                                 </td>
                             </tr>
                         <?php endif; ?>

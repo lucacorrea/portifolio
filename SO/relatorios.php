@@ -1059,7 +1059,7 @@ include 'views/layout/header.php';
                     </div>
                     <div>
                         <h3>Detalhamento por Secretaria</h3>
-                        <p>Clique em detalhes para listar todos os ofícios da secretaria.</p>
+                        <p>Clique em detalhes para listar todas as aquisições da secretaria.</p>
                     </div>
                 </div>
 
