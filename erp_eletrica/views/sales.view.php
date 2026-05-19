@@ -2020,10 +2020,12 @@ async function confirmExchange() {
     
     const result = await res.json();
     if (result.success) {
-        alert("S-U-C-E-S-S-O! A Troca foi registrada com sucesso, os estoques foram atualizados e o caixa ajustado.");
         bootstrap.Modal.getInstance(document.getElementById('modalExchangeFlow')).hide();
         loadRecentSales(); // Reload the history UI
-        imprimirTroca(result.exchange_id);
+        
+        if (confirm("S-U-C-E-S-S-O! A Troca foi registrada com sucesso, os estoques foram atualizados e o caixa ajustado.\n\nDeseja imprimir o comprovante de troca para o cliente?")) {
+            imprimirTroca(result.exchange_id);
+        }
     } else {
         alert("Vish! Erro ao tentar processar troca: " + result.error);
     }

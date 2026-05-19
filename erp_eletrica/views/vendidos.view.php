@@ -754,8 +754,9 @@
                 if (data.success) {
                     bootstrap.Modal.getInstance('#modalExchange').hide();
                     loadSales(currentPage);
-                    alert('Item trocado com sucesso!');
-                    imprimirTroca(data.exchange_id);
+                    if (confirm('Item trocado com sucesso!\n\nDeseja imprimir o comprovante de troca?')) {
+                        imprimirTroca(data.exchange_id);
+                    }
                 } else {
                     alert('Erro: ' + data.error);
                 }
