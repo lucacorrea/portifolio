@@ -24,25 +24,6 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
             border-bottom: 1px solid var(--border);
             padding-bottom: 1rem;
         }
-        .tab-btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-weight: 600;
-            color: #64748b;
-            transition: all 0.3s;
-            border-bottom: 3px solid transparent;
-        }
-        .tab-btn:hover {
-            color: var(--primary);
-        }
-        .tab-btn.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-            border-radius: 0;
-        }
         .tab-content {
             display: none;
         }
