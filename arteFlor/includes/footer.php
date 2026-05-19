@@ -24,5 +24,6 @@
 <?php foreach (($pageScripts ?? []) as $script): ?>
 <script src="<?= asset($script) ?>"></script>
 <?php endforeach; ?>
+<script src="assets/js/responsive.js"></script>
 </body>
 </html>
