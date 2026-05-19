@@ -16,7 +16,7 @@ $db = \App\Config\Database::getInstance()->getConnection();
 // Fetch exchange details
 $stmt = $db->prepare("
     SELECT t.*, 
-           v.created_at as venda_data,
+           v.data_venda as venda_data,
            v.forma_pagamento as venda_pagamento,
            COALESCE(c.nome, v.nome_cliente_avulso, 'Consumidor Final') as cliente_nome,
            c.cpf_cnpj as cliente_cpf,
