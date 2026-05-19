@@ -6,7 +6,7 @@
     <title>Login - SCP</title>
     <link rel="stylesheet" href="assets/css/estilo.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             display: flex;
@@ -14,32 +14,45 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #0f172a 100%);
+            overflow: hidden;
         }
         .login-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 3rem;
-            border-radius: 24px;
+            padding: 3.5rem 3rem;
+            border-radius: 20px;
             width: 100%;
-            max-width: 400px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 420px;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6);
             text-align: center;
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .login-logo {
-            font-size: 3rem;
-            color: #38bdf8;
-            margin-bottom: 1.5rem;
+            font-size: 2.5rem;
+            color: #4f46e5;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 2px 10px rgba(79, 70, 229, 0.4));
         }
         .login-card h2 {
             color: white;
-            margin-bottom: 0.5rem;
-            font-weight: 700;
+            margin-bottom: 0.35rem;
+            font-weight: 800;
+            font-size: 1.6rem;
+            letter-spacing: -0.02em;
         }
         .login-card p {
             color: #94a3b8;
-            margin-bottom: 2rem;
+            margin-bottom: 2.25rem;
+            font-size: 0.9rem;
+            font-weight: 500;
         }
         .form-group {
             text-align: left;
@@ -47,53 +60,90 @@
         }
         .form-group label {
             display: block;
-            color: #cbd5e1;
+            color: #94a3b8;
             margin-bottom: 0.5rem;
-            font-size: 0.875rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         .form-group input {
             width: 100%;
-            padding: 0.75rem 1rem;
-            background: rgba(255, 255, 255, 0.05);
+            padding: 0.75rem 1.15rem;
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
+            border-radius: 8px;
             color: white;
-            transition: all 0.3s;
+            transition: all 0.25s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
         }
         .form-group input:focus {
             outline: none;
-            border-color: #38bdf8;
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1);
+            border-color: #4f46e5;
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+        }
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            padding-right: 3rem;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 1rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+        .toggle-password:hover {
+            color: white;
         }
         .btn-login {
             width: 100%;
-            padding: 0.75rem;
-            background: #38bdf8;
-            color: #0f172a;
+            padding: 0.75rem 1rem;
+            background: #4f46e5;
+            color: white;
             border: none;
-            border-radius: 12px;
+            border-radius: 8px;
             font-weight: 700;
+            font-size: 0.9rem;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.25s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
         }
         .btn-login:hover {
-            background: #7dd3fc;
-            transform: translateY(-2px);
+            background: #4338ca;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+        }
+        .btn-login:active {
+            transform: translateY(0);
         }
         .error-message {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #f87171;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
             padding: 0.75rem;
-            border-radius: 12px;
+            border-radius: 8px;
             margin-bottom: 1.5rem;
             display: none;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            line-height: 1.4;
         }
     </style>
 </head>
