@@ -189,6 +189,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
         if (totalPaginas <= 1) return;
 
         const btnAnt = document.createElement('button');
+        btnAnt.className = 'page-btn';
         btnAnt.innerHTML = '<i class="fas fa-chevron-left"></i>';
         btnAnt.disabled = paginaAtual === 1;
         btnAnt.onclick = () => { paginaAtual--; renderizarTabelaUsuarios(); };
@@ -196,13 +197,14 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'ADMIN') 
 
         for (let i = 1; i <= totalPaginas; i++) {
             const btn = document.createElement('button');
+            btn.className = `page-btn ${i === paginaAtual ? 'active' : ''}`;
             btn.textContent = i;
-            if (i === paginaAtual) btn.classList.add('active');
             btn.onclick = () => { paginaAtual = i; renderizarTabelaUsuarios(); };
             pagContainer.appendChild(btn);
         }
 
         const btnProx = document.createElement('button');
+        btnProx.className = 'page-btn';
         btnProx.innerHTML = '<i class="fas fa-chevron-right"></i>';
         btnProx.disabled = paginaAtual === totalPaginas;
         btnProx.onclick = () => { paginaAtual++; renderizarTabelaUsuarios(); };
