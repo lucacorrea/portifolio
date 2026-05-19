@@ -252,6 +252,7 @@ if (!isset($_SESSION['usuario_id'])) {
             dadosOriginais = await resp.json();
             processarDados();
         }
+        window.carregarPrazos = carregarPrazos;
 
         function processarDados() {
             const agora = new Date();

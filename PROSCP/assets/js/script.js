@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.renderDropdownActions = function(p) {
         const perfil = (window.userPerfil || 'ANALISADOR').toUpperCase().trim();
-        let actionsHtml = `<button class="dropdown-item" onclick="window.visualizarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-eye"></i> Visualizar</button>`;
+        let actionsHtml = `<button class="dropdown-item" onclick="window.visualizarProcesso('${encodeURIComponent(JSON.stringify(p)).replace(/'/g, "%27")}')"><i class="fas fa-eye"></i> Visualizar</button>`;
 
         if (p.status === 'PENDENTE') {
             if (perfil === 'ACESSORES') {
@@ -390,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (perfil !== 'ACESSORES') {
-            actionsHtml += `<button class="dropdown-item" onclick="window.editarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-edit"></i> Editar</button>`;
+            actionsHtml += `<button class="dropdown-item" onclick="window.editarProcesso('${encodeURIComponent(JSON.stringify(p)).replace(/'/g, "%27")}')"><i class="fas fa-edit"></i> Editar</button>`;
             actionsHtml += `<div style="border-top: 1px solid var(--border); margin: 4px 0;"></div>`;
             actionsHtml += `<button class="dropdown-item text-danger" onclick="window.excluirProcesso(${p.id})"><i class="fas fa-trash"></i> Excluir</button>`;
         }
@@ -814,7 +814,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.excluirProcesso = async (id) => {
         if (!confirm('Deseja realmente excluir este processo?')) return;
         await fetch(`api.php?acao=excluir&id=${id}`, { method: 'DELETE' });
-        carregarProcessos();
+        if (typeof window.refreshData === 'function') {
+            window.refreshData();
+        } else {
+            window.location.reload();
+        }
     };
 
     window.editarProcesso = (pJson) => {
@@ -944,7 +948,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Global Action Helpers
-    window.toggleDropdown = function(btn) {
+    window.refreshData = function() {
+        if (typeof window.carregarProcessos === 'function') {
+            window.carregarProcessos();
+        } else if (typeof window.carregarProcessosTipos === 'function') {
+            window.carregarProcessosTipos();
+        } else if (typeof carregarProcessosTipos === 'function') {
+            carregarProcessosTipos();
+        } else if (typeof window.carregarPrazos === 'function') {
+            window.carregarPrazos();
+        } else if (typeof carregarPrazos === 'function') {
+            carregarPrazos();
+        } else {
+            window.location.reload();
+        }
+    };
+
+    window.toggleDropdown = function(eventOrBtn, btnIfPassed) {
+        let event = null;
+        let btn = null;
+
+        if (eventOrBtn instanceof Event) {
+            event = eventOrBtn;
+            btn = btnIfPassed;
+        } else {
+            btn = eventOrBtn;
+            event = window.event;
+        }
+
+        if (event) {
+            event.stopPropagation();
+            if (event.preventDefault) event.preventDefault();
+        }
+
         // Fechar todos os clones abertos
         document.querySelectorAll('.dropdown-menu-fixed').forEach(m => m.remove());
         const isAlreadyActive = btn.classList.contains('active-btn');
@@ -977,11 +1013,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         document.body.appendChild(clone);
-        if (window.event) window.event.stopPropagation();
     };
 
     document.addEventListener('click', function(e) {
-        if (!e.target.closest('.dropdown-menu-fixed')) {
+        if (!e.target.closest('.dropdown-menu-fixed') && !e.target.closest('.btn-dots')) {
             document.querySelectorAll('.dropdown-menu-fixed').forEach(m => m.remove());
             document.querySelectorAll('.btn-dots').forEach(b => b.classList.remove('active-btn'));
         }
@@ -1308,7 +1343,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (saveResp.ok) {
             alert('Sugestões salvas com sucesso!');
             window.fecharModalDetalhes();
-            window.carregarProcessos();
+            if (typeof window.refreshData === 'function') {
+                window.refreshData();
+            } else {
+                window.location.reload();
+            }
         } else {
             alert('Erro ao salvar sugestões.');
         }

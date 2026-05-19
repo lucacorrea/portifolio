@@ -75,10 +75,10 @@ if (!isset($_SESSION['usuario_id'])) {
     </header>
 
     <div class="tabs" style="margin-top: 2rem;">
-        <button class="tab-btn active" onclick="switchTab('ciencia')"><i class="fas fa-file-signature"></i> Processos de Ciência</button>
-        <button class="tab-btn" onclick="switchTab('cumprimento')"><i class="fas fa-gavel"></i> Processos de Cumprimento</button>
-        <button class="tab-btn" onclick="switchTab('recurso-ciencia')"><i class="fas fa-file-export"></i> Recurso - Ciência</button>
-        <button class="tab-btn" onclick="switchTab('recurso-cumprimento')"><i class="fas fa-balance-scale-right"></i> Recurso - Cumprimento</button>
+        <button class="tab-btn active" onclick="switchTab(event, 'ciencia')"><i class="fas fa-file-signature"></i> Processos de Ciência</button>
+        <button class="tab-btn" onclick="switchTab(event, 'cumprimento')"><i class="fas fa-gavel"></i> Processos de Cumprimento</button>
+        <button class="tab-btn" onclick="switchTab(event, 'recurso-ciencia')"><i class="fas fa-file-export"></i> Recurso - Ciência</button>
+        <button class="tab-btn" onclick="switchTab(event, 'recurso-cumprimento')"><i class="fas fa-balance-scale-right"></i> Recurso - Cumprimento</button>
     </div>
 
     <!-- Banner de filtro do mês -->
@@ -233,12 +233,15 @@ if (!isset($_SESSION['usuario_id'])) {
 
     const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-    function switchTab(tab) {
+    function switchTab(e, tab) {
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         
         document.getElementById('tab-' + tab).classList.add('active');
-        event.currentTarget.classList.add('active');
+        const evt = e || window.event;
+        if (evt && evt.currentTarget) {
+            evt.currentTarget.classList.add('active');
+        }
     }
 
     function toggleFiltroMes() {
@@ -343,6 +346,7 @@ if (!isset($_SESSION['usuario_id'])) {
         todosProcessos = dados;
         renderTodasAbas();
     }
+    window.carregarProcessosTipos = carregarProcessosTipos;
 
     function renderTabelaTipos(tipoProcesso, tbodyId, filtroId, pagId, stateObj) {
         const tbody = document.getElementById(tbodyId);
@@ -488,5 +492,15 @@ if (!isset($_SESSION['usuario_id'])) {
         pagContainer.appendChild(btnProx);
     }
 </script>
+
+<!-- Modal de Detalhes -->
+<div id="modal-detalhes" class="modal-overlay">
+    <div class="modal-content">
+        <div id="detalhes-conteudo">
+            <!-- Preenchido via JS -->
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
