@@ -5,8 +5,8 @@ session_start();
 header('Content-Type: application/json');
 
 $host = 'localhost'; 
-$dbname = 'projudy';
-$username = 'projudy';
+$dbname = 'u784961086_projudy';
+$username = 'u784961086_projudy';
 $password = '20102004Ml@';
 
 try {
