@@ -74,42 +74,20 @@ if (!isset($_SESSION['usuario_id'])) {
     </header>
 
     <style>
-        .tab-btn {
-            padding: 0.6rem 1.2rem;
-            border-radius: 8px;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .tab-btn:hover {
-            background: rgba(37, 99, 235, 0.05);
-            color: var(--primary);
-        }
-        .tab-btn.active {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-        }
         .filter-group-mensal {
             display: none;
             gap: 1rem;
             align-items: center;
         }
         .next-month-badge {
-            background: #dbeafe;
-            color: #1e40af;
+            background: #e0e7ff;
+            color: #3730a3;
             padding: 2px 8px;
             border-radius: 4px;
             font-size: 0.7rem;
             font-weight: 800;
             margin-left: 5px;
-            border: 1px solid #bfdbfe;
+            border: 1px solid #c7d2fe;
         }
 
         /* Grid de Meses */
@@ -121,39 +99,44 @@ if (!isset($_SESSION['usuario_id'])) {
             animation: fadeIn 0.3s ease-in-out;
         }
         .month-card {
-            background: var(--glass-bg);
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
-            padding: 1rem;
-            border-radius: 12px;
+            padding: 1.25rem 1rem;
+            border-radius: var(--radius);
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: var(--transition);
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
             position: relative;
             overflow: hidden;
+            box-shadow: var(--shadow);
         }
         .month-card:hover {
             transform: translateY(-3px);
             background: white;
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-md);
             border-color: var(--primary);
         }
         .month-card.active {
-            background: var(--primary);
+            background: var(--secondary);
             color: white;
-            border-color: var(--primary);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            border-color: var(--secondary);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
         }
         .month-card .month-name {
             font-weight: 700;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         .month-card .process-count {
-            font-size: 1.25rem;
+            font-size: 1.5rem;
             font-weight: 800;
+            letter-spacing: -0.02em;
         }
         .month-card .process-label {
             font-size: 0.7rem;
