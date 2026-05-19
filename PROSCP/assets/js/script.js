@@ -365,22 +365,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const perfil = (window.userPerfil || 'ANALISADOR').toUpperCase().trim();
         let actionsHtml = `<button class="dropdown-item" onclick="window.visualizarProcesso('${encodeURIComponent(JSON.stringify(p))}')"><i class="fas fa-eye"></i> Visualizar</button>`;
 
-        // Opção de Protocolar via Integração PROJUDI TJAM
-        if (['PENDENTE', 'SENDO AVALIADO', 'EM ELABORAÇÃO'].includes(p.status)) {
-            actionsHtml += `<button class="dropdown-item" style="color: #10b981; font-weight: 700;" onclick="window.abrirModalProtocolo(${p.id}, '${p.numero}')"><i class="fas fa-file-signature"></i> Protocolar (PROJUDI)</button>`;
-        }
-
         if (p.status === 'PENDENTE') {
             if (perfil === 'ACESSORES') {
                 actionsHtml += `<button class="dropdown-item" onclick="window.marcarSendoAvaliado(${p.id})"><i class="fas fa-search"></i> Marcar como Avaliado</button>`;
                 actionsHtml += `<button class="dropdown-item" onclick="window.marcarEmElaboracao(${p.id})"><i class="fas fa-pencil-alt"></i> Em Elaboração</button>`;
+                actionsHtml += `<button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>`;
             } else {
                 // ANALISADOR ou ADMIN
                 actionsHtml += `<button class="dropdown-item" onclick="window.marcarEmElaboracao(${p.id})"><i class="fas fa-pencil-alt"></i> Em Elaboração</button>`;
+                actionsHtml += `<button class="dropdown-item" onclick="window.protocolarRapido(${p.id})"><i class="fas fa-check"></i> Protocolar</button>`;
                 actionsHtml += `<button class="dropdown-item" onclick="window.marcarFinalizado(${p.id})"><i class="fas fa-flag-checkered"></i> Processo Finalizado</button>`;
             }
         } else if (p.status === 'PROTOCOLADO' || p.status === 'ANALISADO' || p.status === 'SENDO AVALIADO' || p.status === 'EM ELABORAÇÃO') {
-            if (perfil !== 'ACESSORES' && p.status !== 'PROCESSO FINALIZADO' && p.status !== 'PROTOCOLADO' && p.status !== 'ANALISADO') {
+            // Opções comuns para estados intermediários
+            if (!p.peticionador) {
+                actionsHtml += `<button class="dropdown-item" onclick="window.peticionarProcesso(${p.id})"><i class="fas fa-file-upload"></i> Peticionar</button>`;
+            }
+            // Analisador pode finalizar processos que já saíram do PENDENTE também? 
+            // O usuário disse: "Os analisadores podem trocar de PENDENTES para..."
+            // Mas geralmente podem finalizar a qualquer momento.
+            if (perfil !== 'ACESSORES' && p.status !== 'PROCESSO FINALIZADO') {
                 actionsHtml += `<button class="dropdown-item" onclick="window.marcarFinalizado(${p.id})"><i class="fas fa-flag-checkered"></i> Processo Finalizado</button>`;
             }
         }
@@ -1314,143 +1318,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('modal-overlay')) {
             window.fecharModalDetalhes();
-            window.fecharModalProtocolo();
         }
     });
-
-    // ==========================================
-    // INTEGRAÇÃO FRONTEND COM O PROJUDI TJAM
-    // ==========================================
-
-    // Sincronização UI
-    window.sincronizarProjudiUI = async function() {
-        const btn = document.getElementById('btn-sincronizar-projudi');
-        const icon = document.getElementById('icon-sync-projudi');
-        
-        if (btn.disabled) return;
-        
-        // Bloquear botão e animar ícone girando
-        btn.disabled = true;
-        btn.style.opacity = '0.7';
-        btn.style.cursor = 'not-allowed';
-        icon.classList.add('fa-spin');
-        
-        try {
-            await PROJUDI.sincronizarPrazos();
-        } catch(e) {
-            // O erro já exibe alerta no próprio módulo PROJUDI
-        } finally {
-            // Desbloquear botão e parar ícone
-            btn.disabled = false;
-            btn.style.opacity = '1';
-            btn.style.cursor = 'pointer';
-            icon.classList.remove('fa-spin');
-        }
-    };
-
-    // Protocolar UI Modais
-    window.abrirModalProtocolo = function(id, numero) {
-        // Fechar dropdowns
-        document.querySelectorAll('.dropdown-menu-fixed').forEach(m => m.remove());
-        document.querySelectorAll('.btn-dots').forEach(b => b.classList.remove('active-btn'));
-
-        document.getElementById('protocolo-processo-id').value = id;
-        document.getElementById('protocolo-processo-numero').value = numero;
-        document.getElementById('pdf-file-name').textContent = 'Arraste seu PDF aqui ou clique para selecionar';
-        document.getElementById('pdf-file-input').value = '';
-        
-        const modal = document.getElementById('modal-protocolo-projudi');
-        if (modal) modal.classList.add('active');
-    };
-
-    window.fecharModalProtocolo = function() {
-        const modal = document.getElementById('modal-protocolo-projudi');
-        if (modal) modal.classList.remove('active');
-    };
-
-    // Drag and Drop Logic
-    const dropZone = document.getElementById('drop-zone-pdf');
-    const fileInput = document.getElementById('pdf-file-input');
-    const fileNameEl = document.getElementById('pdf-file-name');
-
-    if (dropZone && fileInput) {
-        // Clicar para abrir seletor - impede bolha dupla de evento
-        dropZone.addEventListener('click', (e) => {
-            if (e.target !== fileInput) {
-                fileInput.click();
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (fileInput.files.length > 0) {
-                fileNameEl.innerHTML = `<i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.5rem;"></i><br><strong>Selecionado:</strong> ${fileInput.files[0].name}`;
-            }
-        });
-
-        // Estilos dragover
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.style.background = '#e0f2fe';
-            dropZone.style.borderColor = 'var(--primary)';
-        });
-
-        ['dragleave', 'dragend'].forEach(type => {
-            dropZone.addEventListener(type, () => {
-                dropZone.style.background = '#f8fafc';
-                dropZone.style.borderColor = 'var(--primary)';
-            });
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.style.background = '#f8fafc';
-            dropZone.style.borderColor = 'var(--primary)';
-            
-            if (e.dataTransfer.files.length > 0) {
-                const file = e.dataTransfer.files[0];
-                if (file.type === 'application/pdf') {
-                    fileInput.files = e.dataTransfer.files;
-                    fileNameEl.innerHTML = `<i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.5rem;"></i><br><strong>Selecionado:</strong> ${file.name}`;
-                } else {
-                    alert('⚠️ Por favor, envie apenas arquivos em formato PDF.');
-                }
-            }
-        });
-    }
-
-    // Submit do Protocolo
-    const formProtocolo = document.getElementById('form-protocolo-projudi');
-    const btnSubmitProt = document.getElementById('btn-submit-protocolo');
-
-    if (formProtocolo) {
-        formProtocolo.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const id = document.getElementById('protocolo-processo-id').value;
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                alert('⚠️ Selecione um arquivo PDF da petição antes de enviar.');
-                return;
-            }
-
-            // Desativar botão e mostrar status
-            btnSubmitProt.disabled = true;
-            btnSubmitProt.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Protocolando no TJAM...';
-
-            try {
-                const res = await PROJUDI.protocolarPeticao(id, file);
-                if (res && res.status === 'sucesso') {
-                    window.fecharModalProtocolo();
-                    await carregarProcessos();
-                }
-            } catch(err) {
-                // Erros já alertados pelo módulo PROJUDI
-            } finally {
-                btnSubmitProt.disabled = false;
-                btnSubmitProt.innerHTML = '<i class="fas fa-paper-plane"></i> Protocolar Petição';
-            }
-        });
-    }
 
 });

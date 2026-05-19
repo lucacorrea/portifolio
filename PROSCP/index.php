@@ -169,10 +169,6 @@ if (!isset($_SESSION['usuario_id'])) {
                     <input type="text" id="filtro-busca" placeholder="Pesquisar nº ou tipo..." style="width: 100%; padding: 0.45rem 1rem 0.45rem 32px; border-radius: 50px; border: 1px solid var(--border); font-size: 0.85rem; outline: none;">
                 </div>
                 
-                <button id="btn-sincronizar-projudi" class="btn" style="padding: 0.45rem 1rem; font-size: 0.85rem; border-radius: 50px; white-space: nowrap; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; cursor: pointer; transition: all 0.2s; font-weight: 700; gap: 0.5rem;" onclick="window.sincronizarProjudiUI()">
-                    <i class="fas fa-sync-alt" id="icon-sync-projudi"></i> Sincronizar PROJUDI
-                </button>
-                
                 <?php if ($_SESSION['usuario_perfil'] !== 'ACESSORES'): ?>
                 <a href="cadastro.php" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem; border-radius: 50px; white-space: nowrap; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                     <i class="fas fa-plus"></i> Novo
@@ -213,46 +209,9 @@ if (!isset($_SESSION['usuario_id'])) {
     </div>
 </div>
 
-<!-- Modal de Protocolo PROJUDI -->
-<div id="modal-protocolo-projudi" class="modal-overlay">
-    <div class="modal-content" style="max-width: 500px; border-radius: var(--radius);">
-        <div class="modal-header-classic">
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: #1e293b;">
-                <i class="fas fa-file-signature" style="color: var(--primary); font-size: 1.25rem;"></i>
-                <h2 style="margin: 0; font-size: 1rem; font-weight: 800; text-transform: uppercase;">Protocolar no PROJUDI</h2>
-            </div>
-            <button class="btn-quick-close" onclick="window.fecharModalProtocolo()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="form-protocolo-projudi" style="padding: 2rem;">
-            <input type="hidden" id="protocolo-processo-id">
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); margin-bottom: 0.5rem; display: block;">Processo Selecionado</label>
-                <input type="text" id="protocolo-processo-numero" readonly style="background: #f1f5f9; font-weight: bold; border: 1px solid var(--border);">
-            </div>
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); margin-bottom: 0.5rem; display: block;">Anexar Petição (Apenas PDF)</label>
-                <div style="border: 2px dashed var(--primary); padding: 2.5rem 1.5rem; text-align: center; border-radius: var(--radius); background: #f8fafc; cursor: pointer; transition: all 0.2s;" id="drop-zone-pdf">
-                    <i class="fas fa-cloud-upload-alt" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
-                    <p style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);" id="pdf-file-name">Arraste seu PDF aqui ou clique para selecionar</p>
-                    <input type="file" id="pdf-file-input" accept="application/pdf" style="display: none;">
-                </div>
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
-                <button type="button" class="btn" style="background: #e2e8f0; color: #475569;" onclick="window.fecharModalProtocolo()">Cancelar</button>
-                <button type="submit" class="btn btn-primary" id="btn-submit-protocolo">
-                    <i class="fas fa-paper-plane"></i> Protocolar Petição
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <script>
     window.userPerfil = '<?php echo $_SESSION['usuario_perfil'] ?? 'ANALISADOR'; ?>';
 </script>
-<script src="assets/js/projudi_integration.js"></script>
 <script src="assets/js/script.js?v=72"></script>
 </body>
 </html>
