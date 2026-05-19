@@ -14,8 +14,8 @@ declare(strict_types=1);
     <!-- PWA Support -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="public/img/app-icon.png">
-    <link rel="icon" type="image/png" href="public/img/app-icon.png">
+    <link rel="apple-touch-icon" href="/public/img/app-icon.png">
+    <link rel="icon" type="image/png" href="/public/img/app-icon.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
