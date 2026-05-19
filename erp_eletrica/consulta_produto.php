@@ -633,9 +633,6 @@ declare(strict_types=1);
 
     </div>
 
-    <button id="btnInstallApp" class="btn-install">
-        <i class="fas fa-cloud-download-alt"></i> INSTALAR NO CELULAR
-    </button>
 
     <script src="https://unpkg.com/html5-qrcode"></script>
 
