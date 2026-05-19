@@ -855,11 +855,32 @@ class SalesController extends BaseController {
                 }
             }
 
+            // 7.5. Registrar Histórico de Troca para Comprovante
+            $stmtTroca = $db->prepare("
+                INSERT INTO trocas (
+                    venda_id, item_original_id, produto_original_id, quantidade_original, preco_original,
+                    produto_novo_id, quantidade_nova, preco_novo, diferenca_valor, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmtTroca->execute([
+                $vendaId,
+                $itemId,
+                $oldItem['produto_id'],
+                $oldItem['quantidade'],
+                $oldItem['preco_unitario'],
+                $newProdId,
+                $newQty,
+                $newPrice,
+                $diff,
+                $_SESSION['usuario_id']
+            ]);
+            $exchangeId = $db->lastInsertId();
+
             $audit = new \App\Services\AuditLogService();
             $audit->record('Troca de item em venda', 'vendas', $vendaId, null, "Item ID {$itemId} trocado por Prod ID {$newProdId}");
 
             $db->commit();
-            echo json_encode(['success' => true]);
+            echo json_encode(['success' => true, 'exchange_id' => $exchangeId]);
 
         } catch (\Exception $e) {
             $db->rollBack();

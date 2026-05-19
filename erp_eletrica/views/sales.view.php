@@ -2023,9 +2023,28 @@ async function confirmExchange() {
         alert("S-U-C-E-S-S-O! A Troca foi registrada com sucesso, os estoques foram atualizados e o caixa ajustado.");
         bootstrap.Modal.getInstance(document.getElementById('modalExchangeFlow')).hide();
         loadRecentSales(); // Reload the history UI
+        imprimirTroca(result.exchange_id);
     } else {
         alert("Vish! Erro ao tentar processar troca: " + result.error);
     }
+}
+
+function imprimirTroca(exchangeId) {
+    const url = 'recibo_troca.php?id=' + exchangeId + '&t=' + Date.now();
+    let iframe = document.getElementById('print-iframe');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'print-iframe';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        iframe.style.visibility = 'hidden';
+        document.body.appendChild(iframe);
+    }
+    iframe.src = url;
 }
 
 async function interceptDiscount(e) {

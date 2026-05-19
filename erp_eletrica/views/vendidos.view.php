@@ -546,6 +546,24 @@
             iframe.src = url;
         };
 
+        window.imprimirTroca = function(exchangeId) {
+            const url = 'recibo_troca.php?id=' + exchangeId + '&t=' + Date.now();
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'fixed';
+                iframe.style.right = '0';
+                iframe.style.bottom = '0';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                iframe.style.visibility = 'hidden';
+                document.body.appendChild(iframe);
+            }
+            iframe.src = url;
+        };
+
         let currentCancelId = null;
         let currentCancelTipo = null;
         let currentCancelModelo = 'por_chave';
@@ -737,6 +755,7 @@
                     bootstrap.Modal.getInstance('#modalExchange').hide();
                     loadSales(currentPage);
                     alert('Item trocado com sucesso!');
+                    imprimirTroca(data.exchange_id);
                 } else {
                     alert('Erro: ' + data.error);
                 }
