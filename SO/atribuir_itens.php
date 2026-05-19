@@ -6,6 +6,113 @@ sefaz_check();
 
 $id = (int)($_GET['id'] ?? 0);
 
+if (($_GET['ajax'] ?? '') === 'sugerir_itens') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $termo = trim((string)($_GET['q'] ?? ''));
+    if (strlen($termo) < 2) {
+        echo json_encode([]);
+        exit;
+    }
+
+    try {
+        $termo_like = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $termo);
+
+        $stmt_sugestoes = $pdo->prepare("
+            SELECT
+                produto,
+                unidade,
+                CAST(SUBSTRING_INDEX(GROUP_CONCAT(valor_unitario ORDER BY ultima_data DESC SEPARATOR ','), ',', 1) AS DECIMAL(15,2)) AS valor_unitario,
+                COUNT(*) AS usos,
+                MAX(ultima_data) AS ultima_data,
+                GROUP_CONCAT(DISTINCT origem ORDER BY origem SEPARATOR ',') AS origens
+            FROM (
+                SELECT
+                    TRIM(io.produto) AS produto,
+                    COALESCE(NULLIF(TRIM(io.unidade), ''), 'UN') AS unidade,
+                    COALESCE(io.valor_unitario, 0) AS valor_unitario,
+                    COALESCE(o.criado_em, NOW()) AS ultima_data,
+                    'oficio' AS origem
+                FROM itens_oficio io
+                LEFT JOIN oficios o ON o.id = io.oficio_id
+                WHERE io.produto LIKE :termo_oficio ESCAPE '\\\\'
+
+                UNION ALL
+
+                SELECT
+                    TRIM(ia.produto) AS produto,
+                    COALESCE(
+                        NULLIF(TRIM((
+                            SELECT io2.unidade
+                            FROM itens_oficio io2
+                            JOIN aquisicoes aq2 ON aq2.oficio_id = io2.oficio_id
+                            WHERE aq2.id = ia.aquisicao_id
+                              AND (
+                                  io2.id = ia.oficio_item_id
+                                  OR (
+                                      ia.oficio_item_id IS NULL
+                                      AND TRIM(UPPER(io2.produto)) = TRIM(UPPER(ia.produto))
+                                  )
+                              )
+                            ORDER BY io2.id ASC
+                            LIMIT 1
+                        )), ''),
+                        'UN'
+                    ) AS unidade,
+                    COALESCE(ia.valor_unitario, 0) AS valor_unitario,
+                    COALESCE(a.criado_em, NOW()) AS ultima_data,
+                    'aquisicao' AS origem
+                FROM itens_aquisicao ia
+                LEFT JOIN aquisicoes a ON a.id = ia.aquisicao_id
+                WHERE ia.produto LIKE :termo_aquisicao ESCAPE '\\\\'
+            ) base
+            WHERE produto <> ''
+            GROUP BY produto, unidade
+            ORDER BY
+                CASE WHEN produto LIKE :termo_prefixo ESCAPE '\\\\' THEN 0 ELSE 1 END,
+                usos DESC,
+                ultima_data DESC,
+                produto ASC
+            LIMIT 12
+        ");
+
+        $stmt_sugestoes->execute([
+            ':termo_oficio' => '%' . $termo_like . '%',
+            ':termo_aquisicao' => '%' . $termo_like . '%',
+            ':termo_prefixo' => $termo_like . '%',
+        ]);
+
+        $sugestoes = [];
+        foreach ($stmt_sugestoes->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $origens = array_filter(explode(',', (string)($row['origens'] ?? '')));
+            $labels = [];
+
+            if (in_array('oficio', $origens, true)) {
+                $labels[] = 'Ofícios';
+            }
+
+            if (in_array('aquisicao', $origens, true)) {
+                $labels[] = 'Aquisições';
+            }
+
+            $sugestoes[] = [
+                'produto' => (string)$row['produto'],
+                'unidade' => (string)($row['unidade'] ?: 'UN'),
+                'valor_unitario' => (float)($row['valor_unitario'] ?? 0),
+                'usos' => (int)($row['usos'] ?? 0),
+                'origem' => !empty($labels) ? implode(' + ', $labels) : 'Histórico',
+            ];
+        }
+
+        echo json_encode($sugestoes, JSON_UNESCAPED_UNICODE);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['erro' => 'Não foi possível buscar sugestões de itens.'], JSON_UNESCAPED_UNICODE);
+    }
+
+    exit;
+}
+
 $stmt = $pdo->prepare("
     SELECT o.*, s.nome as secretaria 
     FROM oficios o 
@@ -154,6 +261,103 @@ include 'views/layout/header.php';
         text-align: right;
     }
 
+    .item-name-group {
+        position: relative;
+    }
+
+    .item-suggestions {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        z-index: 40;
+        display: none;
+        max-height: 320px;
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        border-radius: 14px;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+        padding: .45rem;
+    }
+
+    .item-suggestions.show {
+        display: block;
+    }
+
+    .suggestion-option {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+        border-radius: 10px;
+        padding: .72rem .78rem;
+        display: block;
+        color: #0f172a;
+        transition: background .16s ease, transform .16s ease;
+    }
+
+    .suggestion-option:hover,
+    .suggestion-option.active {
+        background: #eef6ff;
+    }
+
+    .suggestion-option:active {
+        transform: scale(.99);
+    }
+
+    .suggestion-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        font-weight: 800;
+        line-height: 1.25;
+    }
+
+    .suggestion-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .suggestion-price {
+        flex-shrink: 0;
+        color: #157347;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .suggestion-meta {
+        margin-top: .4rem;
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        flex-wrap: wrap;
+        color: #64748b;
+        font-size: .76rem;
+        font-weight: 700;
+    }
+
+    .suggestion-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #334155;
+        padding: .22rem .5rem;
+    }
+
+    .suggestion-empty,
+    .suggestion-loading {
+        padding: .85rem .9rem;
+        color: #64748b;
+        font-weight: 700;
+        font-size: .85rem;
+    }
+
     @media (max-width: 1200px) {
         .item-row {
             grid-template-columns: 70px 1.8fr 1fr 1fr 1fr 1fr auto;
@@ -258,15 +462,17 @@ include 'views/layout/header.php';
                             <input type="text" class="form-control item-seq" value="<?php echo $idx + 1; ?>" readonly>
                         </div>
 
-                        <div class="form-group" style="margin:0;">
+                        <div class="form-group item-name-group" style="margin:0;">
                             <label class="form-label">Nome do Item</label>
                             <input
                                 type="text"
                                 name="produtos[<?php echo $idx; ?>][nome]"
-                                class="form-control"
+                                class="form-control item-name"
                                 required
+                                autocomplete="off"
                                 placeholder="Ex: Papel A4"
                                 value="<?php echo htmlspecialchars($it['produto']); ?>">
+                            <div class="item-suggestions" role="listbox"></div>
                         </div>
 
                         <div class="form-group" style="margin:0;">
@@ -336,6 +542,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('items-container');
     const totalDisplay = document.getElementById('total-itens');
     const orcamentoPrevisto = parseFloat(document.getElementById('orcamento-previsto').dataset.valor) || 0;
+    const oficioId = <?php echo (int)$id; ?>;
+    const autocompleteTimers = new WeakMap();
+    const autocompleteControllers = new WeakMap();
 
     function parseValorBR(valor) {
         if (!valor) return 0;
@@ -351,6 +560,189 @@ document.addEventListener('DOMContentLoaded', function() {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
+    }
+
+    function formatInputMoneyBR(valor) {
+        return Number(valor || 0).toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function getSuggestionPanel(input) {
+        return input.closest('.item-name-group')?.querySelector('.item-suggestions') || null;
+    }
+
+    function hideSuggestions(input) {
+        const panel = getSuggestionPanel(input);
+        if (!panel) return;
+
+        panel.classList.remove('show');
+        panel.innerHTML = '';
+        input.dataset.activeSuggestion = '-1';
+    }
+
+    function hideAllSuggestions() {
+        container.querySelectorAll('.item-name').forEach(input => hideSuggestions(input));
+    }
+
+    function setActiveSuggestion(input, nextIndex) {
+        const panel = getSuggestionPanel(input);
+        if (!panel) return;
+
+        const options = Array.from(panel.querySelectorAll('.suggestion-option'));
+        if (!options.length) return;
+
+        const safeIndex = Math.max(0, Math.min(nextIndex, options.length - 1));
+        input.dataset.activeSuggestion = String(safeIndex);
+
+        options.forEach((option, index) => {
+            option.classList.toggle('active', index === safeIndex);
+        });
+
+        options[safeIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    function showSuggestionMessage(input, message, iconClass) {
+        const panel = getSuggestionPanel(input);
+        if (!panel) return;
+
+        panel.innerHTML = `
+            <div class="suggestion-loading">
+                <i class="${iconClass}"></i> ${escapeHtml(message)}
+            </div>
+        `;
+        panel.classList.add('show');
+        input.dataset.activeSuggestion = '-1';
+    }
+
+    function renderSuggestions(input, items) {
+        const panel = getSuggestionPanel(input);
+        if (!panel) return;
+
+        input._itemSuggestions = items;
+        input.dataset.activeSuggestion = '-1';
+
+        if (!items.length) {
+            panel.innerHTML = `
+                <div class="suggestion-empty">
+                    <i class="fas fa-search"></i> Nenhum item encontrado no histórico.
+                </div>
+            `;
+            panel.classList.add('show');
+            return;
+        }
+
+        panel.innerHTML = items.map((item, index) => {
+            const valor = Number(item.valor_unitario || 0);
+            const valorLabel = valor > 0 ? formatMoneyBR(valor) : 'Sem valor';
+            const usos = Number(item.usos || 0);
+
+            return `
+                <button type="button" class="suggestion-option" data-index="${index}" role="option">
+                    <div class="suggestion-title">
+                        <span class="suggestion-name">${escapeHtml(item.produto)}</span>
+                        <span class="suggestion-price">${escapeHtml(valorLabel)}</span>
+                    </div>
+                    <div class="suggestion-meta">
+                        <span class="suggestion-chip"><i class="fas fa-ruler-combined"></i> ${escapeHtml(item.unidade || 'UN')}</span>
+                        <span class="suggestion-chip"><i class="fas fa-database"></i> ${escapeHtml(item.origem || 'Histórico')}</span>
+                        <span class="suggestion-chip"><i class="fas fa-redo"></i> ${usos} uso${usos === 1 ? '' : 's'}</span>
+                    </div>
+                </button>
+            `;
+        }).join('');
+
+        panel.classList.add('show');
+    }
+
+    function searchItemSuggestions(input) {
+        const term = input.value.trim();
+        const previousTimer = autocompleteTimers.get(input);
+
+        if (previousTimer) {
+            clearTimeout(previousTimer);
+        }
+
+        if (term.length < 2) {
+            hideSuggestions(input);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            const previousController = autocompleteControllers.get(input);
+            if (previousController) {
+                previousController.abort();
+            }
+
+            const controller = new AbortController();
+            autocompleteControllers.set(input, controller);
+
+            showSuggestionMessage(input, 'Buscando itens cadastrados...', 'fas fa-spinner fa-spin');
+
+            try {
+                const response = await fetch(`atribuir_itens.php?id=${encodeURIComponent(oficioId)}&ajax=sugerir_itens&q=${encodeURIComponent(term)}`, {
+                    headers: { 'Accept': 'application/json' },
+                    signal: controller.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error('Falha na busca');
+                }
+
+                const data = await response.json();
+
+                if (input.value.trim() !== term) {
+                    return;
+                }
+
+                renderSuggestions(input, Array.isArray(data) ? data : []);
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    return;
+                }
+
+                showSuggestionMessage(input, 'Não foi possível carregar sugestões agora.', 'fas fa-exclamation-circle');
+            }
+        }, 260);
+
+        autocompleteTimers.set(input, timer);
+    }
+
+    function applySuggestion(input, item) {
+        const row = input.closest('.item-row');
+        if (!row || !item) return;
+
+        input.value = item.produto || '';
+
+        const unidadeInput = row.querySelector('input[name$="[unidade]"]');
+        const valorInput = row.querySelector('.item-valor');
+        const qtdInput = row.querySelector('.item-qtd');
+
+        if (unidadeInput) {
+            unidadeInput.value = item.unidade || 'UN';
+        }
+
+        if (valorInput && Number(item.valor_unitario || 0) > 0) {
+            valorInput.value = formatInputMoneyBR(item.valor_unitario);
+        }
+
+        hideSuggestions(input);
+        calculateTotal();
+
+        if (qtdInput) {
+            qtdInput.focus();
+            qtdInput.select();
+        }
     }
 
     function renumberItems() {
@@ -408,7 +800,78 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.classList.contains('item-valor')) {
             e.target.value = e.target.value.replace(/[^\d,.\s]/g, '');
         }
+
+        if (e.target.classList.contains('item-name')) {
+            searchItemSuggestions(e.target);
+        }
+
         calculateTotal();
+    });
+
+    container.addEventListener('focusin', function(e) {
+        if (e.target.classList.contains('item-name') && e.target.value.trim().length >= 2) {
+            container.querySelectorAll('.item-name').forEach(input => {
+                if (input !== e.target) {
+                    hideSuggestions(input);
+                }
+            });
+            searchItemSuggestions(e.target);
+        }
+    });
+
+    container.addEventListener('keydown', function(e) {
+        if (!e.target.classList.contains('item-name')) {
+            return;
+        }
+
+        const input = e.target;
+        const panel = getSuggestionPanel(input);
+        if (!panel || !panel.classList.contains('show')) {
+            return;
+        }
+
+        const options = Array.from(panel.querySelectorAll('.suggestion-option'));
+        if (!options.length) {
+            if (e.key === 'Escape') {
+                hideSuggestions(input);
+            }
+            return;
+        }
+
+        const currentIndex = parseInt(input.dataset.activeSuggestion || '-1', 10);
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActiveSuggestion(input, currentIndex + 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveSuggestion(input, currentIndex <= 0 ? options.length - 1 : currentIndex - 1);
+        } else if (e.key === 'Enter' && currentIndex >= 0) {
+            e.preventDefault();
+            const item = input._itemSuggestions?.[currentIndex];
+            applySuggestion(input, item);
+        } else if (e.key === 'Escape') {
+            hideSuggestions(input);
+        }
+    });
+
+    container.addEventListener('mousedown', function(e) {
+        const option = e.target.closest('.suggestion-option');
+        if (!option) {
+            return;
+        }
+
+        e.preventDefault();
+        const group = option.closest('.item-name-group');
+        const input = group?.querySelector('.item-name');
+        const item = input?._itemSuggestions?.[parseInt(option.dataset.index || '-1', 10)];
+        applySuggestion(input, item);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.item-name-group')) {
+            hideAllSuggestions();
+        }
     });
 
     document.getElementById('add-item').addEventListener('click', function() {
@@ -422,9 +885,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <input type="text" class="form-control item-seq" value="${index + 1}" readonly>
             </div>
 
-            <div class="form-group" style="margin:0;">
+            <div class="form-group item-name-group" style="margin:0;">
                 <label class="form-label">Nome do Item</label>
-                <input type="text" name="produtos[${index}][nome]" class="form-control" required placeholder="Ex: Papel A4">
+                <input type="text" name="produtos[${index}][nome]" class="form-control item-name" required autocomplete="off" placeholder="Ex: Papel A4">
+                <div class="item-suggestions" role="listbox"></div>
             </div>
 
             <div class="form-group" style="margin:0;">
