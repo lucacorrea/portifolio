@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><span class="tag-badge ${classUser}">${p.analisador}</span></td>
                 <td>
                     <div class="dropdown">
-                        <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">
+                        <button class="btn-dots" onclick="window.toggleDropdown(event, this)" title="Ações">
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="dropdown-menu">
@@ -672,7 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td>
                     <div class="dropdown">
-                        <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">
+                        <button class="btn-dots" onclick="window.toggleDropdown(event, this)" title="Ações">
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="dropdown-menu">

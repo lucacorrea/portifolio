@@ -1130,6 +1130,8 @@ select {
     border: 1px solid var(--border);
     padding: 0.5rem 0;
     z-index: 9999 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
     animation: fadeIn 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 

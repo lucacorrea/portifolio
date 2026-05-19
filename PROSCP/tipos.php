@@ -430,7 +430,7 @@ if (!isset($_SESSION['usuario_id'])) {
                 </td>
                 <td>
                     <div class="dropdown">
-                        <button class="btn-dots" onclick="window.toggleDropdown(this)" title="Ações">
+                        <button class="btn-dots" onclick="window.toggleDropdown(event, this)" title="Ações">
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="dropdown-menu">
