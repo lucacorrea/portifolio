@@ -313,23 +313,67 @@ class SalesController extends BaseController {
                 // tipo_nota: 'fiscal' or 'nao_fiscal'
                 $tipoNota = (isset($data['tipo_nota']) && $data['tipo_nota'] === 'fiscal') ? 'fiscal' : 'nao_fiscal';
 
-                // Resolve customer data for persistence (Açaidinhos style)
-                $cpfPersist = null;
-                $nomePersist = $data['nome_cliente_avulso'] ?? null;
+                // Resolve customer data for persistence (Açaidinhos style) / Intelligent Cross-Referencing
+                $clientId = !empty($data['cliente_id']) ? $data['cliente_id'] : null;
+                $nomePersist = !empty($data['nome_cliente_avulso']) ? trim($data['nome_cliente_avulso']) : null;
+                $cpfPersist = !empty($data['cpf_cliente']) ? trim($data['cpf_cliente']) : null;
                 
-                if (!empty($data['cliente_id'])) {
+                if (empty($clientId) && (!empty($nomePersist) || !empty($cpfPersist))) {
+                    $searchTerm = $nomePersist ?: '';
+                    $cpfTerm = $cpfPersist ?: '';
+                    $cleanDigits = preg_replace('/\D/', '', $cpfTerm ?: $searchTerm);
+                    
+                    $foundClient = null;
+                    $filialId = $_SESSION['filial_id'] ?? 1;
+                    
+                    // 1. Busca por CPF/CNPJ
+                    if (strlen($cleanDigits) === 11 || strlen($cleanDigits) === 14) {
+                        $stmt = $db->prepare("SELECT id, nome, cpf_cnpj FROM clientes WHERE REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '-', ''), '/', '') = ? AND filial_id = ? LIMIT 1");
+                        $stmt->execute([$cleanDigits, $filialId]);
+                        $foundClient = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    }
+                    
+                    // 2. Busca por Telefone
+                    if (!$foundClient && (strlen($cleanDigits) === 10 || strlen($cleanDigits) === 11)) {
+                        $stmt = $db->prepare("SELECT id, nome, cpf_cnpj FROM clientes WHERE REPLACE(REPLACE(REPLACE(REPLACE(telefone, '(', ''), ')', ''), '-', ''), ' ', '') = ? AND filial_id = ? LIMIT 1");
+                        $stmt->execute([$cleanDigits, $filialId]);
+                        $foundClient = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    }
+                    
+                    // 3. Busca por Nome
+                    if (!$foundClient && !empty($searchTerm) && strtolower($searchTerm) !== 'consumidor final') {
+                        $stmt = $db->prepare("SELECT id, nome, cpf_cnpj FROM clientes WHERE (nome = ? OR nome LIKE ?) AND filial_id = ? LIMIT 1");
+                        $stmt->execute([$searchTerm, $searchTerm, $filialId]);
+                        $foundClient = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    }
+                    
+                    if ($foundClient) {
+                        $clientId = $foundClient['id'];
+                        $nomePersist = $foundClient['nome'];
+                        $cpfPersist = $foundClient['cpf_cnpj'];
+                    } else {
+                        // Se for um Nome novo (não "Consumidor Final"), cria um cadastro rápido para evitar perda de dados
+                        if (!empty($nomePersist) && strtolower($nomePersist) !== 'consumidor final') {
+                            $clientModel = new Client();
+                            $newClientId = $clientModel->create([
+                                'nome' => $nomePersist,
+                                'cpf_cnpj' => $cpfPersist ?: null,
+                                'filial_id' => $filialId
+                            ]);
+                            $clientId = $newClientId;
+                            $nomePersist = null;
+                        }
+                    }
+                }
+                
+                if (!empty($clientId)) {
                     $stmtC = $db->prepare("SELECT nome, cpf_cnpj FROM clientes WHERE id = ?");
-                    $stmtC->execute([$data['cliente_id']]);
+                    $stmtC->execute([$clientId]);
                     $cRow = $stmtC->fetch(\PDO::FETCH_ASSOC);
                     if ($cRow) {
                         $cpfPersist = $cRow['cpf_cnpj'];
                         $nomePersist = $cRow['nome'];
                     }
-                }
-                
-                // Fallback for avulso CPF sent from frontend (if implemented there yet)
-                if (empty($cpfPersist) && !empty($data['cpf_cliente'])) {
-                    $cpfPersist = $data['cpf_cliente'];
                 }
 
                 // Attribute the sale to the salesperson who created the pre-sale/budget (if one is finalized)
@@ -344,8 +388,8 @@ class SalesController extends BaseController {
                 }
 
                 $saleData = [
-                    'cliente_id'          => $data['cliente_id'] ?? null,
-                    'nome_cliente_avulso' => $data['nome_cliente_avulso'] ?? null,
+                    'cliente_id'          => $clientId,
+                    'nome_cliente_avulso' => $clientId ? null : $nomePersist,
                     'cpf_cliente'         => $cpfPersist,
                     'cliente_nome'        => $nomePersist,
                     'usuario_id'          => $sellerId,

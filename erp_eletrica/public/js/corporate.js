@@ -213,12 +213,17 @@ document.addEventListener('input', function(e) {
     const name = (target.name || '').toLowerCase();
     const id = (target.id || '').toLowerCase();
     
+    // Explicitamente ignora campos de busca ou que tenham a classe 'no-mask'
+    if (id.includes('search') || name.includes('search') || id.includes('busca') || name.includes('busca') || target.classList.contains('no-mask')) {
+        return;
+    }
+    
     const isMoneyField = target.classList.contains('money') || 
                          target.dataset.mask === 'currency' ||
                          name.includes('preco') || name.includes('custo') || name === 'valor' ||
                          id.includes('preco') || id.includes('custo') || id === 'valor';
 
-    if (isMoneyField && target.type !== 'hidden' && !target.classList.contains('no-mask')) {
+    if (isMoneyField && target.type !== 'hidden') {
         // Automatically change type to text to allow formatting characters
         if (target.type === 'number') {
             target.type = 'text';

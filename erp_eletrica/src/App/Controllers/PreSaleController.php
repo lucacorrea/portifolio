@@ -53,23 +53,72 @@ class PreSaleController extends BaseController {
             $data['usuario_id'] = $_SESSION['usuario_id'];
             $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
 
-            // Automated Client Registration/Selection
-            if (empty($data['cliente_id']) && !empty($data['nome_cliente_avulso'])) {
-                $nome = trim($data['nome_cliente_avulso']);
-                // Check if client with this EXACT name exists to avoid duplicates
-                $stmt = \App\Config\Database::getInstance()->getConnection()->prepare("SELECT id FROM clientes WHERE nome = ? AND filial_id = ? LIMIT 1");
-                $stmt->execute([$nome, $data['filial_id']]);
-                $existingId = $stmt->fetchColumn();
-
-                if ($existingId) {
-                    $data['cliente_id'] = $existingId;
+            // Automated Client Registration/Selection / Intelligent Cross-Referencing
+            if (empty($data['cliente_id'])) {
+                $db = \App\Config\Database::getInstance()->getConnection();
+                
+                $searchTerm = !empty($data['nome_cliente_avulso']) ? trim($data['nome_cliente_avulso']) : '';
+                $cpfTerm = !empty($data['cpf_cliente']) ? trim($data['cpf_cliente']) : '';
+                
+                // Extrai apenas dígitos para cruzamento por telefone ou documento
+                $cleanDigits = preg_replace('/\D/', '', $cpfTerm ?: $searchTerm);
+                
+                $foundClient = null;
+                
+                // 1. Busca por CPF/CNPJ (exato, ignorando pontuação do banco)
+                if (strlen($cleanDigits) === 11 || strlen($cleanDigits) === 14) {
+                    $stmt = $db->prepare("SELECT id, nome, cpf_cnpj FROM clientes WHERE REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '-', ''), '/', '') = ? AND filial_id = ? LIMIT 1");
+                    $stmt->execute([$cleanDigits, $data['filial_id']]);
+                    $foundClient = $stmt->fetch(\PDO::FETCH_ASSOC);
+                }
+                
+                // 2. Busca por Telefone (exato, ignorando pontuação do banco)
+                if (!$foundClient && (strlen($cleanDigits) === 10 || strlen($cleanDigits) === 11)) {
+                    $stmt = $db->prepare("SELECT id, nome, cpf_cnpj FROM clientes WHERE REPLACE(REPLACE(REPLACE(REPLACE(telefone, '(', ''), ')', ''), '-', ''), ' ', '') = ? AND filial_id = ? LIMIT 1");
+                    $stmt->execute([$cleanDigits, $data['filial_id']]);
+                    $foundClient = $stmt->fetch(\PDO::FETCH_ASSOC);
+                }
+                
+                // 3. Busca por Nome Exato ou Similar (caso não seja "Consumidor Final")
+                if (!$foundClient && !empty($searchTerm) && strtolower($searchTerm) !== 'consumidor final') {
+                    $stmt = $db->prepare("SELECT id, nome, cpf_cnpj FROM clientes WHERE (nome = ? OR nome LIKE ?) AND filial_id = ? LIMIT 1");
+                    $stmt->execute([$searchTerm, $searchTerm, $data['filial_id']]);
+                    $foundClient = $stmt->fetch(\PDO::FETCH_ASSOC);
+                }
+                
+                // 4. Busca por CPF/CNPJ original com formatação
+                if (!$foundClient && !empty($cpfTerm)) {
+                    $stmt = $db->prepare("SELECT id, nome, cpf_cnpj FROM clientes WHERE cpf_cnpj = ? AND filial_id = ? LIMIT 1");
+                    $stmt->execute([$cpfTerm, $data['filial_id']]);
+                    $foundClient = $stmt->fetch(\PDO::FETCH_ASSOC);
+                }
+                
+                if ($foundClient) {
+                    // Encontrou! Associa ao cliente do banco de dados automaticamente
+                    $data['cliente_id'] = $foundClient['id'];
+                    $data['nome_cliente_avulso'] = null;
+                    $data['cpf_cliente'] = $foundClient['cpf_cnpj'];
                 } else {
-                    // Create new quick client
-                    $newClientId = $clientModel->create([
-                        'nome' => $nome,
-                        'filial_id' => $data['filial_id']
-                    ]);
-                    $data['cliente_id'] = $newClientId;
+                    // Não encontrou cadastro correspondente
+                    // Se o termo digitado parece ser um CPF/CNPJ, define-o como cpf_cliente
+                    if (strlen($cleanDigits) === 11 || strlen($cleanDigits) === 14) {
+                        $data['cpf_cliente'] = $cpfTerm ?: $searchTerm;
+                        if (empty($data['nome_cliente_avulso']) || strtolower($data['nome_cliente_avulso']) === 'consumidor final') {
+                            $data['nome_cliente_avulso'] = 'Consumidor Final';
+                        }
+                    }
+                    
+                    // Se for um Nome novo (não "Consumidor Final"), cria um cadastro rápido para evitar perda de dados
+                    if (!empty($data['nome_cliente_avulso']) && strtolower($data['nome_cliente_avulso']) !== 'consumidor final') {
+                        $nome = trim($data['nome_cliente_avulso']);
+                        $newClientId = $clientModel->create([
+                            'nome' => $nome,
+                            'cpf_cnpj' => $data['cpf_cliente'] ?? null,
+                            'filial_id' => $data['filial_id']
+                        ]);
+                        $data['cliente_id'] = $newClientId;
+                        $data['nome_cliente_avulso'] = null;
+                    }
                 }
             }
 

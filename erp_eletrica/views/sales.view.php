@@ -111,7 +111,7 @@
                         <span class="input-group-text bg-white border-end-0 text-muted">
                             <i class="fas fa-user-tag"></i>
                         </span>
-                        <input type="text" id="customerSearch" class="form-control border-start-0 ps-0" placeholder="Nome, CPF ou Telefone...">
+                        <input type="text" id="customerSearch" class="form-control border-start-0 ps-0 no-mask" placeholder="Nome, CPF ou Telefone...">
                         <button class="btn btn-outline-primary" type="button" onclick="abrirModalQuickClient()" title="Novo Cliente">
                             <i class="fas fa-plus"></i>
                         </button>
@@ -1529,12 +1529,26 @@ async function saveCurrentSaleAsPreSale() {
     const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const total = subtotal * (1 - (discountPercent / 100));
 
+    let clientAvulso = selectedCustomerName;
+    let clientCpf = selectedCustomerCPF;
+    
+    if (!selectedCustomerId && customerSearch && customerSearch.value.trim() !== '') {
+        const typedVal = customerSearch.value.trim();
+        const cleanVal = typedVal.replace(/\D/g, '');
+        if (cleanVal.length === 11 || cleanVal.length === 14) {
+            clientCpf = typedVal;
+            clientAvulso = 'Consumidor Final';
+        } else {
+            clientAvulso = typedVal;
+        }
+    }
+
     const data = {
         id: currentPvId,
         codigo: currentPvCode,
         cliente_id: selectedCustomerId,
-        nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
-        cpf_cliente: selectedCustomerCPF,
+        nome_cliente_avulso: selectedCustomerId ? null : clientAvulso,
+        cpf_cliente: selectedCustomerId ? null : clientCpf,
         valor_total: total,
         items: cart
     };
@@ -1585,12 +1599,26 @@ async function saveCurrentSaleAsOrcamento() {
     const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const total = subtotal * (1 - (discountPercent / 100));
 
+    let clientAvulso = selectedCustomerName;
+    let clientCpf = selectedCustomerCPF;
+    
+    if (!selectedCustomerId && customerSearch && customerSearch.value.trim() !== '') {
+        const typedVal = customerSearch.value.trim();
+        const cleanVal = typedVal.replace(/\D/g, '');
+        if (cleanVal.length === 11 || cleanVal.length === 14) {
+            clientCpf = typedVal;
+            clientAvulso = 'Consumidor Final';
+        } else {
+            clientAvulso = typedVal;
+        }
+    }
+
     const data = {
         id: currentPvId,
         codigo: currentPvCode,
         cliente_id: selectedCustomerId,
-        nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
-        cpf_cliente: selectedCustomerCPF,
+        nome_cliente_avulso: selectedCustomerId ? null : clientAvulso,
+        cpf_cliente: selectedCustomerId ? null : clientCpf,
         valor_total: total,
         items: cart,
         is_orcamento: true
@@ -2316,6 +2344,20 @@ async function processarCheckout() {
 
     const tipoNota = document.querySelector('input[name="tipo_nota"]:checked')?.value || 'nao_fiscal';
 
+    let clientAvulso = selectedCustomerName;
+    let clientCpf = selectedCustomerCPF;
+    
+    if (!selectedCustomerId && customerSearch && customerSearch.value.trim() !== '') {
+        const typedVal = customerSearch.value.trim();
+        const cleanVal = typedVal.replace(/\D/g, '');
+        if (cleanVal.length === 11 || cleanVal.length === 14) {
+            clientCpf = typedVal;
+            clientAvulso = 'Consumidor Final';
+        } else {
+            clientAvulso = typedVal;
+        }
+    }
+
     const data = {
         subtotal: subtotal,
         discount_percent: discountPercent,
@@ -2327,8 +2369,8 @@ async function processarCheckout() {
         valor_recebido: valorRecebido,
         troco: troco,
         cliente_id: selectedCustomerId,
-        nome_cliente_avulso: selectedCustomerId ? null : selectedCustomerName,
-        cpf_cliente: selectedCustomerCPF,
+        nome_cliente_avulso: selectedCustomerId ? null : clientAvulso,
+        cpf_cliente: selectedCustomerId ? null : clientCpf,
         pv_id: currentPvId,
         taxa_cartao: taxaCartao,
         supervisor_id: authSupervisorId,
