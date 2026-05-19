@@ -286,7 +286,7 @@ if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] === 'ACESSORE
     </form>
 </main>
 
-<script src="assets/js/script.js?v=66"></script>
+<script src="assets/js/script.js"></script>
 <script>
     // Plano de contingência: Forçar visibilidade se o script externo falhar ou for cacheado
     document.addEventListener('DOMContentLoaded', function() {
