@@ -168,6 +168,7 @@ class CaixaController extends BaseController {
                 ]);
             }
 
+            $movementModel = new CashierMovement();
             $movementId = $movementModel->create([
                 'caixa_id' => $caixaId,
                 'tipo' => $tipo,
