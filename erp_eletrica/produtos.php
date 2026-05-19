@@ -50,7 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 isset($_POST['preco_variavel']) ? 1 : 0
             ]);
             
-            header('Location: produtos.php?msg=Produto cadastrado com sucesso');
+            $codigo = $_POST['codigo'] ?? '';
+            $nome = $_POST['nome'] ?? '';
+            header('Location: produtos.php?msg=' . urlencode("O produto \"$codigo - $nome\" foi cadastrado com sucesso!"));
             exit;
         }
         
@@ -90,7 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_POST['id']
             ]);
             
-            header('Location: produtos.php?msg=Produto atualizado com sucesso');
+            $codigo = $_POST['codigo'] ?? '';
+            $nome = $_POST['nome'] ?? '';
+            header('Location: produtos.php?msg=' . urlencode("O produto \"$codigo - $nome\" foi alterado com sucesso!"));
             exit;
         }
         
@@ -153,8 +157,11 @@ $categorias = [
             
             <main class="dash-content fade-in">
                 <?php if (isset($_GET['msg'])): ?>
-                    <div class="card" style="background: #e3f2fd; border-bottom: 3px solid #0056b3; padding: 15px; margin-bottom: 20px;">
-                        <i class="fas fa-info-circle" style="color: #0056b3;"></i> <?php echo htmlspecialchars($_GET['msg']); ?>
+                    <div class="card" style="background: #2b8a3e; color: #ffffff; padding: 15px; margin-bottom: 20px; font-weight: 500; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 6px;">
+                        <div>
+                            <i class="fas fa-check-circle" style="color: #ffffff; margin-right: 8px;"></i> <?php echo htmlspecialchars($_GET['msg']); ?>
+                        </div>
+                        <button type="button" onclick="this.parentElement.style.display='none';" style="background: transparent; border: 0; color: #ffffff; cursor: pointer; font-size: 20px; line-height: 1; font-weight: bold; opacity: 0.8; padding: 0 5px;">&times;</button>
                     </div>
                 <?php endif; ?>
 

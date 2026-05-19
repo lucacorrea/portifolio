@@ -82,8 +82,18 @@ class InventoryController extends BaseController {
                 }
             }
 
+            $isEdit = isset($data['id']) && !empty($data['id']);
             $model->save($data);
-            $this->redirect('estoque.php?msg=Produto salvo com sucesso');
+            
+            $codigo = $data['codigo'] ?? '';
+            $nome = $data['nome'] ?? '';
+            
+            if ($isEdit) {
+                $msg = "O produto \"$codigo - $nome\" foi alterado com sucesso!";
+            } else {
+                $msg = "O produto \"$codigo - $nome\" foi cadastrado com sucesso!";
+            }
+            $this->redirect('estoque.php?msg=' . urlencode($msg));
         }
     }
 

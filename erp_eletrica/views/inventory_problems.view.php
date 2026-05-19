@@ -1,7 +1,7 @@
 <?php if (isset($_GET['msg'])): ?>
-    <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+    <div class="alert alert-dismissible fade show shadow-sm border-0 mb-4 text-white" style="background-color: #2b8a3e; font-weight: 500;" role="alert">
         <i class="fas fa-check-circle me-2"></i> <?= htmlspecialchars($_GET['msg']) ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 <?php endif; ?>
 
