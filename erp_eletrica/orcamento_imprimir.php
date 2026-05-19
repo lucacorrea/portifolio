@@ -301,9 +301,6 @@ $isExpired = $diffHours >= 24;
             <div class="hr"></div>
             <div class="center">
                 <div style="margin-bottom: 6px;"><span class="badge-nf">ORÇAMENTO</span></div>
-                <div style="font-size: 14px; font-weight: 900; margin: 4px 0; letter-spacing: 1px; border: 2px dashed #000; padding: 4px 8px; display: inline-block;">
-                    VÁLIDO POR 24H
-                </div>
             </div>
             <div class="hr"></div>
         </header>
