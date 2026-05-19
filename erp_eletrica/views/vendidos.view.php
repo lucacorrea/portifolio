@@ -548,20 +548,7 @@
 
         window.imprimirTroca = function(exchangeId) {
             const url = 'recibo_troca.php?id=' + exchangeId + '&t=' + Date.now();
-            let iframe = document.getElementById('print-iframe');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'print-iframe';
-                iframe.style.position = 'fixed';
-                iframe.style.right = '0';
-                iframe.style.bottom = '0';
-                iframe.style.width = '0';
-                iframe.style.height = '0';
-                iframe.style.border = 'none';
-                iframe.style.visibility = 'hidden';
-                document.body.appendChild(iframe);
-            }
-            iframe.src = url;
+            window.open(url, 'print_popup', 'width=400,height=600,toolbar=0,menubar=0,location=0');
         };
 
         let currentCancelId = null;
