@@ -2437,13 +2437,8 @@ async function processarCheckout() {
             btnCheckout.innerHTML = originalBtnHTML;
         }
     }
-}ntById('taxa_cartao').value = '';
-        renderCart();
-        loadRecentSales();
-    } else {
-        alert('Erro ao finalizar: ' + result.error);
-    }
 }
+
 
 function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = null) {
     const isFiscal = tipoNota === 'fiscal';
