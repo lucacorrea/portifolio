@@ -2216,55 +2216,57 @@ function resetDiscount() {
 }
 
 // Checkout
-btnCheckout.onclick = async () => {
-    if (cart.length === 0) return;
-    
-    const discountPercent = getCurrentDiscountPercentage();
-    
-    if (discountPercent > 0.01 && !isAuthorized && currentUserLevel !== 'admin') {
-        alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
-        await loadAdmins();
-        bootstrap.Modal.getOrCreateInstance('#modalDiscountAuth').show();
-        return;
-    }
-
-    const payment = document.querySelector('input[name="payment"]:checked').value;
-    
-    if (payment === 'fiado') {
-        if (!selectedCustomerId) {
-            alert('Vendas a prazo (Fiado) exigem a seleção de um cliente cadastrado.');
-            customerSearch.focus();
+if (btnCheckout) {
+    btnCheckout.onclick = async () => {
+        if (cart.length === 0) return;
+        
+        const discountPercent = getCurrentDiscountPercentage();
+        
+        if (discountPercent > 0.01 && !isAuthorized && currentUserLevel !== 'admin') {
+            alert('Esta venda contém um desconto não autorizado. Por favor, autorize primeiro.');
+            await loadAdmins();
+            bootstrap.Modal.getOrCreateInstance('#modalDiscountAuth').show();
             return;
         }
 
-        // Validation: Completeness for Fiado
-        try {
-            const res = await fetch(`vendas.php?action=check_client_completeness&id=${selectedCustomerId}`);
-            const data = await res.json();
-            
-            if (!data.is_complete) {
-                // Show completion modal
-                document.getElementById('edit_client_id').value = selectedCustomerId;
-                document.getElementById('edit_client_doc').value = data.client.cpf_cnpj || '';
-                document.getElementById('edit_client_phone').value = data.client.telefone || '';
-                document.getElementById('edit_client_address').value = data.client.endereco || '';
-                
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCompleteClient')).show();
+        const payment = document.querySelector('input[name="payment"]:checked').value;
+        
+        if (payment === 'fiado') {
+            if (!selectedCustomerId) {
+                alert('Vendas a prazo (Fiado) exigem a seleção de um cliente cadastrado.');
+                customerSearch.focus();
                 return;
             }
-        } catch (err) {
-            console.error("Erro validando cliente:", err);
-        }
 
-        // Proceed to entry modal if complete
-        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
-        document.getElementById('entradaValor').value = '';
-        modal.show();
-        setTimeout(() => document.getElementById('entradaValor').focus(), 500);
-    } else {
-        processarCheckout();
-    }
-};
+            // Validation: Completeness for Fiado
+            try {
+                const res = await fetch(`vendas.php?action=check_client_completeness&id=${selectedCustomerId}`);
+                const data = await res.json();
+                
+                if (!data.is_complete) {
+                    // Show completion modal
+                    document.getElementById('edit_client_id').value = selectedCustomerId;
+                    document.getElementById('edit_client_doc').value = data.client.cpf_cnpj || '';
+                    document.getElementById('edit_client_phone').value = data.client.telefone || '';
+                    document.getElementById('edit_client_address').value = data.client.endereco || '';
+                    
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCompleteClient')).show();
+                    return;
+                }
+            } catch (err) {
+                console.error("Erro validando cliente:", err);
+            }
+
+            // Proceed to entry modal if complete
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
+            document.getElementById('entradaValor').value = '';
+            modal.show();
+            setTimeout(() => document.getElementById('entradaValor').focus(), 500);
+        } else {
+            processarCheckout();
+        }
+    };
+}
 
 async function updateClientAndContinue() {
     const id = document.getElementById('edit_client_id').value;
@@ -2305,6 +2307,17 @@ async function confirmarCheckoutFiado() {
 }
 
 async function processarCheckout() {
+    if (btnCheckout) {
+        if (btnCheckout.disabled) return;
+        btnCheckout.disabled = true;
+    }
+
+    // Guardar HTML/texto original do botão de checkout para restaurar em caso de erro/validação pendente
+    const originalBtnHTML = btnCheckout ? btnCheckout.innerHTML : '';
+    if (btnCheckout) {
+        btnCheckout.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESSANDO VENDA...';
+    }
+
     const isMoneyMode = document.getElementById('discountModeToggle').checked;
     const discountInput = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
@@ -2320,6 +2333,10 @@ async function processarCheckout() {
         if (!taxaCartao || taxaCartao <= 0) {
             alert("Para pagamentos em CRÉDITO, é obrigatório informar a taxa da maquininha.");
             document.getElementById('taxa_cartao').focus();
+            if (btnCheckout) {
+                btnCheckout.disabled = false;
+                btnCheckout.innerHTML = originalBtnHTML;
+            }
             return;
         }
     }
@@ -2339,6 +2356,10 @@ async function processarCheckout() {
 
     if (payment === 'fiado' && entrada >= total) {
         alert('O valor da entrada não pode ser maior ou igual ao total da venda a prazo. Se o cliente vai pagar tudo agora, selecione outro método de pagamento.');
+        if (btnCheckout) {
+            btnCheckout.disabled = false;
+            btnCheckout.innerHTML = originalBtnHTML;
+        }
         return;
     }
 
@@ -2378,33 +2399,46 @@ async function processarCheckout() {
         tipo_nota: tipoNota
     };
 
-    const res = await fetch('vendas.php?action=checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
+    try {
+        const res = await fetch('vendas.php?action=checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
 
-    const result = await res.json();
-    if (result.success) {
-        // Close modals if open
-        const modalEntrada = bootstrap.Modal.getInstance(document.getElementById('modalEntrada'));
-        if (modalEntrada) modalEntrada.hide();
+        const result = await res.json();
+        if (result.success) {
+            // Close modals if open
+            const modalEntrada = bootstrap.Modal.getInstance(document.getElementById('modalEntrada'));
+            if (modalEntrada) modalEntrada.hide();
 
-        showSuccessModal(result.sale_id, data.total, result.tipo_nota || data.tipo_nota, troco, valorRecebido);
-        cart = [];
-        currentPvId = null;
-        isAuthorized = false;
-        authSupervisorId = null;
-        authSupervisorCredential = null;
-        document.getElementById('discountPercent').value = 0;
-        if (document.getElementById('entradaValor')) document.getElementById('entradaValor').value = 0;
-        document.getElementById('taxa_cartao').value = '';
-        renderCart();
-        loadRecentSales();
-    } else {
-        alert('Erro ao finalizar: ' + result.error);
+            showSuccessModal(result.sale_id, data.total, result.tipo_nota || data.tipo_nota, troco, valorRecebido);
+            cart = [];
+            currentPvId = null;
+            isAuthorized = false;
+            authSupervisorId = null;
+            authSupervisorCredential = null;
+            document.getElementById('discountPercent').value = 0;
+            if (document.getElementById('entradaValor')) document.getElementById('entradaValor').value = 0;
+            document.getElementById('taxa_cartao').value = '';
+            renderCart();
+            loadRecentSales();
+        } else {
+            alert('Erro ao finalizar: ' + result.error);
+            if (btnCheckout) {
+                btnCheckout.disabled = false;
+                btnCheckout.innerHTML = originalBtnHTML;
+            }
+        }
+    } catch (err) {
+        alert('Erro ao processar venda: ' + err.message);
+        if (btnCheckout) {
+            btnCheckout.disabled = false;
+            btnCheckout.innerHTML = originalBtnHTML;
+        }
     }
 }
+
 
 function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = null) {
     const isFiscal = tipoNota === 'fiscal';
