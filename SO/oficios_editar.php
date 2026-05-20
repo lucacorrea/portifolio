@@ -41,19 +41,23 @@ function format_quantity_input($valor) {
     return rtrim(rtrim(number_format((float)$valor, 2, '.', ''), '0'), '.');
 }
 
-function parse_oficio_datetime($valor): string {
+function parse_datetime_local_required($valor, string $campo): string {
     $valor = trim((string)$valor);
 
     if ($valor === '') {
-        throw new Exception("Informe a data do ofício.");
+        throw new Exception("Informe {$campo}.");
     }
 
     $dt = DateTime::createFromFormat('Y-m-d\TH:i', $valor);
     if (!$dt || $dt->format('Y-m-d\TH:i') !== $valor) {
-        throw new Exception("Informe uma data válida para o ofício.");
+        throw new Exception("Informe uma data válida para {$campo}.");
     }
 
     return $dt->format('Y-m-d H:i:s');
+}
+
+function parse_oficio_datetime($valor): string {
+    return parse_datetime_local_required($valor, 'a data do ofício');
 }
 
 function format_datetime_local_input($valor): string {
@@ -84,7 +88,7 @@ if (!$oficio) {
 
 $secretarias = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt_aquisicao = $pdo->prepare("SELECT id, numero_aq, status FROM aquisicoes WHERE oficio_id = ? ORDER BY id ASC");
+$stmt_aquisicao = $pdo->prepare("SELECT id, numero_aq, status, criado_em FROM aquisicoes WHERE oficio_id = ? ORDER BY id ASC");
 $stmt_aquisicao->execute([$id]);
 $aquisicoes_vinculadas = $stmt_aquisicao->fetchAll(PDO::FETCH_ASSOC);
 $total_aquisicoes_vinculadas = count($aquisicoes_vinculadas);
@@ -106,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $criado_em = parse_oficio_datetime($_POST['criado_em'] ?? '');
         $valor_orcamento = parse_oficio_money($_POST['valor_orcamento'] ?? '');
         $produtos = $_POST['produtos'] ?? [];
+        $aquisicoes_datas = $_POST['aquisicoes_datas'] ?? [];
 
         if ($numero_manual === '') {
             throw new Exception("O número do ofício é obrigatório.");
@@ -118,6 +123,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($local === '') {
             throw new Exception("Informe o local do ofício.");
+        }
+
+        $aquisicoes_datas_sanitizadas = [];
+        foreach ($aquisicoes_vinculadas as $aq) {
+            $aq_id = (int)$aq['id'];
+
+            if (!array_key_exists($aq_id, $aquisicoes_datas)) {
+                continue;
+            }
+
+            $aquisicoes_datas_sanitizadas[$aq_id] = parse_datetime_local_required(
+                $aquisicoes_datas[$aq_id],
+                "a data da aquisição {$aq['numero_aq']}"
+            );
         }
 
         $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ? AND id <> ?");
@@ -191,6 +210,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE id = ?
         ");
         $stmt_update->execute([$numero_manual, $secretaria_id, $local, $criado_em, $valor_orcamento, $novo_status, $id]);
+
+        if (!empty($aquisicoes_datas_sanitizadas)) {
+            $stmt_update_aquisicao_data = $pdo->prepare("
+                UPDATE aquisicoes
+                SET criado_em = ?
+                WHERE id = ? AND oficio_id = ?
+            ");
+
+            foreach ($aquisicoes_datas_sanitizadas as $aquisicao_id => $data_aquisicao) {
+                $stmt_update_aquisicao_data->execute([
+                    $data_aquisicao,
+                    (int)$aquisicao_id,
+                    $id,
+                ]);
+            }
+        }
 
         $pdo->prepare("DELETE FROM itens_oficio WHERE oficio_id = ?")->execute([$id]);
 
@@ -388,6 +423,14 @@ if ($criado_em_timestamp !== false) {
     $criado_em_label = date('d/m/Y H:i', $criado_em_timestamp);
 }
 
+$aquisicoes_datas_values = [];
+foreach ($aquisicoes_vinculadas as $aq) {
+    $aq_id = (int)$aq['id'];
+    $aquisicoes_datas_values[$aq_id] = $_SERVER['REQUEST_METHOD'] === 'POST'
+        ? ($_POST['aquisicoes_datas'][$aq_id] ?? format_datetime_local_input($aq['criado_em'] ?? ''))
+        : format_datetime_local_input($aq['criado_em'] ?? '');
+}
+
 $orcamento_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['valor_orcamento'] ?? '')
     : format_money_input($oficio['valor_orcamento'] ?? null);
@@ -415,6 +458,53 @@ include 'views/layout/header.php';
 
     .oficio-edit-span-2 {
         grid-column: span 2;
+    }
+
+    .aquisicoes-date-panel {
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 1rem;
+        margin: -.5rem 0 1.5rem;
+        background: #fff;
+    }
+
+    .aquisicoes-date-title {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        margin: 0 0 1rem;
+        color: var(--text-dark);
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .aquisicoes-date-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .aquisicao-date-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: .9rem;
+        background: #f8fafc;
+    }
+
+    .aquisicao-date-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: .75rem;
+        align-items: center;
+        margin-bottom: .65rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .aquisicao-date-status {
+        font-size: .72rem;
+        color: #64748b;
+        white-space: nowrap;
     }
 
     .item-row {
@@ -486,6 +576,10 @@ include 'views/layout/header.php';
 
         .oficio-edit-span-2 {
             grid-column: span 1;
+        }
+
+        .aquisicoes-date-grid {
+            grid-template-columns: 1fr;
         }
 
         .budget-info {
@@ -586,6 +680,33 @@ include 'views/layout/header.php';
                         value="<?php echo htmlspecialchars($orcamento_value, ENT_QUOTES, 'UTF-8'); ?>">
                 </div>
             </div>
+
+            <?php if (!empty($aquisicoes_vinculadas)): ?>
+                <div class="aquisicoes-date-panel">
+                    <h4 class="aquisicoes-date-title">
+                        <i class="fas fa-calendar-alt"></i> Datas das Aquisições Vinculadas
+                    </h4>
+
+                    <div class="aquisicoes-date-grid">
+                        <?php foreach ($aquisicoes_vinculadas as $aq): ?>
+                            <?php $aq_id = (int)$aq['id']; ?>
+                            <div class="aquisicao-date-card">
+                                <div class="aquisicao-date-meta">
+                                    <span><?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span class="aquisicao-date-status"><?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+
+                                <label class="form-label">Data da Aquisição</label>
+                                <input
+                                    type="datetime-local"
+                                    name="aquisicoes_datas[<?php echo $aq_id; ?>]"
+                                    class="form-control"
+                                    value="<?php echo htmlspecialchars($aquisicoes_datas_values[$aq_id] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <div class="budget-info">
                 <div>
