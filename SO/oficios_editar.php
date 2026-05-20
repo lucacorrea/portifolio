@@ -41,6 +41,34 @@ function format_quantity_input($valor) {
     return rtrim(rtrim(number_format((float)$valor, 2, '.', ''), '0'), '.');
 }
 
+function parse_oficio_datetime($valor): string {
+    $valor = trim((string)$valor);
+
+    if ($valor === '') {
+        throw new Exception("Informe a data do ofício.");
+    }
+
+    $dt = DateTime::createFromFormat('Y-m-d\TH:i', $valor);
+    if (!$dt || $dt->format('Y-m-d\TH:i') !== $valor) {
+        throw new Exception("Informe uma data válida para o ofício.");
+    }
+
+    return $dt->format('Y-m-d H:i:s');
+}
+
+function format_datetime_local_input($valor): string {
+    if (empty($valor)) {
+        return '';
+    }
+
+    $timestamp = strtotime((string)$valor);
+    if ($timestamp === false) {
+        return '';
+    }
+
+    return date('Y-m-d\TH:i', $timestamp);
+}
+
 $stmt = $pdo->prepare("
     SELECT o.*, s.nome as secretaria
     FROM oficios o
@@ -53,6 +81,8 @@ $oficio = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$oficio) {
     die("Solicitação não encontrada.");
 }
+
+$secretarias = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
 
 $stmt_aquisicao = $pdo->prepare("SELECT id, numero_aq, status FROM aquisicoes WHERE oficio_id = ? ORDER BY id ASC");
 $stmt_aquisicao->execute([$id]);
@@ -71,11 +101,23 @@ foreach ($items_existentes as $item_existente) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $numero_manual = mb_strtoupper(trim($_POST['numero_oficio'] ?? ''), 'UTF-8');
+        $secretaria_id = (int)($_POST['secretaria_id'] ?? 0);
+        $local = trim((string)($_POST['local'] ?? ''));
+        $criado_em = parse_oficio_datetime($_POST['criado_em'] ?? '');
         $valor_orcamento = parse_oficio_money($_POST['valor_orcamento'] ?? '');
         $produtos = $_POST['produtos'] ?? [];
 
         if ($numero_manual === '') {
             throw new Exception("O número do ofício é obrigatório.");
+        }
+
+        $secretarias_validas = array_map('intval', array_column($secretarias, 'id'));
+        if ($secretaria_id <= 0 || !in_array($secretaria_id, $secretarias_validas, true)) {
+            throw new Exception("Selecione uma secretaria válida.");
+        }
+
+        if ($local === '') {
+            throw new Exception("Informe o local do ofício.");
         }
 
         $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ? AND id <> ?");
@@ -145,10 +187,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt_update = $pdo->prepare("
             UPDATE oficios
-            SET numero = ?, valor_orcamento = ?, status = ?
+            SET numero = ?, secretaria_id = ?, local = ?, criado_em = ?, valor_orcamento = ?, status = ?
             WHERE id = ?
         ");
-        $stmt_update->execute([$numero_manual, $valor_orcamento, $novo_status, $id]);
+        $stmt_update->execute([$numero_manual, $secretaria_id, $local, $criado_em, $valor_orcamento, $novo_status, $id]);
 
         $pdo->prepare("DELETE FROM itens_oficio WHERE oficio_id = ?")->execute([$id]);
 
@@ -320,6 +362,32 @@ $numero_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['numero_oficio'] ?? '')
     : ($oficio['numero'] ?? '');
 
+$secretaria_value = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? (int)($_POST['secretaria_id'] ?? 0)
+    : (int)($oficio['secretaria_id'] ?? 0);
+
+$local_value = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? ($_POST['local'] ?? '')
+    : ($oficio['local'] ?? '');
+
+$criado_em_value = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? ($_POST['criado_em'] ?? '')
+    : format_datetime_local_input($oficio['criado_em'] ?? '');
+
+$secretaria_nome_atual = $oficio['secretaria'] ?? '';
+foreach ($secretarias as $sec) {
+    if ((int)$sec['id'] === (int)$secretaria_value) {
+        $secretaria_nome_atual = $sec['nome'];
+        break;
+    }
+}
+
+$criado_em_label = '-';
+$criado_em_timestamp = strtotime(str_replace('T', ' ', (string)$criado_em_value));
+if ($criado_em_timestamp !== false) {
+    $criado_em_label = date('d/m/Y H:i', $criado_em_timestamp);
+}
+
 $orcamento_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['valor_orcamento'] ?? '')
     : format_money_input($oficio['valor_orcamento'] ?? null);
@@ -340,9 +408,13 @@ include 'views/layout/header.php';
 
     .oficio-edit-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 1rem;
         margin-bottom: 1.5rem;
+    }
+
+    .oficio-edit-span-2 {
+        grid-column: span 2;
     }
 
     .item-row {
@@ -412,6 +484,10 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr;
         }
 
+        .oficio-edit-span-2 {
+            grid-column: span 1;
+        }
+
         .budget-info {
             align-items: flex-start;
             flex-direction: column;
@@ -465,6 +541,41 @@ include 'views/layout/header.php';
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label">Secretaria <span style="color:red">*</span></label>
+                    <select name="secretaria_id" class="form-control" required>
+                        <option value="">Selecione a secretaria</option>
+                        <?php foreach ($secretarias as $sec): ?>
+                            <option
+                                value="<?php echo (int)$sec['id']; ?>"
+                                <?php echo (int)$secretaria_value === (int)$sec['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($sec['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Data do Ofício <span style="color:red">*</span></label>
+                    <input
+                        type="datetime-local"
+                        name="criado_em"
+                        class="form-control"
+                        value="<?php echo htmlspecialchars($criado_em_value, ENT_QUOTES, 'UTF-8'); ?>"
+                        required>
+                </div>
+
+                <div class="form-group oficio-edit-span-2">
+                    <label class="form-label">Local <span style="color:red">*</span></label>
+                    <input
+                        type="text"
+                        name="local"
+                        class="form-control"
+                        placeholder="Ex: Secretaria Municipal de Administração"
+                        value="<?php echo htmlspecialchars($local_value, ENT_QUOTES, 'UTF-8'); ?>"
+                        required>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Valor do Orçamento</label>
                     <input
                         type="text"
@@ -479,7 +590,13 @@ include 'views/layout/header.php';
             <div class="budget-info">
                 <div>
                     <span class="text-muted">Secretaria:</span>
-                    <strong><?php echo htmlspecialchars($oficio['secretaria'], ENT_QUOTES, 'UTF-8'); ?></strong><br>
+                    <strong><?php echo htmlspecialchars($secretaria_nome_atual, ENT_QUOTES, 'UTF-8'); ?></strong><br>
+
+                    <span class="text-muted">Data:</span>
+                    <strong><?php echo htmlspecialchars($criado_em_label, ENT_QUOTES, 'UTF-8'); ?></strong><br>
+
+                    <span class="text-muted">Local:</span>
+                    <strong><?php echo htmlspecialchars($local_value !== '' ? $local_value : '-', ENT_QUOTES, 'UTF-8'); ?></strong><br>
 
                     <span class="text-muted">Status atual:</span>
                     <strong><?php echo htmlspecialchars($oficio['status'], ENT_QUOTES, 'UTF-8'); ?></strong>
