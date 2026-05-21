@@ -105,8 +105,12 @@
                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                 <div class="row g-3">
                     <div class="col-12">
-                        <label class="form-label small fw-bold">Nome Completo / Razão Social</label>
+                        <label class="form-label small fw-bold">Nome Completo / Nome Fantasia *</label>
                         <input type="text" name="nome" id="edit_nome" class="form-control shadow-sm" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-bold">Razão Social</label>
+                        <input type="text" name="razao_social" id="edit_razao_social" class="form-control shadow-sm">
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">CPF / CNPJ</label>
@@ -120,9 +124,21 @@
                         <label class="form-label small fw-bold">Email</label>
                         <input type="email" name="email" id="edit_email" class="form-control shadow-sm">
                     </div>
-                    <div class="col-12">
+                    <div class="col-md-8">
                         <label class="form-label small fw-bold">Endereço Completo</label>
                         <input type="text" name="endereco" id="edit_endereco" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">CEP</label>
+                        <input type="text" name="cep" id="edit_cep" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Banco / Agência</label>
+                        <input type="text" name="banco_agencia" id="edit_banco_agencia" class="form-control shadow-sm" placeholder="Ex: Sicoob - 0002">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Conta Corrente (C/C)</label>
+                        <input type="text" name="banco_cc" id="edit_banco_cc" class="form-control shadow-sm" placeholder="Ex: 91103-7">
                     </div>
                 </div>
             </div>
@@ -139,10 +155,14 @@ function editClient(client) {
     const modal = new bootstrap.Modal(document.getElementById('clientModal'));
     document.getElementById('edit_id').value = client.id;
     document.getElementById('edit_nome').value = client.nome;
+    document.getElementById('edit_razao_social').value = client.razao_social || '';
     document.getElementById('edit_cpf_cnpj').value = client.cpf_cnpj;
     document.getElementById('edit_telefone').value = client.telefone;
     document.getElementById('edit_email').value = client.email;
     document.getElementById('edit_endereco').value = client.endereco;
+    document.getElementById('edit_cep').value = client.cep || '';
+    document.getElementById('edit_banco_agencia').value = client.banco_agencia || '';
+    document.getElementById('edit_banco_cc').value = client.banco_cc || '';
     
     document.getElementById('clientModalTitle').innerText = 'Editar Cliente';
     modal.show();

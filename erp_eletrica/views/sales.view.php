@@ -622,8 +622,12 @@
             </div>
             <div class="modal-body p-4">
                 <div class="mb-3">
-                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Nome Completo / Razão Social</label>
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Nome Completo / Nome Fantasia *</label>
                     <input type="text" id="qc_nome" class="form-control" placeholder="Ex: João da Silva">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Razão Social</label>
+                    <input type="text" id="qc_razao_social" class="form-control" placeholder="Ex: João da Silva ME">
                 </div>
                 <div class="row mb-3">
                     <div class="col-6">
@@ -635,9 +639,25 @@
                         <input type="text" id="qc_telefone" class="form-control" placeholder="(00) 00000-0000">
                     </div>
                 </div>
-                <div class="mb-4">
-                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Endereço (Opcional, mas recomendado)</label>
-                    <input type="text" id="qc_endereco" class="form-control" placeholder="Rua, Número, Bairro...">
+                <div class="row mb-3">
+                    <div class="col-8">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Endereço</label>
+                        <input type="text" id="qc_endereco" class="form-control" placeholder="Rua, Número, Bairro...">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">CEP</label>
+                        <input type="text" id="qc_cep" class="form-control" placeholder="69000-000">
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Banco / Agência</label>
+                        <input type="text" id="qc_banco_agencia" class="form-control" placeholder="Ex: Sicoob - 0002">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Conta Corrente (C/C)</label>
+                        <input type="text" id="qc_banco_cc" class="form-control" placeholder="Ex: 91103-7">
+                    </div>
                 </div>
                 <div class="d-grid">
                     <button class="btn btn-primary fw-bold py-3 shadow-sm" onclick="salvarQuickClient()">
@@ -1338,17 +1358,25 @@ function clearCustomer() {
 
 function abrirModalQuickClient() {
     document.getElementById('qc_nome').value = '';
+    document.getElementById('qc_razao_social').value = '';
     document.getElementById('qc_cpf_cnpj').value = '';
     document.getElementById('qc_telefone').value = '';
     document.getElementById('qc_endereco').value = '';
+    document.getElementById('qc_cep').value = '';
+    document.getElementById('qc_banco_agencia').value = '';
+    document.getElementById('qc_banco_cc').value = '';
     new bootstrap.Modal(document.getElementById('modalQuickClient')).show();
 }
 
 async function salvarQuickClient() {
     const nome = document.getElementById('qc_nome').value;
+    const razao_social = document.getElementById('qc_razao_social').value;
     const cpf_cnpj = document.getElementById('qc_cpf_cnpj').value;
     const telefone = document.getElementById('qc_telefone').value;
     const endereco = document.getElementById('qc_endereco').value;
+    const cep = document.getElementById('qc_cep').value;
+    const banco_agencia = document.getElementById('qc_banco_agencia').value;
+    const banco_cc = document.getElementById('qc_banco_cc').value;
 
     if (!nome) return alert('O nome é obrigatório.');
 
@@ -1363,7 +1391,7 @@ async function salvarQuickClient() {
         const res = await fetch('vendas.php?action=quick_register_client', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, cpf_cnpj, telefone, endereco })
+            body: JSON.stringify({ nome, razao_social, cpf_cnpj, telefone, endereco, cep, banco_agencia, banco_cc })
         });
 
         const result = await res.json();
@@ -1635,8 +1663,8 @@ async function saveCurrentSaleAsOrcamento() {
         if (result.success) {
             alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}`);
             
-            // Open print window
-            window.open('orcamento_imprimir.php?code=' + result.codigo, '_blank', 'width=400,height=600');
+            // Open print format choice modal
+            chooseOrcamentoPrintFormat(result.codigo);
             
             // Clear current sale
             cart = [];
@@ -1725,7 +1753,7 @@ async function loadPendingOrcamentosModal() {
 }
 
 function printOrcamento(code) {
-    window.open('orcamento_imprimir.php?code=' + code, '_blank', 'width=400,height=600');
+    chooseOrcamentoPrintFormat(code);
 }
 
 function importOrcamento(code, isValid) {
@@ -2713,7 +2741,61 @@ document.getElementById('pdvQty').addEventListener('keydown', (e) => {
 });
 
 // No-op interceptDiscount removal
+let pendingPrintCode = null;
+let shouldReloadAfterPrint = false;
+
+function chooseOrcamentoPrintFormat(code, reload = false) {
+    pendingPrintCode = code;
+    shouldReloadAfterPrint = reload;
+    const modal = new bootstrap.Modal(document.getElementById('modalChoosePrintFormat'));
+    modal.show();
+}
+
+function printOrcamentoFormat(type) {
+    const modalEl = document.getElementById('modalChoosePrintFormat');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+    
+    const w = type === 'A4' ? 900 : 400;
+    const h = type === 'A4' ? 900 : 600;
+    window.open('orcamento_imprimir.php?code=' + pendingPrintCode + '&type=' + type, '_blank', `width=${w},height=${h}`);
+    
+    if (shouldReloadAfterPrint) {
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    }
+}
 </script>
+
+<!-- Modal: Escolher Formato de Impressão -->
+<div class="modal fade" id="modalChoosePrintFormat" tabindex="-1" style="z-index: 1090;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-print me-2 text-white"></i>Formato de Impressão</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="text-muted mb-4">Selecione o formato desejado para a impressão do orçamento:</p>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <button class="btn btn-outline-secondary w-100 py-3 fw-bold" onclick="printOrcamentoFormat('cupom')">
+                            <i class="fas fa-receipt d-block fs-3 mb-2"></i>
+                            CUPOM (BOBINA)
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-primary w-100 py-3 fw-bold text-white" onclick="printOrcamentoFormat('A4')">
+                            <i class="fas fa-file-invoice d-block fs-3 mb-2 text-white"></i>
+                            A4 (COMPLETO)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <style>
     .cancel-choice-card {

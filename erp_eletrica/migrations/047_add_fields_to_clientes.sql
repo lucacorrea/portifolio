@@ -1,0 +1,5 @@
+ALTER TABLE clientes
+    ADD COLUMN razao_social VARCHAR(150) DEFAULT NULL AFTER nome,
+    ADD COLUMN cep VARCHAR(10) DEFAULT NULL AFTER endereco,
+    ADD COLUMN banco_agencia VARCHAR(20) DEFAULT NULL AFTER lat,
+    ADD COLUMN banco_cc VARCHAR(30) DEFAULT NULL AFTER banco_agencia;

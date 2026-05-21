@@ -18,6 +18,13 @@ $stmt = $db->prepare("
     SELECT pv.*, 
            COALESCE(c.nome, pv.nome_cliente_avulso, 'Consumidor Final') as cliente_nome,
            COALESCE(c.cpf_cnpj, pv.cpf_cliente) as cliente_doc,
+           c.razao_social as cliente_razao_social,
+           c.endereco as cliente_endereco,
+           c.cep as cliente_cep,
+           c.email as cliente_email,
+           c.telefone as cliente_telefone,
+           c.banco_agencia as cliente_banco_agencia,
+           c.banco_cc as cliente_banco_cc,
            u.nome as vendedor_nome,
            f.nome as filial_nome,
            f.cnpj as filial_cnpj,
@@ -55,6 +62,12 @@ $createdAt = strtotime($pv['created_at']);
 $now = time();
 $diffHours = ($now - $createdAt) / 3600;
 $isExpired = $diffHours >= 24;
+
+$type = $_GET['type'] ?? 'cupom';
+if ($type === 'A4') {
+    require __DIR__ . '/orcamento_imprimir_a4.php';
+    exit;
+}
 ?>
 <!doctype html>
 <html lang="pt-BR">

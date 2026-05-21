@@ -68,9 +68,13 @@ class ClientController extends BaseController {
             $model = new Client();
             $clientId = $model->create([
                 'nome' => $data['nome'],
+                'razao_social' => $data['razao_social'] ?? null,
                 'cpf_cnpj' => $data['cpf_cnpj'] ?? null,
                 'telefone' => $data['telefone'] ?? null,
                 'endereco' => $data['endereco'] ?? null,
+                'cep' => $data['cep'] ?? null,
+                'banco_agencia' => $data['banco_agencia'] ?? null,
+                'banco_cc' => $data['banco_cc'] ?? null,
                 'filial_id' => $_SESSION['filial_id'] ?? 1
             ]);
 

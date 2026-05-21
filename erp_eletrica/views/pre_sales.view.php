@@ -89,6 +89,9 @@
                             <option value="">CONSUMIDOR FINAL / NOME MANUAL</option>
                             <!-- Searchable list could be here -->
                         </select>
+                        <button class="btn btn-outline-success fw-bold px-3" type="button" onclick="abrirModalQuickClient()" title="Cadastro Rápido de Cliente">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
                     <div id="manual_name_container" class="mt-2 position-relative">
                         <input type="text" id="pv_nome_cliente_avulso" class="form-control mb-2" placeholder="Digite o nome do cliente avulso..." autocomplete="off">
@@ -543,8 +546,7 @@ async function generatePreSale(isOrcamento = false) {
         if (result.success) {
             if (isOrcamento) {
                 alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}`);
-                window.open('orcamento_imprimir.php?code=' + result.codigo, '_blank', 'width=400,height=600');
-                location.reload();
+                chooseOrcamentoPrintFormat(result.codigo, true);
             } else {
                 document.getElementById('pv_generated_code').innerText = result.codigo;
                 const modal = new bootstrap.Modal(document.getElementById('modal-pv-success'));
@@ -826,4 +828,117 @@ document.addEventListener('click', (e) => {
         pvClientResults.classList.add('d-none');
     }
 });
+
+function abrirModalQuickClient() {
+    document.getElementById('qc_nome').value = '';
+    document.getElementById('qc_razao_social').value = '';
+    document.getElementById('qc_cpf_cnpj').value = '';
+    document.getElementById('qc_telefone').value = '';
+    document.getElementById('qc_endereco').value = '';
+    document.getElementById('qc_cep').value = '';
+    document.getElementById('qc_banco_agencia').value = '';
+    document.getElementById('qc_banco_cc').value = '';
+    new bootstrap.Modal(document.getElementById('modalQuickClient')).show();
+}
+
+async function salvarQuickClient() {
+    const nome = document.getElementById('qc_nome').value;
+    const razao_social = document.getElementById('qc_razao_social').value;
+    const cpf_cnpj = document.getElementById('qc_cpf_cnpj').value;
+    const telefone = document.getElementById('qc_telefone').value;
+    const endereco = document.getElementById('qc_endereco').value;
+    const cep = document.getElementById('qc_cep').value;
+    const banco_agencia = document.getElementById('qc_banco_agencia').value;
+    const banco_cc = document.getElementById('qc_banco_cc').value;
+
+    if (!nome) return alert('O nome é obrigatório.');
+
+    const btn = event.currentTarget || document.querySelector('button[onclick="salvarQuickClient()"]');
+    const originalText = btn?.innerHTML || 'SALVAR';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+    }
+
+    try {
+        const res = await fetch('vendas.php?action=quick_register_client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, razao_social, cpf_cnpj, telefone, endereco, cep, banco_agencia, banco_cc })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            selectClientInPV({ id: result.client_id, nome: nome, doc: cpf_cnpj });
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalQuickClient'));
+            if (modal) modal.hide();
+        } else {
+            alert('Erro ao cadastrar: ' + result.error);
+        }
+    } catch (err) {
+        alert('Erro de conexão: ' + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
 </script>
+
+<!-- Modal: Cadastro Rápido de Cliente -->
+<div class="modal fade" id="modalQuickClient" tabindex="-1" style="z-index: 1080;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-user-plus me-2 text-white"></i>Cadastro Rápido de Cliente</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Nome Completo / Nome Fantasia *</label>
+                    <input type="text" id="qc_nome" class="form-control" placeholder="Ex: João da Silva">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Razão Social</label>
+                    <input type="text" id="qc_razao_social" class="form-control" placeholder="Ex: João da Silva ME">
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">CPF / CNPJ</label>
+                        <input type="text" id="qc_cpf_cnpj" class="form-control" placeholder="000.000.000-00">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Telefone</label>
+                        <input type="text" id="qc_telefone" class="form-control" placeholder="(00) 00000-0000">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-8">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Endereço</label>
+                        <input type="text" id="qc_endereco" class="form-control" placeholder="Rua, Número, Bairro...">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">CEP</label>
+                        <input type="text" id="qc_cep" class="form-control" placeholder="69000-000">
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Banco / Agência</label>
+                        <input type="text" id="qc_banco_agencia" class="form-control" placeholder="Ex: Sicoob - 0002">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Conta Corrente (C/C)</label>
+                        <input type="text" id="qc_banco_cc" class="form-control" placeholder="Ex: 91103-7">
+                    </div>
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-primary fw-bold py-3 shadow-sm" onclick="salvarQuickClient()">
+                        CADASTRAR E SELECIONAR
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
