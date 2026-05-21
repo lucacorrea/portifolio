@@ -280,7 +280,10 @@
             <div class="card-footer bg-white py-3 border-0 mt-auto">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="small fw-bold text-muted text-uppercase mb-0">Últimos Cupons</h6>
-                    <button class="btn btn-sm btn-link text-decoration-none p-0 extra-small" onclick="loadRecentSales()">Atualizar</button>
+                    <div>
+                        <button class="btn btn-sm btn-link text-decoration-none p-0 extra-small me-2" onclick="openSearchSalesModal()"><i class="fas fa-search me-1"></i>Buscar</button>
+                        <button class="btn btn-sm btn-link text-decoration-none p-0 extra-small" onclick="loadRecentSales()"><i class="fas fa-sync-alt me-1"></i>Atualizar</button>
+                    </div>
                 </div>
                 <div id="recentSalesList" class="small overflow-auto" style="max-height: 150px;">
                     <div class="text-center py-2 opacity-50">Carregando histórico...</div>
