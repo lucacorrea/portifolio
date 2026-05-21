@@ -11,7 +11,7 @@ require_once __DIR__ . '/config.php';
 
 /* ====================== Carregamento do XML ====================== */
 $chaveReq = preg_replace('/\D+/', '', (string)($_GET['chave'] ?? ''));
-$vendaId  = (int)($_GET['venda_id'] ?? 0);
+$vendaId  = (int)($_GET['venda_id'] ?? $_GET['id_venda'] ?? 0);
 $arqReq   = !empty($_GET['arq']) ? basename((string)$_GET['arq']) : null;
 
 $xmlRaw = null;

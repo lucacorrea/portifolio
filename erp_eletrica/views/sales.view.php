@@ -410,7 +410,7 @@
                     <button class="btn btn-outline-primary fw-bold py-3" onclick="imprimirCupom(activeManageId)">
                         <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
                     </button>
-                    <button class="btn btn-outline-info fw-bold py-3" onclick="imprimirA4(activeManageId)">
+                    <button class="btn btn-outline-info fw-bold py-3" id="btnManageA4" onclick="imprimirA4(activeManageId)" style="display: none;">
                         <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
                     </button>
                     <button class="btn btn-outline-success fw-bold py-3" id="btnManageDanfe" onclick="imprimirDanfe(activeManageId)" style="display: none;">
@@ -744,6 +744,8 @@ let pendingProduct = null;
 let currentPvId = null;
 let currentPvCode = null;
 let activeManageId = null;
+let cameFromSearch = false;
+let pendingManageSale = null;
 let selectedCustomerId = null;
 let selectedCustomerName = null;
 let selectedCustomerCPF = null;
@@ -1419,7 +1421,7 @@ function abrirModalQuickClient() {
     document.getElementById('qc_cep').value = '';
     document.getElementById('qc_banco_agencia').value = '';
     document.getElementById('qc_banco_cc').value = '';
-    new bootstrap.Modal(document.getElementById('modalQuickClient')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalQuickClient')).show();
 }
 
 async function salvarQuickClient() {
@@ -1877,22 +1879,41 @@ async function loadRecentSales() {
 }
 
 function manageSale(sale) {
-    activeManageId = sale.id;
-    document.getElementById('manageSaleId').innerText = sale.id;
-    document.getElementById('manageSaleCustomer').innerText = sale.cliente_nome || 'Consumidor Final';
-    document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
-    
-    const btnDanfe = document.getElementById('btnManageDanfe');
-    if (btnDanfe) {
-        const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
-        btnDanfe.style.display = isFiscal ? 'block' : 'none';
-    }
+    const searchModalEl = document.getElementById('modalSearchSales');
+    if (searchModalEl && searchModalEl.classList.contains('show')) {
+        cameFromSearch = true;
+        pendingManageSale = sale;
+        const modalSearch = bootstrap.Modal.getOrCreateInstance(searchModalEl);
+        if (modalSearch) {
+            modalSearch.hide();
+        }
+    } else {
+        cameFromSearch = false;
+        pendingManageSale = null;
 
-    new bootstrap.Modal(document.getElementById('modalSaleManager')).show();
+        activeManageId = sale.id;
+        document.getElementById('manageSaleId').innerText = sale.id;
+        document.getElementById('manageSaleCustomer').innerText = sale.cliente_nome || 'Consumidor Final';
+        document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
+        
+        const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
+
+        const btnDanfe = document.getElementById('btnManageDanfe');
+        if (btnDanfe) {
+            btnDanfe.style.display = isFiscal ? 'block' : 'none';
+        }
+
+        const btnA4 = document.getElementById('btnManageA4');
+        if (btnA4) {
+            btnA4.style.display = isFiscal ? 'block' : 'none';
+        }
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaleManager')).show();
+    }
 }
 
 function openSearchSalesModal() {
-    new bootstrap.Modal(document.getElementById('modalSearchSales')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales')).show();
     searchSalesList(1);
 }
 
@@ -1984,9 +2005,7 @@ function imprimirCupom(id) {
 }
 
 function imprimirA4(id) {
-    // For sale printing in A4 (usually handled by recibo_venda.php with a parameter or via a different file)
-    // If the system uses recibo_venda.php?type=A4, we'll use that. Otherwise, default to the same.
-    window.open('recibo_venda.php?id=' + id + '&type=A4', '_blank', 'width=900,height=900');
+    window.open('nfce/danfe_a4.php?venda_id=' + id, '_blank', 'width=900,height=900');
 }
 
 function imprimirDanfe(id) {
@@ -2041,6 +2060,84 @@ async function cancelSaleAction() {
 
 // Handler for the confirm button inside the triple cancel modal
 document.addEventListener('DOMContentLoaded', () => {
+    // Modal restoration when returning to Search flow
+    const saleManagerEl = document.getElementById('modalSaleManager');
+    if (saleManagerEl) {
+        saleManagerEl.addEventListener('hidden.bs.modal', function () {
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (cameFromSearch && openModals.length === 0) {
+                    cameFromSearch = false;
+                    const modalSearch = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales'));
+                    if (modalSearch) {
+                        modalSearch.show();
+                    }
+                }
+            }, 150);
+        });
+    }
+
+    const searchModalEl = document.getElementById('modalSearchSales');
+    if (searchModalEl) {
+        searchModalEl.addEventListener('hidden.bs.modal', function () {
+            if (pendingManageSale) {
+                const sale = pendingManageSale;
+                pendingManageSale = null;
+
+                activeManageId = sale.id;
+                document.getElementById('manageSaleId').innerText = sale.id;
+                document.getElementById('manageSaleCustomer').innerText = sale.cliente_nome || 'Consumidor Final';
+                document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
+                
+                const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
+
+                const btnDanfe = document.getElementById('btnManageDanfe');
+                if (btnDanfe) {
+                    btnDanfe.style.display = isFiscal ? 'block' : 'none';
+                }
+
+                const btnA4 = document.getElementById('btnManageA4');
+                if (btnA4) {
+                    btnA4.style.display = isFiscal ? 'block' : 'none';
+                }
+
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaleManager')).show();
+            }
+        });
+    }
+
+    const tripleCancelEl = document.getElementById('modalTripleCancel');
+    if (tripleCancelEl) {
+        tripleCancelEl.addEventListener('hidden.bs.modal', function () {
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (cameFromSearch && openModals.length === 0) {
+                    cameFromSearch = false;
+                    const modalSearch = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales'));
+                    if (modalSearch) {
+                        modalSearch.show();
+                    }
+                }
+            }, 150);
+        });
+    }
+
+    const exchangeEl = document.getElementById('modalExchangeFlow');
+    if (exchangeEl) {
+        exchangeEl.addEventListener('hidden.bs.modal', function () {
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (cameFromSearch && openModals.length === 0) {
+                    cameFromSearch = false;
+                    const modalSearch = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales'));
+                    if (modalSearch) {
+                        modalSearch.show();
+                    }
+                }
+            }, 150);
+        });
+    }
+
     const confirmBtn = document.getElementById('confirmCancelBtn');
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async function() {
@@ -2679,12 +2776,12 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
             <button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm mb-2 w-100" onclick="imprimirCupom(${saleId})">
                 <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
             </button>
-            <button class="btn btn-info btn-lg fw-bold py-3 shadow-sm text-white mb-2 w-100" onclick="imprimirA4(${saleId})">
-                <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
-            </button>
         `;
         if (isFiscal) {
             btnPrint += `
+            <button class="btn btn-info btn-lg fw-bold py-3 shadow-sm text-white mb-2 w-100" onclick="imprimirA4(${saleId})">
+                <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
+            </button>
             <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm mb-2 w-100" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
                 <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (DANFE)
             </button>
@@ -2925,7 +3022,7 @@ let shouldReloadAfterPrint = false;
 function chooseOrcamentoPrintFormat(code, reload = false) {
     pendingPrintCode = code;
     shouldReloadAfterPrint = reload;
-    const modal = new bootstrap.Modal(document.getElementById('modalChoosePrintFormat'));
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalChoosePrintFormat'));
     modal.show();
 }
 
