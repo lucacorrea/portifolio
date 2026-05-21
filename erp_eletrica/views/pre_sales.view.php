@@ -948,3 +948,60 @@ async function salvarQuickClient() {
         </div>
     </div>
 </div>
+
+<!-- Modal: Escolher Formato de Impressão -->
+<div class="modal fade" id="modalChoosePrintFormat" tabindex="-1" style="z-index: 1090;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-print me-2 text-white"></i>Formato de Impressão</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="text-muted mb-4">Selecione o formato desejado para a impressão do orçamento:</p>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <button class="btn btn-outline-secondary w-100 py-3 fw-bold" onclick="printOrcamentoFormat('cupom')">
+                            <i class="fas fa-receipt d-block fs-3 mb-2"></i>
+                            CUPOM (BOBINA)
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-primary w-100 py-3 fw-bold text-white" onclick="printOrcamentoFormat('A4')">
+                            <i class="fas fa-file-invoice d-block fs-3 mb-2 text-white"></i>
+                            A4 (COMPLETO)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let pendingPrintCode = null;
+let shouldReloadAfterPrint = false;
+
+function chooseOrcamentoPrintFormat(code, reload = false) {
+    pendingPrintCode = code;
+    shouldReloadAfterPrint = reload;
+    const modal = new bootstrap.Modal(document.getElementById('modalChoosePrintFormat'));
+    modal.show();
+}
+
+function printOrcamentoFormat(type) {
+    const modalEl = document.getElementById('modalChoosePrintFormat');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+    
+    const w = type === 'A4' ? 900 : 400;
+    const h = type === 'A4' ? 900 : 600;
+    window.open('orcamento_imprimir.php?code=' + pendingPrintCode + '&type=' + type, '_blank', `width=${w},height=${h}`);
+    
+    if (shouldReloadAfterPrint) {
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    }
+}
+</script>
