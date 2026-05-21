@@ -628,7 +628,13 @@ async function loadPendingOrcamentosModal() {
 }
 
 function printOrcamento(code) {
-    window.open('orcamento_imprimir.php?code=' + code, '_blank', 'width=400,height=600');
+    if (typeof chooseOrcamentoPrintFormat === 'function') {
+        // If the format chooser is available (e.g. loaded via sales.view.php), use it
+        chooseOrcamentoPrintFormat(code);
+    } else {
+        // Fallback
+        window.open('orcamento_imprimir.php?code=' + code, '_blank', 'width=400,height=600');
+    }
 }
 
 function importOrcamento(code, isValid) {
