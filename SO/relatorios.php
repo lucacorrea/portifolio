@@ -269,6 +269,407 @@ if ($periodo_inicio !== '' || $periodo_fim !== '') {
     $periodo_texto = $inicioTxt . ' até ' . $fimTxt;
 }
 
+function get_grouped_pdf_report(PDO $pdo, string $where, array $params, string $mode): array
+{
+    if ($mode === 'fornecedor') {
+        $sql = "
+            SELECT
+                f.id AS grupo_id,
+                f.nome AS grupo_nome,
+                s.nome AS linha_nome,
+                MAX(a.criado_em) AS data_referencia,
+                COALESCE(SUM(ia.quantidade), 0) AS total_qtd,
+                COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS total_valor
+            FROM itens_aquisicao ia
+            INNER JOIN aquisicoes a ON ia.aquisicao_id = a.id
+            INNER JOIN oficios o ON a.oficio_id = o.id
+            INNER JOIN secretarias s ON o.secretaria_id = s.id
+            INNER JOIN fornecedores f ON a.fornecedor_id = f.id
+            WHERE $where
+            GROUP BY f.id, f.nome, s.id, s.nome
+            ORDER BY f.nome ASC, data_referencia ASC, s.nome ASC
+        ";
+    } else {
+        $sql = "
+            SELECT
+                s.id AS grupo_id,
+                s.nome AS grupo_nome,
+                f.nome AS linha_nome,
+                MAX(a.criado_em) AS data_referencia,
+                COALESCE(SUM(ia.quantidade), 0) AS total_qtd,
+                COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS total_valor
+            FROM itens_aquisicao ia
+            INNER JOIN aquisicoes a ON ia.aquisicao_id = a.id
+            INNER JOIN oficios o ON a.oficio_id = o.id
+            INNER JOIN secretarias s ON o.secretaria_id = s.id
+            INNER JOIN fornecedores f ON a.fornecedor_id = f.id
+            WHERE $where
+            GROUP BY s.id, s.nome, f.id, f.nome
+            ORDER BY s.nome ASC, data_referencia ASC, f.nome ASC
+        ";
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    $groups = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $key = (string)$row['grupo_id'];
+
+        if (!isset($groups[$key])) {
+            $groups[$key] = [
+                'nome' => $row['grupo_nome'],
+                'rows' => [],
+                'total_qtd' => 0,
+                'total_valor' => 0,
+            ];
+        }
+
+        $qtd = (float)$row['total_qtd'];
+        $valor = (float)$row['total_valor'];
+
+        $groups[$key]['rows'][] = [
+            'nome' => $row['linha_nome'],
+            'data' => $row['data_referencia'],
+            'qtd' => $qtd,
+            'valor' => $valor,
+        ];
+        $groups[$key]['total_qtd'] += $qtd;
+        $groups[$key]['total_valor'] += $valor;
+    }
+
+    return array_values($groups);
+}
+
+/* =========================
+   EXPORTAÇÃO PDF
+========================= */
+if (in_array($export, ['pdf_fornecedor', 'pdf_secretaria'], true)) {
+    $pdf_mode = $export === 'pdf_fornecedor' ? 'fornecedor' : 'secretaria';
+    $pdf_groups = get_grouped_pdf_report($pdo, $where, $params, $pdf_mode);
+    $pdf_title = $pdf_mode === 'fornecedor'
+        ? 'RELATÓRIO DE AQUISIÇÕES POR SECRETARIA'
+        : 'RELATÓRIO DE AQUISIÇÕES POR FORNECEDOR';
+    $pdf_details = $pdf_mode === 'fornecedor'
+        ? 'Totais por secretaria'
+        : 'Totais por fornecedor';
+    $pdf_section_title = $pdf_mode === 'fornecedor'
+        ? 'RESUMO POR SECRETARIA'
+        : 'RESUMO POR FORNECEDOR';
+    $pdf_first_column = $pdf_mode === 'fornecedor' ? 'Secretaria' : 'Fornecedor';
+    $pdf_toolbar_title = $pdf_mode === 'fornecedor'
+        ? 'PDF por fornecedor'
+        : 'PDF por secretaria';
+?>
+    <!DOCTYPE html>
+    <html lang="pt-br">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><?php echo h($pdf_toolbar_title); ?></title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            @page {
+                size: A4 landscape;
+                margin: 8mm;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                background: #eef2f7;
+                color: #0f172a;
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+            }
+
+            .print-toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+                padding: 14px 18px;
+                background: #fff;
+                border-bottom: 1px solid #dbe2ea;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }
+
+            .toolbar-title {
+                font-weight: 800;
+                font-size: 14px;
+            }
+
+            .toolbar-actions {
+                display: flex;
+                gap: .6rem;
+                flex-wrap: wrap;
+            }
+
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                gap: .45rem;
+                border: 1px solid #dbe2ea;
+                border-radius: 10px;
+                padding: .62rem .9rem;
+                background: #fff;
+                color: #334155;
+                text-decoration: none;
+                font-weight: 800;
+                cursor: pointer;
+            }
+
+            .btn-primary {
+                background: #1d4ed8;
+                border-color: #1d4ed8;
+                color: #fff;
+            }
+
+            .pdf-wrap {
+                padding: 14px;
+            }
+
+            .pdf-page {
+                width: 100%;
+                background: #fff;
+                margin: 0 auto 14px;
+                padding: 0;
+                page-break-after: always;
+                break-after: page;
+            }
+
+            .pdf-page:last-child {
+                page-break-after: auto;
+                break-after: auto;
+            }
+
+            table.sheet {
+                border-collapse: collapse;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .sheet td,
+            .sheet th {
+                border: 1px solid #7c8aa5;
+                padding: 4px 8px;
+                vertical-align: middle;
+                word-wrap: break-word;
+                line-height: 1.15;
+            }
+
+            .title-main {
+                background: #dbeafe;
+                color: #0f172a;
+                font-size: 15px;
+                font-weight: 800;
+                text-align: center;
+                padding: 6px 8px;
+            }
+
+            .sub-info {
+                background: #f8fafc;
+                font-size: 12px;
+            }
+
+            .section-title {
+                background: #1d4ed8;
+                color: #fff;
+                font-weight: 800;
+                text-transform: uppercase;
+                text-align: center;
+                font-size: 14px;
+            }
+
+            .thead th {
+                background: #e5e7eb;
+                color: #0f172a;
+                font-weight: 800;
+                text-align: center;
+                font-size: 12px;
+            }
+
+            .summary-label {
+                background: #f8fafc;
+                font-weight: 800;
+                text-align: center;
+                font-size: 13px;
+            }
+
+            .summary-value {
+                text-align: center;
+                font-weight: 700;
+                background: #fff;
+            }
+
+            .left {
+                text-align: left;
+            }
+
+            .center {
+                text-align: center;
+            }
+
+            .right {
+                text-align: right;
+            }
+
+            .total-row td {
+                background: #eef2ff;
+                font-weight: 800;
+            }
+
+            .spacer td {
+                border: none !important;
+                height: 8px;
+                padding: 0;
+                background: #fff;
+            }
+
+            .empty-sheet {
+                max-width: 900px;
+                margin: 40px auto;
+                background: #fff;
+                border: 1px solid #dbe2ea;
+                border-radius: 12px;
+                padding: 28px;
+                text-align: center;
+                font-weight: 800;
+                color: #64748b;
+            }
+
+            @media print {
+                body {
+                    background: #fff !important;
+                }
+
+                .no-print {
+                    display: none !important;
+                }
+
+                .pdf-wrap {
+                    padding: 0 !important;
+                }
+
+                .pdf-page {
+                    margin: 0 !important;
+                    width: 100% !important;
+                    box-shadow: none !important;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="print-toolbar no-print">
+            <div class="toolbar-title"><?php echo h($pdf_toolbar_title); ?> - modo paisagem</div>
+            <div class="toolbar-actions">
+                <a href="relatorios.php?<?php echo h(http_build_query(['sec_id' => $sec_id, 'forn_id' => $forn_id, 'produto' => $produto, 'inicio' => $periodo_inicio, 'fim' => $periodo_fim])); ?>" class="btn">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <button type="button" class="btn btn-primary" onclick="window.print()">
+                    <i class="fas fa-file-pdf"></i> Imprimir / Salvar PDF
+                </button>
+            </div>
+        </div>
+
+        <?php if (empty($pdf_groups)): ?>
+            <div class="empty-sheet">
+                Nenhum dado encontrado para os filtros selecionados.
+            </div>
+        <?php else: ?>
+            <div class="pdf-wrap">
+                <?php foreach ($pdf_groups as $group): ?>
+                    <?php
+                    $header_secretaria = $pdf_mode === 'secretaria' ? $group['nome'] : $nome_secretaria_filtro;
+                    $header_fornecedor = $pdf_mode === 'fornecedor' ? $group['nome'] : $nome_fornecedor_filtro;
+                    ?>
+                    <div class="pdf-page">
+                        <table class="sheet">
+                            <colgroup>
+                                <col style="width: 42%;">
+                                <col style="width: 16%;">
+                                <col style="width: 19%;">
+                                <col style="width: 23%;">
+                            </colgroup>
+
+                            <tr>
+                                <td colspan="4" class="title-main"><?php echo h($pdf_title); ?></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="sub-info left"><strong>Gerado em:</strong> <?php echo date('d/m/Y H:i:s'); ?></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="sub-info left"><strong>Detalhes:</strong> <?php echo h($pdf_details); ?></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($header_secretaria); ?></td>
+                                <td colspan="2" class="sub-info left"><strong>Fornecedor:</strong> <?php echo h($header_fornecedor); ?></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="sub-info left"><strong>Produto:</strong> <?php echo $produto !== '' ? h($produto) : 'Todos'; ?></td>
+                                <td colspan="2" class="sub-info left"><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
+                            </tr>
+
+                            <tr class="spacer">
+                                <td colspan="4"></td>
+                            </tr>
+
+                            <tr>
+                                <td colspan="2" class="summary-label">TOTAL GERAL FINANCEIRO</td>
+                                <td colspan="2" class="summary-label">TOTAL GERAL DE QUANTIDADE</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="summary-value"><?php echo format_money($group['total_valor']); ?></td>
+                                <td colspan="2" class="summary-value"><?php echo number_format((float)$group['total_qtd'], 2, ',', '.'); ?></td>
+                            </tr>
+
+                            <tr class="spacer">
+                                <td colspan="4"></td>
+                            </tr>
+
+                            <tr>
+                                <td colspan="4" class="section-title"><?php echo h($pdf_section_title); ?></td>
+                            </tr>
+                            <tr class="thead">
+                                <th><?php echo h($pdf_first_column); ?></th>
+                                <th>Data</th>
+                                <th>Qtd Itens</th>
+                                <th>Valor Total</th>
+                            </tr>
+
+                            <?php foreach ($group['rows'] as $row): ?>
+                                <tr>
+                                    <td class="left"><?php echo h($row['nome']); ?></td>
+                                    <td class="center"><?php echo format_date_br($row['data']); ?></td>
+                                    <td class="center"><?php echo number_format((float)$row['qtd'], 2, ',', '.'); ?></td>
+                                    <td class="right"><?php echo format_money($row['valor']); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+
+                            <tr class="total-row">
+                                <td colspan="2" class="left">TOTAL GERAL</td>
+                                <td class="center"><?php echo number_format((float)$group['total_qtd'], 2, ',', '.'); ?></td>
+                                <td class="right"><?php echo format_money($group['total_valor']); ?></td>
+                            </tr>
+                        </table>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </body>
+
+    </html>
+<?php
+    exit;
+}
+
 /* =========================
    EXPORTAÇÃO EXCEL
 ========================= */
@@ -1068,6 +1469,20 @@ include 'views/layout/header.php';
                         href="?<?php echo h(http_build_query(array_merge($query_base, ['export' => 'excel']))); ?>"
                         class="btn btn-success-custom btn-sm">
                         <i class="fas fa-file-excel"></i> Exportar Excel
+                    </a>
+
+                    <a
+                        href="relatorios_pdf_fornecedores.php?<?php echo h(http_build_query($query_base)); ?>"
+                        target="_blank"
+                        class="btn btn-outline btn-sm">
+                        <i class="fas fa-file-pdf"></i> PDF Fornecedores
+                    </a>
+
+                    <a
+                        href="relatorios_pdf_secretarias.php?<?php echo h(http_build_query($query_base)); ?>"
+                        target="_blank"
+                        class="btn btn-outline btn-sm">
+                        <i class="fas fa-file-pdf"></i> PDF Secretarias
                     </a>
                 </div>
             </div>

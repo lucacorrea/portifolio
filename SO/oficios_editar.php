@@ -87,8 +87,15 @@ if (!$oficio) {
 }
 
 $secretarias = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
+$fornecedores = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt_aquisicao = $pdo->prepare("SELECT id, numero_aq, status, criado_em FROM aquisicoes WHERE oficio_id = ? ORDER BY id ASC");
+$stmt_aquisicao = $pdo->prepare("
+    SELECT a.id, a.numero_aq, a.status, a.criado_em, a.fornecedor_id, f.nome AS fornecedor
+    FROM aquisicoes a
+    LEFT JOIN fornecedores f ON f.id = a.fornecedor_id
+    WHERE a.oficio_id = ?
+    ORDER BY a.id ASC
+");
 $stmt_aquisicao->execute([$id]);
 $aquisicoes_vinculadas = $stmt_aquisicao->fetchAll(PDO::FETCH_ASSOC);
 $total_aquisicoes_vinculadas = count($aquisicoes_vinculadas);
@@ -107,16 +114,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $numero_manual = mb_strtoupper(trim($_POST['numero_oficio'] ?? ''), 'UTF-8');
         $secretaria_id = (int)($_POST['secretaria_id'] ?? 0);
         $local = trim((string)($_POST['local'] ?? ''));
+        $resumo_itens = trim((string)($_POST['resumo_itens'] ?? ''));
         $criado_em = parse_oficio_datetime($_POST['criado_em'] ?? '');
         $valor_orcamento = parse_oficio_money($_POST['valor_orcamento'] ?? '');
         $produtos = $_POST['produtos'] ?? [];
         $aquisicoes_datas = $_POST['aquisicoes_datas'] ?? [];
+        $aquisicoes_fornecedores = $_POST['aquisicoes_fornecedores'] ?? [];
 
         if ($numero_manual === '') {
             throw new Exception("O número do ofício é obrigatório.");
         }
 
         $secretarias_validas = array_map('intval', array_column($secretarias, 'id'));
+        $fornecedores_validos = array_map('intval', array_column($fornecedores, 'id'));
         if ($secretaria_id <= 0 || !in_array($secretaria_id, $secretarias_validas, true)) {
             throw new Exception("Selecione uma secretaria válida.");
         }
@@ -126,17 +136,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $aquisicoes_datas_sanitizadas = [];
+        $aquisicoes_fornecedores_sanitizados = [];
         foreach ($aquisicoes_vinculadas as $aq) {
             $aq_id = (int)$aq['id'];
 
             if (!array_key_exists($aq_id, $aquisicoes_datas)) {
-                continue;
+                $aquisicoes_datas[$aq_id] = format_datetime_local_input($aq['criado_em'] ?? '');
             }
 
             $aquisicoes_datas_sanitizadas[$aq_id] = parse_datetime_local_required(
                 $aquisicoes_datas[$aq_id],
                 "a data da aquisição {$aq['numero_aq']}"
             );
+
+            if (!array_key_exists($aq_id, $aquisicoes_fornecedores)) {
+                $aquisicoes_fornecedores[$aq_id] = (int)($aq['fornecedor_id'] ?? 0);
+            }
+
+            $fornecedor_id_aquisicao = (int)$aquisicoes_fornecedores[$aq_id];
+            if ($fornecedor_id_aquisicao <= 0 || !in_array($fornecedor_id_aquisicao, $fornecedores_validos, true)) {
+                throw new Exception("Selecione um fornecedor válido para a aquisição {$aq['numero_aq']}.");
+            }
+
+            $aquisicoes_fornecedores_sanitizados[$aq_id] = $fornecedor_id_aquisicao;
         }
 
         $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ? AND id <> ?");
@@ -206,21 +228,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt_update = $pdo->prepare("
             UPDATE oficios
-            SET numero = ?, secretaria_id = ?, local = ?, criado_em = ?, valor_orcamento = ?, status = ?
+            SET numero = ?, secretaria_id = ?, local = ?, resumo_itens = ?, criado_em = ?, valor_orcamento = ?, status = ?
             WHERE id = ?
         ");
-        $stmt_update->execute([$numero_manual, $secretaria_id, $local, $criado_em, $valor_orcamento, $novo_status, $id]);
+        $stmt_update->execute([
+            $numero_manual,
+            $secretaria_id,
+            $local,
+            $resumo_itens !== '' ? $resumo_itens : null,
+            $criado_em,
+            $valor_orcamento,
+            $novo_status,
+            $id
+        ]);
 
-        if (!empty($aquisicoes_datas_sanitizadas)) {
-            $stmt_update_aquisicao_data = $pdo->prepare("
+        if (!empty($aquisicoes_datas_sanitizadas) || !empty($aquisicoes_fornecedores_sanitizados)) {
+            $stmt_update_aquisicao_dados = $pdo->prepare("
                 UPDATE aquisicoes
-                SET criado_em = ?
+                SET criado_em = ?, fornecedor_id = ?
                 WHERE id = ? AND oficio_id = ?
             ");
 
             foreach ($aquisicoes_datas_sanitizadas as $aquisicao_id => $data_aquisicao) {
-                $stmt_update_aquisicao_data->execute([
+                $stmt_update_aquisicao_dados->execute([
                     $data_aquisicao,
+                    (int)$aquisicoes_fornecedores_sanitizados[$aquisicao_id],
                     (int)$aquisicao_id,
                     $id,
                 ]);
@@ -405,6 +437,10 @@ $local_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['local'] ?? '')
     : ($oficio['local'] ?? '');
 
+$resumo_itens_value = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? ($_POST['resumo_itens'] ?? '')
+    : ($oficio['resumo_itens'] ?? '');
+
 $criado_em_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['criado_em'] ?? '')
     : format_datetime_local_input($oficio['criado_em'] ?? '');
@@ -424,11 +460,16 @@ if ($criado_em_timestamp !== false) {
 }
 
 $aquisicoes_datas_values = [];
+$aquisicoes_fornecedores_values = [];
 foreach ($aquisicoes_vinculadas as $aq) {
     $aq_id = (int)$aq['id'];
     $aquisicoes_datas_values[$aq_id] = $_SERVER['REQUEST_METHOD'] === 'POST'
         ? ($_POST['aquisicoes_datas'][$aq_id] ?? format_datetime_local_input($aq['criado_em'] ?? ''))
         : format_datetime_local_input($aq['criado_em'] ?? '');
+
+    $aquisicoes_fornecedores_values[$aq_id] = $_SERVER['REQUEST_METHOD'] === 'POST'
+        ? (int)($_POST['aquisicoes_fornecedores'][$aq_id] ?? ($aq['fornecedor_id'] ?? 0))
+        : (int)($aq['fornecedor_id'] ?? 0);
 }
 
 $orcamento_value = $_SERVER['REQUEST_METHOD'] === 'POST'
@@ -460,15 +501,7 @@ include 'views/layout/header.php';
         grid-column: span 2;
     }
 
-    .aquisicoes-date-panel {
-        border: 1px solid var(--border-color);
-        border-radius: 14px;
-        padding: 1rem;
-        margin: -.5rem 0 1.5rem;
-        background: #fff;
-    }
-
-    .aquisicoes-date-title {
+    .form-section-title {
         display: flex;
         align-items: center;
         gap: .5rem;
@@ -478,32 +511,84 @@ include 'views/layout/header.php';
         font-weight: 800;
     }
 
+    .aquisicoes-date-panel {
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 1.25rem;
+        margin: 0 0 1.5rem;
+        background: #fff;
+    }
+
+    .aquisicoes-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin: 0 0 1rem;
+        flex-wrap: wrap;
+    }
+
+    .aquisicoes-date-title {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        margin: 0;
+        color: var(--text-dark);
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .aquisicoes-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 30px;
+        padding: .35rem .75rem;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3156a3;
+        font-size: .78rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
     .aquisicoes-date-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1rem;
+        grid-template-columns: 1fr;
+        gap: .85rem;
     }
 
     .aquisicao-date-card {
         border: 1px solid #e5e7eb;
         border-radius: 12px;
-        padding: .9rem;
+        padding: 1rem;
         background: #f8fafc;
-    }
-
-    .aquisicao-date-meta {
-        display: flex;
-        justify-content: space-between;
-        gap: .75rem;
+        display: grid;
+        grid-template-columns: minmax(150px, .8fr) minmax(280px, 1.7fr) minmax(220px, 1fr) minmax(150px, auto);
+        gap: 1rem;
         align-items: center;
-        margin-bottom: .65rem;
-        font-weight: 800;
-        color: #0f172a;
     }
 
-    .aquisicao-date-status {
-        font-size: .72rem;
-        color: #64748b;
+    .aquisicao-readonly {
+        background: #fff;
+        font-weight: 900;
+        color: var(--text-dark);
+    }
+
+    .aquisicao-status-pill {
+        min-height: 48px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: .65rem .8rem;
+        border-radius: 10px;
+        background: #eef2f7;
+        color: #475569;
+        font-size: .78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        text-align: center;
         white-space: nowrap;
     }
 
@@ -582,6 +667,10 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr;
         }
 
+        .aquisicao-date-card {
+            grid-template-columns: 1fr;
+        }
+
         .budget-info {
             align-items: flex-start;
             flex-direction: column;
@@ -611,17 +700,21 @@ include 'views/layout/header.php';
             <div class="alert alert-warning">
                 Esta solicitação já possui a aquisição
                 <strong><?php echo htmlspecialchars($aquisicoes_vinculadas[0]['numero_aq'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                gerada. Ao salvar, os itens e o valor total dessa aquisição serão atualizados junto com o ofício.
+                gerada. Ao salvar, dados da aquisição, itens e valor total serão atualizados junto com o ofício.
             </div>
         <?php elseif ($total_aquisicoes_vinculadas > 1): ?>
             <div class="alert alert-warning">
                 Esta solicitação já possui
                 <strong><?php echo (int)$total_aquisicoes_vinculadas; ?> aquisições</strong>
-                geradas. Ao salvar, os itens já vinculados serão atualizados nas respectivas aquisições. Itens novos devem ser incluídos na aquisição específica do fornecedor.
+                geradas. Ao salvar, fornecedor/data e itens já vinculados serão atualizados nas respectivas aquisições. Itens novos devem ser incluídos na aquisição específica do fornecedor.
             </div>
         <?php endif; ?>
 
         <form action="" method="POST" id="items-form">
+            <h4 class="form-section-title">
+                <i class="fas fa-file-alt"></i> Dados do Ofício
+            </h4>
+
             <div class="oficio-edit-grid">
                 <div class="form-group">
                     <label class="form-label">Número do Ofício <span style="color:red">*</span></label>
@@ -679,29 +772,78 @@ include 'views/layout/header.php';
                         placeholder="0,00"
                         value="<?php echo htmlspecialchars($orcamento_value, ENT_QUOTES, 'UTF-8'); ?>">
                 </div>
+
+                <div class="form-group oficio-edit-span-2">
+                    <label class="form-label">Resumo dos Itens a Cadastrar</label>
+                    <textarea
+                        name="resumo_itens"
+                        class="form-control"
+                        placeholder="Ex: material de expediente, gêneros alimentícios, equipamentos, serviços ou observações sobre os itens que serão detalhados depois..."
+                        rows="3"><?php echo htmlspecialchars($resumo_itens_value, ENT_QUOTES, 'UTF-8'); ?></textarea>
+                    <small class="text-muted">Use este campo para registrar uma prévia dos itens antes da atribuição detalhada.</small>
+                </div>
             </div>
 
             <?php if (!empty($aquisicoes_vinculadas)): ?>
                 <div class="aquisicoes-date-panel">
-                    <h4 class="aquisicoes-date-title">
-                        <i class="fas fa-calendar-alt"></i> Datas das Aquisições Vinculadas
-                    </h4>
+                    <div class="aquisicoes-section-head">
+                        <h4 class="aquisicoes-date-title">
+                            <i class="fas fa-shopping-bag"></i> Aquisições Vinculadas
+                        </h4>
+                        <span class="aquisicoes-count">
+                            <?php echo (int)$total_aquisicoes_vinculadas; ?> aquisição(ões)
+                        </span>
+                    </div>
 
                     <div class="aquisicoes-date-grid">
                         <?php foreach ($aquisicoes_vinculadas as $aq): ?>
                             <?php $aq_id = (int)$aq['id']; ?>
                             <div class="aquisicao-date-card">
-                                <div class="aquisicao-date-meta">
-                                    <span><?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                    <span class="aquisicao-date-status"><?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label">Nº Aquisição</label>
+                                    <input
+                                        type="text"
+                                        class="form-control aquisicao-readonly"
+                                        value="<?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?>"
+                                        readonly>
                                 </div>
 
-                                <label class="form-label">Data da Aquisição</label>
-                                <input
-                                    type="datetime-local"
-                                    name="aquisicoes_datas[<?php echo $aq_id; ?>]"
-                                    class="form-control"
-                                    value="<?php echo htmlspecialchars($aquisicoes_datas_values[$aq_id] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label">Fornecedor</label>
+                                    <select
+                                        name="aquisicoes_fornecedores[<?php echo $aq_id; ?>]"
+                                        class="form-control"
+                                        required>
+                                        <option value="">Selecione o fornecedor</option>
+                                        <?php foreach ($fornecedores as $fornecedor): ?>
+                                            <option
+                                                value="<?php echo (int)$fornecedor['id']; ?>"
+                                                <?php echo (int)($aquisicoes_fornecedores_values[$aq_id] ?? 0) === (int)$fornecedor['id'] ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                                                <?php if (!empty($fornecedor['cnpj'])): ?>
+                                                    (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
+                                                <?php endif; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label">Data da Aquisição</label>
+                                    <input
+                                        type="datetime-local"
+                                        name="aquisicoes_datas[<?php echo $aq_id; ?>]"
+                                        class="form-control"
+                                        value="<?php echo htmlspecialchars($aquisicoes_datas_values[$aq_id] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                                        required>
+                                </div>
+
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label">Status</label>
+                                    <div class="aquisicao-status-pill">
+                                        <?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </div>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -773,6 +915,10 @@ include 'views/layout/header.php';
                     </div>
                 </div>
             <?php endif; ?>
+
+            <h4 class="form-section-title">
+                <i class="fas fa-boxes"></i> Itens do Ofício
+            </h4>
 
             <div id="items-container">
                 <?php foreach ($items_form as $idx => $it): ?>

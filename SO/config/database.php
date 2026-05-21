@@ -62,6 +62,11 @@ try {
             $pdo->exec("ALTER TABLE itens_aquisicao ADD COLUMN oficio_item_id INT NULL AFTER aquisicao_id");
             $pdo->exec("CREATE INDEX idx_itens_aquisicao_oficio_item ON itens_aquisicao (oficio_item_id)");
         }
+
+        $query = $pdo->query("SHOW COLUMNS FROM oficios LIKE 'resumo_itens'");
+        if (!$query->fetch()) {
+            $pdo->exec("ALTER TABLE oficios ADD COLUMN resumo_itens TEXT NULL AFTER justificativa");
+        }
     } catch (PDOException $e) {
         // Ignora erros se houver falhas menores na migração
     }

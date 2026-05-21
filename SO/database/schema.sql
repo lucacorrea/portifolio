@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS oficios (
     secretaria_id INT NOT NULL,
     local VARCHAR(150) DEFAULT NULL,
     justificativa TEXT,
+    resumo_itens TEXT DEFAULT NULL,
     status ENUM('ENVIADO', 'APROVADO', 'REPROVADO', 'ARQUIVADO') DEFAULT 'ENVIADO',
     usuario_id INT NOT NULL, -- Quem cadastrou
     arquivo_orcamento VARCHAR(255) DEFAULT NULL, -- Caminho do anexo
