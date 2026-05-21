@@ -52,6 +52,11 @@
                                     <i class="fas fa-list-alt me-2"></i><span class="d-none d-sm-inline">Listar Orç.</span> (F8)
                                 </button>
                             </div>
+                            <div class="col-6 col-sm-auto">
+                                <button class="btn btn-outline-warning fw-bold w-100 px-3 py-2 shadow-sm d-flex align-items-center justify-content-center" onclick="openSearchSalesModal()" title="Pesquisar Venda (F5)" id="btnSearchSales">
+                                    <i class="fas fa-search-dollar me-2"></i><span class="d-none d-sm-inline">Buscar Venda</span> (F5)
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2962,6 +2967,12 @@ document.addEventListener('keydown', (e) => {
         const discountInput = document.getElementById('discountPercent');
         discountInput.focus();
         discountInput.select();
+    }
+
+    // F5: Buscar Venda
+    if (e.key === 'F5') {
+        e.preventDefault();
+        openSearchSalesModal();
     }
 
     if (e.key === 'Escape') {
