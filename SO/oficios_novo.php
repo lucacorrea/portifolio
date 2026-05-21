@@ -9,6 +9,7 @@ $page_title = "Cadastrar Nova Solicitação";
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $secretaria_id    = $_POST['secretaria_id'] ?? '';
     $local            = trim($_POST['local'] ?? '');
+    $resumo_itens     = trim($_POST['resumo_itens'] ?? '');
     $justificativa    = trim($_POST['justificativa'] ?? '');
     $valor_orcamento  = !empty($_POST['valor_orcamento'])
         ? str_replace(['.', ','], ['', '.'], $_POST['valor_orcamento'])
@@ -83,9 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare("
                 INSERT INTO oficios
-                    (numero, secretaria_id, local, justificativa, usuario_id, valor_orcamento, arquivo_orcamento, status, criado_em)
+                    (numero, secretaria_id, local, justificativa, resumo_itens, usuario_id, valor_orcamento, arquivo_orcamento, status, criado_em)
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             $stmt->execute([
@@ -93,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $secretaria_id,
                 $local,
                 $justificativa,
+                $resumo_itens !== '' ? $resumo_itens : null,
                 $_SESSION['user_id'],
                 $valor_orcamento,
                 $arquivo_orcamento,
@@ -169,6 +171,10 @@ include 'views/layout/header.php';
         margin-bottom: 1.5rem;
     }
 
+    .solicitacao-span-2 {
+        grid-column: span 2;
+    }
+
     .solicitacao-actions {
         margin-top: 2rem;
         border-top: 1px solid var(--border-color);
@@ -197,6 +203,10 @@ include 'views/layout/header.php';
     @media (max-width: 768px) {
         .solicitacao-top-grid {
             grid-template-columns: 1fr;
+        }
+
+        .solicitacao-span-2 {
+            grid-column: span 1;
         }
 
         .solicitacao-actions {
@@ -284,6 +294,17 @@ include 'views/layout/header.php';
                         onkeyup="this.value = this.value.replace(/[^\d,]/g, '')"
                         value="<?php echo htmlspecialchars($_POST['valor_orcamento'] ?? ''); ?>"
                     >
+                </div>
+
+                <div class="form-group solicitacao-span-2">
+                    <label class="form-label">Resumo dos Itens a Cadastrar</label>
+                    <textarea
+                        name="resumo_itens"
+                        class="form-control"
+                        placeholder="Ex: material de expediente, gêneros alimentícios, equipamentos, serviços ou observações sobre os itens que serão detalhados depois..."
+                        rows="3"
+                    ><?php echo htmlspecialchars($_POST['resumo_itens'] ?? ''); ?></textarea>
+                    <small class="text-muted">Use este campo para registrar uma prévia dos itens antes da atribuição detalhada.</small>
                 </div>
 
                 <div class="form-group">

@@ -19,6 +19,12 @@ try {
         echo "Coluna valor_orcamento adicionada em oficios.<br>";
     }
 
+    $stmt = $pdo->query("SHOW COLUMNS FROM oficios LIKE 'resumo_itens'");
+    if (!$stmt->fetch()) {
+        $pdo->exec("ALTER TABLE oficios ADD COLUMN resumo_itens TEXT NULL AFTER justificativa");
+        echo "Coluna resumo_itens adicionada em oficios.<br>";
+    }
+
     // Tabela itens_oficio
     $stmt = $pdo->query("SHOW COLUMNS FROM itens_oficio LIKE 'valor_unitario'");
     if (!$stmt->fetch()) {

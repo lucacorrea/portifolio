@@ -114,6 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $numero_manual = mb_strtoupper(trim($_POST['numero_oficio'] ?? ''), 'UTF-8');
         $secretaria_id = (int)($_POST['secretaria_id'] ?? 0);
         $local = trim((string)($_POST['local'] ?? ''));
+        $resumo_itens = trim((string)($_POST['resumo_itens'] ?? ''));
         $criado_em = parse_oficio_datetime($_POST['criado_em'] ?? '');
         $valor_orcamento = parse_oficio_money($_POST['valor_orcamento'] ?? '');
         $produtos = $_POST['produtos'] ?? [];
@@ -227,10 +228,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt_update = $pdo->prepare("
             UPDATE oficios
-            SET numero = ?, secretaria_id = ?, local = ?, criado_em = ?, valor_orcamento = ?, status = ?
+            SET numero = ?, secretaria_id = ?, local = ?, resumo_itens = ?, criado_em = ?, valor_orcamento = ?, status = ?
             WHERE id = ?
         ");
-        $stmt_update->execute([$numero_manual, $secretaria_id, $local, $criado_em, $valor_orcamento, $novo_status, $id]);
+        $stmt_update->execute([
+            $numero_manual,
+            $secretaria_id,
+            $local,
+            $resumo_itens !== '' ? $resumo_itens : null,
+            $criado_em,
+            $valor_orcamento,
+            $novo_status,
+            $id
+        ]);
 
         if (!empty($aquisicoes_datas_sanitizadas) || !empty($aquisicoes_fornecedores_sanitizados)) {
             $stmt_update_aquisicao_dados = $pdo->prepare("
@@ -426,6 +436,10 @@ $secretaria_value = $_SERVER['REQUEST_METHOD'] === 'POST'
 $local_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['local'] ?? '')
     : ($oficio['local'] ?? '');
+
+$resumo_itens_value = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? ($_POST['resumo_itens'] ?? '')
+    : ($oficio['resumo_itens'] ?? '');
 
 $criado_em_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['criado_em'] ?? '')
@@ -757,6 +771,16 @@ include 'views/layout/header.php';
                         class="form-control"
                         placeholder="0,00"
                         value="<?php echo htmlspecialchars($orcamento_value, ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
+
+                <div class="form-group oficio-edit-span-2">
+                    <label class="form-label">Resumo dos Itens a Cadastrar</label>
+                    <textarea
+                        name="resumo_itens"
+                        class="form-control"
+                        placeholder="Ex: material de expediente, gêneros alimentícios, equipamentos, serviços ou observações sobre os itens que serão detalhados depois..."
+                        rows="3"><?php echo htmlspecialchars($resumo_itens_value, ENT_QUOTES, 'UTF-8'); ?></textarea>
+                    <small class="text-muted">Use este campo para registrar uma prévia dos itens antes da atribuição detalhada.</small>
                 </div>
             </div>
 

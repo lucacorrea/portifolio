@@ -165,9 +165,16 @@ include 'views/layout/header.php';
             <div class="alert alert-info">Aguardando atribuição de itens pela SEMFAZ.</div>
         <?php endif; ?>
 
+        <?php if (!empty(trim((string)($oficio['resumo_itens'] ?? '')))): ?>
+            <div style="background: #eef6ff; border: 1px solid #bfdbfe; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <label style="font-size: 0.65rem; font-weight: 800; color: var(--primary); text-transform: uppercase; display: block; margin-bottom: 12px;">Resumo dos Itens a Cadastrar</label>
+                <p style="font-size: 0.9375rem; margin: 0; color: var(--text-dark); line-height: 1.7;"><?php echo nl2br(htmlspecialchars($oficio['resumo_itens'], ENT_QUOTES, 'UTF-8')); ?></p>
+            </div>
+        <?php endif; ?>
+
         <div style="background: #f8f9fa; border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
             <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 12px;">Justificativa e Finalidade</label>
-            <p style="font-size: 0.9375rem; margin: 0; color: var(--text-dark); line-height: 1.7;"><?php echo nl2br($oficio['justificativa']); ?></p>
+            <p style="font-size: 0.9375rem; margin: 0; color: var(--text-dark); line-height: 1.7;"><?php echo nl2br(htmlspecialchars($oficio['justificativa'], ENT_QUOTES, 'UTF-8')); ?></p>
         </div>
 
         <?php if (!empty($anexos_orcamento)): ?>
