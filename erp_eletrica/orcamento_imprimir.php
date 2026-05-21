@@ -13,6 +13,21 @@ if (!$code) { exit('Código inválido.'); }
 
 $db = \App\Config\Database::getInstance()->getConnection();
 
+// Auto-migrate missing columns for A4 budget feature to prevent breaking production
+$columns = [
+    'razao_social VARCHAR(255) NULL',
+    'cep VARCHAR(20) NULL',
+    'banco_agencia VARCHAR(50) NULL',
+    'banco_cc VARCHAR(50) NULL'
+];
+foreach ($columns as $col) {
+    try {
+        $db->exec("ALTER TABLE clientes ADD COLUMN $col");
+    } catch (\Exception $e) {
+        // Ignore error if column already exists
+    }
+}
+
 // Fetch Pre-sale / Budget details
 $stmt = $db->prepare("
     SELECT pv.*, 
