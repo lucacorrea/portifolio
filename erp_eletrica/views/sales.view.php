@@ -1840,33 +1840,40 @@ async function deleteOrcamento(id) {
 
 // Recent Sales (History)
 async function loadRecentSales() {
-    const res = await fetch('vendas.php?action=list_recent');
-    const data = await res.json();
     const list = document.getElementById('recentSalesList');
-    list.innerHTML = '';
-    
-    if (data.sales.length === 0) {
-        list.innerHTML = '<div class="text-center py-2 opacity-50">Nenhuma venda recente</div>';
-        return;
-    }
+    list.innerHTML = '<div class="text-center py-2 opacity-50"><span class="spinner-border spinner-border-sm me-1"></span>Carregando...</div>';
+    try {
+        const res = await fetch('vendas.php?action=list_recent');
+        if (!res.ok) throw new Error('Resposta inválida do servidor');
+        const data = await res.json();
+        list.innerHTML = '';
+        
+        if (!data.sales || data.sales.length === 0) {
+            list.innerHTML = '<div class="text-center py-2 opacity-50">Nenhuma venda recente</div>';
+            return;
+        }
 
-    data.sales.forEach(sale => {
-        const item = document.createElement('div');
-        item.className = 'd-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded border cursor-pointer';
-        item.style.cursor = 'pointer';
-        item.onclick = () => manageSale(sale);
-        item.innerHTML = `
-            <div style="font-size: 0.75rem;">
-                <div class="fw-bold">Venda #${sale.id}</div>
-                <div class="text-muted">${sale.cliente_nome || 'Consumidor'}</div>
-            </div>
-            <div class="text-end">
-                <div class="fw-bold text-primary">R$ ${parseFloat(sale.valor_total).toFixed(2).replace('.', ',')}</div>
-                <div class="extra-small ${sale.status === 'cancelado' ? 'text-danger' : 'text-success'}">${sale.status.toUpperCase()}</div>
-            </div>
-        `;
-        list.appendChild(item);
-    });
+        data.sales.forEach(sale => {
+            const item = document.createElement('div');
+            item.className = 'd-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded border cursor-pointer';
+            item.style.cursor = 'pointer';
+            item.onclick = () => manageSale(sale);
+            item.innerHTML = `
+                <div style="font-size: 0.75rem;">
+                    <div class="fw-bold">Venda #${sale.id}</div>
+                    <div class="text-muted">${sale.cliente_nome || 'Consumidor'}</div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold text-primary">R$ ${parseFloat(sale.valor_total).toFixed(2).replace('.', ',')}</div>
+                    <div class="extra-small ${sale.status === 'cancelado' ? 'text-danger' : 'text-success'}">${sale.status.toUpperCase()}</div>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    } catch (err) {
+        console.error('Erro ao carregar histórico:', err);
+        list.innerHTML = '<div class="text-center py-2 text-danger small"><i class="fas fa-exclamation-triangle me-1"></i>Erro ao carregar. <a href="#" onclick="loadRecentSales()">Tentar novamente</a></div>';
+    }
 }
 
 function manageSale(sale) {
@@ -1876,10 +1883,9 @@ function manageSale(sale) {
     document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
     
     const btnDanfe = document.getElementById('btnManageDanfe');
-    if (sale.tipo_nota === 'fiscal' || sale.status_sefaz === '100' || sale.status_sefaz === '150') {
-        btnDanfe.style.display = 'block';
-    } else {
-        btnDanfe.style.display = 'none';
+    if (btnDanfe) {
+        const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
+        btnDanfe.style.display = isFiscal ? 'block' : 'none';
     }
 
     new bootstrap.Modal(document.getElementById('modalSaleManager')).show();
@@ -1898,8 +1904,10 @@ async function searchSalesList(page = 1) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-primary"><span class="spinner-border spinner-border-sm me-2"></span>Buscando...</td></tr>';
     
     try {
-        const res = await fetch(`vendas.php?action=sold_search&page=${page}&perPage=10&term=${encodeURIComponent(term)}`);
+        const res = await fetch(`vendas.php?action=sold_search&page=${page}&perPage=10&search=${encodeURIComponent(term)}`);
+        if (!res.ok) throw new Error('Resposta inválida');
         const data = await res.json();
+        if (!data || !data.sales) throw new Error('Dados inválidos');
         
         tbody.innerHTML = '';
         if (data.sales.length === 0) {
@@ -2648,6 +2656,7 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
             </button>
             `;
         }
+    }
 
     const saleIdDisplay = isOffline ? saleId : `#${saleId}`;
 
