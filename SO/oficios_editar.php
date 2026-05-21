@@ -500,54 +500,82 @@ include 'views/layout/header.php';
     .aquisicoes-date-panel {
         border: 1px solid var(--border-color);
         border-radius: 14px;
-        padding: 1rem;
-        margin: -.5rem 0 1.5rem;
+        padding: 1.25rem;
+        margin: 0 0 1.5rem;
         background: #fff;
+    }
+
+    .aquisicoes-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin: 0 0 1rem;
+        flex-wrap: wrap;
     }
 
     .aquisicoes-date-title {
         display: flex;
         align-items: center;
         gap: .5rem;
-        margin: 0 0 1rem;
+        margin: 0;
         color: var(--text-dark);
         font-size: 1rem;
         font-weight: 800;
     }
 
+    .aquisicoes-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 30px;
+        padding: .35rem .75rem;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3156a3;
+        font-size: .78rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
     .aquisicoes-date-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1rem;
+        grid-template-columns: 1fr;
+        gap: .85rem;
     }
 
     .aquisicao-date-card {
         border: 1px solid #e5e7eb;
         border-radius: 12px;
-        padding: .9rem;
+        padding: 1rem;
         background: #f8fafc;
-    }
-
-    .aquisicao-date-meta {
-        display: flex;
-        justify-content: space-between;
-        gap: .75rem;
-        align-items: center;
-        margin-bottom: .65rem;
-        font-weight: 800;
-        color: #0f172a;
-    }
-
-    .aquisicao-date-status {
-        font-size: .72rem;
-        color: #64748b;
-        white-space: nowrap;
-    }
-
-    .aquisicao-fields-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-        gap: .85rem;
+        grid-template-columns: minmax(150px, .8fr) minmax(280px, 1.7fr) minmax(220px, 1fr) minmax(150px, auto);
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .aquisicao-readonly {
+        background: #fff;
+        font-weight: 900;
+        color: var(--text-dark);
+    }
+
+    .aquisicao-status-pill {
+        min-height: 48px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: .65rem .8rem;
+        border-radius: 10px;
+        background: #eef2f7;
+        color: #475569;
+        font-size: .78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        text-align: center;
+        white-space: nowrap;
     }
 
     .item-row {
@@ -625,7 +653,7 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr;
         }
 
-        .aquisicao-fields-grid {
+        .aquisicao-date-card {
             grid-template-columns: 1fr;
         }
 
@@ -734,48 +762,62 @@ include 'views/layout/header.php';
 
             <?php if (!empty($aquisicoes_vinculadas)): ?>
                 <div class="aquisicoes-date-panel">
-                    <h4 class="aquisicoes-date-title">
-                        <i class="fas fa-shopping-bag"></i> Aquisições Vinculadas
-                    </h4>
+                    <div class="aquisicoes-section-head">
+                        <h4 class="aquisicoes-date-title">
+                            <i class="fas fa-shopping-bag"></i> Aquisições Vinculadas
+                        </h4>
+                        <span class="aquisicoes-count">
+                            <?php echo (int)$total_aquisicoes_vinculadas; ?> aquisição(ões)
+                        </span>
+                    </div>
 
                     <div class="aquisicoes-date-grid">
                         <?php foreach ($aquisicoes_vinculadas as $aq): ?>
                             <?php $aq_id = (int)$aq['id']; ?>
                             <div class="aquisicao-date-card">
-                                <div class="aquisicao-date-meta">
-                                    <span><?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                    <span class="aquisicao-date-status"><?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label">Nº Aquisição</label>
+                                    <input
+                                        type="text"
+                                        class="form-control aquisicao-readonly"
+                                        value="<?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?>"
+                                        readonly>
                                 </div>
 
-                                <div class="aquisicao-fields-grid">
-                                    <div class="form-group" style="margin:0;">
-                                        <label class="form-label">Fornecedor</label>
-                                        <select
-                                            name="aquisicoes_fornecedores[<?php echo $aq_id; ?>]"
-                                            class="form-control"
-                                            required>
-                                            <option value="">Selecione o fornecedor</option>
-                                            <?php foreach ($fornecedores as $fornecedor): ?>
-                                                <option
-                                                    value="<?php echo (int)$fornecedor['id']; ?>"
-                                                    <?php echo (int)($aquisicoes_fornecedores_values[$aq_id] ?? 0) === (int)$fornecedor['id'] ? 'selected' : ''; ?>>
-                                                    <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
-                                                    <?php if (!empty($fornecedor['cnpj'])): ?>
-                                                        (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
-                                                    <?php endif; ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label">Fornecedor</label>
+                                    <select
+                                        name="aquisicoes_fornecedores[<?php echo $aq_id; ?>]"
+                                        class="form-control"
+                                        required>
+                                        <option value="">Selecione o fornecedor</option>
+                                        <?php foreach ($fornecedores as $fornecedor): ?>
+                                            <option
+                                                value="<?php echo (int)$fornecedor['id']; ?>"
+                                                <?php echo (int)($aquisicoes_fornecedores_values[$aq_id] ?? 0) === (int)$fornecedor['id'] ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                                                <?php if (!empty($fornecedor['cnpj'])): ?>
+                                                    (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
+                                                <?php endif; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
 
-                                    <div class="form-group" style="margin:0;">
-                                        <label class="form-label">Data da Aquisição</label>
-                                        <input
-                                            type="datetime-local"
-                                            name="aquisicoes_datas[<?php echo $aq_id; ?>]"
-                                            class="form-control"
-                                            value="<?php echo htmlspecialchars($aquisicoes_datas_values[$aq_id] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
-                                            required>
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label">Data da Aquisição</label>
+                                    <input
+                                        type="datetime-local"
+                                        name="aquisicoes_datas[<?php echo $aq_id; ?>]"
+                                        class="form-control"
+                                        value="<?php echo htmlspecialchars($aquisicoes_datas_values[$aq_id] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                                        required>
+                                </div>
+
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label">Status</label>
+                                    <div class="aquisicao-status-pill">
+                                        <?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?>
                                     </div>
                                 </div>
                             </div>

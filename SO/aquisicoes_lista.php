@@ -734,10 +734,18 @@ include 'views/layout/header.php';
                                             <a class="dropdown-item" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
                                                 <i class="fas fa-eye"></i> Visualizar
                                             </a>
-                                            
-                                            <?php 
+
+                                            <?php
                                                 $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
-                                                if ($aq['status'] === 'AGUARDANDO ENTREGA' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')): 
+                                                if ($aq['status'] !== 'FINALIZADO' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')):
+                                            ?>
+                                                <a class="dropdown-item" href="editar_aquisicoes.php?id=<?php echo (int)$aq['id']; ?>">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </a>
+                                            <?php endif; ?>
+
+                                            <?php
+                                                if ($aq['status'] === 'AGUARDANDO ENTREGA' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')):
                                             ?>
                                                 <a class="dropdown-item" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" style="color: var(--status-finalized) !important;" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
                                                     <i class="fas fa-check-circle"></i> Marcar como Recebido
