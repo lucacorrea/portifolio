@@ -1932,12 +1932,46 @@ async function searchSalesList(page = 1) {
             tbody.appendChild(tr);
         });
         
-        // Render pagination
-        let pagHtml = '<ul class="pagination">';
-        for (let i = 1; i <= data.totalPages; i++) {
-            pagHtml += `<li class="page-item ${i === data.page ? 'active' : ''}"><a class="page-link" href="javascript:void(0)" onclick="searchSalesList(${i})">${i}</a></li>`;
+        // Smart pagination with ellipses
+        const currentPage = parseInt(data.page);
+        const totalPages = parseInt(data.totalPages);
+        const delta = 2; // pages to show on each side of current
+        
+        const range = [];
+        const rangeWithDots = [];
+        let l;
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+                range.push(i);
+            }
         }
-        pagHtml += '</ul>';
+        for (let i of range) {
+            if (l) {
+                if (i - l === 2) rangeWithDots.push(l + 1);
+                else if (i - l > 2) rangeWithDots.push('...');
+            }
+            rangeWithDots.push(i);
+            l = i;
+        }
+
+        const pBtn = (p, label, disabled = false, active = false) =>
+            `<li class="page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}">
+                <a class="page-link" href="javascript:void(0)" ${!disabled ? `onclick="searchSalesList(${p})"` : ''}>${label}</a>
+             </li>`;
+
+        let pagHtml = '<ul class="pagination pagination-sm flex-wrap justify-content-center mb-0">';
+        pagHtml += pBtn(currentPage - 1, '&laquo;', currentPage === 1);
+        for (let p of rangeWithDots) {
+            if (p === '...') {
+                pagHtml += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+            } else {
+                pagHtml += pBtn(p, p, false, p === currentPage);
+            }
+        }
+        pagHtml += pBtn(currentPage + 1, '&raquo;', currentPage === totalPages);
+        pagHtml += `</ul>`;
+        pagHtml += `<div class="text-center text-muted small mt-1">Página ${currentPage} de ${totalPages} (${data.total} vendas)</div>`;
         pagination.innerHTML = pagHtml;
         
     } catch (err) {
