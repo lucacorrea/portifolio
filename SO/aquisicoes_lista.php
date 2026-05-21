@@ -46,17 +46,31 @@ if ($status !== '' && in_array($status, $status_options, true)) {
 }
 
 if ($busca !== '') {
+    $busca_valor = preg_replace('/[^\d,.-]/', '', $busca);
+    $busca_valor = str_replace('.', '', (string)$busca_valor);
+    $busca_valor = str_replace(',', '.', $busca_valor);
+    $busca_tem_valor = $busca_valor !== '' && is_numeric($busca_valor);
+    $busca_valor_sql = $busca_tem_valor
+        ? "OR CAST(a.valor_total AS CHAR) LIKE :busca_valor_texto OR a.valor_total = :busca_valor_exato"
+        : "";
+
     $where_parts[] = "(
         a.numero_aq LIKE :busca_aq
         OR o.numero LIKE :busca_oficio
         OR s.nome LIKE :busca_secretaria
         OR f.nome LIKE :busca_fornecedor
+        $busca_valor_sql
     )";
     $busca_like = '%' . $busca . '%';
     $params[':busca_aq'] = $busca_like;
     $params[':busca_oficio'] = $busca_like;
     $params[':busca_secretaria'] = $busca_like;
     $params[':busca_fornecedor'] = $busca_like;
+
+    if ($busca_tem_valor) {
+        $params[':busca_valor_texto'] = '%' . str_replace(',', '.', $busca_valor) . '%';
+        $params[':busca_valor_exato'] = (float)$busca_valor;
+    }
 }
 
 if ($secretaria_id !== '') {
@@ -583,7 +597,7 @@ include 'views/layout/header.php';
                     type="text"
                     name="busca"
                     class="form-control"
-                    placeholder="Nº aquisição, ofício, secretaria ou fornecedor..."
+                    placeholder="Nº aquisição, ofício, secretaria, fornecedor ou valor..."
                     value="<?php echo htmlspecialchars($_GET['busca'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
             </div>
 
