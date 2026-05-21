@@ -407,6 +407,16 @@
                 </div>
                 
                 <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary fw-bold py-3" onclick="imprimirCupom(activeManageId)">
+                        <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
+                    </button>
+                    <button class="btn btn-outline-info fw-bold py-3" onclick="imprimirA4(activeManageId)">
+                        <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
+                    </button>
+                    <button class="btn btn-outline-success fw-bold py-3" id="btnManageDanfe" onclick="imprimirDanfe(activeManageId)" style="display: none;">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>IMPRIMIR DANFE (NFC-e)
+                    </button>
+                    <hr>
                     <button class="btn btn-outline-danger fw-bold py-3" onclick="cancelSaleAction()">
                         <i class="fas fa-trash-alt me-2"></i>CANCELAR VENDA (ESTORNO)
                     </button>
@@ -414,6 +424,47 @@
                         <i class="fas fa-exchange-alt me-2"></i>SOLICITAR TROCA
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Pesquisar Vendas (Histórico) -->
+<div class="modal fade" id="modalSearchSales" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-search me-2 text-white"></i>Pesquisar Venda</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <input type="text" id="searchSalesInput" class="form-control form-control-lg" placeholder="Buscar por código, cliente ou CPF..." onkeyup="if(event.key==='Enter') searchSalesList(1)">
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-primary btn-lg w-100 fw-bold" onclick="searchSalesList(1)"><i class="fas fa-search me-2"></i>BUSCAR</button>
+                    </div>
+                </div>
+                <div class="table-responsive bg-white border rounded">
+                    <table class="table table-hover table-striped align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Cód.</th>
+                                <th>Data</th>
+                                <th>Cliente</th>
+                                <th>Valor</th>
+                                <th>Tipo</th>
+                                <th>Status</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="searchSalesTbody">
+                            <tr><td colspan="7" class="text-center py-4 text-muted">Digite para buscar...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="searchSalesPagination" class="mt-3 d-flex justify-content-center"></div>
             </div>
         </div>
     </div>
@@ -1823,7 +1874,81 @@ function manageSale(sale) {
     document.getElementById('manageSaleId').innerText = sale.id;
     document.getElementById('manageSaleCustomer').innerText = sale.cliente_nome || 'Consumidor Final';
     document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
+    
+    const btnDanfe = document.getElementById('btnManageDanfe');
+    if (sale.tipo_nota === 'fiscal' || sale.status_sefaz === '100' || sale.status_sefaz === '150') {
+        btnDanfe.style.display = 'block';
+    } else {
+        btnDanfe.style.display = 'none';
+    }
+
     new bootstrap.Modal(document.getElementById('modalSaleManager')).show();
+}
+
+function openSearchSalesModal() {
+    new bootstrap.Modal(document.getElementById('modalSearchSales')).show();
+    searchSalesList(1);
+}
+
+async function searchSalesList(page = 1) {
+    const term = document.getElementById('searchSalesInput').value;
+    const tbody = document.getElementById('searchSalesTbody');
+    const pagination = document.getElementById('searchSalesPagination');
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-primary"><span class="spinner-border spinner-border-sm me-2"></span>Buscando...</td></tr>';
+    
+    try {
+        const res = await fetch(`vendas.php?action=sold_search&page=${page}&perPage=10&term=${encodeURIComponent(term)}`);
+        const data = await res.json();
+        
+        tbody.innerHTML = '';
+        if (data.sales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Nenhuma venda encontrada.</td></tr>';
+            pagination.innerHTML = '';
+            return;
+        }
+        
+        data.sales.forEach(sale => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="fw-bold">#${sale.id}</td>
+                <td>${sale.data_formatada}</td>
+                <td>${sale.cliente_nome || 'Consumidor'}</td>
+                <td class="text-primary fw-bold">R$ ${sale.valor_formatado}</td>
+                <td><span class="badge bg-${sale.tipo_nota === 'fiscal' ? 'success' : 'secondary'}">${sale.tipo_nota.toUpperCase()}</span></td>
+                <td><span class="badge bg-${sale.status === 'cancelado' ? 'danger' : 'success'}">${sale.status.toUpperCase()}</span></td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-primary" onclick="manageSale(${JSON.stringify(sale).replace(/"/g, '&quot;')})">Gerenciar</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        // Render pagination
+        let pagHtml = '<ul class="pagination">';
+        for (let i = 1; i <= data.totalPages; i++) {
+            pagHtml += `<li class="page-item ${i === data.page ? 'active' : ''}"><a class="page-link" href="javascript:void(0)" onclick="searchSalesList(${i})">${i}</a></li>`;
+        }
+        pagHtml += '</ul>';
+        pagination.innerHTML = pagHtml;
+        
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Erro de conexão.</td></tr>';
+    }
+}
+
+function imprimirCupom(id) {
+    window.open('recibo_venda.php?id=' + id, '_blank', 'width=400,height=600');
+}
+
+function imprimirA4(id) {
+    // For sale printing in A4 (usually handled by recibo_venda.php with a parameter or via a different file)
+    // If the system uses recibo_venda.php?type=A4, we'll use that. Otherwise, default to the same.
+    window.open('recibo_venda.php?id=' + id + '&type=A4', '_blank', 'width=900,height=900');
+}
+
+function imprimirDanfe(id) {
+    window.open(`nfce/emitir.php?venda_id=${id}&imprimir=1`, '_blank', 'width=800,height=900');
 }
 
 let currentCancelModelo = 'por_chave';
@@ -2504,18 +2629,25 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
                 ? 'Venda fiscal registrada em <strong>modo contingência</strong>. A NFC-e será emitida automaticamente quando a internet voltar.'
                 : 'Venda registrada <strong>offline</strong>. O recibo estará disponível após a sincronização automática.'}
         </div>
-        <button class="btn btn-outline-secondary btn-lg fw-bold py-3 shadow-sm" disabled>
+        <button class="btn btn-outline-secondary btn-lg fw-bold py-3 shadow-sm mb-2" disabled>
             <i class="fas fa-clock me-2"></i>AGUARDANDO SINCRONIZAÇÃO
         </button>`;
-    } else if (isFiscal) {
-        btnPrint = `<button class="btn btn-success btn-lg fw-bold py-3 shadow-sm" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
-               <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Nota Fiscal)
-           </button>`;
     } else {
-        btnPrint = `<button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm" onclick="imprimirRecibo(${saleId})">
-               <i class="fas fa-print me-2"></i>IMPRIMIR RECIBO
-           </button>`;
-    }
+        btnPrint = `
+            <button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm mb-2 w-100" onclick="imprimirCupom(${saleId})">
+                <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
+            </button>
+            <button class="btn btn-info btn-lg fw-bold py-3 shadow-sm text-white mb-2 w-100" onclick="imprimirA4(${saleId})">
+                <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
+            </button>
+        `;
+        if (isFiscal) {
+            btnPrint += `
+            <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm mb-2 w-100" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
+                <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (DANFE)
+            </button>
+            `;
+        }
 
     const saleIdDisplay = isOffline ? saleId : `#${saleId}`;
 
