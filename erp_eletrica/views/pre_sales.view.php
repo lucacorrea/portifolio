@@ -132,6 +132,9 @@
                         </button>
                     </div>
                 </div>
+                <button class="btn btn-outline-warning fw-bold w-100 py-2 shadow-sm mb-2 d-flex align-items-center justify-content-center" onclick="openSearchSalesModalFromPV()" title="Pesquisar Venda (F5)" id="btnPVSearchSales">
+                    <i class="fas fa-search-dollar me-2"></i>BUSCAR VENDA (F5)
+                </button>
                 <button class="btn btn-outline-danger w-100 py-2 fw-bold shadow-sm border-0" onclick="if(confirm('Tem certeza que deseja cancelar o orçamento atual e limpar a tela?')) location.reload()">
                     <i class="fas fa-times me-2"></i>CANCELAR E LIMPAR
                 </button>
@@ -735,6 +738,10 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         pvSearchInput.focus();
         pvSearchInput.select();
+    }
+    if (e.key === 'F5') {
+        e.preventDefault();
+        openSearchSalesModalFromPV();
     }
 });
 
