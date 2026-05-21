@@ -985,9 +985,234 @@ async function salvarQuickClient() {
     </div>
 </div>
 
+<!-- Modal: Pesquisar Vendas (Histórico) -->
+<div class="modal fade" id="modalSearchSales" tabindex="-1" style="z-index: 1070;">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-search me-2 text-white" style="color: #ffffff !important;"></i>Pesquisar Venda</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <input type="text" id="searchSalesInput" class="form-control form-control-lg" placeholder="Buscar por código, cliente ou CPF..." onkeyup="if(event.key==='Enter') searchSalesList(1)">
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-primary btn-lg w-100 fw-bold" onclick="searchSalesList(1)"><i class="fas fa-search me-2"></i>BUSCAR</button>
+                    </div>
+                </div>
+                <div class="table-responsive bg-white border rounded shadow-sm">
+                    <table class="table table-hover table-striped align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Cód.</th>
+                                <th>Data</th>
+                                <th>Cliente</th>
+                                <th>Valor</th>
+                                <th>Tipo</th>
+                                <th>Status</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="searchSalesTbody">
+                            <tr><td colspan="7" class="text-center py-4 text-muted">Digite para buscar...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="searchSalesPagination" class="mt-3 d-flex justify-content-center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Sale Management -->
+<div class="modal fade" id="modalSaleManager" tabindex="-1" style="z-index: 1080;">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-cash-register me-2 text-white" style="color: #ffffff !important;"></i>Gestão de Venda <span class="text-white" style="color: #ffffff !important;">#</span><span id="manageSaleId" class="text-white" style="color: #ffffff !important;"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="bg-light p-3 rounded mb-3 border">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Cliente:</span>
+                        <span class="fw-bold" id="manageSaleCustomer"></span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small">Valor Total:</span>
+                        <span class="fw-bold text-primary fs-5" id="manageSaleTotal"></span>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary fw-bold py-3 shadow-sm hover-shadow" onclick="imprimirCupom(activeManageId)">
+                        <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
+                    </button>
+                    <button class="btn btn-outline-info fw-bold py-3 shadow-sm hover-shadow" id="btnManageA4" onclick="imprimirA4(activeManageId)" style="display: none;">
+                        <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
+                    </button>
+                    <button class="btn btn-outline-success fw-bold py-3 shadow-sm hover-shadow" id="btnManageDanfe" onclick="imprimirDanfe(activeManageId)" style="display: none;">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>IMPRIMIR DANFE (NFC-e)
+                    </button>
+                    <hr>
+                    <button class="btn btn-outline-danger fw-bold py-3 shadow-sm hover-shadow" onclick="cancelSaleAction()">
+                        <i class="fas fa-trash-alt me-2"></i>CANCELAR VENDA (ESTORNO)
+                    </button>
+                    <button class="btn btn-outline-secondary fw-bold py-3 shadow-sm hover-shadow" onclick="openExchangeFlow()">
+                        <i class="fas fa-exchange-alt me-2"></i>SOLICITAR TROCA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cancelamento Triplo (PDV) -->
+<div class="modal fade" id="modalTripleCancel" tabindex="-1" style="z-index: 1090;">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg overflow-hidden">
+            <div class="modal-header bg-danger text-white border-0 py-3 shadow-sm">
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-exclamation-triangle me-2 text-white" style="color: #ffffff !important;"></i>Cancelar Venda <span class="text-white" style="color: #ffffff !important;">#</span><span id="cancel-id-label" class="text-white" style="color: #ffffff !important;"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Passo 1: Escolha do Modelo -->
+                <div id="cancel-step-1">
+                    <p class="text-muted mb-4 uppercase small fw-bold">Como deseja cancelar esta venda?</p>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="cancel-choice-card p-3 border rounded text-center h-100 cursor-pointer hover-shadow" onclick="selectCancelMode('por_chave')" style="transition: all 0.3s ease;">
+                                <div class="icon mb-2 text-danger"><i class="fas fa-file-invoice-dollar fa-2x"></i></div>
+                                <div class="fw-bold small">Padrão (110111)</div>
+                                <p class="extra-small text-muted mb-0 mt-1">Cancela a nota autorizada normalmente na SEFAZ.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="cancel-choice-card p-3 border rounded text-center h-100 cursor-pointer hover-shadow" onclick="selectCancelMode('por_substituicao')" style="transition: all 0.3s ease;">
+                                <div class="icon mb-2 text-primary"><i class="fas fa-sync-alt fa-2x"></i></div>
+                                <div class="fw-bold small">Substituição (110112)</div>
+                                <p class="extra-small text-muted mb-0 mt-1">Cancela vinculando a uma nota de contingência.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="cancel-choice-card p-3 border rounded text-center h-100 cursor-pointer hover-shadow" onclick="selectCancelMode('por_motivo')" style="transition: all 0.3s ease;">
+                                <div class="icon mb-2 text-secondary"><i class="fas fa-database fa-2x"></i></div>
+                                <div class="fw-bold small">Apenas Sistema</div>
+                                <p class="extra-small text-muted mb-0 mt-1">Cancela internamente sem comunicar a SEFAZ.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Passo 2: Formulário -->
+                <div id="cancel-step-2" class="d-none">
+                    <button type="button" class="btn btn-link btn-sm p-0 mb-3 text-muted text-decoration-none" onclick="backToCancelChoices()">
+                        <i class="fas fa-arrow-left me-1"></i> Voltar para opções
+                    </button>
+                    
+                    <div class="mb-3 d-none" id="field-chave-substituta">
+                        <label class="form-label fw-bold small">Chave da Nota Substituta (44 dígitos)</label>
+                        <input type="text" id="cancel-chave-subst" class="form-control fw-bold" maxlength="44" placeholder="0000 0000 0000 0000 0000...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small" id="label-motivo">Motivo do Cancelamento</label>
+                        <textarea id="cancel-motivo" class="form-control" rows="3" placeholder="Descreva o motivo..."></textarea>
+                    </div>
+
+                    <?php if (($_SESSION['usuario_nivel'] ?? '') !== 'admin'): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-danger"><i class="fas fa-lock me-1"></i>Senha ou Código de Autorização</label>
+                        <input type="text" id="cancel-auth-code" class="form-control fw-bold text-center" placeholder="Senha ou Código (Ex: 123456)" maxlength="20" style="font-size: 1.1rem;">
+                    </div>
+                    <?php endif; ?>
+
+                    <div id="fiscal-alert" class="alert alert-info small d-none">
+                        <i class="fas fa-info-circle me-1"></i> <b>Nota Fiscal:</b> Este modelo exige validação da SEFAZ. O motivo deve ter 15+ caracteres.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0 d-none" id="cancel-footer-btns">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" id="confirmCancelBtn" class="btn btn-danger px-4 rounded-pill">Confirmar Cancelamento</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Exchange Flow -->
+<div class="modal fade" id="modalExchangeFlow" tabindex="-1" style="z-index: 1090;">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-secondary text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white" style="color: #ffffff !important;"><i class="fas fa-exchange-alt me-2 text-white" style="color: #ffffff !important;"></i>Solicitação de Troca (Venda <span class="text-white" style="color: #ffffff !important;">#</span><span id="exchangeSaleId" class="text-white" style="color: #ffffff !important;"></span>)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <h6 class="fw-bold mb-3">1. Selecione o item que será DEVOLVIDO à loja</h6>
+                <div class="list-group mb-4" id="exchangeItemsList">
+                    <div class="text-center py-3 text-muted">Carregando itens...</div>
+                </div>
+
+                <div id="exchangeStep2" class="d-none">
+                    <h6 class="fw-bold mb-3">2. Selecione o NOVO item que o cliente vai levar</h6>
+                    <div class="input-group input-group-lg shadow-sm border rounded mb-2">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="exchangeProductSearch" class="form-control border-start-0 ps-0" placeholder="Pesquisar novo produto...">
+                    </div>
+                    <div id="exchangeSearchResults" class="list-group shadow-sm" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+                
+                <div id="exchangeStep3" class="d-none mt-4 p-4 bg-light border rounded shadow-sm">
+                    <h6 class="fw-bold text-center text-primary mb-4 text-uppercase">Resumo da Troca</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-danger fw-bold"><i class="fas fa-arrow-down me-2"></i>DEVOLVENDO:</span>
+                        <span class="fw-bold text-end" id="exchangeOldName"></span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-success fw-bold"><i class="fas fa-arrow-up me-2"></i>LEVANDO (1 UN):</span>
+                        <span class="fw-bold text-end" id="exchangeNewName"></span>
+                    </div>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-between align-items-center bg-white p-3 border rounded">
+                        <span class="text-muted fw-bold">Ajuste de caixa sugerido:</span>
+                        <span class="fw-bold fs-4" id="exchangeDiff"></span>
+                    </div>
+                    
+                    <div class="d-grid mt-4">
+                        <button class="btn btn-primary btn-lg fw-bold shadow-sm py-3" onclick="confirmExchange()">
+                            <i class="fas fa-check-circle me-2"></i>CONFIRMAR E PROCESSAR TROCA
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let pendingPrintCode = null;
 let shouldReloadAfterPrint = false;
+
+// Global States for Sale Management/Search
+let activeManageId = null;
+let cameFromSearch = false;
+let pendingManageSale = null;
+let currentCancelModelo = 'por_chave';
+const currentUserLevel = '<?= $_SESSION['usuario_id'] ? ($_SESSION['usuario_nivel'] ?? 'vendedor') : 'vendedor' ?>';
+let exchangeState = {
+    vendaId: null,
+    oldItemId: null,
+    oldItemName: null,
+    oldItemPrice: 0,
+    newProductId: null,
+    newProductName: null,
+    newProductPrice: 0
+};
 
 function chooseOrcamentoPrintFormat(code, reload = false) {
     pendingPrintCode = code;
@@ -1011,4 +1236,485 @@ function printOrcamentoFormat(type) {
         }, 500);
     }
 }
+
+// Sale Search and Management functions in Pre-Sale View
+function openSearchSalesModalFromPV() {
+    openSearchSalesModal();
+}
+
+function openSearchSalesModal() {
+    const modalSearchEl = document.getElementById('modalSearchSales');
+    if (modalSearchEl) {
+        bootstrap.Modal.getOrCreateInstance(modalSearchEl).show();
+        searchSalesList(1);
+    }
+}
+
+async function searchSalesList(page = 1) {
+    const term = document.getElementById('searchSalesInput').value;
+    const tbody = document.getElementById('searchSalesTbody');
+    const pagination = document.getElementById('searchSalesPagination');
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-primary"><span class="spinner-border spinner-border-sm me-2"></span>Buscando...</td></tr>';
+    
+    try {
+        const res = await fetch(`vendas.php?action=sold_search&page=${page}&perPage=10&search=${encodeURIComponent(term)}`);
+        if (!res.ok) throw new Error('Resposta inválida');
+        const data = await res.json();
+        if (!data || !data.sales) throw new Error('Dados inválidos');
+        
+        tbody.innerHTML = '';
+        if (data.sales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Nenhuma venda encontrada.</td></tr>';
+            pagination.innerHTML = '';
+            return;
+        }
+        
+        data.sales.forEach(sale => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="fw-bold">#${sale.id}</td>
+                <td>${sale.data_formatada}</td>
+                <td>${sale.cliente_nome || 'Consumidor'}</td>
+                <td class="text-primary fw-bold">R$ ${sale.valor_formatado}</td>
+                <td><span class="badge bg-${sale.tipo_nota === 'fiscal' ? 'success' : 'secondary'}">${sale.tipo_nota.toUpperCase()}</span></td>
+                <td><span class="badge bg-${sale.status === 'cancelado' ? 'danger' : 'success'}">${sale.status.toUpperCase()}</span></td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-primary" onclick="manageSale(${JSON.stringify(sale).replace(/"/g, '&quot;')})">Gerenciar</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        // Smart pagination with ellipses
+        const currentPage = parseInt(data.page);
+        const totalPages = parseInt(data.totalPages);
+        const delta = 2; // pages to show on each side of current
+        
+        const range = [];
+        const rangeWithDots = [];
+        let l;
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+                range.push(i);
+            }
+        }
+        for (let i of range) {
+            if (l) {
+                if (i - l === 2) rangeWithDots.push(l + 1);
+                else if (i - l > 2) rangeWithDots.push('...');
+            }
+            rangeWithDots.push(i);
+            l = i;
+        }
+
+        const pBtn = (p, label, disabled = false, active = false) =>
+            `<li class="page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}">
+                <a class="page-link" href="javascript:void(0)" ${!disabled ? `onclick="searchSalesList(${p})"` : ''}>${label}</a>
+             </li>`;
+
+        let pagHtml = '<ul class="pagination pagination-sm flex-wrap justify-content-center mb-0">';
+        pagHtml += pBtn(currentPage - 1, '&laquo;', currentPage === 1);
+        for (let p of rangeWithDots) {
+            if (p === '...') {
+                pagHtml += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+            } else {
+                pagHtml += pBtn(p, p, false, p === currentPage);
+            }
+        }
+        pagHtml += pBtn(currentPage + 1, '&raquo;', currentPage === totalPages);
+        pagHtml += `</ul>`;
+        pagHtml += `<div class="text-center text-muted small mt-1">Página ${currentPage} de ${totalPages} (${data.total} vendas)</div>`;
+        pagination.innerHTML = pagHtml;
+        
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Erro de conexão.</td></tr>';
+    }
+}
+
+function manageSale(sale) {
+    const searchModalEl = document.getElementById('modalSearchSales');
+    if (searchModalEl && searchModalEl.classList.contains('show')) {
+        cameFromSearch = true;
+        pendingManageSale = sale;
+        const modalSearch = bootstrap.Modal.getOrCreateInstance(searchModalEl);
+        if (modalSearch) {
+            modalSearch.hide();
+        }
+    } else {
+        cameFromSearch = false;
+        pendingManageSale = null;
+
+        activeManageId = sale.id;
+        document.getElementById('manageSaleId').innerText = sale.id;
+        document.getElementById('manageSaleCustomer').innerText = sale.cliente_nome || 'Consumidor Final';
+        document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
+        
+        const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
+
+        const btnDanfe = document.getElementById('btnManageDanfe');
+        if (btnDanfe) {
+            btnDanfe.style.display = isFiscal ? 'block' : 'none';
+        }
+
+        const btnA4 = document.getElementById('btnManageA4');
+        if (btnA4) {
+            btnA4.style.display = isFiscal ? 'block' : 'none';
+        }
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaleManager')).show();
+    }
+}
+
+function imprimirCupom(id) {
+    window.open('recibo_venda.php?id=' + id, '_blank', 'width=400,height=600');
+}
+
+function imprimirA4(id) {
+    window.open('nfce/danfe_a4.php?venda_id=' + id, '_blank', 'width=900,height=900');
+}
+
+function imprimirDanfe(id) {
+    window.open(`nfce/emitir.php?venda_id=${id}&imprimir=1`, '_blank', 'width=800,height=900');
+}
+
+function selectCancelMode(mode) {
+    currentCancelModelo = mode;
+    document.getElementById('cancel-step-1').classList.add('d-none');
+    document.getElementById('cancel-step-2').classList.remove('d-none');
+    document.getElementById('cancel-footer-btns').classList.remove('d-none');
+    
+    const fieldSubst = document.getElementById('field-chave-substituta');
+    const alertFiscal = document.getElementById('fiscal-alert');
+    const labelMotivo = document.getElementById('label-motivo');
+    
+    if (mode === 'por_substituicao') {
+        fieldSubst.classList.remove('d-none');
+        alertFiscal.classList.remove('d-none');
+        labelMotivo.textContent = 'Motivo (Substituição)';
+    } else if (mode === 'por_chave') {
+        fieldSubst.classList.add('d-none');
+        alertFiscal.classList.remove('d-none');
+        labelMotivo.textContent = 'Motivo do Cancelamento';
+    } else {
+        fieldSubst.classList.add('d-none');
+        alertFiscal.classList.add('d-none');
+        labelMotivo.textContent = 'Motivo do Cancelamento (Interno)';
+    }
+}
+
+function backToCancelChoices() {
+    document.getElementById('cancel-step-1').classList.remove('d-none');
+    document.getElementById('cancel-step-2').classList.add('d-none');
+    document.getElementById('cancel-footer-btns').classList.add('d-none');
+}
+
+async function cancelSaleAction() {
+    document.getElementById('cancel-id-label').textContent = activeManageId;
+    document.getElementById('cancel-motivo').value = '';
+    document.getElementById('cancel-chave-subst').value = '';
+    
+    const authInput = document.getElementById('cancel-auth-code');
+    if (authInput) authInput.value = '';
+    
+    backToCancelChoices();
+    bootstrap.Modal.getOrCreateInstance('#modalSaleManager').hide();
+    bootstrap.Modal.getOrCreateInstance('#modalTripleCancel').show();
+}
+
+function loadRecentSales() {
+    // No-op since Pre-Sale screen does not contain recent sales DOM listing elements
+}
+
+async function openExchangeFlow() {
+    exchangeState.vendaId = activeManageId;
+    document.getElementById('exchangeSaleId').innerText = activeManageId;
+    
+    bootstrap.Modal.getOrCreateInstance('#modalSaleManager').hide();
+    bootstrap.Modal.getOrCreateInstance('#modalExchangeFlow').show();
+    
+    document.getElementById('exchangeStep2').classList.add('d-none');
+    document.getElementById('exchangeStep3').classList.add('d-none');
+    document.getElementById('exchangeProductSearch').value = '';
+    document.getElementById('exchangeSearchResults').innerHTML = '';
+    
+    const res = await fetch(`vendas.php?action=get_sale_detail&id=${activeManageId}`);
+    const data = await res.json();
+    
+    const list = document.getElementById('exchangeItemsList');
+    list.innerHTML = '';
+    
+    if (!data.success || !data.sale || !data.sale.itens || data.sale.itens.length === 0) {
+        list.innerHTML = '<div class="alert alert-warning text-center">Nenhum item encontrado nesta venda.</div>';
+        return;
+    }
+    
+    if(data.sale.status === 'cancelado') {
+        list.innerHTML = '<div class="alert alert-danger text-center">Não é possível realizar troca em venda cancelada.</div>';
+        return;
+    }
+    
+    data.sale.itens.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3';
+        btn.innerHTML = `
+            <div>
+                <div class="fw-bold">${item.produto_nome}</div>
+                <small class="opacity-75">${item.quantidade}x R$ ${item.preco_formatado}</small>
+            </div>
+            <span class="btn btn-sm btn-outline-danger fw-bold px-3">DEVOLVER</span>
+        `;
+        btn.onclick = () => {
+            Array.from(list.children).forEach(c => {
+                c.classList.remove('active', 'bg-danger', 'text-white', 'border-danger');
+                c.querySelector('.btn')?.classList.replace('btn-light', 'btn-outline-danger');
+            });
+            
+            btn.classList.add('active', 'bg-danger', 'text-white', 'border-danger');
+            btn.querySelector('.btn').classList.replace('btn-outline-danger', 'btn-light');
+            
+            exchangeState.oldItemId = item.id;
+            exchangeState.oldItemName = item.produto_nome;
+            exchangeState.oldItemPrice = parseFloat(item.preco_unitario); 
+            
+            document.getElementById('exchangeStep2').classList.remove('d-none');
+            document.getElementById('exchangeStep3').classList.add('d-none');
+            
+            setTimeout(() => document.getElementById('exchangeProductSearch').focus(), 300);
+        };
+        list.appendChild(btn);
+    });
+}
+
+async function confirmExchange() {
+    if (!exchangeState.vendaId || !exchangeState.oldItemId || !exchangeState.newProductId) {
+        return alert("Por favor, selecione qual item será devolvido e qual produto será pego no lugar.");
+    }
+    
+    if (!confirm('Deseja realmente confirmar esta troca?\n\nIsso fará o ajuste automático no estoque e registrará as devidas diferenças financeiras.')) return;
+    
+    const res = await fetch('vendas.php?action=exchange_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            venda_id: exchangeState.vendaId,
+            item_id: exchangeState.oldItemId,
+            new_product_id: exchangeState.newProductId,
+            new_qty: 1,
+            new_price: exchangeState.newProductPrice
+        })
+    });
+    
+    const result = await res.json();
+    if (result.success) {
+        bootstrap.Modal.getInstance(document.getElementById('modalExchangeFlow')).hide();
+        loadRecentSales();
+        
+        if (confirm("Troca registrada com sucesso!\n\nDeseja imprimir o comprovante de troca para o cliente?")) {
+            imprimirTroca(result.exchange_id);
+        }
+    } else {
+        alert("Erro ao tentar processar troca: " + result.error);
+    }
+}
+
+function imprimirTroca(exchangeId) {
+    const url = 'recibo_troca.php?id=' + exchangeId + '&t=' + Date.now();
+    window.open(url, 'print_popup', 'width=400,height=600,toolbar=0,menubar=0,location=0');
+}
+
+// Listeners for multi-modal backflows
+document.addEventListener('DOMContentLoaded', () => {
+    const saleManagerEl = document.getElementById('modalSaleManager');
+    if (saleManagerEl) {
+        saleManagerEl.addEventListener('hidden.bs.modal', function () {
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (cameFromSearch && openModals.length === 0) {
+                    cameFromSearch = false;
+                    const modalSearch = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales'));
+                    if (modalSearch) {
+                        modalSearch.show();
+                    }
+                }
+            }, 150);
+        });
+    }
+
+    const searchModalEl = document.getElementById('modalSearchSales');
+    if (searchModalEl) {
+        searchModalEl.addEventListener('hidden.bs.modal', function () {
+            if (pendingManageSale) {
+                const sale = pendingManageSale;
+                pendingManageSale = null;
+
+                activeManageId = sale.id;
+                document.getElementById('manageSaleId').innerText = sale.id;
+                document.getElementById('manageSaleCustomer').innerText = sale.cliente_nome || 'Consumidor Final';
+                document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
+                
+                const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
+
+                const btnDanfe = document.getElementById('btnManageDanfe');
+                if (btnDanfe) {
+                    btnDanfe.style.display = isFiscal ? 'block' : 'none';
+                }
+
+                const btnA4 = document.getElementById('btnManageA4');
+                if (btnA4) {
+                    btnA4.style.display = isFiscal ? 'block' : 'none';
+                }
+
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaleManager')).show();
+            }
+        });
+    }
+
+    const tripleCancelEl = document.getElementById('modalTripleCancel');
+    if (tripleCancelEl) {
+        tripleCancelEl.addEventListener('hidden.bs.modal', function () {
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (cameFromSearch && openModals.length === 0) {
+                    cameFromSearch = false;
+                    const modalSearch = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales'));
+                    if (modalSearch) {
+                        modalSearch.show();
+                    }
+                }
+            }, 150);
+        });
+    }
+
+    const exchangeEl = document.getElementById('modalExchangeFlow');
+    if (exchangeEl) {
+        exchangeEl.addEventListener('hidden.bs.modal', function () {
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (cameFromSearch && openModals.length === 0) {
+                    cameFromSearch = false;
+                    const modalSearch = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales'));
+                    if (modalSearch) {
+                        modalSearch.show();
+                    }
+                }
+            }, 150);
+        });
+    }
+
+    const confirmBtn = document.getElementById('confirmCancelBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async function() {
+            const motivo = document.getElementById('cancel-motivo').value.trim();
+            const chaveSubst = document.getElementById('cancel-chave-subst').value.replace(/\D+/g, '');
+            const authCodeEl = document.getElementById('cancel-auth-code');
+            const authCode = authCodeEl ? authCodeEl.value.trim() : null;
+            
+            if (authCodeEl && !authCode) {
+                alert('É necessário inserir o Código de Autorização fornecido pelo administrador.');
+                return;
+            }
+            
+            if (currentCancelModelo === 'por_substituicao' && chaveSubst.length !== 44) {
+                alert('A chave substituta deve ter 44 dígitos.');
+                return;
+            }
+
+            if (currentCancelModelo !== 'por_motivo' && motivo.length < 15) {
+                alert('Para cancelamentos na SEFAZ, o motivo deve ter no mínimo 15 caracteres.');
+                return;
+            } else if (motivo.length < 5) {
+                alert('Por favor, descreva o motivo do cancelamento.');
+                return;
+            }
+
+            this.disabled = true;
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processando...';
+
+            try {
+                const res = await fetch('vendas.php?action=cancel_sale', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        id: activeManageId, 
+                        motivo, 
+                        modelo: currentCancelModelo,
+                        chave_substituta: chaveSubst,
+                        auth_code: authCode 
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    bootstrap.Modal.getOrCreateInstance('#modalTripleCancel').hide();
+                    alert('Cancelamento processado com sucesso!');
+                    loadRecentSales();
+                } else {
+                    alert('Erro: ' + data.error);
+                }
+            } catch (err) {
+                alert('Erro de conexão ao cancelar venda.');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = originalText;
+            }
+        });
+    }
+
+    const exchangeSearchInput = document.getElementById('exchangeProductSearch');
+    if (exchangeSearchInput) {
+        exchangeSearchInput.addEventListener('input', async (e) => {
+            const term = e.target.value;
+            const resultsDiv = document.getElementById('exchangeSearchResults');
+            if (term.length < 2) {
+                resultsDiv.innerHTML = '';
+                return;
+            }
+
+            const res = await fetch(`vendas.php?action=search&term=${encodeURIComponent(term)}`);
+            const products = await res.json();
+            
+            resultsDiv.innerHTML = '';
+            products.forEach(p => {
+                if (p.type === 'pre_sale') return;
+                
+                const btn = document.createElement('button');
+                btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3';
+                btn.innerHTML = `
+                    <div>
+                        <div class="fw-bold text-primary">${p.nome}</div>
+                        <small class="text-muted">Valor Unitário: R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</small>
+                    </div>
+                    <i class="fas fa-check text-success fa-lg opacity-50"></i>
+                `;
+                btn.onclick = () => {
+                    exchangeState.newProductId = p.id;
+                    exchangeState.newProductName = p.nome;
+                    exchangeState.newProductPrice = parseFloat(p.preco_venda);
+                    
+                    document.getElementById('exchangeOldName').innerText = exchangeState.oldItemName;
+                    document.getElementById('exchangeNewName').innerText = exchangeState.newProductName;
+                    
+                    const diff = exchangeState.newProductPrice - exchangeState.oldItemPrice;
+                    const diffEl = document.getElementById('exchangeDiff');
+                    if (diff > 0) {
+                        diffEl.innerHTML = `<span class="text-success"><i class="fas fa-plus me-1"></i>RECEBER R$ ${diff.toFixed(2).replace('.', ',')}</span>`;
+                    } else if (diff < 0) {
+                        diffEl.innerHTML = `<span class="text-danger"><i class="fas fa-minus me-1"></i>DEVOLVER R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}</span>`;
+                    } else {
+                        diffEl.innerHTML = `<span class="text-secondary">R$ 0,00 (Tudo Certo)</span>`;
+                    }
+                    
+                    document.getElementById('exchangeStep3').classList.remove('d-none');
+                    resultsDiv.innerHTML = '';
+                    document.getElementById('exchangeProductSearch').value = '';
+                    
+                    setTimeout(() => document.getElementById('exchangeStep3').scrollIntoView({behavior: 'smooth'}), 200);
+                };
+                resultsDiv.appendChild(btn);
+            });
+        });
+    }
+});
 </script>
