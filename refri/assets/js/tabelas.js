@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clearFilters')?.addEventListener('click', clearFilters);
   document.getElementById('searchInput')?.addEventListener('input', debounce(applyFilters, 220));
   document.getElementById('statusFilter')?.addEventListener('change', applyFilters);
+  document.getElementById('openFiltersMobile')?.addEventListener('click', () => {
+    document.getElementById('filterPanel')?.classList.toggle('is-open');
+  });
 });
 
 function loadTable() {

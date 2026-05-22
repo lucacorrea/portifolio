@@ -11,7 +11,7 @@
   <div class="topbar__actions">
     <button class="icon-button" title="Notificações">
       <span class="notification-dot"></span>
-      🔔
+      !
     </button>
     <button class="btn btn--secondary hide-mobile">Atualizar</button>
   </div>

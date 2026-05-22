@@ -1,19 +1,18 @@
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 18px;
+  gap: 14px;
+  margin-bottom: 16px;
 }
 
 .metric-card {
-  background: rgba(255, 255, 255, .90);
-  border: 1px solid rgba(229, 231, 235, .86);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 18px;
-  min-height: 142px;
+  padding: 16px;
+  min-height: 118px;
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .metric-card__top {
@@ -24,98 +23,116 @@
 }
 
 .metric-card__icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
-  font-size: 21px;
+  font-size: 17px;
+  border: 1px solid transparent;
 }
 
-.metric-card__icon.tone-blue { background: #dbeafe; color: #1d4ed8; }
-.metric-card__icon.tone-amber { background: #fef3c7; color: #b45309; }
-.metric-card__icon.tone-teal { background: #ccfbf1; color: #0f766e; }
-.metric-card__icon.tone-green { background: #dcfce7; color: #15803d; }
+.metric-card__icon.tone-blue { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+.metric-card__icon.tone-amber { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+.metric-card__icon.tone-teal { background: #eaf5f3; color: #0f766e; border-color: #cfe7e3; }
+.metric-card__icon.tone-green { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
 
 .metric-card h3 {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
 }
 
 .metric-card strong {
-  font-size: 30px;
-  letter-spacing: -.05em;
+  display: block;
+  margin-top: 8px;
+  font-size: 25px;
+  line-height: 1.1;
+  font-weight: 700;
 }
 
 .metric-card p {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.4;
+}
+
+.metric-card.skeleton {
+  background: #f3f4f6;
+  border-color: var(--border-soft);
 }
 
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1.1fr 1fr;
-  gap: 18px;
-  margin-bottom: 18px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .chart-shell {
-  height: 280px;
+  height: 260px;
 }
 
 .content-grid {
   display: grid;
   grid-template-columns: 1.25fr .75fr;
-  gap: 18px;
+  gap: 16px;
 }
 
 .side-stack {
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .mini-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
-  background: #f1f5f9;
+  background: #f3f4f6;
+  color: var(--gray);
+  border: 1px solid var(--border-soft);
+  font-size: 15px;
 }
 
 .timeline {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .timeline-item {
   display: grid;
   grid-template-columns: 58px 1fr;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 17px;
+  gap: 10px;
+  padding: 11px;
+  border-radius: var(--radius-sm);
   background: #f8fafc;
   border: 1px solid #eef2f7;
 }
 
 .timeline-item__time {
   color: var(--primary);
-  font-weight: 900;
+  font-weight: 700;
+  font-size: 13px;
 }
 
 .timeline-item strong {
   display: block;
   font-size: 14px;
+  font-weight: 700;
 }
 
 .timeline-item span {
   display: block;
   color: var(--muted);
-  margin-top: 4px;
+  margin-top: 3px;
   font-size: 12px;
+  line-height: 1.35;
 }
 
 .alert-list {
@@ -126,33 +143,37 @@
 .alert-item {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 17px;
+  gap: 10px;
+  padding: 11px;
+  border-radius: var(--radius-sm);
   background: #fff7ed;
   border: 1px solid #fed7aa;
 }
 
 .alert-item__icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 13px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
   background: #ffedd5;
+  color: var(--amber);
   display: grid;
   place-items: center;
+  border: 1px solid #fed7aa;
+  font-size: 14px;
 }
 
 .alert-item strong {
   display: block;
   font-size: 14px;
+  font-weight: 700;
   color: #9a3412;
 }
 
 .alert-item p {
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   color: #9a3412;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 @media (max-width: 1160px) {
@@ -173,5 +194,9 @@
 
   .chart-shell {
     height: 230px;
+  }
+
+  .metric-card {
+    min-height: auto;
   }
 }

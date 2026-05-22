@@ -107,7 +107,7 @@ include 'includes/sidebar.php';
   <section class="panel table-panel">
     <div class="panel__header">
       <div>
-        <span class="eyebrow">Tabela premium</span>
+        <span class="eyebrow">Listagem</span>
         <h2>Registros encontrados</h2>
       </div>
       <div class="table-tools">
@@ -143,7 +143,7 @@ include 'includes/sidebar.php';
       <button class="modal__close" id="closeCreateModal" aria-label="Fechar">×</button>
       <span class="eyebrow">Novo registro</span>
       <h2><?= htmlspecialchars($current['button']) ?></h2>
-      <p>Modelo visual do formulário. Na implementação final, este modal pode virar cadastro em etapas com validação PHP/AJAX.</p>
+      <p>Preencha os dados principais para iniciar o cadastro e manter o controle operacional atualizado.</p>
       <div class="modal-grid">
         <label class="field">
           <span>Nome / Identificação</span>
@@ -164,7 +164,7 @@ include 'includes/sidebar.php';
       </div>
       <div class="modal__actions">
         <button class="btn btn--secondary" id="cancelModal">Cancelar</button>
-        <button class="btn btn--primary">Salvar layout</button>
+        <button class="btn btn--primary">Salvar</button>
       </div>
     </div>
   </div>

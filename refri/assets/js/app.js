@@ -15,11 +15,12 @@ const KY = {
       'Aguardando aprovação': 'amber',
       'Aprovado': 'green',
       'Aprovada': 'green',
-      'Finalizada': 'green',
+      'Finalizada': 'final',
       'Concluído': 'green',
-      'Cancelada': 'red',
+      'Cancelada': 'gray',
       'Recusado': 'red',
-      'Pendente': 'amber',
+      'Recusada': 'red',
+      'Pendente': 'pending',
       'Emitida': 'green',
       'Rejeitada': 'red',
       'Estoque baixo': 'orange',
@@ -37,7 +38,7 @@ const KY = {
       });
   },
 
-  chartColors: ['#0f766e', '#2563eb', '#f59e0b', '#ea580c', '#16a34a', '#7c3aed'],
+  chartColors: ['#0f766e', '#2563eb', '#b45309', '#c2410c', '#15803d', '#6d28d9'],
 
   drawBars(canvas, labels, values, options = {}) {
     if (!canvas) return;
@@ -60,7 +61,7 @@ const KY = {
     ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth = 1;
     ctx.font = '12px Inter, sans-serif';
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = '#6b7280';
 
     for (let i = 0; i <= 4; i++) {
       const y = padding.top + chartH - (chartH / 4) * i;
@@ -78,12 +79,8 @@ const KY = {
       const barH = (value / max) * chartH;
       const y = padding.top + chartH - barH;
 
-      const gradient = ctx.createLinearGradient(0, y, 0, y + barH);
-      gradient.addColorStop(0, options.color || '#0f766e');
-      gradient.addColorStop(1, '#99f6e4');
-
-      KY.roundRect(ctx, x, y, barW, barH, 10, gradient);
-      ctx.fillStyle = '#64748b';
+      KY.roundRect(ctx, x, y, barW, barH, 4, options.color || '#0f766e');
+      ctx.fillStyle = '#6b7280';
       ctx.textAlign = 'center';
       ctx.fillText(labels[index], x + barW / 2, height - 16);
     });
@@ -123,10 +120,6 @@ const KY = {
       ctx.stroke();
     }
 
-    const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
-    gradient.addColorStop(0, 'rgba(37, 99, 235, .24)');
-    gradient.addColorStop(1, 'rgba(37, 99, 235, 0)');
-
     ctx.beginPath();
     ctx.moveTo(points[0].x, padding.top + chartH);
     points.forEach((point, index) => {
@@ -139,7 +132,7 @@ const KY = {
     });
     ctx.lineTo(points[points.length - 1].x, padding.top + chartH);
     ctx.closePath();
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = 'rgba(37, 99, 235, .10)';
     ctx.fill();
 
     ctx.beginPath();
@@ -152,10 +145,10 @@ const KY = {
       }
     });
     ctx.strokeStyle = '#2563eb';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = '#6b7280';
     ctx.font = '12px Inter, sans-serif';
     ctx.textAlign = 'center';
     labels.forEach((label, index) => {
@@ -196,11 +189,11 @@ const KY = {
       start += angle;
     });
 
-    ctx.fillStyle = '#172033';
-    ctx.font = '800 22px Inter, sans-serif';
+    ctx.fillStyle = '#111827';
+    ctx.font = '700 22px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`${total}`, centerX, centerY - 2);
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = '#6b7280';
     ctx.font = '12px Inter, sans-serif';
     ctx.fillText('total', centerX, centerY + 18);
 

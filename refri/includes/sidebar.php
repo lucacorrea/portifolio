@@ -1,20 +1,20 @@
 <?php
 $navItems = [
-  ['id' => 'dashboard', 'label' => 'Dashboard', 'href' => 'dashboard.php', 'icon' => '⌁'],
-  ['id' => 'clientes', 'label' => 'Clientes', 'href' => 'tabelas.php?tipo=clientes', 'icon' => '👥'],
-  ['id' => 'os', 'label' => 'Ordens de Serviço', 'href' => 'tabelas.php?tipo=os', 'icon' => '📋'],
-  ['id' => 'orcamentos', 'label' => 'Orçamentos', 'href' => 'tabelas.php?tipo=orcamentos', 'icon' => '📄'],
-  ['id' => 'pecas', 'label' => 'Peças', 'href' => 'tabelas.php?tipo=pecas', 'icon' => '📦'],
-  ['id' => 'servicos', 'label' => 'Tipos de Serviço', 'href' => 'tabelas.php?tipo=servicos', 'icon' => '🛠'],
-  ['id' => 'relatorios', 'label' => 'Relatórios', 'href' => 'relatorios.php', 'icon' => '📊'],
-  ['id' => 'notas', 'label' => 'Notas Fiscais', 'href' => 'tabelas.php?tipo=notas', 'icon' => '🧾'],
-  ['id' => 'config', 'label' => 'Configurações', 'href' => '#', 'icon' => '⚙'],
+  ['id' => 'dashboard', 'label' => 'Dashboard', 'href' => 'dashboard.php', 'icon' => 'DB'],
+  ['id' => 'clientes', 'label' => 'Clientes', 'href' => 'tabelas.php?tipo=clientes', 'icon' => 'CL'],
+  ['id' => 'os', 'label' => 'Ordens de Serviço', 'href' => 'tabelas.php?tipo=os', 'icon' => 'OS'],
+  ['id' => 'orcamentos', 'label' => 'Orçamentos', 'href' => 'tabelas.php?tipo=orcamentos', 'icon' => 'OR'],
+  ['id' => 'pecas', 'label' => 'Peças', 'href' => 'tabelas.php?tipo=pecas', 'icon' => 'PC'],
+  ['id' => 'servicos', 'label' => 'Tipos de Serviço', 'href' => 'tabelas.php?tipo=servicos', 'icon' => 'SV'],
+  ['id' => 'relatorios', 'label' => 'Relatórios', 'href' => 'relatorios.php', 'icon' => 'RP'],
+  ['id' => 'notas', 'label' => 'Notas Fiscais', 'href' => 'tabelas.php?tipo=notas', 'icon' => 'NF'],
+  ['id' => 'config', 'label' => 'Configurações', 'href' => '#', 'icon' => 'CF'],
 ];
 ?>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar__brand">
     <div class="brand-mark">
-      <span class="brand-mark__snow">❄</span>
+      <span class="brand-mark__snow">KY</span>
     </div>
     <div>
       <strong>K.Yamaguchi</strong>

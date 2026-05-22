@@ -9,7 +9,7 @@ $pageCss = $pageCss ?? [];
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= htmlspecialchars($pageTitle) ?> | K.Yamaguchi Service</title>
-  <meta name="description" content="Layout premium para sistema de gestão de refrigeração K.Yamaguchi Service.">
+  <meta name="description" content="Sistema de gestão operacional para refrigeração K.Yamaguchi Service.">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="assets/css/base.css">
   <?php foreach ($pageCss as $css): ?>
