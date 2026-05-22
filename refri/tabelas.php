@@ -1,54 +1,174 @@
-<?php include 'includes/sidebar.php'; ?>
-<?php include 'includes/topbar.php'; ?>
+<?php
+$tipo = $_GET['tipo'] ?? 'os';
 
-<div class="app-wrapper">
-  <main class="main-content">
-    <h1 class="section-title">Ordens de Serviço</h1>
+$configs = [
+  'clientes' => [
+    'title' => 'Clientes',
+    'subtitle' => 'Gerencie clientes, contatos, endereços e histórico de atendimentos.',
+    'button' => 'Novo Cliente',
+    'active' => 'clientes',
+    'eyebrow' => 'Base de atendimento',
+  ],
+  'os' => [
+    'title' => 'Ordens de Serviço',
+    'subtitle' => 'Acompanhe solicitações, técnicos, equipamentos, status e finalização.',
+    'button' => 'Nova OS',
+    'active' => 'ordens',
+    'eyebrow' => 'Execução técnica',
+  ],
+  'orcamentos' => [
+    'title' => 'Orçamentos',
+    'subtitle' => 'Crie, envie por WhatsApp, aprove e converta orçamentos em OS.',
+    'button' => 'Novo Orçamento',
+    'active' => 'orcamentos',
+    'eyebrow' => 'Comercial técnico',
+  ],
+  'pecas' => [
+    'title' => 'Peças',
+    'subtitle' => 'Controle estoque, valores, fornecedores e alertas de reposição.',
+    'button' => 'Nova Peça',
+    'active' => 'pecas',
+    'eyebrow' => 'Estoque técnico',
+  ],
+  'servicos' => [
+    'title' => 'Tipos de Serviço',
+    'subtitle' => 'Padronize serviços, valores base, tempo médio e categorias.',
+    'button' => 'Novo Serviço',
+    'active' => 'servicos',
+    'eyebrow' => 'Catálogo técnico',
+  ],
+  'notas' => [
+    'title' => 'Notas Fiscais',
+    'subtitle' => 'Acompanhe notas emitidas, pendentes, rejeitadas e canceladas.',
+    'button' => 'Nova Nota',
+    'active' => 'notas',
+    'eyebrow' => 'Controle fiscal',
+  ],
+];
 
-    <!-- Barra de filtros -->
-    <form id="filtros-form" class="filters-bar" onsubmit="return false;">
-      <select name="status" class="filter-select">
-        <option value="">Todos os status</option>
-        <option value="aberta">Aberta</option>
-        <option value="em_andamento">Em andamento</option>
-        <option value="aguardando_peca">Aguardando peça</option>
-        <option value="finalizada">Finalizada</option>
-      </select>
-      <input type="date" name="data_de" class="filter-input" placeholder="Data de">
-      <input type="date" name="data_ate" class="filter-input" placeholder="Data até">
-      <input type="text" name="cliente" class="filter-input" placeholder="Cliente">
-      <button type="button" class="btn btn-primary" onclick="aplicarFiltros()">Filtrar</button>
-    </form>
+$current = $configs[$tipo] ?? $configs['os'];
+$pageTitle = $current['title'];
+$activePage = $current['active'];
+$pageCss = ['tables'];
+$pageJs = ['tabelas'];
+$topbarSearchPlaceholder = 'Buscar nome, número, telefone, serviço ou status...';
+include 'includes/header.php';
+include 'includes/sidebar.php';
+?>
+<main class="main" data-table-type="<?= htmlspecialchars($tipo) ?>">
+  <?php include 'includes/topbar.php'; ?>
 
-    <!-- Tabela -->
-    <div class="table-wrapper">
+  <section class="page-header">
+    <div>
+      <span class="eyebrow"><?= htmlspecialchars($current['eyebrow']) ?></span>
+      <h1><?= htmlspecialchars($current['title']) ?></h1>
+      <p><?= htmlspecialchars($current['subtitle']) ?></p>
+    </div>
+    <div class="page-header__actions">
+      <button class="btn btn--primary" id="openCreateModal">+ <?= htmlspecialchars($current['button']) ?></button>
+      <button class="btn btn--secondary" id="openFiltersMobile">Filtros</button>
+    </div>
+  </section>
+
+  <section class="grid-4" id="tableSummary" aria-live="polite"></section>
+
+  <section class="filter-panel filter-panel--mobile-toggle" id="filterPanel">
+    <div class="filter-panel__grid">
+      <label class="field">
+        <span>Buscar</span>
+        <input id="tableSearch" type="search" placeholder="Nome, número, código ou telefone">
+      </label>
+      <label class="field">
+        <span>Status</span>
+        <select id="statusFilter">
+          <option value="">Todos</option>
+          <option>Aberta</option>
+          <option>Agendada</option>
+          <option>Em andamento</option>
+          <option>Aguardando peça</option>
+          <option>Aprovado</option>
+          <option>Finalizada</option>
+          <option>Cancelada</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Data inicial</span>
+        <input id="dateStart" type="date">
+      </label>
+      <label class="field">
+        <span>Data final</span>
+        <input id="dateEnd" type="date">
+      </label>
+      <button class="btn btn--primary" id="applyFilters">Filtrar</button>
+      <button class="btn btn--secondary" id="clearFilters">Limpar</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__header">
+      <div>
+        <span class="eyebrow">Listagem</span>
+        <h2>Registros encontrados</h2>
+      </div>
+      <div class="table-page-tools">
+        <button class="btn btn--secondary btn--sm">Exportar</button>
+        <button class="btn btn--secondary btn--sm">Mais ações</button>
+      </div>
+    </div>
+
+    <div class="responsive-table desktop-table">
       <table>
-        <thead>
-          <tr>
-            <th>OS</th>
-            <th>Cliente</th>
-            <th>Equipamento</th>
-            <th>Status</th>
-            <th>Data</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabela-os-body">
-          <!-- carregado via AJAX ou PHP -->
-          <tr>
-            <td>#1023</td>
-            <td>João Silva</td>
-            <td>Split 9000</td>
-            <td><span class="badge badge-em-andamento">Em andamento</span></td>
-            <td>20/05/2026</td>
-            <td class="actions">
-              <button class="btn-icon">✏️</button>
-              <button class="btn-icon">👁️</button>
-            </td>
-          </tr>
-          <!-- mais linhas -->
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody">
+          <tr><td>Carregando registros...</td></tr>
         </tbody>
       </table>
     </div>
-  </main>
-</div>
+
+    <div class="mobile-cards" id="mobileCards"></div>
+
+    <div class="pagination">
+      <span id="paginationInfo">Mostrando 0 registros</span>
+      <div class="action-strip">
+        <button class="btn btn--secondary btn--sm" disabled>Anterior</button>
+        <button class="btn btn--secondary btn--sm">Próxima</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal" id="createModal" aria-hidden="true">
+    <div class="modal__dialog">
+      <div class="panel__header">
+        <div>
+          <span class="eyebrow">Novo registro</span>
+          <h2><?= htmlspecialchars($current['button']) ?></h2>
+          <p class="panel-sub">Preencha os dados principais para iniciar o cadastro operacional.</p>
+        </div>
+        <button class="btn btn--secondary btn--sm" id="closeCreateModal" type="button">Fechar</button>
+      </div>
+      <div class="modal-grid">
+        <label class="field">
+          <span>Nome / Identificação</span>
+          <input type="text" placeholder="Ex.: Mercado São José">
+        </label>
+        <label class="field">
+          <span>Status</span>
+          <select>
+            <option>Aberta</option>
+            <option>Em andamento</option>
+            <option>Aprovado</option>
+          </select>
+        </label>
+        <label class="field field--full">
+          <span>Observações</span>
+          <textarea placeholder="Descreva as informações principais..."></textarea>
+        </label>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn--secondary" id="cancelModal" type="button">Cancelar</button>
+        <button class="btn btn--primary" type="button">Salvar</button>
+      </div>
+    </div>
+  </div>
+</main>
+<?php include 'includes/footer.php'; ?>

@@ -1,76 +1,161 @@
-<?php include 'includes/sidebar.php'; ?>
-<?php include 'includes/topbar.php'; ?>
+<?php
+$pageTitle = 'Relatórios';
+$activePage = 'relatorios';
+$pageCss = ['reports'];
+$pageJs = ['relatorios'];
+$topbarSearchPlaceholder = 'Buscar cliente, técnico, serviço, nota ou status...';
+include 'includes/header.php';
+include 'includes/sidebar.php';
+?>
+<main class="main">
+  <?php include 'includes/topbar.php'; ?>
 
-<div class="app-wrapper">
-  <main class="main-content">
-    <div class="reports-header">
-      <h2>Relatórios Gerenciais</h2>
-      <div class="export-buttons">
-        <button class="btn btn-secondary">PDF</button>
-        <button class="btn btn-secondary">Excel</button>
-        <button class="btn btn-secondary">Imprimir</button>
+  <section class="page-header">
+    <div>
+      <span class="eyebrow">Análise executiva</span>
+      <h1>Relatórios</h1>
+      <p>Acompanhe resultados, serviços, peças utilizadas, orçamentos e faturamento por período.</p>
+    </div>
+    <div class="page-header__actions">
+      <button class="btn btn--primary" id="exportPdf" type="button">Exportar PDF</button>
+      <button class="btn btn--secondary" id="exportExcel" type="button">Exportar Excel</button>
+      <button class="btn btn--secondary" id="printReport" type="button">Imprimir</button>
+    </div>
+  </section>
+
+  <section class="panel report-filter">
+    <div class="quick-periods">
+      <button class="period-btn is-active" type="button">Hoje</button>
+      <button class="period-btn" type="button">7 dias</button>
+      <button class="period-btn" type="button">30 dias</button>
+      <button class="period-btn" type="button">Este mês</button>
+      <button class="period-btn" type="button">Mês passado</button>
+      <button class="period-btn" type="button">Este ano</button>
+    </div>
+    <div class="filter-panel__grid">
+      <label class="field">
+        <span>Data inicial</span>
+        <input type="date" value="2026-05-01">
+      </label>
+      <label class="field">
+        <span>Data final</span>
+        <input type="date" value="2026-05-22">
+      </label>
+      <label class="field">
+        <span>Cliente</span>
+        <select>
+          <option>Todos os clientes</option>
+          <option>Mercado São José</option>
+          <option>Clínica Vida Norte</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Status</span>
+        <select>
+          <option>Todos os status</option>
+          <option>Finalizada</option>
+          <option>Em andamento</option>
+          <option>Aguardando peça</option>
+        </select>
+      </label>
+      <button class="btn btn--primary" type="button">Gerar</button>
+    </div>
+  </section>
+
+  <section class="grid-4" id="reportSummary" aria-live="polite"></section>
+
+  <section class="report-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="eyebrow">Faturamento</span>
+          <h2>Receita por mês</h2>
+        </div>
+      </div>
+      <div class="report-chart">
+        <canvas id="revenueReportChart" height="260"></canvas>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="eyebrow">Operação</span>
+          <h2>Serviços mais realizados</h2>
+        </div>
+      </div>
+      <div class="report-chart">
+        <canvas id="servicesReportChart" height="260"></canvas>
+      </div>
+    </article>
+  </section>
+
+  <section class="report-grid report-grid--secondary">
+    <article class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="eyebrow">Orçamentos</span>
+          <h2>Aprovados x recusados</h2>
+        </div>
+      </div>
+      <div class="donut-wrap">
+        <canvas id="budgetReportChart" width="280" height="220"></canvas>
+        <div class="donut-legend" id="budgetLegend"></div>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="eyebrow">Tabela analítica</span>
+          <h2>Resultado detalhado</h2>
+        </div>
+      </div>
+      <div class="responsive-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Cliente</th>
+              <th>Tipo</th>
+              <th>Serviço</th>
+              <th>Status</th>
+              <th>Técnico</th>
+              <th>Valor</th>
+              <th>Pagamento</th>
+              <th>Nota</th>
+            </tr>
+          </thead>
+          <tbody id="reportTable">
+            <tr><td colspan="9">Carregando relatório...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel__header">
+      <div>
+        <span class="eyebrow">Peças</span>
+        <h2>Consumo e estoque crítico</h2>
       </div>
     </div>
-
-    <!-- Cards resumo -->
-    <div class="summary-cards">
-      <div class="summary-card">
-        <div class="label">OS Emitidas (mês)</div>
-        <div class="value">42</div>
-      </div>
-      <div class="summary-card">
-        <div class="label">Ticket Médio</div>
-        <div class="value">R$ 850,00</div>
-      </div>
-      <div class="summary-card">
-        <div class="label">Satisfação</div>
-        <div class="value">96%</div>
-      </div>
-      <div class="summary-card">
-        <div class="label">Tempo médio (dias)</div>
-        <div class="value">3.2</div>
-      </div>
-    </div>
-
-    <!-- Gráfico -->
-    <div class="chart-box">
-      <canvas id="reportChart" height="80"></canvas>
-    </div>
-
-    <!-- Tabela analítica -->
-    <div class="report-table">
+    <div class="responsive-table">
       <table>
         <thead>
-          <tr><th>Técnico</th><th>OS concluídas</th><th>Faturamento</th><th>Avaliação</th></tr>
+          <tr>
+            <th>Peça</th>
+            <th>Qtd.</th>
+            <th>Total</th>
+            <th>Status</th>
+          </tr>
         </thead>
-        <tbody>
-          <tr><td>Carlos</td><td>18</td><td>R$ 14.200</td><td>4.9</td></tr>
-          <tr><td>Mariana</td><td>15</td><td>R$ 12.800</td><td>4.8</td></tr>
+        <tbody id="partsReportTable">
+          <tr><td colspan="4">Carregando peças...</td></tr>
         </tbody>
       </table>
     </div>
-  </main>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-const ctx2 = document.getElementById('reportChart').getContext('2d');
-new Chart(ctx2, {
-  type: 'line',
-  data: {
-    labels: ['Jan','Fev','Mar','Abr','Mai'],
-    datasets: [{
-      label: 'Faturamento',
-      data: [12000,15000,11000,18000,16000],
-      borderColor: '#0F766E',
-      backgroundColor: 'rgba(15,118,110,0.05)',
-      tension: 0.2,
-      fill: true
-    }]
-  },
-  options: {
-    plugins: { legend: { display: true } },
-    scales: { y: { beginAtZero: true } }
-  }
-});
-</script>
+  </section>
+</main>
+<?php include 'includes/footer.php'; ?>
