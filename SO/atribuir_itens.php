@@ -6,6 +6,51 @@ sefaz_check();
 
 $id = (int)($_GET['id'] ?? 0);
 
+function parse_atribuicao_money($valor): float {
+    $valor = trim((string)$valor);
+
+    if ($valor === '') {
+        return 0.0;
+    }
+
+    $valor = str_ireplace('R$', '', $valor);
+    $valor = preg_replace('/\s+/', '', $valor);
+
+    if (strpos($valor, ',') !== false) {
+        $valor = str_replace('.', '', $valor);
+        $valor = str_replace(',', '.', $valor);
+    } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $valor)) {
+        $valor = str_replace('.', '', $valor);
+    }
+
+    if (!is_numeric($valor)) {
+        throw new Exception("Informe um valor monetário válido.");
+    }
+
+    $valor = (float)$valor;
+    if ($valor < 0) {
+        throw new Exception("Valores monetários não podem ser negativos.");
+    }
+
+    return $valor;
+}
+
+function parse_atribuicao_quantity($valor, int $itemIndex): float {
+    $valor = trim((string)$valor);
+    $valor = str_replace(',', '.', $valor);
+
+    if ($valor === '' || !is_numeric($valor)) {
+        throw new Exception("Informe uma quantidade válida para o item " . ($itemIndex + 1) . ".");
+    }
+
+    $valor = (float)$valor;
+    if ($valor <= 0) {
+        throw new Exception("A quantidade do item " . ($itemIndex + 1) . " deve ser maior que zero.");
+    }
+
+    return $valor;
+}
+
 if (($_GET['ajax'] ?? '') === 'sugerir_itens') {
     header('Content-Type: application/json; charset=utf-8');
 
@@ -151,24 +196,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $produtos = $_POST['produtos'] ?? [];
 
     try {
-        $pdo->beginTransaction();
-
         $orcamento_esperado = (float)($oficio['valor_orcamento'] ?? 0);
         $total_calculado = 0;
+        $itens_sanitizados = [];
 
-        foreach ($produtos as $p) {
-            if (!empty($p['nome'])) {
-                $valorLimpo = str_replace('.', '', (string)($p['valor'] ?? '0'));
-                $valorLimpo = str_replace(',', '.', $valorLimpo);
-                $val = (float)$valorLimpo;
-                $qtd = (float)($p['qtd'] ?? 0);
-                $total_calculado += ($val * $qtd);
+        foreach ($produtos as $idx => $p) {
+            $nome = trim((string)($p['nome'] ?? ''));
+
+            if ($nome === '') {
+                continue;
             }
+
+            $qtd = parse_atribuicao_quantity($p['qtd'] ?? '', (int)$idx);
+            $unidade = trim((string)($p['unidade'] ?? 'UN'));
+            $valor_unitario = parse_atribuicao_money($p['valor'] ?? '0');
+
+            if ($unidade === '') {
+                $unidade = 'UN';
+            }
+
+            $total_calculado += ($valor_unitario * $qtd);
+
+            $itens_sanitizados[] = [
+                'produto' => $nome,
+                'quantidade' => $qtd,
+                'unidade' => $unidade,
+                'valor_unitario' => $valor_unitario,
+            ];
+        }
+
+        if (empty($itens_sanitizados)) {
+            throw new Exception("Informe pelo menos um item para a solicitação.");
         }
 
         if ($orcamento_esperado > 0 && abs($total_calculado - $orcamento_esperado) > 0.02) {
             throw new Exception("O valor total dos itens deve ser exatamente igual ao orçamento previsto de R$ " . number_format($orcamento_esperado, 2, ',', '.'));
         }
+
+        $pdo->beginTransaction();
 
         $pdo->prepare("DELETE FROM itens_oficio WHERE oficio_id = ?")->execute([$id]);
 
@@ -177,19 +242,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             VALUES (?, ?, ?, ?, ?)
         ");
 
-        foreach ($produtos as $p) {
-            if (!empty($p['nome'])) {
-                $valorLimpo = str_replace('.', '', (string)($p['valor'] ?? '0'));
-                $valorLimpo = str_replace(',', '.', $valorLimpo);
-
-                $stmt_ins->execute([
-                    $id,
-                    trim((string)$p['nome']),
-                    (float)($p['qtd'] ?? 0),
-                    !empty($p['unidade']) ? trim((string)$p['unidade']) : 'UN',
-                    (float)$valorLimpo
-                ]);
-            }
+        foreach ($itens_sanitizados as $item) {
+            $stmt_ins->execute([
+                $id,
+                $item['produto'],
+                $item['quantidade'],
+                $item['unidade'],
+                $item['valor_unitario']
+            ]);
         }
 
         $pdo->prepare("UPDATE oficios SET status = 'ENVIADO' WHERE id = ?")->execute([$id]);
@@ -205,6 +265,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->rollBack();
         }
         $error = "Erro ao salvar itens: " . $e->getMessage();
+    }
+}
+
+$items_form = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    foreach (($_POST['produtos'] ?? []) as $p) {
+        $items_form[] = [
+            'produto' => (string)($p['nome'] ?? ''),
+            'quantidade_input' => (string)($p['qtd'] ?? '1'),
+            'unidade' => (string)($p['unidade'] ?? 'UN'),
+            'valor_input' => (string)($p['valor'] ?? ''),
+            'valor_unitario' => 0,
+        ];
     }
 }
 
@@ -259,6 +332,60 @@ include 'views/layout/header.php';
         font-weight: 800;
         color: #198754;
         text-align: right;
+    }
+
+    .planilha-import {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        border: 1px dashed #b8c6d8;
+        border-radius: 12px;
+        background: #f8fafc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .planilha-import-title {
+        margin: 0 0 .25rem;
+        font-size: 1rem;
+        color: #0f172a;
+    }
+
+    .planilha-import-text {
+        margin: 0;
+        color: #64748b;
+        font-size: .88rem;
+        font-weight: 600;
+    }
+
+    .planilha-import-status {
+        width: 100%;
+        display: none;
+        padding: .75rem .85rem;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: .88rem;
+    }
+
+    .planilha-import-status.show {
+        display: block;
+    }
+
+    .planilha-import-status.success {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .planilha-import-status.warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .planilha-import-status.error {
+        background: #fee2e2;
+        color: #991b1b;
     }
 
     .item-name-group {
@@ -399,6 +526,20 @@ include 'views/layout/header.php';
             </div>
         </div>
 
+        <div class="planilha-import">
+            <div>
+                <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar planilha PDF</h4>
+                <p class="planilha-import-text">Carrega os itens no formulário para conferência antes de salvar.</p>
+            </div>
+            <div>
+                <input type="file" id="planilha-pdf-input" accept="application/pdf,.pdf" hidden>
+                <button type="button" class="btn btn-outline" id="planilha-pdf-btn">
+                    <i class="fas fa-upload"></i> Selecionar PDF
+                </button>
+            </div>
+            <div id="planilha-import-status" class="planilha-import-status" aria-live="polite"></div>
+        </div>
+
         <?php if (!empty($resumo_produtos)): ?>
             <div class="card" style="margin-bottom: 1.5rem; border: 1px solid var(--border-color);">
                 <div class="card-body">
@@ -447,13 +588,17 @@ include 'views/layout/header.php';
         <form action="" method="POST" id="items-form">
             <div id="items-container">
                 <?php
-                $items = !empty($items_existentes)
-                    ? $items_existentes
-                    : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]];
+                $items = !empty($items_form)
+                    ? $items_form
+                    : (!empty($items_existentes)
+                        ? $items_existentes
+                        : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]]);
 
                 foreach ($items as $idx => $it):
-                    $qtd_item = (float)($it['quantidade'] ?? 0);
+                    $qtd_value = isset($it['quantidade_input']) ? (string)$it['quantidade_input'] : (string)((float)($it['quantidade'] ?? 0));
+                    $qtd_item = (float)str_replace(',', '.', $qtd_value);
                     $valor_unit_item = (float)($it['valor_unitario'] ?? 0);
+                    $valor_value = isset($it['valor_input']) ? (string)$it['valor_input'] : number_format($valor_unit_item, 2, ',', '.');
                     $valor_total_item = $qtd_item * $valor_unit_item;
                 ?>
                     <div class="item-row">
@@ -483,7 +628,7 @@ include 'views/layout/header.php';
                                 name="produtos[<?php echo $idx; ?>][qtd]"
                                 class="form-control item-qtd"
                                 required
-                                value="<?php echo htmlspecialchars((string)$qtd_item, ENT_QUOTES, 'UTF-8'); ?>">
+                                value="<?php echo htmlspecialchars($qtd_value, ENT_QUOTES, 'UTF-8'); ?>">
                         </div>
 
                         <div class="form-group" style="margin:0;">
@@ -503,7 +648,7 @@ include 'views/layout/header.php';
                                 class="form-control item-valor"
                                 required
                                 placeholder="0,00"
-                                value="<?php echo htmlspecialchars(number_format($valor_unit_item, 2, ',', '.'), ENT_QUOTES, 'UTF-8'); ?>">
+                                value="<?php echo htmlspecialchars($valor_value, ENT_QUOTES, 'UTF-8'); ?>">
                         </div>
 
                         <div class="form-group" style="margin:0;">
@@ -537,14 +682,23 @@ include 'views/layout/header.php';
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('items-container');
     const totalDisplay = document.getElementById('total-itens');
     const orcamentoPrevisto = parseFloat(document.getElementById('orcamento-previsto').dataset.valor) || 0;
     const oficioId = <?php echo (int)$id; ?>;
+    const planilhaInput = document.getElementById('planilha-pdf-input');
+    const planilhaBtn = document.getElementById('planilha-pdf-btn');
+    const planilhaStatus = document.getElementById('planilha-import-status');
     const autocompleteTimers = new WeakMap();
     const autocompleteControllers = new WeakMap();
+    const pdfWorkerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.worker.min.js';
+
+    if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+    }
 
     function parseValorBR(valor) {
         if (!valor) return 0;
@@ -576,6 +730,155 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function setPlanilhaStatus(message, type) {
+        if (!planilhaStatus) return;
+
+        planilhaStatus.textContent = message;
+        planilhaStatus.className = `planilha-import-status show ${type || 'success'}`;
+    }
+
+    function parsePlanilhaMoney(valor) {
+        const normalized = String(valor || '')
+            .replace(/R\$/gi, '')
+            .replace(/\s/g, '')
+            .replace(/\./g, '')
+            .replace(',', '.');
+
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function normalizeToken(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\w]/g, '')
+            .toUpperCase();
+    }
+
+    function splitWords(value) {
+        return String(value || '').trim().split(/\s+/).filter(Boolean);
+    }
+
+    function getCommonPrefixTokens(descriptions) {
+        if (descriptions.length < 2) {
+            return [];
+        }
+
+        const tokenRows = descriptions.map(splitWords);
+        const maxPrefixLength = Math.min(6, ...tokenRows.map(tokens => Math.max(tokens.length - 1, 0)));
+        const prefix = [];
+
+        for (let index = 0; index < maxPrefixLength; index++) {
+            const candidate = normalizeToken(tokenRows[0][index]);
+            if (!candidate) {
+                break;
+            }
+
+            const matchesAllRows = tokenRows.every(tokens => normalizeToken(tokens[index]) === candidate);
+            if (!matchesAllRows) {
+                break;
+            }
+
+            prefix.push(tokenRows[0][index]);
+        }
+
+        return prefix.length >= 2 ? prefix : [];
+    }
+
+    function stripPrefixTokens(value, prefixTokens) {
+        const tokens = splitWords(value);
+
+        if (!prefixTokens.length || tokens.length <= prefixTokens.length) {
+            return String(value || '').trim();
+        }
+
+        const hasPrefix = prefixTokens.every((token, index) => normalizeToken(tokens[index]) === normalizeToken(token));
+        return hasPrefix ? tokens.slice(prefixTokens.length).join(' ') : String(value || '').trim();
+    }
+
+    function parsePlanilhaPdfText(text) {
+        const normalized = String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+        const headerMatch = normalized.match(/\bORD\b.*?\bVALOR\s+L[ÍI]QUIDO\b/iu);
+        const tableText = headerMatch
+            ? normalized.slice((headerMatch.index || 0) + headerMatch[0].length)
+            : normalized;
+        const hasEmpresaColumn = /\bEMPRESA\b/iu.test(headerMatch?.[0] || '');
+        const rowPattern = /(?:^|\s)(\d{1,4})\s+(.+?\s+R\$\s*[\d.]+,\d{2}\s+R\$\s*[\d.]+,\d{2})(?=\s+\d{1,4}\s+|\s+TOTAL\s+R\$|$)/giu;
+        const itemPattern = /^(.+?)\s+(\S+)\s+(\d+(?:[,.]\d+)?)\s+R\$\s*([\d.]+,\d{2})\s+R\$\s*([\d.]+,\d{2})$/iu;
+        const parsedRows = [];
+
+        for (const match of tableText.matchAll(rowPattern)) {
+            const rowText = String(match[2] || '').trim();
+            const itemMatch = rowText.match(itemPattern);
+
+            if (!itemMatch) {
+                continue;
+            }
+
+            parsedRows.push({
+                ordem: Number(match[1]),
+                produtoBruto: itemMatch[1].trim(),
+                unidade: itemMatch[2].trim().toUpperCase(),
+                quantidade: Number(String(itemMatch[3]).replace(',', '.')),
+                valor_unitario: parsePlanilhaMoney(itemMatch[4]),
+                valor_total: parsePlanilhaMoney(itemMatch[5])
+            });
+        }
+
+        if (!parsedRows.length) {
+            throw new Error('Não encontrei linhas de itens no PDF. Verifique se o arquivo segue o modelo da planilha.');
+        }
+
+        const prefixTokens = hasEmpresaColumn
+            ? getCommonPrefixTokens(parsedRows.map(row => row.produtoBruto))
+            : [];
+
+        const items = parsedRows
+            .map(row => {
+                const produto = stripPrefixTokens(row.produtoBruto, prefixTokens)
+                    .replace(/^(G\.?\s+RODRIGUES(?:\s+DE\s+OLIVEIRA\s+LTDA)?|G\s+RODRIGUES)\s+/iu, '')
+                    .trim();
+
+                return {
+                    produto,
+                    unidade: row.unidade || 'UN',
+                    quantidade: row.quantidade,
+                    valor_unitario: row.valor_unitario,
+                    valor_total: row.valor_total
+                };
+            })
+            .filter(item => item.produto && item.quantidade > 0);
+
+        if (!items.length) {
+            throw new Error('As linhas do PDF foram lidas, mas nenhum item válido foi encontrado.');
+        }
+
+        const totalMatch = tableText.match(/\bTOTAL\s+R\$\s*([\d.]+,\d{2})/iu);
+        const totalPdf = totalMatch ? parsePlanilhaMoney(totalMatch[1]) : 0;
+        const totalItens = items.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+
+        return { items, totalPdf, totalItens };
+    }
+
+    async function extractPdfText(file) {
+        if (!window.pdfjsLib) {
+            throw new Error('Não foi possível carregar o leitor de PDF. Verifique a conexão e tente novamente.');
+        }
+
+        const buffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+        const pages = [];
+
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+            const page = await pdf.getPage(pageNumber);
+            const content = await page.getTextContent();
+            pages.push(content.items.map(item => item.str || '').join(' '));
+        }
+
+        return pages.join(' ');
     }
 
     function getSuggestionPanel(input) {
@@ -745,6 +1048,58 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function createItemRow(index, item = {}) {
+        const produto = item.produto || '';
+        const quantidade = item.quantidade ?? 1;
+        const unidade = item.unidade || 'UN';
+        const valorUnitario = Number(item.valor_unitario || 0);
+        const valorInput = valorUnitario > 0 ? formatInputMoneyBR(valorUnitario) : '';
+        const totalItem = (Number(quantidade) || 0) * valorUnitario;
+        const row = document.createElement('div');
+
+        row.className = 'item-row';
+        row.innerHTML = `
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Nº</label>
+                <input type="text" class="form-control item-seq" value="${index + 1}" readonly>
+            </div>
+
+            <div class="form-group item-name-group" style="margin:0;">
+                <label class="form-label">Nome do Item</label>
+                <input type="text" name="produtos[${index}][nome]" class="form-control item-name" required autocomplete="off" placeholder="Ex: Papel A4" value="${escapeHtml(produto)}">
+                <div class="item-suggestions" role="listbox"></div>
+            </div>
+
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Quantidade</label>
+                <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control item-qtd" required value="${escapeHtml(quantidade)}">
+            </div>
+
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Unidade</label>
+                <input type="text" name="produtos[${index}][unidade]" class="form-control" value="${escapeHtml(unidade)}">
+            </div>
+
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Valor Unitário</label>
+                <input type="text" name="produtos[${index}][valor]" class="form-control item-valor" required placeholder="0,00" value="${escapeHtml(valorInput)}">
+            </div>
+
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Total do Item</label>
+                <input type="text" class="form-control item-total" value="${escapeHtml(formatMoneyBR(totalItem))}" readonly>
+            </div>
+
+            <div style="margin-bottom: 5px;">
+                <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+
+        return row;
+    }
+
     function renumberItems() {
         const rows = container.querySelectorAll('.item-row');
         rows.forEach((row, index) => {
@@ -874,49 +1229,63 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    if (planilhaBtn && planilhaInput) {
+        planilhaBtn.addEventListener('click', function() {
+            planilhaInput.click();
+        });
+
+        planilhaInput.addEventListener('change', async function() {
+            const file = planilhaInput.files?.[0];
+            if (!file) {
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                setPlanilhaStatus('O PDF selecionado é muito grande. Use um arquivo de até 10 MB.', 'error');
+                planilhaInput.value = '';
+                return;
+            }
+
+            const hasTypedItems = Array.from(container.querySelectorAll('.item-name'))
+                .some(input => input.value.trim() !== '');
+            if (hasTypedItems && !window.confirm('Importar a planilha vai substituir os itens atuais do formulário. Continuar?')) {
+                planilhaInput.value = '';
+                return;
+            }
+
+            planilhaBtn.disabled = true;
+            setPlanilhaStatus('Lendo planilha e preparando os itens...', 'warning');
+
+            try {
+                const text = await extractPdfText(file);
+                const result = parsePlanilhaPdfText(text);
+
+                container.innerHTML = '';
+                result.items.forEach((item, index) => {
+                    container.appendChild(createItemRow(index, item));
+                });
+
+                renumberItems();
+                calculateTotal();
+
+                const totalStatus = result.totalPdf > 0 && Math.abs(result.totalPdf - result.totalItens) > 0.02
+                    ? ` Total do PDF: ${formatMoneyBR(result.totalPdf)}. Total importado: ${formatMoneyBR(result.totalItens)}.`
+                    : ` Total importado: ${formatMoneyBR(result.totalItens)}.`;
+
+                setPlanilhaStatus(`${result.items.length} itens carregados da planilha.${totalStatus}`, 'success');
+            } catch (error) {
+                console.error(error);
+                setPlanilhaStatus(error.message || 'Não foi possível importar a planilha PDF.', 'error');
+            } finally {
+                planilhaBtn.disabled = false;
+                planilhaInput.value = '';
+            }
+        });
+    }
+
     document.getElementById('add-item').addEventListener('click', function() {
         const index = container.querySelectorAll('.item-row').length;
-
-        const row = document.createElement('div');
-        row.className = 'item-row';
-        row.innerHTML = `
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Nº</label>
-                <input type="text" class="form-control item-seq" value="${index + 1}" readonly>
-            </div>
-
-            <div class="form-group item-name-group" style="margin:0;">
-                <label class="form-label">Nome do Item</label>
-                <input type="text" name="produtos[${index}][nome]" class="form-control item-name" required autocomplete="off" placeholder="Ex: Papel A4">
-                <div class="item-suggestions" role="listbox"></div>
-            </div>
-
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Quantidade</label>
-                <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control item-qtd" required value="1">
-            </div>
-
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Unidade</label>
-                <input type="text" name="produtos[${index}][unidade]" class="form-control" value="UN">
-            </div>
-
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Valor Unitário</label>
-                <input type="text" name="produtos[${index}][valor]" class="form-control item-valor" required placeholder="0,00" >
-            </div>
-
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Total do Item</label>
-                <input type="text" class="form-control item-total" value="R$ 0,00" readonly>
-            </div>
-
-            <div style="margin-bottom: 5px;">
-                <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
+        const row = createItemRow(index);
 
         container.appendChild(row);
         renumberItems();

@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS itens_oficio (
     produto VARCHAR(255) NOT NULL,
     quantidade DECIMAL(10,2) NOT NULL,
     unidade VARCHAR(20) DEFAULT 'UN',
+    valor_unitario DECIMAL(15,2) NULL DEFAULT 0.00,
     FOREIGN KEY (oficio_id) REFERENCES oficios(id) ON DELETE CASCADE
 );
 
