@@ -1,0 +1,154 @@
+.report-filter {
+  margin-bottom: 18px;
+}
+
+.quick-periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.period-btn {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #475569;
+  border-radius: 999px;
+  padding: 0 13px;
+  font-weight: 850;
+  font-size: 13px;
+}
+
+.period-btn.is-active {
+  background: #eef6f5;
+  border-color: rgba(15, 118, 110, .18);
+  color: var(--primary);
+}
+
+.report-filter__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.report-filter__button {
+  height: 44px;
+}
+
+.report-summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.report-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  min-height: 118px;
+}
+
+.report-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.report-card strong {
+  display: block;
+  font-size: 24px;
+  letter-spacing: -.05em;
+  margin-top: 8px;
+}
+
+.report-card p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.report-grid--secondary {
+  grid-template-columns: .72fr 1.28fr;
+}
+
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.donut-legend {
+  display: grid;
+  gap: 10px;
+  min-width: 180px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #475569;
+  font-weight: 750;
+  font-size: 13px;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.report-table {
+  max-height: 320px;
+}
+
+@media (max-width: 1180px) {
+  .report-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .report-grid,
+  .report-grid--secondary {
+    grid-template-columns: 1fr;
+  }
+
+  .report-filter__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-filter__button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 680px) {
+  .report-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .report-filter__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-periods {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+}
