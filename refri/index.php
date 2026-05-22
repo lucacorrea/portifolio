@@ -1,1 +1,2 @@
-<?php header('Location: dashboard.php'); exit; ?>
+<?php
+require __DIR__ . '/dashboard.php';
