@@ -1,51 +1,62 @@
-# K.Yamaguchi Service — Layout Premium PHP/JS/AJAX
+# K.Yamaguchi Service — Layout profissional PHP/JS/AJAX
 
-Protótipo visual em PHP puro com JavaScript e AJAX simulado para um sistema de gestão de refrigeração.
+Pacote de telas em PHP puro, JavaScript puro e AJAX para sistema de refrigeração.
 
 ## Telas incluídas
 
-- `dashboard.php` — Dashboard executivo
-- `tabelas.php` — Página padrão de listagens/tabelas
-- `relatorios.php` — Página de relatórios
-- `api/*.php` — Endpoints mockados em JSON para alimentar as telas via AJAX
+- `dashboard.php`
+- `clientes.php`
+- `ordens-servico.php`
+- `orcamentos.php`
+- `pecas.php`
+- `tipos-servico.php`
+- `relatorios.php`
+- `notas-fiscais.php`
+- `configuracoes.php`
+- `tabelas.php` — página padrão de listagem reutilizável
+
+## Recursos incluídos
+
+- Layout mais profissional, corporativo e quadrado.
+- Cards e botões sem sombras pesadas.
+- Sidebar e topbar com bordas suaves.
+- Tabelas responsivas que viram cards no mobile.
+- APIs mockadas em PHP retornando JSON.
+- Gráficos em Canvas com JavaScript puro.
+- Geração de PDF de orçamento sem dependência externa.
+- Fluxo de WhatsApp: gera PDF e abre a conversa automaticamente com mensagem e link.
+- Endpoint preparado para WhatsApp Business Cloud API via variáveis de ambiente.
 
 ## Como rodar localmente
-
-Com PHP instalado:
 
 ```bash
 php -S localhost:8000
 ```
 
-Depois acesse:
+Acesse:
 
 ```txt
 http://localhost:8000
 ```
 
-## Estrutura
+## WhatsApp e PDF
 
-```txt
-/assets/css/base.css
-/assets/css/dashboard.css
-/assets/css/tables.css
-/assets/css/reports.css
+O botão da tela de Orçamentos chama:
 
-/assets/js/app.js
-/assets/js/dashboard.js
-/assets/js/tabelas.js
-/assets/js/relatorios.js
+1. `api/gerar_orcamento_pdf.php`
+2. `api/enviar_orcamento_whatsapp.php`
 
-/includes/header.php
-/includes/sidebar.php
-/includes/topbar.php
-/includes/footer.php
+Sem token da WhatsApp Business API, o sistema abre o WhatsApp com mensagem pronta e link do PDF.
 
-/api/dashboard.php
-/api/listagem.php
-/api/relatorios.php
+Para envio automático real de documento pelo WhatsApp Business API, configure no servidor:
+
+```bash
+WHATSAPP_CLOUD_TOKEN=seu_token
+WHATSAPP_PHONE_NUMBER_ID=seu_phone_number_id
 ```
 
-## Observação técnica
+Depois o endpoint tenta enviar o PDF como documento pela Cloud API.
 
-Esse pacote é layout/protótipo. Os endpoints `api/*.php` usam dados simulados. Na implementação real, substitua os arrays PHP por consultas ao banco com validação, autenticação, permissões e tratamento de erro.
+## Próxima etapa
+
+Trocar os dados mockados dos arquivos `api/*.php` por consultas MySQL com autenticação, permissões, validação, logs e tratamento de erro.

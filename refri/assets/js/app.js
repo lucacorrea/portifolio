@@ -1,240 +1,168 @@
-const KY = {
-  money(value) {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(Number(value || 0));
-  },
+const App = (() => {
+  const statusClass = (status = '') => {
+    const s = status.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (s.includes('aberta')) return 'badge--aberta';
+    if (s.includes('agendada')) return 'badge--agendada';
+    if (s.includes('andamento') || s.includes('execucao')) return 'badge--andamento';
+    if (s.includes('peca') || s.includes('estoque baixo')) return 'badge--peca';
+    if (s.includes('aprovado') || s.includes('finalizada') || s.includes('emitida') || s.includes('pago') || s.includes('normal') || s.includes('ativo')) return 'badge--aprovado';
+    if (s.includes('recusado') || s.includes('rejeitada') || s.includes('sem estoque')) return 'badge--recusado';
+    if (s.includes('cancelada') || s.includes('rascunho') || s.includes('inativo')) return 'badge--cancelada';
+    if (s.includes('pendente') || s.includes('aguardando') || s.includes('nao emitida')) return 'badge--pendente';
+    return 'badge--rascunho';
+  };
 
-  badge(status) {
-    const map = {
-      'Aberta': 'blue',
-      'Agendada': 'purple',
-      'Em andamento': 'amber',
-      'Aguardando peça': 'orange',
-      'Aguardando aprovação': 'amber',
-      'Aprovado': 'green',
-      'Aprovada': 'green',
-      'Finalizada': 'final',
-      'Concluído': 'green',
-      'Cancelada': 'gray',
-      'Recusado': 'red',
-      'Recusada': 'red',
-      'Pendente': 'pending',
-      'Emitida': 'green',
-      'Rejeitada': 'red',
-      'Estoque baixo': 'orange',
-      'Enviado': 'teal'
-    };
-    const color = map[status] || 'gray';
-    return `<span class="badge badge--${color}">${status}</span>`;
-  },
-
-  fetchJson(url) {
-    return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
-      .then((response) => {
-        if (!response.ok) throw new Error('Falha ao carregar dados.');
-        return response.json();
-      });
-  },
-
-  chartColors: ['#0f766e', '#2563eb', '#b45309', '#c2410c', '#15803d', '#6d28d9'],
-
-  drawBars(canvas, labels, values, options = {}) {
+  const badge = (status) => `<span class="badge ${statusClass(status)}">${status}</span>`;
+  const money = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const toast = (message) => {
+    let el = document.querySelector('.toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.classList.add('is-visible');
+    window.setTimeout(() => el.classList.remove('is-visible'), 3400);
+  };
+  const fetchJson = async (url, options = {}) => {
+    const response = await fetch(url, options);
+    if (!response.ok) throw new Error('Falha ao carregar dados.');
+    return response.json();
+  };
+  const renderStats = (target, items = []) => {
+    const el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el) return;
+    el.innerHTML = items.map(item => `
+      <article class="stat-card">
+        <div class="stat-card__icon stat-card__icon--${item.tone || 'blue'}">${item.icon || 'KY'}</div>
+        <div><span>${item.label}</span><strong>${item.value}</strong><small>${item.helper || ''}</small></div>
+      </article>
+    `).join('');
+  };
+  const drawBarChart = (canvas, data, opts = {}) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = (Number(canvas.getAttribute('height')) || rect.height || 260) * dpr;
+    canvas.width = Math.max(320, rect.width) * dpr;
+    canvas.height = (opts.height || Math.max(220, rect.height || 260)) * dpr;
     ctx.scale(dpr, dpr);
-
-    const width = rect.width;
-    const height = Number(canvas.getAttribute('height')) || 260;
-    ctx.clearRect(0, 0, width, height);
-
-    const padding = { top: 18, right: 16, bottom: 42, left: 42 };
-    const chartW = width - padding.left - padding.right;
-    const chartH = height - padding.top - padding.bottom;
-    const max = Math.max(...values, 1) * 1.15;
-
-    ctx.strokeStyle = '#e5e7eb';
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+    ctx.clearRect(0, 0, w, h);
+    const pad = { top: 18, right: 14, bottom: 38, left: 44 };
+    const max = Math.max(...data.map(x => x.value), 1);
+    ctx.strokeStyle = '#dde3ea';
     ctx.lineWidth = 1;
-    ctx.font = '12px Inter, sans-serif';
-    ctx.fillStyle = '#6b7280';
-
     for (let i = 0; i <= 4; i++) {
-      const y = padding.top + chartH - (chartH / 4) * i;
-      ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(width - padding.right, y);
-      ctx.stroke();
+      const y = pad.top + ((h - pad.top - pad.bottom) / 4) * i;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
     }
-
-    const gap = 14;
-    const barW = Math.max(24, (chartW - gap * (values.length - 1)) / values.length);
-
-    values.forEach((value, index) => {
-      const x = padding.left + index * (barW + gap);
-      const barH = (value / max) * chartH;
-      const y = padding.top + chartH - barH;
-
-      KY.roundRect(ctx, x, y, barW, barH, 4, options.color || '#0f766e');
-      ctx.fillStyle = '#6b7280';
+    const chartW = w - pad.left - pad.right;
+    const barW = Math.max(18, chartW / data.length * .48);
+    data.forEach((item, i) => {
+      const x = pad.left + (chartW / data.length) * i + (chartW / data.length - barW) / 2;
+      const bh = (item.value / max) * (h - pad.top - pad.bottom);
+      const y = h - pad.bottom - bh;
+      ctx.fillStyle = opts.color || '#0f766e';
+      ctx.fillRect(x, y, barW, bh);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(labels[index], x + barW / 2, height - 16);
+      ctx.fillText(item.label, x + barW / 2, h - 14);
     });
-  },
-
-  drawLineArea(canvas, labels, values) {
+  };
+  const drawHorizontalChart = (canvas, data, opts = {}) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = (Number(canvas.getAttribute('height')) || rect.height || 260) * dpr;
+    canvas.width = Math.max(320, rect.width) * dpr;
+    canvas.height = (opts.height || 260) * dpr;
     ctx.scale(dpr, dpr);
-
-    const width = rect.width;
-    const height = Number(canvas.getAttribute('height')) || 260;
-    ctx.clearRect(0, 0, width, height);
-
-    const padding = { top: 18, right: 20, bottom: 42, left: 42 };
-    const chartW = width - padding.left - padding.right;
-    const chartH = height - padding.top - padding.bottom;
-    const max = Math.max(...values, 1) * 1.15;
-    const min = 0;
-    const points = values.map((value, index) => {
-      const x = padding.left + (chartW / Math.max(values.length - 1, 1)) * index;
-      const y = padding.top + chartH - ((value - min) / (max - min)) * chartH;
-      return { x, y, value };
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+    ctx.clearRect(0, 0, w, h);
+    const max = Math.max(...data.map(x => x.value), 1);
+    const rowH = h / data.length;
+    data.forEach((item, i) => {
+      const y = i * rowH + 10;
+      ctx.fillStyle = '#111827';
+      ctx.font = '12px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(item.label, 6, y + 15);
+      ctx.fillStyle = '#e5e7eb';
+      ctx.fillRect(130, y + 3, w - 176, 16);
+      ctx.fillStyle = opts.color || '#2563eb';
+      ctx.fillRect(130, y + 3, (w - 176) * item.value / max, 16);
+      ctx.fillStyle = '#64748b';
+      ctx.textAlign = 'right';
+      ctx.fillText(item.value, w - 10, y + 16);
     });
-
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = padding.top + chartH - (chartH / 4) * i;
-      ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(width - padding.right, y);
-      ctx.stroke();
-    }
-
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, padding.top + chartH);
-    points.forEach((point, index) => {
-      if (index === 0) ctx.lineTo(point.x, point.y);
-      else {
-        const prev = points[index - 1];
-        const cpX = (prev.x + point.x) / 2;
-        ctx.bezierCurveTo(cpX, prev.y, cpX, point.y, point.x, point.y);
-      }
-    });
-    ctx.lineTo(points[points.length - 1].x, padding.top + chartH);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(37, 99, 235, .10)';
-    ctx.fill();
-
-    ctx.beginPath();
-    points.forEach((point, index) => {
-      if (index === 0) ctx.moveTo(point.x, point.y);
-      else {
-        const prev = points[index - 1];
-        const cpX = (prev.x + point.x) / 2;
-        ctx.bezierCurveTo(cpX, prev.y, cpX, point.y, point.x, point.y);
-      }
-    });
-    ctx.strokeStyle = '#2563eb';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '12px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    labels.forEach((label, index) => {
-      ctx.fillText(label, points[index].x, height - 16);
-    });
-  },
-
-  drawDonut(canvas, data, legendEl) {
+  };
+  const drawDonut = (canvas, data) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    const sizeW = canvas.getAttribute('width') || rect.width || 280;
-    const sizeH = canvas.getAttribute('height') || rect.height || 220;
-    canvas.width = sizeW * dpr;
-    canvas.height = sizeH * dpr;
+    canvas.width = Math.max(300, rect.width) * dpr;
+    canvas.height = Math.max(220, rect.height || 260) * dpr;
     ctx.scale(dpr, dpr);
-
-    const width = Number(sizeW);
-    const height = Number(sizeH);
-    const total = data.reduce((sum, item) => sum + item.value, 0) || 1;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = Math.min(width, height) / 2 - 14;
-    const inner = radius * .62;
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2; const cy = h / 2 - 5; const r = Math.min(w, h) / 3;
+    const colors = ['#15803d', '#b91c1c', '#b45309', '#2563eb'];
+    const total = data.reduce((sum, i) => sum + i.value, 0) || 1;
     let start = -Math.PI / 2;
-
-    ctx.clearRect(0, 0, width, height);
-
-    data.forEach((item, index) => {
-      const angle = (item.value / total) * Math.PI * 2;
+    data.forEach((item, i) => {
+      const angle = Math.PI * 2 * item.value / total;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, start, start + angle);
-      ctx.arc(centerX, centerY, inner, start + angle, start, true);
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, start, start + angle);
       ctx.closePath();
-      ctx.fillStyle = KY.chartColors[index % KY.chartColors.length];
+      ctx.fillStyle = colors[i % colors.length];
       ctx.fill();
       start += angle;
     });
-
-    ctx.fillStyle = '#111827';
-    ctx.font = '700 22px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${total}`, centerX, centerY - 2);
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '12px Inter, sans-serif';
-    ctx.fillText('total', centerX, centerY + 18);
-
-    if (legendEl) {
-      legendEl.innerHTML = data.map((item, index) => `
-        <div class="legend-item">
-          <span class="legend-dot" style="background:${KY.chartColors[index % KY.chartColors.length]}"></span>
-          <span>${item.name}: <strong>${item.value}</strong></span>
-        </div>
-      `).join('');
-    }
-  },
-
-  roundRect(ctx, x, y, width, height, radius, fillStyle) {
-    const r = Math.min(radius, width / 2, height / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + width, y, x + width, y + height, r);
-    ctx.arcTo(x + width, y + height, x, y + height, r);
-    ctx.arcTo(x, y + height, x, y, r);
-    ctx.arcTo(x, y, x + width, y, r);
-    ctx.closePath();
-    ctx.fillStyle = fillStyle;
-    ctx.fill();
-  }
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-  const menuToggle = document.getElementById('menuToggle');
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-
-  const closeSidebar = () => {
-    sidebar?.classList.remove('is-open');
-    overlay?.classList.remove('is-open');
+    ctx.beginPath(); ctx.arc(cx, cy, r * .58, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.fillStyle = '#111827'; ctx.font = '700 18px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(total), cx, cy + 6);
   };
 
-  menuToggle?.addEventListener('click', () => {
-    sidebar?.classList.toggle('is-open');
-    overlay?.classList.toggle('is-open');
+  const openModal = (type) => {
+    const old = document.querySelector('.modal-backdrop');
+    if (old) old.remove();
+    const titles = { cliente: 'Novo Cliente', os: 'Nova Ordem de Serviço', orcamento: 'Novo Orçamento', peca: 'Nova Peça', servico: 'Novo Tipo de Serviço' };
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop is-open';
+    modal.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal__header"><h3>${titles[type] || 'Novo Cadastro'}</h3><button class="icon-btn" data-close-modal>×</button></div>
+        <div class="modal__body">
+          <div class="form-grid">
+            <label class="field"><span>Cliente/Nome</span><input placeholder="Digite o nome"></label>
+            <label class="field"><span>Telefone/WhatsApp</span><input placeholder="(92) 90000-0000"></label>
+            <label class="field"><span>Tipo/Status</span><select><option>Ativo</option><option>Pendente</option><option>Aguardando aprovação</option></select></label>
+            <label class="field"><span>Valor estimado</span><input placeholder="R$ 0,00"></label>
+            <label class="field field--full"><span>Observações</span><textarea placeholder="Descreva informações importantes..."></textarea></label>
+          </div>
+        </div>
+        <div class="modal__footer"><button class="btn btn--secondary" data-close-modal>Cancelar</button><button class="btn btn--primary" data-save-modal>Salvar</button></div>
+      </div>`;
+    document.body.appendChild(modal);
+  };
+
+  document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('#menuToggle');
+    if (toggle) { document.querySelector('#sidebar')?.classList.add('is-open'); document.querySelector('#sidebarOverlay')?.classList.add('is-visible'); }
+    if (event.target.closest('#sidebarOverlay')) { document.querySelector('#sidebar')?.classList.remove('is-open'); document.querySelector('#sidebarOverlay')?.classList.remove('is-visible'); }
+    const modalTrigger = event.target.closest('[data-modal]');
+    if (modalTrigger) openModal(modalTrigger.dataset.modal);
+    if (event.target.closest('[data-close-modal]')) event.target.closest('.modal-backdrop')?.remove();
+    if (event.target.closest('[data-save-modal]')) { event.target.closest('.modal-backdrop')?.remove(); toast('Registro salvo no protótipo. Integre com o banco na etapa do CRUD.'); }
+    if (event.target.closest('[data-refresh]')) { toast('Dados atualizados.'); }
   });
 
-  overlay?.addEventListener('click', closeSidebar);
-});
+  return { badge, money, toast, fetchJson, renderStats, drawBarChart, drawHorizontalChart, drawDonut };
+})();
