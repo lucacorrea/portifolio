@@ -42,53 +42,143 @@
       <!-- Content Area -->
       <div class="content-area">
 
-        <!-- Tabela de OS -->
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">
-              <i class="bi bi-card-list"></i>
-              Ordens de Serviço
-              <span id="os-total-label" style="font-size:12px;font-weight:500;color:var(--slate-400);background:var(--slate-100);padding:2px 9px;border-radius:20px;margin-left:2px;"></span>
+        <div class="dashboard-main-column">
+          <!-- Tabela de OS -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <i class="bi bi-card-list"></i>
+                Ordens de Serviço
+                <span id="os-total-label" style="font-size:12px;font-weight:500;color:var(--slate-400);background:var(--slate-100);padding:2px 9px;border-radius:20px;margin-left:2px;"></span>
+              </div>
+              <div class="panel-actions">
+                <div class="tb-icon-btn" style="width:30px;height:30px;border-radius:9px;" title="Exportar">
+                  <i class="bi bi-download" style="font-size:14px"></i>
+                </div>
+                <div class="tb-icon-btn" style="width:30px;height:30px;border-radius:9px;" title="Colunas">
+                  <i class="bi bi-layout-three-columns" style="font-size:14px"></i>
+                </div>
+              </div>
             </div>
-            <div class="panel-actions">
-              <div class="tb-icon-btn" style="width:30px;height:30px;border-radius:9px;" title="Exportar">
-                <i class="bi bi-download" style="font-size:14px"></i>
-              </div>
-              <div class="tb-icon-btn" style="width:30px;height:30px;border-radius:9px;" title="Colunas">
-                <i class="bi bi-layout-three-columns" style="font-size:14px"></i>
-              </div>
+
+            <div class="os-table-wrap">
+              <table class="os-table">
+                <thead>
+                  <tr>
+                    <th>Número</th>
+                    <th>Título / Cliente</th>
+                    <th>Status</th>
+                    <th>Prioridade</th>
+                    <th>Técnico</th>
+                    <th>Abertura</th>
+                    <th>Valor</th>
+                    <th style="text-align:center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="os-tbody">
+                  <tr><td colspan="8">
+                    <div class="skeleton sk-row"></div>
+                    <div class="skeleton sk-row"></div>
+                    <div class="skeleton sk-row"></div>
+                    <div class="skeleton sk-row"></div>
+                    <div class="skeleton sk-row"></div>
+                  </td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination-bar">
+              <span id="pagination-info" style="font-size:12.5px;color:var(--slate-400)">—</span>
+              <div class="pagination-controls" id="pagination-controls"></div>
             </div>
           </div>
 
-          <div class="os-table-wrap">
-            <table class="os-table">
-              <thead>
-                <tr>
-                  <th>Número</th>
-                  <th>Título / Cliente</th>
-                  <th>Status</th>
-                  <th>Prioridade</th>
-                  <th>Técnico</th>
-                  <th>Abertura</th>
-                  <th>Valor</th>
-                  <th style="text-align:center">Ações</th>
-                </tr>
-              </thead>
-              <tbody id="os-tbody">
-                <tr><td colspan="8">
-                  <div class="skeleton sk-row"></div>
-                  <div class="skeleton sk-row"></div>
-                  <div class="skeleton sk-row"></div>
-                  <div class="skeleton sk-row"></div>
-                  <div class="skeleton sk-row"></div>
-                </td></tr>
-              </tbody>
-            </table>
-          </div>
+          <!-- Painel operacional -->
+          <div class="panel operations-panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <i class="bi bi-clipboard2-pulse"></i> Prioridades e prazos
+              </div>
+              <span class="panel-tag">Atualizado agora</span>
+            </div>
 
-          <div class="pagination-bar">
-            <span id="pagination-info" style="font-size:12.5px;color:var(--slate-400)">—</span>
-            <div class="pagination-controls" id="pagination-controls"></div>
+            <div class="operations-body">
+              <div class="operations-kpis">
+                <div class="operation-kpi danger">
+                  <div class="operation-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                  <div>
+                    <span class="operation-label">Urgentes</span>
+                    <strong>2 OS</strong>
+                    <small>Acompanhamento imediato</small>
+                  </div>
+                </div>
+
+                <div class="operation-kpi warning">
+                  <div class="operation-icon"><i class="bi bi-calendar-check"></i></div>
+                  <div>
+                    <span class="operation-label">Vencem hoje</span>
+                    <strong>5 visitas</strong>
+                    <small>Confirmar agenda</small>
+                  </div>
+                </div>
+
+                <div class="operation-kpi info">
+                  <div class="operation-icon"><i class="bi bi-person-x"></i></div>
+                  <div>
+                    <span class="operation-label">Sem técnico</span>
+                    <strong>11 OS</strong>
+                    <small>Definir responsável</small>
+                  </div>
+                </div>
+
+                <div class="operation-kpi success">
+                  <div class="operation-icon"><i class="bi bi-cash-coin"></i></div>
+                  <div>
+                    <span class="operation-label">Orçamentos</span>
+                    <strong>R$ 6.830</strong>
+                    <small>Pendentes de aprovação</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="deadline-board">
+                <div class="deadline-head">
+                  <span>Próximas ações</span>
+                  <button class="btn-filter btn-filter-ghost" type="button" onclick="toast('Agenda será criada na próxima etapa', 'info')">
+                    Ver agenda
+                  </button>
+                </div>
+
+                <div class="deadline-list">
+                  <div class="deadline-item">
+                    <span class="deadline-time">09:30</span>
+                    <div>
+                      <strong>Retorno para Logística Sul</strong>
+                      <small>VPN corporativa aguardando validação do cliente</small>
+                    </div>
+                    <span class="deadline-status status-danger">Urgente</span>
+                  </div>
+
+                  <div class="deadline-item">
+                    <span class="deadline-time">14:00</span>
+                    <div>
+                      <strong>Visita técnica no Supermercado Rio</strong>
+                      <small>Instalação CFTV com Lucas Ferreira</small>
+                    </div>
+                    <span class="deadline-status status-warning">Hoje</span>
+                  </div>
+
+                  <div class="deadline-item">
+                    <span class="deadline-time">16:30</span>
+                    <div>
+                      <strong>Aprovar orçamento da Acme Corp</strong>
+                      <small>Manutenção preventiva do servidor</small>
+                    </div>
+                    <span class="deadline-status status-success">R$ 1.200</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

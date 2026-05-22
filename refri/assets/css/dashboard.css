@@ -456,6 +456,13 @@ html, body {
   align-items: start;
 }
 
+.dashboard-main-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
 /* ── Panel (card genérico) ──────────────────────────── */
 .panel {
   background: var(--bg-surface);
@@ -615,6 +622,172 @@ html, body {
 .side-panels { display: flex; flex-direction: column; gap: 16px; }
 
 .chart-wrap { padding: 16px 20px 20px; }
+
+/* ── Prioridades e prazos ───────────────────────────── */
+.panel-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--blue-50);
+  color: var(--blue-700);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.operations-body {
+  padding: 16px 18px 18px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.operations-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.operation-kpi {
+  min-height: 124px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px;
+  border: var(--border-default);
+  border-radius: 15px;
+  background: var(--slate-50);
+}
+
+.operation-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 19px;
+}
+
+.operation-kpi strong {
+  display: block;
+  color: var(--slate-900);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  line-height: 1.05;
+  margin: 3px 0 4px;
+  white-space: nowrap;
+}
+
+.operation-label {
+  display: block;
+  color: var(--slate-500);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .45px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.operation-kpi small,
+.deadline-item small {
+  display: block;
+  color: var(--slate-500);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.operation-kpi.danger .operation-icon { background: #FEF2F2; color: #DC2626; }
+.operation-kpi.warning .operation-icon { background: #FFFBEB; color: #D97706; }
+.operation-kpi.info .operation-icon { background: #EFF6FF; color: #2563EB; }
+.operation-kpi.success .operation-icon { background: #DCFCE7; color: #16A34A; }
+
+.deadline-board {
+  min-width: 0;
+  border: var(--border-default);
+  border-radius: 15px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.deadline-head {
+  min-height: 48px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: var(--border-soft);
+}
+
+.deadline-head span {
+  color: var(--slate-900);
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.deadline-head .btn-filter {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+.deadline-list {
+  padding: 5px 8px 8px;
+}
+
+.deadline-item {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 8px;
+  border-bottom: var(--border-soft);
+}
+
+.deadline-item:last-child { border-bottom: none; }
+
+.deadline-time {
+  display: inline-flex;
+  justify-content: center;
+  color: var(--blue-700);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.deadline-item strong {
+  display: block;
+  color: var(--slate-900);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deadline-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 66px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-danger { background: #FEF2F2; color: #DC2626; }
+.status-warning { background: #FFFBEB; color: #D97706; }
+.status-success { background: #DCFCE7; color: #16A34A; }
 
 /* ── OS Recentes ────────────────────────────────────── */
 .recent-list { padding: 0 8px 12px; }
@@ -815,6 +988,7 @@ textarea.form-control-os {
 }
 @media (max-width: 900px) {
   .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .operations-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-row-3   { grid-template-columns: 1fr 1fr; }
   .os-sidebar   { display: none; }
 }
@@ -833,6 +1007,18 @@ textarea.form-control-os {
   .tb-icon-btn  { width: 34px; height: 34px; }
   .btn-new-os   { width: 38px; padding: 0; gap: 0; font-size: 0; justify-content: center; }
   .btn-new-os i { font-size: 16px; }
+  .operations-body { padding: 14px; }
+  .operations-kpis { grid-template-columns: 1fr; }
+  .deadline-head { align-items: flex-start; flex-direction: column; }
+  .deadline-head .btn-filter { width: 100%; }
+  .deadline-item {
+    grid-template-columns: 46px minmax(0, 1fr);
+    align-items: flex-start;
+  }
+  .deadline-status {
+    grid-column: 2;
+    justify-self: start;
+  }
   .side-panels  { grid-template-columns: 1fr; }
 }
 
