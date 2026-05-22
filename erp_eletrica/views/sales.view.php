@@ -52,6 +52,11 @@
                                     <i class="fas fa-list-alt me-2"></i><span class="d-none d-sm-inline">Listar Orç.</span> (F8)
                                 </button>
                             </div>
+                            <div class="col-6 col-sm-auto">
+                                <button class="btn btn-outline-warning fw-bold w-100 px-3 py-2 shadow-sm d-flex align-items-center justify-content-center" onclick="openSearchSalesModal()" title="Pesquisar Venda (F5)" id="btnSearchSales">
+                                    <i class="fas fa-search-dollar me-2"></i><span class="d-none d-sm-inline">Buscar Venda</span> (F5)
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -280,7 +285,10 @@
             <div class="card-footer bg-white py-3 border-0 mt-auto">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="small fw-bold text-muted text-uppercase mb-0">Últimos Cupons</h6>
-                    <button class="btn btn-sm btn-link text-decoration-none p-0 extra-small" onclick="loadRecentSales()">Atualizar</button>
+                    <div>
+                        <button class="btn btn-sm btn-link text-decoration-none p-0 extra-small me-2" onclick="openSearchSalesModal()"><i class="fas fa-search me-1"></i>Buscar</button>
+                        <button class="btn btn-sm btn-link text-decoration-none p-0 extra-small" onclick="loadRecentSales()"><i class="fas fa-sync-alt me-1"></i>Atualizar</button>
+                    </div>
                 </div>
                 <div id="recentSalesList" class="small overflow-auto" style="max-height: 150px;">
                     <div class="text-center py-2 opacity-50">Carregando histórico...</div>
@@ -404,6 +412,16 @@
                 </div>
                 
                 <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary fw-bold py-3" onclick="imprimirCupom(activeManageId)">
+                        <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
+                    </button>
+                    <button class="btn btn-outline-info fw-bold py-3" id="btnManageA4" onclick="imprimirA4(activeManageId)" style="display: none;">
+                        <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
+                    </button>
+                    <button class="btn btn-outline-success fw-bold py-3" id="btnManageDanfe" onclick="imprimirDanfe(activeManageId)" style="display: none;">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>IMPRIMIR DANFE (NFC-e)
+                    </button>
+                    <hr>
                     <button class="btn btn-outline-danger fw-bold py-3" onclick="cancelSaleAction()">
                         <i class="fas fa-trash-alt me-2"></i>CANCELAR VENDA (ESTORNO)
                     </button>
@@ -411,6 +429,47 @@
                         <i class="fas fa-exchange-alt me-2"></i>SOLICITAR TROCA
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Pesquisar Vendas (Histórico) -->
+<div class="modal fade" id="modalSearchSales" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-search me-2 text-white"></i>Pesquisar Venda</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <input type="text" id="searchSalesInput" class="form-control form-control-lg" placeholder="Buscar por código, cliente ou CPF..." onkeyup="if(event.key==='Enter') searchSalesList(1)">
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-primary btn-lg w-100 fw-bold" onclick="searchSalesList(1)"><i class="fas fa-search me-2"></i>BUSCAR</button>
+                    </div>
+                </div>
+                <div class="table-responsive bg-white border rounded">
+                    <table class="table table-hover table-striped align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Cód.</th>
+                                <th>Data</th>
+                                <th>Cliente</th>
+                                <th>Valor</th>
+                                <th>Tipo</th>
+                                <th>Status</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="searchSalesTbody">
+                            <tr><td colspan="7" class="text-center py-4 text-muted">Digite para buscar...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="searchSalesPagination" class="mt-3 d-flex justify-content-center"></div>
             </div>
         </div>
     </div>
@@ -622,8 +681,12 @@
             </div>
             <div class="modal-body p-4">
                 <div class="mb-3">
-                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Nome Completo / Razão Social</label>
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Nome Completo / Nome Fantasia *</label>
                     <input type="text" id="qc_nome" class="form-control" placeholder="Ex: João da Silva">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Razão Social</label>
+                    <input type="text" id="qc_razao_social" class="form-control" placeholder="Ex: João da Silva ME">
                 </div>
                 <div class="row mb-3">
                     <div class="col-6">
@@ -635,9 +698,25 @@
                         <input type="text" id="qc_telefone" class="form-control" placeholder="(00) 00000-0000">
                     </div>
                 </div>
-                <div class="mb-4">
-                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Endereço (Opcional, mas recomendado)</label>
-                    <input type="text" id="qc_endereco" class="form-control" placeholder="Rua, Número, Bairro...">
+                <div class="row mb-3">
+                    <div class="col-8">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Endereço</label>
+                        <input type="text" id="qc_endereco" class="form-control" placeholder="Rua, Número, Bairro...">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">CEP</label>
+                        <input type="text" id="qc_cep" class="form-control" placeholder="69000-000">
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Banco / Agência</label>
+                        <input type="text" id="qc_banco_agencia" class="form-control" placeholder="Ex: Sicoob - 0002">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Conta Corrente (C/C)</label>
+                        <input type="text" id="qc_banco_cc" class="form-control" placeholder="Ex: 91103-7">
+                    </div>
                 </div>
                 <div class="d-grid">
                     <button class="btn btn-primary fw-bold py-3 shadow-sm" onclick="salvarQuickClient()">
@@ -670,6 +749,8 @@ let pendingProduct = null;
 let currentPvId = null;
 let currentPvCode = null;
 let activeManageId = null;
+let cameFromSearch = false;
+let pendingManageSale = null;
 let selectedCustomerId = null;
 let selectedCustomerName = null;
 let selectedCustomerCPF = null;
@@ -1338,17 +1419,25 @@ function clearCustomer() {
 
 function abrirModalQuickClient() {
     document.getElementById('qc_nome').value = '';
+    document.getElementById('qc_razao_social').value = '';
     document.getElementById('qc_cpf_cnpj').value = '';
     document.getElementById('qc_telefone').value = '';
     document.getElementById('qc_endereco').value = '';
-    new bootstrap.Modal(document.getElementById('modalQuickClient')).show();
+    document.getElementById('qc_cep').value = '';
+    document.getElementById('qc_banco_agencia').value = '';
+    document.getElementById('qc_banco_cc').value = '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalQuickClient')).show();
 }
 
 async function salvarQuickClient() {
     const nome = document.getElementById('qc_nome').value;
+    const razao_social = document.getElementById('qc_razao_social').value;
     const cpf_cnpj = document.getElementById('qc_cpf_cnpj').value;
     const telefone = document.getElementById('qc_telefone').value;
     const endereco = document.getElementById('qc_endereco').value;
+    const cep = document.getElementById('qc_cep').value;
+    const banco_agencia = document.getElementById('qc_banco_agencia').value;
+    const banco_cc = document.getElementById('qc_banco_cc').value;
 
     if (!nome) return alert('O nome é obrigatório.');
 
@@ -1363,7 +1452,7 @@ async function salvarQuickClient() {
         const res = await fetch('vendas.php?action=quick_register_client', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, cpf_cnpj, telefone, endereco })
+            body: JSON.stringify({ nome, razao_social, cpf_cnpj, telefone, endereco, cep, banco_agencia, banco_cc })
         });
 
         const result = await res.json();
@@ -1635,8 +1724,8 @@ async function saveCurrentSaleAsOrcamento() {
         if (result.success) {
             alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}`);
             
-            // Open print window
-            window.open('orcamento_imprimir.php?code=' + result.codigo, '_blank', 'width=400,height=600');
+            // Open print format choice modal
+            chooseOrcamentoPrintFormat(result.codigo);
             
             // Clear current sale
             cart = [];
@@ -1725,7 +1814,7 @@ async function loadPendingOrcamentosModal() {
 }
 
 function printOrcamento(code) {
-    window.open('orcamento_imprimir.php?code=' + code, '_blank', 'width=400,height=600');
+    chooseOrcamentoPrintFormat(code);
 }
 
 function importOrcamento(code, isValid) {
@@ -1758,41 +1847,174 @@ async function deleteOrcamento(id) {
 
 // Recent Sales (History)
 async function loadRecentSales() {
-    const res = await fetch('vendas.php?action=list_recent');
-    const data = await res.json();
     const list = document.getElementById('recentSalesList');
-    list.innerHTML = '';
-    
-    if (data.sales.length === 0) {
-        list.innerHTML = '<div class="text-center py-2 opacity-50">Nenhuma venda recente</div>';
-        return;
-    }
+    list.innerHTML = '<div class="text-center py-2 opacity-50"><span class="spinner-border spinner-border-sm me-1"></span>Carregando...</div>';
+    try {
+        const res = await fetch('vendas.php?action=list_recent');
+        if (!res.ok) throw new Error('Resposta inválida do servidor');
+        const data = await res.json();
+        list.innerHTML = '';
+        
+        if (!data.sales || data.sales.length === 0) {
+            list.innerHTML = '<div class="text-center py-2 opacity-50">Nenhuma venda recente</div>';
+            return;
+        }
 
-    data.sales.forEach(sale => {
-        const item = document.createElement('div');
-        item.className = 'd-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded border cursor-pointer';
-        item.style.cursor = 'pointer';
-        item.onclick = () => manageSale(sale);
-        item.innerHTML = `
-            <div style="font-size: 0.75rem;">
-                <div class="fw-bold">Venda #${sale.id}</div>
-                <div class="text-muted">${sale.cliente_nome || 'Consumidor'}</div>
-            </div>
-            <div class="text-end">
-                <div class="fw-bold text-primary">R$ ${parseFloat(sale.valor_total).toFixed(2).replace('.', ',')}</div>
-                <div class="extra-small ${sale.status === 'cancelado' ? 'text-danger' : 'text-success'}">${sale.status.toUpperCase()}</div>
-            </div>
-        `;
-        list.appendChild(item);
-    });
+        data.sales.forEach(sale => {
+            const item = document.createElement('div');
+            item.className = 'd-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded border cursor-pointer';
+            item.style.cursor = 'pointer';
+            item.onclick = () => manageSale(sale);
+            item.innerHTML = `
+                <div style="font-size: 0.75rem;">
+                    <div class="fw-bold">Venda #${sale.id}</div>
+                    <div class="text-muted">${sale.cliente_nome || 'Consumidor'}</div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold text-primary">R$ ${parseFloat(sale.valor_total).toFixed(2).replace('.', ',')}</div>
+                    <div class="extra-small ${sale.status === 'cancelado' ? 'text-danger' : 'text-success'}">${sale.status.toUpperCase()}</div>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    } catch (err) {
+        console.error('Erro ao carregar histórico:', err);
+        list.innerHTML = '<div class="text-center py-2 text-danger small"><i class="fas fa-exclamation-triangle me-1"></i>Erro ao carregar. <a href="#" onclick="loadRecentSales()">Tentar novamente</a></div>';
+    }
 }
 
 function manageSale(sale) {
-    activeManageId = sale.id;
-    document.getElementById('manageSaleId').innerText = sale.id;
-    document.getElementById('manageSaleCustomer').innerText = sale.cliente_nome || 'Consumidor Final';
-    document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
-    new bootstrap.Modal(document.getElementById('modalSaleManager')).show();
+    const searchModalEl = document.getElementById('modalSearchSales');
+    if (searchModalEl && searchModalEl.classList.contains('show')) {
+        cameFromSearch = true;
+        pendingManageSale = sale;
+        const modalSearch = bootstrap.Modal.getOrCreateInstance(searchModalEl);
+        if (modalSearch) {
+            modalSearch.hide();
+        }
+    } else {
+        cameFromSearch = false;
+        pendingManageSale = null;
+
+        activeManageId = sale.id;
+        document.getElementById('manageSaleId').innerText = sale.id;
+        document.getElementById('manageSaleCustomer').innerText = sale.cliente_nome || 'Consumidor Final';
+        document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
+        
+        const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
+
+        const btnDanfe = document.getElementById('btnManageDanfe');
+        if (btnDanfe) {
+            btnDanfe.style.display = isFiscal ? 'block' : 'none';
+        }
+
+        const btnA4 = document.getElementById('btnManageA4');
+        if (btnA4) {
+            btnA4.style.display = isFiscal ? 'block' : 'none';
+        }
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaleManager')).show();
+    }
+}
+
+function openSearchSalesModal() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales')).show();
+    searchSalesList(1);
+}
+
+async function searchSalesList(page = 1) {
+    const term = document.getElementById('searchSalesInput').value;
+    const tbody = document.getElementById('searchSalesTbody');
+    const pagination = document.getElementById('searchSalesPagination');
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-primary"><span class="spinner-border spinner-border-sm me-2"></span>Buscando...</td></tr>';
+    
+    try {
+        const res = await fetch(`vendas.php?action=sold_search&page=${page}&perPage=10&search=${encodeURIComponent(term)}`);
+        if (!res.ok) throw new Error('Resposta inválida');
+        const data = await res.json();
+        if (!data || !data.sales) throw new Error('Dados inválidos');
+        
+        tbody.innerHTML = '';
+        if (data.sales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Nenhuma venda encontrada.</td></tr>';
+            pagination.innerHTML = '';
+            return;
+        }
+        
+        data.sales.forEach(sale => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="fw-bold">#${sale.id}</td>
+                <td>${sale.data_formatada}</td>
+                <td>${sale.cliente_nome || 'Consumidor'}</td>
+                <td class="text-primary fw-bold">R$ ${sale.valor_formatado}</td>
+                <td><span class="badge bg-${sale.tipo_nota === 'fiscal' ? 'success' : 'secondary'}">${sale.tipo_nota.toUpperCase()}</span></td>
+                <td><span class="badge bg-${sale.status === 'cancelado' ? 'danger' : 'success'}">${sale.status.toUpperCase()}</span></td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-primary" onclick="manageSale(${JSON.stringify(sale).replace(/"/g, '&quot;')})">Gerenciar</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        // Smart pagination with ellipses
+        const currentPage = parseInt(data.page);
+        const totalPages = parseInt(data.totalPages);
+        const delta = 2; // pages to show on each side of current
+        
+        const range = [];
+        const rangeWithDots = [];
+        let l;
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+                range.push(i);
+            }
+        }
+        for (let i of range) {
+            if (l) {
+                if (i - l === 2) rangeWithDots.push(l + 1);
+                else if (i - l > 2) rangeWithDots.push('...');
+            }
+            rangeWithDots.push(i);
+            l = i;
+        }
+
+        const pBtn = (p, label, disabled = false, active = false) =>
+            `<li class="page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}">
+                <a class="page-link" href="javascript:void(0)" ${!disabled ? `onclick="searchSalesList(${p})"` : ''}>${label}</a>
+             </li>`;
+
+        let pagHtml = '<ul class="pagination pagination-sm flex-wrap justify-content-center mb-0">';
+        pagHtml += pBtn(currentPage - 1, '&laquo;', currentPage === 1);
+        for (let p of rangeWithDots) {
+            if (p === '...') {
+                pagHtml += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+            } else {
+                pagHtml += pBtn(p, p, false, p === currentPage);
+            }
+        }
+        pagHtml += pBtn(currentPage + 1, '&raquo;', currentPage === totalPages);
+        pagHtml += `</ul>`;
+        pagHtml += `<div class="text-center text-muted small mt-1">Página ${currentPage} de ${totalPages} (${data.total} vendas)</div>`;
+        pagination.innerHTML = pagHtml;
+        
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Erro de conexão.</td></tr>';
+    }
+}
+
+function imprimirCupom(id) {
+    window.open('recibo_venda.php?id=' + id, '_blank', 'width=400,height=600');
+}
+
+function imprimirA4(id) {
+    window.open('nfce/danfe_a4.php?venda_id=' + id, '_blank', 'width=900,height=900');
+}
+
+function imprimirDanfe(id) {
+    window.open(`nfce/emitir.php?venda_id=${id}&imprimir=1`, '_blank', 'width=800,height=900');
 }
 
 let currentCancelModelo = 'por_chave';
@@ -1843,6 +2065,84 @@ async function cancelSaleAction() {
 
 // Handler for the confirm button inside the triple cancel modal
 document.addEventListener('DOMContentLoaded', () => {
+    // Modal restoration when returning to Search flow
+    const saleManagerEl = document.getElementById('modalSaleManager');
+    if (saleManagerEl) {
+        saleManagerEl.addEventListener('hidden.bs.modal', function () {
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (cameFromSearch && openModals.length === 0) {
+                    cameFromSearch = false;
+                    const modalSearch = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales'));
+                    if (modalSearch) {
+                        modalSearch.show();
+                    }
+                }
+            }, 150);
+        });
+    }
+
+    const searchModalEl = document.getElementById('modalSearchSales');
+    if (searchModalEl) {
+        searchModalEl.addEventListener('hidden.bs.modal', function () {
+            if (pendingManageSale) {
+                const sale = pendingManageSale;
+                pendingManageSale = null;
+
+                activeManageId = sale.id;
+                document.getElementById('manageSaleId').innerText = sale.id;
+                document.getElementById('manageSaleCustomer').innerText = sale.cliente_nome || 'Consumidor Final';
+                document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
+                
+                const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
+
+                const btnDanfe = document.getElementById('btnManageDanfe');
+                if (btnDanfe) {
+                    btnDanfe.style.display = isFiscal ? 'block' : 'none';
+                }
+
+                const btnA4 = document.getElementById('btnManageA4');
+                if (btnA4) {
+                    btnA4.style.display = isFiscal ? 'block' : 'none';
+                }
+
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaleManager')).show();
+            }
+        });
+    }
+
+    const tripleCancelEl = document.getElementById('modalTripleCancel');
+    if (tripleCancelEl) {
+        tripleCancelEl.addEventListener('hidden.bs.modal', function () {
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (cameFromSearch && openModals.length === 0) {
+                    cameFromSearch = false;
+                    const modalSearch = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales'));
+                    if (modalSearch) {
+                        modalSearch.show();
+                    }
+                }
+            }, 150);
+        });
+    }
+
+    const exchangeEl = document.getElementById('modalExchangeFlow');
+    if (exchangeEl) {
+        exchangeEl.addEventListener('hidden.bs.modal', function () {
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (cameFromSearch && openModals.length === 0) {
+                    cameFromSearch = false;
+                    const modalSearch = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSearchSales'));
+                    if (modalSearch) {
+                        modalSearch.show();
+                    }
+                }
+            }, 150);
+        });
+    }
+
     const confirmBtn = document.getElementById('confirmCancelBtn');
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async function() {
@@ -2473,17 +2773,25 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
                 ? 'Venda fiscal registrada em <strong>modo contingência</strong>. A NFC-e será emitida automaticamente quando a internet voltar.'
                 : 'Venda registrada <strong>offline</strong>. O recibo estará disponível após a sincronização automática.'}
         </div>
-        <button class="btn btn-outline-secondary btn-lg fw-bold py-3 shadow-sm" disabled>
+        <button class="btn btn-outline-secondary btn-lg fw-bold py-3 shadow-sm mb-2" disabled>
             <i class="fas fa-clock me-2"></i>AGUARDANDO SINCRONIZAÇÃO
         </button>`;
-    } else if (isFiscal) {
-        btnPrint = `<button class="btn btn-success btn-lg fw-bold py-3 shadow-sm" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
-               <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (Nota Fiscal)
-           </button>`;
     } else {
-        btnPrint = `<button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm" onclick="imprimirRecibo(${saleId})">
-               <i class="fas fa-print me-2"></i>IMPRIMIR RECIBO
-           </button>`;
+        btnPrint = `
+            <button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm mb-2 w-100" onclick="imprimirCupom(${saleId})">
+                <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
+            </button>
+        `;
+        if (isFiscal) {
+            btnPrint += `
+            <button class="btn btn-info btn-lg fw-bold py-3 shadow-sm text-white mb-2 w-100" onclick="imprimirA4(${saleId})">
+                <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
+            </button>
+            <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm mb-2 w-100" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
+                <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (DANFE)
+            </button>
+            `;
+        }
     }
 
     const saleIdDisplay = isOffline ? saleId : `#${saleId}`;
@@ -2661,6 +2969,12 @@ document.addEventListener('keydown', (e) => {
         discountInput.select();
     }
 
+    // F5: Buscar Venda
+    if (e.key === 'F5') {
+        e.preventDefault();
+        openSearchSalesModal();
+    }
+
     if (e.key === 'Escape') {
         searchResults.classList.add('d-none');
     }
@@ -2713,7 +3027,61 @@ document.getElementById('pdvQty').addEventListener('keydown', (e) => {
 });
 
 // No-op interceptDiscount removal
+let pendingPrintCode = null;
+let shouldReloadAfterPrint = false;
+
+function chooseOrcamentoPrintFormat(code, reload = false) {
+    pendingPrintCode = code;
+    shouldReloadAfterPrint = reload;
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalChoosePrintFormat'));
+    modal.show();
+}
+
+function printOrcamentoFormat(type) {
+    const modalEl = document.getElementById('modalChoosePrintFormat');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+    
+    const w = type === 'A4' ? 900 : 400;
+    const h = type === 'A4' ? 900 : 600;
+    window.open('orcamento_imprimir.php?code=' + pendingPrintCode + '&type=' + type, '_blank', `width=${w},height=${h}`);
+    
+    if (shouldReloadAfterPrint) {
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    }
+}
 </script>
+
+<!-- Modal: Escolher Formato de Impressão -->
+<div class="modal fade" id="modalChoosePrintFormat" tabindex="-1" style="z-index: 1090;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0 shadow-sm">
+                <h6 class="modal-title fw-bold text-white"><i class="fas fa-print me-2 text-white"></i>Formato de Impressão</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <p class="text-muted mb-4">Selecione o formato desejado para a impressão do orçamento:</p>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <button class="btn btn-outline-secondary w-100 py-3 fw-bold" onclick="printOrcamentoFormat('cupom')">
+                            <i class="fas fa-receipt d-block fs-3 mb-2"></i>
+                            CUPOM (BOBINA)
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-primary w-100 py-3 fw-bold text-white" onclick="printOrcamentoFormat('A4')">
+                            <i class="fas fa-file-invoice d-block fs-3 mb-2 text-white"></i>
+                            A4 (COMPLETO)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <style>
     .cancel-choice-card {

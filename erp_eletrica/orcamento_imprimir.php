@@ -13,11 +13,33 @@ if (!$code) { exit('Código inválido.'); }
 
 $db = \App\Config\Database::getInstance()->getConnection();
 
+// Auto-migrate missing columns for A4 budget feature to prevent breaking production
+$columns = [
+    'razao_social VARCHAR(255) NULL',
+    'cep VARCHAR(20) NULL',
+    'banco_agencia VARCHAR(50) NULL',
+    'banco_cc VARCHAR(50) NULL'
+];
+foreach ($columns as $col) {
+    try {
+        $db->exec("ALTER TABLE clientes ADD COLUMN $col");
+    } catch (\Exception $e) {
+        // Ignore error if column already exists
+    }
+}
+
 // Fetch Pre-sale / Budget details
 $stmt = $db->prepare("
     SELECT pv.*, 
            COALESCE(c.nome, pv.nome_cliente_avulso, 'Consumidor Final') as cliente_nome,
            COALESCE(c.cpf_cnpj, pv.cpf_cliente) as cliente_doc,
+           c.razao_social as cliente_razao_social,
+           c.endereco as cliente_endereco,
+           c.cep as cliente_cep,
+           c.email as cliente_email,
+           c.telefone as cliente_telefone,
+           c.banco_agencia as cliente_banco_agencia,
+           c.banco_cc as cliente_banco_cc,
            u.nome as vendedor_nome,
            f.nome as filial_nome,
            f.cnpj as filial_cnpj,
@@ -55,6 +77,12 @@ $createdAt = strtotime($pv['created_at']);
 $now = time();
 $diffHours = ($now - $createdAt) / 3600;
 $isExpired = $diffHours >= 24;
+
+$type = $_GET['type'] ?? 'cupom';
+if ($type === 'A4') {
+    require __DIR__ . '/orcamento_imprimir_a4.php';
+    exit;
+}
 ?>
 <!doctype html>
 <html lang="pt-BR">

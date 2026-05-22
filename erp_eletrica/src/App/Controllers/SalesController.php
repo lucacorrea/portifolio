@@ -561,7 +561,7 @@ class SalesController extends BaseController {
 
     public function list_recent() {
         $page = $_GET['page'] ?? 1;
-        $perPage = 4;
+        $perPage = 10;
         $saleModel = new Sale();
         
         $sales = $saleModel->getRecentPaginated($page, $perPage);
