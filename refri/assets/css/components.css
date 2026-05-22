@@ -129,6 +129,10 @@
   margin-top: 16px;
 }
 
+.flow-panel {
+  margin-bottom: 14px;
+}
+
 .panel__header,
 .panel-header {
   display: flex;

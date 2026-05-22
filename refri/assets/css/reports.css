@@ -81,6 +81,13 @@
   border-radius: 3px;
 }
 
+.legend-dot--0 { background: #0f766e; }
+.legend-dot--1 { background: #2563eb; }
+.legend-dot--2 { background: #b45309; }
+.legend-dot--3 { background: #c2410c; }
+.legend-dot--4 { background: #15803d; }
+.legend-dot--5 { background: #6d28d9; }
+
 @media (max-width: 1180px) {
   .report-grid,
   .report-grid--secondary {

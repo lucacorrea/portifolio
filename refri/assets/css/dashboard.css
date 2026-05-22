@@ -77,10 +77,13 @@
 }
 
 .bar-fill {
-  width: var(--w);
   height: 100%;
   background: var(--primary);
 }
+
+.bar-fill--64 { width: 64%; }
+.bar-fill--71 { width: 71%; }
+.bar-fill--86 { width: 86%; }
 
 .dashboard-grid {
   display: grid;

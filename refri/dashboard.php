@@ -39,9 +39,9 @@ include 'includes/sidebar.php';
       <h2>Eficiência técnica</h2>
       <p>Indicadores compactos para detectar risco de atraso, peça crítica ou pendência fiscal.</p>
       <div class="health-list">
-        <div class="health-row"><span>OS no prazo</span><div class="bar-track"><div class="bar-fill" style="--w: 86%"></div></div><strong>86%</strong></div>
-        <div class="health-row"><span>Peças OK</span><div class="bar-track"><div class="bar-fill" style="--w: 71%"></div></div><strong>71%</strong></div>
-        <div class="health-row"><span>NF emitida</span><div class="bar-track"><div class="bar-fill" style="--w: 64%"></div></div><strong>64%</strong></div>
+        <div class="health-row"><span>OS no prazo</span><div class="bar-track"><div class="bar-fill bar-fill--86"></div></div><strong>86%</strong></div>
+        <div class="health-row"><span>Peças OK</span><div class="bar-track"><div class="bar-fill bar-fill--71"></div></div><strong>71%</strong></div>
+        <div class="health-row"><span>NF emitida</span><div class="bar-track"><div class="bar-fill bar-fill--64"></div></div><strong>64%</strong></div>
       </div>
     </article>
   </section>

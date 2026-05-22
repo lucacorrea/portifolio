@@ -229,7 +229,7 @@
     if (legend) {
       legend.innerHTML = data.map((item, index) => `
         <div class="legend-item">
-          <span class="legend-dot" style="background:${chartColors[index % chartColors.length]}"></span>
+          <span class="legend-dot legend-dot--${index % chartColors.length}"></span>
           <span>${escapeHtml(item.label || item.name)}: <strong>${escapeHtml(item.value)}</strong></span>
         </div>
       `).join('');
