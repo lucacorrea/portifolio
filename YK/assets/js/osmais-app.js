@@ -617,33 +617,7 @@ function clearPageFilters() {
 
 
 
-function unassignedPanel() {
-  return `
-    <div class="secondary-grid">
-      <div class="panel">
-        <div class="panel-header"><div class="panel-title"><i class="bi bi-person-x"></i> Sem técnico definido</div></div>
-        <div class="info-list">
-          ${agendaMock.filter(a => a.tecnico === 'Sem técnico').map(a => `
-            <div class="info-item">
-              <div class="info-icon"><i class="bi bi-clock"></i></div>
-              <div><strong>${a.horario} — ${escapeHtml(a.cliente)}</strong><span>${escapeHtml(a.servico)} · ${escapeHtml(a.endereco)}</span></div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-header"><div class="panel-title"><i class="bi bi-calendar-week"></i> Visualizações</div></div>
-        <div class="modal-body">
-          <div class="deadline-list">
-            <div class="deadline-item"><span class="deadline-time">Hoje</span><div><strong>4 atendimentos</strong><small>Lista operacional do dia</small></div>${badge('Aberta')}</div>
-            <div class="deadline-item"><span class="deadline-time">Semana</span><div><strong>18 atendimentos</strong><small>Planejamento dos técnicos</small></div>${badge('Em andamento')}</div>
-            <div class="deadline-item"><span class="deadline-time">Mês</span><div><strong>74 atendimentos</strong><small>Visão consolidada</small></div>${badge('Finalizada')}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
+
 
 function reportsContent() {
   const bars = [
