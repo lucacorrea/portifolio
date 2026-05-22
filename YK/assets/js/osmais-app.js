@@ -615,21 +615,7 @@ function clearPageFilters() {
   renderCurrentPage();
 }
 
-function sideCards(items) {
-  return `
-    <div class="panel">
-      <div class="panel-header"><div class="panel-title"><i class="bi bi-activity"></i> Acompanhamento</div></div>
-      <div class="info-list">
-        ${items.map(([title, text, icon]) => `
-          <div class="info-item">
-            <div class="info-icon"><i class="bi ${icon}"></i></div>
-            <div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(text)}</span></div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
+
 
 function unassignedPanel() {
   return `
