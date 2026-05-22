@@ -9,30 +9,30 @@ let chartStatus  = null;
 let chartMonthly = null;
 
 const demoClientes = [
-  { id: 1, nome: 'Acme Corp' },
-  { id: 2, nome: 'TechBrasil' },
-  { id: 3, nome: 'Logística Sul' },
-  { id: 4, nome: 'Escritório Modelo' },
-  { id: 5, nome: 'Design Studio' },
-  { id: 6, nome: 'Supermercado Rio' },
+  { id: 1, nome: 'Restaurante Sabor Norte' },
+  { id: 2, nome: 'Mercado Ponto Frio' },
+  { id: 3, nome: 'João Almeida' },
+  { id: 4, nome: 'Clínica Bem Estar' },
+  { id: 5, nome: 'Padaria Santa Luzia' },
+  { id: 6, nome: 'Condomínio Jardim Europa' },
 ];
 
 const demoTecnicos = [
-  { id: 1, nome: 'Carlos Silva' },
+  { id: 1, nome: 'Carlos Ferreira' },
   { id: 2, nome: 'Ana Martins' },
   { id: 3, nome: 'Pedro Alves' },
   { id: 4, nome: 'Lucas Ferreira' },
 ];
 
 const demoSeedRows = [
-  { titulo:'Manutenção preventiva servidor', status:'em_andamento', prioridade:'alta', cliente:'Acme Corp', tecnico:'Carlos Silva', valor_final:1200 },
-  { titulo:'Substituição teclado notebook Dell', status:'aberta', prioridade:'media', cliente:'TechBrasil', tecnico:null, valor_final:0 },
-  { titulo:'Configuração VPN corporativa', status:'aguardando', prioridade:'urgente', cliente:'Logística Sul', tecnico:'Ana Martins', valor_final:0 },
-  { titulo:'Backup e restauração de dados', status:'concluida', prioridade:'baixa', cliente:'Escritório Modelo', tecnico:'Pedro Alves', valor_final:450 },
-  { titulo:'Upgrade memória RAM workstations', status:'concluida', prioridade:'media', cliente:'Design Studio', tecnico:'Carlos Silva', valor_final:890 },
-  { titulo:'Instalação CFTV 8 câmeras', status:'em_andamento', prioridade:'alta', cliente:'Supermercado Rio', tecnico:'Lucas Ferreira', valor_final:3200 },
-  { titulo:'Formatação e instalação Windows 11', status:'aberta', prioridade:'baixa', cliente:'João F. Silva', tecnico:null, valor_final:0 },
-  { titulo:'Manutenção impressoras HP LaserJet', status:'concluida', prioridade:'media', cliente:'Advocacia Neto', tecnico:'Ana Martins', valor_final:620 },
+  { titulo:'Manutenção preventiva em câmara fria', status:'em_andamento', prioridade:'alta', cliente:'Restaurante Sabor Norte', tecnico:'Carlos Ferreira', valor_final:1320 },
+  { titulo:'Troca de compressor freezer vertical', status:'aguardando_peca', prioridade:'urgente', cliente:'Mercado Ponto Frio', tecnico:'Ana Martins', valor_final:2380 },
+  { titulo:'Limpeza de ar-condicionado split', status:'aguardando_aprovacao', prioridade:'media', cliente:'Clínica Bem Estar', tecnico:'Lucas Ferreira', valor_final:360 },
+  { titulo:'Carga de gás balcão refrigerado', status:'finalizada', prioridade:'baixa', cliente:'Padaria Santa Luzia', tecnico:'Pedro Alves', valor_final:520 },
+  { titulo:'Diagnóstico técnico ar-condicionado janela', status:'aberta', prioridade:'media', cliente:'João Almeida', tecnico:null, valor_final:120 },
+  { titulo:'Instalação de split 24.000 BTUs', status:'em_andamento', prioridade:'alta', cliente:'Condomínio Jardim Europa', tecnico:'Lucas Ferreira', valor_final:1650 },
+  { titulo:'Troca de sensor de temperatura', status:'aberta', prioridade:'baixa', cliente:'Mercado Ponto Frio', tecnico:null, valor_final:0 },
+  { titulo:'Manutenção corretiva em bebedouro', status:'cancelada', prioridade:'media', cliente:'Clínica Bem Estar', tecnico:'Ana Martins', valor_final:0 },
 ];
 
 const demoOsRows = Array.from({ length: 248 }, (_, index) => {
@@ -65,15 +65,15 @@ async function mockApi(params, body = {}) {
 
   switch (params.action) {
     case 'metrics':
-      return { total: 248, abertas: 34, andando: 18, urgente: 2, faturado: 48720, concl: 92 };
+      return { abertas: 34, andando: 18, aguardandoPeca: 12, finalizadas: 92, orcPendentes: 17, estoqueBaixo: 6, faturado: 48720 };
     case 'list_os':
       return listDemoOS(params);
     case 'chart_status':
       return [
         { status: 'aberta', qty: 34 },
         { status: 'em_andamento', qty: 18 },
-        { status: 'aguardando', qty: 12 },
-        { status: 'concluida', qty: 92 },
+        { status: 'aguardando_peca', qty: 12 },
+        { status: 'finalizada', qty: 92 },
         { status: 'cancelada', qty: 8 },
       ];
     case 'chart_monthly':
@@ -168,16 +168,7 @@ async function loadMetrics() {
 
     const cards = [
       {
-        label: 'Total de OS',
-        value: d.total,
-        icon: 'bi-card-list',
-        iconBg: '#EFF6FF', iconColor: '#2563EB',
-        accent: '#3B82F6',
-        change: '+12%', changeType: 'up',
-        period: 'vs. mês anterior'
-      },
-      {
-        label: 'Abertas',
+        label: 'OS abertas',
         value: d.abertas,
         icon: 'bi-folder2-open',
         iconBg: '#FFFBEB', iconColor: '#D97706',
@@ -186,7 +177,7 @@ async function loadMetrics() {
         period: 'aguardando atendimento'
       },
       {
-        label: 'Em Andamento',
+        label: 'Em andamento',
         value: d.andando,
         icon: 'bi-arrow-repeat',
         iconBg: '#F5F3FF', iconColor: '#7C3AED',
@@ -195,13 +186,40 @@ async function loadMetrics() {
         period: 'em execução agora'
       },
       {
-        label: 'Faturado',
-        value: 'R$ ' + parseFloat(d.faturado).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}),
-        icon: 'bi-currency-dollar',
+        label: 'Aguardando peça',
+        value: d.aguardandoPeca,
+        icon: 'bi-box-seam',
+        iconBg: '#F5F3FF', iconColor: '#7C3AED',
+        accent: '#8B5CF6',
+        change: 'estoque', changeType: 'down',
+        period: 'requer compra'
+      },
+      {
+        label: 'Finalizadas no mês',
+        value: d.finalizadas,
+        icon: 'bi-check-circle',
         iconBg: '#DCFCE7', iconColor: '#16A34A',
         accent: '#22C55E',
-        change: d.concl + ' concl.', changeType: 'up',
-        period: 'em OS concluídas'
+        change: '+8%', changeType: 'up',
+        period: 'vs. mês anterior'
+      },
+      {
+        label: 'Orçamentos pendentes',
+        value: d.orcPendentes,
+        icon: 'bi-file-earmark-text',
+        iconBg: '#EFF6FF', iconColor: '#2563EB',
+        accent: '#3B82F6',
+        change: 'aprovação', changeType: 'neutral',
+        period: 'aguardando cliente'
+      },
+      {
+        label: 'Estoque baixo',
+        value: d.estoqueBaixo,
+        icon: 'bi-currency-dollar',
+        iconBg: '#FEF2F2', iconColor: '#DC2626',
+        accent: '#EF4444',
+        change: 'crítico', changeType: 'down',
+        period: 'peças abaixo do mínimo'
       }
     ];
 
@@ -225,7 +243,7 @@ async function loadMetrics() {
       </div>
     `).join('');
 
-    document.getElementById('sb-total').textContent = d.total;
+    document.getElementById('sb-total').textContent = '248';
 
   } catch (e) {
     console.warn('Métricas:', e.message);
@@ -235,10 +253,12 @@ async function loadMetrics() {
 
 function renderMetricsMock() {
   const cards = [
-    { label:'Total de OS', value:'248', icon:'bi-card-list', iconBg:'#EFF6FF', iconColor:'#2563EB', accent:'#3B82F6', change:'+12%', changeType:'up', period:'vs. mês anterior' },
-    { label:'Abertas',     value:'34',  icon:'bi-folder2-open', iconBg:'#FFFBEB', iconColor:'#D97706', accent:'#F59E0B', change:'Normal', changeType:'neutral', period:'aguardando atendimento' },
-    { label:'Em Andamento',value:'18',  icon:'bi-arrow-repeat', iconBg:'#F5F3FF', iconColor:'#7C3AED', accent:'#8B5CF6', change:'2 urgentes', changeType:'down', period:'em execução agora' },
-    { label:'Faturado',    value:'R$ 48.720,00', icon:'bi-currency-dollar', iconBg:'#DCFCE7', iconColor:'#16A34A', accent:'#22C55E', change:'92 concl.', changeType:'up', period:'em OS concluídas' },
+    { label:'OS abertas', value:'34', icon:'bi-folder2-open', iconBg:'#FFFBEB', iconColor:'#D97706', accent:'#F59E0B', change:'Normal', changeType:'neutral', period:'aguardando atendimento' },
+    { label:'Em andamento', value:'18', icon:'bi-arrow-repeat', iconBg:'#F5F3FF', iconColor:'#7C3AED', accent:'#8B5CF6', change:'2 urgentes', changeType:'down', period:'em execução agora' },
+    { label:'Aguardando peça', value:'12', icon:'bi-box-seam', iconBg:'#F5F3FF', iconColor:'#7C3AED', accent:'#8B5CF6', change:'estoque', changeType:'down', period:'requer compra' },
+    { label:'Finalizadas no mês', value:'92', icon:'bi-check-circle', iconBg:'#DCFCE7', iconColor:'#16A34A', accent:'#22C55E', change:'+8%', changeType:'up', period:'vs. mês anterior' },
+    { label:'Orçamentos pendentes', value:'17', icon:'bi-file-earmark-text', iconBg:'#EFF6FF', iconColor:'#2563EB', accent:'#3B82F6', change:'aprovação', changeType:'neutral', period:'aguardando cliente' },
+    { label:'Estoque baixo', value:'6', icon:'bi-exclamation-triangle', iconBg:'#FEF2F2', iconColor:'#DC2626', accent:'#EF4444', change:'crítico', changeType:'down', period:'peças abaixo do mínimo' },
   ];
   document.getElementById('metrics-grid').innerHTML = cards.map(c => `
     <div class="metric-card" style="--card-accent:${c.accent}">
@@ -267,8 +287,9 @@ function renderMetricsMock() {
 const statusMap = {
   aberta:        { label:'Aberta',        icon:'bi-circle', cls:'s-aberta' },
   em_andamento:  { label:'Em andamento',  icon:'bi-arrow-repeat', cls:'s-em_andamento' },
-  aguardando:    { label:'Aguardando',    icon:'bi-pause-circle', cls:'s-aguardando' },
-  concluida:     { label:'Concluída',     icon:'bi-check-circle', cls:'s-concluida' },
+  aguardando_peca: { label:'Aguardando peça', icon:'bi-box-seam', cls:'s-aguardando' },
+  aguardando_aprovacao: { label:'Aguardando aprovação', icon:'bi-hourglass-split', cls:'s-aguardando' },
+  finalizada:    { label:'Finalizada',    icon:'bi-check-circle', cls:'s-concluida' },
   cancelada:     { label:'Cancelada',     icon:'bi-x-circle', cls:'s-cancelada' },
 };
 const priorMap = {
@@ -277,7 +298,7 @@ const priorMap = {
   alta:    { label:'Alta',    icon:'bi-arrow-up', cls:'p-alta' },
   urgente: { label:'Urgente', icon:'bi-exclamation-triangle', cls:'p-urgente' },
 };
-const dotColor = { aberta:'#3B82F6', em_andamento:'#F59E0B', aguardando:'#8B5CF6', concluida:'#22C55E', cancelada:'#EF4444' };
+const dotColor = { aberta:'#3B82F6', em_andamento:'#F59E0B', aguardando_peca:'#8B5CF6', aguardando_aprovacao:'#8B5CF6', finalizada:'#22C55E', cancelada:'#EF4444' };
 
 async function loadOS(page = 1) {
   currentPage = page;
@@ -374,14 +395,14 @@ function renderPagination(d) {
 
 function renderTableMock() {
   const mock = [
-    { id:1, numero:'OS-00248', titulo:'Manutenção preventiva servidor', status:'em_andamento', prioridade:'alta', cliente:'Acme Corp', tecnico:'Carlos Silva', data_abertura:'2025-05-18', valor_final:1200 },
-    { id:2, numero:'OS-00247', titulo:'Substituição teclado notebook Dell', status:'aberta', prioridade:'media', cliente:'TechBrasil', tecnico:null, data_abertura:'2025-05-17', valor_final:0 },
-    { id:3, numero:'OS-00246', titulo:'Configuração VPN corporativa', status:'aguardando', prioridade:'urgente', cliente:'Logística Sul', tecnico:'Ana Martins', data_abertura:'2025-05-16', valor_final:0 },
-    { id:4, numero:'OS-00245', titulo:'Backup e restauração de dados', status:'concluida', prioridade:'baixa', cliente:'Escritório Modelo', tecnico:'Pedro Alves', data_abertura:'2025-05-15', valor_final:450 },
-    { id:5, numero:'OS-00244', titulo:'Upgrade memória RAM workstations', status:'concluida', prioridade:'media', cliente:'Design Studio', tecnico:'Carlos Silva', data_abertura:'2025-05-14', valor_final:890 },
-    { id:6, numero:'OS-00243', titulo:'Instalação CFTV 8 câmeras', status:'em_andamento', prioridade:'alta', cliente:'Supermercado Rio', tecnico:'Lucas Ferreira', data_abertura:'2025-05-13', valor_final:3200 },
-    { id:7, numero:'OS-00242', titulo:'Formatação e instalação Windows 11', status:'aberta', prioridade:'baixa', cliente:'João F. Silva', tecnico:null, data_abertura:'2025-05-12', valor_final:0 },
-    { id:8, numero:'OS-00241', titulo:'Manutenção impressoras HP LaserJet', status:'concluida', prioridade:'media', cliente:'Advocacia Neto', tecnico:'Ana Martins', data_abertura:'2025-05-11', valor_final:620 },
+    { id:1, numero:'OS-00248', titulo:'Manutenção preventiva em câmara fria', status:'em_andamento', prioridade:'alta', cliente:'Restaurante Sabor Norte', tecnico:'Carlos Ferreira', data_abertura:'2026-05-18', valor_final:1320 },
+    { id:2, numero:'OS-00247', titulo:'Troca de compressor freezer vertical', status:'aguardando_peca', prioridade:'urgente', cliente:'Mercado Ponto Frio', tecnico:'Ana Martins', data_abertura:'2026-05-17', valor_final:2380 },
+    { id:3, numero:'OS-00246', titulo:'Limpeza de ar-condicionado split', status:'aguardando_aprovacao', prioridade:'media', cliente:'Clínica Bem Estar', tecnico:'Lucas Ferreira', data_abertura:'2026-05-16', valor_final:360 },
+    { id:4, numero:'OS-00245', titulo:'Carga de gás balcão refrigerado', status:'finalizada', prioridade:'baixa', cliente:'Padaria Santa Luzia', tecnico:'Pedro Alves', data_abertura:'2026-05-15', valor_final:520 },
+    { id:5, numero:'OS-00244', titulo:'Diagnóstico técnico ar-condicionado janela', status:'aberta', prioridade:'media', cliente:'João Almeida', tecnico:null, data_abertura:'2026-05-14', valor_final:120 },
+    { id:6, numero:'OS-00243', titulo:'Instalação de split 24.000 BTUs', status:'em_andamento', prioridade:'alta', cliente:'Condomínio Jardim Europa', tecnico:'Lucas Ferreira', data_abertura:'2026-05-13', valor_final:1650 },
+    { id:7, numero:'OS-00242', titulo:'Troca de sensor de temperatura', status:'aberta', prioridade:'baixa', cliente:'Mercado Ponto Frio', tecnico:null, data_abertura:'2026-05-12', valor_final:0 },
+    { id:8, numero:'OS-00241', titulo:'Manutenção corretiva em bebedouro', status:'cancelada', prioridade:'media', cliente:'Clínica Bem Estar', tecnico:'Ana Martins', data_abertura:'2026-05-11', valor_final:0 },
   ];
   document.getElementById('os-total-label').textContent = '248 registros';
   document.getElementById('pagination-info').textContent = 'Exibindo 1–8 de 248';
@@ -427,7 +448,7 @@ async function loadCharts() {
 
 async function loadChartStatus() {
   const canvas = document.getElementById('chart-status');
-  let labels = ['Aberta','Em andamento','Aguardando','Concluída','Cancelada'];
+  let labels = ['Aberta','Em andamento','Aguardando peça','Finalizada','Cancelada'];
   let data   = [34, 18, 12, 92, 8];
 
   try {
@@ -556,11 +577,11 @@ async function loadRecent() {
     renderRecent(rows);
   } catch(e) {
     renderRecent([
-      { numero:'OS-00248', titulo:'Manutenção preventiva servidor', status:'em_andamento', prioridade:'alta', cliente:'Acme Corp', data_abertura:'2025-05-18' },
-      { numero:'OS-00247', titulo:'Substituição teclado notebook', status:'aberta', prioridade:'media', cliente:'TechBrasil', data_abertura:'2025-05-17' },
-      { numero:'OS-00246', titulo:'Configuração VPN corporativa', status:'aguardando', prioridade:'urgente', cliente:'Logística Sul', data_abertura:'2025-05-16' },
-      { numero:'OS-00245', titulo:'Backup e restauração de dados', status:'concluida', prioridade:'baixa', cliente:'Escritório Modelo', data_abertura:'2025-05-15' },
-      { numero:'OS-00244', titulo:'Upgrade memória RAM', status:'concluida', prioridade:'media', cliente:'Design Studio', data_abertura:'2025-05-14' },
+      { numero:'OS-00248', titulo:'Manutenção preventiva em câmara fria', status:'em_andamento', prioridade:'alta', cliente:'Restaurante Sabor Norte', data_abertura:'2026-05-18' },
+      { numero:'OS-00247', titulo:'Troca de compressor freezer vertical', status:'aguardando_peca', prioridade:'urgente', cliente:'Mercado Ponto Frio', data_abertura:'2026-05-17' },
+      { numero:'OS-00246', titulo:'Limpeza de ar-condicionado split', status:'aguardando_aprovacao', prioridade:'media', cliente:'Clínica Bem Estar', data_abertura:'2026-05-16' },
+      { numero:'OS-00245', titulo:'Carga de gás balcão refrigerado', status:'finalizada', prioridade:'baixa', cliente:'Padaria Santa Luzia', data_abertura:'2026-05-15' },
+      { numero:'OS-00244', titulo:'Diagnóstico técnico ar-condicionado janela', status:'aberta', prioridade:'media', cliente:'João Almeida', data_abertura:'2026-05-14' },
     ]);
   }
 }

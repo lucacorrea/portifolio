@@ -20,8 +20,9 @@
           <option value="">Todos os status</option>
           <option value="aberta">Aberta</option>
           <option value="em_andamento">Em andamento</option>
-          <option value="aguardando">Aguardando</option>
-          <option value="concluida">Concluída</option>
+          <option value="aguardando_peca">Aguardando peça</option>
+          <option value="aguardando_aprovacao">Aguardando aprovação</option>
+          <option value="finalizada">Finalizada</option>
           <option value="cancelada">Cancelada</option>
         </select>
         <select class="filter-select" id="filter-prior">
