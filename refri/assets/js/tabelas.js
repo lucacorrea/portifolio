@@ -6,8 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('applyFilters')?.addEventListener('click', applyFilters);
   document.getElementById('clearFilters')?.addEventListener('click', clearFilters);
-  const searchInput = document.getElementById('tableSearch') || document.getElementById('searchInput');
-  searchInput?.addEventListener('input', debounce(applyFilters, 220));
+  document.getElementById('searchInput')?.addEventListener('input', debounce(applyFilters, 220));
   document.getElementById('statusFilter')?.addEventListener('change', applyFilters);
   document.getElementById('openFiltersMobile')?.addEventListener('click', () => {
     document.getElementById('filterPanel')?.classList.toggle('is-open');
@@ -15,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadTable() {
-  const tipo = document.querySelector('[data-table-type]')?.dataset.tableType || window.KY_TABLE_TYPE || 'os';
+  const tipo = window.KY_TABLE_TYPE || 'os';
 
   KY.fetchJson(`api/listagem.php?tipo=${encodeURIComponent(tipo)}`)
     .then((data) => {
@@ -102,8 +101,7 @@ function renderActions(row) {
 function applyFilters() {
   if (!tableData) return;
 
-  const searchEl = document.getElementById('tableSearch') || document.getElementById('searchInput');
-  const search = searchEl?.value.toLowerCase().trim() || '';
+  const search = document.getElementById('searchInput')?.value.toLowerCase().trim() || '';
   const status = document.getElementById('statusFilter')?.value || '';
 
   const rows = tableData.rows.filter((row) => {
@@ -117,8 +115,7 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  const searchEl = document.getElementById('tableSearch') || document.getElementById('searchInput');
-  if (searchEl) searchEl.value = '';
+  document.getElementById('searchInput').value = '';
   document.getElementById('statusFilter').value = '';
   document.getElementById('dateStart').value = '';
   document.getElementById('dateEnd').value = '';
