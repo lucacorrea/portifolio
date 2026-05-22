@@ -243,6 +243,7 @@ function oficio_detect_docx_item_header(array $cells) {
         'unidade' => null,
         'quantidade' => null,
         'valor_unitario' => null,
+        'categoria' => null,
     ];
 
     foreach ($cells as $index => $cell) {
@@ -296,6 +297,20 @@ function oficio_detect_docx_item_header(array $cells) {
 
     if ($map['produto'] === null || $map['quantidade'] === null) {
         return null;
+    }
+
+    foreach ($cells as $cell) {
+        $key = oficio_normalize_key($cell);
+        if (strpos($key, 'DESCRICAO') === false) {
+            continue;
+        }
+
+        $parts = preg_split('/[\/:-]+/u', (string)$cell, 2);
+        if (isset($parts[1]) && trim($parts[1]) !== '') {
+            $map['categoria'] = oficio_sanitize_imported_product($parts[1]);
+        }
+
+        break;
     }
 
     return $map;
@@ -361,6 +376,7 @@ function oficio_extract_items_from_docx($path) {
 
     foreach ($xpath->query('//w:tbl') as $table) {
         $current_header = null;
+        $current_category = '';
 
         foreach ($xpath->query('./w:tr', $table) as $row) {
             $cells = [];
@@ -377,6 +393,7 @@ function oficio_extract_items_from_docx($path) {
             $header = oficio_detect_docx_item_header($cells);
             if ($header !== null) {
                 $current_header = $header;
+                $current_category = (string)($header['categoria'] ?? $current_category);
                 continue;
             }
 
@@ -412,6 +429,7 @@ function oficio_extract_items_from_docx($path) {
                 'quantidade' => $quantidade,
                 'unidade' => $unidade,
                 'valor_unitario' => $valor_unitario,
+                'categoria' => $current_category,
             ];
         }
     }
@@ -449,12 +467,28 @@ function oficio_build_items_summary(array $items) {
         return null;
     }
 
+    $categories = [];
+    foreach ($items as $item) {
+        $category = trim((string)($item['categoria'] ?? ''));
+        if ($category !== '' && !in_array($category, $categories, true)) {
+            $categories[] = $category;
+        }
+    }
+
     $names = [];
     foreach (array_slice($items, 0, 8) as $item) {
         $names[] = $item['produto'];
     }
 
-    $summary = count($items) . " item(ns) importado(s) do Word: " . implode('; ', $names);
+    $summary = count($items) . " item(ns) detectado(s)";
+    if (!empty($categories)) {
+        $summary .= ". Grupos: " . implode(', ', array_slice($categories, 0, 8));
+        if (count($categories) > 8) {
+            $summary .= ", ...";
+        }
+    }
+
+    $summary .= ". Primeiros itens: " . implode('; ', $names);
     if (count($items) > count($names)) {
         $summary .= '; ...';
     }
@@ -524,6 +558,86 @@ function oficio_extract_number_from_text($text, $file_name = '') {
     return '';
 }
 
+function oficio_extract_document_date_from_text($text) {
+    $source = trim((string)$text);
+
+    if (preg_match('/\b(\d{1,2})\s+de\s+([a-zçãéêíóôõú]+)\s+de\s+(\d{4})\b/iu', $source, $match)) {
+        $months = [
+            'janeiro' => '01',
+            'fevereiro' => '02',
+            'marco' => '03',
+            'março' => '03',
+            'abril' => '04',
+            'maio' => '05',
+            'junho' => '06',
+            'julho' => '07',
+            'agosto' => '08',
+            'setembro' => '09',
+            'outubro' => '10',
+            'novembro' => '11',
+            'dezembro' => '12',
+        ];
+
+        $month_key = mb_strtolower($match[2], 'UTF-8');
+        if (isset($months[$month_key])) {
+            return str_pad($match[1], 2, '0', STR_PAD_LEFT) . '/' . $months[$month_key] . '/' . $match[3];
+        }
+    }
+
+    if (preg_match('/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})\b/u', $source, $match)) {
+        return str_pad($match[1], 2, '0', STR_PAD_LEFT) . '/' . str_pad($match[2], 2, '0', STR_PAD_LEFT) . '/' . $match[3];
+    }
+
+    return '';
+}
+
+function oficio_extract_destinatario_from_text($text) {
+    $lines = array_values(array_filter(array_map('trim', preg_split('/\R+/', (string)$text)), function ($line) {
+        return $line !== '';
+    }));
+
+    foreach ($lines as $index => $line) {
+        if (!preg_match('/\b(senhor|senhora|prezado|prezada)\b/iu', $line)) {
+            continue;
+        }
+
+        $previous = [];
+        for ($i = max(0, $index - 3); $i < $index; $i++) {
+            $candidate = trim($lines[$i]);
+            if ($candidate === '' || preg_match('/\b(memorando|of[ií]cio|coari|data)\b/iu', $candidate)) {
+                continue;
+            }
+            $previous[] = $candidate;
+        }
+
+        if (!empty($previous)) {
+            return implode(' - ', $previous);
+        }
+    }
+
+    foreach ($lines as $line) {
+        if (preg_match('/\b(?:ao|a)\s+(?:senhor|senhora)\s+(.{3,120})$/iu', $line, $match)) {
+            return trim($match[1]);
+        }
+    }
+
+    return '';
+}
+
+function oficio_extract_origem_from_text($text) {
+    $lines = array_values(array_filter(array_map('trim', preg_split('/\R+/', (string)$text)), function ($line) {
+        return $line !== '';
+    }));
+
+    foreach ($lines as $line) {
+        if (preg_match('/\b(PMC|SEM[A-Z]{2,}|SECRETARIA|DEPARTAMENTO|SETOR)\b/iu', $line)) {
+            return mb_substr($line, 0, 180, 'UTF-8');
+        }
+    }
+
+    return '';
+}
+
 function oficio_title_case_pt($value) {
     $value = mb_strtolower(trim((string)$value), 'UTF-8');
     if ($value === '') {
@@ -576,6 +690,19 @@ function oficio_extract_justificativa_from_text($text) {
     return $best;
 }
 
+function oficio_extract_subject_from_text($text) {
+    $paragraphs = preg_split('/\R+/', trim((string)$text));
+
+    foreach ($paragraphs as $paragraph) {
+        $paragraph = trim(preg_replace('/\s+/u', ' ', $paragraph));
+        if (preg_match('/\b(solicitar|assunto|objeto|finalidade|compra|aquisi[cç][aã]o)\b/iu', $paragraph)) {
+            return mb_substr($paragraph, 0, 220, 'UTF-8');
+        }
+    }
+
+    return '';
+}
+
 function oficio_extract_secretaria_hint_from_text($text) {
     $source = mb_strtoupper((string)$text, 'UTF-8');
     $hints = ['SEMOB', 'SEMED', 'SEMSA', 'SEMFAZ', 'SEFAZ', 'SEMAS', 'OBRAS', 'EDUCAÇÃO', 'EDUCACAO', 'SAÚDE', 'SAUDE'];
@@ -592,10 +719,15 @@ function oficio_extract_secretaria_hint_from_text($text) {
 function oficio_extract_auto_data($text, $file_name, array $items) {
     return [
         'numero' => oficio_extract_number_from_text($text, $file_name),
+        'data_documento' => oficio_extract_document_date_from_text($text),
         'local' => oficio_extract_local_from_text($text, $file_name),
+        'destinatario' => oficio_extract_destinatario_from_text($text),
+        'origem' => oficio_extract_origem_from_text($text),
+        'assunto' => oficio_extract_subject_from_text($text),
         'justificativa' => oficio_extract_justificativa_from_text($text),
         'secretaria_hint' => oficio_extract_secretaria_hint_from_text($text),
         'resumo_itens' => oficio_build_items_summary($items) ?: '',
+        'texto_extraido' => mb_substr(trim((string)$text), 0, 3000, 'UTF-8'),
         'items' => $items,
     ];
 }
@@ -1248,6 +1380,7 @@ include 'views/layout/header.php';
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
     function pad(n) {
         return String(n).padStart(2, '0');
@@ -1295,6 +1428,8 @@ include 'views/layout/header.php';
     const itemsEmpty = document.getElementById('oficio-items-empty');
     const addItemBtn = document.getElementById('add-oficio-item');
     const pdfWorkerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.worker.min.js';
+    const ocrLanguages = 'por+eng';
+    const maxOcrPdfPages = 12;
 
     if (window.pdfjsLib) {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -1411,6 +1546,62 @@ include 'views/layout/header.php';
         return looseMatch ? `${looseMatch[1]}/${looseMatch[2]}` : '';
     }
 
+    function extractDocumentDateFromText(text) {
+        const source = String(text || '');
+        const months = {
+            'janeiro': '01',
+            'fevereiro': '02',
+            'marco': '03',
+            'março': '03',
+            'abril': '04',
+            'maio': '05',
+            'junho': '06',
+            'julho': '07',
+            'agosto': '08',
+            'setembro': '09',
+            'outubro': '10',
+            'novembro': '11',
+            'dezembro': '12'
+        };
+        const longDate = source.match(/\b(\d{1,2})\s+de\s+([a-zçãéêíóôõú]+)\s+de\s+(\d{4})\b/iu);
+
+        if (longDate) {
+            const month = months[String(longDate[2]).toLocaleLowerCase('pt-BR')];
+            if (month) {
+                return `${String(longDate[1]).padStart(2, '0')}/${month}/${longDate[3]}`;
+            }
+        }
+
+        const shortDate = source.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})\b/u);
+        return shortDate ? `${String(shortDate[1]).padStart(2, '0')}/${String(shortDate[2]).padStart(2, '0')}/${shortDate[3]}` : '';
+    }
+
+    function extractDestinatarioFromText(text) {
+        const lines = String(text || '').split(/\n+/).map(line => line.trim()).filter(Boolean);
+
+        for (let index = 0; index < lines.length; index++) {
+            if (!/\b(senhor|senhora|prezado|prezada)\b/iu.test(lines[index])) {
+                continue;
+            }
+
+            const previous = lines.slice(Math.max(0, index - 3), index)
+                .filter(line => !/\b(memorando|of[ií]cio|coari|data)\b/iu.test(line));
+
+            if (previous.length) {
+                return previous.join(' - ').slice(0, 180);
+            }
+        }
+
+        const direct = lines.find(line => /\b(?:ao|a)\s+(?:senhor|senhora)\s+/iu.test(line));
+        return direct ? direct.replace(/^.*?\b(?:senhor|senhora)\s+/iu, '').trim().slice(0, 180) : '';
+    }
+
+    function extractOrigemFromText(text) {
+        const lines = String(text || '').split(/\n+/).map(line => line.trim()).filter(Boolean);
+        const line = lines.find(item => /\b(PMC|SEM[A-Z]{2,}|SECRETARIA|DEPARTAMENTO|SETOR)\b/iu.test(item));
+        return line ? line.slice(0, 180) : '';
+    }
+
     function extractLocalFromText(text, fileName = '') {
         const communityMatch = String(text || '').match(/\bcomunidade\s+([\p{L}\s'´`.-]{3,80}?)(?=\s*\(|[,.;\n\r]|$)/iu);
         if (communityMatch) {
@@ -1436,6 +1627,12 @@ include 'views/layout/header.php';
         return paragraphs.sort((a, b) => b.length - a.length)[0] || '';
     }
 
+    function extractSubjectFromText(text) {
+        const paragraphs = String(text || '').split(/\n+/).map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+        const preferred = paragraphs.find(line => /\b(solicitar|assunto|objeto|finalidade|compra|aquisi[cç][aã]o)\b/iu.test(line));
+        return preferred ? preferred.slice(0, 220) : '';
+    }
+
     function extractSecretariaHintFromText(text) {
         const source = normalizeKey(text);
         const hints = ['SEMOB', 'SEMED', 'SEMSA', 'SEMFAZ', 'SEFAZ', 'SEMAS', 'OBRAS', 'EDUCACAO', 'SAUDE'];
@@ -1445,8 +1642,33 @@ include 'views/layout/header.php';
     function buildItemsSummary(items) {
         if (!items.length) return '';
 
+        const categories = [];
+        items.forEach(item => {
+            const category = String(item.categoria || '').trim();
+            if (category && !categories.includes(category)) {
+                categories.push(category);
+            }
+        });
+
         const names = items.slice(0, 8).map(item => item.produto).filter(Boolean);
-        return `${items.length} item(ns) detectado(s): ${names.join('; ')}${items.length > names.length ? '; ...' : ''}`;
+        const groups = categories.length ? `. Grupos: ${categories.slice(0, 8).join(', ')}${categories.length > 8 ? ', ...' : ''}` : '';
+        return `${items.length} item(ns) detectado(s)${groups}. Primeiros itens: ${names.join('; ')}${items.length > names.length ? '; ...' : ''}`;
+    }
+
+    function buildJustificativaFromData(data) {
+        const details = [];
+
+        if (data.data_documento) details.push(`Data do documento: ${data.data_documento}`);
+        if (data.origem) details.push(`Origem: ${data.origem}`);
+        if (data.destinatario) details.push(`Destinatário: ${data.destinatario}`);
+        if (data.assunto && data.assunto !== data.justificativa) details.push(`Assunto/objeto: ${data.assunto}`);
+
+        const main = String(data.justificativa || data.assunto || '').trim();
+        if (!details.length) {
+            return main;
+        }
+
+        return `${main}${main ? '\n\n' : ''}Dados extraídos do arquivo:\n${details.map(item => `- ${item}`).join('\n')}`;
     }
 
     function parseOficioItemsFromText(text) {
@@ -1455,6 +1677,7 @@ include 'views/layout/header.php';
             .map(line => line.replace(/\s+/g, ' ').trim())
             .filter(Boolean);
         const items = [];
+        let currentCategory = '';
 
         for (const rawLine of lines) {
             const line = rawLine
@@ -1462,6 +1685,11 @@ include 'views/layout/header.php';
                 .replace(/\b(QUANT\.?\s*\/\s*COMPRADA|OBS\.?)\b.*$/iu, '')
                 .trim();
             const key = normalizeKey(line);
+
+            if (/DESCRI[ÇC][AÃ]O\s*[\/:-]/iu.test(line)) {
+                currentCategory = line.split(/[\/:-]+/).slice(1).join(' ').trim();
+                continue;
+            }
 
             if (
                 !line ||
@@ -1475,16 +1703,19 @@ include 'views/layout/header.php';
             }
 
             const withMoney = line.match(/^(.+?)\s+([A-ZÇÁÉÍÓÚÂÊÔÃÕ]{1,12}\.?)\s+(\d+(?:[,.]\d+)?)\s+R\$\s*([\d.]+,\d{2})/iu);
-            const simple = line.match(/^(.+?)\s+([A-ZÇÁÉÍÓÚÂÊÔÃÕ]{1,12}\.?)\s+(\d+(?:[,.]\d+)?)$/iu);
-            const match = withMoney || simple;
+            const simpleUnitQty = line.match(/^(.+?)\s+([A-ZÇÁÉÍÓÚÂÊÔÃÕ]{1,12}\.?)\s+(\d+(?:[,.]\d+)?)$/iu);
+            const simpleQtyUnit = line.match(/^(.+?)\s+(\d+(?:[,.]\d+)?)\s+([A-ZÇÁÉÍÓÚÂÊÔÃÕ]{1,12}\.?)$/iu);
+            const match = withMoney || simpleUnitQty || simpleQtyUnit;
 
             if (!match) {
                 continue;
             }
 
             const produto = match[1].trim();
-            const unidade = match[2].replace(/\.$/, '').toLocaleUpperCase('pt-BR');
-            const quantidade = Number(String(match[3]).replace(',', '.'));
+            const unitRaw = simpleQtyUnit && !withMoney ? match[3] : match[2];
+            const quantityRaw = simpleQtyUnit && !withMoney ? match[2] : match[3];
+            const unidade = String(unitRaw).replace(/\.$/, '').toLocaleUpperCase('pt-BR');
+            const quantidade = Number(String(quantityRaw).replace(',', '.'));
             const valorUnitario = withMoney ? parseMoneyBR(match[4]) : 0;
 
             if (!produto || !Number.isFinite(quantidade) || quantidade <= 0) {
@@ -1495,7 +1726,8 @@ include 'views/layout/header.php';
                 produto,
                 unidade: unidade || 'UN',
                 quantidade,
-                valor_unitario: valorUnitario
+                valor_unitario: valorUnitario,
+                categoria: currentCategory
             });
         }
 
@@ -1505,10 +1737,15 @@ include 'views/layout/header.php';
     function parseAutoDataFromText(text, fileName, items = []) {
         return {
             numero: extractNumberFromText(text, fileName),
+            data_documento: extractDocumentDateFromText(text),
             local: extractLocalFromText(text, fileName),
+            destinatario: extractDestinatarioFromText(text),
+            origem: extractOrigemFromText(text),
+            assunto: extractSubjectFromText(text),
             justificativa: extractJustificativaFromText(text),
             secretaria_hint: extractSecretariaHintFromText(text),
             resumo_itens: buildItemsSummary(items),
+            texto_extraido: String(text || '').trim().slice(0, 3000),
             items
         };
     }
@@ -1586,9 +1823,9 @@ include 'views/layout/header.php';
 
         fillIfEmpty('numero_oficio', data.numero);
         fillIfEmpty('local', data.local);
-        fillIfEmpty('justificativa', data.justificativa);
+        fillIfEmpty('justificativa', buildJustificativaFromData(data));
         fillIfEmpty('resumo_itens', data.resumo_itens);
-        selectSecretariaByHint(data.secretaria_hint, sourceText);
+        selectSecretariaByHint(data.secretaria_hint, `${sourceText || ''} ${data.origem || ''} ${data.assunto || ''}`);
 
         if (Array.isArray(data.items) && data.items.length) {
             replaceItems(data.items);
@@ -1600,7 +1837,61 @@ include 'views/layout/header.php';
         }
     }
 
-    async function extractPdfText(file) {
+    function canUseOcr() {
+        return Boolean(window.Tesseract && typeof window.Tesseract.recognize === 'function');
+    }
+
+    async function extractImageText(file, label = 'imagem') {
+        if (!canUseOcr()) {
+            throw new Error('OCR não carregou no navegador.');
+        }
+
+        const result = await window.Tesseract.recognize(file, ocrLanguages, {
+            logger(message) {
+                if (message.status === 'recognizing text') {
+                    const pct = Math.round((message.progress || 0) * 100);
+                    setImportStatus(`Lendo texto por OCR (${label})... ${pct}%`, 'warning');
+                }
+            }
+        });
+
+        return result?.data?.text || '';
+    }
+
+    async function extractPdfOcrText(pdf) {
+        if (!canUseOcr()) {
+            return '';
+        }
+
+        const texts = [];
+        const totalPages = Math.min(pdf.numPages, maxOcrPdfPages);
+
+        for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
+            setImportStatus(`PDF parece ser escaneado. Aplicando OCR na página ${pageNumber}/${totalPages}...`, 'warning');
+
+            const page = await pdf.getPage(pageNumber);
+            const viewport = page.getViewport({ scale: 2 });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+
+            canvas.width = Math.ceil(viewport.width);
+            canvas.height = Math.ceil(viewport.height);
+            await page.render({ canvasContext: context, viewport }).promise;
+
+            const text = await extractImageText(canvas, `página ${pageNumber}`);
+            if (text.trim()) {
+                texts.push(text);
+            }
+        }
+
+        if (pdf.numPages > maxOcrPdfPages) {
+            texts.push(`OCR limitado às primeiras ${maxOcrPdfPages} páginas de ${pdf.numPages}.`);
+        }
+
+        return texts.join('\n');
+    }
+
+    async function extractPdfText(file, forceOcr = false) {
         if (!window.pdfjsLib) {
             throw new Error('Não foi possível carregar o leitor de PDF.');
         }
@@ -1631,7 +1922,15 @@ include 'views/layout/header.php';
             pages.push(pageLines.join('\n'));
         }
 
-        return pages.join('\n');
+        const textLayer = pages.join('\n');
+        const shouldUseOcr = forceOcr || textLayer.replace(/\s+/g, '').length < 80;
+
+        if (!shouldUseOcr) {
+            return textLayer;
+        }
+
+        const ocrText = await extractPdfOcrText(pdf);
+        return [textLayer, ocrText].filter(Boolean).join('\n');
     }
 
     async function extractDocxData(file) {
@@ -1658,10 +1957,15 @@ include 'views/layout/header.php';
     function mergeAutoData(base, next) {
         return {
             numero: base.numero || next.numero || '',
+            data_documento: base.data_documento || next.data_documento || '',
             local: base.local || next.local || '',
+            destinatario: base.destinatario || next.destinatario || '',
+            origem: base.origem || next.origem || '',
+            assunto: base.assunto || next.assunto || '',
             justificativa: base.justificativa || next.justificativa || '',
             secretaria_hint: base.secretaria_hint || next.secretaria_hint || '',
             resumo_itens: base.resumo_itens || next.resumo_itens || '',
+            texto_extraido: base.texto_extraido || next.texto_extraido || '',
             items: [...(base.items || []), ...(next.items || [])]
         };
     }
@@ -1672,7 +1976,19 @@ include 'views/layout/header.php';
 
         setImportStatus('Lendo ofício e tentando preencher os dados...', 'warning');
 
-        let merged = { numero: '', local: '', justificativa: '', secretaria_hint: '', resumo_itens: '', items: [] };
+        let merged = {
+            numero: '',
+            data_documento: '',
+            local: '',
+            destinatario: '',
+            origem: '',
+            assunto: '',
+            justificativa: '',
+            secretaria_hint: '',
+            resumo_itens: '',
+            texto_extraido: '',
+            items: []
+        };
         const messages = [];
 
         for (const file of list) {
@@ -1687,17 +2003,34 @@ include 'views/layout/header.php';
                 }
 
                 if (extension === 'pdf') {
-                    const text = await extractPdfText(file);
-                    const items = parseOficioItemsFromText(text);
+                    let text = await extractPdfText(file);
+                    let items = parseOficioItemsFromText(text);
+
+                    if (!items.length && canUseOcr()) {
+                        const ocrText = await extractPdfText(file, true);
+                        if (ocrText.trim().length > text.trim().length) {
+                            text = ocrText;
+                            items = parseOficioItemsFromText(text);
+                        }
+                    }
+
                     merged = mergeAutoData(merged, parseAutoDataFromText(text, file.name, items));
                     messages.push(items.length ? `${items.length} item(ns) detectado(s) no PDF.` : 'PDF lido, mas nenhum item foi detectado automaticamente.');
+                    continue;
+                }
+
+                if (['jpg', 'jpeg', 'png'].includes(extension)) {
+                    const text = await extractImageText(file, file.name);
+                    const items = parseOficioItemsFromText(text);
+                    merged = mergeAutoData(merged, parseAutoDataFromText(text, file.name, items));
+                    messages.push(items.length ? `${items.length} item(ns) detectado(s) na imagem.` : 'Imagem lida por OCR, mas nenhum item foi detectado automaticamente.');
                     continue;
                 }
 
                 merged = mergeAutoData(merged, parseAutoDataFromText('', file.name, []));
                 messages.push(extension === 'doc'
                     ? 'Word antigo .doc anexado. Para leitura automática, salve o arquivo como .docx.'
-                    : 'Imagem anexada. Preenchimento automático de imagem exige OCR e não foi aplicado.');
+                    : 'Arquivo anexado, mas não há extrator automático para este formato.');
             } catch (error) {
                 messages.push(`${file.name}: ${error.message}`);
             }
