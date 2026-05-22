@@ -485,10 +485,16 @@ html, body {
 .panel-actions { display: flex; gap: 6px; align-items: center; }
 
 /* ── Tabela OS ──────────────────────────────────────── */
-.os-table-wrap { overflow-x: auto; }
+.os-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+}
 
 .os-table {
-  width: 100%; border-collapse: collapse;
+  width: 100%;
+  border-collapse: collapse;
   font-size: 13.5px;
 }
 .os-table thead th {
@@ -998,24 +1004,78 @@ textarea.form-control-os {
 
 .main-data-panel { min-width: 0; }
 
-.data-table tbody td:first-child { font-weight: 700; color: var(--blue-600); }
+.operational-layout.full-width .page-side-panels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.data-table {
+  table-layout: fixed;
+  min-width: 1080px;
+}
+
+.operational-page[data-page="ordens"] .data-table {
+  min-width: 1280px;
+}
+
+.data-table thead th,
+.data-table tbody td {
+  overflow: hidden;
+}
+
+.data-table thead th {
+  height: 44px;
+  vertical-align: middle;
+}
+
+.data-table tbody td {
+  height: 66px;
+  color: var(--slate-700);
+}
+
+.data-table tbody td:first-child {
+  font-weight: 800;
+  color: var(--blue-600);
+}
+
+.data-table .col-id { width: 96px; }
+.data-table .col-main { width: 220px; }
+.data-table .col-contact { width: 132px; }
+.data-table .col-status { width: 150px; }
+.data-table .col-priority { width: 118px; }
+.data-table .col-person { width: 140px; }
+.data-table .col-date { width: 118px; }
+.data-table .col-number { width: 118px; text-align: right; }
+.data-table .col-actions { width: 178px; text-align: center; }
+
+.operational-page[data-page="ordens"] .data-table .col-main { width: 240px; }
+.operational-page[data-page="ordens"] .data-table .col-actions { width: 180px; }
 
 .table-primary-cell {
-  min-width: 180px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .table-primary {
+  max-width: 100%;
   color: var(--slate-900);
   font-size: 13.5px;
   font-weight: 700;
   line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table-secondary {
+  max-width: 100%;
   color: var(--slate-500);
   font-size: 12.5px;
   line-height: 1.35;
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table-muted {
@@ -1029,6 +1089,10 @@ textarea.form-control-os {
   justify-content: center;
   gap: 5px;
   white-space: nowrap;
+}
+
+.data-table .btn-action {
+  flex: 0 0 30px;
 }
 
 .badge-soft {
@@ -1340,6 +1404,7 @@ textarea.form-control-os {
   .side-panels { display: grid; grid-template-columns: 1fr 1fr; }
   .operational-layout { grid-template-columns: 1fr; }
   .page-side-panels { display: grid; grid-template-columns: 1fr 1fr; }
+  .operational-layout.full-width .page-side-panels { grid-template-columns: 1fr 1fr; }
   .settings-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
@@ -1380,6 +1445,7 @@ textarea.form-control-os {
   }
   .side-panels  { grid-template-columns: 1fr; }
   .page-side-panels { grid-template-columns: 1fr; }
+  .operational-layout.full-width .page-side-panels { grid-template-columns: 1fr; }
   .panel-header { align-items: flex-start; gap: 10px; flex-direction: column; }
   .panel-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
   .modal-body { padding: 18px; }

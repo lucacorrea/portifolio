@@ -163,6 +163,7 @@ const pageConfigs = {
   ordens: {
     title: 'Ordens de Serviço',
     data: osMock,
+    wideTable: true,
     search: ['numero', 'cliente', 'equipamento', 'tecnico', 'servico'],
     filters: [
       { key: 'status', label: 'Status', values: ['Aberta', 'Em andamento', 'Aguardando peça', 'Aguardando aprovação', 'Finalizada', 'Cancelada'] },
@@ -542,7 +543,7 @@ function renderTable(config, rows) {
   }
   table.style.display = '';
 
-  byId('data-table-head').innerHTML = `<tr>${config.columns.map(col => `<th>${escapeHtml(col[0])}</th>`).join('')}</tr>`;
+  byId('data-table-head').innerHTML = `<tr>${config.columns.map(col => `<th class="${columnClass(col[0])}">${escapeHtml(col[0])}</th>`).join('')}</tr>`;
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / appState.pageSize));
   appState.pageNumber = Math.min(appState.pageNumber, pages);
@@ -553,7 +554,7 @@ function renderTable(config, rows) {
     byId('data-table-body').innerHTML = `<tr><td colspan="${config.columns.length}"><div class="empty-state"><i class="bi bi-inbox"></i><p>Nenhum registro encontrado</p></div></td></tr>`;
   } else {
     byId('data-table-body').innerHTML = pageRows.map(row => `
-      <tr>${config.columns.map(col => `<td>${col[1](row)}</td>`).join('')}</tr>
+      <tr>${config.columns.map(col => `<td class="${columnClass(col[0])}">${col[1](row)}</td>`).join('')}</tr>
     `).join('');
   }
 
@@ -579,7 +580,22 @@ function setPage(page) {
 function renderSide(config) {
   const side = byId('page-side-panels');
   side.innerHTML = config.side ? config.side() : '';
-  byId('operational-layout').classList.toggle('full-width', !side.innerHTML.trim());
+  byId('operational-layout').classList.toggle('full-width', !side.innerHTML.trim() || config.wideTable === true);
+}
+
+function columnClass(label) {
+  const normalized = normalizeText(label);
+  const classes = ['col-standard'];
+  if (/n.? os|n.? orcamento|n.? nota|codigo|horario|os$/.test(normalized)) classes.push('col-id');
+  if (/cliente|nome|peca|servico|equipamento/.test(normalized)) classes.push('col-main');
+  if (/telefone|whatsapp/.test(normalized)) classes.push('col-contact');
+  if (/status/.test(normalized)) classes.push('col-status');
+  if (/prioridade/.test(normalized)) classes.push('col-priority');
+  if (/tecnico|especialidade|fornecedor/.test(normalized)) classes.push('col-person');
+  if (/data|validade|ultimo atendimento|agenda/.test(normalized)) classes.push('col-date');
+  if (/valor|custo|venda|total|estoque|uso|tempo|os abertas|os em andamento/.test(normalized)) classes.push('col-number');
+  if (/acoes/.test(normalized)) classes.push('col-actions');
+  return classes.join(' ');
 }
 
 function renderSecondary(config) {
