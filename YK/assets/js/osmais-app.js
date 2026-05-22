@@ -579,8 +579,16 @@ function setPage(page) {
 
 function renderSide(config) {
   const side = byId('page-side-panels');
-  side.innerHTML = config.side ? config.side() : '';
-  byId('operational-layout').classList.toggle('full-width', !side.innerHTML.trim() || config.wideTable === true);
+  const layout = byId('operational-layout');
+  if (!side || !layout) return;
+
+  const hasTable = Boolean(config.columns?.length);
+  const useFullWidthTable = hasTable || config.wideTable === true;
+  const sideHtml = useFullWidthTable ? '' : (config.side ? config.side() : '');
+
+  side.innerHTML = sideHtml;
+  side.hidden = !sideHtml.trim();
+  layout.classList.toggle('full-width', useFullWidthTable || !sideHtml.trim());
 }
 
 function columnClass(label) {
@@ -630,7 +638,7 @@ function reportsContent() {
     <div class="secondary-grid">
       ${bars.map(([title, label, percent]) => `
         <div class="panel">
-          <div class="panel-header"><div class="panel-title"><i class="bi bi-bar-chart"></i> ${escapeHtml(title)}</div></div>
+          <div class="panel-header-xs"><div class="panel-title"><i class="bi bi-bar-chart"></i> ${escapeHtml(title)}</div></div>
           <div class="modal-body">
             <div class="deadline-item"><span class="deadline-time">${percent}%</span><div><strong>${escapeHtml(label)}</strong><small>Indicador visual simples</small></div></div>
             <div class="report-bar"><span style="width:${percent}%"></span></div>
