@@ -1,10 +1,62 @@
-.report-filter { margin-bottom: 14px; }
-.quick-periods { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-.period-btn { min-height: 34px; border: 1px solid var(--border); background: #fff; color: var(--gray); border-radius: var(--radius-sm); padding: 0 11px; font-weight: 750; transition: var(--transition); }
-.period-btn:hover, .period-btn.is-active { background: var(--primary-soft); color: var(--primary); border-color: #cfe7e3; }
-.report-filter__grid { display: grid; grid-template-columns: repeat(6, minmax(140px, 1fr)) auto; gap: 10px; align-items: end; }
-.report-summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
-.report-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 14px; margin-bottom: 14px; }
-.report-grid--balanced { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (max-width: 1200px) { .report-summary { grid-template-columns: repeat(3, 1fr); } .report-filter__grid { grid-template-columns: repeat(3, 1fr); } .report-grid { grid-template-columns: 1fr; } }
-@media (max-width: 720px) { .report-summary, .report-filter__grid { grid-template-columns: 1fr; } }
+/* ===== reports.css ===== */
+.reports-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.reports-header h2 {
+  font-weight: 700;
+  font-size: 1.4rem;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+}
+
+.summary-card .label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.summary-card .value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.chart-box {
+  background: var(--card-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.report-table {
+  background: var(--card-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.report-table table {
+  width: 100%;
+}

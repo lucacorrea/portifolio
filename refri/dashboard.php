@@ -1,54 +1,95 @@
-<?php
-$pageTitle = 'Dashboard';
-$activePage = 'dashboard';
-$pageCss = ['dashboard'];
-$pageJs = ['dashboard'];
-include 'includes/header.php';
-include 'includes/sidebar.php';
-?>
-<main class="main">
-  <?php include 'includes/topbar.php'; ?>
-  <section class="page-header">
-    <div>
-      <span class="eyebrow">Visão operacional</span>
-      <h1>Dashboard</h1>
-      <p>Acompanhe ordens de serviço, orçamentos, faturamento, estoque e alertas técnicos da K.Yamaguchi.</p>
+<?php include 'includes/sidebar.php'; ?>
+<?php include 'includes/topbar.php'; ?>
+
+<div class="app-wrapper">
+  <!-- sidebar já incluída -->
+  <main class="main-content">
+    <h1 class="section-title">Dashboard</h1>
+
+    <!-- KPIs -->
+    <div class="dashboard-grid">
+      <div class="card metric-card">
+        <div class="metric-icon">📋</div>
+        <div class="metric-info">
+          <h3>Total de OS</h3>
+          <div class="metric-value" id="metric-total-os">--</div>
+          <div class="metric-change text-secondary">+5% desde o mês passado</div>
+        </div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-icon">🔧</div>
+        <div class="metric-info">
+          <h3>OS Abertas</h3>
+          <div class="metric-value" id="metric-os-abertas">--</div>
+          <div class="metric-change text-warning">12 urgentes</div>
+        </div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-icon">💰</div>
+        <div class="metric-info">
+          <h3>Faturamento (mês)</h3>
+          <div class="metric-value" id="metric-faturamento">--</div>
+          <div class="metric-change text-success">+12%</div>
+        </div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-icon">👥</div>
+        <div class="metric-info">
+          <h3>Clientes ativos</h3>
+          <div class="metric-value" id="metric-clientes">--</div>
+          <div class="metric-change text-secondary">últimos 30 dias</div>
+        </div>
+      </div>
     </div>
-    <div class="page-header__actions">
-      <a class="btn btn--primary" href="ordens-servico.php?action=new">+ Nova OS</a>
-      <a class="btn btn--secondary" href="orcamentos.php?action=new">Novo Orçamento</a>
+
+    <!-- Gráfico + Atividades recentes -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">OS por status</h2>
+        </div>
+        <canvas id="chart-status" height="200"></canvas>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Atividades recentes</h2>
+        </div>
+        <ul class="activity-list">
+          <li class="activity-item">
+            <span class="activity-text">OS #1023 - Manutenção finalizada</span>
+            <span class="activity-time">10 min atrás</span>
+          </li>
+          <li class="activity-item">
+            <span class="activity-text">Cliente João Silva agendou visita</span>
+            <span class="activity-time">1 h atrás</span>
+          </li>
+          <li class="activity-item">
+            <span class="activity-text">Peça compressor recebida</span>
+            <span class="activity-time">3 h atrás</span>
+          </li>
+        </ul>
+      </div>
     </div>
-  </section>
+  </main>
+</div>
 
-  <section class="grid-4" id="dashboardStats">
-    <article class="stat-card"><div class="stat-card__icon stat-card__icon--blue">OS</div><div><span>OS abertas</span><strong>--</strong><small>Carregando dados...</small></div></article>
-    <article class="stat-card"><div class="stat-card__icon stat-card__icon--amber">EX</div><div><span>Em execução</span><strong>--</strong><small>Carregando dados...</small></div></article>
-    <article class="stat-card"><div class="stat-card__icon stat-card__icon--teal">OR</div><div><span>Orçamentos pendentes</span><strong>--</strong><small>Carregando dados...</small></div></article>
-    <article class="stat-card"><div class="stat-card__icon stat-card__icon--green">R$</div><div><span>Faturamento do mês</span><strong>--</strong><small>Carregando dados...</small></div></article>
-  </section>
-
-  <section class="dashboard-grid">
-    <article class="panel">
-      <div class="panel__header"><div><span class="eyebrow">Status das OS</span><h2>Ordens de serviço por status</h2></div><a class="btn btn--secondary btn--sm" href="ordens-servico.php">Ver OS</a></div>
-      <div class="chart-shell"><canvas id="osStatusChart"></canvas></div>
-    </article>
-    <article class="panel">
-      <div class="panel__header"><div><span class="eyebrow">Financeiro</span><h2>Faturamento mensal</h2></div></div>
-      <div class="chart-shell"><canvas id="revenueChart"></canvas></div>
-    </article>
-  </section>
-
-  <section class="dashboard-grid">
-    <article class="panel">
-      <div class="panel__header"><div><span class="eyebrow">Operação recente</span><h2>Últimas ordens de serviço</h2></div><a class="btn btn--secondary btn--sm" href="ordens-servico.php">Abrir lista</a></div>
-      <div class="responsive-table"><table><thead><tr><th>OS</th><th>Cliente</th><th>Serviço</th><th>Status</th><th>Técnico</th><th>Valor</th><th>Ações</th></tr></thead><tbody id="recentOrders"><tr><td colspan="7">Carregando...</td></tr></tbody></table></div>
-    </article>
-    <aside class="panel">
-      <div class="panel__header"><div><span class="eyebrow">Agenda</span><h2>Atendimentos do dia</h2></div></div>
-      <div class="dash-list" id="todaySchedule"></div>
-      <div class="panel__header" style="margin-top:18px"><div><span class="eyebrow">Atenção</span><h2>Alertas importantes</h2></div></div>
-      <div class="alert-list" id="alertsList"></div>
-    </aside>
-  </section>
-</main>
-<?php include 'includes/footer.php'; ?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Gráfico de exemplo
+const ctx = document.getElementById('chart-status').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ['Abertas','Em andamento','Aguardando','Finalizadas'],
+    datasets: [{
+      data: [12, 8, 5, 20],
+      backgroundColor: '#0F766E',
+      borderRadius: 4
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
+</script>
