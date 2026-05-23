@@ -180,6 +180,34 @@ function admin_log_login_attempt(string $login, bool $success): void
     }
 }
 
+function admin_password_verify(string $password, string $storedHash): bool
+{
+    if (password_verify($password, $storedHash)) {
+        return true;
+    }
+
+    $legacyAlgorithms = [
+        'md5' => 32,
+        'sha1' => 40,
+        'sha224' => 56,
+        'sha256' => 64,
+        'sha384' => 96,
+        'sha512' => 128,
+    ];
+
+    foreach ($legacyAlgorithms as $algorithm => $length) {
+        if (strlen($storedHash) !== $length || !ctype_xdigit($storedHash)) {
+            continue;
+        }
+
+        if (hash_equals(strtolower($storedHash), hash($algorithm, $password))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function admin_login(string $login, string $password): bool
 {
     admin_session_start();
@@ -209,7 +237,7 @@ function admin_login(string $login, string $password): bool
         return false;
     }
 
-    if (!$user || !password_verify($password, (string) $user['senha_hash'])) {
+    if (!$user || !admin_password_verify($password, (string) $user['senha_hash'])) {
         admin_log_login_attempt($login, false);
         usleep(300000);
         return false;
