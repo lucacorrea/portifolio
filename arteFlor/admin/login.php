@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 
 $error = '';
-$email = '';
+$login = '';
 $next = admin_sanitize_next($_GET['next'] ?? $_POST['next'] ?? null);
 
 if (admin_is_authenticated()) {
@@ -11,16 +11,16 @@ if (admin_is_authenticated()) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim((string) ($_POST['email'] ?? ''));
+    $login = trim((string) ($_POST['login'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
 
     if (!admin_csrf_is_valid($_POST['csrf_token'] ?? null)) {
         http_response_code(403);
         $error = 'Sessão expirada. Recarregue a página e tente novamente.';
-    } elseif (admin_login_is_rate_limited($email)) {
+    } elseif (admin_login_is_rate_limited($login)) {
         http_response_code(429);
         $error = 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
-    } elseif (admin_login($email, $password)) {
+    } elseif (admin_login($login, $password)) {
         header('Location: ' . $next);
         exit;
     } else {
@@ -66,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <input type="hidden" name="csrf_token" value="<?= e(admin_csrf_token()) ?>">
       <input type="hidden" name="next" value="<?= e($next) ?>">
       <label class="form-group full">
-        <span>E-mail</span>
-        <input type="email" name="email" value="<?= e($email) ?>" autocomplete="username" required autofocus>
+        <span>E-mail ou nome</span>
+        <input type="text" name="login" value="<?= e($login) ?>" autocomplete="username" required autofocus>
       </label>
       <label class="form-group full">
         <span>Senha</span>

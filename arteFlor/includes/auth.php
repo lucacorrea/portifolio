@@ -118,11 +118,6 @@ function admin_sanitize_next(?string $next): string
     return $path . ($query ? '?' . $query : '');
 }
 
-function admin_normalize_email(string $email): string
-{
-    return trim(strtolower($email));
-}
-
 function admin_client_ip_hash(): string
 {
     $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
@@ -130,10 +125,15 @@ function admin_client_ip_hash(): string
     return hash('sha256', $ip);
 }
 
-function admin_login_is_rate_limited(string $email): bool
+function admin_normalize_login(string $login): string
 {
-    $email = admin_normalize_email($email);
-    if ($email === '') {
+    return trim(strtolower($login));
+}
+
+function admin_login_is_rate_limited(string $login): bool
+{
+    $login = admin_normalize_login($login);
+    if ($login === '') {
         return false;
     }
 
@@ -141,13 +141,13 @@ function admin_login_is_rate_limited(string $email): bool
         $statement = db()->prepare(
             'SELECT COUNT(*) AS total
              FROM admin_login_tentativas
-             WHERE email = :email
+             WHERE email = :login
                AND ip_hash = :ip_hash
                AND sucesso = 0
                AND criado_em >= (CURRENT_TIMESTAMP - INTERVAL ' . ADMIN_LOGIN_WINDOW_MINUTES . ' MINUTE)'
         );
         $statement->execute([
-            'email' => $email,
+            'login' => $login,
             'ip_hash' => admin_client_ip_hash(),
         ]);
 
@@ -158,10 +158,10 @@ function admin_login_is_rate_limited(string $email): bool
     }
 }
 
-function admin_log_login_attempt(string $email, bool $success): void
+function admin_log_login_attempt(string $login, bool $success): void
 {
-    $email = admin_normalize_email($email);
-    if ($email === '') {
+    $login = admin_normalize_login($login);
+    if ($login === '') {
         return;
     }
 
@@ -170,7 +170,7 @@ function admin_log_login_attempt(string $email, bool $success): void
             'INSERT INTO admin_login_tentativas (email, ip_hash, sucesso, user_agent)
              VALUES (:email, :ip_hash, :sucesso, :user_agent)'
         )->execute([
-            'email' => $email,
+            'email' => $login,
             'ip_hash' => admin_client_ip_hash(),
             'sucesso' => $success ? 1 : 0,
             'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
@@ -180,34 +180,37 @@ function admin_log_login_attempt(string $email, bool $success): void
     }
 }
 
-function admin_login(string $email, string $password): bool
+function admin_login(string $login, string $password): bool
 {
     admin_session_start();
 
-    $email = admin_normalize_email($email);
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
+    $login = admin_normalize_login($login);
+    if ($login === '' || $password === '') {
         usleep(300000);
         return false;
     }
 
     try {
+        $where = filter_var($login, FILTER_VALIDATE_EMAIL)
+            ? 'email = :login'
+            : 'LOWER(nome) = :login';
         $statement = db()->prepare(
-            'SELECT id, nome, email, senha_hash, perfil
+            "SELECT id, nome, email, senha_hash, perfil
              FROM usuarios_admin
-             WHERE email = :email AND ativo = 1
-             LIMIT 1'
+             WHERE {$where} AND ativo = 1
+             LIMIT 1"
         );
-        $statement->execute(['email' => $email]);
+        $statement->execute(['login' => $login]);
         $user = $statement->fetch();
     } catch (Throwable $error) {
         error_log('[ArteFlor][auth-login] ' . $error->getMessage());
-        admin_log_login_attempt($email, false);
+        admin_log_login_attempt($login, false);
         usleep(300000);
         return false;
     }
 
     if (!$user || !password_verify($password, (string) $user['senha_hash'])) {
-        admin_log_login_attempt($email, false);
+        admin_log_login_attempt($login, false);
         usleep(300000);
         return false;
     }
@@ -238,7 +241,7 @@ function admin_login(string $email, string $password): bool
         error_log('[ArteFlor][auth-login-update] ' . $error->getMessage());
     }
 
-    admin_log_login_attempt($email, true);
+    admin_log_login_attempt($login, true);
 
     return true;
 }

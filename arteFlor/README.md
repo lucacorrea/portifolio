@@ -62,7 +62,7 @@ SUPPORT_EMAIL=suporte@seudominio.com SUPPORT_NAME=Suporte SUPPORT_PROFILE=operad
 
 Use uma senha temporária apenas para o primeiro acesso e troque assim que possível.
 
-Depois de criado, acesse `/admin/login.php` com o e-mail cadastrado. As páginas em `/admin/` exigem sessão ativa e redirecionam automaticamente para o login quando a sessão expira.
+Depois de criado, acesse `/admin/login.php` com o e-mail ou nome cadastrado. As páginas em `/admin/` exigem sessão ativa e redirecionam automaticamente para o login quando a sessão expira.
 O login também registra tentativas e aplica bloqueio temporário após muitas falhas para o mesmo e-mail e IP.
 
 ## Publicação na hospedagem
