@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <a class="brand" href="<?= site_url('index.php') ?>"><span class="brand-icon" aria-hidden="true"></span><span>Arte<span>&</span>Flor</span></a>
     <div>
       <span class="badge">Acesso protegido</span>
-      <h1 class="section-title">Painel administrativo</h1>
+      <h2 class="section-title">Painel administrativo</h2>
     </div>
 
     <?php if ($error !== ''): ?>
