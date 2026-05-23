@@ -33,17 +33,24 @@ $modalProducts = array_map(static function (array $product) use ($productImagesB
         ];
     }
 
+    $inventoryStatus = product_inventory_status($product);
+
     return [
         'id' => $productId,
         'nome' => (string) ($product['nome'] ?? ''),
         'sku' => (string) ($product['sku'] ?? ''),
         'slug' => (string) ($product['slug'] ?? ''),
         'categoria' => (string) ($product['categoria_nome'] ?? 'Sem categoria'),
+        'statusValue' => (string) ($product['status'] ?? 'disponivel'),
         'status' => status_label((string) ($product['status'] ?? 'disponivel')),
         'preco' => money_br((float) ($product['preco'] ?? 0)),
         'precoPromocional' => (float) ($product['preco_promocional'] ?? 0) > 0 ? money_br((float) $product['preco_promocional']) : '',
         'estoque' => (int) ($product['estoque'] ?? 0),
         'estoqueMinimo' => (int) ($product['estoque_minimo'] ?? 0),
+        'stockStatus' => $inventoryStatus,
+        'stockLabel' => product_inventory_label($inventoryStatus),
+        'stockBadgeClass' => product_inventory_badge_class($inventoryStatus),
+        'stockPercent' => product_inventory_percent($product),
         'descricaoCurta' => (string) ($product['descricao_curta'] ?? ''),
         'descricaoCompleta' => (string) ($product['descricao_completa'] ?? ''),
         'destaque' => !empty($product['destaque']) ? 'Sim' : 'Normal',
@@ -104,20 +111,22 @@ require_once __DIR__ . '/../includes/admin-head.php';
     <span>Estoque</span>
     <select name="estoque">
       <option value="">Todos</option>
-      <option value="baixo" <?= $filters['estoque'] === 'baixo' ? 'selected' : '' ?>>Baixo estoque</option>
       <option value="sem" <?= $filters['estoque'] === 'sem' ? 'selected' : '' ?>>Sem estoque</option>
-      <option value="com" <?= $filters['estoque'] === 'com' ? 'selected' : '' ?>>Com estoque</option>
+      <option value="baixo" <?= $filters['estoque'] === 'baixo' ? 'selected' : '' ?>>Baixo</option>
+      <option value="medio" <?= $filters['estoque'] === 'medio' ? 'selected' : '' ?>>Médio</option>
+      <option value="normal" <?= $filters['estoque'] === 'normal' ? 'selected' : '' ?>>Normal</option>
     </select>
   </label>
   <button class="btn btn-soft" type="submit">Filtrar</button>
   <a class="btn btn-outline" href="<?= site_url('admin/produtos.php') ?>">Limpar</a>
 </form>
 
-<section class="admin-kpi-grid">
-  <article class="admin-kpi-card"><span>Total</span><strong><?= $stats['total'] ?></strong><small>Produtos cadastrados</small></article>
-  <article class="admin-kpi-card"><span>Disponíveis</span><strong><?= $stats['disponiveis'] ?></strong><small>Venda online ativa</small></article>
-  <article class="admin-kpi-card"><span>Sob encomenda</span><strong><?= $stats['encomendas'] ?></strong><small>Curadoria manual</small></article>
-  <article class="admin-kpi-card"><span>Destaques</span><strong><?= $stats['destaques'] ?></strong><small>Home e catálogo</small></article>
+<section class="admin-kpi-grid five">
+  <article class="admin-kpi-card kpi-soft"><span>Total</span><strong><?= $stats['total'] ?></strong><small>Produtos cadastrados</small></article>
+  <article class="admin-kpi-card kpi-ok"><span>Disponíveis</span><strong><?= $stats['disponiveis'] ?></strong><small>Venda online ativa</small></article>
+  <article class="admin-kpi-card kpi-danger"><span>Sem estoque</span><strong><?= $stats['sem_estoque'] ?></strong><small>Reposição urgente</small></article>
+  <article class="admin-kpi-card kpi-warning"><span>Estoque baixo</span><strong><?= $stats['estoque_baixo'] ?></strong><small>Abaixo do mínimo</small></article>
+  <article class="admin-kpi-card kpi-info"><span>Destaques</span><strong><?= $stats['destaques'] ?></strong><small>Home e catálogo</small></article>
 </section>
 
 <div class="admin-data-table">
@@ -138,8 +147,10 @@ require_once __DIR__ . '/../includes/admin-head.php';
       <?php
         $image = product_public_image_url($p['imagem'] ?? '');
         $status = (string) ($p['status'] ?? 'disponivel');
+        $inventoryStatus = product_inventory_status($p);
+        $inventoryPercent = product_inventory_percent($p);
       ?>
-      <tr>
+      <tr class="<?= e(product_inventory_row_class($inventoryStatus)) ?>">
         <td>
           <div class="admin-avatar-line">
             <span class="admin-avatar image-avatar">
@@ -150,13 +161,27 @@ require_once __DIR__ . '/../includes/admin-head.php';
         </td>
         <td><?= e($p['categoria_nome'] ?? 'Sem categoria') ?></td>
         <td><?= (float) ($p['preco_promocional'] ?? 0) > 0 ? money_br((float) $p['preco_promocional']) : money_br((float) $p['preco']) ?></td>
-        <td><?= (int) ($p['estoque'] ?? 0) ?></td>
+        <td>
+          <div class="inventory-stock-cell">
+            <div class="inventory-stock-meta">
+              <strong>Estoque: <?= (int) ($p['estoque'] ?? 0) ?> un.</strong>
+              <small>Mínimo: <?= (int) ($p['estoque_minimo'] ?? 0) ?> un.</small>
+            </div>
+            <div class="inventory-stock-bar" aria-hidden="true">
+              <span class="inventory-stock-fill <?= e($inventoryStatus) ?>" style="width: <?= $inventoryPercent ?>%"></span>
+            </div>
+            <span class="<?= e(product_inventory_badge_class($inventoryStatus)) ?>"><?= e(product_inventory_label($inventoryStatus)) ?></span>
+          </div>
+        </td>
         <td><span class="<?= $status === 'disponivel' ? 'admin-badge-ok' : ($status === 'inativo' ? 'admin-badge-danger' : 'admin-badge-warn') ?>"><?= e(status_label($status)) ?></span></td>
         <td><span class="<?= !empty($p['destaque']) ? 'admin-badge-soft' : 'admin-badge-info' ?>"><?= !empty($p['destaque']) ? 'Sim' : 'Normal' ?></span></td>
         <td>
           <div class="admin-table-actions">
             <button type="button" data-product-modal-open="<?= (int) $p['id'] ?>">Ver</button>
             <a href="<?= site_url('admin/produto-form.php?id=' . (int) $p['id']) ?>">Editar</a>
+            <button type="button" class="admin-action-muted" title="Duplicação será implementada na próxima etapa." aria-disabled="true" disabled>Duplicar</button>
+            <button type="button" class="admin-action-muted" title="Ativação/Inativação será implementada com ação segura na próxima etapa." aria-disabled="true" disabled><?= $status === 'inativo' ? 'Ativar' : 'Inativar' ?></button>
+            <button type="button" class="admin-action-muted" title="Entrada e saída de estoque serão conectadas ao fluxo de movimentação na próxima etapa." aria-disabled="true" disabled>Entrada/Saída</button>
           </div>
         </td>
       </tr>
@@ -181,10 +206,31 @@ require_once __DIR__ . '/../includes/admin-head.php';
       </div>
       <dl class="admin-product-modal-meta">
         <div><dt>SKU</dt><dd data-product-modal-sku>-</dd></div>
+        <div><dt>Slug</dt><dd data-product-modal-slug>-</dd></div>
         <div><dt>Status</dt><dd data-product-modal-status>-</dd></div>
-        <div><dt>Estoque</dt><dd data-product-modal-stock>-</dd></div>
         <div><dt>Destaque</dt><dd data-product-modal-highlight>-</dd></div>
+        <div><dt>Sob encomenda</dt><dd data-product-modal-order>-</dd></div>
       </dl>
+      <div class="admin-product-modal-stock inventory-stock-cell">
+        <div class="inventory-stock-meta">
+          <strong data-product-modal-stock>Estoque: -</strong>
+          <small data-product-modal-min-stock>Mínimo: -</small>
+        </div>
+        <div class="inventory-stock-bar" aria-hidden="true">
+          <span class="inventory-stock-fill" data-product-modal-stock-fill style="width: 0%"></span>
+        </div>
+        <span class="admin-badge-soft" data-product-modal-stock-label>Estoque</span>
+      </div>
+      <div class="admin-product-modal-descriptions">
+        <section>
+          <h3>Descrição curta</h3>
+          <p data-product-modal-short>Produto sem descrição curta cadastrada.</p>
+        </section>
+        <section>
+          <h3>Descrição completa</h3>
+          <p data-product-modal-full>Produto sem descrição completa cadastrada.</p>
+        </section>
+      </div>
       <div class="admin-product-modal-thumbs" data-product-modal-thumbs></div>
       <div class="admin-action-row">
         <a class="btn btn-primary" data-product-modal-edit href="<?= site_url('admin/produto-form.php') ?>">Editar produto</a>

@@ -9,8 +9,8 @@ $todaySummary = dashboard_today_summary();
 $paymentSummary = dashboard_payment_summary_today();
 $categorySales = dashboard_category_sales(30);
 $recentOrders = dashboard_recent_orders(5);
-$lowStockProducts = dashboard_low_stock_products(4);
-$alerts = dashboard_alerts($todaySummary, $lowStockProducts);
+$lowStockProducts = dashboard_low_stock_products(5);
+$alerts = dashboard_alerts($todaySummary, $lowStockProducts, $productStats);
 
 require_once __DIR__ . '/../includes/admin-head.php';
 ?>
@@ -30,7 +30,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
   <article class="admin-kpi-card"><span>Vendas de hoje</span><strong><?= money_br($todaySummary['vendas_hoje']) ?></strong><small><?= $todaySummary['pedidos_hoje'] ?> pedido(s) no banco</small></article>
   <article class="admin-kpi-card"><span>Pedidos pendentes</span><strong><?= $todaySummary['pedidos_pendentes'] ?></strong><small><?= $todaySummary['em_preparo'] ?> em preparo</small></article>
   <article class="admin-kpi-card"><span>Produtos ativos</span><strong><?= $productStats['disponiveis'] ?></strong><small><?= $productStats['total'] ?> produto(s) cadastrados</small></article>
-  <article class="admin-kpi-card"><span>Estoque baixo</span><strong><?= $productStats['estoque_baixo'] ?></strong><small>Reposição sugerida</small></article>
+  <article class="admin-kpi-card"><span>Estoque baixo</span><strong><?= $productStats['estoque_baixo'] ?></strong><small><?= $productStats['sem_estoque'] ?> sem estoque</small></article>
   <article class="admin-kpi-card"><span>Pix pendente</span><strong><?= $todaySummary['pix_pendente'] ?></strong><small>Confirmação manual</small></article>
   <article class="admin-kpi-card"><span>Ticket médio</span><strong><?= money_br($todaySummary['ticket_medio']) ?></strong><small>Pedidos de hoje</small></article>
 </section>
@@ -134,6 +134,28 @@ require_once __DIR__ . '/../includes/admin-head.php';
         </div>
       <?php endforeach; ?>
     </div>
+    <?php if (!empty($lowStockProducts)): ?>
+      <div class="critical-products-list">
+        <div class="critical-products-title">
+          <strong>Produtos críticos</strong>
+          <small>Até 5 itens com estoque zerado ou abaixo do mínimo.</small>
+        </div>
+        <?php foreach ($lowStockProducts as $criticalProduct): ?>
+          <?php $inventoryStatus = product_inventory_status($criticalProduct); ?>
+          <a class="critical-product-row <?= e(product_inventory_row_class($inventoryStatus)) ?>" href="<?= site_url('admin/produto-form.php?id=' . (int) $criticalProduct['id']) ?>">
+            <span>
+              <strong><?= e($criticalProduct['nome']) ?></strong>
+              <small><?= e($criticalProduct['sku'] ?: 'Sem SKU') ?></small>
+            </span>
+            <span>
+              Estoque: <?= (int) ($criticalProduct['estoque'] ?? 0) ?> un.
+              <small>Mínimo: <?= (int) ($criticalProduct['estoque_minimo'] ?? 0) ?> un.</small>
+            </span>
+            <span class="<?= e(product_inventory_badge_class($inventoryStatus)) ?>"><?= e(product_inventory_label($inventoryStatus)) ?></span>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
   </article>
 </section>
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>

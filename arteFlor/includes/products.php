@@ -175,15 +175,94 @@ function product_assert_unique_sku(string $sku, ?int $ignoreId = null): void
     }
 }
 
+function product_inventory_status(array $product): string
+{
+    $stock = max(0, (int) ($product['estoque'] ?? 0));
+    $minStock = max(0, (int) ($product['estoque_minimo'] ?? 0));
+
+    if ($stock <= 0) {
+        return 'sem_estoque';
+    }
+
+    if ($minStock <= 0) {
+        return 'normal';
+    }
+
+    if ($stock <= $minStock) {
+        return 'baixo';
+    }
+
+    if ($stock <= ($minStock * 2)) {
+        return 'medio';
+    }
+
+    return 'normal';
+}
+
+function product_inventory_label(string $status): string
+{
+    return match ($status) {
+        'sem_estoque' => 'Sem estoque',
+        'baixo' => 'Estoque baixo',
+        'medio' => 'Estoque médio',
+        'normal' => 'Estoque normal',
+        default => 'Estoque',
+    };
+}
+
+function product_inventory_badge_class(string $status): string
+{
+    return match ($status) {
+        'sem_estoque' => 'admin-badge-danger',
+        'baixo' => 'admin-badge-warn',
+        'medio' => 'admin-badge-info',
+        'normal' => 'admin-badge-ok',
+        default => 'admin-badge-soft',
+    };
+}
+
+function product_inventory_row_class(string $status): string
+{
+    return match ($status) {
+        'sem_estoque' => 'inventory-row-empty',
+        'baixo' => 'inventory-row-low',
+        'medio' => 'inventory-row-medium',
+        'normal' => 'inventory-row-normal',
+        default => '',
+    };
+}
+
+function product_inventory_percent(array $product): int
+{
+    $stock = max(0, (int) ($product['estoque'] ?? 0));
+    $minStock = max(0, (int) ($product['estoque_minimo'] ?? 0));
+
+    if ($stock <= 0) {
+        return 0;
+    }
+
+    if ($minStock <= 0) {
+        return 100;
+    }
+
+    $target = max(1, $minStock * 2);
+    $percent = (int) round(($stock / $target) * 100);
+
+    return min(100, max(8, $percent));
+}
+
 function product_stats(): array
 {
     $row = db()->query(
         'SELECT
             COUNT(*) AS total,
-            SUM(status = "disponivel") AS disponiveis,
-            SUM(sob_encomenda = 1 OR status = "sob_encomenda") AS encomendas,
-            SUM(destaque = 1) AS destaques,
-            SUM(estoque <= estoque_minimo) AS estoque_baixo
+            SUM(CASE WHEN status = "disponivel" THEN 1 ELSE 0 END) AS disponiveis,
+            SUM(CASE WHEN sob_encomenda = 1 OR status = "sob_encomenda" THEN 1 ELSE 0 END) AS encomendas,
+            SUM(CASE WHEN destaque = 1 THEN 1 ELSE 0 END) AS destaques,
+            SUM(CASE WHEN estoque <= 0 THEN 1 ELSE 0 END) AS sem_estoque,
+            SUM(CASE WHEN estoque > 0 AND estoque <= estoque_minimo THEN 1 ELSE 0 END) AS estoque_baixo,
+            SUM(CASE WHEN estoque_minimo > 0 AND estoque > estoque_minimo AND estoque <= (estoque_minimo * 2) THEN 1 ELSE 0 END) AS estoque_medio,
+            SUM(CASE WHEN estoque > 0 AND (estoque_minimo <= 0 OR estoque > (estoque_minimo * 2)) THEN 1 ELSE 0 END) AS estoque_normal
          FROM produtos
          WHERE removido_em IS NULL'
     )->fetch() ?: [];
@@ -193,7 +272,10 @@ function product_stats(): array
         'disponiveis' => (int) ($row['disponiveis'] ?? 0),
         'encomendas' => (int) ($row['encomendas'] ?? 0),
         'destaques' => (int) ($row['destaques'] ?? 0),
+        'sem_estoque' => (int) ($row['sem_estoque'] ?? 0),
         'estoque_baixo' => (int) ($row['estoque_baixo'] ?? 0),
+        'estoque_medio' => (int) ($row['estoque_medio'] ?? 0),
+        'estoque_normal' => (int) ($row['estoque_normal'] ?? 0),
     ];
 }
 
@@ -224,7 +306,11 @@ function product_list(array $filters = []): array
     if ($stock === 'baixo') {
         $where[] = 'p.estoque > 0 AND p.estoque <= p.estoque_minimo';
     } elseif ($stock === 'sem') {
-        $where[] = 'p.estoque = 0';
+        $where[] = 'p.estoque <= 0';
+    } elseif ($stock === 'medio') {
+        $where[] = 'p.estoque_minimo > 0 AND p.estoque > p.estoque_minimo AND p.estoque <= (p.estoque_minimo * 2)';
+    } elseif ($stock === 'normal') {
+        $where[] = 'p.estoque > 0 AND (p.estoque_minimo <= 0 OR p.estoque > (p.estoque_minimo * 2))';
     } elseif ($stock === 'com') {
         $where[] = 'p.estoque > 0';
     }

@@ -168,17 +168,19 @@ function dashboard_low_stock_products(int $limit = 4): array
          FROM produtos p
          LEFT JOIN categorias c ON c.id = p.categoria_id
          WHERE p.removido_em IS NULL
-           AND p.estoque <= p.estoque_minimo
-         ORDER BY p.estoque ASC, p.nome ASC
-         LIMIT {$limit}"
+            AND p.estoque <= p.estoque_minimo
+          ORDER BY CASE WHEN p.estoque <= 0 THEN 0 ELSE 1 END, p.estoque ASC, p.nome ASC
+          LIMIT {$limit}"
     );
 
     return $statement->fetchAll();
 }
 
-function dashboard_alerts(array $summary, array $lowStockProducts): array
+function dashboard_alerts(array $summary, array $lowStockProducts, array $productStats = []): array
 {
     $alerts = [];
+    $emptyStockCount = (int) ($productStats['sem_estoque'] ?? 0);
+    $lowStockCount = (int) ($productStats['estoque_baixo'] ?? 0);
 
     if ($summary['pix_pendente'] > 0) {
         $alerts[] = [
@@ -196,11 +198,25 @@ function dashboard_alerts(array $summary, array $lowStockProducts): array
         ];
     }
 
-    if (!empty($lowStockProducts)) {
-        $names = array_map(static fn(array $product): string => (string) $product['nome'], array_slice($lowStockProducts, 0, 2));
+    if ($emptyStockCount > 0) {
+        $alerts[] = [
+            'title' => 'Produtos sem estoque',
+            'text' => $emptyStockCount . ' produto(s) precisam de reposição urgente antes de novas vendas.',
+            'class' => 'admin-alert-danger',
+        ];
+    }
+
+    if ($lowStockCount > 0) {
+        $lowProducts = array_values(array_filter(
+            $lowStockProducts,
+            static fn(array $product): bool => (int) ($product['estoque'] ?? 0) > 0
+        ));
+        $names = array_map(static fn(array $product): string => (string) $product['nome'], array_slice($lowProducts, 0, 2));
         $alerts[] = [
             'title' => 'Estoque crítico',
-            'text' => implode(' e ', $names) . ' precisam de reposição.',
+            'text' => !empty($names)
+                ? implode(' e ', $names) . ' estão abaixo do mínimo.'
+                : $lowStockCount . ' produto(s) estão abaixo do estoque mínimo.',
             'class' => 'admin-alert-danger',
         ];
     }

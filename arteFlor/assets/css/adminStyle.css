@@ -407,6 +407,10 @@ body:has(.admin-shell),
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+.admin-kpi-grid.five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .admin-quick-grid {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
@@ -495,6 +499,26 @@ body:has(.admin-shell),
 .admin-kpi-card:nth-child(4) strong,
 .admin-kpi-card:nth-child(5) strong {
   color: var(--admin-warning);
+}
+
+.admin-kpi-card.kpi-ok strong {
+  color: var(--admin-ok);
+}
+
+.admin-kpi-card.kpi-warning strong {
+  color: var(--admin-warning);
+}
+
+.admin-kpi-card.kpi-danger strong {
+  color: var(--admin-danger);
+}
+
+.admin-kpi-card.kpi-info strong {
+  color: var(--admin-info);
+}
+
+.admin-kpi-card.kpi-soft strong {
+  color: var(--admin-primary);
 }
 
 .admin-quick-card {
@@ -796,6 +820,82 @@ body:has(.admin-shell),
   min-width: 0;
 }
 
+.admin-preview-product h3 {
+  margin: 10px 0 6px;
+  color: var(--admin-primary);
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.admin-preview-product p {
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.product-preview-topline,
+.product-preview-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-preview-price strong {
+  color: var(--admin-primary);
+  font-size: 1.25rem;
+  font-weight: 950;
+}
+
+.product-preview-price span {
+  color: var(--admin-muted);
+  font-size: .84rem;
+  font-weight: 850;
+  text-decoration: line-through;
+}
+
+.product-preview-status {
+  margin-top: 10px;
+  width: fit-content;
+}
+
+.product-preview-stock {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--admin-radius-md);
+  background: #fff;
+  border: 1px solid var(--admin-line);
+}
+
+.product-preview-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.product-preview-badges span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 9px;
+  border-radius: var(--admin-radius-sm);
+  border: 1px solid var(--admin-line);
+  background: #fff;
+  color: var(--admin-muted);
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+.product-preview-badges span.is-active {
+  border-color: rgba(40, 100, 71, .16);
+  background: var(--admin-ok-soft);
+  color: var(--admin-ok);
+}
+
+.product-preview-badges span.is-muted {
+  opacity: .58;
+}
+
 .admin-upload-placeholder {
   display: grid;
   place-items: center;
@@ -845,6 +945,12 @@ body:has(.admin-shell),
   border-radius: var(--admin-radius-md);
   background: #fff;
   border: 1px solid var(--admin-line);
+}
+
+.product-live-preview figure.is-primary,
+.product-image-admin-grid figure.is-primary {
+  border-color: rgba(40, 100, 71, .36);
+  box-shadow: 0 10px 24px rgba(40, 100, 71, .10);
 }
 
 .category-preview span {
@@ -901,6 +1007,11 @@ body:has(.admin-shell),
   margin-top: 16px;
 }
 
+.product-images-note {
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+
 .product-image-admin-grid figure {
   margin: 0;
   overflow: hidden;
@@ -921,6 +1032,10 @@ body:has(.admin-shell),
   color: var(--admin-muted);
   font-size: .78rem;
   font-weight: 850;
+}
+
+.product-image-admin-grid figure.is-primary figcaption {
+  color: var(--admin-ok);
 }
 
 /* ------------------------------------------------------------------------
@@ -980,6 +1095,98 @@ body:has(.admin-shell),
   margin-top: 3px;
   color: var(--admin-muted);
   font-weight: 700;
+}
+
+.admin-data-table tr.inventory-row-empty td {
+  background: #fff4f4;
+}
+
+.admin-data-table tr.inventory-row-low td {
+  background: #fff9eb;
+}
+
+.admin-data-table tr.inventory-row-medium td {
+  background: #edf8f6;
+}
+
+.admin-data-table tr.inventory-row-normal td {
+  background: #f8fbf7;
+}
+
+.admin-data-table tr.inventory-row-empty:hover td {
+  background: #ffeded;
+}
+
+.admin-data-table tr.inventory-row-low:hover td {
+  background: #fff4da;
+}
+
+.admin-data-table tr.inventory-row-medium:hover td {
+  background: #e4f4f1;
+}
+
+.admin-data-table tr.inventory-row-normal:hover td {
+  background: #eef7ed;
+}
+
+.inventory-stock-cell {
+  display: grid;
+  gap: 8px;
+  min-width: 168px;
+}
+
+.inventory-stock-meta {
+  display: grid;
+  gap: 2px;
+}
+
+.inventory-stock-meta strong {
+  color: var(--admin-primary);
+  font-size: .9rem;
+  font-weight: 950;
+}
+
+.inventory-stock-meta small {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.inventory-stock-bar {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(38, 49, 43, .10);
+}
+
+.inventory-stock-fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--admin-primary);
+  transition: width var(--admin-transition), background-color var(--admin-transition);
+}
+
+.inventory-stock-fill.sem_estoque,
+.inventory-stock-fill.empty {
+  background: var(--admin-danger);
+}
+
+.inventory-stock-fill.baixo,
+.inventory-stock-fill.low {
+  background: var(--admin-warning);
+}
+
+.inventory-stock-fill.medio,
+.inventory-stock-fill.medium {
+  background: #2f8d87;
+}
+
+.inventory-stock-fill.normal {
+  background: var(--admin-ok);
 }
 
 .admin-avatar-line {
@@ -1059,6 +1266,15 @@ body:has(.admin-shell),
 .admin-table-actions button:hover {
   background: var(--admin-primary-soft);
   border-color: rgba(36, 72, 54, .18);
+}
+
+.admin-table-actions .admin-action-muted,
+.admin-table-actions .admin-action-muted:hover {
+  background: #f5f2ea;
+  color: var(--admin-muted);
+  border-color: rgba(38, 49, 43, .10);
+  cursor: not-allowed;
+  opacity: .72;
 }
 
 body.admin-modal-open {
@@ -1198,6 +1414,38 @@ body.admin-modal-open {
   color: var(--admin-primary);
   font-size: .92rem;
   font-weight: 900;
+}
+
+.admin-product-modal-stock {
+  padding: 14px;
+  border-radius: var(--admin-radius-md);
+  background: #fff;
+  border: 1px solid var(--admin-line);
+}
+
+.admin-product-modal-descriptions {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-product-modal-descriptions section {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface-2);
+  border: 1px solid var(--admin-line);
+}
+
+.admin-product-modal-descriptions h3 {
+  margin: 0;
+  color: var(--admin-primary);
+  font-size: .88rem;
+  font-weight: 950;
+}
+
+.admin-product-modal-descriptions p {
+  overflow-wrap: anywhere;
 }
 
 .admin-product-modal-thumbs {
@@ -1468,6 +1716,68 @@ body.admin-modal-open {
   border-left-color: var(--admin-danger);
   background: linear-gradient(135deg, #fff0f1 0%, #fffdf8 100%);
   color: var(--admin-danger);
+}
+
+.critical-products-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--admin-line);
+}
+
+.critical-products-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.critical-products-title strong {
+  color: var(--admin-primary);
+  font-weight: 950;
+}
+
+.critical-products-title small {
+  text-align: right;
+}
+
+.critical-product-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(120px, .75fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--admin-radius-md);
+  border: 1px solid var(--admin-line);
+  background: #fff;
+  color: var(--admin-text);
+}
+
+.critical-product-row:hover {
+  border-color: var(--admin-line-strong);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.critical-product-row.inventory-row-empty {
+  background: #fff4f4;
+  border-color: rgba(154, 61, 68, .18);
+}
+
+.critical-product-row.inventory-row-low {
+  background: #fff9eb;
+  border-color: rgba(154, 107, 36, .18);
+}
+
+.critical-product-row strong {
+  display: block;
+  color: var(--admin-primary);
+  font-weight: 950;
+}
+
+.critical-product-row small {
+  display: block;
+  margin-top: 2px;
 }
 
 .toast-root {
@@ -1959,6 +2269,7 @@ body.admin-modal-open {
 ------------------------------------------------------------------------ */
 
 @media (max-width: 1280px) {
+  .admin-kpi-grid.five,
   .admin-kpi-grid.six,
   .admin-quick-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2044,6 +2355,7 @@ body.admin-modal-open {
   }
 
   .admin-kpi-grid,
+  .admin-kpi-grid.five,
   .admin-kpi-grid.six,
   .admin-quick-grid,
   .admin-grid-2,
@@ -2097,6 +2409,20 @@ body.admin-modal-open {
   .admin-product-modal-meta,
   .admin-product-modal-thumbs {
     grid-template-columns: 1fr;
+  }
+
+  .critical-products-title,
+  .critical-product-row {
+    grid-template-columns: 1fr;
+  }
+
+  .critical-products-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .critical-products-title small {
+    text-align: left;
   }
 }
 

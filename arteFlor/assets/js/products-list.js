@@ -18,9 +18,16 @@
   const price = modal.querySelector('[data-product-modal-price]');
   const promo = modal.querySelector('[data-product-modal-promo]');
   const sku = modal.querySelector('[data-product-modal-sku]');
+  const slug = modal.querySelector('[data-product-modal-slug]');
   const status = modal.querySelector('[data-product-modal-status]');
   const stock = modal.querySelector('[data-product-modal-stock]');
+  const minStock = modal.querySelector('[data-product-modal-min-stock]');
+  const stockFill = modal.querySelector('[data-product-modal-stock-fill]');
+  const stockLabel = modal.querySelector('[data-product-modal-stock-label]');
   const highlight = modal.querySelector('[data-product-modal-highlight]');
+  const order = modal.querySelector('[data-product-modal-order]');
+  const shortDescription = modal.querySelector('[data-product-modal-short]');
+  const fullDescription = modal.querySelector('[data-product-modal-full]');
   const thumbs = modal.querySelector('[data-product-modal-thumbs]');
   const edit = modal.querySelector('[data-product-modal-edit]');
   let lastFocus = null;
@@ -37,6 +44,13 @@
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
+  };
+
+  const setBadgeClass = (element, className) => {
+    if (!element) return;
+
+    element.classList.remove('admin-badge-ok', 'admin-badge-warn', 'admin-badge-danger', 'admin-badge-info', 'admin-badge-soft');
+    element.classList.add(className || 'admin-badge-soft');
   };
 
   const renderMedia = (product, selectedUrl = '') => {
@@ -74,7 +88,7 @@
       thumbs.appendChild(button);
     });
 
-    thumbs.hidden = images.length <= 1;
+    thumbs.hidden = images.length === 0;
   };
 
   const openModal = (product, source) => {
@@ -85,16 +99,30 @@
 
     if (title) title.textContent = product.nome || 'Produto';
     if (category) category.textContent = product.categoria || 'Sem categoria';
-    if (description) description.textContent = product.descricaoCompleta || product.descricaoCurta || 'Produto sem descrição cadastrada.';
+    if (description) description.textContent = product.descricaoCurta || product.descricaoCompleta || 'Produto sem descrição cadastrada.';
     if (price) price.textContent = product.precoPromocional || product.preco || 'R$ 0,00';
     if (promo) {
       promo.hidden = !product.precoPromocional;
       promo.textContent = product.precoPromocional ? `Preço original: ${product.preco}` : '';
     }
     if (sku) sku.textContent = product.sku || '-';
+    if (slug) slug.textContent = product.slug || '-';
     if (status) status.textContent = product.status || '-';
-    if (stock) stock.textContent = `${product.estoque ?? 0} un. | mínimo ${product.estoqueMinimo ?? 0}`;
-    if (highlight) highlight.textContent = `Destaque: ${product.destaque || 'Normal'} | Sob encomenda: ${product.sobEncomenda || 'Não'}`;
+    if (stock) stock.textContent = `Estoque: ${product.estoque ?? 0} un.`;
+    if (minStock) minStock.textContent = `Mínimo: ${product.estoqueMinimo ?? 0} un.`;
+    if (stockFill) {
+      stockFill.classList.remove('sem_estoque', 'baixo', 'medio', 'normal');
+      stockFill.classList.add(product.stockStatus || 'normal');
+      stockFill.style.width = `${Number(product.stockPercent || 0)}%`;
+    }
+    if (stockLabel) {
+      stockLabel.textContent = product.stockLabel || 'Estoque';
+      setBadgeClass(stockLabel, product.stockBadgeClass);
+    }
+    if (highlight) highlight.textContent = product.destaque || 'Normal';
+    if (order) order.textContent = product.sobEncomenda || 'Não';
+    if (shortDescription) shortDescription.textContent = product.descricaoCurta || 'Produto sem descrição curta cadastrada.';
+    if (fullDescription) fullDescription.textContent = product.descricaoCompleta || 'Produto sem descrição completa cadastrada.';
     if (edit) edit.href = product.editUrl || edit.href;
 
     modal.hidden = false;
