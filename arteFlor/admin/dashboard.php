@@ -2,9 +2,9 @@
 $adminTitle = 'Dashboard';
 $activeAdmin = 'dashboard';
 require_once __DIR__ . '/../includes/admin-head.php';
-$produtos = load_json('produtos.json');
-$ativos = count(array_filter($produtos, fn($p) => ($p['status'] ?? '') === 'disponivel'));
-$estoqueBaixo = count(array_filter($produtos, fn($p) => (int) ($p['estoque'] ?? 0) <= 3));
+require_once __DIR__ . '/../includes/products.php';
+$stats = product_stats();
+$produtosRecentes = product_list([]);
 ?>
 <section class="admin-page-hero">
   <div class="admin-page-title">
@@ -21,8 +21,8 @@ $estoqueBaixo = count(array_filter($produtos, fn($p) => (int) ($p['estoque'] ?? 
 <section class="admin-kpi-grid six">
   <article class="admin-kpi-card"><span>Vendas de hoje</span><strong>R$ 820</strong><small>12 vendas no sistema visual</small></article>
   <article class="admin-kpi-card"><span>Pedidos pendentes</span><strong>7</strong><small>4 em preparo</small></article>
-  <article class="admin-kpi-card"><span>Produtos ativos</span><strong><?= $ativos ?></strong><small>Catálogo publicado</small></article>
-  <article class="admin-kpi-card"><span>Estoque baixo</span><strong><?= $estoqueBaixo ?></strong><small>Reposição sugerida</small></article>
+  <article class="admin-kpi-card"><span>Produtos ativos</span><strong><?= $stats['disponiveis'] ?></strong><small>Catálogo publicado</small></article>
+  <article class="admin-kpi-card"><span>Estoque baixo</span><strong><?= $stats['estoque_baixo'] ?></strong><small>Reposição sugerida</small></article>
   <article class="admin-kpi-card"><span>Pix pendente</span><strong>3</strong><small>Confirmação manual</small></article>
   <article class="admin-kpi-card"><span>Ticket médio</span><strong>R$ 136</strong><small>Pedidos e PDV</small></article>
 </section>
@@ -84,9 +84,17 @@ $estoqueBaixo = count(array_filter($produtos, fn($p) => (int) ($p['estoque'] ?? 
       <table>
         <thead><tr><th>Pedido</th><th>Cliente</th><th>Status</th><th>Total</th></tr></thead>
         <tbody>
-          <tr><td><strong>#AF-1030</strong><small>Buquê de Rosas</small></td><td>Marina</td><td><span class="admin-badge-info">Aguardando Pix</span></td><td>R$ 129,90</td></tr>
-          <tr><td><strong>#AF-1029</strong><small>Kit Romântico</small></td><td>Rafael</td><td><span class="admin-badge-warn">Em preparo</span></td><td>R$ 179,90</td></tr>
-          <tr><td><strong>#AF-1028</strong><small>Orquídea</small></td><td>Beatriz</td><td><span class="admin-badge-ok">Finalizado</span></td><td>R$ 79,90</td></tr>
+          <?php foreach (array_slice($produtosRecentes, 0, 3) as $produto): ?>
+            <tr>
+              <td><strong><?= e($produto['nome']) ?></strong><small><?= e($produto['sku']) ?></small></td>
+              <td><?= e($produto['categoria_nome'] ?? 'Sem categoria') ?></td>
+              <td><span class="<?= $produto['status'] === 'disponivel' ? 'admin-badge-ok' : 'admin-badge-warn' ?>"><?= e(status_label($produto['status'])) ?></span></td>
+              <td><?= money_br((float) ($produto['preco_promocional'] ?? 0) > 0 ? (float) $produto['preco_promocional'] : (float) $produto['preco']) ?></td>
+            </tr>
+          <?php endforeach; ?>
+          <?php if (empty($produtosRecentes)): ?>
+            <tr><td colspan="4"><strong>Nenhum produto cadastrado</strong><small>Use “Novo produto” para popular o catálogo.</small></td></tr>
+          <?php endif; ?>
         </tbody>
       </table>
     </div>

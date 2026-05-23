@@ -46,6 +46,16 @@ DB_ALLOW_EMPTY_PASSWORD=false
 
 O sistema abre a conexão com o banco no bootstrap. Em produção, falhas retornam uma página 503 genérica e os detalhes ficam apenas no log do servidor.
 
+## Upload de produtos
+
+O cadastro administrativo de produtos salva os dados no banco e aceita múltiplas imagens por produto.
+
+- pasta pública de upload: `assets/uploads/produtos`;
+- formatos aceitos: JPG, PNG, WEBP, GIF e AVIF;
+- limite atual: 8 imagens por envio, até 5 MB por imagem;
+- SVG e arquivos executáveis não são aceitos por segurança;
+- a hospedagem precisa permitir escrita nessa pasta.
+
 ## Usuário de suporte
 
 Para criar ou atualizar o usuário de suporte no banco hospedado:
