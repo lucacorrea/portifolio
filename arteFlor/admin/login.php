@@ -45,8 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <section class="admin-login-card card">
     <a class="brand" href="<?= site_url('index.php') ?>"><span class="brand-icon" aria-hidden="true"></span><span>Arte<span>&</span>Flor</span></a>
     <div>
-      <span class="badge">Acesso protegido</span>
-      <h2 class="section-title">Painel administrativo</h2>
+      <span class="badge">Painel Administrativo</span>
     </div>
 
     <?php if ($error !== ''): ?>
