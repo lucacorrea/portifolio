@@ -14,6 +14,18 @@ CREATE TABLE IF NOT EXISTS usuarios_admin (
   KEY idx_usuarios_admin_ativo (ativo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS admin_login_tentativas (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  email VARCHAR(180) NOT NULL,
+  ip_hash CHAR(64) NOT NULL,
+  sucesso TINYINT(1) NOT NULL DEFAULT 0,
+  user_agent VARCHAR(255) NULL,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_admin_login_tentativas_email_ip (email, ip_hash, criado_em),
+  KEY idx_admin_login_tentativas_criado_em (criado_em)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS categorias (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   nome VARCHAR(120) NOT NULL,

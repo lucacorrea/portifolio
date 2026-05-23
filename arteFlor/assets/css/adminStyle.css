@@ -192,6 +192,34 @@ body:has(.admin-shell),
   color: var(--admin-primary);
 }
 
+.admin-logout-form {
+  margin: 18px 0 0;
+}
+
+.admin-logout-button {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: var(--admin-radius-md);
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .08);
+  color: rgba(255, 255, 255, .84);
+  font: inherit;
+  font-size: .92rem;
+  font-weight: 850;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--admin-transition), border-color var(--admin-transition), color var(--admin-transition);
+}
+
+.admin-logout-button:hover,
+.admin-logout-button:focus-visible {
+  background: rgba(255, 255, 255, .13);
+  border-color: rgba(255, 255, 255, .18);
+  color: #fff;
+  outline: none;
+}
+
 /* ------------------------------------------------------------------------
    BOTÕES, BADGES E STATUS
 ------------------------------------------------------------------------ */
@@ -973,6 +1001,16 @@ body:has(.admin-shell),
 .admin-alert-card strong {
   color: var(--admin-primary);
   font-weight: 950;
+}
+
+.admin-alert-danger {
+  border-color: rgba(154, 61, 68, .24);
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+}
+
+.admin-alert-danger strong {
+  color: var(--admin-danger);
 }
 
 .admin-alert-card:nth-child(1) {

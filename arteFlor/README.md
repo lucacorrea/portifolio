@@ -46,6 +46,25 @@ DB_ALLOW_EMPTY_PASSWORD=false
 
 O sistema abre a conexão com o banco no bootstrap. Em produção, falhas retornam uma página 503 genérica e os detalhes ficam apenas no log do servidor.
 
+## Usuário de suporte
+
+Para criar ou atualizar o usuário de suporte no banco hospedado:
+
+```bash
+SUPPORT_PASSWORD="<senha_temporaria>" php database/create-support-user.php
+```
+
+Por padrão, o script cria `suporte@arteflor.demo` com perfil `operador`. Para alterar:
+
+```bash
+SUPPORT_EMAIL=suporte@seudominio.com SUPPORT_NAME=Suporte SUPPORT_PROFILE=operador SUPPORT_PASSWORD="<senha_temporaria>" php database/create-support-user.php
+```
+
+Use uma senha temporária apenas para o primeiro acesso e troque assim que possível.
+
+Depois de criado, acesse `/admin/login.php` com o e-mail cadastrado. As páginas em `/admin/` exigem sessão ativa e redirecionam automaticamente para o login quando a sessão expira.
+O login também registra tentativas e aplica bloqueio temporário após muitas falhas para o mesmo e-mail e IP.
+
 ## Publicação na hospedagem
 
 Envie a pasta `arteFlor` completa para a hospedagem e abra:

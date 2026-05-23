@@ -1,5 +1,6 @@
 <?php
-require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/auth.php';
+$adminUser = require_admin();
 $adminTitle = $adminTitle ?? 'Painel';
 $activeAdmin = $activeAdmin ?? '';
 $pageScripts = $pageScripts ?? [];
