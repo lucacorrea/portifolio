@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?= e($error) ?>
       </div>
     <?php elseif (isset($_GET['logged_out'])): ?>
-      <div class="admin-alert-card" role="status">
+      <div class="admin-alert-card admin-alert-success" role="status">
         <strong>Sessão encerrada</strong>
         Entre novamente para acessar o painel.
       </div>
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <button class="btn btn-primary form-submit" type="submit">Entrar no painel</button>
     </form>
 
-    <div class="admin-alert-card">
+    <div class="admin-alert-card admin-alert-info">
       <strong>Segurança</strong>
       O acesso usa sessão segura, CSRF e verificação de senha com hash no banco.
     </div>
