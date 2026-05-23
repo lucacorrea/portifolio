@@ -1,10 +1,18 @@
 <?php
 $adminTitle = 'Dashboard';
 $activeAdmin = 'dashboard';
+require_once __DIR__ . '/../includes/dashboard.php';
+$adminUser = require_admin();
+
+$productStats = product_stats();
+$todaySummary = dashboard_today_summary();
+$paymentSummary = dashboard_payment_summary_today();
+$categorySales = dashboard_category_sales(30);
+$recentOrders = dashboard_recent_orders(5);
+$lowStockProducts = dashboard_low_stock_products(4);
+$alerts = dashboard_alerts($todaySummary, $lowStockProducts);
+
 require_once __DIR__ . '/../includes/admin-head.php';
-require_once __DIR__ . '/../includes/products.php';
-$stats = product_stats();
-$produtosRecentes = product_list([]);
 ?>
 <section class="admin-page-hero">
   <div class="admin-page-title">
@@ -19,12 +27,12 @@ $produtosRecentes = product_list([]);
 </section>
 
 <section class="admin-kpi-grid six">
-  <article class="admin-kpi-card"><span>Vendas de hoje</span><strong>R$ 820</strong><small>12 vendas no sistema visual</small></article>
-  <article class="admin-kpi-card"><span>Pedidos pendentes</span><strong>7</strong><small>4 em preparo</small></article>
-  <article class="admin-kpi-card"><span>Produtos ativos</span><strong><?= $stats['disponiveis'] ?></strong><small>Catálogo publicado</small></article>
-  <article class="admin-kpi-card"><span>Estoque baixo</span><strong><?= $stats['estoque_baixo'] ?></strong><small>Reposição sugerida</small></article>
-  <article class="admin-kpi-card"><span>Pix pendente</span><strong>3</strong><small>Confirmação manual</small></article>
-  <article class="admin-kpi-card"><span>Ticket médio</span><strong>R$ 136</strong><small>Pedidos e PDV</small></article>
+  <article class="admin-kpi-card"><span>Vendas de hoje</span><strong><?= money_br($todaySummary['vendas_hoje']) ?></strong><small><?= $todaySummary['pedidos_hoje'] ?> pedido(s) no banco</small></article>
+  <article class="admin-kpi-card"><span>Pedidos pendentes</span><strong><?= $todaySummary['pedidos_pendentes'] ?></strong><small><?= $todaySummary['em_preparo'] ?> em preparo</small></article>
+  <article class="admin-kpi-card"><span>Produtos ativos</span><strong><?= $productStats['disponiveis'] ?></strong><small><?= $productStats['total'] ?> produto(s) cadastrados</small></article>
+  <article class="admin-kpi-card"><span>Estoque baixo</span><strong><?= $productStats['estoque_baixo'] ?></strong><small>Reposição sugerida</small></article>
+  <article class="admin-kpi-card"><span>Pix pendente</span><strong><?= $todaySummary['pix_pendente'] ?></strong><small>Confirmação manual</small></article>
+  <article class="admin-kpi-card"><span>Ticket médio</span><strong><?= money_br($todaySummary['ticket_medio']) ?></strong><small>Pedidos de hoje</small></article>
 </section>
 
 <section class="admin-quick-grid">
@@ -42,14 +50,23 @@ $produtosRecentes = product_list([]);
       <div>
         <span class="badge">Vendas</span>
         <h2>Vendas por categoria</h2>
-        <p>Gráfico visual em CSS para apresentação comercial.</p>
+        <p>Baseado nos itens de pedidos dos últimos 30 dias.</p>
       </div>
     </div>
     <div class="admin-chart-bars">
-      <div class="admin-chart-row"><span>Buquês</span><div class="admin-chart-track"><div class="admin-chart-fill" style="width:82%"></div></div><strong>82%</strong></div>
-      <div class="admin-chart-row"><span>Arranjos</span><div class="admin-chart-track"><div class="admin-chart-fill" style="width:64%"></div></div><strong>64%</strong></div>
-      <div class="admin-chart-row"><span>Presentes</span><div class="admin-chart-track"><div class="admin-chart-fill" style="width:48%"></div></div><strong>48%</strong></div>
-      <div class="admin-chart-row"><span>Vasos</span><div class="admin-chart-track"><div class="admin-chart-fill" style="width:36%"></div></div><strong>36%</strong></div>
+      <?php foreach ($categorySales as $sale): ?>
+        <div class="admin-chart-row">
+          <span><?= e($sale['categoria']) ?></span>
+          <div class="admin-chart-track"><div class="admin-chart-fill" style="width:<?= (int) $sale['percentual'] ?>%"></div></div>
+          <strong><?= money_br($sale['total']) ?></strong>
+        </div>
+      <?php endforeach; ?>
+      <?php if (empty($categorySales)): ?>
+        <div class="admin-empty-row">
+          <strong>Sem vendas por categoria</strong>
+          <span>Os dados aparecem quando pedidos com itens forem gravados.</span>
+        </div>
+      <?php endif; ?>
     </div>
   </article>
 
@@ -58,15 +75,18 @@ $produtosRecentes = product_list([]);
       <div>
         <span class="badge">Financeiro</span>
         <h2>Resumo do dia</h2>
-        <p>Valores fictícios para validar o painel com a cliente.</p>
+        <p>Totais agrupados por forma de pagamento dos pedidos de hoje.</p>
       </div>
       <a class="btn btn-soft" href="<?= site_url('admin/relatorios.php') ?>">Ver relatórios</a>
     </div>
     <div class="admin-metric-list">
-      <div class="admin-metric-row"><span>Pix confirmado</span><strong>R$ 420,00</strong></div>
-      <div class="admin-metric-row"><span>Dinheiro</span><strong>R$ 210,00</strong></div>
-      <div class="admin-metric-row"><span>Cartão presencial</span><strong>R$ 190,00</strong></div>
-      <div class="admin-metric-row total"><span>Total líquido visual</span><strong>R$ 820,00</strong></div>
+      <?php foreach ($paymentSummary as $payment): ?>
+        <div class="admin-metric-row">
+          <span><?= e($payment['label']) ?></span>
+          <strong><?= money_br($payment['total_valor']) ?></strong>
+        </div>
+      <?php endforeach; ?>
+      <div class="admin-metric-row total"><span>Total vendido hoje</span><strong><?= money_br($todaySummary['vendas_hoje']) ?></strong></div>
     </div>
   </article>
 </section>
@@ -84,16 +104,16 @@ $produtosRecentes = product_list([]);
       <table>
         <thead><tr><th>Pedido</th><th>Cliente</th><th>Status</th><th>Total</th></tr></thead>
         <tbody>
-          <?php foreach (array_slice($produtosRecentes, 0, 3) as $produto): ?>
+          <?php foreach ($recentOrders as $pedido): ?>
             <tr>
-              <td><strong><?= e($produto['nome']) ?></strong><small><?= e($produto['sku']) ?></small></td>
-              <td><?= e($produto['categoria_nome'] ?? 'Sem categoria') ?></td>
-              <td><span class="<?= $produto['status'] === 'disponivel' ? 'admin-badge-ok' : 'admin-badge-warn' ?>"><?= e(status_label($produto['status'])) ?></span></td>
-              <td><?= money_br((float) ($produto['preco_promocional'] ?? 0) > 0 ? (float) $produto['preco_promocional'] : (float) $produto['preco']) ?></td>
+              <td><strong><?= e($pedido['codigo']) ?></strong><small><?= e(dashboard_origin_label((string) $pedido['origem'])) ?></small></td>
+              <td><?= e($pedido['cliente_nome']) ?></td>
+              <td><span class="<?= dashboard_order_badge_class((string) $pedido['status']) ?>"><?= e(dashboard_order_status_label((string) $pedido['status'])) ?></span></td>
+              <td><?= money_br((float) $pedido['total']) ?></td>
             </tr>
           <?php endforeach; ?>
-          <?php if (empty($produtosRecentes)): ?>
-            <tr><td colspan="4"><strong>Nenhum produto cadastrado</strong><small>Use “Novo produto” para popular o catálogo.</small></td></tr>
+          <?php if (empty($recentOrders)): ?>
+            <tr><td colspan="4"><strong>Nenhum pedido cadastrado</strong><small>Os pedidos aparecerão aqui assim que forem gravados no banco.</small></td></tr>
           <?php endif; ?>
         </tbody>
       </table>
@@ -108,9 +128,11 @@ $produtosRecentes = product_list([]);
       </div>
     </div>
     <div class="admin-metric-list">
-      <div class="admin-alert-card"><strong>Pix pendente</strong>3 pedidos aguardam confirmação manual no painel.</div>
-      <div class="admin-alert-card"><strong>Estoque crítico</strong>Cesta Afeto e Kit Presente Romântico precisam de reposição.</div>
-      <div class="admin-alert-card"><strong>Apresentação</strong>Fluxos de checkout e PDV finalizam dentro do sistema visual.</div>
+      <?php foreach ($alerts as $alert): ?>
+        <div class="admin-alert-card <?= e($alert['class']) ?>">
+          <strong><?= e($alert['title']) ?></strong><?= e($alert['text']) ?>
+        </div>
+      <?php endforeach; ?>
     </div>
   </article>
 </section>

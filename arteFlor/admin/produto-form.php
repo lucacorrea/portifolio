@@ -1,6 +1,7 @@
 <?php
 $adminTitle = 'Cadastro de produto';
 $activeAdmin = 'produto-form';
+$pageScripts = ['js/product-form.js'];
 require_once __DIR__ . '/../includes/products.php';
 $adminUser = require_admin();
 
@@ -83,7 +84,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
       <div class="admin-form-grid">
         <label class="admin-field">
           <span>Nome</span>
-          <input name="nome" value="<?= e((string) $field('nome')) ?>" placeholder="Buquê de Rosas Vermelhas" required>
+          <input name="nome" value="<?= e((string) $field('nome')) ?>" placeholder="Buquê de Rosas Vermelhas" data-product-preview-name-source required>
         </label>
         <label class="admin-field">
           <span>Categoria</span>
@@ -109,7 +110,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
         </label>
         <label class="admin-field full">
           <span>Descrição curta</span>
-          <input name="descricao_curta" value="<?= e((string) $field('descricao_curta')) ?>" placeholder="Resumo que aparece no card">
+          <input name="descricao_curta" value="<?= e((string) $field('descricao_curta')) ?>" placeholder="Resumo que aparece no card" data-product-preview-description-source>
         </label>
         <label class="admin-field full">
           <span>Descrição completa</span>
@@ -123,11 +124,11 @@ require_once __DIR__ . '/../includes/admin-head.php';
       <div class="admin-form-grid">
         <label class="admin-field">
           <span>Preço</span>
-          <input name="preco" type="number" min="0" step="0.01" value="<?= e((string) $field('preco', '')) ?>" placeholder="149.90" required>
+          <input name="preco" type="number" min="0" step="0.01" value="<?= e((string) $field('preco', '')) ?>" placeholder="149.90" data-product-preview-price-source required>
         </label>
         <label class="admin-field">
           <span>Preço promocional</span>
-          <input name="preco_promocional" type="number" min="0" step="0.01" value="<?= e((string) $field('preco_promocional', '')) ?>" placeholder="129.90">
+          <input name="preco_promocional" type="number" min="0" step="0.01" value="<?= e((string) $field('preco_promocional', '')) ?>" placeholder="129.90" data-product-preview-promo-source>
         </label>
         <label class="admin-field">
           <span>Estoque</span>
@@ -145,7 +146,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
       <div class="admin-form-grid">
         <label class="admin-field full product-upload-field">
           <span>Imagens do produto</span>
-          <input name="imagens[]" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple>
+          <input name="imagens[]" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple data-product-images-input>
           <small>Você pode enviar até 8 imagens por vez, com até 5 MB cada. Formatos: JPG, PNG, WEBP, GIF e AVIF.</small>
         </label>
         <label class="admin-field">
@@ -153,6 +154,8 @@ require_once __DIR__ . '/../includes/admin-head.php';
           <input name="slug" value="<?= e((string) $field('slug')) ?>" placeholder="Gerado automaticamente se vazio">
         </label>
       </div>
+
+      <div class="product-live-preview" data-product-image-preview hidden></div>
 
       <?php if (!empty($images)): ?>
         <div class="product-image-admin-grid">
@@ -169,16 +172,18 @@ require_once __DIR__ . '/../includes/admin-head.php';
 
   <aside class="admin-form-card admin-side-card">
     <div class="admin-preview-product">
-      <?php if ($previewImage !== ''): ?>
-        <img src="<?= e($previewImage) ?>" alt="Preview do produto">
-      <?php else: ?>
-        <div class="admin-upload-placeholder">A&F</div>
-      <?php endif; ?>
+      <div class="admin-preview-media" data-product-main-preview>
+        <?php if ($previewImage !== ''): ?>
+          <img src="<?= e($previewImage) ?>" alt="Preview do produto">
+        <?php else: ?>
+          <div class="admin-upload-placeholder">A&F</div>
+        <?php endif; ?>
+      </div>
       <div>
         <span class="badge">Preview</span>
-        <h3><?= e((string) $field('nome', 'Novo produto')) ?></h3>
-        <p><?= e((string) $field('descricao_curta', 'Produto pronto para catálogo.')) ?></p>
-        <strong><?= money_br((float) $field('preco_promocional', 0) > 0 ? (float) $field('preco_promocional', 0) : (float) $field('preco', 0)) ?></strong>
+        <h3 data-product-preview-name><?= e((string) $field('nome', 'Novo produto')) ?></h3>
+        <p data-product-preview-description><?= e((string) $field('descricao_curta', 'Produto pronto para catálogo.')) ?></p>
+        <strong data-product-preview-price><?= money_br((float) $field('preco_promocional', 0) > 0 ? (float) $field('preco_promocional', 0) : (float) $field('preco', 0)) ?></strong>
       </div>
     </div>
     <div class="admin-check-list">

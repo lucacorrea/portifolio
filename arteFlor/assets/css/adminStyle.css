@@ -791,6 +791,11 @@ body:has(.admin-shell),
   border-radius: var(--admin-radius-md);
 }
 
+.admin-preview-media {
+  width: 100%;
+  min-width: 0;
+}
+
 .admin-upload-placeholder {
   display: grid;
   place-items: center;
@@ -817,6 +822,57 @@ body:has(.admin-shell),
   font-size: .82rem;
   font-weight: 750;
   line-height: 1.45;
+}
+
+.product-live-preview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: var(--admin-radius-lg);
+  background: #fffdf8;
+  border: 1px dashed rgba(36, 72, 54, .22);
+}
+
+.product-live-preview[hidden] {
+  display: none;
+}
+
+.product-live-preview figure {
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--admin-radius-md);
+  background: #fff;
+  border: 1px solid var(--admin-line);
+}
+
+.product-live-preview img,
+.product-live-preview .product-rejected-preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.product-live-preview figcaption {
+  min-height: 42px;
+  padding: 8px 10px;
+  color: var(--admin-muted);
+  font-size: .76rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.product-live-preview .product-preview-rejected {
+  border-color: rgba(143, 47, 47, .24);
+}
+
+.product-live-preview .product-rejected-preview {
+  border: 0;
+  border-radius: 0;
+  color: #8f2f2f;
+  background: #fff1f1;
 }
 
 .product-image-admin-grid {
@@ -1311,7 +1367,7 @@ body:has(.admin-shell),
 
 .admin-chart-row {
   display: grid;
-  grid-template-columns: 100px minmax(0, 1fr) 52px;
+  grid-template-columns: minmax(96px, 140px) minmax(0, 1fr) minmax(96px, auto);
   align-items: center;
   gap: 12px;
 }
@@ -1761,7 +1817,8 @@ body:has(.admin-shell),
     position: static;
   }
 
-  .product-image-admin-grid {
+  .product-image-admin-grid,
+  .product-live-preview {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -1803,7 +1860,12 @@ body:has(.admin-shell),
   }
 
   .admin-chart-row {
-    grid-template-columns: 78px minmax(0, 1fr) 44px;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .admin-chart-row strong {
+    text-align: left;
   }
 
   .admin-sidebar nav,
@@ -1815,7 +1877,8 @@ body:has(.admin-shell),
     grid-template-columns: 1fr;
   }
 
-  .product-image-admin-grid {
+  .product-image-admin-grid,
+  .product-live-preview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
