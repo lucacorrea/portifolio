@@ -43,11 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="admin-login-body">
 <main class="admin-login-shell">
   <section class="admin-login-card card">
-    <a class="brand" href="<?= site_url('index.php') ?>"><span class="brand-icon" aria-hidden="true">A&F</span><span>Arte<span>&</span>Flor</span></a>
+    <a class="brand" href="<?= site_url('index.php') ?>"><span class="brand-icon" aria-hidden="true"></span><span>Arte<span>&</span>Flor</span></a>
     <div>
       <span class="badge">Acesso protegido</span>
       <h1 class="section-title">Painel administrativo</h1>
-      <p>Entre com um usuário ativo para gerenciar catálogo, PDV, pedidos e operação.</p>
     </div>
 
     <?php if ($error !== ''): ?>
@@ -76,10 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <button class="btn btn-primary form-submit" type="submit">Entrar no painel</button>
     </form>
 
-    <div class="admin-alert-card admin-alert-info">
-      <strong>Segurança</strong>
-      O acesso usa sessão segura, CSRF e verificação de senha com hash no banco.
-    </div>
+   
   </section>
 </main>
 </body>
