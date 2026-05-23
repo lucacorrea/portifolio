@@ -1,49 +1,145 @@
 <?php
 $adminTitle = 'Estoque';
 $activeAdmin = 'estoque';
+require_once __DIR__ . '/../includes/inventory.php';
+$adminUser = require_admin();
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!admin_csrf_is_valid($_POST['csrf_token'] ?? null)) {
+        http_response_code(403);
+        $error = 'Sessão expirada. Recarregue a página e tente novamente.';
+    } else {
+        try {
+            inventory_save_movement_from_request($adminUser);
+            header('Location: ' . site_url('admin/estoque.php?saved=1'));
+            exit;
+        } catch (Throwable $exception) {
+            error_log('[ArteFlor][inventory-save] ' . $exception->getMessage());
+            $error = $exception instanceof InvalidArgumentException
+                ? $exception->getMessage()
+                : 'Não foi possível registrar a movimentação. Verifique os dados e tente novamente.';
+        }
+    }
+}
+
+$products = inventory_available_products();
+$stats = inventory_stats();
+$criticalProducts = inventory_low_stock_products(6);
+$movements = inventory_recent_movements(25);
+$field = fn(string $key, mixed $default = ''): mixed => $_POST[$key] ?? $default;
+$defaultMovedAt = date('Y-m-d\TH:i');
+
 require_once __DIR__ . '/../includes/admin-head.php';
 ?>
 <section class="admin-page-hero">
   <div class="admin-page-title">
     <span class="badge">Estoque</span>
     <h1>Controle de estoque</h1>
-    <p>Entradas, saídas, ajustes, perdas, alertas de estoque baixo e movimentações demonstrativas.</p>
+    <p>Entradas, saídas, ajustes, perdas, reservas e alertas de estoque baixo com dados do banco.</p>
   </div>
   <div class="admin-hero-actions">
     <a class="btn btn-soft" href="<?= site_url('admin/produtos.php') ?>">Ver produtos</a>
-    <button class="btn btn-primary" type="button">Registrar movimentação</button>
+    <a class="btn btn-primary" href="#inventoryMovementForm">Registrar movimentação</a>
   </div>
 </section>
 
+<?php if (isset($_GET['saved'])): ?>
+  <div class="admin-alert-card admin-alert-success" role="status">
+    <strong>Movimentação registrada</strong>
+    O estoque do produto foi atualizado e o histórico foi gravado no banco.
+  </div>
+<?php endif; ?>
+
+<?php if ($error !== ''): ?>
+  <div class="admin-alert-card admin-alert-danger" role="alert">
+    <strong>Erro ao movimentar</strong>
+    <?= e($error) ?>
+  </div>
+<?php endif; ?>
+
 <section class="admin-kpi-grid">
-  <article class="admin-kpi-card"><span>Entradas</span><strong>28</strong><small>Reposições no mês</small></article>
-  <article class="admin-kpi-card"><span>Saídas</span><strong>17</strong><small>Vendas e baixas</small></article>
-  <article class="admin-kpi-card"><span>Estoque baixo</span><strong>3</strong><small>Produtos críticos</small></article>
-  <article class="admin-kpi-card"><span>Perdas</span><strong>2</strong><small>Flores vencidas/danificadas</small></article>
+  <article class="admin-kpi-card"><span>Entradas</span><strong><?= $stats['entradas_mes'] ?></strong><small>Unidades no mês</small></article>
+  <article class="admin-kpi-card"><span>Saídas</span><strong><?= $stats['saidas_mes'] ?></strong><small>Vendas e reservas no mês</small></article>
+  <article class="admin-kpi-card"><span>Estoque baixo</span><strong><?= $stats['estoque_baixo'] ?></strong><small>Produtos críticos</small></article>
+  <article class="admin-kpi-card"><span>Perdas</span><strong><?= $stats['perdas_mes'] ?></strong><small>Unidades baixadas no mês</small></article>
 </section>
 
 <section class="admin-grid-2">
-  <form class="admin-form-card">
+  <form id="inventoryMovementForm" class="admin-form-card" method="post" action="<?= site_url('admin/estoque.php') ?>">
+    <input type="hidden" name="csrf_token" value="<?= e(admin_csrf_token()) ?>">
     <div class="admin-panel-header"><div><span class="badge">Movimentação</span><h2>Entrada, saída ou ajuste</h2></div></div>
     <div class="admin-form-grid">
-      <label class="admin-field"><span>Produto</span><input placeholder="Buquê, vaso, arranjo..."></label>
-      <label class="admin-field"><span>Tipo</span><select><option>Entrada</option><option>Saída</option><option>Ajuste</option><option>Perda</option></select></label>
-      <label class="admin-field"><span>Quantidade</span><input type="number" placeholder="1"></label>
-      <label class="admin-field"><span>Responsável</span><input placeholder="Operador"></label>
-      <label class="admin-field"><span>Origem</span><select><option>Compra</option><option>Venda</option><option>Correção interna</option><option>Montagem de kit</option></select></label>
-      <label class="admin-field"><span>Data</span><input type="date"></label>
-      <label class="admin-field full"><span>Motivo</span><textarea placeholder="Descreva o motivo da movimentação"></textarea></label>
+      <label class="admin-field full">
+        <span>Produto</span>
+        <select name="produto_id" required>
+          <option value="">Selecione um produto</option>
+          <?php foreach ($products as $product): ?>
+            <option value="<?= (int) $product['id'] ?>" <?= (int) $field('produto_id', 0) === (int) $product['id'] ? 'selected' : '' ?>>
+              <?= e($product['nome']) ?> · <?= e($product['sku']) ?> · estoque <?= (int) $product['estoque'] ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span>Tipo</span>
+        <select name="tipo" required>
+          <?php foreach (inventory_movement_type_options() as $value => $label): ?>
+            <option value="<?= e($value) ?>" <?= (string) $field('tipo', 'entrada') === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span>Quantidade</span>
+        <input name="quantidade" type="number" min="0" value="<?= e((string) $field('quantidade', 1)) ?>" required>
+      </label>
+      <label class="admin-field">
+        <span>Origem</span>
+        <select name="origem" required>
+          <?php foreach (inventory_origin_options() as $value => $label): ?>
+            <option value="<?= e($value) ?>" <?= (string) $field('origem', 'compra') === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span>Custo unitário</span>
+        <input name="custo_unitario" type="number" min="0" step="0.01" value="<?= e((string) $field('custo_unitario', '')) ?>" placeholder="Opcional">
+      </label>
+      <label class="admin-field">
+        <span>Data</span>
+        <input name="movimentado_em" type="datetime-local" value="<?= e((string) $field('movimentado_em', $defaultMovedAt)) ?>" required>
+      </label>
+      <label class="admin-field full">
+        <span>Motivo</span>
+        <textarea name="motivo" placeholder="Descreva o motivo da movimentação"><?= e((string) $field('motivo')) ?></textarea>
+      </label>
     </div>
-    <div class="admin-action-row"><button class="btn btn-primary" type="button">Salvar demonstração</button><button class="btn btn-soft" type="button">Limpar</button></div>
+    <div class="admin-alert-card admin-alert-info">
+      <strong>Regra de ajuste</strong>
+      Entrada soma estoque. Saída, perda e reserva subtraem. Ajuste define o novo saldo final informado em quantidade.
+    </div>
+    <div class="admin-action-row">
+      <button class="btn btn-primary" type="submit">Salvar movimentação</button>
+      <button class="btn btn-soft" type="reset">Limpar</button>
+    </div>
   </form>
 
   <article class="admin-panel-card">
     <div class="admin-panel-header"><div><span class="badge badge-rose">Críticos</span><h2>Produtos em atenção</h2></div></div>
     <div class="admin-metric-list">
-      <div class="admin-metric-row"><span>Cesta Afeto com Flores</span><strong class="admin-badge-danger">0 un.</strong></div>
-      <div class="admin-metric-row"><span>Kit Presente Romântico</span><strong class="admin-badge-warn">2 un.</strong></div>
-      <div class="admin-metric-row"><span>Arranjo Floral Premium</span><strong class="admin-badge-warn">3 un.</strong></div>
-      <div class="admin-metric-row"><span>Vaso de Violeta</span><strong class="admin-badge-ok">12 un.</strong></div>
+      <?php foreach ($criticalProducts as $product): ?>
+        <?php $badge = (int) $product['estoque'] <= 0 ? 'admin-badge-danger' : 'admin-badge-warn'; ?>
+        <div class="admin-metric-row">
+          <span><?= e($product['nome']) ?><small><?= e($product['sku']) ?> · mínimo <?= (int) $product['estoque_minimo'] ?></small></span>
+          <strong class="<?= $badge ?>"><?= (int) $product['estoque'] ?> un.</strong>
+        </div>
+      <?php endforeach; ?>
+      <?php if (empty($criticalProducts)): ?>
+        <div class="admin-empty-row">
+          <strong>Nenhum produto crítico</strong>
+          <span>Todos os produtos estão acima do estoque mínimo.</span>
+        </div>
+      <?php endif; ?>
     </div>
   </article>
 </section>
@@ -51,16 +147,39 @@ require_once __DIR__ . '/../includes/admin-head.php';
 <section class="admin-panel-card">
   <div class="admin-panel-header">
     <div><span class="badge">Histórico</span><h2>Movimentações recentes</h2></div>
-    <button class="btn btn-soft" type="button">Exportar visual</button>
+    <a class="btn btn-soft" href="<?= site_url('admin/produtos.php?estoque=baixo') ?>">Ver estoque baixo</a>
   </div>
   <div class="admin-data-table">
     <table>
-      <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd.</th><th>Responsável</th><th>Motivo</th><th>Status</th></tr></thead>
+      <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd.</th><th>Saldo</th><th>Responsável</th><th>Motivo</th><th>Status</th></tr></thead>
       <tbody>
-        <tr><td>Hoje</td><td><strong>Buquê de Rosas</strong><small>AF-BUQ-001</small></td><td>Entrada</td><td>10</td><td>Admin</td><td>Reposição</td><td><span class="admin-badge-ok">Concluído</span></td></tr>
-        <tr><td>Hoje</td><td><strong>Kit Romântico</strong><small>AF-PRE-010</small></td><td>Saída</td><td>2</td><td>Caixa</td><td>Venda PDV</td><td><span class="admin-badge-ok">Concluído</span></td></tr>
-        <tr><td>Ontem</td><td><strong>Cesta Afeto</strong><small>AF-PRE-005</small></td><td>Ajuste</td><td>1</td><td>Admin</td><td>Reserva sob encomenda</td><td><span class="admin-badge-info">Reservado</span></td></tr>
-        <tr><td>Ontem</td><td><strong>Flores avulsas</strong><small>INSUMO</small></td><td>Perda</td><td>2</td><td>Admin</td><td>Produto danificado</td><td><span class="admin-badge-danger">Baixado</span></td></tr>
+        <?php foreach ($movements as $movement): ?>
+          <?php
+            $type = (string) $movement['tipo'];
+            $status = (string) $movement['status'];
+            $movedAt = strtotime((string) $movement['movimentado_em']);
+          ?>
+          <tr>
+            <td><?= $movedAt ? e(date('d/m/Y H:i', $movedAt)) : '-' ?></td>
+            <td><strong><?= e($movement['produto_nome']) ?></strong><small><?= e($movement['produto_sku']) ?></small></td>
+            <td><span class="<?= inventory_type_badge_class($type) ?>"><?= e(inventory_movement_type_options()[$type] ?? $type) ?></span></td>
+            <td><?= (int) $movement['quantidade'] ?></td>
+            <td><strong><?= (int) $movement['estoque_novo'] ?> un.</strong><small>Antes: <?= (int) $movement['estoque_anterior'] ?></small></td>
+            <td><?= e($movement['responsavel_nome'] ?: ($movement['usuario_nome'] ?? 'Admin')) ?></td>
+            <td><?= e((string) ($movement['motivo'] ?? 'Sem motivo informado')) ?></td>
+            <td><span class="<?= $status === 'concluido' ? 'admin-badge-ok' : ($status === 'cancelado' ? 'admin-badge-danger' : 'admin-badge-warn') ?>"><?= e(inventory_status_label($status)) ?></span></td>
+          </tr>
+        <?php endforeach; ?>
+        <?php if (empty($movements)): ?>
+          <tr>
+            <td colspan="8">
+              <div class="admin-empty-row">
+                <strong>Nenhuma movimentação registrada</strong>
+                <span>Use o formulário acima para criar o primeiro lançamento de estoque.</span>
+              </div>
+            </td>
+          </tr>
+        <?php endif; ?>
       </tbody>
     </table>
   </div>

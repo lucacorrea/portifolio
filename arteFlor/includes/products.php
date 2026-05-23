@@ -279,6 +279,38 @@ function product_images(int $productId): array
     return $statement->fetchAll();
 }
 
+function product_images_by_product_ids(array $productIds): array
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $productIds), static fn(int $id): bool => $id > 0)));
+    if (empty($ids)) {
+        return [];
+    }
+
+    $placeholders = [];
+    $params = [];
+    foreach ($ids as $index => $id) {
+        $key = 'id' . $index;
+        $placeholders[] = ':' . $key;
+        $params[$key] = $id;
+    }
+
+    $statement = db()->prepare(
+        'SELECT produto_id, url, texto_alternativo, principal
+         FROM produto_imagens
+         WHERE produto_id IN (' . implode(', ', $placeholders) . ')
+         ORDER BY produto_id ASC, principal DESC, ordem ASC, id ASC'
+    );
+    $statement->execute($params);
+
+    $grouped = [];
+    foreach ($statement->fetchAll() as $image) {
+        $productId = (int) $image['produto_id'];
+        $grouped[$productId][] = $image;
+    }
+
+    return $grouped;
+}
+
 function product_upload_files(int $productId, string $altText): array
 {
     if (empty($_FILES['imagens']) || !is_array($_FILES['imagens']['name'] ?? null)) {

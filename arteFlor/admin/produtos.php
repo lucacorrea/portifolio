@@ -1,8 +1,9 @@
 <?php
 $adminTitle = 'Produtos';
 $activeAdmin = 'produtos';
-require_once __DIR__ . '/../includes/admin-head.php';
+$pageScripts = ['js/products-list.js'];
 require_once __DIR__ . '/../includes/products.php';
+$adminUser = require_admin();
 
 $filters = [
     'search' => trim((string) ($_GET['search'] ?? '')),
@@ -13,6 +14,46 @@ $filters = [
 $produtos = product_list($filters);
 $categorias = product_categories();
 $stats = product_stats();
+$productImagesById = product_images_by_product_ids(array_column($produtos, 'id'));
+$modalProducts = array_map(static function (array $product) use ($productImagesById): array {
+    $productId = (int) $product['id'];
+    $images = array_map(static function (array $image): array {
+        return [
+            'url' => product_public_image_url($image['url'] ?? ''),
+            'alt' => (string) ($image['texto_alternativo'] ?? 'Imagem do produto'),
+            'principal' => !empty($image['principal']),
+        ];
+    }, $productImagesById[$productId] ?? []);
+
+    if (empty($images) && !empty($product['imagem'])) {
+        $images[] = [
+            'url' => product_public_image_url($product['imagem']),
+            'alt' => (string) ($product['nome'] ?? 'Imagem do produto'),
+            'principal' => true,
+        ];
+    }
+
+    return [
+        'id' => $productId,
+        'nome' => (string) ($product['nome'] ?? ''),
+        'sku' => (string) ($product['sku'] ?? ''),
+        'slug' => (string) ($product['slug'] ?? ''),
+        'categoria' => (string) ($product['categoria_nome'] ?? 'Sem categoria'),
+        'status' => status_label((string) ($product['status'] ?? 'disponivel')),
+        'preco' => money_br((float) ($product['preco'] ?? 0)),
+        'precoPromocional' => (float) ($product['preco_promocional'] ?? 0) > 0 ? money_br((float) $product['preco_promocional']) : '',
+        'estoque' => (int) ($product['estoque'] ?? 0),
+        'estoqueMinimo' => (int) ($product['estoque_minimo'] ?? 0),
+        'descricaoCurta' => (string) ($product['descricao_curta'] ?? ''),
+        'descricaoCompleta' => (string) ($product['descricao_completa'] ?? ''),
+        'destaque' => !empty($product['destaque']) ? 'Sim' : 'Normal',
+        'sobEncomenda' => !empty($product['sob_encomenda']) ? 'Sim' : 'Não',
+        'images' => $images,
+        'editUrl' => site_url('admin/produto-form.php?id=' . $productId),
+    ];
+}, $produtos);
+
+require_once __DIR__ . '/../includes/admin-head.php';
 ?>
 <section class="admin-page-hero">
   <div class="admin-page-title">
@@ -114,7 +155,7 @@ $stats = product_stats();
         <td><span class="<?= !empty($p['destaque']) ? 'admin-badge-soft' : 'admin-badge-info' ?>"><?= !empty($p['destaque']) ? 'Sim' : 'Normal' ?></span></td>
         <td>
           <div class="admin-table-actions">
-            <a href="<?= site_url('produto.php?slug=' . rawurlencode($p['slug'] ?? '')) ?>" target="_blank" rel="noopener">Ver</a>
+            <button type="button" data-product-modal-open="<?= (int) $p['id'] ?>">Ver</button>
             <a href="<?= site_url('admin/produto-form.php?id=' . (int) $p['id']) ?>">Editar</a>
           </div>
         </td>
@@ -122,5 +163,34 @@ $stats = product_stats();
     <?php endforeach; ?>
     </tbody>
   </table>
+</div>
+<script type="application/json" id="productListPayload"><?= json_encode($modalProducts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+<div class="admin-modal-backdrop" data-product-modal hidden>
+  <section class="admin-product-modal" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+    <button class="admin-modal-close" type="button" data-product-modal-close aria-label="Fechar modal">&times;</button>
+    <div class="admin-product-modal-media" data-product-modal-media>
+      <div class="admin-upload-placeholder">A&F</div>
+    </div>
+    <div class="admin-product-modal-content">
+      <span class="badge" data-product-modal-category>Categoria</span>
+      <h2 id="productModalTitle" data-product-modal-title>Produto</h2>
+      <p data-product-modal-description>Detalhes do produto selecionado.</p>
+      <div class="admin-product-modal-price">
+        <strong data-product-modal-price>R$ 0,00</strong>
+        <span data-product-modal-promo hidden></span>
+      </div>
+      <dl class="admin-product-modal-meta">
+        <div><dt>SKU</dt><dd data-product-modal-sku>-</dd></div>
+        <div><dt>Status</dt><dd data-product-modal-status>-</dd></div>
+        <div><dt>Estoque</dt><dd data-product-modal-stock>-</dd></div>
+        <div><dt>Destaque</dt><dd data-product-modal-highlight>-</dd></div>
+      </dl>
+      <div class="admin-product-modal-thumbs" data-product-modal-thumbs></div>
+      <div class="admin-action-row">
+        <a class="btn btn-primary" data-product-modal-edit href="<?= site_url('admin/produto-form.php') ?>">Editar produto</a>
+        <button class="btn btn-soft" type="button" data-product-modal-close>Fechar</button>
+      </div>
+    </div>
+  </section>
 </div>
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>
