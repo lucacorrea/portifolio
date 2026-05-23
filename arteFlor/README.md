@@ -4,15 +4,47 @@ Projeto demonstrativo em PHP, HTML, CSS e JavaScript puro para catálogo de flor
 
 ## Importante
 
-Este pacote é somente front-end/MVP visual:
+Este pacote começou como front-end/MVP visual e agora possui estrutura inicial de banco e conexão PDO segura:
 
 - sem backend real;
-- sem banco de dados;
 - sem autenticação real;
 - sem pagamento real;
 - sem API real;
+- banco MySQL/MariaDB já modelado em `database/schema.sql`;
+- conexão obrigatória configurada por `.env`;
 - pedidos e vendas são simulados com `localStorage`;
 - imagens são externas e ilustrativas.
+
+As telas públicas e administrativas ainda usam `assets/data/produtos.json` e `localStorage` até a próxima etapa de persistência real.
+
+## Banco de dados e .env
+
+1. Com o banco já criado na hospedagem, importe as tabelas:
+
+```bash
+mysql -u usuario_do_banco -p nome_do_banco < database/schema.sql
+```
+
+2. Crie o arquivo `.env` na raiz do projeto hospedado, usando `.env.example` como base:
+
+```txt
+APP_ENV=production
+APP_DEBUG=false
+DB_CONNECTION=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_SOCKET=
+DB_DATABASE=arteflor
+DB_USERNAME=usuario_do_banco
+DB_PASSWORD=senha_do_banco
+DB_CHARSET=utf8mb4
+DB_TIMEOUT=5
+DB_ALLOW_EMPTY_PASSWORD=false
+```
+
+3. Garanta que a extensão `pdo_mysql` esteja ativa no PHP da hospedagem.
+
+O sistema abre a conexão com o banco no bootstrap. Em produção, falhas retornam uma página 503 genérica e os detalhes ficam apenas no log do servidor.
 
 ## Publicação na hospedagem
 

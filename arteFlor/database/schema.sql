@@ -1,13 +1,3 @@
--- Arte&Flor - estrutura inicial do banco de dados.
--- Dialeto alvo: MySQL 8+ / MariaDB 10.5+.
--- Este arquivo cria apenas schema e tabelas. Nao inclui INSERT, DROP ou seed.
-
-CREATE DATABASE IF NOT EXISTS arteflor
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE arteflor;
-
 CREATE TABLE IF NOT EXISTS usuarios_admin (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   nome VARCHAR(140) NOT NULL,
