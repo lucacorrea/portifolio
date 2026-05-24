@@ -30,6 +30,10 @@
 
     <span class="admin-menu-label">Gestão</span>
     <a class="<?= ($activeAdmin ?? '') === 'relatorios' ? 'active' : '' ?>" href="<?= site_url('admin/relatorios.php') ?>">Relatórios</a>
+    <?php if (($adminUser['perfil'] ?? '') === 'admin'): ?>
+      <a class="<?= ($activeAdmin ?? '') === 'usuarios' ? 'active' : '' ?>" href="<?= site_url('admin/usuarios.php') ?>">Usuários</a>
+      <a class="<?= ($activeAdmin ?? '') === 'usuario-form' ? 'active' : '' ?>" href="<?= site_url('admin/usuario-form.php') ?>">Cadastrar usuário</a>
+    <?php endif; ?>
     <a class="<?= ($activeAdmin ?? '') === 'integracoes' ? 'active' : '' ?>" href="<?= site_url('admin/integracoes.php') ?>">Integrações</a>
 
     <span class="admin-menu-label">Site</span>
