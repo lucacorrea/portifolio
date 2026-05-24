@@ -8,3 +8,5 @@ const TWILIO_WHATSAPP_FROM = '';
 const EVOLUTION_API_URL = '';
 const EVOLUTION_API_KEY = '';
 const EVOLUTION_INSTANCE = 'arteflor';
+const BAILEYS_BRIDGE_URL = '';
+const BAILEYS_BRIDGE_API_KEY = '';
