@@ -76,9 +76,11 @@ const TWILIO_WHATSAPP_FROM = '';
 4. Use `simulação/log` para testar sem token.
 5. Para envio real via Meta, configure modo `Meta Cloud API`, Phone Number ID e token no `config.local.php` ou no campo secreto do admin.
 6. Para envio real via Twilio, configure modo `Twilio WhatsApp`, Account SID, Auth Token e remetente `whatsapp:+E.164`.
+7. Para teste simples, use o bloco `Conectar fácil` em `/admin/integracoes.php`: ele gera QR de conversa da empresa e QR do Twilio Sandbox quando houver código `join` configurado.
 
 A mensagem pós-compra é editável e aceita variáveis como `{{codigo}}`, `{{cliente}}`, `{{total}}`, `{{itens}}` e `{{link_pedido}}`.
 No Twilio WhatsApp, mensagens livres dependem da janela de atendimento de 24 horas; fora dela, use um template aprovado via Content SID.
+O QR Code do admin não captura sessão do WhatsApp Web; ele apenas facilita abrir a conversa oficial de teste/conexão.
 
 ## Upload de produtos
 

@@ -50,6 +50,14 @@ $activeAdmin = 'integracoes';
 $config = whatsapp_config();
 $notifications = whatsapp_recent_notifications(12);
 $csrf = admin_csrf_token();
+$companyConnectText = 'Olá! Quero testar a conexão do WhatsApp da Arte&Flor.';
+$companyChatLink = whatsapp_wa_me_link((string) $config['whatsapp_company_number'], $companyConnectText);
+$companyQrImage = $companyChatLink ? whatsapp_qr_image_url($companyChatLink, 220) : '';
+$sandboxJoinCode = whatsapp_clean_sandbox_join_code($config['twilio_sandbox_join_code'] ?? '');
+$sandboxNumber = whatsapp_clean_sandbox_number($config['twilio_sandbox_number'] ?? '14155238886');
+$sandboxJoinText = $sandboxJoinCode !== '' ? 'join ' . $sandboxJoinCode : '';
+$sandboxChatLink = $sandboxJoinText !== '' ? whatsapp_wa_me_link($sandboxNumber, $sandboxJoinText, false) : null;
+$sandboxQrImage = $sandboxChatLink ? whatsapp_qr_image_url($sandboxChatLink, 220) : '';
 $successMessages = ['salvo' => 'Configurações salvas com segurança.'];
 $errorMessages = ['csrf' => 'Sessão expirada. Recarregue a página e tente novamente.', 'salvar' => 'Não foi possível salvar as configurações.'];
 $successKey = is_string($_GET['success'] ?? null) ? (string) $_GET['success'] : '';
@@ -86,6 +94,54 @@ require_once __DIR__ . '/../includes/admin-head.php';
   </div>
 </section>
 
+<section class="admin-form-card whatsapp-connect-panel">
+  <div class="admin-panel-header">
+    <div>
+      <span class="badge">Conectar fácil</span>
+      <h2>QR Code WhatsApp</h2>
+      <p>Use o QR para abrir a conversa certa no WhatsApp. O envio automático continua pela API configurada abaixo.</p>
+    </div>
+    <span class="admin-badge-info">Sem WhatsApp Web</span>
+  </div>
+
+  <div class="whatsapp-connect-grid">
+    <article class="whatsapp-qr-card">
+      <div>
+        <strong>WhatsApp da empresa</strong>
+        <p>Escaneie para abrir conversa com o número salvo em “Número da empresa”.</p>
+      </div>
+      <?php if ($companyChatLink): ?>
+        <img src="<?= e($companyQrImage) ?>" alt="QR Code para abrir WhatsApp da empresa" loading="lazy">
+        <a class="btn btn-soft" href="<?= e($companyChatLink) ?>" target="_blank" rel="noopener">Abrir conversa</a>
+        <small><?= e(whatsapp_link_phone_digits((string) $config['whatsapp_company_number'])) ?></small>
+      <?php else: ?>
+        <div class="qr-placeholder">QR</div>
+        <small>Informe o número da empresa e salve para gerar o QR.</small>
+      <?php endif; ?>
+    </article>
+
+    <article class="whatsapp-qr-card">
+      <div>
+        <strong>Twilio Sandbox</strong>
+        <p>Para testes, escaneie com o WhatsApp que vai receber mensagens e envie o código join.</p>
+      </div>
+      <?php if ($sandboxChatLink): ?>
+        <img src="<?= e($sandboxQrImage) ?>" alt="QR Code para entrar no Twilio WhatsApp Sandbox" loading="lazy">
+        <a class="btn btn-soft" href="<?= e($sandboxChatLink) ?>" target="_blank" rel="noopener">Entrar no sandbox</a>
+        <small><?= e($sandboxJoinText) ?> para +<?= e($sandboxNumber) ?></small>
+      <?php else: ?>
+        <div class="qr-placeholder">JOIN</div>
+        <small>Informe o código join do Twilio Sandbox e salve para gerar o QR.</small>
+      <?php endif; ?>
+    </article>
+  </div>
+
+  <div class="admin-alert-card admin-alert-warning">
+    <strong>Importante</strong>
+    Este QR não captura sessão do WhatsApp Web. Ele facilita a conexão oficial para conversa/teste; para o sistema enviar mensagens sozinho, configure Meta Cloud API ou Twilio WhatsApp.
+  </div>
+</section>
+
 <form class="admin-form-card" method="post" action="<?= site_url('admin/integracoes.php') ?>">
   <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
   <input type="hidden" name="action" value="save">
@@ -117,6 +173,8 @@ require_once __DIR__ . '/../includes/admin-head.php';
     <label class="admin-field"><span>Twilio Auth Token</span><input type="password" name="twilio_auth_token" value="" placeholder="Preencha apenas para alterar"></label>
     <label class="admin-field"><span>Twilio WhatsApp From</span><input name="twilio_whatsapp_from" value="<?= e((string) $config['twilio_whatsapp_from']) ?>" placeholder="whatsapp:+14155238886"></label>
     <label class="admin-field"><span>Twilio Content SID</span><input name="twilio_content_sid" value="<?= e((string) $config['twilio_content_sid']) ?>" placeholder="HX... para template aprovado"></label>
+    <label class="admin-field"><span>Número Twilio Sandbox</span><input name="twilio_sandbox_number" value="<?= e($sandboxNumber) ?>" placeholder="14155238886"></label>
+    <label class="admin-field"><span>Código join sandbox</span><input name="twilio_sandbox_join_code" value="<?= e($sandboxJoinCode) ?>" placeholder="seu-codigo"></label>
     <label class="admin-field"><span>Template name</span><input name="whatsapp_template_name" value="<?= e((string) $config['whatsapp_template_name']) ?>"></label>
     <label class="admin-field"><span>Idioma template</span><input name="whatsapp_template_language" value="<?= e((string) $config['whatsapp_template_language']) ?>"></label>
     <label class="admin-field"><span>Enviar ao criar pedido</span><select name="whatsapp_send_after_order"><option value="1" <?= $config['whatsapp_send_after_order'] ? 'selected' : '' ?>>Sim</option><option value="0" <?= !$config['whatsapp_send_after_order'] ? 'selected' : '' ?>>Não</option></select></label>

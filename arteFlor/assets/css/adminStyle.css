@@ -2201,6 +2201,57 @@ body.admin-modal-open {
   font-weight: 950;
 }
 
+.whatsapp-connect-panel {
+  margin-bottom: 20px;
+}
+
+.whatsapp-connect-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.whatsapp-qr-card {
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: 12px;
+  align-content: start;
+  min-height: 100%;
+  padding: 18px;
+  border-radius: var(--admin-radius-lg);
+  border: 1px solid var(--admin-line);
+  background: var(--admin-surface-2);
+}
+
+.whatsapp-qr-card strong {
+  display: block;
+  color: var(--admin-primary);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.whatsapp-qr-card p,
+.whatsapp-qr-card small {
+  margin: 4px 0 0;
+  color: var(--admin-muted);
+  line-height: 1.45;
+}
+
+.whatsapp-qr-card img {
+  width: min(100%, 220px);
+  aspect-ratio: 1;
+  justify-self: center;
+  padding: 10px;
+  border-radius: var(--admin-radius-md);
+  border: 1px solid var(--admin-line);
+  background: #fff;
+  object-fit: contain;
+}
+
+.whatsapp-qr-card .btn {
+  justify-self: center;
+}
+
 /* ------------------------------------------------------------------------
    LOGIN
 ------------------------------------------------------------------------ */
@@ -2361,7 +2412,8 @@ body.admin-modal-open {
   .admin-grid-2,
   .admin-grid-3,
   .priority-orders,
-  .integration-grid {
+  .integration-grid,
+  .whatsapp-connect-grid {
     grid-template-columns: 1fr;
   }
 

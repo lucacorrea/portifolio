@@ -68,6 +68,8 @@ function whatsapp_config(): array
         'twilio_auth_token' => $twilioTokenFromLocal !== '' ? $twilioTokenFromLocal : (integration_setting('twilio_auth_token', '') ?: ''),
         'twilio_whatsapp_from' => $twilioFromLocal !== '' ? $twilioFromLocal : (integration_setting('twilio_whatsapp_from', '') ?: ''),
         'twilio_content_sid' => integration_setting('twilio_content_sid', '') ?: '',
+        'twilio_sandbox_number' => integration_setting('twilio_sandbox_number', '14155238886') ?: '14155238886',
+        'twilio_sandbox_join_code' => integration_setting('twilio_sandbox_join_code', '') ?: '',
     ];
 }
 
@@ -104,6 +106,8 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
     integration_setting_set('twilio_account_sid', order_clean_text($input['twilio_account_sid'] ?? '', 80), 'Twilio Account SID', false, $adminId);
     integration_setting_set('twilio_whatsapp_from', order_clean_text($input['twilio_whatsapp_from'] ?? '', 60), 'Remetente WhatsApp Twilio', false, $adminId);
     integration_setting_set('twilio_content_sid', order_clean_text($input['twilio_content_sid'] ?? '', 80), 'Twilio Content SID para template aprovado', false, $adminId);
+    integration_setting_set('twilio_sandbox_number', whatsapp_clean_sandbox_number($input['twilio_sandbox_number'] ?? '14155238886'), 'Número Twilio Sandbox WhatsApp', false, $adminId);
+    integration_setting_set('twilio_sandbox_join_code', whatsapp_clean_sandbox_join_code($input['twilio_sandbox_join_code'] ?? ''), 'Código join do Twilio Sandbox', false, $adminId);
 
     $token = trim((string) ($input['whatsapp_business_token'] ?? ''));
     if ($token !== '') {
@@ -144,6 +148,54 @@ function whatsapp_normalize_phone(string $phone): ?string
     }
 
     return null;
+}
+
+function whatsapp_clean_sandbox_number(mixed $value): string
+{
+    $digits = preg_replace('/\D+/', '', order_clean_text($value, 40)) ?? '';
+
+    return $digits !== '' ? $digits : '14155238886';
+}
+
+function whatsapp_clean_sandbox_join_code(mixed $value): string
+{
+    $code = trim((string) $value);
+    $code = preg_replace('/^join\s+/i', '', $code) ?? $code;
+    $code = preg_replace('/\s+/', ' ', $code) ?? '';
+
+    return order_clean_text($code, 80);
+}
+
+function whatsapp_link_phone_digits(string $phone, bool $defaultBrazil = true): string
+{
+    $digits = preg_replace('/\D+/', '', str_replace('whatsapp:', '', $phone)) ?? '';
+    if ($defaultBrazil && $digits !== '' && !str_starts_with($digits, '55') && (strlen($digits) === 10 || strlen($digits) === 11)) {
+        $digits = '55' . $digits;
+    }
+
+    return $digits;
+}
+
+function whatsapp_wa_me_link(string $phone, string $message = '', bool $defaultBrazil = true): ?string
+{
+    $digits = whatsapp_link_phone_digits($phone, $defaultBrazil);
+    if (strlen($digits) < 10 || strlen($digits) > 15) {
+        return null;
+    }
+
+    $url = 'https://wa.me/' . $digits;
+    if ($message !== '') {
+        $url .= '?text=' . rawurlencode($message);
+    }
+
+    return $url;
+}
+
+function whatsapp_qr_image_url(string $payload, int $size = 220): string
+{
+    $size = max(140, min(320, $size));
+
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=' . $size . 'x' . $size . '&margin=12&data=' . rawurlencode($payload);
 }
 
 function whatsapp_public_order_link(string $code): string
