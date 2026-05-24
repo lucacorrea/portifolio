@@ -51,6 +51,8 @@ function whatsapp_config(): array
     $evolutionUrlFromLocal = defined('EVOLUTION_API_URL') ? (string) EVOLUTION_API_URL : '';
     $evolutionKeyFromLocal = defined('EVOLUTION_API_KEY') ? (string) EVOLUTION_API_KEY : '';
     $evolutionInstanceFromLocal = defined('EVOLUTION_INSTANCE') ? (string) EVOLUTION_INSTANCE : '';
+    $bridgeUrlFromLocal = defined('BAILEYS_BRIDGE_URL') ? (string) BAILEYS_BRIDGE_URL : '';
+    $bridgeKeyFromLocal = defined('BAILEYS_BRIDGE_API_KEY') ? (string) BAILEYS_BRIDGE_API_KEY : '';
 
     return [
         'pix_key' => integration_setting('pix_key', 'arteflor@pix.demo'),
@@ -77,6 +79,9 @@ function whatsapp_config(): array
         'evolution_api_key' => $evolutionKeyFromLocal !== '' ? $evolutionKeyFromLocal : (integration_setting('evolution_api_key', '') ?: ''),
         'evolution_instance' => $evolutionInstanceFromLocal !== '' ? $evolutionInstanceFromLocal : (integration_setting('evolution_instance', 'arteflor') ?: 'arteflor'),
         'evolution_owner_number' => integration_setting('evolution_owner_number', '') ?: '',
+        'baileys_bridge_url' => $bridgeUrlFromLocal !== '' ? whatsapp_normalize_base_url($bridgeUrlFromLocal) : (integration_setting('baileys_bridge_url', '') ?: ''),
+        'baileys_bridge_api_key' => $bridgeKeyFromLocal !== '' ? $bridgeKeyFromLocal : (integration_setting('baileys_bridge_api_key', '') ?: ''),
+        'baileys_owner_number' => integration_setting('baileys_owner_number', '') ?: '',
     ];
 }
 
@@ -93,7 +98,7 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
     $sendAfterOrder = !empty($input['whatsapp_send_after_order']) ? '1' : '0';
     $sendOnStatusChange = !empty($input['whatsapp_send_on_status_change']) ? '1' : '0';
     $mode = (string) ($input['whatsapp_mode'] ?? 'simulacao');
-    if (!in_array($mode, ['simulacao', 'cloud_api', 'twilio', 'evolution_api'], true)) {
+    if (!in_array($mode, ['simulacao', 'baileys_bridge', 'cloud_api', 'twilio', 'evolution_api'], true)) {
         $mode = 'simulacao';
     }
 
@@ -110,14 +115,24 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
     integration_setting_set('whatsapp_company_number', order_clean_text($input['whatsapp_company_number'] ?? '', 40), 'Número comercial da empresa', false, $adminId);
     integration_setting_set('whatsapp_send_after_order', $sendAfterOrder, 'Enviar WhatsApp ao criar pedido', false, $adminId);
     integration_setting_set('whatsapp_send_on_status_change', $sendOnStatusChange, 'Enviar WhatsApp ao mudar status', false, $adminId);
+
+    integration_setting_set('baileys_bridge_url', whatsapp_normalize_base_url($input['baileys_bridge_url'] ?? ''), 'URL do bridge Baileys ArteFlor', false, $adminId);
+    integration_setting_set('baileys_owner_number', whatsapp_link_phone_digits((string) ($input['baileys_owner_number'] ?? '')), 'Número conectado no bridge Baileys', false, $adminId);
+
     integration_setting_set('twilio_account_sid', order_clean_text($input['twilio_account_sid'] ?? '', 80), 'Twilio Account SID', false, $adminId);
     integration_setting_set('twilio_whatsapp_from', order_clean_text($input['twilio_whatsapp_from'] ?? '', 60), 'Remetente WhatsApp Twilio', false, $adminId);
     integration_setting_set('twilio_content_sid', order_clean_text($input['twilio_content_sid'] ?? '', 80), 'Twilio Content SID para template aprovado', false, $adminId);
     integration_setting_set('twilio_sandbox_number', whatsapp_clean_sandbox_number($input['twilio_sandbox_number'] ?? '14155238886'), 'Número Twilio Sandbox WhatsApp', false, $adminId);
     integration_setting_set('twilio_sandbox_join_code', whatsapp_clean_sandbox_join_code($input['twilio_sandbox_join_code'] ?? ''), 'Código join do Twilio Sandbox', false, $adminId);
-    integration_setting_set('evolution_api_url', whatsapp_normalize_base_url($input['evolution_api_url'] ?? ''), 'URL do gateway Evolution API', false, $adminId);
-    integration_setting_set('evolution_instance', whatsapp_clean_instance_name($input['evolution_instance'] ?? 'arteflor'), 'Instância Evolution API', false, $adminId);
-    integration_setting_set('evolution_owner_number', whatsapp_link_phone_digits((string) ($input['evolution_owner_number'] ?? '')), 'Número conectado no Evolution API', false, $adminId);
+
+    integration_setting_set('evolution_api_url', whatsapp_normalize_base_url($input['evolution_api_url'] ?? ''), 'URL do gateway Evolution API legado', false, $adminId);
+    integration_setting_set('evolution_instance', whatsapp_clean_instance_name($input['evolution_instance'] ?? 'arteflor'), 'Instância Evolution API legado', false, $adminId);
+    integration_setting_set('evolution_owner_number', whatsapp_link_phone_digits((string) ($input['evolution_owner_number'] ?? '')), 'Número conectado no Evolution API legado', false, $adminId);
+
+    $bridgeKey = trim((string) ($input['baileys_bridge_api_key'] ?? ''));
+    if ($bridgeKey !== '') {
+        integration_setting_set('baileys_bridge_api_key', $bridgeKey, 'API key secreta do bridge Baileys ArteFlor', true, $adminId);
+    }
 
     $token = trim((string) ($input['whatsapp_business_token'] ?? ''));
     if ($token !== '') {
@@ -131,27 +146,28 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
 
     $evolutionKey = trim((string) ($input['evolution_api_key'] ?? ''));
     if ($evolutionKey !== '') {
-        integration_setting_set('evolution_api_key', $evolutionKey, 'API key secreta do Evolution API', true, $adminId);
+        integration_setting_set('evolution_api_key', $evolutionKey, 'API key secreta do Evolution API legado', true, $adminId);
     }
 }
 
 function whatsapp_save_qr_settings(array $input, ?int $adminId = null): void
 {
-    integration_setting_set('whatsapp_enabled', '1', 'Ativa notificações WhatsApp pós-compra', false, $adminId);
-    integration_setting_set('whatsapp_mode', 'evolution_api', 'Modo da integração WhatsApp', false, $adminId);
-    integration_setting_set('whatsapp_send_after_order', '1', 'Enviar WhatsApp ao criar pedido', false, $adminId);
-    integration_setting_set('evolution_api_url', whatsapp_normalize_base_url($input['evolution_api_url'] ?? ''), 'URL do gateway Evolution API', false, $adminId);
-    integration_setting_set('evolution_instance', whatsapp_clean_instance_name($input['evolution_instance'] ?? 'arteflor'), 'Instância Evolution API', false, $adminId);
-    integration_setting_set('evolution_owner_number', whatsapp_link_phone_digits((string) ($input['evolution_owner_number'] ?? '')), 'Número conectado no Evolution API', false, $adminId);
+    $bridgeUrl = $input['baileys_bridge_url'] ?? ($input['evolution_api_url'] ?? '');
+    $bridgeKey = trim((string) ($input['baileys_bridge_api_key'] ?? ($input['evolution_api_key'] ?? '')));
+    $ownerNumber = whatsapp_link_phone_digits((string) ($input['baileys_owner_number'] ?? ($input['evolution_owner_number'] ?? '')));
 
-    $companyNumber = whatsapp_link_phone_digits((string) ($input['evolution_owner_number'] ?? ''));
-    if ($companyNumber !== '') {
-        integration_setting_set('whatsapp_company_number', $companyNumber, 'Número comercial da empresa', false, $adminId);
+    integration_setting_set('whatsapp_enabled', '1', 'Ativa notificações WhatsApp pós-compra', false, $adminId);
+    integration_setting_set('whatsapp_mode', 'baileys_bridge', 'Modo da integração WhatsApp', false, $adminId);
+    integration_setting_set('whatsapp_send_after_order', '1', 'Enviar WhatsApp ao criar pedido', false, $adminId);
+    integration_setting_set('baileys_bridge_url', whatsapp_normalize_base_url($bridgeUrl), 'URL do bridge Baileys ArteFlor', false, $adminId);
+    integration_setting_set('baileys_owner_number', $ownerNumber, 'Número conectado no bridge Baileys', false, $adminId);
+
+    if ($ownerNumber !== '') {
+        integration_setting_set('whatsapp_company_number', $ownerNumber, 'Número comercial da empresa', false, $adminId);
     }
 
-    $evolutionKey = trim((string) ($input['evolution_api_key'] ?? ''));
-    if ($evolutionKey !== '') {
-        integration_setting_set('evolution_api_key', $evolutionKey, 'API key secreta do Evolution API', true, $adminId);
+    if ($bridgeKey !== '') {
+        integration_setting_set('baileys_bridge_api_key', $bridgeKey, 'API key secreta do bridge Baileys ArteFlor', true, $adminId);
     }
 }
 
@@ -178,7 +194,7 @@ function whatsapp_normalize_phone(string $phone): ?string
         $digits = '55' . $digits;
     }
 
-    if (str_starts_with($digits, '55') && strlen($digits) >= 12 && strlen($digits) <= 13) {
+    if (strlen($digits) >= 10 && strlen($digits) <= 15) {
         return $digits;
     }
 
@@ -256,18 +272,6 @@ function whatsapp_clean_instance_name(mixed $value): string
     return $name !== '' ? $name : 'arteflor';
 }
 
-function whatsapp_evolution_configured(array $config): bool
-{
-    return trim((string) $config['evolution_api_url']) !== ''
-        && trim((string) $config['evolution_api_key']) !== ''
-        && trim((string) $config['evolution_instance']) !== '';
-}
-
-function whatsapp_evolution_endpoint(array $config, string $path): string
-{
-    return rtrim((string) $config['evolution_api_url'], '/') . '/' . ltrim($path, '/');
-}
-
 function whatsapp_http_get_json(string $url, array $headers = []): array
 {
     if (function_exists('curl_init')) {
@@ -311,7 +315,7 @@ function whatsapp_http_get_json(string $url, array $headers = []): array
         'ok' => $response !== false && $status >= 200 && $status < 300,
         'status' => $status,
         'body' => is_string($response) ? $response : '',
-        'error' => $response === false ? 'Falha de rede ao chamar Evolution API.' : '',
+        'error' => $response === false ? 'Falha de rede ao chamar API WhatsApp.' : '',
     ];
 }
 
@@ -320,6 +324,202 @@ function whatsapp_json_body(array $result): array
     $decoded = json_decode((string) ($result['body'] ?? ''), true);
 
     return is_array($decoded) ? $decoded : [];
+}
+
+function whatsapp_http_post_json(string $url, array $headers, array $payload): array
+{
+    $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($body === false) {
+        return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'Falha ao preparar JSON da mensagem.'];
+    }
+
+    if (function_exists('curl_init')) {
+        $curl = curl_init($url);
+        curl_setopt_array($curl, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $headers),
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_TIMEOUT => 12,
+        ]);
+        $response = curl_exec($curl);
+        $error = curl_error($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        curl_close($curl);
+
+        return [
+            'ok' => $error === '' && $status >= 200 && $status < 300,
+            'status' => $status,
+            'body' => is_string($response) ? $response : '',
+            'error' => $error,
+        ];
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", array_merge(['Content-Type: application/json'], $headers)),
+            'content' => $body,
+            'timeout' => 12,
+            'ignore_errors' => true,
+        ],
+    ]);
+    $response = @file_get_contents($url, false, $context);
+    $status = 0;
+    foreach (($http_response_header ?? []) as $header) {
+        if (preg_match('/^HTTP\/\S+\s+(\d+)/', $header, $matches)) {
+            $status = (int) $matches[1];
+            break;
+        }
+    }
+
+    return [
+        'ok' => $response !== false && $status >= 200 && $status < 300,
+        'status' => $status,
+        'body' => is_string($response) ? $response : '',
+        'error' => $response === false ? 'Falha de rede ao chamar API WhatsApp.' : '',
+    ];
+}
+
+function whatsapp_http_post_form(string $url, string $username, string $password, array $payload): array
+{
+    $body = http_build_query($payload);
+    $authHeader = 'Authorization: Basic ' . base64_encode($username . ':' . $password);
+
+    if (function_exists('curl_init')) {
+        $curl = curl_init($url);
+        curl_setopt_array($curl, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded', $authHeader],
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_TIMEOUT => 12,
+        ]);
+        $response = curl_exec($curl);
+        $error = curl_error($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        curl_close($curl);
+
+        return [
+            'ok' => $error === '' && $status >= 200 && $status < 300,
+            'status' => $status,
+            'body' => is_string($response) ? $response : '',
+            'error' => $error,
+        ];
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/x-www-form-urlencoded\r\n" . $authHeader,
+            'content' => $body,
+            'timeout' => 12,
+            'ignore_errors' => true,
+        ],
+    ]);
+    $response = @file_get_contents($url, false, $context);
+    $status = 0;
+    foreach (($http_response_header ?? []) as $header) {
+        if (preg_match('/^HTTP\/\S+\s+(\d+)/', $header, $matches)) {
+            $status = (int) $matches[1];
+            break;
+        }
+    }
+
+    return [
+        'ok' => $response !== false && $status >= 200 && $status < 300,
+        'status' => $status,
+        'body' => is_string($response) ? $response : '',
+        'error' => $response === false ? 'Falha de rede ao chamar Twilio Messaging API.' : '',
+    ];
+}
+
+function whatsapp_bridge_configured(array $config): bool
+{
+    return trim((string) ($config['baileys_bridge_url'] ?? '')) !== ''
+        && trim((string) ($config['baileys_bridge_api_key'] ?? '')) !== '';
+}
+
+function whatsapp_bridge_endpoint(array $config, string $path): string
+{
+    return rtrim((string) $config['baileys_bridge_url'], '/') . '/' . ltrim($path, '/');
+}
+
+function whatsapp_bridge_headers(array $config): array
+{
+    return [
+        'X-API-Key: ' . (string) $config['baileys_bridge_api_key'],
+        'Authorization: Bearer ' . (string) $config['baileys_bridge_api_key'],
+    ];
+}
+
+function whatsapp_bridge_prepare_qr(array $config): array
+{
+    if (!whatsapp_bridge_configured($config)) {
+        return [
+            'success' => false,
+            'status' => 'erro',
+            'message' => 'Configure URL e API key do bridge Baileys antes de gerar o QR.',
+        ];
+    }
+
+    $status = whatsapp_http_get_json(whatsapp_bridge_endpoint($config, '/status'), whatsapp_bridge_headers($config));
+    $statusData = whatsapp_json_body($status);
+
+    if ($status['ok'] && !empty($statusData['connected'])) {
+        return [
+            'success' => true,
+            'status' => 'connected',
+            'message' => 'WhatsApp conectado no bridge Baileys.',
+            'number' => (string) ($statusData['number'] ?? ''),
+            'raw' => $status['body'],
+        ];
+    }
+
+    $qrResponse = whatsapp_http_get_json(whatsapp_bridge_endpoint($config, '/qrcode'), whatsapp_bridge_headers($config));
+    $qrData = whatsapp_json_body($qrResponse);
+    $qr = (string) ($qrData['qr'] ?? $qrData['qrcode'] ?? '');
+
+    if ($qrResponse['ok'] && $qr !== '') {
+        return [
+            'success' => true,
+            'status' => 'qr',
+            'message' => (string) ($qrData['message'] ?? 'Escaneie o QR com o WhatsApp da empresa.'),
+            'qr' => $qr,
+            'number' => (string) ($qrData['number'] ?? ''),
+            'raw' => $qrResponse['body'],
+        ];
+    }
+
+    if ($qrResponse['ok']) {
+        return [
+            'success' => false,
+            'status' => (string) ($qrData['status'] ?? 'aguardando'),
+            'message' => (string) ($qrData['message'] ?? 'QR ainda não disponível. Aguarde alguns segundos e clique novamente.'),
+            'raw' => $qrResponse['body'],
+        ];
+    }
+
+    $error = $qrResponse['error'] !== '' ? $qrResponse['error'] : 'Bridge retornou HTTP ' . $qrResponse['status'] . '.';
+
+    return [
+        'success' => false,
+        'status' => 'erro',
+        'message' => 'Não foi possível consultar o QR no bridge Baileys. ' . $error,
+        'raw' => $qrResponse['body'],
+    ];
+}
+
+function whatsapp_evolution_configured(array $config): bool
+{
+    return trim((string) ($config['evolution_api_url'] ?? '')) !== ''
+        && trim((string) ($config['evolution_api_key'] ?? '')) !== ''
+        && trim((string) ($config['evolution_instance'] ?? '')) !== '';
+}
+
+function whatsapp_evolution_endpoint(array $config, string $path): string
+{
+    return rtrim((string) $config['evolution_api_url'], '/') . '/' . ltrim($path, '/');
 }
 
 function whatsapp_evolution_create_instance(array $config): array
@@ -554,114 +754,6 @@ function whatsapp_log_notification(
     return (int) db()->lastInsertId();
 }
 
-function whatsapp_http_post_json(string $url, array $headers, array $payload): array
-{
-    $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($body === false) {
-        return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'Falha ao preparar JSON da mensagem.'];
-    }
-
-    if (function_exists('curl_init')) {
-        $curl = curl_init($url);
-        curl_setopt_array($curl, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $headers),
-            CURLOPT_POSTFIELDS => $body,
-            CURLOPT_TIMEOUT => 12,
-        ]);
-        $response = curl_exec($curl);
-        $error = curl_error($curl);
-        $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
-
-        return [
-            'ok' => $error === '' && $status >= 200 && $status < 300,
-            'status' => $status,
-            'body' => is_string($response) ? $response : '',
-            'error' => $error,
-        ];
-    }
-
-    $context = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => implode("\r\n", array_merge(['Content-Type: application/json'], $headers)),
-            'content' => $body,
-            'timeout' => 12,
-            'ignore_errors' => true,
-        ],
-    ]);
-    $response = @file_get_contents($url, false, $context);
-    $status = 0;
-    foreach (($http_response_header ?? []) as $header) {
-        if (preg_match('/^HTTP\/\S+\s+(\d+)/', $header, $matches)) {
-            $status = (int) $matches[1];
-            break;
-        }
-    }
-
-    return [
-        'ok' => $response !== false && $status >= 200 && $status < 300,
-        'status' => $status,
-        'body' => is_string($response) ? $response : '',
-        'error' => $response === false ? 'Falha de rede ao chamar WhatsApp Cloud API.' : '',
-    ];
-}
-
-function whatsapp_http_post_form(string $url, string $username, string $password, array $payload): array
-{
-    $body = http_build_query($payload);
-    $authHeader = 'Authorization: Basic ' . base64_encode($username . ':' . $password);
-
-    if (function_exists('curl_init')) {
-        $curl = curl_init($url);
-        curl_setopt_array($curl, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded', $authHeader],
-            CURLOPT_POSTFIELDS => $body,
-            CURLOPT_TIMEOUT => 12,
-        ]);
-        $response = curl_exec($curl);
-        $error = curl_error($curl);
-        $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
-
-        return [
-            'ok' => $error === '' && $status >= 200 && $status < 300,
-            'status' => $status,
-            'body' => is_string($response) ? $response : '',
-            'error' => $error,
-        ];
-    }
-
-    $context = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => "Content-Type: application/x-www-form-urlencoded\r\n" . $authHeader,
-            'content' => $body,
-            'timeout' => 12,
-            'ignore_errors' => true,
-        ],
-    ]);
-    $response = @file_get_contents($url, false, $context);
-    $status = 0;
-    foreach (($http_response_header ?? []) as $header) {
-        if (preg_match('/^HTTP\/\S+\s+(\d+)/', $header, $matches)) {
-            $status = (int) $matches[1];
-            break;
-        }
-    }
-
-    return [
-        'ok' => $response !== false && $status >= 200 && $status < 300,
-        'status' => $status,
-        'body' => is_string($response) ? $response : '',
-        'error' => $response === false ? 'Falha de rede ao chamar Twilio Messaging API.' : '',
-    ];
-}
-
 function whatsapp_twilio_address(string $phone): string
 {
     $phone = trim($phone);
@@ -700,6 +792,34 @@ function whatsapp_send_order_message(int $pedidoId, bool $force = false, string 
     if ($config['whatsapp_mode'] === 'simulacao') {
         whatsapp_log_notification($pedidoId, $phone, $type, $message, 'simulado', 'Modo simulação: nenhuma API externa chamada.', null);
         return ['enabled' => true, 'status' => 'simulado'];
+    }
+
+    if ($config['whatsapp_mode'] === 'baileys_bridge') {
+        if (!whatsapp_bridge_configured($config)) {
+            whatsapp_log_notification($pedidoId, $phone, $type, $message, 'erro', null, 'Bridge Baileys sem URL ou API key configurada.');
+            return ['enabled' => true, 'status' => 'erro', 'message' => 'Bridge WhatsApp Baileys não configurado.'];
+        }
+
+        $result = whatsapp_http_post_json(
+            whatsapp_bridge_endpoint($config, '/send-message'),
+            whatsapp_bridge_headers($config),
+            [
+                'number' => $phone,
+                'text' => $message,
+                'reference' => (string) ($pedido['codigo'] ?? ''),
+            ]
+        );
+
+        if ($result['ok']) {
+            whatsapp_log_notification($pedidoId, $phone, $type, $message, 'enviado', $result['body'], null);
+            return ['enabled' => true, 'status' => 'enviado'];
+        }
+
+        $errorMessage = $result['error'] !== '' ? $result['error'] : 'Bridge Baileys retornou HTTP ' . $result['status'] . '.';
+        whatsapp_log_notification($pedidoId, $phone, $type, $message, 'erro', $result['body'], $errorMessage);
+        error_log('[ArteFlor][baileys-bridge-send] ' . $errorMessage);
+
+        return ['enabled' => true, 'status' => 'erro', 'message' => 'Não foi possível enviar pelo bridge WhatsApp Baileys agora.'];
     }
 
     if ($config['whatsapp_mode'] === 'evolution_api') {
