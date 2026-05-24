@@ -135,6 +135,26 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
     }
 }
 
+function whatsapp_save_qr_settings(array $input, ?int $adminId = null): void
+{
+    integration_setting_set('whatsapp_enabled', '1', 'Ativa notificações WhatsApp pós-compra', false, $adminId);
+    integration_setting_set('whatsapp_mode', 'evolution_api', 'Modo da integração WhatsApp', false, $adminId);
+    integration_setting_set('whatsapp_send_after_order', '1', 'Enviar WhatsApp ao criar pedido', false, $adminId);
+    integration_setting_set('evolution_api_url', whatsapp_normalize_base_url($input['evolution_api_url'] ?? ''), 'URL do gateway Evolution API', false, $adminId);
+    integration_setting_set('evolution_instance', whatsapp_clean_instance_name($input['evolution_instance'] ?? 'arteflor'), 'Instância Evolution API', false, $adminId);
+    integration_setting_set('evolution_owner_number', whatsapp_link_phone_digits((string) ($input['evolution_owner_number'] ?? '')), 'Número conectado no Evolution API', false, $adminId);
+
+    $companyNumber = whatsapp_link_phone_digits((string) ($input['evolution_owner_number'] ?? ''));
+    if ($companyNumber !== '') {
+        integration_setting_set('whatsapp_company_number', $companyNumber, 'Número comercial da empresa', false, $adminId);
+    }
+
+    $evolutionKey = trim((string) ($input['evolution_api_key'] ?? ''));
+    if ($evolutionKey !== '') {
+        integration_setting_set('evolution_api_key', $evolutionKey, 'API key secreta do Evolution API', true, $adminId);
+    }
+}
+
 function whatsapp_mask_secret(?string $secret): string
 {
     $secret = (string) $secret;
