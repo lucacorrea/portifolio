@@ -5,7 +5,7 @@ require_once __DIR__ . '/../includes/whatsapp.php';
 $adminUser = require_admin();
 $testPreview = null;
 $testPhone = '';
-$evolutionQrResult = null;
+$bridgeQrResult = null;
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!admin_csrf_is_valid($_POST['csrf_token'] ?? null)) {
@@ -13,7 +13,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         exit;
     }
 
-    $action = order_clean_text($_POST['action'] ?? 'save', 20);
+    $action = order_clean_text($_POST['action'] ?? 'save', 30);
     if ($action === 'save') {
         try {
             whatsapp_save_settings($_POST, (int) ($adminUser['id'] ?? 0));
@@ -57,15 +57,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         ]);
     }
 
-    if ($action === 'evolution_qr') {
+    if ($action === 'bridge_qr' || $action === 'evolution_qr') {
         try {
-            $evolutionQrResult = whatsapp_evolution_prepare_qr(whatsapp_config());
+            $bridgeQrResult = whatsapp_bridge_prepare_qr(whatsapp_config());
         } catch (Throwable $error) {
-            error_log('[ArteFlor][evolution-qr] ' . $error->getMessage());
-            $evolutionQrResult = [
+            error_log('[ArteFlor][baileys-bridge-qr] ' . $error->getMessage());
+            $bridgeQrResult = [
                 'success' => false,
                 'status' => 'erro',
-                'message' => 'Não foi possível gerar o QR de conexão agora.',
+                'message' => 'Não foi possível consultar o QR do bridge agora.',
             ];
         }
     }
@@ -78,10 +78,11 @@ $notifications = whatsapp_recent_notifications(12);
 $csrf = admin_csrf_token();
 $sandboxJoinCode = whatsapp_clean_sandbox_join_code($config['twilio_sandbox_join_code'] ?? '');
 $sandboxNumber = whatsapp_clean_sandbox_number($config['twilio_sandbox_number'] ?? '14155238886');
-$evolutionConfigured = whatsapp_evolution_configured($config);
+$bridgeConfigured = whatsapp_bridge_configured($config);
+$bridgeOwnerNumber = whatsapp_link_phone_digits((string) ($config['baileys_owner_number'] ?? ''));
 $evolutionInstance = whatsapp_clean_instance_name($config['evolution_instance'] ?? 'arteflor');
 $evolutionOwnerNumber = whatsapp_link_phone_digits((string) ($config['evolution_owner_number'] ?? ''));
-$successMessages = ['salvo' => 'Configurações salvas com segurança.', 'qr_salvo' => 'Conexão por QR salva. Agora gere o QR e escaneie pelo WhatsApp da empresa.'];
+$successMessages = ['salvo' => 'Configurações salvas com segurança.', 'qr_salvo' => 'Bridge Baileys salvo. Agora gere o QR e escaneie pelo WhatsApp da empresa.'];
 $errorMessages = ['csrf' => 'Sessão expirada. Recarregue a página e tente novamente.', 'salvar' => 'Não foi possível salvar as configurações.'];
 $successKey = is_string($_GET['success'] ?? null) ? (string) $_GET['success'] : '';
 $errorKey = is_string($_GET['error'] ?? null) ? (string) $_GET['error'] : '';
@@ -91,8 +92,8 @@ require_once __DIR__ . '/../includes/admin-head.php';
 <section class="admin-page-hero">
   <div class="admin-page-title">
     <span class="badge">Integrações</span>
-    <h1>Pix manual e WhatsApp pós-compra</h1>
-    <p>Pix permanece sem API. WhatsApp notifica o cliente depois que o pedido já foi salvo no sistema.</p>
+    <h1>Pix manual e WhatsApp via bridge Baileys</h1>
+    <p>Pix permanece manual. O WhatsApp agora pode usar o mesmo modelo do Tático GPS: Node.js + Baileys + QR Code próprio.</p>
   </div>
   <span class="status <?= $config['whatsapp_enabled'] ? 'status-ok' : 'status-warn' ?>"><?= $config['whatsapp_enabled'] ? 'WhatsApp ativo' : 'WhatsApp inativo' ?></span>
 </section>
@@ -108,12 +109,12 @@ require_once __DIR__ . '/../includes/admin-head.php';
   <div>
     <span class="badge">Fluxo correto</span>
     <h2>Pedido primeiro, WhatsApp depois</h2>
-    <p class="muted">O checkout salva pedido, itens, pagamento e estoque no banco. A notificação WhatsApp é complementar e não bloqueia a compra.</p>
+    <p class="muted">O checkout salva pedido, itens, pagamento e estoque no banco. A notificação WhatsApp é complementar e usa o bridge apenas depois que o pedido existe.</p>
   </div>
   <div class="integration-flow">
     <span>Checkout</span>
     <span>Banco</span>
-    <span>Notificação</span>
+    <span>Bridge</span>
   </div>
 </section>
 
@@ -121,26 +122,25 @@ require_once __DIR__ . '/../includes/admin-head.php';
   <div class="admin-panel-header">
     <div>
       <span class="badge">Conectar WhatsApp</span>
-      <h2>Conexão rápida por QR</h2>
-      <p>Preencha uma vez, salve e gere o QR para escanear em Dispositivos conectados no WhatsApp da empresa.</p>
+      <h2>Conexão rápida por QR com Baileys</h2>
+      <p>Rode o bridge Node.js do ArteFlor, salve a URL e a API key, gere o QR e escaneie em Dispositivos conectados no WhatsApp da empresa.</p>
     </div>
-    <span class="<?= $evolutionConfigured ? 'admin-badge-ok' : 'admin-badge-warn' ?>"><?= $evolutionConfigured ? 'Pronto para QR' : 'Falta configurar' ?></span>
+    <span class="<?= $bridgeConfigured ? 'admin-badge-ok' : 'admin-badge-warn' ?>"><?= $bridgeConfigured ? 'Pronto para QR' : 'Falta configurar' ?></span>
   </div>
 
   <div class="whatsapp-connect-grid">
     <article class="whatsapp-qr-card">
       <div>
-        <strong>1. Dados da conexão</strong>
-        <p>Use os dados do serviço QR que você instalou. Depois clique em salvar.</p>
+        <strong>1. Dados do bridge</strong>
+        <p>Use o serviço Node.js em <code>arteFlor/bridge</code>. Em produção, deixe atrás de HTTPS e protegido por API key.</p>
       </div>
       <form class="whatsapp-quick-form" method="post" action="<?= site_url('admin/integracoes.php') ?>">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <input type="hidden" name="action" value="qr_save">
-        <label class="admin-field"><span>Link do serviço QR</span><input name="evolution_api_url" value="<?= e((string) $config['evolution_api_url']) ?>" placeholder="https://whatsapp.seudominio.com"></label>
-        <label class="admin-field"><span>Chave do serviço</span><input type="password" name="evolution_api_key" value="" placeholder="<?= $config['evolution_api_key'] !== '' ? 'Já salva. Preencha só para trocar.' : 'Cole a API key' ?>"></label>
-        <label class="admin-field"><span>Nome da conexão</span><input name="evolution_instance" value="<?= e($evolutionInstance) ?>" placeholder="arteflor"></label>
-        <label class="admin-field"><span>Número do WhatsApp</span><input name="evolution_owner_number" value="<?= e($evolutionOwnerNumber) ?>" placeholder="5597000000000"></label>
-        <button class="btn btn-primary" type="submit">Salvar conexão QR</button>
+        <label class="admin-field"><span>URL do bridge Baileys</span><input name="baileys_bridge_url" value="<?= e((string) $config['baileys_bridge_url']) ?>" placeholder="https://whatsapp.seudominio.com"></label>
+        <label class="admin-field"><span>API key do bridge</span><input type="password" name="baileys_bridge_api_key" value="" placeholder="<?= $config['baileys_bridge_api_key'] !== '' ? 'Já salva. Preencha só para trocar.' : 'Cole a mesma BRIDGE_API_KEY do Node.js' ?>"></label>
+        <label class="admin-field"><span>Número do WhatsApp</span><input name="baileys_owner_number" value="<?= e($bridgeOwnerNumber) ?>" placeholder="5597000000000"></label>
+        <button class="btn btn-primary" type="submit">Salvar bridge QR</button>
       </form>
     </article>
 
@@ -149,22 +149,19 @@ require_once __DIR__ . '/../includes/admin-head.php';
         <strong>2. Escanear QR</strong>
         <p>No celular da empresa: WhatsApp > Dispositivos conectados > Conectar dispositivo.</p>
       </div>
-      <?php if ($evolutionQrResult && ($evolutionQrResult['status'] ?? '') === 'connected'): ?>
+      <?php if ($bridgeQrResult && ($bridgeQrResult['status'] ?? '') === 'connected'): ?>
         <div class="qr-placeholder">OK</div>
-        <small><?= e((string) $evolutionQrResult['message']) ?></small>
-      <?php elseif ($evolutionQrResult && !empty($evolutionQrResult['qr'])): ?>
-        <img src="<?= e((string) $evolutionQrResult['qr']) ?>" alt="QR Code para conectar WhatsApp no gateway" loading="lazy">
-        <small><?= e((string) $evolutionQrResult['message']) ?></small>
-        <?php if (!empty($evolutionQrResult['pairing_code'])): ?>
-          <small>Código de pareamento: <?= e((string) $evolutionQrResult['pairing_code']) ?></small>
-        <?php endif; ?>
+        <small><?= e((string) $bridgeQrResult['message']) ?><?= !empty($bridgeQrResult['number']) ? ' · ' . e((string) $bridgeQrResult['number']) : '' ?></small>
+      <?php elseif ($bridgeQrResult && !empty($bridgeQrResult['qr'])): ?>
+        <img src="<?= e((string) $bridgeQrResult['qr']) ?>" alt="QR Code para conectar WhatsApp no bridge Baileys" loading="lazy">
+        <small><?= e((string) $bridgeQrResult['message']) ?></small>
       <?php else: ?>
         <div class="qr-placeholder">QR</div>
-        <small><?= $evolutionQrResult ? e((string) $evolutionQrResult['message']) : 'Salve a configuração e gere o QR.' ?></small>
+        <small><?= $bridgeQrResult ? e((string) $bridgeQrResult['message']) : 'Salve a configuração e gere o QR.' ?></small>
       <?php endif; ?>
       <form method="post" action="<?= site_url('admin/integracoes.php') ?>">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-        <input type="hidden" name="action" value="evolution_qr">
+        <input type="hidden" name="action" value="bridge_qr">
         <button class="btn btn-primary" type="submit">Gerar QR de conexão</button>
       </form>
     </article>
@@ -172,7 +169,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
 
   <div class="admin-alert-card admin-alert-warning">
     <strong>Atenção</strong>
-    Este modo usa sessão de WhatsApp Web por gateway externo. É simples de conectar, mas pode desconectar ou falhar; se isso acontecer, gere o QR novamente.
+    Esse método usa sessão WhatsApp Web via Baileys. É prático, mas pode desconectar quando o WhatsApp derruba a sessão. Se acontecer, gere um novo QR. Não exponha o bridge sem API key.
   </div>
 </section>
 
@@ -195,17 +192,16 @@ require_once __DIR__ . '/../includes/admin-head.php';
     <summary>Configurações avançadas do WhatsApp</summary>
     <div class="admin-panel-header">
       <div><span class="badge">WhatsApp pós-compra</span><h2>Notificação automática</h2></div>
-      <span class="admin-badge-info">QR: <?= e(whatsapp_mask_secret((string) $config['evolution_api_key'])) ?> · Meta: <?= e(whatsapp_mask_secret((string) $config['whatsapp_business_token'])) ?> · Twilio: <?= e(whatsapp_mask_secret((string) $config['twilio_auth_token'])) ?></span>
+      <span class="admin-badge-info">Bridge: <?= e(whatsapp_mask_secret((string) $config['baileys_bridge_api_key'])) ?> · Meta: <?= e(whatsapp_mask_secret((string) $config['whatsapp_business_token'])) ?> · Twilio: <?= e(whatsapp_mask_secret((string) $config['twilio_auth_token'])) ?></span>
     </div>
 
     <div class="admin-form-grid">
       <label class="admin-field"><span>Envio automático</span><select name="whatsapp_enabled"><option value="1" <?= $config['whatsapp_enabled'] ? 'selected' : '' ?>>Ativo</option><option value="0" <?= !$config['whatsapp_enabled'] ? 'selected' : '' ?>>Inativo</option></select></label>
-      <label class="admin-field"><span>Modo</span><select name="whatsapp_mode"><option value="evolution_api" <?= $config['whatsapp_mode'] === 'evolution_api' ? 'selected' : '' ?>>QR não oficial</option><option value="simulacao" <?= $config['whatsapp_mode'] === 'simulacao' ? 'selected' : '' ?>>Simulação/log</option><option value="cloud_api" <?= $config['whatsapp_mode'] === 'cloud_api' ? 'selected' : '' ?>>Meta Cloud API</option><option value="twilio" <?= $config['whatsapp_mode'] === 'twilio' ? 'selected' : '' ?>>Twilio WhatsApp</option></select></label>
+      <label class="admin-field"><span>Modo</span><select name="whatsapp_mode"><option value="baileys_bridge" <?= $config['whatsapp_mode'] === 'baileys_bridge' ? 'selected' : '' ?>>Bridge Baileys / QR próprio</option><option value="simulacao" <?= $config['whatsapp_mode'] === 'simulacao' ? 'selected' : '' ?>>Simulação/log</option><option value="cloud_api" <?= $config['whatsapp_mode'] === 'cloud_api' ? 'selected' : '' ?>>Meta Cloud API</option><option value="twilio" <?= $config['whatsapp_mode'] === 'twilio' ? 'selected' : '' ?>>Twilio WhatsApp</option><option value="evolution_api" <?= $config['whatsapp_mode'] === 'evolution_api' ? 'selected' : '' ?>>Evolution API legado</option></select></label>
       <label class="admin-field"><span>Número da empresa</span><input name="whatsapp_company_number" value="<?= e((string) $config['whatsapp_company_number']) ?>" placeholder="5597000000000"></label>
-      <label class="admin-field"><span>Gateway QR URL</span><input name="evolution_api_url" value="<?= e((string) $config['evolution_api_url']) ?>" placeholder="https://evolution.seudominio.com"></label>
-      <label class="admin-field"><span>Gateway QR API key</span><input type="password" name="evolution_api_key" value="" placeholder="Preencha apenas para alterar"></label>
-      <label class="admin-field"><span>Instância QR</span><input name="evolution_instance" value="<?= e($evolutionInstance) ?>" placeholder="arteflor"></label>
-      <label class="admin-field"><span>Número conectado</span><input name="evolution_owner_number" value="<?= e($evolutionOwnerNumber) ?>" placeholder="5597000000000"></label>
+      <label class="admin-field"><span>Bridge Baileys URL</span><input name="baileys_bridge_url" value="<?= e((string) $config['baileys_bridge_url']) ?>" placeholder="https://whatsapp.seudominio.com"></label>
+      <label class="admin-field"><span>Bridge Baileys API key</span><input type="password" name="baileys_bridge_api_key" value="" placeholder="Preencha apenas para alterar"></label>
+      <label class="admin-field"><span>Número conectado no bridge</span><input name="baileys_owner_number" value="<?= e($bridgeOwnerNumber) ?>" placeholder="5597000000000"></label>
       <label class="admin-field"><span>Phone Number ID</span><input name="whatsapp_phone_number_id" value="<?= e((string) $config['whatsapp_phone_number_id']) ?>"></label>
       <label class="admin-field"><span>Versão da API</span><input name="whatsapp_api_version" value="<?= e((string) $config['whatsapp_api_version']) ?>"></label>
       <label class="admin-field"><span>Token Cloud API</span><input type="password" name="whatsapp_business_token" value="" placeholder="Preencha apenas para alterar"></label>
@@ -215,6 +211,10 @@ require_once __DIR__ . '/../includes/admin-head.php';
       <label class="admin-field"><span>Twilio Content SID</span><input name="twilio_content_sid" value="<?= e((string) $config['twilio_content_sid']) ?>" placeholder="HX... para template aprovado"></label>
       <label class="admin-field"><span>Número Twilio Sandbox</span><input name="twilio_sandbox_number" value="<?= e($sandboxNumber) ?>" placeholder="14155238886"></label>
       <label class="admin-field"><span>Código join sandbox</span><input name="twilio_sandbox_join_code" value="<?= e($sandboxJoinCode) ?>" placeholder="seu-codigo"></label>
+      <label class="admin-field"><span>Evolution URL legado</span><input name="evolution_api_url" value="<?= e((string) $config['evolution_api_url']) ?>" placeholder="https://evolution.seudominio.com"></label>
+      <label class="admin-field"><span>Evolution API key legado</span><input type="password" name="evolution_api_key" value="" placeholder="Preencha apenas para alterar"></label>
+      <label class="admin-field"><span>Evolution instância legado</span><input name="evolution_instance" value="<?= e($evolutionInstance) ?>" placeholder="arteflor"></label>
+      <label class="admin-field"><span>Evolution número legado</span><input name="evolution_owner_number" value="<?= e($evolutionOwnerNumber) ?>" placeholder="5597000000000"></label>
       <label class="admin-field"><span>Template name</span><input name="whatsapp_template_name" value="<?= e((string) $config['whatsapp_template_name']) ?>"></label>
       <label class="admin-field"><span>Idioma template</span><input name="whatsapp_template_language" value="<?= e((string) $config['whatsapp_template_language']) ?>"></label>
       <label class="admin-field"><span>Enviar ao criar pedido</span><select name="whatsapp_send_after_order"><option value="1" <?= $config['whatsapp_send_after_order'] ? 'selected' : '' ?>>Sim</option><option value="0" <?= !$config['whatsapp_send_after_order'] ? 'selected' : '' ?>>Não</option></select></label>
@@ -223,7 +223,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
     </div>
     <div class="admin-alert-card admin-alert-info">
       <strong>Regras de envio</strong>
-      O modo QR não oficial depende de sessão do gateway e pode desconectar. Mensagens livres pelo Twilio WhatsApp só são adequadas dentro da janela de atendimento de 24 horas; fora dela, configure um Content SID de template aprovado.
+      O bridge Baileys precisa ficar rodando em Node.js e protegido por API key. Mensagens livres pelo Twilio WhatsApp só são adequadas dentro da janela de atendimento de 24 horas; fora dela, configure um Content SID de template aprovado.
     </div>
   </details>
 </form>
