@@ -50,6 +50,8 @@
     categoria: product.categoria || '',
     preco: Number(product.preco || 0),
     imagem: product.imagem || '',
+    estoque: Number(product.estoque || 0),
+    status: product.status || 'disponivel',
     mensagem: product.mensagem || '',
     observacoes: product.observacoes || '',
     qty: Math.max(1, Number(product.qty || 1))
@@ -188,6 +190,13 @@
   const bindAddButtons = () => {
     document.querySelectorAll('[data-add-cart]').forEach((button) => {
       button.addEventListener('click', () => {
+        const status = button.dataset.status || 'disponivel';
+        const stock = Number(button.dataset.estoque || 0);
+        if (status !== 'disponivel' || stock <= 0) {
+          toast('Este produto não está disponível para compra direta.', 'warning');
+          return;
+        }
+
         const qtyTarget = button.dataset.qtyTarget ? document.querySelector(button.dataset.qtyTarget) : null;
         const messageTarget = button.dataset.messageTarget ? document.querySelector(button.dataset.messageTarget) : null;
         const noteTarget = button.dataset.noteTarget ? document.querySelector(button.dataset.noteTarget) : null;
@@ -199,6 +208,8 @@
           categoria: button.dataset.categoria,
           preco: Number(button.dataset.preco || 0),
           imagem: button.dataset.imagem || '',
+          estoque: stock,
+          status,
           qty: qtyTarget ? Number(qtyTarget.value || 1) : Number(button.dataset.qty || 1),
           mensagem: messageTarget ? messageTarget.value.trim() : '',
           observacoes: noteTarget ? noteTarget.value.trim() : ''
@@ -235,7 +246,20 @@
     });
   };
 
+  const bindConfirmForms = () => {
+    document.addEventListener('submit', (event) => {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement)) return;
+
+      const message = form.dataset.confirm || form.querySelector('[data-confirm]')?.dataset.confirm || '';
+      if (message && !window.confirm(message)) {
+        event.preventDefault();
+      }
+    });
+  };
+
   bindMenu();
+  bindConfirmForms();
   bindAddButtons();
   bindGallery();
   bindCopy();

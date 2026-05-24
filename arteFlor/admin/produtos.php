@@ -14,6 +14,8 @@ $filters = [
 $produtos = product_list($filters);
 $categorias = product_categories();
 $stats = product_stats();
+$adminMessage = product_admin_message_from_query();
+$csrfToken = admin_csrf_token();
 $productImagesById = product_images_by_product_ids(array_column($produtos, 'id'));
 $modalProducts = array_map(static function (array $product) use ($productImagesById): array {
     $productId = (int) $product['id'];
@@ -53,6 +55,7 @@ $modalProducts = array_map(static function (array $product) use ($productImagesB
         'stockPercent' => product_inventory_percent($product),
         'descricaoCurta' => (string) ($product['descricao_curta'] ?? ''),
         'descricaoCompleta' => (string) ($product['descricao_completa'] ?? ''),
+        'tags' => array_values($product['tags'] ?? []),
         'destaque' => !empty($product['destaque']) ? 'Sim' : 'Normal',
         'sobEncomenda' => !empty($product['sob_encomenda']) ? 'Sim' : 'Não',
         'images' => $images,
@@ -74,10 +77,10 @@ require_once __DIR__ . '/../includes/admin-head.php';
   </div>
 </section>
 
-<?php if (isset($_GET['saved'])): ?>
-  <div class="admin-alert-card admin-alert-success" role="status">
-    <strong>Produto salvo</strong>
-    O produto foi gravado no banco e já aparece na listagem administrativa.
+<?php if ($adminMessage): ?>
+  <div class="admin-alert-card <?= e($adminMessage['class']) ?>" role="status">
+    <strong><?= e($adminMessage['title']) ?></strong>
+    <?= e($adminMessage['body']) ?>
   </div>
 <?php endif; ?>
 
@@ -149,6 +152,8 @@ require_once __DIR__ . '/../includes/admin-head.php';
         $status = (string) ($p['status'] ?? 'disponivel');
         $inventoryStatus = product_inventory_status($p);
         $inventoryPercent = product_inventory_percent($p);
+        $tags = array_values($p['tags'] ?? []);
+        $statusAction = $status === 'inativo' ? 'ativar' : 'inativar';
       ?>
       <tr class="<?= e(product_inventory_row_class($inventoryStatus)) ?>">
         <td>
@@ -156,7 +161,17 @@ require_once __DIR__ . '/../includes/admin-head.php';
             <span class="admin-avatar image-avatar">
               <?php if ($image !== ''): ?><img src="<?= e($image) ?>" alt="<?= e($p['nome']) ?>" loading="lazy"><?php else: ?>A&F<?php endif; ?>
             </span>
-            <div class="admin-item-title"><strong><?= e($p['nome']) ?></strong><small><?= e($p['sku'] ?? $p['slug']) ?></small></div>
+            <div class="admin-item-title">
+              <strong><?= e($p['nome']) ?></strong>
+              <small><?= e($p['sku'] ?? $p['slug']) ?></small>
+              <?php if (!empty($tags)): ?>
+                <div class="admin-tag-list">
+                  <?php foreach (array_slice($tags, 0, 3) as $tag): ?>
+                    <span><?= e((string) $tag) ?></span>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+            </div>
           </div>
         </td>
         <td><?= e($p['categoria_nome'] ?? 'Sem categoria') ?></td>
@@ -179,9 +194,26 @@ require_once __DIR__ . '/../includes/admin-head.php';
           <div class="admin-table-actions">
             <button type="button" data-product-modal-open="<?= (int) $p['id'] ?>">Ver</button>
             <a href="<?= site_url('admin/produto-form.php?id=' . (int) $p['id']) ?>">Editar</a>
-            <button type="button" class="admin-action-muted" title="Duplicação será implementada na próxima etapa." aria-disabled="true" disabled>Duplicar</button>
-            <button type="button" class="admin-action-muted" title="Ativação/Inativação será implementada com ação segura na próxima etapa." aria-disabled="true" disabled><?= $status === 'inativo' ? 'Ativar' : 'Inativar' ?></button>
-            <button type="button" class="admin-action-muted" title="Entrada e saída de estoque serão conectadas ao fluxo de movimentação na próxima etapa." aria-disabled="true" disabled>Entrada/Saída</button>
+            <form method="post" action="<?= site_url('admin/actions/produto-duplicar.php') ?>" data-confirm="Duplicar este produto? A cópia será criada inativa e com estoque zerado.">
+              <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+              <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
+              <button type="submit">Duplicar</button>
+            </form>
+            <form method="post" action="<?= site_url('admin/actions/produto-status.php') ?>" data-confirm="<?= $statusAction === 'ativar' ? 'Ativar este produto?' : 'Inativar este produto e ocultar da venda pública?' ?>">
+              <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+              <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
+              <input type="hidden" name="action" value="<?= e($statusAction) ?>">
+              <button type="submit" class="<?= $statusAction === 'ativar' ? 'admin-action-success' : 'admin-action-danger' ?>"><?= $statusAction === 'ativar' ? 'Ativar' : 'Inativar' ?></button>
+            </form>
+            <button
+              type="button"
+              data-stock-modal-open
+              data-product-id="<?= (int) $p['id'] ?>"
+              data-product-name="<?= e((string) $p['nome']) ?>"
+              data-product-sku="<?= e((string) ($p['sku'] ?? '')) ?>"
+              data-product-stock="<?= (int) ($p['estoque'] ?? 0) ?>"
+              data-product-min-stock="<?= (int) ($p['estoque_minimo'] ?? 0) ?>"
+            >Entrada/Saída</button>
           </div>
         </td>
       </tr>
@@ -211,6 +243,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
         <div><dt>Destaque</dt><dd data-product-modal-highlight>-</dd></div>
         <div><dt>Sob encomenda</dt><dd data-product-modal-order>-</dd></div>
       </dl>
+      <div class="admin-product-modal-tags admin-tag-list" data-product-modal-tags hidden></div>
       <div class="admin-product-modal-stock inventory-stock-cell">
         <div class="inventory-stock-meta">
           <strong data-product-modal-stock>Estoque: -</strong>
@@ -237,6 +270,49 @@ require_once __DIR__ . '/../includes/admin-head.php';
         <button class="btn btn-soft" type="button" data-product-modal-close>Fechar</button>
       </div>
     </div>
+  </section>
+</div>
+<div class="admin-modal-backdrop admin-stock-modal-backdrop" data-stock-modal hidden>
+  <section class="admin-stock-modal" role="dialog" aria-modal="true" aria-labelledby="stockModalTitle">
+    <button class="admin-modal-close" type="button" data-stock-modal-close aria-label="Fechar modal">&times;</button>
+    <div class="admin-panel-header compact">
+      <div>
+        <span class="badge">Estoque</span>
+        <h2 id="stockModalTitle">Movimentar produto</h2>
+        <p>Registre entrada, saída, ajuste ou perda com saldo auditável.</p>
+      </div>
+    </div>
+    <div class="admin-stock-summary">
+      <div><span>Produto</span><strong data-stock-product-name>-</strong></div>
+      <div><span>SKU</span><strong data-stock-product-sku>-</strong></div>
+      <div><span>Estoque atual</span><strong data-stock-product-current>-</strong></div>
+      <div><span>Estoque mínimo</span><strong data-stock-product-min>-</strong></div>
+    </div>
+    <form class="admin-stock-form" method="post" action="<?= site_url('admin/actions/produto-estoque.php') ?>">
+      <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+      <input type="hidden" name="product_id" data-stock-product-id value="">
+      <label class="admin-field">
+        <span>Tipo</span>
+        <select name="tipo" required>
+          <option value="entrada">Entrada</option>
+          <option value="saida">Saída</option>
+          <option value="ajuste">Ajuste</option>
+          <option value="perda">Perda</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span>Quantidade</span>
+        <input name="quantidade" type="number" min="0" step="1" value="1" required>
+      </label>
+      <label class="admin-field full">
+        <span>Motivo</span>
+        <input name="motivo" maxlength="255" placeholder="Ex: reposição, venda presencial, conferência ou avaria">
+      </label>
+      <div class="admin-action-row">
+        <button class="btn btn-primary" type="submit">Registrar movimentação</button>
+        <button class="btn btn-soft" type="button" data-stock-modal-close>Cancelar</button>
+      </div>
+    </form>
   </section>
 </div>
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>

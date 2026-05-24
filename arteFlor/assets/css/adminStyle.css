@@ -2756,3 +2756,141 @@ body.admin-modal-open {
     min-height: 44px;
   }
 }
+
+/* ------------------------------------------------------------------------
+   PRODUTOS: AÇÕES REAIS, TAGS E ESTOQUE
+------------------------------------------------------------------------ */
+
+.admin-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.admin-tag-list span {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface-3);
+  border: 1px solid rgba(36, 72, 54, .10);
+  color: var(--admin-primary);
+  font-size: .68rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.admin-table-actions .admin-action-danger,
+.product-image-actions .admin-action-danger {
+  color: var(--admin-danger);
+  border-color: rgba(154, 61, 68, .18);
+  background: var(--admin-danger-soft);
+}
+
+.admin-table-actions .admin-action-danger:hover,
+.product-image-actions .admin-action-danger:hover {
+  color: var(--admin-danger);
+  background: #ecd0d0;
+}
+
+.admin-table-actions .admin-action-success {
+  color: var(--admin-ok);
+  border-color: rgba(40, 100, 71, .18);
+  background: var(--admin-ok-soft);
+}
+
+.admin-table-actions .admin-action-success:hover {
+  color: var(--admin-ok);
+  background: #cfe5d8;
+}
+
+.product-image-admin-grid figure {
+  display: grid;
+}
+
+.product-image-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 0 8px 8px;
+}
+
+.product-image-actions button {
+  min-height: 32px;
+  padding: 7px 9px;
+  border-radius: var(--admin-radius-sm);
+  border: 1px solid var(--admin-line);
+  background: #fff;
+  color: var(--admin-primary);
+  font-size: .76rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.product-image-actions button:hover {
+  background: var(--admin-primary-soft);
+}
+
+.admin-stock-modal {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  overflow: auto;
+  display: grid;
+  gap: 16px;
+  padding: clamp(20px, 3vw, 28px);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-surface);
+  border: 1px solid rgba(255, 255, 255, .4);
+  box-shadow: 0 28px 80px rgba(14, 31, 23, .28);
+}
+
+.admin-stock-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-stock-summary div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface-2);
+  border: 1px solid var(--admin-line);
+}
+
+.admin-stock-summary span {
+  color: var(--admin-muted);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.admin-stock-summary strong {
+  min-width: 0;
+  color: var(--admin-primary);
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.admin-stock-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-stock-form .admin-action-row {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .admin-stock-summary,
+  .admin-stock-form {
+    grid-template-columns: 1fr;
+  }
+}

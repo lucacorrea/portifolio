@@ -9,6 +9,8 @@ $productId = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
 $product = $productId > 0 ? product_find($productId) : null;
 $images = $product ? product_images((int) $product['id']) : [];
 $categories = product_categories();
+$adminMessage = product_admin_message_from_query();
+$csrfToken = admin_csrf_token();
 $error = '';
 
 if ($productId > 0 && !$product && $_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -23,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $savedId = product_save_from_request();
-            header('Location: ' . site_url('admin/produtos.php?saved=1'));
+            header('Location: ' . site_url('admin/produtos.php?success=produto_salvo'));
             exit;
         } catch (Throwable $exception) {
             error_log('[ArteFlor][product-save] ' . $exception->getMessage());
@@ -40,6 +42,7 @@ $isEditing = !empty($product['id']);
 $field = fn(string $key, mixed $default = ''): mixed => $_POST[$key] ?? $product[$key] ?? $default;
 $categoryName = (string) ($_POST['categoria_nome'] ?? $product['categoria_nome'] ?? 'Buquês');
 $statusValue = (string) $field('status', 'disponivel');
+$tagsText = (string) ($_POST['tags'] ?? ($isEditing ? product_tags_text((int) $product['id']) : ''));
 $previewImage = !empty($images[0]['url'] ?? '') ? product_public_image_url($images[0]['url']) : '';
 $previewStockValue = $field('estoque', 0);
 $previewMinStockValue = $field('estoque_minimo', 0);
@@ -86,8 +89,15 @@ require_once __DIR__ . '/../includes/admin-head.php';
   </div>
 <?php endif; ?>
 
+<?php if ($adminMessage): ?>
+  <div class="admin-alert-card <?= e($adminMessage['class']) ?>" role="status">
+    <strong><?= e($adminMessage['title']) ?></strong>
+    <?= e($adminMessage['body']) ?>
+  </div>
+<?php endif; ?>
+
 <form id="productForm" class="admin-form-shell" method="post" action="<?= site_url('admin/produto-form.php' . ($isEditing ? '?id=' . (int) $product['id'] : '')) ?>" enctype="multipart/form-data">
-  <input type="hidden" name="csrf_token" value="<?= e(admin_csrf_token()) ?>">
+  <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
   <input type="hidden" name="id" value="<?= (int) ($product['id'] ?? 0) ?>">
 
   <section class="admin-form-card">
@@ -165,6 +175,11 @@ require_once __DIR__ . '/../includes/admin-head.php';
           <span>Slug/SEO</span>
           <input name="slug" value="<?= e((string) $field('slug')) ?>" placeholder="Gerado automaticamente se vazio">
         </label>
+        <label class="admin-field full">
+          <span>Tags</span>
+          <input name="tags" value="<?= e($tagsText) ?>" placeholder="Romântico, Mais vendido, Presente especial">
+          <small>Separe por vírgulas. As tags aparecem no admin e no catálogo público.</small>
+        </label>
       </div>
 
       <div class="product-live-preview" data-product-image-preview hidden></div>
@@ -172,13 +187,20 @@ require_once __DIR__ . '/../includes/admin-head.php';
       <?php if (!empty($images)): ?>
         <div class="admin-section-title compact product-images-note">
           <strong>Imagens cadastradas</strong>
-          <p>A imagem principal aparece primeiro. A remoção de imagens será tratada na próxima etapa.</p>
+          <p>A imagem principal aparece primeiro no catálogo e na página do produto.</p>
         </div>
         <div class="product-image-admin-grid">
           <?php foreach ($images as $image): ?>
+            <?php $imageId = (int) $image['id']; ?>
             <figure class="<?= !empty($image['principal']) ? 'is-primary' : '' ?>">
               <img src="<?= e(product_public_image_url($image['url'])) ?>" alt="<?= e($image['texto_alternativo'] ?? 'Imagem do produto') ?>">
               <figcaption><?= !empty($image['principal']) ? 'Principal' : 'Imagem' ?></figcaption>
+              <div class="product-image-actions">
+                <?php if (empty($image['principal'])): ?>
+                  <button type="submit" form="productImagePrimary<?= $imageId ?>">Definir principal</button>
+                <?php endif; ?>
+                <button class="admin-action-danger" type="submit" form="productImageRemove<?= $imageId ?>">Remover</button>
+              </div>
             </figure>
           <?php endforeach; ?>
         </div>
@@ -237,4 +259,31 @@ require_once __DIR__ . '/../includes/admin-head.php';
     <a class="btn btn-soft" href="<?= site_url('admin/produtos.php') ?>">Ver listagem</a>
   </aside>
 </form>
+<?php if ($isEditing && !empty($images)): ?>
+  <?php foreach ($images as $image): ?>
+    <?php $imageId = (int) $image['id']; ?>
+    <form
+      id="productImagePrimary<?= $imageId ?>"
+      method="post"
+      action="<?= site_url('admin/actions/produto-imagem-principal.php') ?>"
+      data-confirm="Definir esta imagem como principal?"
+      hidden
+    >
+      <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+      <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
+      <input type="hidden" name="image_id" value="<?= $imageId ?>">
+    </form>
+    <form
+      id="productImageRemove<?= $imageId ?>"
+      method="post"
+      action="<?= site_url('admin/actions/produto-imagem-remover.php') ?>"
+      data-confirm="Remover esta imagem do produto?"
+      hidden
+    >
+      <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+      <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
+      <input type="hidden" name="image_id" value="<?= $imageId ?>">
+    </form>
+  <?php endforeach; ?>
+<?php endif; ?>
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>

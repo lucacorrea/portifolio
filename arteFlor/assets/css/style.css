@@ -4184,6 +4184,97 @@ body:has(.cart-layout) .page-header {
 }
 
 /* ==========================================================================
+   PRODUTOS DINÂMICOS DO BANCO
+   ========================================================================== */
+
+.catalog-toolbar-public {
+  grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr);
+  align-items: end;
+  margin-bottom: clamp(22px, 3vw, 34px);
+}
+
+.catalog-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.catalog-filter-grid .form-group {
+  min-width: 0;
+}
+
+.catalog-filter-grid select {
+  min-height: 46px;
+  border-radius: var(--raio-botao);
+  border: 1px solid var(--borda-suave);
+  background: #fff;
+  color: var(--grafite-suave);
+  font-weight: 800;
+}
+
+.catalog-check {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: var(--raio-botao);
+  background: #fff;
+  border: 1px solid var(--borda-suave);
+  color: var(--verde-profundo);
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.catalog-check input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--verde-profundo);
+}
+
+.catalog-filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.product-grid-spaced > .empty-results {
+  grid-column: 1 / -1;
+}
+
+.product-card-tags {
+  margin-top: 0;
+}
+
+.product-actions button[disabled],
+.actions button[disabled] {
+  opacity: .72;
+  cursor: not-allowed;
+  background: var(--creme-profundo);
+  color: var(--grafite-medio);
+  border-color: var(--borda-quente);
+}
+
+@media (max-width: 1080px) {
+  .catalog-toolbar-public,
+  .catalog-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog-filter-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .catalog-filter-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
    ARTE & FLOR — CAMADA FINAL PROFISSIONAL V2
    Objetivo: deixar o sistema mais sério, menos arredondado, com cores pastéis
    sólidas e transições discretas, sem quebrar as demais telas do MVP.

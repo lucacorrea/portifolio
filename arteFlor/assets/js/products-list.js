@@ -1,6 +1,62 @@
 (() => {
   const payload = document.getElementById('productListPayload');
   const modal = document.querySelector('[data-product-modal]');
+  const stockModal = document.querySelector('[data-stock-modal]');
+
+  const bindStockModal = () => {
+    if (!stockModal) return;
+
+    const productId = stockModal.querySelector('[data-stock-product-id]');
+    const name = stockModal.querySelector('[data-stock-product-name]');
+    const sku = stockModal.querySelector('[data-stock-product-sku]');
+    const stock = stockModal.querySelector('[data-stock-product-current]');
+    const minStock = stockModal.querySelector('[data-stock-product-min]');
+    let lastFocus = null;
+
+    const open = (button) => {
+      lastFocus = button;
+      if (productId) productId.value = button.dataset.productId || '';
+      if (name) name.textContent = button.dataset.productName || '-';
+      if (sku) sku.textContent = button.dataset.productSku || '-';
+      if (stock) stock.textContent = `${button.dataset.productStock || 0} un.`;
+      if (minStock) minStock.textContent = `${button.dataset.productMinStock || 0} un.`;
+      stockModal.hidden = false;
+      document.body.classList.add('admin-modal-open');
+      stockModal.querySelector('select, input, button')?.focus();
+    };
+
+    const close = () => {
+      stockModal.hidden = true;
+      document.body.classList.remove('admin-modal-open');
+      if (lastFocus instanceof HTMLElement) {
+        lastFocus.focus();
+      }
+    };
+
+    document.addEventListener('click', (event) => {
+      const source = event.target;
+      if (!(source instanceof HTMLElement)) return;
+
+      const opener = source.closest('[data-stock-modal-open]');
+      if (opener instanceof HTMLElement) {
+        open(opener);
+        return;
+      }
+
+      if (source.closest('[data-stock-modal-close]') || source === stockModal) {
+        close();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !stockModal.hidden) {
+        close();
+      }
+    });
+  };
+
+  bindStockModal();
+
   if (!payload || !modal) return;
 
   let products = [];
@@ -26,6 +82,7 @@
   const stockLabel = modal.querySelector('[data-product-modal-stock-label]');
   const highlight = modal.querySelector('[data-product-modal-highlight]');
   const order = modal.querySelector('[data-product-modal-order]');
+  const tags = modal.querySelector('[data-product-modal-tags]');
   const shortDescription = modal.querySelector('[data-product-modal-short]');
   const fullDescription = modal.querySelector('[data-product-modal-full]');
   const thumbs = modal.querySelector('[data-product-modal-thumbs]');
@@ -121,6 +178,11 @@
     }
     if (highlight) highlight.textContent = product.destaque || 'Normal';
     if (order) order.textContent = product.sobEncomenda || 'Não';
+    if (tags) {
+      const productTags = Array.isArray(product.tags) ? product.tags.filter(Boolean) : [];
+      tags.hidden = productTags.length === 0;
+      tags.innerHTML = productTags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join('');
+    }
     if (shortDescription) shortDescription.textContent = product.descricaoCurta || 'Produto sem descrição curta cadastrada.';
     if (fullDescription) fullDescription.textContent = product.descricaoCompleta || 'Produto sem descrição completa cadastrada.';
     if (edit) edit.href = product.editUrl || edit.href;

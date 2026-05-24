@@ -6,16 +6,15 @@ Projeto demonstrativo em PHP, HTML, CSS e JavaScript puro para catálogo de flor
 
 Este pacote começou como front-end/MVP visual e agora possui estrutura inicial de banco e conexão PDO segura:
 
-- sem backend real;
-- sem autenticação real;
 - sem pagamento real;
 - sem API real;
 - banco MySQL/MariaDB já modelado em `database/schema.sql`;
 - conexão obrigatória configurada por `.env`;
 - pedidos e vendas são simulados com `localStorage`;
-- imagens são externas e ilustrativas.
+- produtos, categorias, tags, imagens e estoque do catálogo público vêm do banco;
+- imagens podem ser enviadas pelo admin ou vir de URL externa.
 
-As telas públicas e administrativas ainda usam `assets/data/produtos.json` e `localStorage` até a próxima etapa de persistência real.
+O carrinho, checkout demonstrativo, área do cliente e PDV visual ainda usam `localStorage`/dados de demonstração onde indicado. A vitrine pública de produtos não usa mais `assets/data/produtos.json` como fonte principal.
 
 ## Banco de dados e .env
 
@@ -95,8 +94,8 @@ O projeto usa `base_url()` e `asset()` para carregar CSS, JS e links internos co
 
 ## Fluxo público
 
-- Catálogo com imagens reais ilustrativas;
-- Detalhes do produto com galeria;
+- Catálogo com produtos, imagens, tags e estoque vindos do banco;
+- Detalhes do produto com galeria e relacionados reais;
 - Carrinho com localStorage;
 - Checkout com Pix demonstrativo;
 - Pedido finalizado dentro do sistema visual;
@@ -118,9 +117,10 @@ O projeto usa `base_url()` e `asset()` para carregar CSS, JS e links internos co
 
 ## Ajustes realizados nesta versão
 
+- Ações reais do admin de produtos: imagens, status, duplicação, estoque e tags;
+- Home, catálogo e detalhe do produto conectados ao banco;
 - Adicionada camada `assets/css/premium-final.css` para acabamento visual premium;
 - Header público e admin carregam a camada premium;
-- Imagens do catálogo usam URLs externas reais;
 - Cards de produto renderizam `<img>` corretamente;
 - Botão principal de compra adiciona ao carrinho, não finaliza no WhatsApp;
 - Checkout e PDV finalizam dentro do sistema visual;
