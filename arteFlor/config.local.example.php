@@ -1,0 +1,4 @@
+<?php
+const WHATSAPP_CLOUD_API_TOKEN = '';
+const WHATSAPP_PHONE_NUMBER_ID = '';
+const WHATSAPP_API_VERSION = 'v21.0';

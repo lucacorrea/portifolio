@@ -12,6 +12,9 @@
   const confirmPixButton = document.querySelector('[data-confirm-pix]');
   const success = document.querySelector('[data-order-success]');
   const orderCodeEl = document.querySelector('[data-order-code]');
+  const orderLink = document.querySelector('[data-order-client-link]');
+  const whatsappStatus = document.querySelector('[data-whatsapp-status]');
+  const submitButton = form?.querySelector('[type="submit"]');
   let pixConfirmed = false;
 
   if (!form || !summary || !window.ArteFlor) return;
@@ -69,7 +72,37 @@
     ArteFlor.toast('Pagamento Pix demonstrativo confirmado.');
   });
 
-  form.addEventListener('submit', (event) => {
+  const checkoutPayload = (data, cart) => ({
+    cliente: {
+      nome: data.nome,
+      contato: data.contato
+    },
+    recebimento: data.recebimento,
+    bairro: data.bairro,
+    endereco: data.endereco,
+    referencia: data.referencia,
+    data_desejada: data.data,
+    horario_desejado: data.horario,
+    mensagem_cartao: data.mensagem,
+    observacoes: data.observacoes,
+    forma_pagamento: data.pagamento,
+    itens: cart.map((item) => ({
+      produto_id: Number(item.id || item.produto_id),
+      quantidade: Number(item.qty || item.quantidade || 1),
+      mensagem_cartao: item.mensagem || '',
+      observacoes: item.observacoes || ''
+    }))
+  });
+
+  const whatsappLabel = (result) => {
+    const status = result?.whatsapp?.status;
+    if (status === 'enviado') return 'Notificação WhatsApp enviada.';
+    if (status === 'simulado') return 'Notificação WhatsApp registrada em modo simulação.';
+    if (status === 'erro') return 'Pedido salvo. A notificação WhatsApp não foi enviada agora.';
+    return 'Pedido salvo no sistema.';
+  };
+
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
     const cart = ArteFlor.getCart();
@@ -79,46 +112,49 @@
     }
 
     const data = Object.fromEntries(new FormData(form).entries());
-    const totals = ArteFlor.cartTotals(cart);
-    const code = `#AF-${String(Math.floor(1000 + Math.random() * 9000))}`;
-    const now = new Date();
-    const paymentStatus = data.pagamento === 'Pix'
-      ? (pixConfirmed ? 'Pagamento confirmado' : 'Aguardando pagamento')
-      : 'Pagamento a confirmar';
+    const endpoint = form.dataset.checkoutEndpoint || 'actions/finalizar-pedido.php';
+    const originalText = submitButton?.textContent || '';
 
-    const order = {
-      codigo: code,
-      cliente: data.nome,
-      contato: data.contato,
-      recebimento: data.recebimento,
-      endereco: data.endereco,
-      bairro: data.bairro,
-      referencia: data.referencia,
-      data: data.data,
-      horario: data.horario,
-      mensagem: data.mensagem,
-      observacoes: data.observacoes,
-      pagamento: data.pagamento,
-      pagamentoStatus: paymentStatus,
-      status: paymentStatus === 'Pagamento confirmado' ? 'Pagamento confirmado' : 'Pedido recebido',
-      origem: 'Catálogo',
-      itens: cart,
-      subtotal: totals.subtotal,
-      desconto: totals.discount,
-      total: totals.total,
-      criadoEm: now.toISOString()
-    };
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Salvando pedido...';
+    }
 
-    ArteFlor.saveOrder(order);
-    ArteFlor.clearCart();
-    renderSummary();
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(checkoutPayload(data, cart))
+      });
+      const result = await response.json().catch(() => ({}));
 
-    if (orderCodeEl) orderCodeEl.textContent = code;
-    if (success) success.hidden = false;
-    form.reset();
-    togglePixPanel();
-    success?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    ArteFlor.toast(`Pedido ${code} finalizado no sistema.`);
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Não foi possível finalizar o pedido.');
+      }
+
+      ArteFlor.clearCart();
+      renderSummary();
+
+      if (orderCodeEl) orderCodeEl.textContent = result.codigo;
+      if (orderLink) orderLink.href = `cliente.php?pedido=${encodeURIComponent(String(result.codigo || '').replace(/^#/, ''))}`;
+      if (whatsappStatus) whatsappStatus.textContent = whatsappLabel(result);
+      if (success) success.hidden = false;
+      form.reset();
+      pixConfirmed = false;
+      togglePixPanel();
+      success?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      ArteFlor.toast(`Pedido ${result.codigo} salvo no sistema.`);
+    } catch (error) {
+      ArteFlor.toast(error.message || 'Não foi possível finalizar o pedido.', 'error');
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+      }
+    }
   });
 
   renderSummary();

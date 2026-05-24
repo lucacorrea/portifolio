@@ -2,6 +2,7 @@
 $adminTitle = 'Dashboard';
 $activeAdmin = 'dashboard';
 require_once __DIR__ . '/../includes/dashboard.php';
+require_once __DIR__ . '/../includes/whatsapp.php';
 $adminUser = require_admin();
 
 $productStats = product_stats();
@@ -11,6 +12,14 @@ $categorySales = dashboard_category_sales(30);
 $recentOrders = dashboard_recent_orders(5);
 $lowStockProducts = dashboard_low_stock_products(5);
 $alerts = dashboard_alerts($todaySummary, $lowStockProducts, $productStats);
+$whatsappErrors = whatsapp_error_count();
+if ($whatsappErrors > 0) {
+    $alerts[] = [
+        'class' => 'admin-alert-danger',
+        'title' => 'WhatsApp',
+        'text' => $whatsappErrors . ' notificação(ões) com erro precisam de revisão em integrações.',
+    ];
+}
 
 require_once __DIR__ . '/../includes/admin-head.php';
 ?>

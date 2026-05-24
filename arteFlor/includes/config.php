@@ -1,9 +1,8 @@
 <?php
-// Configuração base do MVP visual Arte&Flor.
-// Nesta etapa as páginas .php funcionam como front-end demonstrativo.
+// Configuração base do sistema Arte&Flor em PHP puro.
 
 const SITE_NAME = 'Arte&Flor';
-const SITE_DESCRIPTION = 'Floricultura premium com catálogo visual, carrinho, checkout demonstrativo, PDV e painel administrativo.';
+const SITE_DESCRIPTION = 'Floricultura premium com catálogo, carrinho, checkout, pedidos, PDV e painel administrativo.';
 const WHATSAPP_NUMBER = '5597000000000';
 
 function load_env_file(string $path): void
@@ -78,6 +77,11 @@ function app_is_cli(): bool
 
 load_env_file(__DIR__ . '/../.env');
 
+$localConfig = __DIR__ . '/../config.local.php';
+if (is_file($localConfig)) {
+    require_once $localConfig;
+}
+
 const APP_NAME = SITE_NAME;
 
 function base_url(): string
@@ -85,8 +89,11 @@ function base_url(): string
     $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/arteFlor/index.php');
     $dir = rtrim(dirname($scriptName), '/');
 
-    if (str_ends_with($dir, '/admin')) {
-        $dir = rtrim(dirname($dir), '/');
+    foreach (['/admin/actions', '/admin', '/actions'] as $suffix) {
+        if (str_ends_with($dir, $suffix)) {
+            $dir = substr($dir, 0, -strlen($suffix));
+            break;
+        }
     }
 
     return ($dir === '' || $dir === '.') ? '/' : $dir . '/';

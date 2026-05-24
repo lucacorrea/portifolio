@@ -2894,3 +2894,99 @@ body.admin-modal-open {
     grid-template-columns: 1fr;
   }
 }
+
+.order-actions {
+  align-items: flex-start;
+}
+
+.order-actions form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.order-actions select {
+  min-height: 34px;
+  max-width: 170px;
+  border: 1px solid rgba(47, 72, 58, .16);
+  border-radius: 9px;
+  background: #fffdf8;
+  color: #244836;
+  font-weight: 800;
+  padding: 0 10px;
+}
+
+.admin-order-details {
+  position: relative;
+}
+
+.admin-order-details summary {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 11px;
+  border-radius: 9px;
+  background: #edf3e9;
+  color: #244836;
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 950;
+  list-style: none;
+}
+
+.admin-order-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-order-detail-panel {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: 40px;
+  width: min(520px, 82vw);
+  max-height: 68vh;
+  overflow: auto;
+  padding: 18px;
+  border-radius: 14px;
+  background: #fffdf8;
+  border: 1px solid rgba(47, 72, 58, .14);
+  box-shadow: 0 22px 48px rgba(45, 55, 48, .16);
+}
+
+.admin-order-detail-panel h3 {
+  margin: 14px 0 8px;
+  color: #244836;
+  font-size: .95rem;
+}
+
+.admin-order-detail-panel h3:first-child {
+  margin-top: 0;
+}
+
+.admin-order-detail-panel p {
+  margin: 0 0 7px;
+  color: #5e6861;
+  line-height: 1.45;
+}
+
+.integration-preview {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #f8f1e8;
+  border: 1px solid rgba(47, 72, 58, .12);
+}
+
+.integration-preview pre {
+  margin: 12px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #244836;
+  font: 800 .92rem/1.55 "Nunito Sans", sans-serif;
+}
+
+.admin-data-table.compact td,
+.admin-data-table.compact th {
+  padding: 12px;
+}
