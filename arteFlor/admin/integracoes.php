@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/whatsapp.php';
 $adminUser = require_admin();
 $testPreview = null;
 $testPhone = '';
+$evolutionQrResult = null;
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!admin_csrf_is_valid($_POST['csrf_token'] ?? null)) {
@@ -43,6 +44,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             '{{link_pedido}}' => site_url('cliente.php?pedido=AF-TESTE'),
         ]);
     }
+
+    if ($action === 'evolution_qr') {
+        try {
+            $evolutionQrResult = whatsapp_evolution_prepare_qr(whatsapp_config());
+        } catch (Throwable $error) {
+            error_log('[ArteFlor][evolution-qr] ' . $error->getMessage());
+            $evolutionQrResult = [
+                'success' => false,
+                'status' => 'erro',
+                'message' => 'Não foi possível gerar o QR de conexão agora.',
+            ];
+        }
+    }
 }
 
 $adminTitle = 'Integrações';
@@ -50,14 +64,11 @@ $activeAdmin = 'integracoes';
 $config = whatsapp_config();
 $notifications = whatsapp_recent_notifications(12);
 $csrf = admin_csrf_token();
-$companyConnectText = 'Olá! Quero testar a conexão do WhatsApp da Arte&Flor.';
-$companyChatLink = whatsapp_wa_me_link((string) $config['whatsapp_company_number'], $companyConnectText);
-$companyQrImage = $companyChatLink ? whatsapp_qr_image_url($companyChatLink, 220) : '';
 $sandboxJoinCode = whatsapp_clean_sandbox_join_code($config['twilio_sandbox_join_code'] ?? '');
 $sandboxNumber = whatsapp_clean_sandbox_number($config['twilio_sandbox_number'] ?? '14155238886');
-$sandboxJoinText = $sandboxJoinCode !== '' ? 'join ' . $sandboxJoinCode : '';
-$sandboxChatLink = $sandboxJoinText !== '' ? whatsapp_wa_me_link($sandboxNumber, $sandboxJoinText, false) : null;
-$sandboxQrImage = $sandboxChatLink ? whatsapp_qr_image_url($sandboxChatLink, 220) : '';
+$evolutionConfigured = whatsapp_evolution_configured($config);
+$evolutionInstance = whatsapp_clean_instance_name($config['evolution_instance'] ?? 'arteflor');
+$evolutionOwnerNumber = whatsapp_link_phone_digits((string) ($config['evolution_owner_number'] ?? ''));
 $successMessages = ['salvo' => 'Configurações salvas com segurança.'];
 $errorMessages = ['csrf' => 'Sessão expirada. Recarregue a página e tente novamente.', 'salvar' => 'Não foi possível salvar as configurações.'];
 $successKey = is_string($_GET['success'] ?? null) ? (string) $_GET['success'] : '';
@@ -97,48 +108,58 @@ require_once __DIR__ . '/../includes/admin-head.php';
 <section class="admin-form-card whatsapp-connect-panel">
   <div class="admin-panel-header">
     <div>
-      <span class="badge">Conectar fácil</span>
-      <h2>QR Code WhatsApp</h2>
-      <p>Use o QR para abrir a conversa certa no WhatsApp. O envio automático continua pela API configurada abaixo.</p>
+      <span class="badge">Conectar por QR</span>
+      <h2>WhatsApp da empresa</h2>
+      <p>Use um gateway não oficial compatível com Evolution API para gerar o QR e conectar o aparelho da empresa.</p>
     </div>
-    <span class="admin-badge-info">Sem WhatsApp Web</span>
+    <span class="<?= $evolutionConfigured ? 'admin-badge-ok' : 'admin-badge-warn' ?>"><?= $evolutionConfigured ? 'Gateway configurado' : 'Configure o gateway' ?></span>
   </div>
 
   <div class="whatsapp-connect-grid">
     <article class="whatsapp-qr-card">
       <div>
-        <strong>WhatsApp da empresa</strong>
-        <p>Escaneie para abrir conversa com o número salvo em “Número da empresa”.</p>
+        <strong>1. Salve a configuração</strong>
+        <p>Informe URL do gateway, API key e nome da instância nos campos abaixo. Depois salve.</p>
       </div>
-      <?php if ($companyChatLink): ?>
-        <img src="<?= e($companyQrImage) ?>" alt="QR Code para abrir WhatsApp da empresa" loading="lazy">
-        <a class="btn btn-soft" href="<?= e($companyChatLink) ?>" target="_blank" rel="noopener">Abrir conversa</a>
-        <small><?= e(whatsapp_link_phone_digits((string) $config['whatsapp_company_number'])) ?></small>
-      <?php else: ?>
-        <div class="qr-placeholder">QR</div>
-        <small>Informe o número da empresa e salve para gerar o QR.</small>
-      <?php endif; ?>
+      <div class="pix-key-box">
+        <small>Instância</small>
+        <strong><?= e($evolutionInstance) ?></strong>
+      </div>
+      <div class="pix-key-box">
+        <small>Número vinculado</small>
+        <strong><?= e($evolutionOwnerNumber !== '' ? $evolutionOwnerNumber : 'Não informado') ?></strong>
+      </div>
     </article>
 
     <article class="whatsapp-qr-card">
       <div>
-        <strong>Twilio Sandbox</strong>
-        <p>Para testes, escaneie com o WhatsApp que vai receber mensagens e envie o código join.</p>
+        <strong>2. Gere e escaneie</strong>
+        <p>Clique para buscar o QR da instância. No celular da empresa, abra WhatsApp > Dispositivos conectados > Conectar dispositivo.</p>
       </div>
-      <?php if ($sandboxChatLink): ?>
-        <img src="<?= e($sandboxQrImage) ?>" alt="QR Code para entrar no Twilio WhatsApp Sandbox" loading="lazy">
-        <a class="btn btn-soft" href="<?= e($sandboxChatLink) ?>" target="_blank" rel="noopener">Entrar no sandbox</a>
-        <small><?= e($sandboxJoinText) ?> para +<?= e($sandboxNumber) ?></small>
+      <?php if ($evolutionQrResult && ($evolutionQrResult['status'] ?? '') === 'connected'): ?>
+        <div class="qr-placeholder">OK</div>
+        <small><?= e((string) $evolutionQrResult['message']) ?></small>
+      <?php elseif ($evolutionQrResult && !empty($evolutionQrResult['qr'])): ?>
+        <img src="<?= e((string) $evolutionQrResult['qr']) ?>" alt="QR Code para conectar WhatsApp no gateway" loading="lazy">
+        <small><?= e((string) $evolutionQrResult['message']) ?></small>
+        <?php if (!empty($evolutionQrResult['pairing_code'])): ?>
+          <small>Código de pareamento: <?= e((string) $evolutionQrResult['pairing_code']) ?></small>
+        <?php endif; ?>
       <?php else: ?>
-        <div class="qr-placeholder">JOIN</div>
-        <small>Informe o código join do Twilio Sandbox e salve para gerar o QR.</small>
+        <div class="qr-placeholder">QR</div>
+        <small><?= $evolutionQrResult ? e((string) $evolutionQrResult['message']) : 'Salve a configuração e gere o QR.' ?></small>
       <?php endif; ?>
+      <form method="post" action="<?= site_url('admin/integracoes.php') ?>">
+        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+        <input type="hidden" name="action" value="evolution_qr">
+        <button class="btn btn-primary" type="submit">Gerar QR de conexão</button>
+      </form>
     </article>
   </div>
 
   <div class="admin-alert-card admin-alert-warning">
-    <strong>Importante</strong>
-    Este QR não captura sessão do WhatsApp Web. Ele facilita a conexão oficial para conversa/teste; para o sistema enviar mensagens sozinho, configure Meta Cloud API ou Twilio WhatsApp.
+    <strong>Atenção</strong>
+    Este modo usa gateway não oficial baseado em sessão do WhatsApp Web. É mais simples para conectar por QR, mas pode desconectar, falhar ou sofrer bloqueio pelo WhatsApp. Use por sua conta e mantenha Meta/Twilio como caminho recomendado para produção.
   </div>
 </section>
 
@@ -159,13 +180,17 @@ require_once __DIR__ . '/../includes/admin-head.php';
 
   <div class="admin-panel-header">
     <div><span class="badge">WhatsApp pós-compra</span><h2>Notificação automática</h2></div>
-    <span class="admin-badge-info">Meta: <?= e(whatsapp_mask_secret((string) $config['whatsapp_business_token'])) ?> · Twilio: <?= e(whatsapp_mask_secret((string) $config['twilio_auth_token'])) ?></span>
+    <span class="admin-badge-info">QR: <?= e(whatsapp_mask_secret((string) $config['evolution_api_key'])) ?> · Meta: <?= e(whatsapp_mask_secret((string) $config['whatsapp_business_token'])) ?> · Twilio: <?= e(whatsapp_mask_secret((string) $config['twilio_auth_token'])) ?></span>
   </div>
 
   <div class="admin-form-grid">
     <label class="admin-field"><span>Envio automático</span><select name="whatsapp_enabled"><option value="1" <?= $config['whatsapp_enabled'] ? 'selected' : '' ?>>Ativo</option><option value="0" <?= !$config['whatsapp_enabled'] ? 'selected' : '' ?>>Inativo</option></select></label>
-    <label class="admin-field"><span>Modo</span><select name="whatsapp_mode"><option value="simulacao" <?= $config['whatsapp_mode'] === 'simulacao' ? 'selected' : '' ?>>Simulação/log</option><option value="cloud_api" <?= $config['whatsapp_mode'] === 'cloud_api' ? 'selected' : '' ?>>Meta Cloud API</option><option value="twilio" <?= $config['whatsapp_mode'] === 'twilio' ? 'selected' : '' ?>>Twilio WhatsApp</option></select></label>
+    <label class="admin-field"><span>Modo</span><select name="whatsapp_mode"><option value="evolution_api" <?= $config['whatsapp_mode'] === 'evolution_api' ? 'selected' : '' ?>>QR não oficial</option><option value="simulacao" <?= $config['whatsapp_mode'] === 'simulacao' ? 'selected' : '' ?>>Simulação/log</option><option value="cloud_api" <?= $config['whatsapp_mode'] === 'cloud_api' ? 'selected' : '' ?>>Meta Cloud API</option><option value="twilio" <?= $config['whatsapp_mode'] === 'twilio' ? 'selected' : '' ?>>Twilio WhatsApp</option></select></label>
     <label class="admin-field"><span>Número da empresa</span><input name="whatsapp_company_number" value="<?= e((string) $config['whatsapp_company_number']) ?>" placeholder="5597000000000"></label>
+    <label class="admin-field"><span>Gateway QR URL</span><input name="evolution_api_url" value="<?= e((string) $config['evolution_api_url']) ?>" placeholder="https://evolution.seudominio.com"></label>
+    <label class="admin-field"><span>Gateway QR API key</span><input type="password" name="evolution_api_key" value="" placeholder="Preencha apenas para alterar"></label>
+    <label class="admin-field"><span>Instância QR</span><input name="evolution_instance" value="<?= e($evolutionInstance) ?>" placeholder="arteflor"></label>
+    <label class="admin-field"><span>Número conectado</span><input name="evolution_owner_number" value="<?= e($evolutionOwnerNumber) ?>" placeholder="5597000000000"></label>
     <label class="admin-field"><span>Phone Number ID</span><input name="whatsapp_phone_number_id" value="<?= e((string) $config['whatsapp_phone_number_id']) ?>"></label>
     <label class="admin-field"><span>Versão da API</span><input name="whatsapp_api_version" value="<?= e((string) $config['whatsapp_api_version']) ?>"></label>
     <label class="admin-field"><span>Token Cloud API</span><input type="password" name="whatsapp_business_token" value="" placeholder="Preencha apenas para alterar"></label>
@@ -182,8 +207,8 @@ require_once __DIR__ . '/../includes/admin-head.php';
     <label class="admin-field full"><span>Mensagem automática após pedido</span><textarea name="whatsapp_message_after_order" rows="12"><?= e((string) $config['whatsapp_message_after_order']) ?></textarea></label>
   </div>
   <div class="admin-alert-card admin-alert-info">
-    <strong>Regra WhatsApp/Twilio</strong>
-    Mensagens livres pelo Twilio WhatsApp só são adequadas dentro da janela de atendimento de 24 horas. Para notificação transacional fora dessa janela, configure um Content SID de template aprovado.
+    <strong>Regras de envio</strong>
+    O modo QR não oficial depende de sessão do gateway e pode desconectar. Mensagens livres pelo Twilio WhatsApp só são adequadas dentro da janela de atendimento de 24 horas; fora dela, configure um Content SID de template aprovado.
   </div>
 </form>
 

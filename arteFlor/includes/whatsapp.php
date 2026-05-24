@@ -48,6 +48,9 @@ function whatsapp_config(): array
     $twilioSidFromLocal = defined('TWILIO_ACCOUNT_SID') ? (string) TWILIO_ACCOUNT_SID : '';
     $twilioTokenFromLocal = defined('TWILIO_AUTH_TOKEN') ? (string) TWILIO_AUTH_TOKEN : '';
     $twilioFromLocal = defined('TWILIO_WHATSAPP_FROM') ? (string) TWILIO_WHATSAPP_FROM : '';
+    $evolutionUrlFromLocal = defined('EVOLUTION_API_URL') ? (string) EVOLUTION_API_URL : '';
+    $evolutionKeyFromLocal = defined('EVOLUTION_API_KEY') ? (string) EVOLUTION_API_KEY : '';
+    $evolutionInstanceFromLocal = defined('EVOLUTION_INSTANCE') ? (string) EVOLUTION_INSTANCE : '';
 
     return [
         'pix_key' => integration_setting('pix_key', 'arteflor@pix.demo'),
@@ -70,6 +73,10 @@ function whatsapp_config(): array
         'twilio_content_sid' => integration_setting('twilio_content_sid', '') ?: '',
         'twilio_sandbox_number' => integration_setting('twilio_sandbox_number', '14155238886') ?: '14155238886',
         'twilio_sandbox_join_code' => integration_setting('twilio_sandbox_join_code', '') ?: '',
+        'evolution_api_url' => $evolutionUrlFromLocal !== '' ? $evolutionUrlFromLocal : (integration_setting('evolution_api_url', '') ?: ''),
+        'evolution_api_key' => $evolutionKeyFromLocal !== '' ? $evolutionKeyFromLocal : (integration_setting('evolution_api_key', '') ?: ''),
+        'evolution_instance' => $evolutionInstanceFromLocal !== '' ? $evolutionInstanceFromLocal : (integration_setting('evolution_instance', 'arteflor') ?: 'arteflor'),
+        'evolution_owner_number' => integration_setting('evolution_owner_number', '') ?: '',
     ];
 }
 
@@ -86,7 +93,7 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
     $sendAfterOrder = !empty($input['whatsapp_send_after_order']) ? '1' : '0';
     $sendOnStatusChange = !empty($input['whatsapp_send_on_status_change']) ? '1' : '0';
     $mode = (string) ($input['whatsapp_mode'] ?? 'simulacao');
-    if (!in_array($mode, ['simulacao', 'cloud_api', 'twilio'], true)) {
+    if (!in_array($mode, ['simulacao', 'cloud_api', 'twilio', 'evolution_api'], true)) {
         $mode = 'simulacao';
     }
 
@@ -108,6 +115,9 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
     integration_setting_set('twilio_content_sid', order_clean_text($input['twilio_content_sid'] ?? '', 80), 'Twilio Content SID para template aprovado', false, $adminId);
     integration_setting_set('twilio_sandbox_number', whatsapp_clean_sandbox_number($input['twilio_sandbox_number'] ?? '14155238886'), 'Número Twilio Sandbox WhatsApp', false, $adminId);
     integration_setting_set('twilio_sandbox_join_code', whatsapp_clean_sandbox_join_code($input['twilio_sandbox_join_code'] ?? ''), 'Código join do Twilio Sandbox', false, $adminId);
+    integration_setting_set('evolution_api_url', whatsapp_normalize_base_url($input['evolution_api_url'] ?? ''), 'URL do gateway Evolution API', false, $adminId);
+    integration_setting_set('evolution_instance', whatsapp_clean_instance_name($input['evolution_instance'] ?? 'arteflor'), 'Instância Evolution API', false, $adminId);
+    integration_setting_set('evolution_owner_number', whatsapp_link_phone_digits((string) ($input['evolution_owner_number'] ?? '')), 'Número conectado no Evolution API', false, $adminId);
 
     $token = trim((string) ($input['whatsapp_business_token'] ?? ''));
     if ($token !== '') {
@@ -117,6 +127,11 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
     $twilioToken = trim((string) ($input['twilio_auth_token'] ?? ''));
     if ($twilioToken !== '') {
         integration_setting_set('twilio_auth_token', $twilioToken, 'Twilio Auth Token secreto', true, $adminId);
+    }
+
+    $evolutionKey = trim((string) ($input['evolution_api_key'] ?? ''));
+    if ($evolutionKey !== '') {
+        integration_setting_set('evolution_api_key', $evolutionKey, 'API key secreta do Evolution API', true, $adminId);
     }
 }
 
@@ -196,6 +211,230 @@ function whatsapp_qr_image_url(string $payload, int $size = 220): string
     $size = max(140, min(320, $size));
 
     return 'https://api.qrserver.com/v1/create-qr-code/?size=' . $size . 'x' . $size . '&margin=12&data=' . rawurlencode($payload);
+}
+
+function whatsapp_normalize_base_url(mixed $value): string
+{
+    $url = rtrim(order_clean_text($value, 220), '/');
+    if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+        return '';
+    }
+    $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        return '';
+    }
+
+    return $url;
+}
+
+function whatsapp_clean_instance_name(mixed $value): string
+{
+    $name = strtolower(order_clean_text($value, 80));
+    $name = preg_replace('/[^a-z0-9_-]/', '-', $name) ?? '';
+    $name = trim($name, '-_');
+
+    return $name !== '' ? $name : 'arteflor';
+}
+
+function whatsapp_evolution_configured(array $config): bool
+{
+    return trim((string) $config['evolution_api_url']) !== ''
+        && trim((string) $config['evolution_api_key']) !== ''
+        && trim((string) $config['evolution_instance']) !== '';
+}
+
+function whatsapp_evolution_endpoint(array $config, string $path): string
+{
+    return rtrim((string) $config['evolution_api_url'], '/') . '/' . ltrim($path, '/');
+}
+
+function whatsapp_http_get_json(string $url, array $headers = []): array
+{
+    if (function_exists('curl_init')) {
+        $curl = curl_init($url);
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 12,
+        ]);
+        $response = curl_exec($curl);
+        $error = curl_error($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        curl_close($curl);
+
+        return [
+            'ok' => $error === '' && $status >= 200 && $status < 300,
+            'status' => $status,
+            'body' => is_string($response) ? $response : '',
+            'error' => $error,
+        ];
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => implode("\r\n", $headers),
+            'timeout' => 12,
+            'ignore_errors' => true,
+        ],
+    ]);
+    $response = @file_get_contents($url, false, $context);
+    $status = 0;
+    foreach (($http_response_header ?? []) as $header) {
+        if (preg_match('/^HTTP\/\S+\s+(\d+)/', $header, $matches)) {
+            $status = (int) $matches[1];
+            break;
+        }
+    }
+
+    return [
+        'ok' => $response !== false && $status >= 200 && $status < 300,
+        'status' => $status,
+        'body' => is_string($response) ? $response : '',
+        'error' => $response === false ? 'Falha de rede ao chamar Evolution API.' : '',
+    ];
+}
+
+function whatsapp_json_body(array $result): array
+{
+    $decoded = json_decode((string) ($result['body'] ?? ''), true);
+
+    return is_array($decoded) ? $decoded : [];
+}
+
+function whatsapp_evolution_create_instance(array $config): array
+{
+    $instance = whatsapp_clean_instance_name($config['evolution_instance'] ?? 'arteflor');
+    $payload = [
+        'instanceName' => $instance,
+        'integration' => 'WHATSAPP-BAILEYS',
+        'qrcode' => true,
+    ];
+    $ownerNumber = whatsapp_link_phone_digits((string) ($config['evolution_owner_number'] ?? ''));
+    if ($ownerNumber !== '') {
+        $payload['number'] = $ownerNumber;
+    }
+
+    return whatsapp_http_post_json(
+        whatsapp_evolution_endpoint($config, '/instance/create'),
+        ['apikey: ' . (string) $config['evolution_api_key']],
+        $payload
+    );
+}
+
+function whatsapp_evolution_connection_state(array $config): array
+{
+    $instance = rawurlencode(whatsapp_clean_instance_name($config['evolution_instance'] ?? 'arteflor'));
+
+    return whatsapp_http_get_json(
+        whatsapp_evolution_endpoint($config, '/instance/connectionState/' . $instance),
+        ['apikey: ' . (string) $config['evolution_api_key']]
+    );
+}
+
+function whatsapp_evolution_connect(array $config): array
+{
+    $instance = rawurlencode(whatsapp_clean_instance_name($config['evolution_instance'] ?? 'arteflor'));
+    $ownerNumber = whatsapp_link_phone_digits((string) ($config['evolution_owner_number'] ?? ''));
+    $path = '/instance/connect/' . $instance . ($ownerNumber !== '' ? '?number=' . rawurlencode($ownerNumber) : '');
+
+    return whatsapp_http_get_json(
+        whatsapp_evolution_endpoint($config, $path),
+        ['apikey: ' . (string) $config['evolution_api_key']]
+    );
+}
+
+function whatsapp_find_recursive_value(array $data, array $keys): ?string
+{
+    foreach ($data as $key => $value) {
+        if (is_string($key) && in_array(strtolower($key), $keys, true) && is_string($value) && trim($value) !== '') {
+            return trim($value);
+        }
+        if (is_array($value)) {
+            $found = whatsapp_find_recursive_value($value, $keys);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+    }
+
+    return null;
+}
+
+function whatsapp_evolution_qr_image_src(array $data): ?string
+{
+    $base64 = whatsapp_find_recursive_value($data, ['base64', 'qrcodebase64']);
+    if ($base64 !== null) {
+        if (str_starts_with($base64, 'data:image/')) {
+            return $base64;
+        }
+        if (preg_match('/^[A-Za-z0-9+\/=\r\n]+$/', $base64) && strlen($base64) > 100) {
+            return 'data:image/png;base64,' . preg_replace('/\s+/', '', $base64);
+        }
+    }
+
+    $code = whatsapp_find_recursive_value($data, ['code', 'qrcode', 'qr', 'qr_code']);
+    if ($code !== null) {
+        return whatsapp_qr_image_url($code, 260);
+    }
+
+    return null;
+}
+
+function whatsapp_evolution_pairing_code(array $data): string
+{
+    return whatsapp_find_recursive_value($data, ['pairingcode', 'pairing_code']) ?? '';
+}
+
+function whatsapp_evolution_prepare_qr(array $config): array
+{
+    if (!whatsapp_evolution_configured($config)) {
+        return [
+            'success' => false,
+            'status' => 'erro',
+            'message' => 'Configure URL, API key e instância do gateway antes de gerar o QR.',
+        ];
+    }
+
+    $state = whatsapp_evolution_connection_state($config);
+    $stateData = whatsapp_json_body($state);
+    $stateText = strtolower((string) (whatsapp_find_recursive_value($stateData, ['state', 'status']) ?? ''));
+    if ($state['ok'] && in_array($stateText, ['open', 'connected'], true)) {
+        return [
+            'success' => true,
+            'status' => 'connected',
+            'message' => 'WhatsApp conectado nesta instância.',
+            'raw' => $state['body'],
+        ];
+    }
+
+    if (!$state['ok'] && (int) $state['status'] === 404) {
+        whatsapp_evolution_create_instance($config);
+    }
+
+    $connect = whatsapp_evolution_connect($config);
+    $data = whatsapp_json_body($connect);
+    $qr = whatsapp_evolution_qr_image_src($data);
+
+    if ($connect['ok'] && $qr !== null) {
+        return [
+            'success' => true,
+            'status' => 'qr',
+            'message' => 'Escaneie o QR com o WhatsApp da empresa.',
+            'qr' => $qr,
+            'pairing_code' => whatsapp_evolution_pairing_code($data),
+            'raw' => $connect['body'],
+        ];
+    }
+
+    $error = $connect['error'] !== '' ? $connect['error'] : 'Gateway retornou HTTP ' . $connect['status'] . '.';
+
+    return [
+        'success' => false,
+        'status' => 'erro',
+        'message' => 'Não foi possível gerar o QR pelo gateway. ' . $error,
+        'raw' => $connect['body'],
+    ];
 }
 
 function whatsapp_public_order_link(string $code): string
@@ -441,6 +680,36 @@ function whatsapp_send_order_message(int $pedidoId, bool $force = false, string 
     if ($config['whatsapp_mode'] === 'simulacao') {
         whatsapp_log_notification($pedidoId, $phone, $type, $message, 'simulado', 'Modo simulação: nenhuma API externa chamada.', null);
         return ['enabled' => true, 'status' => 'simulado'];
+    }
+
+    if ($config['whatsapp_mode'] === 'evolution_api') {
+        if (!whatsapp_evolution_configured($config)) {
+            whatsapp_log_notification($pedidoId, $phone, $type, $message, 'erro', null, 'Evolution API sem URL, API key ou instância configurada.');
+            return ['enabled' => true, 'status' => 'erro', 'message' => 'Gateway WhatsApp por QR não configurado.'];
+        }
+
+        $instance = rawurlencode(whatsapp_clean_instance_name($config['evolution_instance'] ?? 'arteflor'));
+        $result = whatsapp_http_post_json(
+            whatsapp_evolution_endpoint($config, '/message/sendText/' . $instance),
+            ['apikey: ' . (string) $config['evolution_api_key']],
+            [
+                'number' => $phone,
+                'text' => $message,
+                'delay' => 1200,
+                'linkPreview' => false,
+            ]
+        );
+
+        if ($result['ok']) {
+            whatsapp_log_notification($pedidoId, $phone, $type, $message, 'enviado', $result['body'], null);
+            return ['enabled' => true, 'status' => 'enviado'];
+        }
+
+        $errorMessage = $result['error'] !== '' ? $result['error'] : 'Evolution API retornou HTTP ' . $result['status'] . '.';
+        whatsapp_log_notification($pedidoId, $phone, $type, $message, 'erro', $result['body'], $errorMessage);
+        error_log('[ArteFlor][evolution-whatsapp-send] ' . $errorMessage);
+
+        return ['enabled' => true, 'status' => 'erro', 'message' => 'Não foi possível enviar pelo gateway WhatsApp por QR agora.'];
     }
 
     if ($config['whatsapp_mode'] === 'twilio') {

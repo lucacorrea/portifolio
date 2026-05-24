@@ -5,3 +5,6 @@ const WHATSAPP_API_VERSION = 'v21.0';
 const TWILIO_ACCOUNT_SID = '';
 const TWILIO_AUTH_TOKEN = '';
 const TWILIO_WHATSAPP_FROM = '';
+const EVOLUTION_API_URL = '';
+const EVOLUTION_API_KEY = '';
+const EVOLUTION_INSTANCE = 'arteflor';

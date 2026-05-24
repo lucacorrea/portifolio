@@ -70,17 +70,21 @@ const WHATSAPP_API_VERSION = 'v21.0';
 const TWILIO_ACCOUNT_SID = '';
 const TWILIO_AUTH_TOKEN = '';
 const TWILIO_WHATSAPP_FROM = '';
+const EVOLUTION_API_URL = '';
+const EVOLUTION_API_KEY = '';
+const EVOLUTION_INSTANCE = 'arteflor';
 ```
 
 3. No admin, acesse `/admin/integracoes.php`.
 4. Use `simulação/log` para testar sem token.
 5. Para envio real via Meta, configure modo `Meta Cloud API`, Phone Number ID e token no `config.local.php` ou no campo secreto do admin.
 6. Para envio real via Twilio, configure modo `Twilio WhatsApp`, Account SID, Auth Token e remetente `whatsapp:+E.164`.
-7. Para teste simples, use o bloco `Conectar fácil` em `/admin/integracoes.php`: ele gera QR de conversa da empresa e QR do Twilio Sandbox quando houver código `join` configurado.
+7. Para conexão por QR não oficial, configure um gateway compatível com Evolution API e selecione modo `QR não oficial`.
+8. Em `/admin/integracoes.php`, use `Gerar QR de conexão` e escaneie no WhatsApp da empresa em `Dispositivos conectados`.
 
 A mensagem pós-compra é editável e aceita variáveis como `{{codigo}}`, `{{cliente}}`, `{{total}}`, `{{itens}}` e `{{link_pedido}}`.
 No Twilio WhatsApp, mensagens livres dependem da janela de atendimento de 24 horas; fora dela, use um template aprovado via Content SID.
-O QR Code do admin não captura sessão do WhatsApp Web; ele apenas facilita abrir a conversa oficial de teste/conexão.
+O modo `QR não oficial` usa sessão de WhatsApp Web via gateway externo. Ele é simples de conectar, mas pode desconectar, falhar ou sofrer bloqueio pelo WhatsApp; Meta Cloud API/Twilio seguem como opções recomendadas para produção.
 
 ## Upload de produtos
 
