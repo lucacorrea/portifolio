@@ -3,7 +3,7 @@
   <div class="container footer-grid">
     <div>
       <strong class="footer-brand">Arte&Flor</strong>
-      <p>Flores, arranjos, vasos e presentes com compra finalizada dentro do sistema demonstrativo.</p>
+      <p>Flores, arranjos, vasos e presentes com compra finalizada dentro do sistema.</p>
     </div>
     <div>
       <strong>Catálogo</strong>

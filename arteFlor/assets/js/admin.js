@@ -2,13 +2,20 @@
   if (!window.ArteFlor) return;
 
   const productScript = document.getElementById('pdvProducts');
+  const configScript = document.getElementById('pdvConfig');
   if (!productScript) return;
 
   let products = [];
+  let config = {};
   try {
     products = JSON.parse(productScript.textContent || '[]');
   } catch (error) {
     products = [];
+  }
+  try {
+    config = JSON.parse(configScript?.textContent || '{}');
+  } catch (error) {
+    config = {};
   }
 
   const productGrid = document.querySelector('[data-pdv-product-grid]');
@@ -35,9 +42,18 @@
 
   const addProduct = (product, qty = getQty()) => {
     const current = sale.find((item) => item.id === String(product.id));
+    const stock = Number(product.estoque || 0);
     if (current) {
+      if (stock > 0 && current.qty + qty > stock) {
+        ArteFlor.toast('Quantidade maior que o estoque disponível.', 'warning');
+        return;
+      }
       current.qty += qty;
     } else {
+      if (stock > 0 && qty > stock) {
+        ArteFlor.toast('Quantidade maior que o estoque disponível.', 'warning');
+        return;
+      }
       sale.push({ ...product, id: String(product.id), qty });
     }
     renderSale();
@@ -57,7 +73,7 @@
       <button class="pdv-product-card" type="button" data-pdv-add="${ArteFlor.escapeHtml(product.id)}">
         ${product.imagem ? `<img src="${ArteFlor.escapeHtml(product.imagem)}" alt="${ArteFlor.escapeHtml(product.nome)}">` : '<span>A&F</span>'}
         <strong>${ArteFlor.escapeHtml(product.nome)}</strong>
-        <small>${ArteFlor.escapeHtml(product.sku || product.categoria)}</small>
+        <small>${ArteFlor.escapeHtml(product.sku || product.categoria)} · ${Number(product.estoque || 0)} un.</small>
         <em>${ArteFlor.formatMoney(product.preco)}</em>
       </button>
     `).join('') || '<div class="empty-state small"><strong>Nenhum produto</strong><p>Ajuste a busca do PDV.</p></div>';
@@ -135,7 +151,14 @@
 
     if (plus) {
       const item = sale.find((row) => row.id === plus);
-      if (item) item.qty += 1;
+      if (item) {
+        const stock = Number(item.estoque || 0);
+        if (stock > 0 && item.qty + 1 > stock) {
+          ArteFlor.toast('Quantidade maior que o estoque disponível.', 'warning');
+          return;
+        }
+        item.qty += 1;
+      }
     }
     if (minus) {
       const item = sale.find((row) => row.id === minus);
@@ -147,32 +170,49 @@
     renderSale();
   });
 
-  const finishSale = () => {
+  const finishSale = async () => {
     if (!sale.length) {
       ArteFlor.toast('Adicione produtos antes de finalizar a venda.', 'warning');
       return;
     }
 
     const totals = saleTotals();
-    const code = `#PDV-${String(Math.floor(1000 + Math.random() * 9000))}`;
-    ArteFlor.saveSale({
-      codigo: code,
-      cliente: clientInput?.value || 'Cliente balcão',
-      contato: contactInput?.value || '',
-      pagamento: paymentInput?.value || 'Pix',
-      subtotal: totals.subtotal,
-      desconto: totals.discount,
-      total: totals.total,
-      status: 'Venda finalizada no sistema',
-      itens: sale,
-      criadoEm: new Date().toISOString()
-    });
+    const endpoint = config.endpoint || 'actions/pdv-finalizar.php';
 
-    sale = [];
-    if (discountInput) discountInput.value = 0;
-    renderSale();
-    renderHistory();
-    ArteFlor.toast(`Venda ${code} finalizada no sistema.`);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          csrf_token: config.csrfToken || '',
+          cliente: clientInput?.value || 'Cliente balcão',
+          contato: contactInput?.value || 'Balcão',
+          pagamento: paymentInput?.value || 'Pix',
+          desconto: totals.discount,
+          valor_recebido: Number(document.querySelector('[data-pdv-received]')?.value || totals.total),
+          itens: sale.map((item) => ({
+            produto_id: Number(item.id),
+            quantidade: Number(item.qty || 1)
+          }))
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Não foi possível finalizar a venda.');
+      }
+
+      sale = [];
+      if (discountInput) discountInput.value = 0;
+      renderSale();
+      renderHistory();
+      ArteFlor.toast(`Venda ${result.codigo} finalizada no banco.`);
+    } catch (error) {
+      ArteFlor.toast(error.message || 'Não foi possível finalizar a venda.', 'error');
+    }
   };
 
   document.querySelectorAll('[data-pdv-finish]').forEach((button) => button.addEventListener('click', finishSale));
@@ -182,7 +222,7 @@
     ArteFlor.toast('Venda atual cancelada.', 'info');
   });
   document.querySelectorAll('[data-pdv-suspend]').forEach((button) => {
-    button.addEventListener('click', () => ArteFlor.toast('Venda suspensa visualmente.', 'info'));
+    button.addEventListener('click', () => ArteFlor.toast('Venda suspensa localmente nesta tela.', 'info'));
   });
 
   search?.addEventListener('input', renderProducts);

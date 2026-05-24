@@ -67,13 +67,18 @@ Configuração recomendada:
 const WHATSAPP_CLOUD_API_TOKEN = '';
 const WHATSAPP_PHONE_NUMBER_ID = '';
 const WHATSAPP_API_VERSION = 'v21.0';
+const TWILIO_ACCOUNT_SID = '';
+const TWILIO_AUTH_TOKEN = '';
+const TWILIO_WHATSAPP_FROM = '';
 ```
 
 3. No admin, acesse `/admin/integracoes.php`.
 4. Use `simulação/log` para testar sem token.
-5. Para envio real, configure modo `Cloud API`, Phone Number ID e token no `config.local.php` ou no campo secreto do admin.
+5. Para envio real via Meta, configure modo `Meta Cloud API`, Phone Number ID e token no `config.local.php` ou no campo secreto do admin.
+6. Para envio real via Twilio, configure modo `Twilio WhatsApp`, Account SID, Auth Token e remetente `whatsapp:+E.164`.
 
 A mensagem pós-compra é editável e aceita variáveis como `{{codigo}}`, `{{cliente}}`, `{{total}}`, `{{itens}}` e `{{link_pedido}}`.
+No Twilio WhatsApp, mensagens livres dependem da janela de atendimento de 24 horas; fora dela, use um template aprovado via Content SID.
 
 ## Upload de produtos
 
