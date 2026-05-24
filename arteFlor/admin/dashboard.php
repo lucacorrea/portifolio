@@ -44,14 +44,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
   <article class="admin-kpi-card"><span>Ticket médio</span><strong><?= money_br($todaySummary['ticket_medio']) ?></strong><small>Pedidos de hoje</small></article>
 </section>
 
-<section class="admin-quick-grid">
-  <a class="admin-quick-card" href="<?= site_url('admin/produto-form.php') ?>"><i>Novo</i><div><strong>Novo produto</strong><small>Cadastro visual completo</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/caixa.php') ?>"><i>PDV</i><div><strong>Frente de caixa</strong><small>Venda presencial rápida</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/pedidos.php') ?>"><i>Fila</i><div><strong>Pedidos</strong><small>Status e pagamentos</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/estoque.php') ?>"><i>Estoq.</i><div><strong>Estoque</strong><small>Entradas e saídas</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/relatorios.php') ?>"><i>BI</i><div><strong>Relatórios</strong><small>Indicadores visuais</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/integracoes.php') ?>"><i>API</i><div><strong>Integrações</strong><small>Pix e atendimento</small></div></a>
-</section>
+
 
 <section class="admin-grid-2">
   <article class="admin-panel-card">
