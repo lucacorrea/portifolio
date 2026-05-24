@@ -17,3 +17,8 @@ ruvector.db
 
 # Logs
 *.log
+
+# Claude Flow: versionar só configuração principal
+.claude-flow/*
+!.claude-flow/
+!.claude-flow/config.yaml
