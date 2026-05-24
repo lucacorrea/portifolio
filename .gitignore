@@ -22,3 +22,8 @@ ruvector.db
 .claude-flow/*
 !.claude-flow/
 !.claude-flow/config.yaml
+
+# Claude Flow runtime - ignorar tudo exceto config principal
+.claude-flow/**
+!.claude-flow/
+!.claude-flow/config.yaml
