@@ -35,6 +35,20 @@ function parse_money_filter_value($valor): ?float {
     return (float)$valor;
 }
 
+function secretaria_sigla_label($nome): string {
+    $nome = trim((string)$nome);
+
+    if ($nome === '') {
+        return '';
+    }
+
+    if (preg_match('/-\s*([A-Z0-9]{2,15})\s*$/u', $nome, $matches)) {
+        return $matches[1];
+    }
+
+    return $nome;
+}
+
 if (isset($_GET['status']) && $_GET['status'] != '' && in_array($_GET['status'], $status_options, true)) {
     $where_clauses[] = "o.status = ?";
     $params[] = $_GET['status'];
@@ -287,7 +301,9 @@ include 'views/layout/header.php';
                                 <?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>
                             </td>
                             <td>
-                                <span class="text-muted"><?php echo htmlspecialchars($o['secretaria'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span class="text-muted" title="<?php echo htmlspecialchars($o['secretaria'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php echo htmlspecialchars(secretaria_sigla_label($o['secretaria']), ENT_QUOTES, 'UTF-8'); ?>
+                                </span>
                             </td>
                             <td><?php echo format_date($o['criado_em']); ?></td>
                             <td style="text-align: right; font-weight: 700; color: #157347;">
