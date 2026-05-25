@@ -70,6 +70,8 @@ const WHATSAPP_API_VERSION = 'v21.0';
 const TWILIO_ACCOUNT_SID = '';
 const TWILIO_AUTH_TOKEN = '';
 const TWILIO_WHATSAPP_FROM = '';
+const BAILEYS_BRIDGE_URL = '';
+const BAILEYS_BRIDGE_API_KEY = '';
 const EVOLUTION_API_URL = '';
 const EVOLUTION_API_KEY = '';
 const EVOLUTION_INSTANCE = 'arteflor';
@@ -79,12 +81,12 @@ const EVOLUTION_INSTANCE = 'arteflor';
 4. Use `simulação/log` para testar sem token.
 5. Para envio real via Meta, configure modo `Meta Cloud API`, Phone Number ID e token no `config.local.php` ou no campo secreto do admin.
 6. Para envio real via Twilio, configure modo `Twilio WhatsApp`, Account SID, Auth Token e remetente `whatsapp:+E.164`.
-7. Para conexão por QR não oficial, configure um gateway compatível com Evolution API e selecione modo `QR não oficial`.
-8. Em `/admin/integracoes.php`, use `Gerar QR de conexão` e escaneie no WhatsApp da empresa em `Dispositivos conectados`.
+7. Para conexão por QR igual ao Tático GPS, rode o bridge em `arteFlor/bridge`, informe a URL pública em `/admin/integracoes.php` e escaneie o QR no WhatsApp da empresa em `Dispositivos conectados`.
+8. Se o bridge usar `BRIDGE_REQUIRE_API_KEY=true`, informe a mesma chave no campo `Chave do serviço`. Para modo simples sem chave, use `BRIDGE_REQUIRE_API_KEY=false` somente quando o bridge estiver protegido por rede/proxy.
 
 A mensagem pós-compra é editável e aceita variáveis como `{{codigo}}`, `{{cliente}}`, `{{total}}`, `{{itens}}` e `{{link_pedido}}`.
 No Twilio WhatsApp, mensagens livres dependem da janela de atendimento de 24 horas; fora dela, use um template aprovado via Content SID.
-O modo `QR não oficial` usa sessão de WhatsApp Web via gateway externo. Ele é simples de conectar, mas pode desconectar, falhar ou sofrer bloqueio pelo WhatsApp; Meta Cloud API/Twilio seguem como opções recomendadas para produção.
+O modo `Bridge Baileys / QR próprio` usa sessão de WhatsApp Web pelo bridge Node. Ele é simples de conectar, mas pode desconectar, falhar ou sofrer bloqueio pelo WhatsApp; Meta Cloud API/Twilio seguem como opções mais estáveis para produção regulada.
 
 ## Upload de produtos
 

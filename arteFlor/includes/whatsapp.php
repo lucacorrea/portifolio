@@ -436,8 +436,7 @@ function whatsapp_http_post_form(string $url, string $username, string $password
 
 function whatsapp_bridge_configured(array $config): bool
 {
-    return trim((string) ($config['baileys_bridge_url'] ?? '')) !== ''
-        && trim((string) ($config['baileys_bridge_api_key'] ?? '')) !== '';
+    return trim((string) ($config['baileys_bridge_url'] ?? '')) !== '';
 }
 
 function whatsapp_bridge_endpoint(array $config, string $path): string
@@ -447,32 +446,84 @@ function whatsapp_bridge_endpoint(array $config, string $path): string
 
 function whatsapp_bridge_headers(array $config): array
 {
+    $apiKey = trim((string) ($config['baileys_bridge_api_key'] ?? ''));
+    if ($apiKey === '') {
+        return [];
+    }
+
     return [
-        'X-API-Key: ' . (string) $config['baileys_bridge_api_key'],
-        'Authorization: Bearer ' . (string) $config['baileys_bridge_api_key'],
+        'X-API-Key: ' . $apiKey,
+        'Authorization: Bearer ' . $apiKey,
     ];
 }
 
-function whatsapp_bridge_prepare_qr(array $config): array
+function whatsapp_bridge_error_message(array $result, string $fallback): string
+{
+    $data = whatsapp_json_body($result);
+    $apiMessage = (string) ($data['message'] ?? $data['error'] ?? '');
+    if ($apiMessage !== '') {
+        return $apiMessage;
+    }
+
+    if ((int) ($result['status'] ?? 0) === 401) {
+        return 'Bridge recusou a conexão. Confira a API key salva no painel.';
+    }
+
+    if ((int) ($result['status'] ?? 0) === 503) {
+        return 'Bridge offline ou sem configuração no Node.js.';
+    }
+
+    if ((string) ($result['error'] ?? '') !== '') {
+        return (string) $result['error'];
+    }
+
+    return $fallback;
+}
+
+function whatsapp_bridge_status(array $config): array
 {
     if (!whatsapp_bridge_configured($config)) {
         return [
             'success' => false,
-            'status' => 'erro',
-            'message' => 'Configure URL e API key do bridge Baileys antes de gerar o QR.',
+            'connected' => false,
+            'status' => 'not_configured',
+            'message' => 'Informe o link do serviço QR para conectar o WhatsApp.',
+            'number' => '',
         ];
     }
 
     $status = whatsapp_http_get_json(whatsapp_bridge_endpoint($config, '/status'), whatsapp_bridge_headers($config));
     $statusData = whatsapp_json_body($status);
 
-    if ($status['ok'] && !empty($statusData['connected'])) {
+    if ($status['ok']) {
         return [
             'success' => true,
-            'status' => 'connected',
-            'message' => 'WhatsApp conectado no bridge Baileys.',
+            'connected' => !empty($statusData['connected']),
+            'status' => (string) ($statusData['status'] ?? (!empty($statusData['connected']) ? 'connected' : 'disconnected')),
+            'message' => (string) ($statusData['message'] ?? ''),
             'number' => (string) ($statusData['number'] ?? ''),
             'raw' => $status['body'],
+        ];
+    }
+
+    return [
+        'success' => false,
+        'connected' => false,
+        'status' => 'offline',
+        'message' => whatsapp_bridge_error_message($status, 'Bridge Offline. Inicie o Node.js e tente novamente.'),
+        'number' => '',
+        'raw' => $status['body'],
+    ];
+}
+
+function whatsapp_bridge_qrcode(array $config): array
+{
+    if (!whatsapp_bridge_configured($config)) {
+        return [
+            'success' => false,
+            'qr' => null,
+            'status' => 'not_configured',
+            'message' => 'Informe o link do serviço QR para gerar o código.',
         ];
     }
 
@@ -496,18 +547,70 @@ function whatsapp_bridge_prepare_qr(array $config): array
             'success' => false,
             'status' => (string) ($qrData['status'] ?? 'aguardando'),
             'message' => (string) ($qrData['message'] ?? 'QR ainda não disponível. Aguarde alguns segundos e clique novamente.'),
+            'qr' => null,
             'raw' => $qrResponse['body'],
         ];
     }
 
-    $error = $qrResponse['error'] !== '' ? $qrResponse['error'] : 'Bridge retornou HTTP ' . $qrResponse['status'] . '.';
+    return [
+        'success' => false,
+        'status' => 'offline',
+        'message' => whatsapp_bridge_error_message($qrResponse, 'Não foi possível consultar o QR no bridge WhatsApp.'),
+        'qr' => null,
+        'raw' => $qrResponse['body'],
+    ];
+}
+
+function whatsapp_bridge_logout(array $config): array
+{
+    if (!whatsapp_bridge_configured($config)) {
+        return [
+            'success' => false,
+            'status' => 'not_configured',
+            'message' => 'Informe o link do serviço QR antes de desconectar.',
+        ];
+    }
+
+    $result = whatsapp_http_post_json(whatsapp_bridge_endpoint($config, '/logout'), whatsapp_bridge_headers($config), []);
+    if (!$result['ok'] && (int) ($result['status'] ?? 0) === 404) {
+        $result = whatsapp_http_get_json(whatsapp_bridge_endpoint($config, '/logout'), whatsapp_bridge_headers($config));
+    }
+
+    if ($result['ok']) {
+        return [
+            'success' => true,
+            'status' => 'disconnected',
+            'message' => 'WhatsApp desconectado. Um novo QR será gerado em instantes.',
+            'raw' => $result['body'],
+        ];
+    }
 
     return [
         'success' => false,
         'status' => 'erro',
-        'message' => 'Não foi possível consultar o QR no bridge Baileys. ' . $error,
-        'raw' => $qrResponse['body'],
+        'message' => whatsapp_bridge_error_message($result, 'Não foi possível desconectar o WhatsApp agora.'),
+        'raw' => $result['body'],
     ];
+}
+
+function whatsapp_bridge_prepare_qr(array $config): array
+{
+    $status = whatsapp_bridge_status($config);
+    if (!empty($status['connected'])) {
+        return [
+            'success' => true,
+            'status' => 'connected',
+            'message' => 'WhatsApp conectado no bridge Baileys.',
+            'number' => (string) ($status['number'] ?? ''),
+            'raw' => (string) ($status['raw'] ?? ''),
+        ];
+    }
+
+    if (($status['status'] ?? '') === 'offline' || ($status['status'] ?? '') === 'not_configured') {
+        return $status;
+    }
+
+    return whatsapp_bridge_qrcode($config);
 }
 
 function whatsapp_evolution_configured(array $config): bool
@@ -796,7 +899,7 @@ function whatsapp_send_order_message(int $pedidoId, bool $force = false, string 
 
     if ($config['whatsapp_mode'] === 'baileys_bridge') {
         if (!whatsapp_bridge_configured($config)) {
-            whatsapp_log_notification($pedidoId, $phone, $type, $message, 'erro', null, 'Bridge Baileys sem URL ou API key configurada.');
+            whatsapp_log_notification($pedidoId, $phone, $type, $message, 'erro', null, 'Bridge WhatsApp sem URL configurada.');
             return ['enabled' => true, 'status' => 'erro', 'message' => 'Bridge WhatsApp Baileys não configurado.'];
         }
 

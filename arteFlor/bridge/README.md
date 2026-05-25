@@ -16,6 +16,7 @@ Edite `.env` e configure:
 NODE_ENV=production
 PORT=8080
 BRIDGE_API_KEY=uma-chave-forte-gerada-com-openssl-rand-hex-32
+BRIDGE_REQUIRE_API_KEY=true
 ```
 
 Inicie:
@@ -32,9 +33,20 @@ pm2 start index.js --name arteflor-whatsapp-bridge
 pm2 save
 ```
 
+## Modo simples igual ao Tático GPS
+
+Se quiser operar igual ao Tático GPS, sem informar chave no painel, defina:
+
+```env
+BRIDGE_REQUIRE_API_KEY=false
+```
+
+Nesse modo o Arte&Flor precisa apenas da URL pública do bridge em `admin/integracoes.php`.
+Use esse modo somente se o bridge estiver protegido por rede, firewall, proxy autenticado ou outro controle de acesso.
+
 ## Endpoints
 
-Todos os endpoints operacionais exigem a chave em `X-API-Key` ou `Authorization: Bearer`.
+Por padrão, os endpoints operacionais exigem a chave em `X-API-Key` ou `Authorization: Bearer`.
 
 - `GET /health`: saúde do serviço, sem API key.
 - `GET /status`: status da conexão.
@@ -48,11 +60,10 @@ No admin:
 
 1. Acesse `admin/integracoes.php`.
 2. Informe a URL pública do bridge, por exemplo `https://whatsapp.seudominio.com`.
-3. Informe a mesma `BRIDGE_API_KEY`.
+3. Informe a mesma `BRIDGE_API_KEY`, se `BRIDGE_REQUIRE_API_KEY=true`.
 4. Salve.
-5. Clique em `Gerar QR de conexão`.
-6. Escaneie com WhatsApp > Dispositivos conectados.
+5. Escaneie o QR com WhatsApp > Dispositivos conectados.
 
 ## Segurança
 
-Não exponha o bridge sem HTTPS e sem API key. O endpoint `/send-message` envia mensagens reais pelo WhatsApp conectado.
+Não exponha o bridge sem HTTPS e sem algum controle de acesso. O endpoint `/send-message` envia mensagens reais pelo WhatsApp conectado.

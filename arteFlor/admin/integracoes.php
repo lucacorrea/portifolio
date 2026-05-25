@@ -5,57 +5,6 @@ require_once __DIR__ . '/../includes/whatsapp.php';
 $adminUser = require_admin();
 $testPreview = null;
 $testPhone = '';
-$bridgeQrResult = null;
-
-if (($_GET['bridge_ajax'] ?? '') === 'status') {
-    header('Content-Type: application/json; charset=utf-8');
-
-    try {
-        $ajaxConfig = whatsapp_config();
-        $ajaxConfigured = whatsapp_bridge_configured($ajaxConfig);
-
-        if (!$ajaxConfigured) {
-            echo json_encode([
-                'configured' => false,
-                'success' => false,
-                'connected' => false,
-                'status' => 'not_configured',
-                'message' => 'Configure URL e API key do bridge Baileys antes de gerar o QR.',
-                'qr' => null,
-                'number' => null,
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            exit;
-        }
-
-        $result = whatsapp_bridge_prepare_qr($ajaxConfig);
-        $status = (string) ($result['status'] ?? 'desconhecido');
-
-        echo json_encode([
-            'configured' => true,
-            'success' => !empty($result['success']),
-            'connected' => $status === 'connected',
-            'status' => $status,
-            'message' => (string) ($result['message'] ?? 'Consultando conexão WhatsApp...'),
-            'qr' => (string) ($result['qr'] ?? ''),
-            'number' => (string) ($result['number'] ?? ''),
-            'updated_at' => date('H:i:s'),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        exit;
-    } catch (Throwable $error) {
-        error_log('[ArteFlor][baileys-bridge-ajax] ' . $error->getMessage());
-        http_response_code(500);
-        echo json_encode([
-            'configured' => false,
-            'success' => false,
-            'connected' => false,
-            'status' => 'erro',
-            'message' => 'Não foi possível consultar o bridge agora.',
-            'qr' => null,
-            'number' => null,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        exit;
-    }
-}
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!admin_csrf_is_valid($_POST['csrf_token'] ?? null)) {
@@ -108,16 +57,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     }
 
     if ($action === 'bridge_qr' || $action === 'evolution_qr') {
-        try {
-            $bridgeQrResult = whatsapp_bridge_prepare_qr(whatsapp_config());
-        } catch (Throwable $error) {
-            error_log('[ArteFlor][baileys-bridge-qr] ' . $error->getMessage());
-            $bridgeQrResult = [
-                'success' => false,
-                'status' => 'erro',
-                'message' => 'Não foi possível consultar o QR do bridge agora.',
-            ];
-        }
+        header('Location: ' . site_url('admin/integracoes.php'));
+        exit;
     }
 }
 
@@ -132,7 +73,7 @@ $bridgeConfigured = whatsapp_bridge_configured($config);
 $bridgeOwnerNumber = whatsapp_link_phone_digits((string) ($config['baileys_owner_number'] ?? ''));
 $evolutionInstance = whatsapp_clean_instance_name($config['evolution_instance'] ?? 'arteflor');
 $evolutionOwnerNumber = whatsapp_link_phone_digits((string) ($config['evolution_owner_number'] ?? ''));
-$successMessages = ['salvo' => 'Configurações salvas com segurança.', 'qr_salvo' => 'Bridge Baileys salvo. O QR será carregado automaticamente.'];
+$successMessages = ['salvo' => 'Configurações salvas com segurança.', 'qr_salvo' => 'Conexão QR salva. O QR será carregado automaticamente.'];
 $errorMessages = ['csrf' => 'Sessão expirada. Recarregue a página e tente novamente.', 'salvar' => 'Não foi possível salvar as configurações.'];
 $successKey = is_string($_GET['success'] ?? null) ? (string) $_GET['success'] : '';
 $errorKey = is_string($_GET['error'] ?? null) ? (string) $_GET['error'] : '';
@@ -162,6 +103,8 @@ require_once __DIR__ . '/../includes/admin-head.php';
   .whatsapp-config-details { margin-top: 18px; }
   .whatsapp-config-details summary { cursor: pointer; font-weight: 800; color: #364152; }
   .whatsapp-live-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .whatsapp-live-actions form { margin: 0; }
+  .whatsapp-bridge-warning { margin-top: 14px; color: #8a5b00; font-size: .9rem; font-weight: 700; }
   @media (max-width: 980px) { .whatsapp-live-grid { grid-template-columns: 1fr; } .whatsapp-live-hero { align-items: flex-start; } }
 </style>
 
@@ -183,7 +126,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
 
 <section class="whatsapp-live-shell">
   <div class="whatsapp-live-hero">
-    <div class="whatsapp-live-icon">☏</div>
+    <div class="whatsapp-live-icon">WA</div>
     <div>
       <h2>Conexão WhatsApp</h2>
       <p>Conecte seu número para ativar as notificações automáticas de pedidos.</p>
@@ -210,6 +153,10 @@ require_once __DIR__ . '/../includes/admin-head.php';
 
       <div class="whatsapp-live-actions">
         <button class="btn btn-primary" type="button" id="refreshWhatsAppQr">Atualizar agora</button>
+        <form id="disconnectWhatsAppForm" action="<?= site_url('admin/actions/whatsapp-bridge.php?action=logout') ?>" method="post" hidden>
+          <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+          <button class="btn btn-outline" type="submit">Desconectar WhatsApp</button>
+        </form>
         <span class="admin-badge-info" id="whatsappLastUpdate">Aguardando consulta...</span>
       </div>
 
@@ -218,11 +165,12 @@ require_once __DIR__ . '/../includes/admin-head.php';
         <form class="admin-form-grid" method="post" action="<?= site_url('admin/integracoes.php') ?>" style="margin-top: 16px;">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
           <input type="hidden" name="action" value="qr_save">
-          <label class="admin-field"><span>URL do bridge Baileys</span><input name="baileys_bridge_url" value="<?= e((string) $config['baileys_bridge_url']) ?>" placeholder="https://whatsapp.seudominio.com"></label>
-          <label class="admin-field"><span>API key do bridge</span><input type="password" name="baileys_bridge_api_key" value="" placeholder="<?= $config['baileys_bridge_api_key'] !== '' ? 'Já salva. Preencha só para trocar.' : 'Cole a mesma BRIDGE_API_KEY do Node.js' ?>"></label>
+          <label class="admin-field"><span>Link do serviço QR</span><input name="baileys_bridge_url" value="<?= e((string) $config['baileys_bridge_url']) ?>" placeholder="https://whatsapp.seudominio.com"></label>
+          <label class="admin-field"><span>Chave do serviço</span><input type="password" name="baileys_bridge_api_key" value="" placeholder="<?= $config['baileys_bridge_api_key'] !== '' ? 'Já salva. Preencha só para trocar.' : 'Opcional, se o bridge exigir' ?>"></label>
           <label class="admin-field"><span>Número do WhatsApp</span><input name="baileys_owner_number" value="<?= e($bridgeOwnerNumber) ?>" placeholder="5597000000000"></label>
-          <div class="admin-field"><span>&nbsp;</span><button class="btn btn-primary" type="submit">Salvar configuração</button></div>
+          <div class="admin-field"><span>&nbsp;</span><button class="btn btn-primary" type="submit">Salvar conexão QR</button></div>
         </form>
+        <p class="whatsapp-bridge-warning">Use o mesmo bridge Node do Tático GPS: /status, /qrcode, /logout e /send-message.</p>
       </details>
     </article>
 
@@ -233,7 +181,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
         <img id="whatsappQrImage" src="" alt="QR Code para conectar WhatsApp" hidden>
         <div id="whatsappQrEmpty" class="whatsapp-qr-empty">Carregando QR Code...</div>
       </div>
-      <div class="whatsapp-live-note">ⓘ <span id="whatsappQrMessage">O código é atualizado automaticamente a cada 30 segundos.</span></div>
+      <div class="whatsapp-live-note">i <span id="whatsappQrMessage">O código é atualizado automaticamente a cada 30 segundos.</span></div>
     </article>
   </div>
 </section>
@@ -340,7 +288,12 @@ require_once __DIR__ . '/../includes/admin-head.php';
 
 <script>
 (function () {
-  const endpoint = <?= json_encode(site_url('admin/integracoes.php?bridge_ajax=status'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+  const endpoints = {
+    status: <?= json_encode(site_url('admin/actions/whatsapp-bridge.php?action=status'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>,
+    qrcode: <?= json_encode(site_url('admin/actions/whatsapp-bridge.php?action=qrcode'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>,
+    logout: <?= json_encode(site_url('admin/actions/whatsapp-bridge.php?action=logout'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>,
+    csrfToken: <?= json_encode($csrf, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
+  };
   const statusDot = document.getElementById('whatsappStatusDot');
   const statusText = document.getElementById('whatsappStatusText');
   const qrImage = document.getElementById('whatsappQrImage');
@@ -348,62 +301,117 @@ require_once __DIR__ . '/../includes/admin-head.php';
   const qrMessage = document.getElementById('whatsappQrMessage');
   const lastUpdate = document.getElementById('whatsappLastUpdate');
   const refreshButton = document.getElementById('refreshWhatsAppQr');
+  const disconnectForm = document.getElementById('disconnectWhatsAppForm');
 
-  function setStatus(data) {
+  async function getJson(url, options) {
+    const response = await fetch(url, {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store',
+      ...(options || {})
+    });
+    return response.json();
+  }
+
+  function showQr(data) {
+    if (data.qr) {
+      qrImage.src = data.qr;
+      qrImage.hidden = false;
+      qrEmpty.hidden = true;
+      qrMessage.textContent = data.message || 'Escaneie o QR com o WhatsApp da empresa.';
+      return;
+    }
+
+    qrImage.hidden = true;
+    qrImage.removeAttribute('src');
+    qrEmpty.hidden = false;
+    qrEmpty.textContent = data.message || 'Aguardando QR Code...';
+    qrMessage.textContent = data.message || 'O código é atualizado automaticamente a cada 30 segundos.';
+  }
+
+  async function fetchQRCode() {
+    const data = await getJson(endpoints.qrcode);
+    if (data.status === 'connected' || data.message === 'Já conectado') {
+      await updateStatus();
+      return;
+    }
+    showQr(data);
+  }
+
+  async function updateStatus() {
+    lastUpdate.textContent = 'Consultando bridge...';
+    const data = await getJson(endpoints.status);
     const status = data.status || 'erro';
     statusDot.classList.remove('waiting', 'connected');
 
     if (data.connected || status === 'connected') {
       statusDot.classList.add('connected');
-      statusText.textContent = data.number ? 'Conectado · ' + data.number : 'Conectado';
+      statusText.textContent = data.number ? 'Conectado (' + data.number + ')' : 'Conectado';
+      disconnectForm.hidden = false;
+      showQr({ message: 'WhatsApp conectado' });
     } else if (status === 'waiting_qr' || status === 'qr' || status === 'connecting' || status === 'aguardando') {
       statusDot.classList.add('waiting');
       statusText.textContent = 'Aguardando leitura do QR Code';
+      disconnectForm.hidden = true;
+      await fetchQRCode();
     } else if (status === 'not_configured') {
       statusText.textContent = 'Desconfigurado';
+      disconnectForm.hidden = true;
+      showQr(data);
+    } else if (status === 'offline') {
+      statusText.textContent = 'Bridge Offline (inicie o Node.js)';
+      disconnectForm.hidden = true;
+      showQr(data);
     } else {
       statusText.textContent = 'Desconectado';
+      disconnectForm.hidden = true;
+      await fetchQRCode();
     }
 
-    if (data.qr) {
-      qrImage.src = data.qr;
-      qrImage.hidden = false;
-      qrEmpty.hidden = true;
-    } else {
-      qrImage.hidden = true;
-      qrImage.removeAttribute('src');
-      qrEmpty.hidden = false;
-      qrEmpty.textContent = data.connected ? 'WhatsApp conectado' : (data.message || 'QR Code ainda não disponível.');
-    }
-
-    qrMessage.textContent = data.message || 'O código é atualizado automaticamente a cada 30 segundos.';
     lastUpdate.textContent = data.updated_at ? 'Atualizado às ' + data.updated_at : 'Consulta finalizada';
   }
 
-  async function loadStatus() {
-    lastUpdate.textContent = 'Consultando bridge...';
+  async function safeUpdateStatus() {
     try {
-      const response = await fetch(endpoint, {
-        credentials: 'same-origin',
-        headers: { 'Accept': 'application/json' },
-        cache: 'no-store'
-      });
-      const data = await response.json();
-      setStatus(data);
+      await updateStatus();
     } catch (error) {
-      setStatus({
-        status: 'erro',
-        connected: false,
-        message: 'Falha ao consultar o bridge. Verifique se o Node.js está rodando na hospedagem.',
-        qr: null
-      });
+      statusDot.classList.remove('waiting', 'connected');
+      statusText.textContent = 'Erro na API PHP';
+      showQr({ message: 'Falha ao consultar o bridge. Verifique se o Node.js está rodando na hospedagem.' });
       lastUpdate.textContent = 'Erro na consulta';
     }
   }
 
-  refreshButton.addEventListener('click', loadStatus);
-  loadStatus();
-  setInterval(loadStatus, 30000);
+  refreshButton.addEventListener('click', safeUpdateStatus);
+  disconnectForm.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    if (!confirm('Tem certeza que deseja desconectar este WhatsApp?')) {
+      return;
+    }
+
+    const body = new URLSearchParams();
+    body.set('csrf_token', endpoints.csrfToken);
+    lastUpdate.textContent = 'Desconectando...';
+
+    try {
+      const data = await getJson(endpoints.logout, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body
+      });
+      showQr(data);
+      await safeUpdateStatus();
+    } catch (error) {
+      showQr({ message: 'Não foi possível desconectar agora.' });
+      lastUpdate.textContent = 'Erro ao desconectar';
+    }
+  });
+
+  safeUpdateStatus();
+  setInterval(safeUpdateStatus, 5000);
 })();
 </script>
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>

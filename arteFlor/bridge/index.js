@@ -19,6 +19,7 @@ const app = express();
 const port = process.env.PORT || 8080;
 const host = process.env.HOST || '0.0.0.0';
 const bridgeApiKey = String(process.env.BRIDGE_API_KEY || process.env.ARTEFLOR_BRIDGE_API_KEY || '').trim();
+const requireBridgeApiKey = String(process.env.BRIDGE_REQUIRE_API_KEY || 'true').toLowerCase() !== 'false';
 const authPath = process.env.BAILEYS_AUTH_DIR || path.join(__dirname, 'auth_info_baileys');
 const inboundMediaWebhookUrl = String(process.env.INBOUND_MEDIA_WEBHOOK_URL || '').trim();
 
@@ -34,6 +35,10 @@ let isConnecting = false;
 let reconnectTimeout = null;
 
 function requireApiKey(req, res, next) {
+    if (!requireBridgeApiKey) {
+        return next();
+    }
+
     if (!bridgeApiKey) {
         return res.status(503).json({ error: 'BRIDGE_API_KEY não configurada no bridge.' });
     }
@@ -281,7 +286,9 @@ app.post('/logout', requireApiKey, logout);
 app.listen(port, host, () => {
     console.log(`Bridge WhatsApp ArteFlor rodando em http://${host}:${port}`);
 
-    if (!bridgeApiKey) {
+    if (!requireBridgeApiKey) {
+        console.warn('Atenção: BRIDGE_REQUIRE_API_KEY=false. Use apenas se o bridge não estiver exposto publicamente.');
+    } else if (!bridgeApiKey) {
         console.warn('Atenção: configure BRIDGE_API_KEY no .env antes de usar em produção.');
     }
 
