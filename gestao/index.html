@@ -1,16 +1,365 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Comercial</title>
-    <link rel="stylesheet" href="./assets/css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#0A3B8E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="L&J Caixa" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <title>L&J Caixa Premium</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
+
 <body>
-    <div class="container">
-        <h1>Sistema de Gestão Comercial</h1>
-        <p>Demo HTML, CSS e JavaScript</p>
-    </div>
-    <script src="./assets/js/app.js"></script>
+  <main class="app" id="app">
+    <div class="app-bg"></div>
+
+    <section class="screen active" data-screen="dashboard">
+      <header class="app-header">
+        <div class="statusbar">
+          <strong id="deviceTime">09:41</strong>
+          <div class="status-icons">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+
+        <div class="topbar">
+          <div>
+            <span class="hello">Olá, Lucas 👋</span>
+            <h1>L&J Soluções Tech</h1>
+          </div>
+
+          <button class="avatar" data-screen-target="profile" aria-label="Abrir perfil">
+            <img src="assets/icons/icon.svg" alt="" />
+          </button>
+        </div>
+
+        <section class="balance-card">
+          <div>
+            <p>Vendido hoje</p>
+            <strong>R$ 8.742,90</strong>
+            <small>91 vendas realizadas</small>
+          </div>
+
+          <button class="pill-button" data-toast="Resumo atualizado">
+            Hoje
+          </button>
+        </section>
+
+        <div class="header-metrics">
+          <article>
+            <span>Ticket médio</span>
+            <strong>R$ 96,08</strong>
+          </article>
+          <article>
+            <span>Lucro</span>
+            <strong>R$ 2.797</strong>
+          </article>
+          <article>
+            <span>Margem</span>
+            <strong>32%</strong>
+          </article>
+        </div>
+      </header>
+
+      <section class="content first-content">
+        <div class="section-title">
+          <div>
+            <span>Operação</span>
+            <h2>Ações rápidas</h2>
+          </div>
+        </div>
+
+        <div class="action-grid">
+          <button class="action-card action-primary" data-screen-target="sales">
+            <i>＋</i>
+            <strong>Nova Venda</strong>
+          </button>
+
+          <button class="action-card" data-screen-target="products">
+            <i>▦</i>
+            <strong>Produtos</strong>
+          </button>
+
+          <button class="action-card" data-toast="Clientes em demonstração">
+            <i>◉</i>
+            <strong>Clientes</strong>
+          </button>
+
+          <button class="action-card" data-screen-target="reports">
+            <i>◍</i>
+            <strong>Relatórios</strong>
+          </button>
+
+          <button class="action-card" data-toast="Estoque aberto">
+            <i>▣</i>
+            <strong>Estoque</strong>
+          </button>
+        </div>
+      </section>
+
+      <section class="content">
+        <div class="section-title">
+          <div>
+            <span>Financeiro</span>
+            <h2>Recebimentos</h2>
+          </div>
+          <button class="text-button">Ver tudo</button>
+        </div>
+
+        <div class="money-grid" id="moneyGrid"></div>
+      </section>
+
+      <section class="content">
+        <div class="section-title">
+          <div>
+            <span>Performance</span>
+            <h2>Vendas por horário</h2>
+          </div>
+        </div>
+
+        <article class="panel chart-panel">
+          <div class="bar-chart" id="hourChart" aria-label="Gráfico de vendas por horário"></div>
+        </article>
+      </section>
+
+      <section class="content split">
+        <article class="panel chart-small">
+          <div class="panel-head">
+            <h3>Pagamentos</h3>
+            <span>Hoje</span>
+          </div>
+          <div class="donut-wrap">
+            <div class="donut"></div>
+            <div class="donut-info">
+              <strong>44%</strong>
+              <small>PIX</small>
+            </div>
+          </div>
+          <div class="legend">
+            <span><i class="pix"></i>PIX</span>
+            <span><i class="card"></i>Cartão</span>
+            <span><i class="cash"></i>Dinheiro</span>
+          </div>
+        </article>
+
+        <article class="panel chart-small">
+          <div class="panel-head">
+            <h3>Semana</h3>
+            <span>7 dias</span>
+          </div>
+          <div class="mini-bars" id="weekChart"></div>
+        </article>
+      </section>
+
+      <section class="content">
+        <div class="section-title">
+          <div>
+            <span>Caixa</span>
+            <h2>Últimas vendas</h2>
+          </div>
+          <button class="text-button" data-screen-target="sales">Ver todas</button>
+        </div>
+
+        <article class="panel list" id="salesList"></article>
+      </section>
+
+      <section class="content final-content">
+        <div class="section-title">
+          <div>
+            <span>Produtos</span>
+            <h2>Mais vendidos</h2>
+          </div>
+        </div>
+
+        <article class="panel list" id="productsList"></article>
+
+        <div class="section-title mt">
+          <div>
+            <span>Atenção</span>
+            <h2>Estoque baixo</h2>
+          </div>
+        </div>
+
+        <article class="panel list danger-list" id="stockList"></article>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="sales">
+      <header class="page-header">
+        <div class="statusbar dark">
+          <strong class="deviceTimeClone">09:41</strong>
+          <div class="status-icons">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+
+        <div class="page-top">
+          <div>
+            <span>Frente de caixa</span>
+            <h1>Nova venda</h1>
+          </div>
+          <button class="round" data-toast="Produto adicionado">＋</button>
+        </div>
+      </header>
+
+      <section class="content first-content">
+        <article class="checkout-hero">
+          <p>Total da venda</p>
+          <strong>R$ 246,80</strong>
+          <span>3 itens no carrinho</span>
+
+          <button data-toast="Pagamento simulado com sucesso">Receber pagamento</button>
+        </article>
+
+        <article class="panel list mt" id="cartList"></article>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="products">
+      <header class="page-header">
+        <div class="statusbar dark">
+          <strong class="deviceTimeClone">09:41</strong>
+          <div class="status-icons">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+
+        <div class="page-top">
+          <div>
+            <span>Catálogo</span>
+            <h1>Produtos</h1>
+          </div>
+          <button class="round" data-toast="Cadastro de produto">＋</button>
+        </div>
+      </header>
+
+      <section class="content first-content">
+        <label class="search">
+          <i>⌕</i>
+          <input id="productSearch" type="search" placeholder="Buscar produto, SKU ou categoria" />
+        </label>
+
+        <article class="panel list mt" id="catalogList"></article>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="reports">
+      <header class="page-header">
+        <div class="statusbar dark">
+          <strong class="deviceTimeClone">09:41</strong>
+          <div class="status-icons">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+
+        <div class="page-top">
+          <div>
+            <span>Relatórios</span>
+            <h1>Indicadores</h1>
+          </div>
+        </div>
+      </header>
+
+      <section class="content first-content">
+        <article class="report-card">
+          <span>Faturamento mensal</span>
+          <strong>R$ 103.420</strong>
+          <small>+13,6% em relação ao mês anterior</small>
+        </article>
+
+        <article class="panel chart-panel mt">
+          <div class="line-chart">
+            <svg viewBox="0 0 320 140" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#1768D5" stop-opacity=".24"/>
+                  <stop offset="100%" stop-color="#1768D5" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,108 C32,70 54,88 84,64 C116,38 142,70 172,50 C210,24 238,52 268,30 C292,12 306,22 320,16 L320,140 L0,140 Z" fill="url(#lineFill)" />
+              <path d="M0,108 C32,70 54,88 84,64 C116,38 142,70 172,50 C210,24 238,52 268,30 C292,12 306,22 320,16" fill="none" stroke="#1768D5" stroke-width="5" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </article>
+
+        <div class="money-grid mt">
+          <article class="money-card"><span>Conversão</span><strong>74%</strong><small>+8%</small></article>
+          <article class="money-card"><span>Clientes</span><strong>386</strong><small>+24</small></article>
+          <article class="money-card"><span>Produtos</span><strong>1.284</strong><small>Ativos</small></article>
+          <article class="money-card"><span>Pedidos</span><strong>2.931</strong><small>Mês</small></article>
+        </div>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="profile">
+      <header class="profile-cover">
+        <div class="statusbar">
+          <strong class="deviceTimeClone">09:41</strong>
+          <div class="status-icons">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+
+        <div class="profile-logo">
+          <img src="assets/icons/icon.svg" alt="" />
+        </div>
+        <h1>L&J Soluções Tech</h1>
+        <p>Sistema comercial premium</p>
+      </header>
+
+      <section class="content first-content">
+        <article class="panel settings">
+          <button><span>Minha empresa</span><strong>›</strong></button>
+          <button><span>Usuários e permissões</span><strong>›</strong></button>
+          <button><span>Integrações PHP/MySQL</span><strong>›</strong></button>
+          <button><span>Segurança</span><strong>›</strong></button>
+        </article>
+      </section>
+    </section>
+
+    <nav class="bottom-nav" aria-label="Navegação principal">
+      <button class="nav active" data-screen-target="dashboard">
+        <i>⌂</i>
+        <span>Início</span>
+      </button>
+      <button class="nav" data-screen-target="sales">
+        <i>▤</i>
+        <span>Vendas</span>
+      </button>
+      <button class="nav" data-screen-target="products">
+        <i>▦</i>
+        <span>Produtos</span>
+      </button>
+      <button class="nav" data-screen-target="reports">
+        <i>◍</i>
+        <span>Relatórios</span>
+      </button>
+      <button class="nav" data-screen-target="profile">
+        <i>◎</i>
+        <span>Perfil</span>
+      </button>
+    </nav>
+
+    <div class="toast" id="toast"></div>
+  </main>
+
+  <script src="assets/js/app.js"></script>
 </body>
 </html>
