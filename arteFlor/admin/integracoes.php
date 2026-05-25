@@ -7,6 +7,56 @@ $testPreview = null;
 $testPhone = '';
 $bridgeQrResult = null;
 
+if (($_GET['bridge_ajax'] ?? '') === 'status') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+        $ajaxConfig = whatsapp_config();
+        $ajaxConfigured = whatsapp_bridge_configured($ajaxConfig);
+
+        if (!$ajaxConfigured) {
+            echo json_encode([
+                'configured' => false,
+                'success' => false,
+                'connected' => false,
+                'status' => 'not_configured',
+                'message' => 'Configure URL e API key do bridge Baileys antes de gerar o QR.',
+                'qr' => null,
+                'number' => null,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $result = whatsapp_bridge_prepare_qr($ajaxConfig);
+        $status = (string) ($result['status'] ?? 'desconhecido');
+
+        echo json_encode([
+            'configured' => true,
+            'success' => !empty($result['success']),
+            'connected' => $status === 'connected',
+            'status' => $status,
+            'message' => (string) ($result['message'] ?? 'Consultando conexão WhatsApp...'),
+            'qr' => (string) ($result['qr'] ?? ''),
+            'number' => (string) ($result['number'] ?? ''),
+            'updated_at' => date('H:i:s'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    } catch (Throwable $error) {
+        error_log('[ArteFlor][baileys-bridge-ajax] ' . $error->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'configured' => false,
+            'success' => false,
+            'connected' => false,
+            'status' => 'erro',
+            'message' => 'Não foi possível consultar o bridge agora.',
+            'qr' => null,
+            'number' => null,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!admin_csrf_is_valid($_POST['csrf_token'] ?? null)) {
         header('Location: ' . site_url('admin/integracoes.php?error=csrf'));
@@ -82,18 +132,44 @@ $bridgeConfigured = whatsapp_bridge_configured($config);
 $bridgeOwnerNumber = whatsapp_link_phone_digits((string) ($config['baileys_owner_number'] ?? ''));
 $evolutionInstance = whatsapp_clean_instance_name($config['evolution_instance'] ?? 'arteflor');
 $evolutionOwnerNumber = whatsapp_link_phone_digits((string) ($config['evolution_owner_number'] ?? ''));
-$successMessages = ['salvo' => 'Configurações salvas com segurança.', 'qr_salvo' => 'Bridge Baileys salvo. Agora gere o QR e escaneie pelo WhatsApp da empresa.'];
+$successMessages = ['salvo' => 'Configurações salvas com segurança.', 'qr_salvo' => 'Bridge Baileys salvo. O QR será carregado automaticamente.'];
 $errorMessages = ['csrf' => 'Sessão expirada. Recarregue a página e tente novamente.', 'salvar' => 'Não foi possível salvar as configurações.'];
 $successKey = is_string($_GET['success'] ?? null) ? (string) $_GET['success'] : '';
 $errorKey = is_string($_GET['error'] ?? null) ? (string) $_GET['error'] : '';
 
 require_once __DIR__ . '/../includes/admin-head.php';
 ?>
+<style>
+  .whatsapp-live-shell { display: grid; gap: 18px; }
+  .whatsapp-live-hero { display: flex; align-items: center; gap: 16px; padding: 28px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #635bff 0%, #6d6aff 100%); box-shadow: 0 14px 36px rgba(99, 91, 255, .22); }
+  .whatsapp-live-icon { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 12px; background: rgba(255,255,255,.96); color: #25d366; font-size: 32px; font-weight: 800; flex: 0 0 auto; }
+  .whatsapp-live-hero h2 { margin: 0 0 4px; color: #fff; font-size: clamp(1.4rem, 2.4vw, 2rem); }
+  .whatsapp-live-hero p { margin: 0; color: rgba(255,255,255,.82); font-weight: 600; }
+  .whatsapp-live-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, .95fr); gap: 18px; }
+  .whatsapp-live-card { background: #fff; border-radius: 14px; padding: 24px; box-shadow: 0 10px 30px rgba(15, 23, 42, .08); border: 1px solid rgba(15, 23, 42, .06); }
+  .whatsapp-live-card h3 { margin: 0 0 6px; font-size: 1.25rem; color: #182235; }
+  .whatsapp-live-card .muted { margin: 0 0 18px; color: #64748b; }
+  .whatsapp-status-line { display: flex; align-items: center; gap: 10px; margin: 20px 0; font-weight: 800; color: #475569; }
+  .whatsapp-status-dot { width: 13px; height: 13px; border-radius: 999px; display: inline-block; background: #e11d48; box-shadow: 0 0 0 4px rgba(225, 29, 72, .12); }
+  .whatsapp-status-dot.waiting { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, .14); }
+  .whatsapp-status-dot.connected { background: #22c55e; box-shadow: 0 0 0 4px rgba(34, 197, 94, .14); }
+  .whatsapp-instructions { background: #eef2f7; border-radius: 10px; padding: 16px; color: #475569; line-height: 1.7; }
+  .whatsapp-instructions strong { color: #243244; }
+  .whatsapp-qr-frame { min-height: 340px; display: grid; place-items: center; border: 1px dashed #cbd5e1; background: #f8fafc; border-radius: 14px; padding: 18px; }
+  .whatsapp-qr-frame img { width: min(280px, 100%); height: auto; display: block; background: #fff; padding: 8px; }
+  .whatsapp-qr-empty { width: min(280px, 100%); aspect-ratio: 1; display: grid; place-items: center; text-align: center; padding: 22px; border-radius: 12px; background: #fff; color: #64748b; font-weight: 700; }
+  .whatsapp-live-note { display: flex; justify-content: center; gap: 8px; align-items: center; margin-top: 12px; color: #64748b; font-size: .92rem; }
+  .whatsapp-config-details { margin-top: 18px; }
+  .whatsapp-config-details summary { cursor: pointer; font-weight: 800; color: #364152; }
+  .whatsapp-live-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  @media (max-width: 980px) { .whatsapp-live-grid { grid-template-columns: 1fr; } .whatsapp-live-hero { align-items: flex-start; } }
+</style>
+
 <section class="admin-page-hero">
   <div class="admin-page-title">
     <span class="badge">Integrações</span>
-    <h1>Pix manual e WhatsApp via bridge Baileys</h1>
-    <p>Pix permanece manual. O WhatsApp agora pode usar o mesmo modelo do Tático GPS: Node.js + Baileys + QR Code próprio.</p>
+    <h1>Conexão WhatsApp</h1>
+    <p>Conecte o número da empresa por QR Code, no mesmo modelo do Tático GPS.</p>
   </div>
   <span class="status <?= $config['whatsapp_enabled'] ? 'status-ok' : 'status-warn' ?>"><?= $config['whatsapp_enabled'] ? 'WhatsApp ativo' : 'WhatsApp inativo' ?></span>
 </section>
@@ -105,71 +181,60 @@ require_once __DIR__ . '/../includes/admin-head.php';
   <section class="admin-alert-card admin-alert-danger"><strong>Atenção</strong><?= e($errorMessages[$errorKey]) ?></section>
 <?php endif; ?>
 
-<section class="integration-hero card">
-  <div>
-    <span class="badge">Fluxo correto</span>
-    <h2>Pedido primeiro, WhatsApp depois</h2>
-    <p class="muted">O checkout salva pedido, itens, pagamento e estoque no banco. A notificação WhatsApp é complementar e usa o bridge apenas depois que o pedido existe.</p>
-  </div>
-  <div class="integration-flow">
-    <span>Checkout</span>
-    <span>Banco</span>
-    <span>Bridge</span>
-  </div>
-</section>
-
-<section class="admin-form-card whatsapp-connect-panel">
-  <div class="admin-panel-header">
+<section class="whatsapp-live-shell">
+  <div class="whatsapp-live-hero">
+    <div class="whatsapp-live-icon">☏</div>
     <div>
-      <span class="badge">Conectar WhatsApp</span>
-      <h2>Conexão rápida por QR com Baileys</h2>
-      <p>Rode o bridge Node.js do ArteFlor, salve a URL e a API key, gere o QR e escaneie em Dispositivos conectados no WhatsApp da empresa.</p>
+      <h2>Conexão WhatsApp</h2>
+      <p>Conecte seu número para ativar as notificações automáticas de pedidos.</p>
     </div>
-    <span class="<?= $bridgeConfigured ? 'admin-badge-ok' : 'admin-badge-warn' ?>"><?= $bridgeConfigured ? 'Pronto para QR' : 'Falta configurar' ?></span>
   </div>
 
-  <div class="whatsapp-connect-grid">
-    <article class="whatsapp-qr-card">
-      <div>
-        <strong>1. Dados do bridge</strong>
-        <p>Use o serviço Node.js em <code>arteFlor/bridge</code>. Em produção, deixe atrás de HTTPS e protegido por API key.</p>
+  <div class="whatsapp-live-grid">
+    <article class="whatsapp-live-card">
+      <h3>Status do Sistema</h3>
+      <p class="muted">Monitoramento em tempo real</p>
+
+      <div class="whatsapp-status-line">
+        <span id="whatsappStatusDot" class="whatsapp-status-dot"></span>
+        <span id="whatsappStatusText"><?= $bridgeConfigured ? 'Consultando...' : 'Desconfigurado' ?></span>
       </div>
-      <form class="whatsapp-quick-form" method="post" action="<?= site_url('admin/integracoes.php') ?>">
-        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-        <input type="hidden" name="action" value="qr_save">
-        <label class="admin-field"><span>URL do bridge Baileys</span><input name="baileys_bridge_url" value="<?= e((string) $config['baileys_bridge_url']) ?>" placeholder="https://whatsapp.seudominio.com"></label>
-        <label class="admin-field"><span>API key do bridge</span><input type="password" name="baileys_bridge_api_key" value="" placeholder="<?= $config['baileys_bridge_api_key'] !== '' ? 'Já salva. Preencha só para trocar.' : 'Cole a mesma BRIDGE_API_KEY do Node.js' ?>"></label>
-        <label class="admin-field"><span>Número do WhatsApp</span><input name="baileys_owner_number" value="<?= e($bridgeOwnerNumber) ?>" placeholder="5597000000000"></label>
-        <button class="btn btn-primary" type="submit">Salvar bridge QR</button>
-      </form>
+
+      <div class="whatsapp-instructions">
+        <strong>Instruções para conexão:</strong><br>
+        1. Abra o WhatsApp no seu celular<br>
+        2. Toque em <strong>Menu</strong> ou <strong>Configurações</strong> e selecione <strong>Dispositivos conectados</strong><br>
+        3. Toque em <strong>Conectar um dispositivo</strong><br>
+        4. Aponte seu celular para o QR Code desta tela
+      </div>
+
+      <div class="whatsapp-live-actions">
+        <button class="btn btn-primary" type="button" id="refreshWhatsAppQr">Atualizar agora</button>
+        <span class="admin-badge-info" id="whatsappLastUpdate">Aguardando consulta...</span>
+      </div>
+
+      <details class="whatsapp-config-details" <?= !$bridgeConfigured ? 'open' : '' ?>>
+        <summary>Configuração do bridge</summary>
+        <form class="admin-form-grid" method="post" action="<?= site_url('admin/integracoes.php') ?>" style="margin-top: 16px;">
+          <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+          <input type="hidden" name="action" value="qr_save">
+          <label class="admin-field"><span>URL do bridge Baileys</span><input name="baileys_bridge_url" value="<?= e((string) $config['baileys_bridge_url']) ?>" placeholder="https://whatsapp.seudominio.com"></label>
+          <label class="admin-field"><span>API key do bridge</span><input type="password" name="baileys_bridge_api_key" value="" placeholder="<?= $config['baileys_bridge_api_key'] !== '' ? 'Já salva. Preencha só para trocar.' : 'Cole a mesma BRIDGE_API_KEY do Node.js' ?>"></label>
+          <label class="admin-field"><span>Número do WhatsApp</span><input name="baileys_owner_number" value="<?= e($bridgeOwnerNumber) ?>" placeholder="5597000000000"></label>
+          <div class="admin-field"><span>&nbsp;</span><button class="btn btn-primary" type="submit">Salvar configuração</button></div>
+        </form>
+      </details>
     </article>
 
-    <article class="whatsapp-qr-card">
-      <div>
-        <strong>2. Escanear QR</strong>
-        <p>No celular da empresa: WhatsApp > Dispositivos conectados > Conectar dispositivo.</p>
+    <article class="whatsapp-live-card">
+      <h3>Escaneie o QR Code</h3>
+      <p class="muted">O código é atualizado automaticamente.</p>
+      <div class="whatsapp-qr-frame">
+        <img id="whatsappQrImage" src="" alt="QR Code para conectar WhatsApp" hidden>
+        <div id="whatsappQrEmpty" class="whatsapp-qr-empty">Carregando QR Code...</div>
       </div>
-      <?php if ($bridgeQrResult && ($bridgeQrResult['status'] ?? '') === 'connected'): ?>
-        <div class="qr-placeholder">OK</div>
-        <small><?= e((string) $bridgeQrResult['message']) ?><?= !empty($bridgeQrResult['number']) ? ' · ' . e((string) $bridgeQrResult['number']) : '' ?></small>
-      <?php elseif ($bridgeQrResult && !empty($bridgeQrResult['qr'])): ?>
-        <img src="<?= e((string) $bridgeQrResult['qr']) ?>" alt="QR Code para conectar WhatsApp no bridge Baileys" loading="lazy">
-        <small><?= e((string) $bridgeQrResult['message']) ?></small>
-      <?php else: ?>
-        <div class="qr-placeholder">QR</div>
-        <small><?= $bridgeQrResult ? e((string) $bridgeQrResult['message']) : 'Salve a configuração e gere o QR.' ?></small>
-      <?php endif; ?>
-      <form method="post" action="<?= site_url('admin/integracoes.php') ?>">
-        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-        <input type="hidden" name="action" value="bridge_qr">
-        <button class="btn btn-primary" type="submit">Gerar QR de conexão</button>
-      </form>
+      <div class="whatsapp-live-note">ⓘ <span id="whatsappQrMessage">O código é atualizado automaticamente a cada 30 segundos.</span></div>
     </article>
-  </div>
-
-  <div class="admin-alert-card admin-alert-warning">
-    <strong>Atenção</strong>
-    Esse método usa sessão WhatsApp Web via Baileys. É prático, mas pode desconectar quando o WhatsApp derruba a sessão. Se acontecer, gere um novo QR. Não exponha o bridge sem API key.
   </div>
 </section>
 
@@ -272,4 +337,73 @@ require_once __DIR__ . '/../includes/admin-head.php';
     </table>
   </div>
 </section>
+
+<script>
+(function () {
+  const endpoint = <?= json_encode(site_url('admin/integracoes.php?bridge_ajax=status'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+  const statusDot = document.getElementById('whatsappStatusDot');
+  const statusText = document.getElementById('whatsappStatusText');
+  const qrImage = document.getElementById('whatsappQrImage');
+  const qrEmpty = document.getElementById('whatsappQrEmpty');
+  const qrMessage = document.getElementById('whatsappQrMessage');
+  const lastUpdate = document.getElementById('whatsappLastUpdate');
+  const refreshButton = document.getElementById('refreshWhatsAppQr');
+
+  function setStatus(data) {
+    const status = data.status || 'erro';
+    statusDot.classList.remove('waiting', 'connected');
+
+    if (data.connected || status === 'connected') {
+      statusDot.classList.add('connected');
+      statusText.textContent = data.number ? 'Conectado · ' + data.number : 'Conectado';
+    } else if (status === 'waiting_qr' || status === 'qr' || status === 'connecting' || status === 'aguardando') {
+      statusDot.classList.add('waiting');
+      statusText.textContent = 'Aguardando leitura do QR Code';
+    } else if (status === 'not_configured') {
+      statusText.textContent = 'Desconfigurado';
+    } else {
+      statusText.textContent = 'Desconectado';
+    }
+
+    if (data.qr) {
+      qrImage.src = data.qr;
+      qrImage.hidden = false;
+      qrEmpty.hidden = true;
+    } else {
+      qrImage.hidden = true;
+      qrImage.removeAttribute('src');
+      qrEmpty.hidden = false;
+      qrEmpty.textContent = data.connected ? 'WhatsApp conectado' : (data.message || 'QR Code ainda não disponível.');
+    }
+
+    qrMessage.textContent = data.message || 'O código é atualizado automaticamente a cada 30 segundos.';
+    lastUpdate.textContent = data.updated_at ? 'Atualizado às ' + data.updated_at : 'Consulta finalizada';
+  }
+
+  async function loadStatus() {
+    lastUpdate.textContent = 'Consultando bridge...';
+    try {
+      const response = await fetch(endpoint, {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+      });
+      const data = await response.json();
+      setStatus(data);
+    } catch (error) {
+      setStatus({
+        status: 'erro',
+        connected: false,
+        message: 'Falha ao consultar o bridge. Verifique se o Node.js está rodando na hospedagem.',
+        qr: null
+      });
+      lastUpdate.textContent = 'Erro na consulta';
+    }
+  }
+
+  refreshButton.addEventListener('click', loadStatus);
+  loadStatus();
+  setInterval(loadStatus, 30000);
+})();
+</script>
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>
