@@ -45,7 +45,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             '{{codigo}}' => '#AF-TESTE',
             '{{cliente}}' => 'Cliente Teste',
             '{{total}}' => 'R$ 269,80',
-            '{{forma_pagamento}}' => 'Pix manual',
+            '{{forma_pagamento}}' => 'Pagamento do pedido',
             '{{status}}' => 'Pedido recebido',
             '{{itens}}' => $sampleItems,
             '{{recebimento}}' => 'Entrega',
@@ -105,7 +105,9 @@ require_once __DIR__ . '/../includes/admin-head.php';
   .whatsapp-live-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
   .whatsapp-live-actions form { margin: 0; }
   .whatsapp-bridge-warning { margin-top: 14px; color: #8a5b00; font-size: .9rem; font-weight: 700; }
+  .admin-panel-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
   @media (max-width: 980px) { .whatsapp-live-grid { grid-template-columns: 1fr; } .whatsapp-live-hero { align-items: flex-start; } }
+  @media (max-width: 760px) { .admin-panel-actions { justify-content: flex-start; } }
 </style>
 
 <section class="admin-page-hero">
@@ -191,54 +193,43 @@ require_once __DIR__ . '/../includes/admin-head.php';
   <input type="hidden" name="action" value="save">
 
   <div class="admin-panel-header">
-    <div><span class="badge">Pix manual</span><h2>Configuração de pagamento</h2></div>
-    <button class="btn btn-primary" type="submit">Salvar configurações</button>
+    <div><span class="badge">WhatsApp pós-compra</span><h2>Configurações da integração</h2></div>
+    <div class="admin-panel-actions">
+      <span class="admin-badge-info">Bridge: <?= e(whatsapp_mask_secret((string) $config['baileys_bridge_api_key'])) ?> · Meta: <?= e(whatsapp_mask_secret((string) $config['whatsapp_business_token'])) ?> · Twilio: <?= e(whatsapp_mask_secret((string) $config['twilio_auth_token'])) ?></span>
+      <button class="btn btn-primary" type="submit">Salvar integração</button>
+    </div>
   </div>
 
   <div class="admin-form-grid">
-    <label class="admin-field"><span>Chave Pix</span><input name="pix_key" value="<?= e((string) $config['pix_key']) ?>"></label>
-    <label class="admin-field"><span>Nome do recebedor</span><input name="pix_receiver_name" value="<?= e((string) $config['pix_receiver_name']) ?>"></label>
-    <label class="admin-field full"><span>Instruções Pix manual</span><textarea name="pix_instructions"><?= e((string) $config['pix_instructions']) ?></textarea></label>
+    <label class="admin-field"><span>Envio automático</span><select name="whatsapp_enabled"><option value="1" <?= $config['whatsapp_enabled'] ? 'selected' : '' ?>>Ativo</option><option value="0" <?= !$config['whatsapp_enabled'] ? 'selected' : '' ?>>Inativo</option></select></label>
+    <label class="admin-field"><span>Modo</span><select name="whatsapp_mode"><option value="baileys_bridge" <?= $config['whatsapp_mode'] === 'baileys_bridge' ? 'selected' : '' ?>>Bridge Baileys / QR próprio</option><option value="simulacao" <?= $config['whatsapp_mode'] === 'simulacao' ? 'selected' : '' ?>>Simulação/log</option><option value="cloud_api" <?= $config['whatsapp_mode'] === 'cloud_api' ? 'selected' : '' ?>>Meta Cloud API</option><option value="twilio" <?= $config['whatsapp_mode'] === 'twilio' ? 'selected' : '' ?>>Twilio WhatsApp</option><option value="evolution_api" <?= $config['whatsapp_mode'] === 'evolution_api' ? 'selected' : '' ?>>Evolution API legado</option></select></label>
+    <label class="admin-field"><span>Número da empresa</span><input name="whatsapp_company_number" value="<?= e((string) $config['whatsapp_company_number']) ?>" placeholder="5597000000000"></label>
+    <label class="admin-field"><span>Bridge Baileys URL</span><input name="baileys_bridge_url" value="<?= e((string) $config['baileys_bridge_url']) ?>" placeholder="https://whatsapp.seudominio.com"></label>
+    <label class="admin-field"><span>Bridge Baileys API key</span><input type="password" name="baileys_bridge_api_key" value="" placeholder="Preencha apenas para alterar"></label>
+    <label class="admin-field"><span>Número conectado no bridge</span><input name="baileys_owner_number" value="<?= e($bridgeOwnerNumber) ?>" placeholder="5597000000000"></label>
+    <label class="admin-field"><span>Phone Number ID</span><input name="whatsapp_phone_number_id" value="<?= e((string) $config['whatsapp_phone_number_id']) ?>"></label>
+    <label class="admin-field"><span>Versão da API</span><input name="whatsapp_api_version" value="<?= e((string) $config['whatsapp_api_version']) ?>"></label>
+    <label class="admin-field"><span>Token Cloud API</span><input type="password" name="whatsapp_business_token" value="" placeholder="Preencha apenas para alterar"></label>
+    <label class="admin-field"><span>Twilio Account SID</span><input name="twilio_account_sid" value="<?= e((string) $config['twilio_account_sid']) ?>" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></label>
+    <label class="admin-field"><span>Twilio Auth Token</span><input type="password" name="twilio_auth_token" value="" placeholder="Preencha apenas para alterar"></label>
+    <label class="admin-field"><span>Twilio WhatsApp From</span><input name="twilio_whatsapp_from" value="<?= e((string) $config['twilio_whatsapp_from']) ?>" placeholder="whatsapp:+14155238886"></label>
+    <label class="admin-field"><span>Twilio Content SID</span><input name="twilio_content_sid" value="<?= e((string) $config['twilio_content_sid']) ?>" placeholder="HX... para template aprovado"></label>
+    <label class="admin-field"><span>Número Twilio Sandbox</span><input name="twilio_sandbox_number" value="<?= e($sandboxNumber) ?>" placeholder="14155238886"></label>
+    <label class="admin-field"><span>Código join sandbox</span><input name="twilio_sandbox_join_code" value="<?= e($sandboxJoinCode) ?>" placeholder="seu-codigo"></label>
+    <label class="admin-field"><span>Evolution URL legado</span><input name="evolution_api_url" value="<?= e((string) $config['evolution_api_url']) ?>" placeholder="https://evolution.seudominio.com"></label>
+    <label class="admin-field"><span>Evolution API key legado</span><input type="password" name="evolution_api_key" value="" placeholder="Preencha apenas para alterar"></label>
+    <label class="admin-field"><span>Evolution instância legado</span><input name="evolution_instance" value="<?= e($evolutionInstance) ?>" placeholder="arteflor"></label>
+    <label class="admin-field"><span>Evolution número legado</span><input name="evolution_owner_number" value="<?= e($evolutionOwnerNumber) ?>" placeholder="5597000000000"></label>
+    <label class="admin-field"><span>Template name</span><input name="whatsapp_template_name" value="<?= e((string) $config['whatsapp_template_name']) ?>"></label>
+    <label class="admin-field"><span>Idioma template</span><input name="whatsapp_template_language" value="<?= e((string) $config['whatsapp_template_language']) ?>"></label>
+    <label class="admin-field"><span>Enviar ao criar pedido</span><select name="whatsapp_send_after_order"><option value="1" <?= $config['whatsapp_send_after_order'] ? 'selected' : '' ?>>Sim</option><option value="0" <?= !$config['whatsapp_send_after_order'] ? 'selected' : '' ?>>Não</option></select></label>
+    <label class="admin-field"><span>Enviar ao mudar status</span><select name="whatsapp_send_on_status_change"><option value="0" <?= !$config['whatsapp_send_on_status_change'] ? 'selected' : '' ?>>Não</option><option value="1" <?= $config['whatsapp_send_on_status_change'] ? 'selected' : '' ?>>Sim</option></select></label>
+    <label class="admin-field full"><span>Mensagem automática após pedido</span><textarea name="whatsapp_message_after_order" rows="12"><?= e((string) $config['whatsapp_message_after_order']) ?></textarea></label>
   </div>
-
-  <details class="admin-advanced-settings">
-    <summary>Configurações avançadas do WhatsApp</summary>
-    <div class="admin-panel-header">
-      <div><span class="badge">WhatsApp pós-compra</span><h2>Notificação automática</h2></div>
-      <span class="admin-badge-info">Bridge: <?= e(whatsapp_mask_secret((string) $config['baileys_bridge_api_key'])) ?> · Meta: <?= e(whatsapp_mask_secret((string) $config['whatsapp_business_token'])) ?> · Twilio: <?= e(whatsapp_mask_secret((string) $config['twilio_auth_token'])) ?></span>
-    </div>
-
-    <div class="admin-form-grid">
-      <label class="admin-field"><span>Envio automático</span><select name="whatsapp_enabled"><option value="1" <?= $config['whatsapp_enabled'] ? 'selected' : '' ?>>Ativo</option><option value="0" <?= !$config['whatsapp_enabled'] ? 'selected' : '' ?>>Inativo</option></select></label>
-      <label class="admin-field"><span>Modo</span><select name="whatsapp_mode"><option value="baileys_bridge" <?= $config['whatsapp_mode'] === 'baileys_bridge' ? 'selected' : '' ?>>Bridge Baileys / QR próprio</option><option value="simulacao" <?= $config['whatsapp_mode'] === 'simulacao' ? 'selected' : '' ?>>Simulação/log</option><option value="cloud_api" <?= $config['whatsapp_mode'] === 'cloud_api' ? 'selected' : '' ?>>Meta Cloud API</option><option value="twilio" <?= $config['whatsapp_mode'] === 'twilio' ? 'selected' : '' ?>>Twilio WhatsApp</option><option value="evolution_api" <?= $config['whatsapp_mode'] === 'evolution_api' ? 'selected' : '' ?>>Evolution API legado</option></select></label>
-      <label class="admin-field"><span>Número da empresa</span><input name="whatsapp_company_number" value="<?= e((string) $config['whatsapp_company_number']) ?>" placeholder="5597000000000"></label>
-      <label class="admin-field"><span>Bridge Baileys URL</span><input name="baileys_bridge_url" value="<?= e((string) $config['baileys_bridge_url']) ?>" placeholder="https://whatsapp.seudominio.com"></label>
-      <label class="admin-field"><span>Bridge Baileys API key</span><input type="password" name="baileys_bridge_api_key" value="" placeholder="Preencha apenas para alterar"></label>
-      <label class="admin-field"><span>Número conectado no bridge</span><input name="baileys_owner_number" value="<?= e($bridgeOwnerNumber) ?>" placeholder="5597000000000"></label>
-      <label class="admin-field"><span>Phone Number ID</span><input name="whatsapp_phone_number_id" value="<?= e((string) $config['whatsapp_phone_number_id']) ?>"></label>
-      <label class="admin-field"><span>Versão da API</span><input name="whatsapp_api_version" value="<?= e((string) $config['whatsapp_api_version']) ?>"></label>
-      <label class="admin-field"><span>Token Cloud API</span><input type="password" name="whatsapp_business_token" value="" placeholder="Preencha apenas para alterar"></label>
-      <label class="admin-field"><span>Twilio Account SID</span><input name="twilio_account_sid" value="<?= e((string) $config['twilio_account_sid']) ?>" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></label>
-      <label class="admin-field"><span>Twilio Auth Token</span><input type="password" name="twilio_auth_token" value="" placeholder="Preencha apenas para alterar"></label>
-      <label class="admin-field"><span>Twilio WhatsApp From</span><input name="twilio_whatsapp_from" value="<?= e((string) $config['twilio_whatsapp_from']) ?>" placeholder="whatsapp:+14155238886"></label>
-      <label class="admin-field"><span>Twilio Content SID</span><input name="twilio_content_sid" value="<?= e((string) $config['twilio_content_sid']) ?>" placeholder="HX... para template aprovado"></label>
-      <label class="admin-field"><span>Número Twilio Sandbox</span><input name="twilio_sandbox_number" value="<?= e($sandboxNumber) ?>" placeholder="14155238886"></label>
-      <label class="admin-field"><span>Código join sandbox</span><input name="twilio_sandbox_join_code" value="<?= e($sandboxJoinCode) ?>" placeholder="seu-codigo"></label>
-      <label class="admin-field"><span>Evolution URL legado</span><input name="evolution_api_url" value="<?= e((string) $config['evolution_api_url']) ?>" placeholder="https://evolution.seudominio.com"></label>
-      <label class="admin-field"><span>Evolution API key legado</span><input type="password" name="evolution_api_key" value="" placeholder="Preencha apenas para alterar"></label>
-      <label class="admin-field"><span>Evolution instância legado</span><input name="evolution_instance" value="<?= e($evolutionInstance) ?>" placeholder="arteflor"></label>
-      <label class="admin-field"><span>Evolution número legado</span><input name="evolution_owner_number" value="<?= e($evolutionOwnerNumber) ?>" placeholder="5597000000000"></label>
-      <label class="admin-field"><span>Template name</span><input name="whatsapp_template_name" value="<?= e((string) $config['whatsapp_template_name']) ?>"></label>
-      <label class="admin-field"><span>Idioma template</span><input name="whatsapp_template_language" value="<?= e((string) $config['whatsapp_template_language']) ?>"></label>
-      <label class="admin-field"><span>Enviar ao criar pedido</span><select name="whatsapp_send_after_order"><option value="1" <?= $config['whatsapp_send_after_order'] ? 'selected' : '' ?>>Sim</option><option value="0" <?= !$config['whatsapp_send_after_order'] ? 'selected' : '' ?>>Não</option></select></label>
-      <label class="admin-field"><span>Enviar ao mudar status</span><select name="whatsapp_send_on_status_change"><option value="0" <?= !$config['whatsapp_send_on_status_change'] ? 'selected' : '' ?>>Não</option><option value="1" <?= $config['whatsapp_send_on_status_change'] ? 'selected' : '' ?>>Sim</option></select></label>
-      <label class="admin-field full"><span>Mensagem automática após pedido</span><textarea name="whatsapp_message_after_order" rows="12"><?= e((string) $config['whatsapp_message_after_order']) ?></textarea></label>
-    </div>
-    <div class="admin-alert-card admin-alert-info">
-      <strong>Regras de envio</strong>
-      O bridge Baileys precisa ficar rodando em Node.js e protegido por API key. Mensagens livres pelo Twilio WhatsApp só são adequadas dentro da janela de atendimento de 24 horas; fora dela, configure um Content SID de template aprovado.
-    </div>
-  </details>
+  <div class="admin-alert-card admin-alert-info">
+    <strong>Regras de envio</strong>
+    O bridge Baileys precisa ficar rodando em Node.js e protegido por API key quando estiver público. Mensagens livres pelo Twilio WhatsApp só são adequadas dentro da janela de atendimento de 24 horas; fora dela, configure um Content SID de template aprovado.
+  </div>
 </form>
 
 <section class="admin-form-card">

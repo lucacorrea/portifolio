@@ -102,9 +102,11 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
         $mode = 'simulacao';
     }
 
-    integration_setting_set('pix_key', order_clean_text($input['pix_key'] ?? '', 180), 'Chave Pix manual', false, $adminId);
-    integration_setting_set('pix_receiver_name', order_clean_text($input['pix_receiver_name'] ?? '', 180), 'Nome do recebedor Pix manual', false, $adminId);
-    integration_setting_set('pix_instructions', order_clean_text($input['pix_instructions'] ?? '', 500), 'Instruções Pix manual', false, $adminId);
+    if (array_key_exists('pix_key', $input) || array_key_exists('pix_receiver_name', $input) || array_key_exists('pix_instructions', $input)) {
+        integration_setting_set('pix_key', order_clean_text($input['pix_key'] ?? '', 180), 'Chave Pix manual', false, $adminId);
+        integration_setting_set('pix_receiver_name', order_clean_text($input['pix_receiver_name'] ?? '', 180), 'Nome do recebedor Pix manual', false, $adminId);
+        integration_setting_set('pix_instructions', order_clean_text($input['pix_instructions'] ?? '', 500), 'Instruções Pix manual', false, $adminId);
+    }
     integration_setting_set('whatsapp_enabled', $enabled, 'Ativa notificações WhatsApp pós-compra', false, $adminId);
     integration_setting_set('whatsapp_mode', $mode, 'Modo da integração WhatsApp', false, $adminId);
     integration_setting_set('whatsapp_phone_number_id', order_clean_text($input['whatsapp_phone_number_id'] ?? '', 120), 'Phone Number ID da WhatsApp Cloud API', false, $adminId);
