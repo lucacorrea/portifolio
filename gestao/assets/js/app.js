@@ -1,139 +1,166 @@
-const currency = new Intl.NumberFormat('pt-BR', {
+const brl = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL'
 });
 
 const data = {
-  money: [
-    { label: 'Total vendido', value: 8742.90, note: '+18,4% hoje', color: '#1768D5', bg: 'rgba(23,104,213,.12)' },
-    { label: 'PIX', value: 3820.40, note: '44% das vendas', color: '#11BFA5', bg: 'rgba(17,191,165,.13)' },
-    { label: 'Cartão', value: 3654.10, note: 'Crédito e débito', color: '#18B8D8', bg: 'rgba(24,184,216,.13)' },
-    { label: 'Dinheiro', value: 1268.40, note: '14 pagamentos', color: '#F6B93B', bg: 'rgba(246,185,59,.14)' },
-    { label: 'Lucro estimado', value: 2797.72, note: 'Margem 32%', color: '#24C486', bg: 'rgba(36,196,134,.14)' }
+  todaySales: [
+    {
+      title: 'Venda balcão',
+      subtitle: 'PIX • 09:42',
+      amount: 246.80,
+      status: 'Aprovada',
+      icon: 'receipt',
+      type: 'positive'
+    },
+    {
+      title: 'Mariana Costa',
+      subtitle: 'Cartão • 10:16',
+      amount: 589.90,
+      status: 'Aprovada',
+      icon: 'card',
+      type: 'positive'
+    }
   ],
 
-  sales: [
-    { name: 'Cliente balcão', meta: 'PIX • 09:42', amount: 246.80, icon: '✓' },
-    { name: 'Mariana Costa', meta: 'Cartão • 10:16', amount: 589.90, icon: '✓' },
-    { name: 'Rafael Lima', meta: 'Dinheiro • 10:37', amount: 79.90, icon: '✓' },
-    { name: 'Mercado São João', meta: 'PIX • 11:04', amount: 1390.00, icon: '✓' }
+  yesterdaySales: [
+    {
+      title: 'Rafael Lima',
+      subtitle: 'Dinheiro • Ontem',
+      amount: 79.90,
+      status: 'Finalizada',
+      icon: 'cash',
+      type: 'positive'
+    },
+    {
+      title: 'Cancelamento',
+      subtitle: 'Estorno • Ontem',
+      amount: -56.80,
+      status: 'Estornado',
+      icon: 'refund',
+      type: 'negative'
+    }
   ],
 
-  products: [
-    { name: 'Mouse Sem Fio Pro', meta: '28 unidades vendidas', amount: 2237.20, icon: '▦' },
-    { name: 'Cabo USB-C 2m', meta: '41 unidades vendidas', amount: 697.00, icon: '▦' },
-    { name: 'Teclado Mecânico RGB', meta: '12 unidades vendidas', amount: 1798.80, icon: '▦' }
+  finance: [
+    { title: 'Total vendido', value: 8742.90, note: '91 vendas' },
+    { title: 'PIX', value: 3820.40, note: '44% do caixa' },
+    { title: 'Cartão', value: 3654.10, note: '42% do caixa' },
+    { title: 'Dinheiro', value: 1268.40, note: '14% do caixa' }
   ],
 
-  stock: [
-    { name: 'Fonte 12V 5A', meta: 'Repor estoque', status: '3 un.', icon: '!' },
-    { name: 'Hub USB-C Premium', meta: 'Repor estoque', status: '2 un.', icon: '!' },
-    { name: 'Adaptador HDMI', meta: 'Repor estoque', status: '5 un.', icon: '!' }
+  topProducts: [
+    { title: 'Mouse Sem Fio Pro', subtitle: '28 un. vendidas', amount: 2237.20, status: 'Top 1', icon: 'product' },
+    { title: 'Cabo USB-C 2m', subtitle: '41 un. vendidas', amount: 697.00, status: 'Top 2', icon: 'product' },
+    { title: 'Teclado Mecânico RGB', subtitle: '12 un. vendidas', amount: 1798.80, status: 'Top 3', icon: 'product' }
   ],
 
   cart: [
-    { name: 'Teclado Mecânico RGB', meta: '1 x R$ 149,90', amount: 149.90, icon: '▦' },
-    { name: 'Mouse Sem Fio Pro', meta: '1 x R$ 79,90', amount: 79.90, icon: '▦' },
-    { name: 'Cabo USB-C 2m', meta: '1 x R$ 17,00', amount: 17.00, icon: '▦' }
+    { title: 'Teclado Mecânico RGB', subtitle: '1 x R$ 149,90', amount: 149.90, status: 'Item', icon: 'product' },
+    { title: 'Mouse Sem Fio Pro', subtitle: '1 x R$ 79,90', amount: 79.90, status: 'Item', icon: 'product' },
+    { title: 'Cabo USB-C 2m', subtitle: '1 x R$ 17,00', amount: 17.00, status: 'Item', icon: 'product' }
   ],
 
   catalog: [
-    { name: 'Teclado Mecânico RGB', meta: 'SKU-1009 • Estoque: 18', amount: 149.90, icon: '▦' },
-    { name: 'Mouse Sem Fio Pro', meta: 'SKU-1011 • Estoque: 42', amount: 79.90, icon: '▦' },
-    { name: 'Cabo USB-C 2m', meta: 'SKU-1018 • Estoque: 76', amount: 17.00, icon: '▦' },
-    { name: 'Hub USB-C Premium', meta: 'SKU-1054 • Estoque: 2', amount: 119.90, icon: '▦' },
-    { name: 'Fonte 12V 5A', meta: 'SKU-1088 • Estoque: 3', amount: 59.90, icon: '▦' }
+    { title: 'Teclado Mecânico RGB', subtitle: 'SKU-1009 • Estoque 18', amount: 149.90, status: 'Ativo', icon: 'product' },
+    { title: 'Mouse Sem Fio Pro', subtitle: 'SKU-1011 • Estoque 42', amount: 79.90, status: 'Ativo', icon: 'product' },
+    { title: 'Cabo USB-C 2m', subtitle: 'SKU-1018 • Estoque 76', amount: 17.00, status: 'Ativo', icon: 'product' },
+    { title: 'Hub USB-C Premium', subtitle: 'SKU-1054 • Estoque 2', amount: 119.90, status: 'Baixo', icon: 'product' },
+    { title: 'Fonte 12V 5A', subtitle: 'SKU-1088 • Estoque 3', amount: 59.90, status: 'Baixo', icon: 'product' }
   ],
 
-  hour: [
-    { label: '08h', value: 32 },
-    { label: '09h', value: 54 },
-    { label: '10h', value: 76 },
-    { label: '11h', value: 66 },
-    { label: '12h', value: 43 },
-    { label: '13h', value: 58 },
-    { label: '14h', value: 82 },
-    { label: '15h', value: 96 },
-    { label: '16h', value: 72 },
-    { label: '17h', value: 90 }
-  ],
-
-  week: [48, 61, 44, 82, 96, 70, 39]
+  week: [
+    { day: 'Seg', height: 54 },
+    { day: 'Ter', height: 67 },
+    { day: 'Qua', height: 48 },
+    { day: 'Qui', height: 76 },
+    { day: 'Sex', height: 92 },
+    { day: 'Sáb', height: 70 },
+    { day: 'Dom', height: 42 }
+  ]
 };
 
-function setDeviceTime() {
+const icons = {
+  receipt: '<svg viewBox="0 0 24 24"><path d="M7 4h10v16l-2-1-2 1-2-1-2 1-2-1z"/><path d="M9 8h6"/><path d="M9 12h5"/></svg>',
+  card: '<svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M4 10h16"/></svg>',
+  cash: '<svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><circle cx="12" cy="12" r="3"/></svg>',
+  refund: '<svg viewBox="0 0 24 24"><path d="M9 8H5V4"/><path d="M5 8a8 8 0 1 1 2 5.3"/></svg>',
+  product: '<svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg>'
+};
+
+function updateTime() {
   const now = new Date();
   const time = now.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit'
   });
 
-  document.querySelectorAll('#deviceTime, .deviceTimeClone').forEach(el => {
-    el.textContent = time;
+  document.querySelectorAll('[data-time]').forEach(item => {
+    item.textContent = time;
   });
 }
 
-function moneyCard(item) {
-  return `
-    <article class="money-card" style="--accent:${item.color};--accent-bg:${item.bg}">
-      <span>${item.label}</span>
-      <strong>${currency.format(item.value)}</strong>
-      <small>${item.note}</small>
-    </article>
-  `;
-}
-
-function row(item, mode = 'amount') {
-  const right = mode === 'status'
-    ? `<span class="row-status">${item.status}</span>`
-    : `<span class="row-amount">${currency.format(item.amount)}</span><span class="row-status">Aprovado</span>`;
+function rowTemplate(item) {
+  const amountClass = item.type === 'negative' ? 'negative' : 'positive';
+  const formatted = item.amount < 0
+    ? `- ${brl.format(Math.abs(item.amount))}`
+    : brl.format(item.amount);
 
   return `
-    <button class="row" data-toast="${item.name}">
+    <button class="row-item" data-toast="${item.title}">
       <div class="row-left">
-        <span class="row-icon">${item.icon}</span>
-        <div>
-          <span class="row-title">${item.name}</span>
-          <span class="row-sub">${item.meta}</span>
-        </div>
+        <span class="row-icon">${icons[item.icon] || icons.receipt}</span>
+        <span class="row-text">
+          <strong>${item.title}</strong>
+          <span>${item.subtitle}</span>
+        </span>
       </div>
-      <div class="row-right">${right}</div>
+
+      <span class="row-right">
+        <strong class="${amountClass}">${formatted}</strong>
+        <span>${item.status}</span>
+      </span>
     </button>
   `;
 }
 
-function renderMoney() {
-  document.querySelector('#moneyGrid').innerHTML = data.money.map(moneyCard).join('');
-}
-
 function renderLists() {
-  document.querySelector('#salesList').innerHTML = data.sales.map(item => row(item)).join('');
-  document.querySelector('#productsList').innerHTML = data.products.map(item => row(item)).join('');
-  document.querySelector('#stockList').innerHTML = data.stock.map(item => row(item, 'status')).join('');
-  document.querySelector('#cartList').innerHTML = data.cart.map(item => row(item)).join('');
-  document.querySelector('#catalogList').innerHTML = data.catalog.map(item => row(item)).join('');
+  document.querySelector('#todaySales').innerHTML = data.todaySales.map(rowTemplate).join('');
+  document.querySelector('#yesterdaySales').innerHTML = data.yesterdaySales.map(rowTemplate).join('');
+  document.querySelector('#topProducts').innerHTML = data.topProducts.map(rowTemplate).join('');
+  document.querySelector('#cartItems').innerHTML = data.cart.map(rowTemplate).join('');
+  document.querySelector('#catalogList').innerHTML = data.catalog.map(rowTemplate).join('');
 }
 
-function renderCharts() {
-  const hour = document.querySelector('#hourChart');
-  hour.innerHTML = data.hour.map((item, index) => `
-    <div class="bar" data-label="${item.label}" style="height:${item.value}%; animation-delay:${index * 45}ms"></div>
+function renderFinance() {
+  document.querySelector('#financeGrid').innerHTML = data.finance.map(item => `
+    <article class="finance-card">
+      <span>${item.title}</span>
+      <strong>${brl.format(item.value)}</strong>
+      <small>${item.note}</small>
+    </article>
   `).join('');
+}
 
-  const week = document.querySelector('#weekChart');
-  week.innerHTML = data.week.map(value => `
-    <div class="mini-bar" style="height:${value}%"></div>
+function renderChart() {
+  document.querySelector('#weeklyBars').innerHTML = data.week.map(item => `
+    <span class="bar" style="height:${item.height}%" data-day="${item.day}"></span>
   `).join('');
 }
 
 function navigate(screenName) {
   document.querySelectorAll('.screen').forEach(screen => {
-    screen.classList.toggle('active', screen.dataset.screen === screenName);
-    if (screen.dataset.screen === screenName) screen.scrollTop = 0;
+    const isActive = screen.dataset.screen === screenName;
+    screen.classList.toggle('active', isActive);
+
+    if (isActive) {
+      screen.scrollTop = 0;
+    }
   });
 
-  document.querySelectorAll('.nav').forEach(nav => {
-    nav.classList.toggle('active', nav.dataset.screenTarget === screenName);
+  document.querySelectorAll('.bottom-nav button').forEach(button => {
+    const target = button.dataset.screenTarget;
+    button.classList.toggle('active', target === screenName && !button.classList.contains('center-action'));
   });
 }
 
@@ -142,55 +169,65 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.add('show');
 
-  clearTimeout(window.__toastTimer);
-  window.__toastTimer = setTimeout(() => {
+  clearTimeout(window.toastTimer);
+  window.toastTimer = setTimeout(() => {
     toast.classList.remove('show');
-  }, 2200);
+  }, 1900);
 }
 
 function bindEvents() {
   document.body.addEventListener('click', event => {
-    const screenButton = event.target.closest('[data-screen-target]');
-    if (screenButton) {
-      navigate(screenButton.dataset.screenTarget);
+    const navigation = event.target.closest('[data-screen-target]');
+    if (navigation) {
+      navigate(navigation.dataset.screenTarget);
       return;
     }
 
-    const toastButton = event.target.closest('[data-toast]');
-    if (toastButton) {
-      showToast(toastButton.dataset.toast);
+    const toastTarget = event.target.closest('[data-toast]');
+    if (toastTarget) {
+      showToast(toastTarget.dataset.toast);
     }
   });
 
   const search = document.querySelector('#productSearch');
-  if (search) {
-    search.addEventListener('input', () => {
-      const term = search.value.trim().toLowerCase();
-      const filtered = data.catalog.filter(item => {
-        return `${item.name} ${item.meta}`.toLowerCase().includes(term);
-      });
 
-      document.querySelector('#catalogList').innerHTML = filtered.map(item => row(item)).join('')
-        || `<div class="row"><div class="row-left"><span class="row-icon">⌕</span><div><span class="row-title">Nenhum produto</span><span class="row-sub">Tente outro termo</span></div></div></div>`;
+  search.addEventListener('input', () => {
+    const term = search.value.trim().toLowerCase();
+    const filtered = data.catalog.filter(item => {
+      return `${item.title} ${item.subtitle}`.toLowerCase().includes(term);
     });
-  }
+
+    document.querySelector('#catalogList').innerHTML = filtered.length
+      ? filtered.map(rowTemplate).join('')
+      : `
+        <div class="row-item">
+          <div class="row-left">
+            <span class="row-icon">${icons.product}</span>
+            <span class="row-text">
+              <strong>Nenhum produto</strong>
+              <span>Tente buscar por outro termo</span>
+            </span>
+          </div>
+        </div>
+      `;
+  });
 }
 
-function registerServiceWorker() {
+function registerPWA() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   }
 }
 
 function boot() {
-  setDeviceTime();
-  setInterval(setDeviceTime, 30000);
+  updateTime();
+  setInterval(updateTime, 30000);
 
-  renderMoney();
   renderLists();
-  renderCharts();
+  renderFinance();
+  renderChart();
   bindEvents();
-  registerServiceWorker();
+  registerPWA();
 }
 
 document.addEventListener('DOMContentLoaded', boot);

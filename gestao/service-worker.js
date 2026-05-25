@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lj-caixa-premium-v1';
+const CACHE_NAME = 'lj-caixa-clean-premium-v1';
 const FILES = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ self.addEventListener('activate', event => {
       if (key !== CACHE_NAME) return caches.delete(key);
     })))
   );
+
   self.clients.claim();
 });
 
@@ -26,8 +27,6 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request);
-    })
+    caches.match(event.request).then(cached => cached || fetch(event.request))
   );
 });

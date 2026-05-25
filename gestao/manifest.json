@@ -1,13 +1,13 @@
 {
   "name": "L&J Caixa Premium",
   "short_name": "L&J Caixa",
-  "description": "Demo mobile de gestão comercial e frente de caixa.",
+  "description": "Demonstração mobile premium para gestão comercial e frente de caixa.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F4F8FF",
-  "theme_color": "#0A3B8E",
+  "background_color": "#F1F5FC",
+  "theme_color": "#1657A7",
   "icons": [
     {
       "src": "assets/icons/icon.svg",

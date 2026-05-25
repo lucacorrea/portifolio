@@ -1,31 +1,28 @@
-# L&J Caixa Premium - Demo App-like
+# L&J Caixa Premium - Versão Clean App
 
-Esta versão foi ajustada para parecer mais com um aplicativo mobile real:
+Versão ajustada para seguir mais de perto a referência visual enviada:
 
-- PWA instalável no Android;
-- Tela full-screen no celular;
-- `manifest.json`;
-- `service-worker.js`;
-- navegação inferior estilo app;
-- UI mobile-first;
-- cards, gráficos CSS e interações em JavaScript;
-- sem dependência de Flutter.
+- topo azul sólido;
+- valor vendido em destaque;
+- ações rápidas com ícones em cards brancos;
+- área branca arredondada;
+- listas limpas;
+- bottom navigation semelhante a app mobile;
+- menos animações;
+- menos sombras;
+- poucos gradientes;
+- visual mais premium e organizado.
 
-## Como testar localmente
+## Rodar
 
-Abra `index.html` no navegador.
+Abra o `index.html`.
 
-## Como testar como aplicativo no celular
+## Instalar no celular como app
 
-O ideal é subir a pasta para a Hostinger, porque PWA precisa rodar via HTTPS para instalar corretamente.
-
-1. Envie todos os arquivos para uma pasta da hospedagem.
-2. Acesse o link pelo Chrome no Android.
-3. Toque em `⋮`.
-4. Toque em `Adicionar à tela inicial`.
-5. Abra pelo ícone criado.
-
-Ao abrir pelo ícone, ele fica com aparência de app, sem barra do navegador.
+1. Suba a pasta na Hostinger.
+2. Acesse pelo Chrome Android.
+3. Toque em `⋮ > Adicionar à tela inicial`.
+4. Abra pelo ícone criado.
 
 ## Estrutura
 
@@ -38,7 +35,3 @@ assets/
   js/app.js
   icons/icon.svg
 ```
-
-## Próximo passo
-
-Depois da aprovação visual, integrar com API PHP/MySQL usando `fetch()` no `app.js`.
