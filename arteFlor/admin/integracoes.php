@@ -129,13 +129,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
 <?php endif; ?>
 
 <section class="whatsapp-live-shell">
-  <div class="whatsapp-live-hero">
-    <div class="whatsapp-live-icon">WA</div>
-    <div>
-      <h2>Conexão WhatsApp</h2>
-      <p>Conecte o WhatsApp da empresa ao sistema.</p>
-    </div>
-  </div>
+ 
 
   <div class="whatsapp-live-grid">
     <article class="whatsapp-live-card">
