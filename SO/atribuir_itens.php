@@ -529,10 +529,10 @@ include 'views/layout/header.php';
         <div class="planilha-import">
             <div>
                 <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar orçamento ou ofício</h4>
-                <p class="planilha-import-text">Aceita PDF, DOCX, TXT, CSV e imagens. Em ofícios sem preço, importa descrição, unidade e quantidade.</p>
+                <p class="planilha-import-text">Aceita um ou vários PDF, DOCX, TXT, CSV e imagens. Cada importação adiciona itens à lista atual.</p>
             </div>
             <div>
-                <input type="file" id="planilha-pdf-input" accept=".pdf,.docx,.txt,.csv,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,image/*" hidden>
+                <input type="file" id="planilha-pdf-input" accept=".pdf,.docx,.txt,.csv,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,image/*" multiple hidden>
                 <button type="button" class="btn btn-outline" id="planilha-pdf-btn">
                     <i class="fas fa-upload"></i> Selecionar arquivo
                 </button>
@@ -1830,26 +1830,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 return file;
             }
 
+            const rotation = ((Number(options.rotate || 0) % 360) + 360) % 360;
+            const rotatedWidth = rotation === 90 || rotation === 270 ? height : width;
+            const rotatedHeight = rotation === 90 || rotation === 270 ? width : height;
             const crop = options.crop || { x: 0, y: 0, width: 1, height: 1 };
-            const sourceX = Math.max(0, Math.round(width * crop.x));
-            const sourceY = Math.max(0, Math.round(height * crop.y));
-            const sourceWidth = Math.max(1, Math.min(width - sourceX, Math.round(width * crop.width)));
-            const sourceHeight = Math.max(1, Math.min(height - sourceY, Math.round(height * crop.height)));
+            const sourceX = Math.max(0, Math.round(rotatedWidth * crop.x));
+            const sourceY = Math.max(0, Math.round(rotatedHeight * crop.y));
+            const sourceWidth = Math.max(1, Math.min(rotatedWidth - sourceX, Math.round(rotatedWidth * crop.width)));
+            const sourceHeight = Math.max(1, Math.min(rotatedHeight - sourceY, Math.round(rotatedHeight * crop.height)));
             const longSide = Math.max(sourceWidth, sourceHeight);
             const targetLongSide = options.targetLongSide || (longSide < 1600 ? 1600 : Math.min(longSide, 2200));
             const scale = Math.min(options.maxScale || 4, targetLongSide / longSide);
+            const rotatedCanvas = document.createElement('canvas');
             const canvas = document.createElement('canvas');
 
+            rotatedCanvas.width = rotatedWidth;
+            rotatedCanvas.height = rotatedHeight;
             canvas.width = Math.max(1, Math.round(sourceWidth * scale));
             canvas.height = Math.max(1, Math.round(sourceHeight * scale));
 
+            const rotatedContext = rotatedCanvas.getContext('2d', { willReadFrequently: true });
             const context = canvas.getContext('2d', { willReadFrequently: true });
-            if (!context) {
+            if (!rotatedContext || !context) {
                 return file;
             }
 
+            rotatedContext.save();
+            if (rotation === 90) {
+                rotatedContext.translate(rotatedWidth, 0);
+                rotatedContext.rotate(Math.PI / 2);
+            } else if (rotation === 180) {
+                rotatedContext.translate(rotatedWidth, rotatedHeight);
+                rotatedContext.rotate(Math.PI);
+            } else if (rotation === 270) {
+                rotatedContext.translate(0, rotatedHeight);
+                rotatedContext.rotate(-Math.PI / 2);
+            }
+            rotatedContext.drawImage(image, 0, 0);
+            rotatedContext.restore();
+
             context.drawImage(
-                image,
+                rotatedCanvas,
                 sourceX,
                 sourceY,
                 sourceWidth,
@@ -1870,6 +1891,67 @@ document.addEventListener('DOMContentLoaded', function() {
                 pixels[index] = adjusted;
                 pixels[index + 1] = adjusted;
                 pixels[index + 2] = adjusted;
+            }
+
+            if (options.removeLines) {
+                const widthPixels = canvas.width;
+                const heightPixels = canvas.height;
+                const rowsToClear = new Set();
+                const colsToClear = new Set();
+
+                for (let y = 0; y < heightPixels; y++) {
+                    let darkPixels = 0;
+                    for (let x = 0; x < widthPixels; x++) {
+                        if (pixels[((y * widthPixels) + x) * 4] < 115) {
+                            darkPixels++;
+                        }
+                    }
+
+                    if (darkPixels > widthPixels * 0.42) {
+                        for (let offset = -1; offset <= 1; offset++) {
+                            const targetY = y + offset;
+                            if (targetY >= 0 && targetY < heightPixels) {
+                                rowsToClear.add(targetY);
+                            }
+                        }
+                    }
+                }
+
+                for (let x = 0; x < widthPixels; x++) {
+                    let darkPixels = 0;
+                    for (let y = 0; y < heightPixels; y++) {
+                        if (pixels[((y * widthPixels) + x) * 4] < 115) {
+                            darkPixels++;
+                        }
+                    }
+
+                    if (darkPixels > heightPixels * 0.35) {
+                        for (let offset = -1; offset <= 1; offset++) {
+                            const targetX = x + offset;
+                            if (targetX >= 0 && targetX < widthPixels) {
+                                colsToClear.add(targetX);
+                            }
+                        }
+                    }
+                }
+
+                rowsToClear.forEach(y => {
+                    for (let x = 0; x < widthPixels; x++) {
+                        const pixelIndex = ((y * widthPixels) + x) * 4;
+                        pixels[pixelIndex] = 255;
+                        pixels[pixelIndex + 1] = 255;
+                        pixels[pixelIndex + 2] = 255;
+                    }
+                });
+
+                colsToClear.forEach(x => {
+                    for (let y = 0; y < heightPixels; y++) {
+                        const pixelIndex = ((y * widthPixels) + x) * 4;
+                        pixels[pixelIndex] = 255;
+                        pixels[pixelIndex + 1] = 255;
+                        pixels[pixelIndex + 2] = 255;
+                    }
+                });
             }
 
             context.putImageData(imageData, 0, 0);
@@ -1906,8 +1988,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         try {
-            async function recognizeRegion(label, psm, crop, targetLongSide = 2600) {
-                setPlanilhaStatus(`OCR local: analisando ${label}...`, 'warning');
+            function scoreOfficeRows(text) {
+                const parsed = parseOfficeItemsTableText(text);
+                if (!parsed?.items?.length) {
+                    return 0;
+                }
+
+                const missingMatch = String(text || '').match(/@@OCR_QTY_WARNING:(\d+)@@/u);
+                const missing = missingMatch ? Number(missingMatch[1]) : 0;
+                return parsed.items.length - (missing * 0.12);
+            }
+
+            async function recognizeRegion(label, psm, crop, options = {}) {
+                const rotateLabel = options.rotate ? ` rotação ${options.rotate}°` : '';
+                setPlanilhaStatus(`OCR local: analisando ${label}${rotateLabel}...`, 'warning');
 
                 if (worker.setParameters) {
                     await worker.setParameters({
@@ -1918,49 +2012,72 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const imageForOcr = await prepareImageForOcr(file, {
                     crop,
-                    targetLongSide,
+                    rotate: options.rotate || 0,
+                    removeLines: Boolean(options.removeLines),
+                    targetLongSide: options.targetLongSide || 2600,
                     maxScale: 5
                 });
                 const result = await worker.recognize(imageForOcr);
                 return result?.data?.text || '';
             }
 
-            const officeDescText = await recognizeRegion('coluna de descrição', 11, {
-                x: 0.199,
-                y: 0.40625,
-                width: 0.28,
-                height: 0.508
-            });
-            const officeUnitQuantityText = await recognizeRegion('coluna de unidade e quantidade', 6, {
-                x: 0.482,
-                y: 0.40625,
-                width: 0.16,
-                height: 0.508
-            });
-            const officeRowsText = buildOfficeRowsFromColumnOcr(officeDescText, officeUnitQuantityText);
-            const hasOfficeRows = officeRowsText && officeRowsText.split(/\r?\n/).filter(line => /^\d+\./.test(line)).length >= 4;
+            const image = await loadImageForOcr(file);
+            const imageWidth = image.naturalWidth || image.width || 0;
+            const imageHeight = image.naturalHeight || image.height || 0;
+            const rotations = imageWidth > imageHeight
+                ? [90, 270, 0, 180]
+                : [0, 90, 270, 180];
+            let bestOfficeRows = { text: '', score: 0, rotate: 0 };
 
-            if (hasOfficeRows) {
+            for (const rotate of rotations) {
+                const officeDescText = await recognizeRegion('coluna de descrição', 4, {
+                    x: 0.19,
+                    y: 0.42,
+                    width: 0.31,
+                    height: 0.50
+                }, { rotate, removeLines: true });
+                const officeUnitQuantityText = await recognizeRegion('coluna de unidade e quantidade', 6, {
+                    x: 0.49,
+                    y: 0.42,
+                    width: 0.16,
+                    height: 0.50
+                }, { rotate, removeLines: true });
+                const officeRowsText = buildOfficeRowsFromColumnOcr(officeDescText, officeUnitQuantityText);
+                const score = scoreOfficeRows(officeRowsText);
+
+                if (score > bestOfficeRows.score) {
+                    bestOfficeRows = { text: officeRowsText, score, rotate };
+                }
+
+                if (score >= 18) {
+                    break;
+                }
+            }
+
+            if (bestOfficeRows.score >= 4) {
                 return {
-                    text: officeRowsText,
+                    text: bestOfficeRows.text,
                     rows: [],
                     source: 'image'
                 };
             }
 
+            const fallbackRotate = bestOfficeRows.rotate || rotations[0] || 0;
             const tableText = await recognizeRegion('tabela do ofício', 6, {
                 x: 0.129,
                 y: 0.40625,
                 width: 0.51,
                 height: 0.508
+            }, { rotate: fallbackRotate, removeLines: true });
+            const fullText = await recognizeRegion('página inteira', 6, { x: 0, y: 0, width: 1, height: 1 }, {
+                rotate: fallbackRotate,
+                targetLongSide: 2200
             });
-            const fullText = await recognizeRegion('página inteira', 6, { x: 0, y: 0, width: 1, height: 1 }, 2200);
 
             return {
                 text: [
                     tableText,
-                    officeDescText,
-                    officeUnitQuantityText,
+                    bestOfficeRows.text,
                     fullText
                 ].filter(Boolean).join('\n'),
                 rows: [],
@@ -2217,6 +2334,26 @@ document.addEventListener('DOMContentLoaded', function() {
         return row;
     }
 
+    function removeEmptyItemRows() {
+        Array.from(container.querySelectorAll('.item-row')).forEach(row => {
+            const produto = row.querySelector('.item-name')?.value.trim() || '';
+            const quantidade = row.querySelector('.item-qtd')?.value.trim() || '';
+            const valor = row.querySelector('.item-valor')?.value.trim() || '';
+            const valorNumerico = parseValorBR(valor);
+
+            if (produto === '' && (quantidade === '' || quantidade === '1') && (valor === '' || valorNumerico === 0)) {
+                row.remove();
+            }
+        });
+    }
+
+    function appendImportedItems(items) {
+        items.forEach(item => {
+            const index = container.querySelectorAll('.item-row').length;
+            container.appendChild(createItemRow(index, item));
+        });
+    }
+
     function renumberItems() {
         const rows = container.querySelectorAll('.item-row');
         rows.forEach((row, index) => {
@@ -2352,49 +2489,67 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         planilhaInput.addEventListener('change', async function() {
-            const file = planilhaInput.files?.[0];
-            if (!file) {
+            const files = Array.from(planilhaInput.files || []);
+            if (!files.length) {
                 return;
             }
 
-            if (file.size > 15 * 1024 * 1024) {
-                setPlanilhaStatus('O arquivo selecionado é muito grande. Use um arquivo de até 15 MB.', 'error');
-                planilhaInput.value = '';
-                return;
-            }
-
-            const hasTypedItems = Array.from(container.querySelectorAll('.item-name'))
-                .some(input => input.value.trim() !== '');
-            if (hasTypedItems && !window.confirm('Importar a planilha vai substituir os itens atuais do formulário. Continuar?')) {
+            const oversizedFile = files.find(file => file.size > 15 * 1024 * 1024);
+            if (oversizedFile) {
+                setPlanilhaStatus(`O arquivo "${oversizedFile.name}" é muito grande. Use arquivos de até 15 MB.`, 'error');
                 planilhaInput.value = '';
                 return;
             }
 
             planilhaBtn.disabled = true;
-            setPlanilhaStatus('Lendo arquivo e preparando os itens...', 'warning');
+            setPlanilhaStatus(files.length === 1 ? 'Lendo arquivo e preparando os itens...' : `Lendo ${files.length} arquivos e preparando os itens...`, 'warning');
 
             try {
-                const extracted = await extractBudgetFile(file);
-                const result = parsePlanilhaPdfText(extracted);
+                const parsedResults = [];
+                const failures = [];
 
-                container.innerHTML = '';
-                result.items.forEach((item, index) => {
-                    container.appendChild(createItemRow(index, item));
-                });
+                for (const file of files) {
+                    try {
+                        setPlanilhaStatus(`Lendo "${file.name}"...`, 'warning');
+                        const extracted = await extractBudgetFile(file);
+                        const result = parsePlanilhaPdfText(extracted);
+                        parsedResults.push({ file, result });
+                    } catch (error) {
+                        console.error(error);
+                        failures.push(`${file.name}: ${error.message || 'não foi possível importar'}`);
+                    }
+                }
+
+                if (!parsedResults.length) {
+                    throw new Error(failures[0] || 'Não foi possível importar os arquivos selecionados.');
+                }
+
+                removeEmptyItemRows();
+                parsedResults.forEach(({ result }) => appendImportedItems(result.items));
 
                 renumberItems();
                 calculateTotal();
 
-                const hasImportedValues = result.totalPdf > 0
-                    || result.items.some(item => Number(item.valor_unitario || 0) > 0 || Number(item.valor_total || 0) > 0);
+                const importedItems = parsedResults.flatMap(({ result }) => result.items);
+                const importedTotal = parsedResults.reduce((sum, { result }) => sum + Number(result.totalItens || 0), 0);
+                const importedFileCount = parsedResults.length;
+                const importedItemCount = importedItems.length;
+                const hasImportedValues = importedTotal > 0
+                    || importedItems.some(item => Number(item.valor_unitario || 0) > 0 || Number(item.valor_total || 0) > 0);
                 const totalStatus = hasImportedValues
-                    ? (result.totalPdf > 0 && Math.abs(result.totalPdf - result.totalItens) > 0.02
-                        ? ` Total do arquivo: ${formatMoneyBR(result.totalPdf)}. Total importado: ${formatMoneyBR(result.totalItens)}.`
-                        : ` Total importado: ${formatMoneyBR(result.totalItens)}.`)
+                    ? ` Total importado agora: ${formatMoneyBR(importedTotal)}.`
                     : ' Itens sem preço foram carregados com valor 0,00 para conferência.';
-                const warningStatus = result.warning ? ` ${result.warning}` : '';
+                const warningStatus = parsedResults
+                    .map(({ file, result }) => result.warning ? `${file.name}: ${result.warning}` : '')
+                    .filter(Boolean)
+                    .join(' ');
+                const failureStatus = failures.length
+                    ? ` ${failures.length} arquivo(s) não foram importados: ${failures.join(' | ')}`
+                    : '';
+                const fileLabel = importedFileCount === 1 ? '1 arquivo' : `${importedFileCount} arquivos`;
+                const statusType = failures.length ? 'warning' : 'success';
 
-                setPlanilhaStatus(`${result.items.length} itens carregados do arquivo.${totalStatus}${warningStatus}`, 'success');
+                setPlanilhaStatus(`${importedItemCount} itens adicionados de ${fileLabel}.${totalStatus}${warningStatus ? ` ${warningStatus}` : ''}${failureStatus}`, statusType);
             } catch (error) {
                 console.error(error);
                 setPlanilhaStatus(error.message || 'Não foi possível importar o arquivo.', 'error');
