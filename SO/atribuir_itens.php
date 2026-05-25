@@ -528,8 +528,8 @@ include 'views/layout/header.php';
 
         <div class="planilha-import">
             <div>
-                <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar orçamento PDF</h4>
-                <p class="planilha-import-text">Aceita PDF, DOCX, TXT, CSV e imagens para conferência antes de salvar.</p>
+                <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar orçamento ou ofício</h4>
+                <p class="planilha-import-text">Aceita PDF, DOCX, TXT, CSV e imagens. Em ofícios sem preço, importa descrição, unidade e quantidade.</p>
             </div>
             <div>
                 <input type="file" id="planilha-pdf-input" accept=".pdf,.docx,.txt,.csv,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,image/*" hidden>
@@ -760,6 +760,45 @@ document.addEventListener('DOMContentLoaded', function() {
             .toUpperCase();
     }
 
+    function normalizeUnitLabel(value) {
+        const raw = String(value || '').trim().replace(/\.$/, '');
+        const key = normalizeToken(raw);
+        const units = {
+            UN: 'UN',
+            UND: 'UN',
+            UNID: 'UN',
+            UNIDADE: 'UN',
+            PAR: 'PAR',
+            PARES: 'PAR',
+            PC: 'PÇ',
+            PECA: 'PÇ',
+            PECAS: 'PÇ',
+            PCT: 'PCT',
+            PACOTE: 'PCT',
+            CX: 'CX',
+            CAIXA: 'CX',
+            KG: 'Kg',
+            KILO: 'Kg',
+            QUILO: 'Kg',
+            G: 'g',
+            GRAMA: 'g',
+            LT: 'L',
+            L: 'L',
+            LITRO: 'L',
+            M: 'm',
+            MT: 'm',
+            METRO: 'm',
+            M2: 'm2',
+            M3: 'm3',
+            ROLO: 'rolo',
+            RL: 'rolo',
+            SERV: 'SERV',
+            SV: 'SERV'
+        };
+
+        return units[key] || raw.toUpperCase() || 'UN';
+    }
+
     function splitWords(value) {
         return String(value || '').trim().split(/\s+/).filter(Boolean);
     }
@@ -802,7 +841,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function buildBudgetParseResult(items, totalPdf = 0) {
-        const parsedItems = items.filter(item => item.produto && item.quantidade > 0);
+        const parsedItems = items
+            .map(item => {
+                const quantidadeRaw = typeof item.quantidade === 'string'
+                    ? Number(item.quantidade.replace(',', '.'))
+                    : Number(item.quantidade || 0);
+                const quantidade = Number.isFinite(quantidadeRaw) ? quantidadeRaw : 0;
+                const valorUnitarioRaw = Number(item.valor_unitario ?? 0);
+                const valorUnitario = Number.isFinite(valorUnitarioRaw) ? valorUnitarioRaw : 0;
+                const valorTotalRaw = Number(item.valor_total ?? (quantidade * valorUnitario));
+                const valorTotal = Number.isFinite(valorTotalRaw) ? valorTotalRaw : 0;
+
+                return {
+                    ...item,
+                    produto: String(item.produto || '').replace(/\s+/g, ' ').trim(),
+                    unidade: normalizeUnitLabel(item.unidade || 'UN'),
+                    quantidade,
+                    valor_unitario: valorUnitario,
+                    valor_total: valorTotal
+                };
+            })
+            .filter(item => item.produto && item.quantidade > 0);
 
         if (!parsedItems.length) {
             return null;
@@ -900,7 +959,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         for (let index = 0; index < lines.length; index++) {
             const headerParts = splitDelimitedLine(lines[index]);
-            if (!headerParts || headerParts.length < 4) {
+            if (!headerParts || headerParts.length < 3) {
                 continue;
             }
 
@@ -911,7 +970,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const unitValueIndex = findHeaderIndex(headers, ['unit', 'valor unitario', 'vlr unitario', 'v unit', 'preco unitario', 'unitario']);
             const totalIndex = findHeaderIndex(headers, ['valor total', 'vlr total', 'total', 'subtotal']);
 
-            if (productIndex < 0 || quantityIndex < 0 || unitValueIndex < 0) {
+            if (productIndex < 0 || quantityIndex < 0) {
                 continue;
             }
 
@@ -927,7 +986,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const produto = String(parts[productIndex] || '').trim();
                 const quantidade = firstQuantityFromText(parts[quantityIndex] || '');
-                const valorUnitario = parsePlanilhaMoney(parts[unitValueIndex] || '');
+                const valorUnitario = unitValueIndex >= 0 ? parsePlanilhaMoney(parts[unitValueIndex] || '') : 0;
                 const valorTotal = totalIndex >= 0 ? parsePlanilhaMoney(parts[totalIndex] || '') : quantidade * valorUnitario;
 
                 if (!produto || quantidade <= 0) {
@@ -936,7 +995,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 items.push({
                     produto,
-                    unidade: unitIndex >= 0 ? String(parts[unitIndex] || 'UN').trim().toUpperCase() : 'UN',
+                    unidade: unitIndex >= 0 ? normalizeUnitLabel(parts[unitIndex] || 'UN') : 'UN',
                     quantidade,
                     valor_unitario: valorUnitario,
                     valor_total: valorTotal
@@ -947,6 +1006,267 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             }
         }
+
+        return buildBudgetParseResult(items);
+    }
+
+    function cleanImportedLine(line) {
+        return String(line || '')
+            .normalize('NFC')
+            .replace(/[|¦]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function officeUnitPattern() {
+        return '(?:UNID\\.?|UND\\.?|UNIDADE|UN\\.?|PAR(?:ES)?|PÇ|PC|PE[ÇC]A(?:S)?|PCT|PACOTE|CX|CAIXA|KG|KILO|QUILO|G|LT|L|LITRO|M2|M3|MT|M|METRO|ROLO|RL|SERV|SV)';
+    }
+
+    function cleanOfficeProductName(value) {
+        return String(value || '')
+            .replace(/\bQUANT\.?\s*\/\s*COMPRADA\b.*$/iu, '')
+            .replace(/\bOBS\.?\b.*$/iu, '')
+            .replace(/^[\s.,;:-]+|[\s.,;:-]+$/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function isOfficeListTerminator(line) {
+        const normalized = normalizeToken(line);
+
+        return normalized.includes('ASSINATURA')
+            || normalized.includes('ESTRADADOAEROPORTO')
+            || normalized.includes('RODAPE')
+            || (normalized.includes('CEP') && normalized.includes('COARI'));
+    }
+
+    function isIgnorableOfficeLine(line) {
+        const clean = cleanImportedLine(line);
+        const normalized = normalizeToken(clean);
+
+        if (!normalized) {
+            return true;
+        }
+
+        if (/^\d{1,3}\s*[\).:-]?\s+/u.test(clean)) {
+            return false;
+        }
+
+        if (isOfficeListTerminator(clean)) {
+            return true;
+        }
+
+        if (
+            (normalized.includes('DESCRICAO') && normalized.includes('QUANT'))
+            || (normalized.includes('ITENS') && normalized.includes('UNID'))
+            || (normalized.includes('ITEM') && normalized.includes('QTD'))
+        ) {
+            return true;
+        }
+
+        return [
+            'PREFEITURA',
+            'ESTADO',
+            'SECRETARIA',
+            'MEMORANDO',
+            'PROTOCOLO',
+            'DEPARTAMENTO',
+            'TECNICO',
+            'SADT',
+            'COARI',
+            'AMAZONAS',
+            'RAMISSES',
+            'DIRETOR',
+            'SENHOR',
+            'CUMPRIMENTO',
+            'SOLICITAR',
+            'SOLICITA',
+            'SERVICOS',
+            'REFORMA',
+            'INFRAESTRUTURA',
+            'COMUNIDADE',
+            'ESTRADA',
+            'AEROPORTO',
+            'BAIRRO',
+            'CEP',
+            'HORA',
+            'DATA'
+        ].some(token => normalized.includes(token));
+    }
+
+    function isValidOfficeProduct(produto, quantidade) {
+        const normalized = normalizeToken(produto);
+
+        if (!normalized || normalized.length < 2 || quantidade <= 0) {
+            return false;
+        }
+
+        return ![
+            'DESCRICAO',
+            'QUANT',
+            'COMPRADA',
+            'OBS',
+            'UNID',
+            'ITEM'
+        ].some(token => normalized === token || normalized.includes(`${token}${token}`));
+    }
+
+    function parseOfficeMaterialPayload(body, options = {}) {
+        const clean = cleanImportedLine(body);
+        const currencyMatches = clean.match(/(?:R\$\s*)?[\d.]+,\d{2}/giu) || [];
+
+        if (!clean || currencyMatches.length >= 2) {
+            return null;
+        }
+
+        const unitPattern = officeUnitPattern();
+        const normalPattern = new RegExp(`^(.+)\\s+(${unitPattern})\\s+(\\d+(?:[,.]\\d+)?)(?:\\s+.*)?$`, 'iu');
+        const invertedPattern = new RegExp(`^(.+)\\s+(\\d+(?:[,.]\\d+)?)\\s+(${unitPattern})(?:\\s+.*)?$`, 'iu');
+        const matches = [
+            clean.match(normalPattern),
+            clean.match(invertedPattern)
+        ];
+
+        for (const match of matches) {
+            if (!match) {
+                continue;
+            }
+
+            const inverted = match === matches[1];
+            const produto = cleanOfficeProductName(match[1]);
+            const unidade = normalizeUnitLabel(inverted ? match[3] : match[2]);
+            const quantidade = Number(String(inverted ? match[2] : match[3]).replace(',', '.'));
+
+            if (!isValidOfficeProduct(produto, quantidade)) {
+                continue;
+            }
+
+            return {
+                produto,
+                unidade,
+                quantidade,
+                valor_unitario: 0,
+                valor_total: 0
+            };
+        }
+
+        if (!options.allowMissingUnit) {
+            return null;
+        }
+
+        const fallback = clean.match(/^(.+?)\s+(\d+(?:[,.]\d+)?)$/u);
+        if (!fallback || currencyMatches.length > 0) {
+            return null;
+        }
+
+        const produto = cleanOfficeProductName(fallback[1]);
+        const quantidade = Number(String(fallback[2]).replace(',', '.'));
+
+        if (!isValidOfficeProduct(produto, quantidade)) {
+            return null;
+        }
+
+        return {
+            produto,
+            unidade: 'UN',
+            quantidade,
+            valor_unitario: 0,
+            valor_total: 0
+        };
+    }
+
+    function parseOfficeItemBuffer(buffer) {
+        const match = cleanImportedLine(buffer).match(/^(\d{1,3})\s*[\).:-]?\s+(.+)$/u);
+
+        if (!match) {
+            return null;
+        }
+
+        const ordem = Number(match[1]);
+        if (!Number.isFinite(ordem) || ordem <= 0 || ordem > 300) {
+            return null;
+        }
+
+        return parseOfficeMaterialPayload(match[2], { allowMissingUnit: true });
+    }
+
+    function parseOfficeItemsTableText(text) {
+        const lines = String(text || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .map(cleanImportedLine)
+            .filter(Boolean);
+        const items = [];
+        const seen = new Set();
+        let buffer = '';
+
+        function addItem(item) {
+            if (!item) {
+                return;
+            }
+
+            const key = `${normalizeToken(item.produto)}|${normalizeUnitLabel(item.unidade)}|${item.quantidade}`;
+            if (seen.has(key)) {
+                return;
+            }
+
+            seen.add(key);
+            items.push(item);
+        }
+
+        function flushBuffer() {
+            if (!buffer) {
+                return;
+            }
+
+            addItem(parseOfficeItemBuffer(buffer));
+            buffer = '';
+        }
+
+        for (const line of lines) {
+            const startsNumberedRow = /^\d{1,3}\s*[\).:-]?\s+/u.test(line);
+            const isBareRowNumber = /^\d{1,3}\s*[\).:-]?\s*$/u.test(line);
+
+            if (startsNumberedRow || (isBareRowNumber && !buffer)) {
+                flushBuffer();
+                buffer = line;
+                continue;
+            }
+
+            if (buffer) {
+                if (isOfficeListTerminator(line)) {
+                    flushBuffer();
+                    continue;
+                }
+
+                const currentItem = parseOfficeItemBuffer(buffer);
+                const standaloneItem = isIgnorableOfficeLine(line) ? null : parseOfficeMaterialPayload(line);
+
+                if (isBareRowNumber && currentItem) {
+                    flushBuffer();
+                    buffer = line;
+                    continue;
+                }
+
+                if (currentItem && standaloneItem) {
+                    flushBuffer();
+                    addItem(standaloneItem);
+                    continue;
+                }
+
+                if (!isIgnorableOfficeLine(line)) {
+                    buffer = `${buffer} ${line}`;
+                }
+
+                continue;
+            }
+
+            if (!isIgnorableOfficeLine(line)) {
+                addItem(parseOfficeMaterialPayload(line));
+            }
+        }
+
+        flushBuffer();
 
         return buildBudgetParseResult(items);
     }
@@ -1222,6 +1542,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const parsers = [
             () => parseSiahPositionedBudget(rows),
             () => parseDelimitedBudget(text),
+            () => parseOfficeItemsTableText(text),
             () => parseCurrencyColumnsBudget(normalized),
             () => parseSiahVisualLinesBudget(text),
             () => parseSiahBudget(text),
@@ -1235,7 +1556,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        throw new Error('Não encontrei linhas de itens no PDF. Verifique se o arquivo segue um modelo de orçamento com quantidade, unidade, valor unitário e total.');
+        throw new Error('Não encontrei itens no arquivo. Use um orçamento com quantidade, unidade e valores ou um ofício/lista de materiais com descrição e quantidade legíveis.');
     }
 
     async function extractPdfText(file) {
@@ -1315,6 +1636,73 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
+    function loadImageForOcr(file) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            const url = URL.createObjectURL(file);
+
+            image.onload = () => {
+                URL.revokeObjectURL(url);
+                resolve(image);
+            };
+
+            image.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error('Não foi possível abrir a imagem para OCR.'));
+            };
+
+            image.src = url;
+        });
+    }
+
+    async function prepareImageForOcr(file) {
+        try {
+            const image = await loadImageForOcr(file);
+            const width = image.naturalWidth || image.width;
+            const height = image.naturalHeight || image.height;
+
+            if (!width || !height) {
+                return file;
+            }
+
+            const longSide = Math.max(width, height);
+            const targetLongSide = longSide < 1600 ? 1600 : Math.min(longSide, 2200);
+            const scale = Math.min(2.5, targetLongSide / longSide);
+            const canvas = document.createElement('canvas');
+
+            canvas.width = Math.max(1, Math.round(width * scale));
+            canvas.height = Math.max(1, Math.round(height * scale));
+
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (!context) {
+                return file;
+            }
+
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+
+            for (let index = 0; index < pixels.length; index += 4) {
+                const gray = (pixels[index] * 0.299) + (pixels[index + 1] * 0.587) + (pixels[index + 2] * 0.114);
+                const adjusted = Math.max(0, Math.min(255, ((gray - 128) * 1.35) + 128));
+
+                pixels[index] = adjusted;
+                pixels[index + 1] = adjusted;
+                pixels[index + 2] = adjusted;
+            }
+
+            context.putImageData(imageData, 0, 0);
+
+            return await new Promise(resolve => {
+                canvas.toBlob(blob => resolve(blob || file), 'image/png');
+            });
+        } catch (error) {
+            console.warn(error);
+            return file;
+        }
+    }
+
     async function extractImageText(file) {
         if (!window.Tesseract?.createWorker) {
             throw new Error('OCR local não está disponível neste navegador.');
@@ -1338,7 +1726,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         try {
-            const result = await worker.recognize(file);
+            if (worker.setParameters) {
+                await worker.setParameters({
+                    preserve_interword_spaces: '1',
+                    tessedit_pageseg_mode: '6'
+                });
+            }
+
+            const imageForOcr = await prepareImageForOcr(file);
+            const result = await worker.recognize(imageForOcr);
             return {
                 text: result?.data?.text || '',
                 rows: []
@@ -1546,7 +1942,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const quantidade = item.quantidade ?? 1;
         const unidade = item.unidade || 'UN';
         const valorUnitario = Number(item.valor_unitario || 0);
-        const valorInput = valorUnitario > 0 ? formatInputMoneyBR(valorUnitario) : '';
+        const hasValorUnitario = Object.prototype.hasOwnProperty.call(item, 'valor_unitario');
+        const valorInput = hasValorUnitario ? formatInputMoneyBR(valorUnitario) : '';
         const totalItem = (Number(quantidade) || 0) * valorUnitario;
         const row = document.createElement('div');
 
@@ -1761,14 +2158,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 renumberItems();
                 calculateTotal();
 
-                const totalStatus = result.totalPdf > 0 && Math.abs(result.totalPdf - result.totalItens) > 0.02
-                    ? ` Total do PDF: ${formatMoneyBR(result.totalPdf)}. Total importado: ${formatMoneyBR(result.totalItens)}.`
-                    : ` Total importado: ${formatMoneyBR(result.totalItens)}.`;
+                const hasImportedValues = result.totalPdf > 0
+                    || result.items.some(item => Number(item.valor_unitario || 0) > 0 || Number(item.valor_total || 0) > 0);
+                const totalStatus = hasImportedValues
+                    ? (result.totalPdf > 0 && Math.abs(result.totalPdf - result.totalItens) > 0.02
+                        ? ` Total do arquivo: ${formatMoneyBR(result.totalPdf)}. Total importado: ${formatMoneyBR(result.totalItens)}.`
+                        : ` Total importado: ${formatMoneyBR(result.totalItens)}.`)
+                    : ' Itens sem preço foram carregados com valor 0,00 para conferência.';
 
-                setPlanilhaStatus(`${result.items.length} itens carregados da planilha.${totalStatus}`, 'success');
+                setPlanilhaStatus(`${result.items.length} itens carregados do arquivo.${totalStatus}`, 'success');
             } catch (error) {
                 console.error(error);
-                setPlanilhaStatus(error.message || 'Não foi possível importar a planilha PDF.', 'error');
+                setPlanilhaStatus(error.message || 'Não foi possível importar o arquivo.', 'error');
             } finally {
                 planilhaBtn.disabled = false;
                 planilhaInput.value = '';
