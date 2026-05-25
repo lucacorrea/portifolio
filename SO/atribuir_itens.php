@@ -529,12 +529,12 @@ include 'views/layout/header.php';
         <div class="planilha-import">
             <div>
                 <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar orçamento PDF</h4>
-                <p class="planilha-import-text">Carrega os itens no formulário para conferência antes de salvar.</p>
+                <p class="planilha-import-text">Aceita PDF, DOCX, TXT, CSV e imagens para conferência antes de salvar.</p>
             </div>
             <div>
-                <input type="file" id="planilha-pdf-input" accept="application/pdf,.pdf" hidden>
+                <input type="file" id="planilha-pdf-input" accept=".pdf,.docx,.txt,.csv,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,image/*" hidden>
                 <button type="button" class="btn btn-outline" id="planilha-pdf-btn">
-                    <i class="fas fa-upload"></i> Selecionar PDF
+                    <i class="fas fa-upload"></i> Selecionar arquivo
                 </button>
             </div>
             <div id="planilha-import-status" class="planilha-import-status" aria-live="polite"></div>
@@ -682,7 +682,9 @@ include 'views/layout/header.php';
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
+<script src="assets/js/vendor/pdfjs/pdf.min.js"></script>
+<script src="assets/js/vendor/mammoth/mammoth.browser.min.js"></script>
+<script src="assets/js/vendor/tesseract/tesseract.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('items-container');
@@ -694,7 +696,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const planilhaStatus = document.getElementById('planilha-import-status');
     const autocompleteTimers = new WeakMap();
     const autocompleteControllers = new WeakMap();
-    const pdfWorkerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.worker.min.js';
+    const pdfWorkerUrl = 'assets/js/vendor/pdfjs/pdf.worker.min.js';
 
     if (window.pdfjsLib) {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -849,6 +851,172 @@ document.addEventListener('DOMContentLoaded', function() {
     function firstQuantityFromText(value) {
         const match = String(value || '').match(/\d+(?:[,.]\d+)?/);
         return match ? Number(match[0].replace(',', '.')) : 0;
+    }
+
+    function normalizeHeaderKey(value) {
+        return normalizeToken(value)
+            .replace(/^VALOR/, 'VLR')
+            .replace(/^PRECO/, 'VLR')
+            .replace(/^QUANTIDADE$/, 'QTD')
+            .replace(/^QTDE$/, 'QTD')
+            .replace(/^UNIDADE$/, 'UND')
+            .replace(/^UNID$/, 'UND');
+    }
+
+    function findHeaderIndex(headers, aliases) {
+        const normalizedAliases = aliases.map(normalizeHeaderKey);
+
+        return headers.findIndex(header => {
+            const key = normalizeHeaderKey(header);
+            return normalizedAliases.some(alias => key === alias || key.includes(alias) || (key.length >= 4 && alias.includes(key)));
+        });
+    }
+
+    function splitDelimitedLine(line) {
+        const raw = String(line || '').trim();
+
+        if (raw.includes(';')) {
+            return raw.split(';');
+        }
+
+        if (raw.includes('\t')) {
+            return raw.split('\t');
+        }
+
+        if (raw.includes('|')) {
+            return raw.split('|');
+        }
+
+        return null;
+    }
+
+    function parseDelimitedBudget(text) {
+        const lines = String(text || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean);
+        const items = [];
+
+        for (let index = 0; index < lines.length; index++) {
+            const headerParts = splitDelimitedLine(lines[index]);
+            if (!headerParts || headerParts.length < 4) {
+                continue;
+            }
+
+            const headers = headerParts.map(part => part.trim());
+            const productIndex = findHeaderIndex(headers, ['descri', 'descricao', 'produto', 'item', 'material', 'servico']);
+            const quantityIndex = findHeaderIndex(headers, ['qtd', 'quantidade', 'qtde']);
+            const unitIndex = findHeaderIndex(headers, ['und', 'unidade', 'unid']);
+            const unitValueIndex = findHeaderIndex(headers, ['unit', 'valor unitario', 'vlr unitario', 'v unit', 'preco unitario', 'unitario']);
+            const totalIndex = findHeaderIndex(headers, ['valor total', 'vlr total', 'total', 'subtotal']);
+
+            if (productIndex < 0 || quantityIndex < 0 || unitValueIndex < 0) {
+                continue;
+            }
+
+            for (const line of lines.slice(index + 1)) {
+                if (/^\s*(total|subtotal|desconto|pagamento)\b/iu.test(line)) {
+                    break;
+                }
+
+                const parts = splitDelimitedLine(line);
+                if (!parts || parts.length < headers.length - 1) {
+                    continue;
+                }
+
+                const produto = String(parts[productIndex] || '').trim();
+                const quantidade = firstQuantityFromText(parts[quantityIndex] || '');
+                const valorUnitario = parsePlanilhaMoney(parts[unitValueIndex] || '');
+                const valorTotal = totalIndex >= 0 ? parsePlanilhaMoney(parts[totalIndex] || '') : quantidade * valorUnitario;
+
+                if (!produto || quantidade <= 0) {
+                    continue;
+                }
+
+                items.push({
+                    produto,
+                    unidade: unitIndex >= 0 ? String(parts[unitIndex] || 'UN').trim().toUpperCase() : 'UN',
+                    quantidade,
+                    valor_unitario: valorUnitario,
+                    valor_total: valorTotal
+                });
+            }
+
+            if (items.length) {
+                break;
+            }
+        }
+
+        return buildBudgetParseResult(items);
+    }
+
+    function parseGenericTextBudget(text) {
+        const lines = String(text || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .map(line => line.replace(/\s+/g, ' ').trim())
+            .filter(Boolean);
+        const units = '(UN|UND|UNID|UNIDADE|CX|CAIXA|PCT|PACOTE|FARDO|DZ|DUZIA|DÚZIA|KG|G|LT|L|MT|M|M2|M3|PAR|PC|PÇ|SERV|SV)';
+        const patterns = [
+            new RegExp(`^(?:\\d{1,8}\\s+)?(.+?)\\s+${units}\\s+(\\d+(?:[,.]\\d+)?)\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2})\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2})$`, 'iu'),
+            new RegExp(`^(?:\\d{1,8}\\s+)?(\\d+(?:[,.]\\d+)?)\\s+${units}\\s+(.+?)\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2})\\s+(?:R\\$\\s*)?([\\d.]+,\\d{2})$`, 'iu'),
+            /^(.+?)\s+(\d+(?:[,.]\d+)?)\s+(?:R\$\s*)?([\d.]+,\d{2})\s+(?:R\$\s*)?([\d.]+,\d{2})$/iu
+        ];
+        const items = [];
+
+        for (const line of lines) {
+            const normalized = normalizeToken(line);
+            if (
+                normalized.includes('CNPJ')
+                || normalized.includes('CLIENTE')
+                || normalized.includes('VENDEDOR')
+                || normalized.includes('TOTAL')
+                || normalized.includes('SUBTOTAL')
+                || normalized.includes('PAGAMENTO')
+                || normalized.includes('OBSERVACAO')
+                || normalized.includes('DESCONTO')
+            ) {
+                continue;
+            }
+
+            let match = line.match(patterns[0]);
+            if (match) {
+                items.push({
+                    produto: match[1].trim(),
+                    unidade: match[2].trim().toUpperCase(),
+                    quantidade: Number(match[3].replace(',', '.')),
+                    valor_unitario: parsePlanilhaMoney(match[4]),
+                    valor_total: parsePlanilhaMoney(match[5])
+                });
+                continue;
+            }
+
+            match = line.match(patterns[1]);
+            if (match) {
+                items.push({
+                    produto: match[3].trim(),
+                    unidade: match[2].trim().toUpperCase(),
+                    quantidade: Number(match[1].replace(',', '.')),
+                    valor_unitario: parsePlanilhaMoney(match[4]),
+                    valor_total: parsePlanilhaMoney(match[5])
+                });
+                continue;
+            }
+
+            match = line.match(patterns[2]);
+            if (match) {
+                items.push({
+                    produto: match[1].trim(),
+                    unidade: 'UN',
+                    quantidade: Number(match[2].replace(',', '.')),
+                    valor_unitario: parsePlanilhaMoney(match[3]),
+                    valor_total: parsePlanilhaMoney(match[4])
+                });
+            }
+        }
+
+        return buildBudgetParseResult(items);
     }
 
     function parseSiahPositionedBudget(rows) {
@@ -1053,9 +1221,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const parsers = [
             () => parseSiahPositionedBudget(rows),
+            () => parseDelimitedBudget(text),
             () => parseCurrencyColumnsBudget(normalized),
             () => parseSiahVisualLinesBudget(text),
-            () => parseSiahBudget(text)
+            () => parseSiahBudget(text),
+            () => parseGenericTextBudget(text)
         ];
 
         for (const parser of parsers) {
@@ -1131,6 +1301,77 @@ document.addEventListener('DOMContentLoaded', function() {
             text: pages.join(' '),
             rows
         };
+    }
+
+    async function extractDocxText(file) {
+        if (!window.mammoth?.extractRawText) {
+            throw new Error('Não foi possível carregar o leitor de Word local.');
+        }
+
+        const result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+        return {
+            text: result.value || '',
+            rows: []
+        };
+    }
+
+    async function extractImageText(file) {
+        if (!window.Tesseract?.createWorker) {
+            throw new Error('OCR local não está disponível neste navegador.');
+        }
+
+        setPlanilhaStatus('Lendo imagem com OCR local. Isso pode levar alguns segundos...', 'warning');
+
+        const worker = await window.Tesseract.createWorker('por', 1, {
+            workerPath: 'assets/js/vendor/tesseract/worker.min.js',
+            corePath: 'assets/js/vendor/tesseract-core',
+            langPath: 'assets/js/vendor/tessdata',
+            gzip: true,
+            logger: message => {
+                if (!message?.status) return;
+
+                const progress = message.progress
+                    ? ` ${Math.round(message.progress * 100)}%`
+                    : '';
+                setPlanilhaStatus(`OCR local: ${message.status}${progress}`, 'warning');
+            }
+        });
+
+        try {
+            const result = await worker.recognize(file);
+            return {
+                text: result?.data?.text || '',
+                rows: []
+            };
+        } finally {
+            await worker.terminate();
+        }
+    }
+
+    async function extractBudgetFile(file) {
+        const extension = file.name.split('.').pop()?.toLowerCase() || '';
+        const mime = String(file.type || '').toLowerCase();
+
+        if (extension === 'pdf' || mime === 'application/pdf') {
+            return extractPdfText(file);
+        }
+
+        if (extension === 'docx' || mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            return extractDocxText(file);
+        }
+
+        if (['txt', 'csv'].includes(extension) || mime.startsWith('text/')) {
+            return {
+                text: await file.text(),
+                rows: []
+            };
+        }
+
+        if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(extension)) {
+            return extractImageText(file);
+        }
+
+        throw new Error('Formato não suportado. Use PDF, DOCX, TXT, CSV, JPG, PNG ou WEBP.');
     }
 
     function getSuggestionPanel(input) {
@@ -1492,8 +1733,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            if (file.size > 10 * 1024 * 1024) {
-                setPlanilhaStatus('O PDF selecionado é muito grande. Use um arquivo de até 10 MB.', 'error');
+            if (file.size > 15 * 1024 * 1024) {
+                setPlanilhaStatus('O arquivo selecionado é muito grande. Use um arquivo de até 15 MB.', 'error');
                 planilhaInput.value = '';
                 return;
             }
@@ -1506,11 +1747,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             planilhaBtn.disabled = true;
-            setPlanilhaStatus('Lendo planilha e preparando os itens...', 'warning');
+            setPlanilhaStatus('Lendo arquivo e preparando os itens...', 'warning');
 
             try {
-                const text = await extractPdfText(file);
-                const result = parsePlanilhaPdfText(text);
+                const extracted = await extractBudgetFile(file);
+                const result = parsePlanilhaPdfText(extracted);
 
                 container.innerHTML = '';
                 result.items.forEach((item, index) => {
