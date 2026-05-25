@@ -816,6 +816,124 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
+    function getRowText(row) {
+        return (row?.items || [])
+            .slice()
+            .sort((a, b) => a.x - b.x)
+            .map(item => item.text)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function findHeaderColumnX(headerItems, pattern) {
+        const item = headerItems.find(headerItem => pattern.test(normalizeToken(headerItem.text)));
+        return item ? item.x : null;
+    }
+
+    function collectColumnText(items, left, right) {
+        return items
+            .filter(item => item.x >= left && item.x < right)
+            .sort((a, b) => a.x - b.x)
+            .map(item => item.text)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function firstCurrencyFromText(value) {
+        const match = String(value || '').match(/[\d.]+,\d{2}/);
+        return match ? parsePlanilhaMoney(match[0]) : 0;
+    }
+
+    function firstQuantityFromText(value) {
+        const match = String(value || '').match(/\d+(?:[,.]\d+)?/);
+        return match ? Number(match[0].replace(',', '.')) : 0;
+    }
+
+    function parseSiahPositionedBudget(rows) {
+        if (!Array.isArray(rows) || !rows.length) {
+            return null;
+        }
+
+        const items = [];
+        const rowsByPage = new Map();
+
+        rows.forEach(row => {
+            const pageRows = rowsByPage.get(row.page) || [];
+            pageRows.push(row);
+            rowsByPage.set(row.page, pageRows);
+        });
+
+        rowsByPage.forEach(pageRows => {
+            const orderedRows = pageRows
+                .slice()
+                .sort((a, b) => b.y - a.y);
+            const headerIndex = orderedRows.findIndex(row => {
+                const text = normalizeToken(getRowText(row));
+                return (text.includes('CODIGO') || text.includes('DIGO'))
+                    && text.includes('UND')
+                    && text.includes('DESCRI')
+                    && text.includes('QTDE')
+                    && text.includes('TOTAL');
+            });
+
+            if (headerIndex < 0) {
+                return;
+            }
+
+            const headerItems = orderedRows[headerIndex].items.slice().sort((a, b) => a.x - b.x);
+            const codeX = findHeaderColumnX(headerItems, /DIGO$/i);
+            const unitX = findHeaderColumnX(headerItems, /^UND$/i);
+            const descX = findHeaderColumnX(headerItems, /^DESCRI/i);
+            const fabX = findHeaderColumnX(headerItems, /^FABRICANTE$/i);
+            const pesoX = findHeaderColumnX(headerItems, /^PESO/i);
+            const qtdeX = findHeaderColumnX(headerItems, /^QTDE$/i);
+            const valorX = findHeaderColumnX(headerItems, /^VUNIT$/i);
+            const totalX = findHeaderColumnX(headerItems, /^TOTAL$/i);
+
+            if (descX === null || fabX === null || qtdeX === null || valorX === null || totalX === null) {
+                return;
+            }
+
+            const dataRows = orderedRows.slice(headerIndex + 1);
+            for (const row of dataRows) {
+                const rowText = getRowText(row);
+                const normalizedRow = normalizeToken(rowText);
+
+                if (normalizedRow.includes('SUBTOTAL') || normalizedRow.includes('PAGAMENTO') || normalizedRow.includes('OBSERVACAO')) {
+                    break;
+                }
+
+                const rowItems = row.items.slice().sort((a, b) => a.x - b.x);
+                const codeText = codeX === null ? rowText : collectColumnText(rowItems, codeX - 4, unitX ?? descX);
+                if (!/^\d{1,8}/.test(codeText.trim())) {
+                    continue;
+                }
+
+                const produto = collectColumnText(rowItems, descX - 2, fabX - 2);
+                const unidade = unitX === null ? 'UN' : collectColumnText(rowItems, unitX - 2, descX - 2);
+                const quantidade = firstQuantityFromText(collectColumnText(rowItems, qtdeX - 2, valorX - 2));
+                const valorUnitario = firstCurrencyFromText(collectColumnText(rowItems, valorX - 2, totalX - 2));
+                const valorTotal = firstCurrencyFromText(collectColumnText(rowItems, totalX - 2, Number.POSITIVE_INFINITY));
+
+                if (!produto || quantidade <= 0) {
+                    continue;
+                }
+
+                items.push({
+                    produto,
+                    unidade: unidade || 'UN',
+                    quantidade,
+                    valor_unitario: valorUnitario,
+                    valor_total: valorTotal
+                });
+            }
+        });
+
+        return buildBudgetParseResult(items);
+    }
+
     function parseCurrencyColumnsBudget(normalizedText) {
         const normalized = String(normalizedText || '').normalize('NFC').replace(/\s+/g, ' ').trim();
         const headerMatch = normalized.match(/\bORD\b.*?\bVALOR\s+L[ÍI]QUIDO\b/iu);
@@ -873,6 +991,33 @@ document.addEventListener('DOMContentLoaded', function() {
         return buildBudgetParseResult(items, totalPdf);
     }
 
+    function parseSiahVisualLinesBudget(text) {
+        const lines = String(text || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .map(line => line.replace(/\s+/g, ' ').trim())
+            .filter(Boolean);
+        const items = [];
+        const rowPattern = /^(\d{1,8})\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ]{1,12})\s+(.+)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9.\/-]{2,}(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9.\/-]{2,}){0,2})\s+[\d.,]+\s+(\d+(?:[,.]\d+)?)\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})$/iu;
+
+        for (const line of lines) {
+            const match = line.match(rowPattern);
+            if (!match) {
+                continue;
+            }
+
+            items.push({
+                produto: match[3].trim(),
+                unidade: match[2].trim().toUpperCase(),
+                quantidade: Number(match[5].replace(',', '.')),
+                valor_unitario: parsePlanilhaMoney(match[6]),
+                valor_total: parsePlanilhaMoney(match[7])
+            });
+        }
+
+        return buildBudgetParseResult(items);
+    }
+
     function parseSiahBudget(text) {
         const rawText = String(text || '').normalize('NFC');
         const rowPattern = /(?:^|\s)(\d{1,8})\s+(\d+(?:[,.]\d+)?)([A-ZÁÉÍÓÚÂÊÔÃÕÇ]{1,12})\s+[\d.,]+\s+([\d.]+,\d{2})([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9 .\/-]*?)\s+([\d.]+,\d{2})\s*(.+?)(?=\s+\d{1,8}\s+\d+(?:[,.]\d+)?[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{1,12}\s+[\d.,]+\s+[\d.]+,\d{2}[A-ZÁÉÍÓÚÂÊÔÃÕÇ]|\s+Subtotal:|\s+Desconto Comercial:|\s+Total\s+R\$:|$)/giu;
@@ -901,11 +1046,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return buildBudgetParseResult(items);
     }
 
-    function parsePlanilhaPdfText(text) {
+    function parsePlanilhaPdfText(input) {
+        const text = typeof input === 'string' ? input : String(input?.text || '');
+        const rows = typeof input === 'string' ? [] : (input?.rows || []);
         const normalized = String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim();
 
         const parsers = [
+            () => parseSiahPositionedBudget(rows),
             () => parseCurrencyColumnsBudget(normalized),
+            () => parseSiahVisualLinesBudget(text),
             () => parseSiahBudget(text)
         ];
 
@@ -927,15 +1076,61 @@ document.addEventListener('DOMContentLoaded', function() {
         const buffer = await file.arrayBuffer();
         const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
         const pages = [];
+        const rows = [];
+
+        function groupPageItemsByRow(items, pageNumber) {
+            const groupedRows = [];
+
+            items
+                .slice()
+                .sort((a, b) => Math.abs(b.y - a.y) > 2 ? b.y - a.y : a.x - b.x)
+                .forEach(item => {
+                    let row = groupedRows.find(candidate => Math.abs(candidate.y - item.y) <= 3);
+
+                    if (!row) {
+                        row = { page: pageNumber, y: item.y, items: [] };
+                        groupedRows.push(row);
+                    }
+
+                    row.items.push(item);
+                    row.y = row.items.reduce((sum, rowItem) => sum + rowItem.y, 0) / row.items.length;
+                });
+
+            return groupedRows.map(row => ({
+                page: row.page,
+                y: row.y,
+                items: row.items
+                    .slice()
+                    .sort((a, b) => a.x - b.x)
+                    .map(item => ({
+                        text: item.text,
+                        x: item.x,
+                        y: item.y
+                    }))
+            }));
+        }
 
         for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
             const page = await pdf.getPage(pageNumber);
             const content = await page.getTextContent();
+            const pageItems = content.items
+                .map(item => ({
+                    text: String(item.str || '').trim(),
+                    x: Number(item.transform?.[4] || 0),
+                    y: Number(item.transform?.[5] || 0),
+                    hasEOL: Boolean(item.hasEOL)
+                }))
+                .filter(item => item.text !== '');
             const pageText = content.items.map(item => `${item.str || ''}${item.hasEOL ? '\n' : ' '}`).join('');
+
             pages.push(pageText);
+            rows.push(...groupPageItemsByRow(pageItems, pageNumber));
         }
 
-        return pages.join(' ');
+        return {
+            text: pages.join(' '),
+            rows
+        };
     }
 
     function getSuggestionPanel(input) {
