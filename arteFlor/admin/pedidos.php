@@ -35,10 +35,10 @@ $errorKey = is_string($_GET['error'] ?? null) ? (string) $_GET['error'] : '';
 </section>
 
 <?php if ($successKey !== '' && isset($successMessages[$successKey])): ?>
-  <section class="admin-alert-card admin-alert-success"><strong>Sucesso</strong><?= e($successMessages[$successKey]) ?></section>
+  <section class="admin-alert-card admin-alert-success" role="status" data-admin-flash><strong>Sucesso</strong><?= e($successMessages[$successKey]) ?></section>
 <?php endif; ?>
 <?php if ($errorKey !== '' && isset($errorMessages[$errorKey])): ?>
-  <section class="admin-alert-card admin-alert-danger"><strong>Atenção</strong><?= e($errorMessages[$errorKey]) ?></section>
+  <section class="admin-alert-card admin-alert-danger" role="alert"><strong>Atenção</strong><?= e($errorMessages[$errorKey]) ?></section>
 <?php endif; ?>
 
 <section class="admin-kpi-grid">

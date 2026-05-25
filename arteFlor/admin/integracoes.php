@@ -122,10 +122,10 @@ require_once __DIR__ . '/../includes/admin-head.php';
 </section>
 
 <?php if ($successKey !== '' && isset($successMessages[$successKey])): ?>
-  <section class="admin-alert-card admin-alert-success"><strong>Sucesso</strong><?= e($successMessages[$successKey]) ?></section>
+  <section class="admin-alert-card admin-alert-success" role="status" data-admin-flash><strong>Sucesso</strong><?= e($successMessages[$successKey]) ?></section>
 <?php endif; ?>
 <?php if ($errorKey !== '' && isset($errorMessages[$errorKey])): ?>
-  <section class="admin-alert-card admin-alert-danger"><strong>Atenção</strong><?= e($errorMessages[$errorKey]) ?></section>
+  <section class="admin-alert-card admin-alert-danger" role="alert"><strong>Atenção</strong><?= e($errorMessages[$errorKey]) ?></section>
 <?php endif; ?>
 
 <section class="whatsapp-live-shell">

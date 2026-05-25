@@ -28,19 +28,68 @@
     currency: 'BRL'
   });
 
-  const toast = (message, type = 'success') => {
+  const toast = (message, type = 'success', options = {}) => {
     const root = document.querySelector('[data-toast-root]');
     if (!root) return;
 
     const item = document.createElement('div');
     item.className = `toast toast-${type}`;
-    item.textContent = message;
+
+    if (message && typeof message === 'object') {
+      const title = String(message.title || '').trim();
+      const body = String(message.message || '').trim();
+
+      if (title) {
+        const strong = document.createElement('strong');
+        strong.textContent = title;
+        item.appendChild(strong);
+      }
+
+      if (body) {
+        const span = document.createElement('span');
+        span.textContent = body;
+        item.appendChild(span);
+      }
+    } else {
+      item.textContent = String(message ?? '');
+    }
+
     root.appendChild(item);
 
     window.setTimeout(() => {
       item.classList.add('toast-hide');
       window.setTimeout(() => item.remove(), 240);
-    }, 3200);
+    }, Number(options.duration || 4200));
+  };
+
+  const alertToastType = (alert) => {
+    if (alert.classList.contains('admin-alert-danger')) return 'danger';
+    if (alert.classList.contains('admin-alert-warning')) return 'warning';
+    if (alert.classList.contains('admin-alert-info')) return 'info';
+    return 'success';
+  };
+
+  const alertToastPayload = (alert) => {
+    const title = alert.querySelector('strong')?.textContent?.trim() || 'Aviso';
+    const clone = alert.cloneNode(true);
+    clone.querySelector('strong')?.remove();
+
+    return {
+      title,
+      message: clone.textContent.replace(/\s+/g, ' ').trim()
+    };
+  };
+
+  const bindAdminFlashAlerts = () => {
+    document.querySelectorAll('.admin-alert-card[role="status"], .admin-alert-card[data-admin-flash]').forEach((alert) => {
+      if (alert.dataset.toastBound === '1') return;
+
+      alert.dataset.toastBound = '1';
+      toast(alertToastPayload(alert), alertToastType(alert), {
+        duration: Number(alert.dataset.toastDuration || 4200)
+      });
+      alert.remove();
+    });
   };
 
   const normalizeProduct = (product) => ({
@@ -263,6 +312,7 @@
   bindAddButtons();
   bindGallery();
   bindCopy();
+  bindAdminFlashAlerts();
   api.updateCartCount = function () {
     const total = this.getCart().reduce((sum, item) => sum + Number(item.qty || 0), 0);
     document.querySelectorAll('[data-cart-count]').forEach((el) => {
