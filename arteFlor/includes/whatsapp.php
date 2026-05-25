@@ -42,19 +42,34 @@ function whatsapp_default_message(): string
     return "Olá, {{cliente}}!\n\nObrigada pela sua compra na Arte&Flor.\n\nRecebemos o seu pedido {{codigo}}.\n\nResumo do pedido:\n{{itens}}\n\nTotal: {{total}}\nPagamento: {{forma_pagamento}}\nStatus: {{status}}\n\nRecebimento: {{recebimento}}\n{{endereco}}\n\nVocê pode acompanhar seu pedido pelo sistema:\n{{link_pedido}}\n\nCom carinho,\nArte&Flor";
 }
 
+function whatsapp_local_config_value(string $key): string
+{
+    if (defined($key)) {
+        return (string) constant($key);
+    }
+
+    if (function_exists('env_value')) {
+        return (string) env_value($key, '');
+    }
+
+    $value = getenv($key);
+
+    return $value === false ? '' : (string) $value;
+}
+
 function whatsapp_config(): array
 {
-    $tokenFromLocal = defined('WHATSAPP_CLOUD_API_TOKEN') ? (string) WHATSAPP_CLOUD_API_TOKEN : '';
-    $phoneIdFromLocal = defined('WHATSAPP_PHONE_NUMBER_ID') ? (string) WHATSAPP_PHONE_NUMBER_ID : '';
-    $versionFromLocal = defined('WHATSAPP_API_VERSION') ? (string) WHATSAPP_API_VERSION : '';
-    $twilioSidFromLocal = defined('TWILIO_ACCOUNT_SID') ? (string) TWILIO_ACCOUNT_SID : '';
-    $twilioTokenFromLocal = defined('TWILIO_AUTH_TOKEN') ? (string) TWILIO_AUTH_TOKEN : '';
-    $twilioFromLocal = defined('TWILIO_WHATSAPP_FROM') ? (string) TWILIO_WHATSAPP_FROM : '';
-    $evolutionUrlFromLocal = defined('EVOLUTION_API_URL') ? (string) EVOLUTION_API_URL : '';
-    $evolutionKeyFromLocal = defined('EVOLUTION_API_KEY') ? (string) EVOLUTION_API_KEY : '';
-    $evolutionInstanceFromLocal = defined('EVOLUTION_INSTANCE') ? (string) EVOLUTION_INSTANCE : '';
-    $bridgeUrlFromLocal = defined('BAILEYS_BRIDGE_URL') ? (string) BAILEYS_BRIDGE_URL : '';
-    $bridgeKeyFromLocal = defined('BAILEYS_BRIDGE_API_KEY') ? (string) BAILEYS_BRIDGE_API_KEY : '';
+    $tokenFromLocal = whatsapp_local_config_value('WHATSAPP_CLOUD_API_TOKEN');
+    $phoneIdFromLocal = whatsapp_local_config_value('WHATSAPP_PHONE_NUMBER_ID');
+    $versionFromLocal = whatsapp_local_config_value('WHATSAPP_API_VERSION');
+    $twilioSidFromLocal = whatsapp_local_config_value('TWILIO_ACCOUNT_SID');
+    $twilioTokenFromLocal = whatsapp_local_config_value('TWILIO_AUTH_TOKEN');
+    $twilioFromLocal = whatsapp_local_config_value('TWILIO_WHATSAPP_FROM');
+    $evolutionUrlFromLocal = whatsapp_local_config_value('EVOLUTION_API_URL');
+    $evolutionKeyFromLocal = whatsapp_local_config_value('EVOLUTION_API_KEY');
+    $evolutionInstanceFromLocal = whatsapp_local_config_value('EVOLUTION_INSTANCE');
+    $bridgeUrlFromLocal = whatsapp_local_config_value('BAILEYS_BRIDGE_URL');
+    $bridgeKeyFromLocal = whatsapp_local_config_value('BAILEYS_BRIDGE_API_KEY');
     $storedBridgeUrl = integration_setting('baileys_bridge_url', '') ?: '';
     $bridgeUrl = $bridgeUrlFromLocal !== ''
         ? whatsapp_normalize_base_url($bridgeUrlFromLocal)
