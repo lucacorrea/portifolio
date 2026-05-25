@@ -1,325 +1,292 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  DisconnectReason,
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
+    default: makeWASocket,
+    useMultiFileAuthState,
+    DisconnectReason,
+    fetchLatestBaileysVersion,
+    makeCacheableSignalKeyStore,
+    downloadMediaMessage,
 } = require('@whiskeysockets/baileys');
+const pino = require('pino');
 const express = require('express');
 const qrcode = require('qrcode');
-const pino = require('pino');
+const { Boom } = require('@hapi/boom');
 const fs = require('fs-extra');
 const path = require('path');
 
 const app = express();
-
-const PORT = Number(process.env.PORT || 8080);
-const HOST = process.env.HOST || '0.0.0.0';
-const BRIDGE_API_KEY = String(process.env.BRIDGE_API_KEY || process.env.ARTEFLOR_BRIDGE_API_KEY || '').trim();
-const AUTH_DIR = process.env.BAILEYS_AUTH_DIR || path.join(__dirname, 'auth_info_baileys');
-const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
-
-const logger = pino({ level: LOG_LEVEL });
-const baileysLogger = pino({ level: process.env.BAILEYS_LOG_LEVEL || 'silent' });
+const port = process.env.PORT || 8080;
+const host = process.env.HOST || '0.0.0.0';
+const bridgeApiKey = String(process.env.BRIDGE_API_KEY || process.env.ARTEFLOR_BRIDGE_API_KEY || '').trim();
+const authPath = process.env.BAILEYS_AUTH_DIR || path.join(__dirname, 'auth_info_baileys');
+const inboundMediaWebhookUrl = String(process.env.INBOUND_MEDIA_WEBHOOK_URL || '').trim();
 
 app.disable('x-powered-by');
-app.use(express.json({ limit: '512kb' }));
-app.use(express.urlencoded({ extended: true, limit: '512kb' }));
+app.use(express.json({ limit: '12mb' }));
+app.use(express.urlencoded({ extended: true, limit: '12mb' }));
 
-let sock = null;
+let sock;
 let qrCodeBase64 = null;
-let connectionStatus = 'starting';
+let connectionStatus = 'connecting';
 let connectedNumber = null;
-let lastError = null;
-let reconnectTimer = null;
-let isStarting = false;
+let isConnecting = false;
+let reconnectTimeout = null;
 
 function requireApiKey(req, res, next) {
-  if (!BRIDGE_API_KEY) {
-    return res.status(503).json({
-      success: false,
-      error: 'BRIDGE_API_KEY não configurada no bridge.',
-    });
-  }
+    if (!bridgeApiKey) {
+        return res.status(503).json({ error: 'BRIDGE_API_KEY não configurada no bridge.' });
+    }
 
-  const receivedKey = String(req.get('x-api-key') || '').trim();
-  const bearer = String(req.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+    const headerKey = String(req.get('x-api-key') || '').trim();
+    const bearerKey = String(req.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
 
-  if (receivedKey !== BRIDGE_API_KEY && bearer !== BRIDGE_API_KEY) {
-    return res.status(401).json({
-      success: false,
-      error: 'API key inválida.',
-    });
-  }
+    if (headerKey !== bridgeApiKey && bearerKey !== bridgeApiKey) {
+        return res.status(401).json({ error: 'API key inválida.' });
+    }
 
-  return next();
+    return next();
 }
 
-function normalizeWhatsAppNumber(number) {
-  let digits = String(number || '').replace(/\D+/g, '');
+function normalizeNumber(number) {
+    let digits = String(number || '').replace(/\D+/g, '');
 
-  if (!digits) return null;
+    if (!digits) {
+        return null;
+    }
 
-  if (!digits.startsWith('55') && (digits.length === 10 || digits.length === 11)) {
-    digits = `55${digits}`;
-  }
+    if (!digits.startsWith('55') && (digits.length === 10 || digits.length === 11)) {
+        digits = `55${digits}`;
+    }
 
-  if (digits.length < 10 || digits.length > 15) {
-    return null;
-  }
+    if (digits.length < 10 || digits.length > 15) {
+        return null;
+    }
 
-  return digits;
+    return digits;
 }
 
-function scheduleReconnect(delayMs = 2000) {
-  if (reconnectTimer) return;
+function scheduleReconnect(delay = 2000) {
+    if (reconnectTimeout) {
+        return;
+    }
 
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null;
-    connectToWhatsApp().catch((error) => {
-      lastError = error.message;
-      logger.error({ err: error }, 'Falha ao reconectar WhatsApp');
-      scheduleReconnect(5000);
-    });
-  }, delayMs);
+    reconnectTimeout = setTimeout(() => {
+        reconnectTimeout = null;
+        connectToWhatsApp().catch((err) => {
+            console.error('Erro ao reconectar WhatsApp:', err);
+            scheduleReconnect(5000);
+        });
+    }, delay);
 }
 
 async function connectToWhatsApp() {
-  if (isStarting) return;
-  isStarting = true;
+    if (isConnecting) {
+        return;
+    }
 
-  try {
-    connectionStatus = connectionStatus === 'connected' ? 'connected' : 'connecting';
+    isConnecting = true;
 
-    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-    const { version } = await fetchLatestBaileysVersion();
+    try {
+        const { state, saveCreds } = await useMultiFileAuthState(authPath);
+        const { version } = await fetchLatestBaileysVersion();
 
-    sock = makeWASocket({
-      version,
-      printQRInTerminal: process.env.PRINT_QR_IN_TERMINAL === 'true',
-      auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, baileysLogger),
-      },
-      logger: baileysLogger,
-      browser: ['ArteFlor', 'Chrome', '1.0.0'],
-      markOnlineOnConnect: false,
-      syncFullHistory: false,
-    });
+        sock = makeWASocket({
+            version,
+            printQRInTerminal: process.env.PRINT_QR_IN_TERMINAL !== 'false',
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
+            },
+            logger: pino({ level: 'silent' }),
+            browser: ['ArteFlor', 'Chrome', '1.0.0'],
+            markOnlineOnConnect: false,
+            syncFullHistory: false,
+        });
 
-    sock.ev.on('creds.update', saveCreds);
+        sock.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect, qr } = update;
 
-    sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect, qr } = update;
+            if (qr) {
+                qrCodeBase64 = await qrcode.toDataURL(qr);
+                connectionStatus = 'waiting_qr';
+                connectedNumber = null;
+                console.log('Novo QR Code gerado');
+            }
 
-      if (qr) {
-        qrCodeBase64 = await qrcode.toDataURL(qr);
-        connectionStatus = 'waiting_qr';
-        connectedNumber = null;
-        lastError = null;
-        logger.info('Novo QR Code gerado');
-      }
+            if (connection === 'close') {
+                const statusCode = lastDisconnect?.error instanceof Boom
+                    ? lastDisconnect.error.output?.statusCode
+                    : lastDisconnect?.error?.output?.statusCode;
+                const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-      if (connection === 'open') {
-        connectionStatus = 'connected';
-        qrCodeBase64 = null;
-        connectedNumber = normalizeWhatsAppNumber(sock?.user?.id?.split(':')?.[0] || '');
-        lastError = null;
-        logger.info({ number: connectedNumber }, 'WhatsApp conectado');
-      }
+                console.log('Conexão fechada. Tentando reconectar:', shouldReconnect);
 
-      if (connection === 'close') {
-        const statusCode = lastDisconnect?.error?.output?.statusCode;
-        const loggedOut = statusCode === DisconnectReason.loggedOut;
+                connectionStatus = 'disconnected';
+                qrCodeBase64 = null;
+                connectedNumber = null;
 
-        connectionStatus = loggedOut ? 'logged_out' : 'disconnected';
-        qrCodeBase64 = null;
-        connectedNumber = null;
-        lastError = lastDisconnect?.error?.message || null;
+                if (!shouldReconnect) {
+                    await fs.remove(authPath).catch(() => null);
+                }
 
-        logger.warn({ statusCode, loggedOut, lastError }, 'Conexão WhatsApp fechada');
+                // Mesmo modelo do Tático GPS: reinicia o loop para gerar novo QR.
+                scheduleReconnect(1000);
+            } else if (connection === 'open') {
+                console.log('Conexão aberta com sucesso!');
+                connectionStatus = 'connected';
+                qrCodeBase64 = null;
+                connectedNumber = normalizeNumber(sock.user?.id?.split(':')?.[0] || '');
+            }
+        });
 
-        if (loggedOut) {
-          await fs.remove(AUTH_DIR);
-        }
+        sock.ev.on('creds.update', saveCreds);
 
-        scheduleReconnect(loggedOut ? 1000 : 3000);
-      }
-    });
+        // Evento para processar mensagens recebidas.
+        // Mantém a mesma base do Tático GPS para evoluir chatbot/comprovantes no futuro.
+        sock.ev.on('messages.upsert', async (m) => {
+            if (m.type !== 'notify') return;
 
-    sock.ev.on('messages.upsert', async (event) => {
-      if (event.type !== 'notify') return;
+            for (const msg of m.messages) {
+                if (msg.key.fromMe) continue;
 
-      for (const msg of event.messages || []) {
-        if (msg.key?.fromMe) continue;
-        const sender = String(msg.key?.remoteJid || '').split('@')[0];
-        const messageType = Object.keys(msg.message || {})[0] || 'unknown';
-        logger.info({ sender, messageType }, 'Mensagem recebida no bridge ArteFlor');
-      }
-    });
-  } finally {
-    isStarting = false;
-  }
+                const sender = String(msg.key.remoteJid || '').split('@')[0];
+                const messageType = Object.keys(msg.message || {})[0];
+
+                if (messageType === 'imageMessage' || messageType === 'documentWithCaptionMessage' || messageType === 'documentMessage') {
+                    console.log(`Mídia recebida de ${sender}. Processando como possível comprovante...`);
+
+                    if (!inboundMediaWebhookUrl) {
+                        console.log('INBOUND_MEDIA_WEBHOOK_URL não configurada. Mídia ignorada.');
+                        continue;
+                    }
+
+                    try {
+                        const buffer = await downloadMediaMessage(msg, 'buffer', {}, {
+                            logger: pino({ level: 'silent' }),
+                            reuploadRequest: sock.updateMediaMessage,
+                        });
+
+                        const base64 = buffer.toString('base64');
+                        const mimeType = msg.message[messageType]?.mimetype || 'image/jpeg';
+
+                        await fetch(inboundMediaWebhookUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                ...(bridgeApiKey ? { 'X-API-Key': bridgeApiKey } : {}),
+                            },
+                            body: JSON.stringify({
+                                sender,
+                                business_id: sock.user?.id?.split(':')?.[0] || connectedNumber,
+                                media: base64,
+                                mimeType,
+                                messageId: msg.key.id,
+                            }),
+                        });
+
+                        console.log(`Notificação de mídia enviada para o PHP (${sender})`);
+                    } catch (err) {
+                        console.error('Erro ao processar mídia:', err);
+                    }
+                }
+            }
+        });
+    } finally {
+        isConnecting = false;
+    }
 }
 
+// Endpoints da API para o PHP
 app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    service: 'arteflor-whatsapp-bridge',
-    status: connectionStatus,
-    uptime: process.uptime(),
-  });
+    res.json({
+        success: true,
+        service: 'arteflor-whatsapp-bridge',
+        status: connectionStatus,
+        connected: connectionStatus === 'connected',
+        number: connectedNumber,
+    });
 });
 
 app.get('/status', requireApiKey, (req, res) => {
-  res.json({
-    success: true,
-    connected: connectionStatus === 'connected',
-    status: connectionStatus,
-    number: connectedNumber,
-    hasQr: Boolean(qrCodeBase64),
-    lastError,
-  });
+    res.json({
+        connected: connectionStatus === 'connected',
+        status: connectionStatus,
+        number: connectedNumber,
+    });
 });
 
 app.get('/qrcode', requireApiKey, (req, res) => {
-  if (connectionStatus === 'connected') {
-    return res.json({
-      success: true,
-      connected: true,
-      status: connectionStatus,
-      number: connectedNumber,
-      qr: null,
-      message: 'Já conectado.',
-    });
-  }
-
-  if (qrCodeBase64) {
-    return res.json({
-      success: true,
-      connected: false,
-      status: connectionStatus,
-      qr: qrCodeBase64,
-      message: 'Escaneie o QR com o WhatsApp da empresa.',
-    });
-  }
-
-  scheduleReconnect(500);
-
-  return res.json({
-    success: false,
-    connected: false,
-    status: connectionStatus,
-    qr: null,
-    message: 'QR ainda não disponível. Aguarde alguns segundos e consulte novamente.',
-  });
+    if (qrCodeBase64) {
+        res.json({ qr: qrCodeBase64, status: connectionStatus });
+    } else {
+        res.json({
+            qr: null,
+            status: connectionStatus,
+            number: connectedNumber,
+            message: connectionStatus === 'connected' ? 'Já conectado' : 'Gerando...',
+        });
+    }
 });
 
 app.post('/send-message', requireApiKey, async (req, res) => {
-  const number = normalizeWhatsAppNumber(req.body?.number);
-  const text = String(req.body?.text || '').trim();
+    const { number, text } = req.body;
 
-  if (!sock || connectionStatus !== 'connected') {
-    return res.status(503).json({
-      success: false,
-      error: 'WhatsApp não está conectado.',
-      status: connectionStatus,
-    });
-  }
-
-  if (!number || !text) {
-    return res.status(400).json({
-      success: false,
-      error: 'Número e texto são obrigatórios.',
-    });
-  }
-
-  if (text.length > 4096) {
-    return res.status(422).json({
-      success: false,
-      error: 'Mensagem muito longa. Limite: 4096 caracteres.',
-    });
-  }
-
-  try {
-    const jid = `${number}@s.whatsapp.net`;
-    const result = await sock.sendMessage(jid, { text });
-
-    return res.json({
-      success: true,
-      status: 'sent',
-      number,
-      messageId: result?.key?.id || null,
-    });
-  } catch (error) {
-    logger.error({ err: error, number }, 'Erro ao enviar mensagem');
-
-    return res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-async function logoutHandler(req, res) {
-  try {
-    if (sock) {
-      await sock.logout().catch(() => null);
+    if (!sock || connectionStatus !== 'connected') {
+        return res.status(503).json({ error: 'WhatsApp não está conectado' });
     }
 
-    await fs.remove(AUTH_DIR);
+    if (!number || !text) {
+        return res.status(400).json({ error: 'Número e texto são obrigatórios' });
+    }
 
-    sock = null;
-    qrCodeBase64 = null;
-    connectedNumber = null;
-    connectionStatus = 'logged_out';
-    lastError = null;
+    const normalizedNumber = normalizeNumber(number);
+    if (!normalizedNumber) {
+        return res.status(400).json({ error: 'Número inválido' });
+    }
 
-    scheduleReconnect(500);
+    try {
+        const jid = String(number).includes('@s.whatsapp.net') ? number : `${normalizedNumber}@s.whatsapp.net`;
+        const result = await sock.sendMessage(jid, { text: String(text) });
+        res.json({ success: true, messageId: result?.key?.id || null });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
-    return res.json({
-      success: true,
-      message: 'Sessão removida. Um novo QR será gerado.',
-    });
-  } catch (error) {
-    logger.error({ err: error }, 'Erro ao remover sessão');
+async function logout(req, res) {
+    try {
+        if (sock) {
+            await sock.logout().catch(() => null);
+        }
 
-    return res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
+        await fs.remove(authPath);
+
+        connectionStatus = 'disconnected';
+        qrCodeBase64 = null;
+        connectedNumber = null;
+        sock = null;
+
+        scheduleReconnect(1000);
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 }
 
-app.post('/logout', requireApiKey, logoutHandler);
-app.get('/logout', requireApiKey, logoutHandler);
+app.get('/logout', requireApiKey, logout);
+app.post('/logout', requireApiKey, logout);
 
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint não encontrado.',
-  });
-});
+app.listen(port, host, () => {
+    console.log(`Bridge WhatsApp ArteFlor rodando em http://${host}:${port}`);
 
-app.use((error, req, res, next) => {
-  logger.error({ err: error }, 'Erro inesperado no bridge');
-  res.status(500).json({
-    success: false,
-    error: 'Erro interno no bridge.',
-  });
-});
+    if (!bridgeApiKey) {
+        console.warn('Atenção: configure BRIDGE_API_KEY no .env antes de usar em produção.');
+    }
 
-app.listen(PORT, HOST, () => {
-  logger.info({ host: HOST, port: PORT }, 'Bridge WhatsApp ArteFlor iniciado');
-  if (!BRIDGE_API_KEY) {
-    logger.warn('BRIDGE_API_KEY não configurada. Endpoints protegidos retornarão 503.');
-  }
-
-  connectToWhatsApp().catch((error) => {
-    lastError = error.message;
-    logger.error({ err: error }, 'Falha inicial ao conectar WhatsApp');
-    scheduleReconnect(5000);
-  });
+    connectToWhatsApp().catch((err) => {
+        console.error('Erro ao iniciar conexão WhatsApp:', err);
+        scheduleReconnect(5000);
+    });
 });
