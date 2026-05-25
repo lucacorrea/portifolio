@@ -528,7 +528,7 @@ include 'views/layout/header.php';
 
         <div class="planilha-import">
             <div>
-                <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar planilha PDF</h4>
+                <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar orçamento PDF</h4>
                 <p class="planilha-import-text">Carrega os itens no formulário para conferência antes de salvar.</p>
             </div>
             <div>
@@ -799,8 +799,25 @@ document.addEventListener('DOMContentLoaded', function() {
         return hasPrefix ? tokens.slice(prefixTokens.length).join(' ') : String(value || '').trim();
     }
 
-    function parsePlanilhaPdfText(text) {
-        const normalized = String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+    function buildBudgetParseResult(items, totalPdf = 0) {
+        const parsedItems = items.filter(item => item.produto && item.quantidade > 0);
+
+        if (!parsedItems.length) {
+            return null;
+        }
+
+        const totalItens = parsedItems.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+        const totalLinhas = parsedItems.reduce((sum, item) => sum + Number(item.valor_total || 0), 0);
+
+        return {
+            items: parsedItems,
+            totalPdf: totalPdf > 0 ? totalPdf : totalLinhas,
+            totalItens
+        };
+    }
+
+    function parseCurrencyColumnsBudget(normalizedText) {
+        const normalized = String(normalizedText || '').normalize('NFC').replace(/\s+/g, ' ').trim();
         const headerMatch = normalized.match(/\bORD\b.*?\bVALOR\s+L[ÍI]QUIDO\b/iu);
         const tableText = headerMatch
             ? normalized.slice((headerMatch.index || 0) + headerMatch[0].length)
@@ -829,38 +846,77 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (!parsedRows.length) {
-            throw new Error('Não encontrei linhas de itens no PDF. Verifique se o arquivo segue o modelo da planilha.');
+            return null;
         }
 
         const prefixTokens = hasEmpresaColumn
             ? getCommonPrefixTokens(parsedRows.map(row => row.produtoBruto))
             : [];
 
-        const items = parsedRows
-            .map(row => {
-                const produto = stripPrefixTokens(row.produtoBruto, prefixTokens)
-                    .replace(/^(G\.?\s+RODRIGUES(?:\s+DE\s+OLIVEIRA\s+LTDA)?|G\s+RODRIGUES)\s+/iu, '')
-                    .trim();
+        const items = parsedRows.map(row => {
+            const produto = stripPrefixTokens(row.produtoBruto, prefixTokens)
+                .replace(/^(G\.?\s+RODRIGUES(?:\s+DE\s+OLIVEIRA\s+LTDA)?|G\s+RODRIGUES)\s+/iu, '')
+                .trim();
 
-                return {
-                    produto,
-                    unidade: row.unidade || 'UN',
-                    quantidade: row.quantidade,
-                    valor_unitario: row.valor_unitario,
-                    valor_total: row.valor_total
-                };
-            })
-            .filter(item => item.produto && item.quantidade > 0);
-
-        if (!items.length) {
-            throw new Error('As linhas do PDF foram lidas, mas nenhum item válido foi encontrado.');
-        }
+            return {
+                produto,
+                unidade: row.unidade || 'UN',
+                quantidade: row.quantidade,
+                valor_unitario: row.valor_unitario,
+                valor_total: row.valor_total
+            };
+        });
 
         const totalMatch = tableText.match(/\bTOTAL\s+R\$\s*([\d.]+,\d{2})/iu);
         const totalPdf = totalMatch ? parsePlanilhaMoney(totalMatch[1]) : 0;
-        const totalItens = items.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
 
-        return { items, totalPdf, totalItens };
+        return buildBudgetParseResult(items, totalPdf);
+    }
+
+    function parseSiahBudget(text) {
+        const rawText = String(text || '').normalize('NFC');
+        const rowPattern = /(?:^|\s)(\d{1,8})\s+(\d+(?:[,.]\d+)?)([A-ZÁÉÍÓÚÂÊÔÃÕÇ]{1,12})\s+[\d.,]+\s+([\d.]+,\d{2})([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9 .\/-]*?)\s+([\d.]+,\d{2})\s*(.+?)(?=\s+\d{1,8}\s+\d+(?:[,.]\d+)?[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{1,12}\s+[\d.,]+\s+[\d.]+,\d{2}[A-ZÁÉÍÓÚÂÊÔÃÕÇ]|\s+Subtotal:|\s+Desconto Comercial:|\s+Total\s+R\$:|$)/giu;
+        const normalized = rawText.replace(/\s+/g, ' ').trim();
+        const items = [];
+
+        for (const match of normalized.matchAll(rowPattern)) {
+            const produto = String(match[7] || '').trim();
+            const quantidade = Number(String(match[2]).replace(',', '.'));
+            const valorUnitario = parsePlanilhaMoney(match[4]);
+            const valorTotal = parsePlanilhaMoney(match[6]);
+
+            if (!produto || quantidade <= 0 || valorUnitario < 0) {
+                continue;
+            }
+
+            items.push({
+                produto,
+                unidade: String(match[3] || 'UN').trim().toUpperCase(),
+                quantidade,
+                valor_unitario: valorUnitario,
+                valor_total: valorTotal
+            });
+        }
+
+        return buildBudgetParseResult(items);
+    }
+
+    function parsePlanilhaPdfText(text) {
+        const normalized = String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+
+        const parsers = [
+            () => parseCurrencyColumnsBudget(normalized),
+            () => parseSiahBudget(text)
+        ];
+
+        for (const parser of parsers) {
+            const result = parser();
+            if (result && result.items.length) {
+                return result;
+            }
+        }
+
+        throw new Error('Não encontrei linhas de itens no PDF. Verifique se o arquivo segue um modelo de orçamento com quantidade, unidade, valor unitário e total.');
     }
 
     async function extractPdfText(file) {
@@ -875,7 +931,8 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
             const page = await pdf.getPage(pageNumber);
             const content = await page.getTextContent();
-            pages.push(content.items.map(item => item.str || '').join(' '));
+            const pageText = content.items.map(item => `${item.str || ''}${item.hasEOL ? '\n' : ' '}`).join('');
+            pages.push(pageText);
         }
 
         return pages.join(' ');
