@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/orders.php';
 
+const ARTEFLOR_DEFAULT_BAILEYS_BRIDGE_URL = 'https://smthcoari.cloud';
+
 function integration_setting(string $key, ?string $default = null): ?string
 {
     try {
@@ -53,6 +55,20 @@ function whatsapp_config(): array
     $evolutionInstanceFromLocal = defined('EVOLUTION_INSTANCE') ? (string) EVOLUTION_INSTANCE : '';
     $bridgeUrlFromLocal = defined('BAILEYS_BRIDGE_URL') ? (string) BAILEYS_BRIDGE_URL : '';
     $bridgeKeyFromLocal = defined('BAILEYS_BRIDGE_API_KEY') ? (string) BAILEYS_BRIDGE_API_KEY : '';
+    $storedBridgeUrl = integration_setting('baileys_bridge_url', '') ?: '';
+    $bridgeUrl = $bridgeUrlFromLocal !== ''
+        ? whatsapp_normalize_base_url($bridgeUrlFromLocal)
+        : whatsapp_normalize_base_url($storedBridgeUrl);
+    if ($bridgeUrl === '' || whatsapp_bridge_url_is_local($bridgeUrl)) {
+        $bridgeUrl = whatsapp_bridge_default_url();
+    }
+
+    $bridgeKey = $bridgeKeyFromLocal !== ''
+        ? $bridgeKeyFromLocal
+        : (integration_setting('baileys_bridge_api_key', '') ?: '');
+    if ($bridgeUrl === whatsapp_bridge_default_url()) {
+        $bridgeKey = '';
+    }
 
     return [
         'pix_key' => integration_setting('pix_key', 'arteflor@pix.demo'),
@@ -79,8 +95,8 @@ function whatsapp_config(): array
         'evolution_api_key' => $evolutionKeyFromLocal !== '' ? $evolutionKeyFromLocal : (integration_setting('evolution_api_key', '') ?: ''),
         'evolution_instance' => $evolutionInstanceFromLocal !== '' ? $evolutionInstanceFromLocal : (integration_setting('evolution_instance', 'arteflor') ?: 'arteflor'),
         'evolution_owner_number' => integration_setting('evolution_owner_number', '') ?: '',
-        'baileys_bridge_url' => $bridgeUrlFromLocal !== '' ? whatsapp_normalize_base_url($bridgeUrlFromLocal) : (integration_setting('baileys_bridge_url', '') ?: ''),
-        'baileys_bridge_api_key' => $bridgeKeyFromLocal !== '' ? $bridgeKeyFromLocal : (integration_setting('baileys_bridge_api_key', '') ?: ''),
+        'baileys_bridge_url' => $bridgeUrl,
+        'baileys_bridge_api_key' => $bridgeKey,
         'baileys_owner_number' => integration_setting('baileys_owner_number', '') ?: '',
     ];
 }
@@ -263,6 +279,18 @@ function whatsapp_normalize_base_url(mixed $value): string
     }
 
     return $url;
+}
+
+function whatsapp_bridge_default_url(): string
+{
+    return whatsapp_normalize_base_url(ARTEFLOR_DEFAULT_BAILEYS_BRIDGE_URL);
+}
+
+function whatsapp_bridge_url_is_local(string $url): bool
+{
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+    return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
 }
 
 function whatsapp_clean_instance_name(mixed $value): string
