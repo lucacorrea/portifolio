@@ -1026,6 +1026,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return String(value || '')
             .replace(/\bQUANT\.?\s*\/\s*COMPRADA\b.*$/iu, '')
             .replace(/\bOBS\.?\b.*$/iu, '')
+            .replace(/\bP\s+VC\b/giu, 'PVC')
+            .replace(/\bARAM\s+E\b/giu, 'ARAME')
+            .replace(/\bG&!\s+LO\s+GRANDE\b/giu, 'GRANDE')
+            .replace(/\bDE\s+SM\b/giu, 'DE 5m')
+            .replace(/\bCADEADO\s*M[ÉE]DIO\b/giu, 'CADEADO MEDIO')
+            .replace(/\bCADEADO\s+MT\s+CADEADO\s+MEDIO\b/giu, 'CADEADO MEDIO')
             .replace(/^[\s.,;:-]+|[\s.,;:-]+$/g, '')
             .replace(/\s+/g, ' ')
             .trim();
@@ -1096,8 +1102,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function isValidOfficeProduct(produto, quantidade) {
         const normalized = normalizeToken(produto);
+        const words = String(produto || '').split(/\s+/).filter(Boolean);
+        const singleLetterWords = words.filter(word => /^[A-ZÁÉÍÓÚÂÊÔÃÕÇa-záéíóúâêôãõç]$/u.test(word)).length;
+        const symbolCount = (String(produto || '').match(/[^\w\sÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç.,/ºª°-]/gu) || []).length;
 
         if (!normalized || normalized.length < 2 || quantidade <= 0) {
+            return false;
+        }
+
+        if ((words.length === 1 && normalized.length < 5) || (words.length <= 2 && normalized.length < 4)) {
+            return false;
+        }
+
+        if (words.length >= 5 && singleLetterWords / words.length >= 0.35) {
+            return false;
+        }
+
+        if (String(produto || '').length >= 12 && symbolCount >= 3) {
             return false;
         }
 
@@ -1269,6 +1290,139 @@ document.addEventListener('DOMContentLoaded', function() {
         flushBuffer();
 
         return buildBudgetParseResult(items);
+    }
+
+    function isOfficeColumnNoise(line) {
+        const normalized = normalizeToken(line);
+
+        return !normalized
+            || normalized.startsWith('DESCRI')
+            || normalized === 'DESCRICAO'
+            || normalized === 'ITENS'
+            || normalized === 'ITEM'
+            || normalized === 'UNID'
+            || normalized === 'QUANT'
+            || normalized.includes('QUANTCOMPRADA')
+            || normalized.includes('RROCRY');
+    }
+
+    function isOfficeDescriptionContinuation(previous, current) {
+        const currentNormalized = normalizeToken(current);
+        const previousText = String(previous || '').trim();
+
+        return [
+            'ACOPLADA',
+            'COLUNA',
+            'COLU',
+            'NA',
+            'DA',
+            'DO',
+            '100MM',
+            '6M',
+            'ERECOZIDO',
+            'ELETRICO25MM',
+            'VCBRANCO',
+            'LOGRANDE'
+        ].includes(currentNormalized)
+            || (currentNormalized.length <= 3 && normalizeToken(previous).length >= 6)
+            || (normalizeToken(previous).includes('LOU') && ['COLU', 'NA', 'COLUNA'].includes(currentNormalized))
+            || (/\b(C\/?|DE)$/iu.test(previousText) && currentNormalized.length <= 16);
+    }
+
+    function parseOfficeDescriptionColumn(text) {
+        const descriptions = [];
+        let current = '';
+
+        function pushCurrent() {
+            const produto = cleanOfficeProductName(current);
+            if (produto && isValidOfficeProduct(produto, 1)) {
+                descriptions.push(produto);
+            }
+            current = '';
+        }
+
+        String(text || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .map(cleanImportedLine)
+            .forEach(line => {
+                const clean = cleanOfficeProductName(line.replace(/[|\[\]_=]+/g, ' '));
+                if (isOfficeColumnNoise(clean)) {
+                    return;
+                }
+
+                if (!current) {
+                    current = clean;
+                    return;
+                }
+
+                if (isOfficeDescriptionContinuation(current, clean)) {
+                    current = `${current} ${clean}`;
+                    return;
+                }
+
+                pushCurrent();
+                current = clean;
+            });
+
+        pushCurrent();
+
+        return descriptions;
+    }
+
+    function parseOfficeUnitQuantityLine(line) {
+        const clean = cleanImportedLine(line).replace(/[|\[\]_=]+/g, ' ');
+        const normalized = normalizeToken(clean);
+
+        if (!normalized || normalized.includes('UNIDQUANT') || normalized === 'QUANT') {
+            return null;
+        }
+
+        const unitMatch = clean.match(new RegExp(`(?:^|\\s)(${officeUnitPattern()})(?=\\s|\\d|$)`, 'iu'));
+        const numberMatches = clean.match(/\d{1,5}(?:[,.]\d+)?/gu) || [];
+        const rawQuantity = numberMatches.length ? numberMatches[numberMatches.length - 1] : '';
+        const quantidade = rawQuantity ? Number(rawQuantity.replace(',', '.')) : 0;
+
+        return {
+            unidade: unitMatch ? normalizeUnitLabel(unitMatch[1]) : 'UN',
+            quantidade: Number.isFinite(quantidade) && quantidade > 0 ? quantidade : 0
+        };
+    }
+
+    function parseOfficeUnitQuantityColumn(text) {
+        return String(text || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .map(parseOfficeUnitQuantityLine)
+            .filter(Boolean);
+    }
+
+    function buildOfficeRowsFromColumnOcr(descriptionText, unitQuantityText) {
+        const descriptions = parseOfficeDescriptionColumn(descriptionText);
+        const unitsAndQuantities = parseOfficeUnitQuantityColumn(unitQuantityText);
+
+        if (descriptions.length < 4) {
+            return '';
+        }
+
+        let missingQuantities = 0;
+        const rows = descriptions.map((produto, index) => {
+            const parsed = unitsAndQuantities[index] || {};
+            const unidade = parsed.unidade || 'UN';
+            const quantidade = parsed.quantidade > 0 ? parsed.quantidade : 1;
+
+            if (!parsed.quantidade) {
+                missingQuantities++;
+            }
+
+            return `${index + 1}. ${produto} ${unidade} ${quantidade}`;
+        });
+
+        const warning = missingQuantities > 0
+            ? `@@OCR_QTY_WARNING:${missingQuantities}@@`
+            : '';
+
+        return [warning, ...rows].filter(Boolean).join('\n');
     }
 
     function parseGenericTextBudget(text) {
@@ -1537,7 +1691,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function parsePlanilhaPdfText(input) {
         const text = typeof input === 'string' ? input : String(input?.text || '');
         const rows = typeof input === 'string' ? [] : (input?.rows || []);
+        const source = typeof input === 'string' ? '' : String(input?.source || '');
         const normalized = String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+        const qtyWarningMatch = text.match(/@@OCR_QTY_WARNING:(\d+)@@/u);
 
         const parsers = [
             () => parseSiahPositionedBudget(rows),
@@ -1552,6 +1708,15 @@ document.addEventListener('DOMContentLoaded', function() {
         for (const parser of parsers) {
             const result = parser();
             if (result && result.items.length) {
+                const hasValues = result.items.some(item => Number(item.valor_unitario || 0) > 0 || Number(item.valor_total || 0) > 0);
+                if (source === 'image' && result.items.length === 1 && !hasValues) {
+                    throw new Error('O OCR da imagem não encontrou uma lista de itens confiável. Tire a foto mais próxima da tabela, com a folha reta e boa iluminação, e tente novamente.');
+                }
+
+                if (qtyWarningMatch) {
+                    result.warning = `${qtyWarningMatch[1]} quantidades não foram lidas com segurança e foram preenchidas com 1 para conferência.`;
+                }
+
                 return result;
             }
         }
@@ -1655,7 +1820,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    async function prepareImageForOcr(file) {
+    async function prepareImageForOcr(file, options = {}) {
         try {
             const image = await loadImageForOcr(file);
             const width = image.naturalWidth || image.width;
@@ -1665,20 +1830,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 return file;
             }
 
-            const longSide = Math.max(width, height);
-            const targetLongSide = longSide < 1600 ? 1600 : Math.min(longSide, 2200);
-            const scale = Math.min(2.5, targetLongSide / longSide);
+            const crop = options.crop || { x: 0, y: 0, width: 1, height: 1 };
+            const sourceX = Math.max(0, Math.round(width * crop.x));
+            const sourceY = Math.max(0, Math.round(height * crop.y));
+            const sourceWidth = Math.max(1, Math.min(width - sourceX, Math.round(width * crop.width)));
+            const sourceHeight = Math.max(1, Math.min(height - sourceY, Math.round(height * crop.height)));
+            const longSide = Math.max(sourceWidth, sourceHeight);
+            const targetLongSide = options.targetLongSide || (longSide < 1600 ? 1600 : Math.min(longSide, 2200));
+            const scale = Math.min(options.maxScale || 4, targetLongSide / longSide);
             const canvas = document.createElement('canvas');
 
-            canvas.width = Math.max(1, Math.round(width * scale));
-            canvas.height = Math.max(1, Math.round(height * scale));
+            canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+            canvas.height = Math.max(1, Math.round(sourceHeight * scale));
 
             const context = canvas.getContext('2d', { willReadFrequently: true });
             if (!context) {
                 return file;
             }
 
-            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            context.drawImage(
+                image,
+                sourceX,
+                sourceY,
+                sourceWidth,
+                sourceHeight,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
 
             const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
             const pixels = imageData.data;
@@ -1726,18 +1906,65 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         try {
-            if (worker.setParameters) {
-                await worker.setParameters({
-                    preserve_interword_spaces: '1',
-                    tessedit_pageseg_mode: '6'
+            async function recognizeRegion(label, psm, crop, targetLongSide = 2600) {
+                setPlanilhaStatus(`OCR local: analisando ${label}...`, 'warning');
+
+                if (worker.setParameters) {
+                    await worker.setParameters({
+                        preserve_interword_spaces: '1',
+                        tessedit_pageseg_mode: String(psm)
+                    });
+                }
+
+                const imageForOcr = await prepareImageForOcr(file, {
+                    crop,
+                    targetLongSide,
+                    maxScale: 5
                 });
+                const result = await worker.recognize(imageForOcr);
+                return result?.data?.text || '';
             }
 
-            const imageForOcr = await prepareImageForOcr(file);
-            const result = await worker.recognize(imageForOcr);
+            const officeDescText = await recognizeRegion('coluna de descrição', 11, {
+                x: 0.199,
+                y: 0.40625,
+                width: 0.28,
+                height: 0.508
+            });
+            const officeUnitQuantityText = await recognizeRegion('coluna de unidade e quantidade', 6, {
+                x: 0.482,
+                y: 0.40625,
+                width: 0.16,
+                height: 0.508
+            });
+            const officeRowsText = buildOfficeRowsFromColumnOcr(officeDescText, officeUnitQuantityText);
+            const hasOfficeRows = officeRowsText && officeRowsText.split(/\r?\n/).filter(line => /^\d+\./.test(line)).length >= 4;
+
+            if (hasOfficeRows) {
+                return {
+                    text: officeRowsText,
+                    rows: [],
+                    source: 'image'
+                };
+            }
+
+            const tableText = await recognizeRegion('tabela do ofício', 6, {
+                x: 0.129,
+                y: 0.40625,
+                width: 0.51,
+                height: 0.508
+            });
+            const fullText = await recognizeRegion('página inteira', 6, { x: 0, y: 0, width: 1, height: 1 }, 2200);
+
             return {
-                text: result?.data?.text || '',
-                rows: []
+                text: [
+                    tableText,
+                    officeDescText,
+                    officeUnitQuantityText,
+                    fullText
+                ].filter(Boolean).join('\n'),
+                rows: [],
+                source: 'image'
             };
         } finally {
             await worker.terminate();
@@ -2165,8 +2392,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         ? ` Total do arquivo: ${formatMoneyBR(result.totalPdf)}. Total importado: ${formatMoneyBR(result.totalItens)}.`
                         : ` Total importado: ${formatMoneyBR(result.totalItens)}.`)
                     : ' Itens sem preço foram carregados com valor 0,00 para conferência.';
+                const warningStatus = result.warning ? ` ${result.warning}` : '';
 
-                setPlanilhaStatus(`${result.items.length} itens carregados do arquivo.${totalStatus}`, 'success');
+                setPlanilhaStatus(`${result.items.length} itens carregados do arquivo.${totalStatus}${warningStatus}`, 'success');
             } catch (error) {
                 console.error(error);
                 setPlanilhaStatus(error.message || 'Não foi possível importar o arquivo.', 'error');
