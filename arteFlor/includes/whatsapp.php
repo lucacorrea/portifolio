@@ -74,7 +74,7 @@ function whatsapp_config(): array
     $bridgeUrl = $bridgeUrlFromLocal !== ''
         ? whatsapp_normalize_base_url($bridgeUrlFromLocal)
         : whatsapp_normalize_base_url($storedBridgeUrl);
-    if ($bridgeUrl === '' || whatsapp_bridge_url_is_local($bridgeUrl)) {
+    if ($bridgeUrl === '' || whatsapp_bridge_url_should_fallback($bridgeUrl)) {
         $bridgeUrl = whatsapp_bridge_default_url();
     }
 
@@ -149,7 +149,8 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
     integration_setting_set('whatsapp_send_after_order', $sendAfterOrder, 'Enviar WhatsApp ao criar pedido', false, $adminId);
     integration_setting_set('whatsapp_send_on_status_change', $sendOnStatusChange, 'Enviar WhatsApp ao mudar status', false, $adminId);
 
-    integration_setting_set('baileys_bridge_url', whatsapp_normalize_base_url($input['baileys_bridge_url'] ?? ''), 'URL do bridge Baileys ArteFlor', false, $adminId);
+    $savedBridgeUrl = whatsapp_normalize_base_url($input['baileys_bridge_url'] ?? '');
+    integration_setting_set('baileys_bridge_url', $savedBridgeUrl, 'URL do bridge Baileys ArteFlor', false, $adminId);
     integration_setting_set('baileys_owner_number', whatsapp_link_phone_digits((string) ($input['baileys_owner_number'] ?? '')), 'Número conectado no bridge Baileys', false, $adminId);
 
     integration_setting_set('twilio_account_sid', order_clean_text($input['twilio_account_sid'] ?? '', 80), 'Twilio Account SID', false, $adminId);
@@ -165,6 +166,8 @@ function whatsapp_save_settings(array $input, ?int $adminId = null): void
     $bridgeKey = trim((string) ($input['baileys_bridge_api_key'] ?? ''));
     if ($bridgeKey !== '') {
         integration_setting_set('baileys_bridge_api_key', $bridgeKey, 'API key secreta do bridge Baileys ArteFlor', true, $adminId);
+    } elseif ($savedBridgeUrl === whatsapp_bridge_default_url()) {
+        integration_setting_set('baileys_bridge_api_key', '', 'API key secreta do bridge Baileys ArteFlor', true, $adminId);
     }
 
     $token = trim((string) ($input['whatsapp_business_token'] ?? ''));
@@ -192,7 +195,8 @@ function whatsapp_save_qr_settings(array $input, ?int $adminId = null): void
     integration_setting_set('whatsapp_enabled', '1', 'Ativa notificações WhatsApp pós-compra', false, $adminId);
     integration_setting_set('whatsapp_mode', 'baileys_bridge', 'Modo da integração WhatsApp', false, $adminId);
     integration_setting_set('whatsapp_send_after_order', '1', 'Enviar WhatsApp ao criar pedido', false, $adminId);
-    integration_setting_set('baileys_bridge_url', whatsapp_normalize_base_url($bridgeUrl), 'URL do bridge Baileys ArteFlor', false, $adminId);
+    $savedBridgeUrl = whatsapp_normalize_base_url($bridgeUrl);
+    integration_setting_set('baileys_bridge_url', $savedBridgeUrl, 'URL do bridge Baileys ArteFlor', false, $adminId);
     integration_setting_set('baileys_owner_number', $ownerNumber, 'Número conectado no bridge Baileys', false, $adminId);
 
     if ($ownerNumber !== '') {
@@ -201,6 +205,8 @@ function whatsapp_save_qr_settings(array $input, ?int $adminId = null): void
 
     if ($bridgeKey !== '') {
         integration_setting_set('baileys_bridge_api_key', $bridgeKey, 'API key secreta do bridge Baileys ArteFlor', true, $adminId);
+    } elseif ($savedBridgeUrl === whatsapp_bridge_default_url()) {
+        integration_setting_set('baileys_bridge_api_key', '', 'API key secreta do bridge Baileys ArteFlor', true, $adminId);
     }
 }
 
@@ -306,6 +312,14 @@ function whatsapp_bridge_url_is_local(string $url): bool
     $host = strtolower((string) parse_url($url, PHP_URL_HOST));
 
     return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+}
+
+function whatsapp_bridge_url_should_fallback(string $url): bool
+{
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+    return whatsapp_bridge_url_is_local($url)
+        || in_array($host, ['whatsapp.lucascorrea.pro'], true);
 }
 
 function whatsapp_clean_instance_name(mixed $value): string
