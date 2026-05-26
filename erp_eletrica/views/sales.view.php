@@ -151,7 +151,7 @@
                     <!-- Toggle Mode Chips: Único vs Múltiplos -->
                     <div class="chip-toggle mb-3">
                         <div class="chip active" id="chipPagUnico" onclick="setPayMode('unico')">Único</div>
-                        <div class="chip" id="chipPagMulti" onclick="setPayMode('multiplo')">Múltiplos</div>
+                        <div class="chip" id="chipPagMulti" onclick="setPayMode('multiplo')">Múltiplos (Ctrl+M)</div>
                     </div>
 
                     <!-- Single Mode (Único) -->
