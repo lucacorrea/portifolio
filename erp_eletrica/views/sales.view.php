@@ -151,29 +151,29 @@
                     <!-- Toggle Mode Chips: Único vs Múltiplos -->
                     <div class="chip-toggle mb-3">
                         <div class="chip active" id="chipPagUnico" onclick="setPayMode('unico')">Único</div>
-                        <div class="chip" id="chipPagMulti" onclick="setPayMode('multiplo')">Múltiplos</div>
+                        <div class="chip" id="chipPagMulti" onclick="setPayMode('multiplo')">Múltiplos (Ctrl+M)</div>
                     </div>
 
                     <!-- Single Mode (Único) -->
                     <div id="wrapPagUnico">
                         <div class="pay-grid mb-3" id="payBtns">
                             <div class="pay-btn active" data-pay="dinheiro" onclick="selectSinglePay('dinheiro')">
-                                <i class="fas fa-money-bill-wave text-success"></i> Dinheiro
+                                <i class="fas fa-money-bill-wave text-success"></i> Dinheiro (F1)
                             </div>
                             <div class="pay-btn" data-pay="pix" onclick="selectSinglePay('pix')">
-                                <i class="fa-brands fa-pix text-info"></i> Pix
+                                <i class="fa-brands fa-pix text-info"></i> Pix (Ctrl+F1)
                             </div>
                             <div class="pay-btn" data-pay="cartao_credito" onclick="selectSinglePay('cartao_credito')">
-                                <i class="fas fa-credit-card text-primary"></i> Crédito
+                                <i class="fas fa-credit-card text-primary"></i> Crédito (F6)
                             </div>
                             <div class="pay-btn" data-pay="cartao_debito" onclick="selectSinglePay('cartao_debito')">
-                                <i class="fas fa-credit-card text-info"></i> Débito
+                                <i class="fas fa-credit-card text-info"></i> Débito (F7)
                             </div>
                             <div class="pay-btn" data-pay="boleto" onclick="selectSinglePay('boleto')">
-                                <i class="fas fa-barcode text-secondary"></i> Boleto
+                                <i class="fas fa-barcode text-secondary"></i> Boleto (F11)
                             </div>
                             <div class="pay-btn" data-pay="fiado" onclick="selectSinglePay('fiado')">
-                                <i class="fas fa-hand-holding-usd text-warning"></i> A Prazo
+                                <i class="fas fa-hand-holding-usd text-warning"></i> A Prazo (F8)
                             </div>
                         </div>
 
