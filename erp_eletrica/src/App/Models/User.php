@@ -70,6 +70,12 @@ class User extends BaseModel {
         $hasAuthCols = $this->columnExists('auth_pin');
         $filialId = !empty($data['filial_id']) ? $data['filial_id'] : null;
         
+        // Se o e-mail não for informado, geramos um e-mail fictício único para evitar erro de UNIQUE KEY no BD.
+        if (empty($data['email'])) {
+            $uniqueId = substr(md5(uniqid(mt_rand(), true)), 0, 8);
+            $data['email'] = 'sememail_' . $uniqueId . '@erp.com';
+        }
+        
         if (!empty($data['id'])) {
             $sql = "UPDATE {$this->table} SET nome = ?, email = ?, nivel = ?, ativo = ?, filial_id = ? ";
             $params = [$data['nome'], $data['email'], $data['nivel'], $data['ativo'], $filialId];

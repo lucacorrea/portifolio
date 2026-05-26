@@ -37,7 +37,13 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="small"><?= $u['email'] ?></td>
+                        <td class="small">
+                            <?php if (str_starts_with($u['email'], 'sememail_')): ?>
+                                <span class="text-muted italic"><i class="fas fa-envelope-slash me-1"></i>Não informado</span>
+                            <?php else: ?>
+                                <?= htmlspecialchars($u['email']) ?>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <div class="small fw-bold text-primary">
                                 <i class="fas fa-building me-1 opacity-50"></i>
@@ -95,8 +101,8 @@
                         <input type="text" name="nome" id="edit-user-nome" class="form-control shadow-sm" required>
                     </div>
                     <div class="col-12">
-                        <label class="form-label small fw-bold">E-mail Corporativo</label>
-                        <input type="email" name="email" id="edit-user-email" class="form-control shadow-sm" required>
+                        <label class="form-label small fw-bold">E-mail Corporativo <span class="text-muted">(Opcional)</span></label>
+                        <input type="email" name="email" id="edit-user-email" class="form-control shadow-sm" placeholder="Ex: colaborador@empresa.com (Opcional)">
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">Unidade de Lotação</label>
@@ -278,7 +284,7 @@ function editUser(user) {
     document.getElementById('user-modal-title').innerText = 'Editar Colaborador';
     document.getElementById('edit-user-id').value = user.id;
     document.getElementById('edit-user-nome').value = user.nome;
-    document.getElementById('edit-user-email').value = user.email;
+    document.getElementById('edit-user-email').value = user.email.startsWith('sememail_') ? '' : user.email;
     document.getElementById('edit-user-filial').value = user.filial_id;
     document.getElementById('edit-user-nivel').value = user.nivel;
     document.getElementById('edit-user-ativo').checked = user.ativo == 1;
