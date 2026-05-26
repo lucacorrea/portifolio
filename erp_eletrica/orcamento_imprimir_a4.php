@@ -57,6 +57,8 @@ $currentDate = date('d') . ' de ' . $meses[(int)date('m')] . ' de ' . date('Y');
         .logo-img {
             max-width: 250px;
             height: auto;
+            /* Simulando contorno/bordado preto ao redor do logotipo (drop-shadow nos 4 cantos) */
+            filter: drop-shadow(1px 1px 0px #000) drop-shadow(-1px -1px 0px #000) drop-shadow(1px -1px 0px #000) drop-shadow(-1px 1px 0px #000);
         }
         .company-info {
             font-size: 13px;
