@@ -175,7 +175,7 @@ $currentDate = date('d') . ' de ' . $meses[(int)date('m')] . ' de ' . date('Y');
     <table class="header-table">
         <tr>
             <td style="width: 70%;">
-                <img src="logo_sistema_erp_eletrica.PNG" alt="Centro do Eletricista" class="logo-img">
+                <img src="logo_sistema_erp_eletrica.png" alt="Centro do Eletricista" class="logo-img">
                 <div class="company-info">
                     <div class="company-title"><?= !empty($pv['filial_nome']) ? htmlspecialchars($pv['filial_nome']) : 'CENTRO DO ELETRICISTA - COMPROVANTES' ?></div>
                     <?php 
