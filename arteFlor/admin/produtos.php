@@ -6,10 +6,10 @@ require_once __DIR__ . '/../includes/products.php';
 $adminUser = require_admin();
 
 $filters = [
-    'search' => trim((string) ($_GET['search'] ?? '')),
-    'categoria_id' => (int) ($_GET['categoria_id'] ?? 0),
-    'status' => (string) ($_GET['status'] ?? ''),
-    'estoque' => (string) ($_GET['estoque'] ?? ''),
+  'search' => trim((string) ($_GET['search'] ?? '')),
+  'categoria_id' => (int) ($_GET['categoria_id'] ?? 0),
+  'status' => (string) ($_GET['status'] ?? ''),
+  'estoque' => (string) ($_GET['estoque'] ?? ''),
 ];
 $produtos = product_list($filters);
 $categorias = product_categories();
@@ -18,49 +18,49 @@ $adminMessage = product_admin_message_from_query();
 $csrfToken = admin_csrf_token();
 $productImagesById = product_images_by_product_ids(array_column($produtos, 'id'));
 $modalProducts = array_map(static function (array $product) use ($productImagesById): array {
-    $productId = (int) $product['id'];
-    $images = array_map(static function (array $image): array {
-        return [
-            'url' => product_public_image_url($image['url'] ?? ''),
-            'alt' => (string) ($image['texto_alternativo'] ?? 'Imagem do produto'),
-            'principal' => !empty($image['principal']),
-        ];
-    }, $productImagesById[$productId] ?? []);
-
-    if (empty($images) && !empty($product['imagem'])) {
-        $images[] = [
-            'url' => product_public_image_url($product['imagem']),
-            'alt' => (string) ($product['nome'] ?? 'Imagem do produto'),
-            'principal' => true,
-        ];
-    }
-
-    $inventoryStatus = product_inventory_status($product);
-
+  $productId = (int) $product['id'];
+  $images = array_map(static function (array $image): array {
     return [
-        'id' => $productId,
-        'nome' => (string) ($product['nome'] ?? ''),
-        'sku' => (string) ($product['sku'] ?? ''),
-        'slug' => (string) ($product['slug'] ?? ''),
-        'categoria' => (string) ($product['categoria_nome'] ?? 'Sem categoria'),
-        'statusValue' => (string) ($product['status'] ?? 'disponivel'),
-        'status' => status_label((string) ($product['status'] ?? 'disponivel')),
-        'preco' => money_br((float) ($product['preco'] ?? 0)),
-        'precoPromocional' => (float) ($product['preco_promocional'] ?? 0) > 0 ? money_br((float) $product['preco_promocional']) : '',
-        'estoque' => (int) ($product['estoque'] ?? 0),
-        'estoqueMinimo' => (int) ($product['estoque_minimo'] ?? 0),
-        'stockStatus' => $inventoryStatus,
-        'stockLabel' => product_inventory_label($inventoryStatus),
-        'stockBadgeClass' => product_inventory_badge_class($inventoryStatus),
-        'stockPercent' => product_inventory_percent($product),
-        'descricaoCurta' => (string) ($product['descricao_curta'] ?? ''),
-        'descricaoCompleta' => (string) ($product['descricao_completa'] ?? ''),
-        'tags' => array_values($product['tags'] ?? []),
-        'destaque' => !empty($product['destaque']) ? 'Sim' : 'Normal',
-        'sobEncomenda' => !empty($product['sob_encomenda']) ? 'Sim' : 'Não',
-        'images' => $images,
-        'editUrl' => site_url('admin/produto-form.php?id=' . $productId),
+      'url' => product_public_image_url($image['url'] ?? ''),
+      'alt' => (string) ($image['texto_alternativo'] ?? 'Imagem do produto'),
+      'principal' => !empty($image['principal']),
     ];
+  }, $productImagesById[$productId] ?? []);
+
+  if (empty($images) && !empty($product['imagem'])) {
+    $images[] = [
+      'url' => product_public_image_url($product['imagem']),
+      'alt' => (string) ($product['nome'] ?? 'Imagem do produto'),
+      'principal' => true,
+    ];
+  }
+
+  $inventoryStatus = product_inventory_status($product);
+
+  return [
+    'id' => $productId,
+    'nome' => (string) ($product['nome'] ?? ''),
+    'sku' => (string) ($product['sku'] ?? ''),
+    'slug' => (string) ($product['slug'] ?? ''),
+    'categoria' => (string) ($product['categoria_nome'] ?? 'Sem categoria'),
+    'statusValue' => (string) ($product['status'] ?? 'disponivel'),
+    'status' => status_label((string) ($product['status'] ?? 'disponivel')),
+    'preco' => money_br((float) ($product['preco'] ?? 0)),
+    'precoPromocional' => (float) ($product['preco_promocional'] ?? 0) > 0 ? money_br((float) $product['preco_promocional']) : '',
+    'estoque' => (int) ($product['estoque'] ?? 0),
+    'estoqueMinimo' => (int) ($product['estoque_minimo'] ?? 0),
+    'stockStatus' => $inventoryStatus,
+    'stockLabel' => product_inventory_label($inventoryStatus),
+    'stockBadgeClass' => product_inventory_badge_class($inventoryStatus),
+    'stockPercent' => product_inventory_percent($product),
+    'descricaoCurta' => (string) ($product['descricao_curta'] ?? ''),
+    'descricaoCompleta' => (string) ($product['descricao_completa'] ?? ''),
+    'tags' => array_values($product['tags'] ?? []),
+    'destaque' => !empty($product['destaque']) ? 'Sim' : 'Normal',
+    'sobEncomenda' => !empty($product['sob_encomenda']) ? 'Sim' : 'Não',
+    'images' => $images,
+    'editUrl' => site_url('admin/produto-form.php?id=' . $productId),
+  ];
 }, $produtos);
 
 require_once __DIR__ . '/../includes/admin-head.php';
@@ -337,96 +337,107 @@ require_once __DIR__ . '/../includes/admin-head.php';
 
 <div class="admin-data-table">
   <table>
-    <thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Destaque</th><th>Ações</th></tr></thead>
-    <tbody>
-    <?php if (empty($produtos)): ?>
+    <thead>
       <tr>
-        <td colspan="7">
-          <div class="admin-empty-row">
-            <strong>Nenhum produto encontrado</strong>
-            <span>Cadastre o primeiro produto ou ajuste os filtros.</span>
-          </div>
-        </td>
+        <th>Produto</th>
+        <th>Categoria</th>
+        <th>Preço</th>
+        <th>Estoque</th>
+        <th>Status</th>
+        <th>Destaque</th>
+        <th>Ações</th>
       </tr>
-    <?php endif; ?>
-    <?php foreach ($produtos as $p): ?>
-      <?php
+    </thead>
+    <tbody>
+      <?php if (empty($produtos)): ?>
+        <tr>
+          <td colspan="7">
+            <div class="admin-empty-row">
+              <strong>Nenhum produto encontrado</strong>
+              <span>Cadastre o primeiro produto ou ajuste os filtros.</span>
+            </div>
+          </td>
+        </tr>
+      <?php endif; ?>
+      <?php foreach ($produtos as $p): ?>
+        <?php
         $image = product_public_image_url($p['imagem'] ?? '');
         $status = (string) ($p['status'] ?? 'disponivel');
         $inventoryStatus = product_inventory_status($p);
         $inventoryPercent = product_inventory_percent($p);
         $tags = array_values($p['tags'] ?? []);
         $statusAction = $status === 'inativo' ? 'ativar' : 'inativar';
-      ?>
-      <tr class="<?= e(product_inventory_row_class($inventoryStatus)) ?>">
-        <td>
-          <div class="admin-avatar-line">
-            <span class="admin-avatar image-avatar">
-              <?php if ($image !== ''): ?><img src="<?= e($image) ?>" alt="<?= e($p['nome']) ?>" loading="lazy"><?php else: ?>A&F<?php endif; ?>
-            </span>
-            <div class="admin-item-title">
-              <strong><?= e($p['nome']) ?></strong>
-              <small><?= e($p['sku'] ?? $p['slug']) ?></small>
-              <?php if (!empty($tags)): ?>
-                <div class="admin-tag-list">
-                  <?php foreach (array_slice($tags, 0, 3) as $tag): ?>
-                    <span><?= e((string) $tag) ?></span>
-                  <?php endforeach; ?>
-                </div>
-              <?php endif; ?>
+        ?>
+        <tr class="<?= e(product_inventory_row_class($inventoryStatus)) ?>">
+          <td>
+            <div class="admin-avatar-line">
+              <span class="admin-avatar image-avatar">
+                <?php if ($image !== ''): ?><img src="<?= e($image) ?>" alt="<?= e($p['nome']) ?>" loading="lazy"><?php else: ?>A&F<?php endif; ?>
+              </span>
+              <div class="admin-item-title">
+                <strong><?= e($p['nome']) ?></strong>
+                <small><?= e($p['sku'] ?? $p['slug']) ?></small>
+                <?php if (!empty($tags)): ?>
+                  <div class="admin-tag-list">
+                    <?php foreach (array_slice($tags, 0, 3) as $tag): ?>
+                      <span><?= e((string) $tag) ?></span>
+                    <?php endforeach; ?>
+                  </div>
+                <?php endif; ?>
+              </div>
             </div>
-          </div>
-        </td>
-        <td><?= e($p['categoria_nome'] ?? 'Sem categoria') ?></td>
-        <td><?= (float) ($p['preco_promocional'] ?? 0) > 0 ? money_br((float) $p['preco_promocional']) : money_br((float) $p['preco']) ?></td>
-        <td>
-          <div class="inventory-stock-cell">
-            <div class="inventory-stock-meta">
-              <strong>Estoque: <?= (int) ($p['estoque'] ?? 0) ?> un.</strong>
-              <small>Mínimo: <?= (int) ($p['estoque_minimo'] ?? 0) ?> un.</small>
+          </td>
+          <td><?= e($p['categoria_nome'] ?? 'Sem categoria') ?></td>
+          <td><?= (float) ($p['preco_promocional'] ?? 0) > 0 ? money_br((float) $p['preco_promocional']) : money_br((float) $p['preco']) ?></td>
+          <td>
+            <div class="inventory-stock-cell">
+              <div class="inventory-stock-meta">
+                <strong>Estoque: <?= (int) ($p['estoque'] ?? 0) ?> un.</strong>
+                <small>Mínimo: <?= (int) ($p['estoque_minimo'] ?? 0) ?> un.</small>
+              </div>
+
             </div>
-            
-           </div>
-        </td>
-        <td><span class="<?= $status === 'disponivel' ? 'admin-badge-ok' : ($status === 'inativo' ? 'admin-badge-danger' : 'admin-badge-warn') ?>"><?= e(status_label($status)) ?></span></td>
-        <td><span class="<?= !empty($p['destaque']) ? 'admin-badge-soft' : 'admin-badge-info' ?>"><?= !empty($p['destaque']) ? 'Sim' : 'Normal' ?></span></td>
-        <td>
-          <div class="admin-table-actions">
-            <button type="button" data-product-modal-open="<?= (int) $p['id'] ?>">Ver</button>
-            <a href="<?= site_url('admin/produto-form.php?id=' . (int) $p['id']) ?>">Editar</a>
-            <form method="post" action="<?= site_url('admin/actions/produto-duplicar.php') ?>" data-confirm="Duplicar este produto? A cópia será criada inativa e com estoque zerado.">
-              <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-              <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
-              <button type="submit">Duplicar</button>
-            </form>
-            <form method="post" action="<?= site_url('admin/actions/produto-status.php') ?>" data-confirm="<?= $statusAction === 'ativar' ? 'Ativar este produto?' : 'Inativar este produto e ocultar da venda pública?' ?>">
-              <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-              <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
-              <input type="hidden" name="action" value="<?= e($statusAction) ?>">
-              <button type="submit" class="<?= $statusAction === 'ativar' ? 'admin-action-success' : 'admin-action-danger' ?>"><?= $statusAction === 'ativar' ? 'Ativar' : 'Inativar' ?></button>
-            </form>
-            <form method="post" action="<?= site_url('admin/actions/produto-excluir.php') ?>" data-product-delete-form data-product-name="<?= e((string) $p['nome']) ?>">
-              <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-              <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
-              <button type="submit" class="admin-action-danger">Excluir</button>
-            </form>
-            <button
-              type="button"
-              data-stock-modal-open
-              data-product-id="<?= (int) $p['id'] ?>"
-              data-product-name="<?= e((string) $p['nome']) ?>"
-              data-product-sku="<?= e((string) ($p['sku'] ?? '')) ?>"
-              data-product-stock="<?= (int) ($p['estoque'] ?? 0) ?>"
-              data-product-min-stock="<?= (int) ($p['estoque_minimo'] ?? 0) ?>"
-            >Entrada/Saída</button>
-          </div>
-        </td>
-      </tr>
-    <?php endforeach; ?>
+          </td>
+          <td><span class="<?= $status === 'disponivel' ? 'admin-badge-ok' : ($status === 'inativo' ? 'admin-badge-danger' : 'admin-badge-warn') ?>"><?= e(status_label($status)) ?></span></td>
+          <td><span class="<?= !empty($p['destaque']) ? 'admin-badge-soft' : 'admin-badge-info' ?>"><?= !empty($p['destaque']) ? 'Sim' : 'Normal' ?></span></td>
+          <td>
+            <div class="admin-table-actions">
+              <button type="button" data-product-modal-open="<?= (int) $p['id'] ?>">Ver</button>
+              <a href="<?= site_url('admin/produto-form.php?id=' . (int) $p['id']) ?>">Editar</a>
+              <form method="post" action="<?= site_url('admin/actions/produto-duplicar.php') ?>" data-confirm="Duplicar este produto? A cópia será criada inativa e com estoque zerado.">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
+                <button type="submit">Duplicar</button>
+              </form>
+              <form method="post" action="<?= site_url('admin/actions/produto-status.php') ?>" data-confirm="<?= $statusAction === 'ativar' ? 'Ativar este produto?' : 'Inativar este produto e ocultar da venda pública?' ?>">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
+                <input type="hidden" name="action" value="<?= e($statusAction) ?>">
+                <button type="submit" class="<?= $statusAction === 'ativar' ? 'admin-action-success' : 'admin-action-danger' ?>"><?= $statusAction === 'ativar' ? 'Ativar' : 'Inativar' ?></button>
+              </form>
+              <form method="post" action="<?= site_url('admin/actions/produto-excluir.php') ?>" data-product-delete-form data-product-name="<?= e((string) $p['nome']) ?>">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
+                <button type="submit" class="admin-action-danger">Excluir</button>
+              </form>
+              <button
+                type="button"
+                data-stock-modal-open
+                data-product-id="<?= (int) $p['id'] ?>"
+                data-product-name="<?= e((string) $p['nome']) ?>"
+                data-product-sku="<?= e((string) ($p['sku'] ?? '')) ?>"
+                data-product-stock="<?= (int) ($p['estoque'] ?? 0) ?>"
+                data-product-min-stock="<?= (int) ($p['estoque_minimo'] ?? 0) ?>">Entrada/Saída</button>
+            </div>
+          </td>
+        </tr>
+      <?php endforeach; ?>
     </tbody>
   </table>
 </div>
-<script type="application/json" id="productListPayload"><?= json_encode($modalProducts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+<script type="application/json" id="productListPayload">
+  <?= json_encode($modalProducts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+</script>
 <div class="admin-modal-backdrop" data-product-modal hidden>
   <section class="admin-product-modal" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
     <button class="admin-modal-close" type="button" data-product-modal-close aria-label="Fechar modal">&times;</button>
@@ -442,11 +453,26 @@ require_once __DIR__ . '/../includes/admin-head.php';
         <span data-product-modal-promo hidden></span>
       </div>
       <dl class="admin-product-modal-meta">
-        <div><dt>SKU</dt><dd data-product-modal-sku>-</dd></div>
-        <div><dt>Slug</dt><dd data-product-modal-slug>-</dd></div>
-        <div><dt>Status</dt><dd data-product-modal-status>-</dd></div>
-        <div><dt>Destaque</dt><dd data-product-modal-highlight>-</dd></div>
-        <div><dt>Sob encomenda</dt><dd data-product-modal-order>-</dd></div>
+        <div>
+          <dt>SKU</dt>
+          <dd data-product-modal-sku>-</dd>
+        </div>
+        <div>
+          <dt>Slug</dt>
+          <dd data-product-modal-slug>-</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd data-product-modal-status>-</dd>
+        </div>
+        <div>
+          <dt>Destaque</dt>
+          <dd data-product-modal-highlight>-</dd>
+        </div>
+        <div>
+          <dt>Sob encomenda</dt>
+          <dd data-product-modal-order>-</dd>
+        </div>
       </dl>
       <div class="admin-product-modal-tags admin-tag-list" data-product-modal-tags hidden></div>
       <div class="admin-product-modal-stock inventory-stock-cell">
