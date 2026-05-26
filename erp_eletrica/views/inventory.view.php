@@ -75,13 +75,18 @@
                 <option value="categoria_asc" <?= $filters['ordem'] == 'categoria_asc' ? 'selected' : '' ?>>Categoria / Nome</option>
             </select>
         </form>
-        <div class="d-flex gap-2 w-100 w-md-auto">
+        <div class="d-flex gap-2 w-100 w-md-auto flex-wrap">
             <button class="btn btn-primary fw-bold flex-grow-1" onclick="openNewProduct()">
                 <i class="fas fa-plus me-2"></i>Novo
             </button>
             <button class="btn btn-outline-secondary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#movementModal">
                 <i class="fas fa-right-left me-2"></i>Movimentar
             </button>
+            <?php if ($_SESSION['is_matriz'] ?? false): ?>
+                <button class="btn btn-outline-primary fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#replicateCatalogModal">
+                    <i class="fas fa-copy me-2"></i>Enviar p/ Filial
+                </button>
+            <?php endif; ?>
             <a href="estoque.php?action=problems" class="btn btn-outline-danger fw-bold flex-grow-1">
                 <i class="fas fa-exclamation-triangle me-2"></i>Produtos c/ Problema
             </a>
@@ -631,6 +636,47 @@
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
                 <button type="submit" class="btn btn-danger px-4 fw-bold">Registrar Problema</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Replicate Catalog Modal -->
+<div class="modal fade" id="replicateCatalogModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;" action="estoque.php?action=replicate_catalog" method="POST">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-copy me-2"></i>Enviar Catálogo p/ Filial</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                
+                <div class="alert alert-info border-0 shadow-sm mb-4" style="border-radius: 10px; background-color: rgba(43, 76, 125, 0.08); color: var(--primary-color);">
+                    <h6 class="fw-bold mb-1"><i class="fas fa-info-circle me-1"></i> Como funciona a sincronização?</h6>
+                    <p class="extra-small mb-0 opacity-75 text-dark" style="font-size: 0.75rem; line-height: 1.4;">
+                        Esta ferramenta vinculará instantaneamente **todos** os produtos cadastrados na Matriz para a filial selecionada. O estoque na filial será iniciado com **1 unidade padrão** e o estoque mínimo de controle será definido em **1 unidade**, trazendo de forma compartilhada todas as fotos, dados fiscais, preços e descrições dos materiais.
+                    </p>
+                </div>
+                
+                <div class="mb-4 text-start">
+                    <label class="form-label small fw-bold text-dark"><i class="fas fa-store me-1"></i>Selecionar Filial Destino *</label>
+                    <select name="destino_filial_id" class="form-select shadow-sm border-primary" required style="border-radius: 8px;">
+                        <option value="" disabled selected>Escolha a filial...</option>
+                        <?php foreach ($branches as $br): ?>
+                            <option value="<?= $br['id'] ?>"><?= htmlspecialchars($br['nome']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="alert alert-warning border-0 shadow-sm small text-start mb-0" style="border-radius: 10px;">
+                    <i class="fas fa-exclamation-triangle me-1"></i> 
+                    <strong>Importante:</strong> Se a filial já tiver produtos vinculados, os saldos e limites serão atualizados/sobrescritos para 1. Esta ação é imediata e irreversível.
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light pb-4">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary px-4 fw-bold shadow"><i class="fas fa-paper-plane me-1"></i>Enviar Catálogo</button>
             </div>
         </form>
     </div>

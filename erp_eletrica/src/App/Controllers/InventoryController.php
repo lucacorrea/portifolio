@@ -49,6 +49,10 @@ class InventoryController extends BaseController {
 
         $nextCode = $productModel->getNextCode();
 
+        // Buscar filiais ativas para replicação do catálogo
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $branches = $db->query("SELECT id, nome FROM filiais WHERE principal = 0 ORDER BY nome ASC")->fetchAll();
+
         $this->render('inventory', [
             'stats' => $stats,
             'products' => $products,
@@ -58,7 +62,8 @@ class InventoryController extends BaseController {
             'categories' => $categories,
             'suppliers' => $suppliers,
             'filters' => $filters,
-            'nextCode' => $nextCode
+            'nextCode' => $nextCode,
+            'branches' => $branches
         ]);
     }
 
@@ -111,6 +116,50 @@ class InventoryController extends BaseController {
             $model = new \App\Models\Product();
             $model->delete($id);
             $this->redirect('estoque.php?msg=Material excluído com sucesso');
+        }
+    }
+
+    public function replicateCatalog() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            validateCsrf($_POST['csrf_token'] ?? '');
+            
+            // Apenas a Matriz pode replicar catálogo para as filiais
+            if (!($_SESSION['is_matriz'] ?? false)) {
+                $this->redirect('estoque.php?error=' . urlencode('Acesso restrito à unidade Matriz.'));
+            }
+
+            $destinoFilialId = (int)($_POST['destino_filial_id'] ?? 0);
+            if ($destinoFilialId <= 0) {
+                $this->redirect('estoque.php?error=' . urlencode('Selecione uma filial de destino válida.'));
+            }
+
+            try {
+                $db = \App\Config\Database::getInstance()->getConnection();
+                
+                // Query elegante de alta performance para replicar todos os produtos para a filial alvo
+                // Quantidade padrão = 1, Estoque mínimo = 1
+                $sql = "INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                        SELECT id, ?, 1, 1 FROM produtos
+                        ON DUPLICATE KEY UPDATE quantidade = 1, estoque_minimo = 1";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$destinoFilialId]);
+                
+                // Buscar nome da filial destino para a mensagem de sucesso
+                $stmtBranch = $db->prepare("SELECT nome FROM filiais WHERE id = ?");
+                $stmtBranch->execute([$destinoFilialId]);
+                $branchName = $stmtBranch->fetchColumn() ?: "Filial";
+
+                // Registrar ação na auditoria
+                $auditLog = new \App\Services\AuditLogService();
+                $auditLog->record('replicate_catalog', 'estoque_filiais', $destinoFilialId, null, ['quantidade' => 1, 'estoque_minimo' => 1]);
+
+                $msg = "Catálogo de produtos copiado com sucesso para a filial \"$branchName\"! Quantidades ajustadas para 1 e estoques mínimos para 1.";
+                $this->redirect('estoque.php?msg=' . urlencode($msg));
+                
+            } catch (\Exception $e) {
+                $this->redirect('estoque.php?error=' . urlencode('Erro ao replicar catálogo: ' . $e->getMessage()));
+            }
         }
     }
 
