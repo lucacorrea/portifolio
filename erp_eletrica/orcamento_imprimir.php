@@ -46,7 +46,14 @@ $stmt = $db->prepare("
            CONCAT_WS(', ', f.logradouro, f.numero, f.bairro) as filial_endereco,
            f.municipio as filial_cidade,
            f.uf as filial_uf,
-           f.telefone as filial_telefone
+           f.telefone as filial_telefone,
+           f.razao_social as filial_razao_social,
+           f.inscricao_estadual as filial_inscricao_estadual,
+           f.cep as filial_cep,
+           f.dados_bancarios as filial_dados_bancarios,
+           f.chave_pix as filial_chave_pix,
+           f.titular_conta as filial_titular_conta,
+           f.complemento as filial_complemento
     FROM pre_vendas pv
     LEFT JOIN clientes c ON pv.cliente_id = c.id
     LEFT JOIN usuarios u ON pv.usuario_id = u.id

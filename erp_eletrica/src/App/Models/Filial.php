@@ -30,13 +30,15 @@ class Filial extends BaseModel {
                     tipo_emissao = ?, finalidade_emissao = ?, indicador_presenca = ?, tipo_impressao_danfe = ?, serie_nfce = ?, ultimo_numero_nfce = ?,
                     logradouro = ?, numero = ?, complemento = ?, bairro = ?, municipio = ?, codigo_municipio = ?, uf = ?, codigo_uf = ?, cep = ?,
                     telefone = ?, email = ?,
-                    csc_id = ?, csc_token = ?, ambiente = ? ";
+                    csc_id = ?, csc_token = ?, ambiente = ?,
+                    dados_bancarios = ?, chave_pix = ?, titular_conta = ? ";
             $params = [
                 $data['nome'], $data['razao_social'] ?? null, $data['cnpj'], $data['inscricao_estadual'], $data['crt'] ?? 1,
                 $data['tipo_emissao'] ?? 'Normal', $data['finalidade_emissao'] ?? 'Normal', $data['indicador_presenca'] ?? 'Operacao presencial', $data['tipo_impressao_danfe'] ?? 'NFC-e', $data['serie_nfce'] ?? 1, $data['ultimo_numero_nfce'] ?? 0,
                 $data['logradouro'], $data['numero'], $data['complemento'] ?? null, $data['bairro'], $data['municipio'], $data['codigo_municipio'] ?? null, $data['uf'], $data['codigo_uf'] ?? null, $data['cep'],
                 $data['telefone'] ?? null, $data['email'] ?? null,
-                $data['csc_id'], $data['csc_token'], $data['ambiente']
+                $data['csc_id'], $data['csc_token'], $data['ambiente'],
+                $data['dados_bancarios'] ?? null, $data['chave_pix'] ?? null, $data['titular_conta'] ?? null
             ];
 
             if (!empty($data['certificado_pfx'])) {
@@ -54,8 +56,9 @@ class Filial extends BaseModel {
                         tipo_emissao, finalidade_emissao, indicador_presenca, tipo_impressao_danfe, serie_nfce, ultimo_numero_nfce,
                         logradouro, numero, complemento, bairro, municipio, codigo_municipio, uf, codigo_uf, cep,
                         telefone, email,
-                        csc_id, csc_token, ambiente, certificado_pfx, certificado_senha, principal
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        csc_id, csc_token, ambiente, certificado_pfx, certificado_senha, 
+                        dados_bancarios, chave_pix, titular_conta, principal
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
             return $this->query($sql, [
                 $data['nome'], $data['razao_social'] ?? null, $data['cnpj'], $data['inscricao_estadual'], $data['crt'] ?? 1,
                 $data['tipo_emissao'] ?? 'Normal', $data['finalidade_emissao'] ?? 'Normal', $data['indicador_presenca'] ?? 'Operacao presencial', $data['tipo_impressao_danfe'] ?? 'NFC-e', $data['serie_nfce'] ?? 1, $data['ultimo_numero_nfce'] ?? 0,
@@ -63,7 +66,7 @@ class Filial extends BaseModel {
                 $data['telefone'] ?? null,  $data['email'] ?? null,
                 $data['csc_id'], $data['csc_token'], $data['ambiente'] ?? 2,
                 $data['certificado_pfx'] ?? null, $data['certificado_senha'] ?? null,
-                0 // Filiais aren't Matriz by default when created via this form
+                $data['dados_bancarios'] ?? null, $data['chave_pix'] ?? null, $data['titular_conta'] ?? null
             ]);
         }
     }

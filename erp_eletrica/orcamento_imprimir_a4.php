@@ -171,13 +171,32 @@ $currentDate = date('d') . ' de ' . $meses[(int)date('m')] . ' de ' . date('Y');
             <td style="width: 70%;">
                 <img src="logo_sistema_erp_eletrica.PNG" alt="Centro do Eletricista" class="logo-img">
                 <div class="company-info">
-                    <div class="company-title">CENTRO DO ELETRICISTA - COMPROVANTES</div>
-                    Rua Vasco Martins Nº 200 B, Chagas Aguiar - Coari/AM - CEP: 69460-000<br>
-                    Rua Brito Inglez S/N Centro - Codajás/AM - CEP: 69460-000 (Prox. do Banco Bradesco)<br>
-                    CNPJ: 35.621.921/0001-45 Inscrição Estadual: 05.415.271-2<br>
-                    <span class="highlight-blue">Dados Bancários: Banco Cooperativo Sicoob - Cod: 756 - Agência: 0002 C/C: 91103-7 Chave Pix: 9298115-4226</span><br>
-                    <span class="highlight-blue">Empresa: DAB COMERCIO VAREJISTA DE MATERIAL ELÉTRICO LTDA</span><br>
-                    <span class="highlight-blue">Titular: RAYLSON DE ARAUJO BEZERRA</span>
+                    <div class="company-title"><?= !empty($pv['filial_nome']) ? htmlspecialchars($pv['filial_nome']) : 'CENTRO DO ELETRICISTA - COMPROVANTES' ?></div>
+                    <?php 
+                    $addressParts = [];
+                    if (!empty($pv['filial_endereco'])) {
+                        $addressParts[] = $pv['filial_endereco'];
+                    }
+                    if (!empty($pv['filial_complemento'])) {
+                        $addressParts[] = '(' . $pv['filial_complemento'] . ')';
+                    }
+                    $fullAddress = implode(' ', $addressParts);
+                    if (!empty($pv['filial_cidade'])) {
+                        $fullAddress .= ' - ' . $pv['filial_cidade'] . '/' . ($pv['filial_uf'] ?? 'AM');
+                    }
+                    if (!empty($pv['filial_cep'])) {
+                        $cep = $pv['filial_cep'];
+                        if (strlen($cep) === 8 && is_numeric($cep)) {
+                            $cep = substr($cep, 0, 5) . '-' . substr($cep, 5);
+                        }
+                        $fullAddress .= ' - CEP: ' . $cep;
+                    }
+                    echo htmlspecialchars($fullAddress);
+                    ?><br>
+                    CNPJ: <?= htmlspecialchars($pv['filial_cnpj'] ?? '35.621.921/0001-45') ?> Inscrição Estadual: <?= htmlspecialchars($pv['filial_inscricao_estadual'] ?? '05.415.271-2') ?><br>
+                    <span class="highlight-blue">Dados Bancários: <?= htmlspecialchars($pv['filial_dados_bancarios'] ?: 'Banco Cooperativo Sicoob - Cod: 756 - Agência: 0002 C/C: 91103-7') ?> Chave Pix: <?= htmlspecialchars($pv['filial_chave_pix'] ?: '9298115-4226') ?></span><br>
+                    <span class="highlight-blue">Empresa: <?= htmlspecialchars($pv['filial_razao_social'] ?: 'DAB COMERCIO VAREJISTA DE MATERIAL ELÉTRICO LTDA') ?></span><br>
+                    <span class="highlight-blue">Titular: <?= htmlspecialchars($pv['filial_titular_conta'] ?: 'RAYLSON DE ARAUJO BEZERRA') ?></span>
                 </div>
             </td>
             <td style="width: 30%; text-align: right; vertical-align: top;">
@@ -251,9 +270,9 @@ $currentDate = date('d') . ' de ' . $meses[(int)date('m')] . ' de ' . date('Y');
     </div>
 
     <div class="footer-signature">
-        Coari/Codajás - AM, <?= $currentDate ?><br><br><br>
-        CENTRO DO ELETRICISTA<br>
-        CNPJ 35.621.921/0001-45
+        <?= htmlspecialchars($pv['filial_cidade'] ?? 'Coari') ?> - <?= htmlspecialchars($pv['filial_uf'] ?? 'AM') ?>, <?= $currentDate ?><br><br><br>
+        <?= !empty($pv['filial_nome']) ? htmlspecialchars($pv['filial_nome']) : 'CENTRO DO ELETRICISTA' ?><br>
+        CNPJ <?= htmlspecialchars($pv['filial_cnpj'] ?? '35.621.921/0001-45') ?>
     </div>
 </div>
 

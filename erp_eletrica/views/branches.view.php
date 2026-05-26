@@ -244,6 +244,20 @@
                         <div class="extra-small text-muted mt-1">Prox. número será este + 1.</div>
                     </div>
 
+                    <div class="col-12 mt-4 mb-2"><h6 class="fw-bold text-primary small border-bottom pb-2">Informações Financeiras / Orçamento</h6></div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Dados Bancários</label>
+                        <input type="text" name="dados_bancarios" id="branch_dados_bancarios" class="form-control shadow-sm" placeholder="Ex: Banco Sicoob - Cod: 756 - Ag: 0002 C/C: 91103-7">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Chave Pix</label>
+                        <input type="text" name="chave_pix" id="branch_chave_pix" class="form-control shadow-sm" placeholder="Ex: 9298115-4226">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Titular da Conta</label>
+                        <input type="text" name="titular_conta" id="branch_titular_conta" class="form-control shadow-sm" placeholder="Ex: RAYLSON DE ARAUJO BEZERRA">
+                    </div>
+
                 </div>
             </div>
             <div class="modal-footer border-0">
@@ -284,6 +298,10 @@ function newBranch() {
     document.getElementById('branch_uf').value = '';
     document.getElementById('branch_codigo_uf').value = '';
     document.getElementById('branch_cep').value = '';
+    
+    document.getElementById('branch_dados_bancarios').value = '';
+    document.getElementById('branch_chave_pix').value = '';
+    document.getElementById('branch_titular_conta').value = '';
     modal.show();
 }
 
@@ -316,6 +334,10 @@ function editBranch(branch) {
     document.getElementById('branch_uf').value = branch.uf || '';
     document.getElementById('branch_codigo_uf').value = branch.codigo_uf || '';
     document.getElementById('branch_cep').value = branch.cep || '';
+    
+    document.getElementById('branch_dados_bancarios').value = branch.dados_bancarios || '';
+    document.getElementById('branch_chave_pix').value = branch.chave_pix || '';
+    document.getElementById('branch_titular_conta').value = branch.titular_conta || '';
     
     modal.show();
 }
