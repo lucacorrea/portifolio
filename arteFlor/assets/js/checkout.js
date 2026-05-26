@@ -9,18 +9,43 @@
   const pixStatus = document.querySelector('[data-pix-status]');
   const pixCode = document.querySelector('[data-pix-code]');
   const copyPixButton = document.querySelector('[data-copy-pix]');
-  const confirmPixButton = document.querySelector('[data-confirm-pix]');
   const success = document.querySelector('[data-order-success]');
   const orderCodeEl = document.querySelector('[data-order-code]');
   const orderLink = document.querySelector('[data-order-client-link]');
   const whatsappStatus = document.querySelector('[data-whatsapp-status]');
   const submitButton = form?.querySelector('[type="submit"]');
-  let pixConfirmed = false;
 
   if (!form || !summary || !window.ArteFlor) return;
 
-  const renderSummary = () => {
+  const toNumber = (value, fallback = 0) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  };
+
+  const validCartItem = (item) => {
+    const productId = toNumber(item?.id || item?.produto_id);
+    const quantity = toNumber(item?.qty || item?.quantidade, 1);
+    return productId > 0 && quantity > 0;
+  };
+
+  const normalizedCart = () => {
     const cart = ArteFlor.getCart();
+    const valid = cart.filter(validCartItem).map((item) => ({
+      ...item,
+      id: String(item.id || item.produto_id),
+      qty: Math.max(1, toNumber(item.qty || item.quantidade, 1))
+    }));
+
+    if (valid.length !== cart.length) {
+      ArteFlor.setCart(valid);
+      ArteFlor.toast('Itens inválidos foram removidos antes do checkout.', 'info');
+    }
+
+    return valid;
+  };
+
+  const renderSummary = () => {
+    const cart = normalizedCart();
     const totals = ArteFlor.cartTotals(cart);
 
     summary.innerHTML = cart.length ? cart.map((item) => `
@@ -44,9 +69,8 @@
   };
 
   paymentMethod?.addEventListener('change', () => {
-    pixConfirmed = false;
     if (pixStatus) {
-      pixStatus.textContent = 'Aguardando confirmação';
+      pixStatus.textContent = 'Pendente no painel';
       pixStatus.classList.remove('status-ok');
       pixStatus.classList.add('status-warn');
     }
@@ -56,20 +80,10 @@
   copyPixButton?.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(pixCode?.textContent?.trim() || '');
-      ArteFlor.toast('Código Pix demonstrativo copiado.');
+      ArteFlor.toast('Chave Pix copiada.');
     } catch (error) {
       ArteFlor.toast('Não foi possível copiar automaticamente.', 'warning');
     }
-  });
-
-  confirmPixButton?.addEventListener('click', () => {
-    pixConfirmed = true;
-    if (pixStatus) {
-      pixStatus.textContent = 'Pagamento demonstrativo confirmado';
-      pixStatus.classList.remove('status-warn');
-      pixStatus.classList.add('status-ok');
-    }
-    ArteFlor.toast('Pagamento Pix demonstrativo confirmado.');
   });
 
   const checkoutPayload = (data, cart) => ({
@@ -105,7 +119,7 @@
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    const cart = ArteFlor.getCart();
+    const cart = normalizedCart();
     if (!cart.length) {
       ArteFlor.toast('Adicione pelo menos um produto ao carrinho.', 'warning');
       return;
@@ -143,7 +157,6 @@
       if (whatsappStatus) whatsappStatus.textContent = whatsappLabel(result);
       if (success) success.hidden = false;
       form.reset();
-      pixConfirmed = false;
       togglePixPanel();
       success?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       ArteFlor.toast(`Pedido ${result.codigo} salvo no sistema.`);

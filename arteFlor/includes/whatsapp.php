@@ -86,7 +86,7 @@ function whatsapp_config(): array
     }
 
     return [
-        'pix_key' => integration_setting('pix_key', 'arteflor@pix.demo'),
+        'pix_key' => integration_setting('pix_key', '') ?: '',
         'pix_receiver_name' => integration_setting('pix_receiver_name', 'Arte&Flor'),
         'pix_instructions' => integration_setting('pix_instructions', 'Pix manual: confirme o pagamento no painel administrativo antes do preparo.'),
         'whatsapp_enabled' => integration_setting('whatsapp_enabled', '0') === '1',

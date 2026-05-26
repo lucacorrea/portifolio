@@ -5,6 +5,8 @@ $pageTitle = 'Checkout';
 $activePage = 'catalogo';
 $pageScripts = ['js/checkout.js'];
 $integrationConfig = whatsapp_config();
+$pixKey = trim((string) ($integrationConfig['pix_key'] ?? ''));
+$pixInstructions = trim((string) ($integrationConfig['pix_instructions'] ?? ''));
 require_once __DIR__ . '/includes/header.php';
 ?>
 
@@ -268,15 +270,31 @@ require_once __DIR__ . '/includes/header.php';
   align-items: center;
 }
 
-.pix-qr-demo {
+.pix-manual-mark {
   width: min(100%, 190px);
+  min-height: 170px;
   border-radius: 14px;
-  border: 8px solid #fff;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  align-content: center;
+  background: #fff;
+  border: 1px solid rgba(47, 72, 58, .12);
   box-shadow: 0 10px 26px rgba(45, 55, 48, .08);
+  color: #244836;
 }
 
-.pix-qr-demo strong {
-  border-radius: 10px;
+.pix-manual-mark strong {
+  font-size: 1.7rem;
+  font-weight: 950;
+}
+
+.pix-manual-mark span {
+  color: #626b64;
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
 .pix-payment-box {
@@ -305,6 +323,23 @@ require_once __DIR__ . '/includes/header.php';
   color: #244836;
   font-size: .8rem;
   overflow-wrap: anywhere;
+}
+
+.pix-payment-note {
+  margin: 0;
+  color: #626b64;
+  font-size: .9rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.pix-missing-key {
+  padding: 12px;
+  border-radius: 10px;
+  background: #fff7e8;
+  border: 1px solid rgba(169, 111, 31, .20);
+  color: #8b5a17;
+  font-weight: 800;
 }
 
 .pix-payment-box .actions {
@@ -415,7 +450,7 @@ require_once __DIR__ . '/includes/header.php';
     grid-template-columns: 1fr;
   }
 
-  .pix-qr-demo {
+  .pix-manual-mark {
     margin-inline: auto;
   }
 }
@@ -475,12 +510,12 @@ require_once __DIR__ . '/includes/header.php';
         <div class="checkout-fields-grid">
           <label class="form-group">
             <span>Nome completo</span>
-            <input name="nome" required placeholder="Ex: Maria Clara">
+            <input name="nome" required autocomplete="name" placeholder="Ex: Maria Clara">
           </label>
 
           <label class="form-group">
             <span>Contato/WhatsApp</span>
-            <input name="contato" required placeholder="(97) 90000-0000">
+            <input name="contato" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(97) 90000-0000">
           </label>
         </div>
 
@@ -500,23 +535,23 @@ require_once __DIR__ . '/includes/header.php';
         <div class="checkout-fields-grid">
           <label class="form-group">
             <span>Tipo de recebimento</span>
-            <select name="recebimento" required>
+            <select name="recebimento" required data-receipt-method>
               <option value="Entrega">Entrega</option>
               <option value="Retirada">Retirada</option>
             </select>
           </label>
 
-          <label class="form-group">
+          <label class="form-group" data-delivery-field>
             <span>Bairro</span>
-            <input name="bairro" required placeholder="Centro">
+            <input name="bairro" autocomplete="address-level2" required placeholder="Centro">
           </label>
 
-          <label class="form-group full">
+          <label class="form-group full" data-delivery-field>
             <span>Endereço</span>
-            <input name="endereco" placeholder="Rua, número e complemento">
+            <input name="endereco" autocomplete="street-address" required placeholder="Rua, número e complemento">
           </label>
 
-          <label class="form-group">
+          <label class="form-group" data-delivery-field>
             <span>Ponto de referência</span>
             <input name="referencia" placeholder="Próximo a...">
           </label>
@@ -585,32 +620,34 @@ require_once __DIR__ . '/includes/header.php';
           <div class="pix-checkout-panel form-group full" data-pix-panel hidden>
             <div class="pix-panel-header">
               <div>
-                <span class="badge">Pix demonstrativo</span>
-                <h2>QR Code visual para apresentação</h2>
-                <p class="muted">Este QR Code não processa pagamento real. Serve para demonstrar a experiência da futura integração.</p>
+                <span class="badge">Pix manual</span>
+                <h2>Pagamento por Pix</h2>
+                <p class="muted">O pedido fica aguardando pagamento até a confirmação no painel administrativo.</p>
               </div>
-              <span class="status status-warn" data-pix-status>Aguardando confirmação</span>
+              <span class="status status-warn" data-pix-status>Pendente no painel</span>
             </div>
 
             <div class="pix-panel-grid">
-              <div class="pix-qr-demo" role="img" aria-label="QR Code Pix demonstrativo">
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span><span></span>
+              <div class="pix-manual-mark" aria-hidden="true">
                 <strong>PIX</strong>
+                <span>Manual</span>
               </div>
 
               <div class="pix-payment-box">
-                <small>Chave Pix demonstrativa</small>
-                <strong><?= e((string) $integrationConfig['pix_key']) ?></strong>
-
-                <small>Código Pix copia e cola</small>
-                <code data-pix-code>00020126580014BR.GOV.BCB.PIX0136arteflor-demo-checkout5204000053039865802BR5910ARTE E FLOR6005COARI62070503***6304DEMO</code>
-
-                <div class="actions">
-                  <button class="btn btn-soft" type="button" data-copy-pix>Copiar Pix</button>
-                  <button class="btn btn-primary" type="button" data-confirm-pix>Confirmar pagamento demonstrativo</button>
-                </div>
+                <?php if ($pixKey !== ''): ?>
+                  <small>Chave Pix</small>
+                  <code data-pix-code><?= e($pixKey) ?></code>
+                  <?php if ($pixInstructions !== ''): ?>
+                    <p class="pix-payment-note"><?= e($pixInstructions) ?></p>
+                  <?php endif; ?>
+                  <div class="actions">
+                    <button class="btn btn-soft" type="button" data-copy-pix>Copiar chave Pix</button>
+                  </div>
+                <?php else: ?>
+                  <div class="pix-missing-key">
+                    Chave Pix não configurada. Confirme os dados de pagamento pelo atendimento antes de preparar o pedido.
+                  </div>
+                <?php endif; ?>
               </div>
             </div>
           </div>
@@ -631,7 +668,7 @@ require_once __DIR__ . '/includes/header.php';
 
         <div class="summary-lines">
           <p><span>Subtotal</span><strong id="checkoutSubtotal">R$ 0,00</strong></p>
-          <p><span>Desconto visual</span><strong id="checkoutDiscount">R$ 0,00</strong></p>
+          <p><span>Desconto automático</span><strong id="checkoutDiscount">R$ 0,00</strong></p>
           <p class="summary-total"><span>Total</span><strong id="checkoutTotal">R$ 0,00</strong></p>
         </div>
       </div>
@@ -659,13 +696,26 @@ require_once __DIR__ . '/includes/header.php';
   const nextButtons = [...document.querySelectorAll('[data-step-next]')];
   const prevButtons = [...document.querySelectorAll('[data-step-prev]')];
   const paymentMethod = document.querySelector('[data-payment-method]');
+  const receiptMethod = document.querySelector('[data-receipt-method]');
+  const deliveryFields = [...document.querySelectorAll('[data-delivery-field] input')];
   const pixPanel = document.querySelector('[data-pix-panel]');
   const dateInput = form?.querySelector('input[name="data"]');
 
   let currentStep = 0;
 
   if (dateInput && !dateInput.min) {
-    dateInput.min = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+    dateInput.min = today.toISOString().split('T')[0];
+  }
+
+  function syncReceiptFields() {
+    const isDelivery = receiptMethod?.value !== 'Retirada';
+
+    deliveryFields.forEach((field) => {
+      field.required = isDelivery && field.name !== 'referencia';
+      field.closest('.form-group')?.classList.toggle('muted', !isDelivery);
+    });
   }
 
   function setStep(index) {
@@ -734,6 +784,12 @@ require_once __DIR__ . '/includes/header.php';
     pixPanel.hidden = paymentMethod.value !== 'Pix';
   });
 
+  receiptMethod?.addEventListener('change', syncReceiptFields);
+
+  form?.addEventListener('reset', () => {
+    setTimeout(syncReceiptFields, 0);
+  });
+
   form?.addEventListener('submit', (event) => {
     const allFields = [...form.querySelectorAll('input, select, textarea')];
 
@@ -755,6 +811,7 @@ require_once __DIR__ . '/includes/header.php';
   });
 
   setStep(0);
+  syncReceiptFields();
 })();
 </script>
 

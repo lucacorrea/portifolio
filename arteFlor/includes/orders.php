@@ -436,8 +436,8 @@ function order_create_from_checkout(array $payload): array
         }
 
         $pixKey = function_exists('integration_setting')
-            ? (integration_setting('pix_key', 'arteflor@pix.demo') ?: 'arteflor@pix.demo')
-            : 'arteflor@pix.demo';
+            ? (integration_setting('pix_key', '') ?: null)
+            : null;
 
         $pdo->prepare(
             'INSERT INTO pagamentos (pedido_id, forma_pagamento, status, provedor, valor, chave_pix, codigo_pix)
@@ -446,7 +446,7 @@ function order_create_from_checkout(array $payload): array
             'pedido_id' => $orderId,
             'forma_pagamento' => $data['forma_pagamento'],
             'status' => $paymentStatus,
-            'provedor' => $data['forma_pagamento'] === 'pix' ? 'pix_demo' : 'manual',
+            'provedor' => 'manual',
             'valor' => $total,
             'chave_pix' => $data['forma_pagamento'] === 'pix' ? $pixKey : null,
             'codigo_pix' => $data['forma_pagamento'] === 'pix' ? 'PIX MANUAL - CONFIRMACAO PELO ADMIN' : null,
