@@ -462,4 +462,38 @@ h6 {
     cursor: pointer;
 }
 
+/* Custom Header Badges */
+.erp-user-badge {
+    background-color: rgba(43, 76, 125, 0.1) !important;
+    color: var(--primary-color) !important;
+    border: 1px solid rgba(43, 76, 125, 0.2) !important;
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    padding: 3px 8px !important;
+    border-radius: 4px !important;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.erp-store-badge {
+    background-color: rgba(71, 85, 105, 0.08) !important;
+    color: #475569 !important;
+    border: 1px solid rgba(71, 85, 105, 0.15) !important;
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    padding: 3px 8px !important;
+    border-radius: 4px !important;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.erp-user-badge:hover, .erp-store-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
 

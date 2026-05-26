@@ -31,9 +31,10 @@ class AuthService extends BaseService {
                 
                 // Check if user is in Matriz
                 $filialModel = new \App\Models\Filial();
-                $stmt = $filialModel->query("SELECT principal FROM filiais WHERE id = ?", [$user['filial_id']]);
+                $stmt = $filialModel->query("SELECT nome, principal FROM filiais WHERE id = ?", [$user['filial_id']]);
                 $filial = $stmt->fetch();
                 $_SESSION['is_matriz'] = ($filial && $filial['principal'] == 1);
+                $_SESSION['filial_nome'] = $filial ? $filial['nome'] : 'Não Identificada';
                 
                 $this->repository->updateLastLogin($user['id']);
                 $this->logAction('login', 'usuarios', $user['id']);
@@ -54,6 +55,12 @@ class AuthService extends BaseService {
                 $_SESSION['filial_id'] = $tempUser['filial_id'];
                 $_SESSION['is_temporary'] = true;
                 $_SESSION['is_matriz'] = true; // Temp logins often need wide access
+                
+                // Fetch branch name for temp user
+                $filialModel = new \App\Models\Filial();
+                $stmt = $filialModel->query("SELECT nome FROM filiais WHERE id = ?", [$tempUser['filial_id']]);
+                $filial = $stmt->fetch();
+                $_SESSION['filial_nome'] = $filial ? $filial['nome'] : 'Não Identificada';
                 
                 $success = true;
                 $motivo = 'Login temporário';
