@@ -4,7 +4,7 @@ namespace App\Controllers;
 use App\Services\InventoryService;
 
 class InventoryController extends BaseController {
-    // [/] Ajustar `InventoryController.php` para processar parâmetro `ordem`
+    // Ajustar `InventoryController.php` para processar parâmetro `ordem`
     private $service;
 
     public function __construct() {
@@ -78,12 +78,44 @@ class InventoryController extends BaseController {
                 $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
             }
 
+            // LEITURA INTELIGENTE DE IMAGEM (Qualquer formato válido)
             if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
                 $dir = dirname(__DIR__, 3) . "/public/uploads/produtos/";
                 if (!is_dir($dir)) mkdir($dir, 0777, true);
-                $filename = uniqid() . "." . pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
-                if (move_uploaded_file($_FILES['foto']['tmp_name'], $dir . $filename)) {
-                    $data['imagens'] = $filename;
+
+                $tmpName = $_FILES['foto']['tmp_name'];
+
+                // Instancia o detector inteligente de tipo de arquivo
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_file($finfo, $tmpName);
+                finfo_close($finfo);
+
+                // Mapeamento dos tipos de imagens mais comuns do mercado (incluindo modernos como WebP e AVIF)
+                $allowedMimeTypes = [
+                    'image/jpeg' => 'jpg',
+                    'image/png'  => 'png',
+                    'image/gif'  => 'gif',
+                    'image/webp' => 'webp',
+                    'image/avif' => 'avif',
+                    'image/bmp'  => 'bmp',
+                    'image/x-icon' => 'ico',
+                    'image/svg+xml' => 'svg'
+                ];
+
+                // Verifica se o arquivo é genuinamente uma imagem
+                if (array_key_exists($mimeType, $allowedMimeTypes)) {
+                    // Define a extensão com base no que a imagem REALMENTE é
+                    $extension = $allowedMimeTypes[$mimeType];
+                    
+                    // Gera o nome único com a extensão correta
+                    $filename = uniqid() . "." . $extension;
+                    
+                    if (move_uploaded_file($tmpName, $dir . $filename)) {
+                        $data['imagens'] = $filename;
+                    }
+                } else {
+                    // Caso queira abortar se não for imagem, descomente a linha abaixo:
+                    // $this->redirect('estoque.php?error=' . urlencode('O arquivo enviado não é uma imagem válida.'));
                 }
             }
 
@@ -206,12 +238,6 @@ class InventoryController extends BaseController {
         $db = \App\Config\Database::getInstance()->getConnection();
         $filialId = $_SESSION['filial_id'] ?? 1;
 
-        if ($table === 'produtos') {
-             // Se for produtos, geralmente queremos todos os produtos do catálogo (se centralizado)
-             // ou apenas os que têm estoque (se for filtro de estoque). 
-             // Mas aqui 'count' costuma ser usado para estatísticas gerais.
-        }
-
         $isMatriz = $_SESSION['is_matriz'] ?? false;
         $whereFilial = (!$isMatriz && $filialId) ? " AND $filialCol = $filialId" : "";
         return $db->query("SELECT COUNT(*) FROM $table WHERE ($condition) $whereFilial")->fetchColumn() ?: 0;
@@ -225,7 +251,6 @@ class InventoryController extends BaseController {
             'status' => $_GET['status'] ?? ''
         ];
 
-        // Custom filter logic for problems
         $sql = "SELECT pp.*, p.nome as produto_nome, p.codigo as produto_codigo, u.nome as usuario_nome 
                 FROM produtos_problema pp 
                 JOIN produtos p ON pp.produto_id = p.id 
@@ -256,7 +281,6 @@ class InventoryController extends BaseController {
         
         $statusLabels = $problemModel->getStatusLabels();
         
-        // Stats for the view
         $stats = [
             'total' => count($problems),
             'pendente' => 0,
