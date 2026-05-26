@@ -143,9 +143,35 @@ class User extends BaseModel {
         $filialId = $this->getFilialContext();
         $offset = ($currentPage - 1) * $perPage;
         
-        $where = $filialId ? "WHERE u.filial_id = $filialId" : "";
+        $whereConditions = [];
+        $params = [];
         
-        $total = $this->query("SELECT COUNT(*) FROM {$this->table} u $where")->fetchColumn();
+        if ($filialId) {
+            $whereConditions[] = "u.filial_id = ?";
+            $params[] = $filialId;
+        } elseif (!empty($filters['filial_id'])) {
+            $whereConditions[] = "u.filial_id = ?";
+            $params[] = $filters['filial_id'];
+        }
+        
+        if (!empty($filters['nivel'])) {
+            $whereConditions[] = "u.nivel = ?";
+            $params[] = $filters['nivel'];
+        }
+        
+        if (!empty($filters['q'])) {
+            $whereConditions[] = "(u.nome LIKE ? OR u.email LIKE ?)";
+            $params[] = '%' . $filters['q'] . '%';
+            $params[] = '%' . $filters['q'] . '%';
+        }
+        
+        $where = "";
+        if (!empty($whereConditions)) {
+            $where = "WHERE " . implode(" AND ", $whereConditions);
+        }
+        
+        $totalStmt = $this->query("SELECT COUNT(*) FROM {$this->table} u $where", $params);
+        $total = $totalStmt->fetchColumn();
         $pages = ceil($total / $perPage);
         
         $sql = "SELECT u.*, f.nome as filial_nome 
@@ -155,7 +181,7 @@ class User extends BaseModel {
                 ORDER BY {$order} 
                 LIMIT $perPage OFFSET $offset";
         
-        $data = $this->query($sql)->fetchAll();
+        $data = $this->query($sql, $params)->fetchAll();
         
         return [
             'data' => $data,
