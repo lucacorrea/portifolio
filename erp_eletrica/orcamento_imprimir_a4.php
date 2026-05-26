@@ -58,7 +58,7 @@ $currentDate = date('d') . ' de ' . $meses[(int)date('m')] . ' de ' . date('Y');
             max-width: 250px;
             height: auto;
             /* Simulando contorno/bordado preto ao redor do logotipo (drop-shadow nos 4 cantos) */
-            filter: drop-shadow(1px 1px 0px #000) drop-shadow(-1px -1px 0px #000) drop-shadow(1px -1px 0px #000) drop-shadow(-1px 1px 0px #000);
+            filter: drop-shadow(1px 1px 0px #000) drop-shadow(-1px -1px 0px #000) drop-shadow(1px -1px 0px #000) drop-shadow(-1px 1px 0px #000) drop-shadow(0px 2px 0px #000) drop-shadow(0px -2px 0px #000) drop-shadow(2px 0px 0px #000) drop-shadow(-2px 0px 0px #000);
         }
         .company-info {
             font-size: 13px;
@@ -162,6 +162,10 @@ $currentDate = date('d') . ' de ' . $meses[(int)date('m')] . ' de ' . date('Y');
         @media print {
             .no-print-actions { display: none !important; }
             body { background: transparent; }
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
     </style>
 </head>
