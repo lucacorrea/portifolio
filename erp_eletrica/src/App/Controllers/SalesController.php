@@ -387,6 +387,8 @@ class SalesController extends BaseController {
                     }
                 }
 
+                $multiDetalhes = isset($data['multi_detalhes']) ? json_encode($data['multi_detalhes']) : null;
+
                 $saleData = [
                     'cliente_id'          => $clientId,
                     'nome_cliente_avulso' => $clientId ? null : $nomePersist,
@@ -402,6 +404,7 @@ class SalesController extends BaseController {
                     'valor_recebido'      => isset($data['valor_recebido']) ? (float)$data['valor_recebido'] : null,
                     'troco'               => isset($data['troco']) ? (float)$data['troco'] : null,
                     'taxa_cartao'         => isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0,
+                    'multi_detalhes'      => $multiDetalhes,
                 ];
 
                 // Get Seller Commission Data (using the attributed seller's ID)
@@ -413,29 +416,34 @@ class SalesController extends BaseController {
 
                 $saleId = $saleModel->create($saleData);
 
-                // Automatic accounts receivable for 'fiado'
-                if ($data['pagamento'] === 'fiado') {
+                // Automatic accounts receivable for 'fiado' or multi-payment with fiado part
+                $valorFiadoMulti = 0;
+                if ($data['pagamento'] === 'multiplo' && isset($data['multi_detalhes']['fiado'])) {
+                    $valorFiadoMulti = (float)$data['multi_detalhes']['fiado'];
+                }
+
+                if ($data['pagamento'] === 'fiado' || $valorFiadoMulti > 0) {
                     if (empty($data['cliente_id'])) {
                         throw new \Exception("Vendas a prazo (fiado) exigem um cliente cadastrado.");
                     }
 
-                    $entrada = (float)($data['entrada_valor'] ?? 0);
-                    $entradaMetodo = $data['entrada_metodo'] ?? 'dinheiro';
-                    $valorDivida = (float)$data['total'] - $entrada;
+                    $entrada = ($data['pagamento'] === 'fiado') ? (float)($data['entrada_valor'] ?? 0) : ($data['total'] - $valorFiadoMulti);
+                    $entradaMetodo = ($data['pagamento'] === 'fiado') ? ($data['entrada_metodo'] ?? 'dinheiro') : 'multiplo';
+                    $valorDivida = ($data['pagamento'] === 'fiado') ? ((float)$data['total'] - $entrada) : $valorFiadoMulti;
 
                     $receivableModel = new \App\Models\AccountReceivable();
                     $receivableId = $receivableModel->create([
                         'venda_id'        => $saleId,
                         'cliente_id'      => $data['cliente_id'],
-                        'valor'           => $data['total'],
-                        'valor_pago'      => $entrada,
+                        'valor'           => ($data['pagamento'] === 'fiado') ? $data['total'] : $valorFiadoMulti,
+                        'valor_pago'      => ($data['pagamento'] === 'fiado') ? $entrada : 0,
                         'saldo'           => $valorDivida,
                         'status'          => ($valorDivida <= 0) ? 'pago' : 'pendente',
                         'data_vencimento' => date('Y-m-d', strtotime('+30 days')),
                         'filial_id'       => $_SESSION['filial_id'] ?? 1,
                     ]);
 
-                    if ($entrada > 0) {
+                    if ($data['pagamento'] === 'fiado' && $entrada > 0) {
                         $paymentModel = new \App\Models\AccountReceivablePayment();
                         $paymentModel->create([
                             'fiado_id' => $receivableId,
@@ -531,7 +539,27 @@ class SalesController extends BaseController {
                 // Record Cashier Movement
                 $movementModel = new \App\Models\CashierMovement();
 
-                if ($data['pagamento'] !== 'fiado') {
+                if ($data['pagamento'] === 'multiplo' && isset($data['multi_detalhes'])) {
+                    foreach ($data['multi_detalhes'] as $metodo => $val) {
+                        $val = (float)$val;
+                        if ($val > 0 && $metodo !== 'fiado') {
+                            // Se for dinheiro, abater o troco da movimentação do caixa
+                            $valorFinalMetodo = $val;
+                            if ($metodo === 'dinheiro' && isset($data['troco']) && (float)$data['troco'] > 0) {
+                                $valorFinalMetodo -= (float)$data['troco'];
+                            }
+                            if ($valorFinalMetodo > 0) {
+                                $movementModel->create([
+                                    'caixa_id'    => $caixaAberto['id'],
+                                    'tipo'        => 'entrada',
+                                    'valor'       => $valorFinalMetodo,
+                                    'motivo'      => "Venda #$saleId (" . strtoupper($metodo) . " - Múltiplo)",
+                                    'operador_id' => $_SESSION['usuario_id'],
+                                ]);
+                            }
+                        }
+                    }
+                } else if ($data['pagamento'] !== 'fiado' && $data['pagamento'] !== 'multiplo') {
                     $movementModel->create([
                         'caixa_id'    => $caixaAberto['id'],
                         'tipo'        => 'entrada',

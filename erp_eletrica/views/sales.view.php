@@ -175,6 +175,12 @@
                                 <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado) (F8)
                             </label>
                         </div>
+                        <div class="col-12 col-sm-6">
+                            <input type="radio" class="btn-check" name="payment" id="pay_multiplo" value="multiplo">
+                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_multiplo">
+                                <i class="fas fa-layer-group me-2 text-dark"></i> Múltiplo (Ctrl+M)
+                            </label>
+                        </div>
                     </div>
                     
                     <!-- Card Tax Input -->
@@ -202,6 +208,47 @@
                             </div>
                         </div>
                         <div class="extra-small text-success mt-1"><i class="fas fa-calculator me-1"></i> O troco é calculado automaticamente.</div>
+                    </div>
+
+                    <!-- Multi-payment details container -->
+                    <div id="multiPaymentContainer" class="d-none mt-3 p-3 bg-secondary bg-opacity-10 border border-secondary border-opacity-10 rounded">
+                        <label class="form-label extra-small fw-bold text-uppercase opacity-75 d-block mb-2"><i class="fas fa-layer-group me-1"></i> Detalhes do Pagamento Múltiplo</label>
+                        <div class="row g-2">
+                            <div class="col-6 mb-2">
+                                <label class="form-label extra-small opacity-75">Dinheiro (R$)</label>
+                                <input type="number" id="multi_val_dinheiro" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label extra-small opacity-75">Pix (R$)</label>
+                                <input type="number" id="multi_val_pix" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label extra-small opacity-75">Crédito (R$)</label>
+                                <input type="number" id="multi_val_credito" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label extra-small opacity-75">Débito (R$)</label>
+                                <input type="number" id="multi_val_debito" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label extra-small opacity-75">Boleto (R$)</label>
+                                <input type="number" id="multi_val_boleto" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label extra-small opacity-75">A Prazo/Fiado (R$)</label>
+                                <input type="number" id="multi_val_fiado" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-top">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="small fw-bold">Total Recebido:</span>
+                                <span class="small fw-bold text-success" id="multi_total_recebido">R$ 0,00</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small fw-bold" id="multi_status_label">Falta Receber:</span>
+                                <span class="small fw-bold text-danger" id="multi_status_val">R$ 0,00</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -785,6 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
         radio.addEventListener('change', (e) => {
             const cardContainer = document.getElementById('cardTaxContainer');
             const cashContainer = document.getElementById('cashChangeContainer');
+            const multiContainer = document.getElementById('multiPaymentContainer');
             
             // Toggle Card Tax
             if (e.target.value.includes('cartao')) {
@@ -803,6 +851,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => valorRecebido.focus(), 100);
             } else {
                 cashContainer.classList.add('d-none');
+            }
+
+            // Toggle Multi Payment
+            if (e.target.value === 'multiplo') {
+                multiContainer.classList.remove('d-none');
+                calculateMultiPay();
+                setTimeout(() => document.getElementById('multi_val_dinheiro').focus(), 100);
+            } else {
+                multiContainer.classList.add('d-none');
             }
 
             renderCart();
@@ -832,6 +889,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function calculateMultiPay() {
+    const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
+    const total = parseFloat(finalTotalText) || 0;
+
+    const valDinheiro = parseFloat(document.getElementById('multi_val_dinheiro').value) || 0;
+    const valPix = parseFloat(document.getElementById('multi_val_pix').value) || 0;
+    const valCredito = parseFloat(document.getElementById('multi_val_credito').value) || 0;
+    const valDebito = parseFloat(document.getElementById('multi_val_debito').value) || 0;
+    const valBoleto = parseFloat(document.getElementById('multi_val_boleto').value) || 0;
+    const valFiado = parseFloat(document.getElementById('multi_val_fiado').value) || 0;
+
+    const totalRecebido = valDinheiro + valPix + valCredito + valDebito + valBoleto + valFiado;
+    
+    document.getElementById('multi_total_recebido').innerText = `R$ ${totalRecebido.toFixed(2).replace('.', ',')}`;
+
+    const diff = total - totalRecebido;
+    const statusLabel = document.getElementById('multi_status_label');
+    const statusVal = document.getElementById('multi_status_val');
+
+    if (diff > 0.005) {
+        statusLabel.innerText = "Falta Receber:";
+        statusVal.innerText = `R$ ${diff.toFixed(2).replace('.', ',')}`;
+        statusVal.className = "small fw-bold text-danger";
+    } else if (diff < -0.005) {
+        if (valDinheiro > 0) {
+            const troco = Math.abs(diff);
+            statusLabel.innerText = "Troco (Dinheiro):";
+            statusVal.innerText = `R$ ${troco.toFixed(2).replace('.', ',')}`;
+            statusVal.className = "small fw-bold text-success";
+        } else {
+            statusLabel.innerText = "Excesso:";
+            statusVal.innerText = `R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}`;
+            statusVal.className = "small fw-bold text-warning";
+        }
+    } else {
+        statusLabel.innerText = "Total Recebido:";
+        statusVal.innerText = "OK!";
+        statusVal.className = "small fw-bold text-success";
+    }
+
+    updateCheckoutButtonState();
+}
 
 function calculateChange() {
     const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
@@ -864,9 +964,6 @@ function updateCheckoutButtonState() {
     const payment = document.querySelector('input[name="payment"]:checked')?.value;
     const discountPercent = getCurrentDiscountPercentage();
     
-    // If there is a discount and user is not admin and not authorized, keep it disabled
-    // If there is a discount and user is not admin and not authorized, 
-    // we keep it enabled so they can click and trigger the authorization modal
     if (discountPercent > 0.01 && !isAuthorized && currentUserLevel !== 'admin') {
         btnCheckout.disabled = false;
     }
@@ -877,6 +974,20 @@ function updateCheckoutButtonState() {
         const recebido = parseCurrencyToFloat(document.getElementById('valor_recebido').value) || 0;
         
         btnCheckout.disabled = (recebido < total || recebido === 0);
+    } else if (payment === 'multiplo') {
+        const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
+        const total = parseFloat(finalTotalText) || 0;
+        
+        const valDinheiro = parseFloat(document.getElementById('multi_val_dinheiro').value) || 0;
+        const valPix = parseFloat(document.getElementById('multi_val_pix').value) || 0;
+        const valCredito = parseFloat(document.getElementById('multi_val_credito').value) || 0;
+        const valDebito = parseFloat(document.getElementById('multi_val_debito').value) || 0;
+        const valBoleto = parseFloat(document.getElementById('multi_val_boleto').value) || 0;
+        const valFiado = parseFloat(document.getElementById('multi_val_fiado').value) || 0;
+        
+        const totalRecebido = valDinheiro + valPix + valCredito + valDebito + valBoleto + valFiado;
+        
+        btnCheckout.disabled = (totalRecebido < total || totalRecebido === 0);
     } else {
         btnCheckout.disabled = false;
     }
@@ -2531,7 +2642,13 @@ if (btnCheckout) {
 
         const payment = document.querySelector('input[name="payment"]:checked').value;
         
-        if (payment === 'fiado') {
+        let hasFiado = payment === 'fiado';
+        if (payment === 'multiplo') {
+            const valFiado = parseFloat(document.getElementById('multi_val_fiado').value) || 0;
+            if (valFiado > 0) hasFiado = true;
+        }
+
+        if (hasFiado) {
             if (!selectedCustomerId) {
                 alert('Vendas a prazo (Fiado) exigem a seleção de um cliente cadastrado.');
                 customerSearch.focus();
@@ -2557,11 +2674,15 @@ if (btnCheckout) {
                 console.error("Erro validando cliente:", err);
             }
 
-            // Proceed to entry modal if complete
-            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
-            document.getElementById('entradaValor').value = '';
-            modal.show();
-            setTimeout(() => document.getElementById('entradaValor').focus(), 500);
+            // Proceed to entry modal if complete (only if not multiplo, multiplo handles fiado directly without entry popup)
+            if (payment === 'fiado') {
+                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEntrada'));
+                document.getElementById('entradaValor').value = '';
+                modal.show();
+                setTimeout(() => document.getElementById('entradaValor').focus(), 500);
+            } else {
+                processarCheckout();
+            }
         } else {
             processarCheckout();
         }
@@ -2647,11 +2768,27 @@ async function processarCheckout() {
     // Troco / valor recebido (only relevant for dinheiro)
     let valorRecebido = null;
     let troco = 0;
+    let multiDetalhes = null;
+
     if (payment === 'dinheiro') {
         const valorRecebidoEl = document.getElementById('valor_recebido');
         valorRecebido = valorRecebidoEl ? (parseCurrencyToFloat(valorRecebidoEl.value) || total) : total;
         if (valorRecebido < total) valorRecebido = total; // ensure at least total
         troco = parseCurrencyToFloat(document.getElementById('troco_input').value) || (valorRecebido - total);
+    } else if (payment === 'multiplo') {
+        multiDetalhes = {
+            dinheiro: parseFloat(document.getElementById('multi_val_dinheiro').value) || 0,
+            pix: parseFloat(document.getElementById('multi_val_pix').value) || 0,
+            credito: parseFloat(document.getElementById('multi_val_credito').value) || 0,
+            debito: parseFloat(document.getElementById('multi_val_debito').value) || 0,
+            boleto: parseFloat(document.getElementById('multi_val_boleto').value) || 0,
+            fiado: parseFloat(document.getElementById('multi_val_fiado').value) || 0
+        };
+        const totalRecebido = Object.values(multiDetalhes).reduce((a, b) => a + b, 0);
+        if (totalRecebido > total && multiDetalhes.dinheiro > 0) {
+            troco = totalRecebido - total;
+            valorRecebido = multiDetalhes.dinheiro;
+        }
     }
 
     if (payment === 'fiado' && entrada >= total) {
@@ -2696,7 +2833,8 @@ async function processarCheckout() {
         taxa_cartao: taxaCartao,
         supervisor_id: authSupervisorId,
         supervisor_credential: authSupervisorCredential,
-        tipo_nota: tipoNota
+        tipo_nota: tipoNota,
+        multi_detalhes: multiDetalhes
     };
 
     try {
@@ -2959,6 +3097,16 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F1' && e.ctrlKey) {
         e.preventDefault();
         document.getElementById('pay_pix').click();
+    }
+
+    // Multiplo: Ctrl+M
+    if (e.key === 'm' && e.ctrlKey) {
+        e.preventDefault();
+        const multiBtn = document.getElementById('pay_multiplo');
+        if (multiBtn) {
+            multiBtn.checked = true;
+            multiBtn.dispatchEvent(new Event('change', { bubbles: true }));
+        }
     }
 
     // Discount: Ctrl+F12
