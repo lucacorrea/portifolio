@@ -1045,6 +1045,7 @@ body:has(.admin-shell),
 .admin-data-table {
   overflow-x: auto;
   padding: 0;
+  scrollbar-width: thin;
 }
 
 .admin-data-table.compact {
@@ -1053,16 +1054,18 @@ body:has(.admin-shell),
 
 .admin-data-table table {
   width: 100%;
-  min-width: 760px;
+  min-width: 980px;
   border-collapse: collapse;
+  table-layout: auto;
 }
 
 .admin-data-table th,
 .admin-data-table td {
-  padding: 14px 16px;
+  padding: 10px 14px;
   text-align: left;
   vertical-align: middle;
   border-bottom: 1px solid var(--admin-line);
+  line-height: 1.3;
 }
 
 .admin-data-table th {
@@ -1076,8 +1079,9 @@ body:has(.admin-shell),
 
 .admin-data-table td {
   color: var(--admin-text);
-  font-size: .92rem;
+  font-size: .86rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .admin-data-table tr:hover td {
@@ -1088,13 +1092,26 @@ body:has(.admin-shell),
   display: block;
   color: var(--admin-primary);
   font-weight: 950;
+  line-height: 1.22;
 }
 
 .admin-data-table td small {
   display: block;
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--admin-muted);
+  font-size: .76rem;
   font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-data-table td:first-child,
+.admin-data-table td:nth-child(2) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-data-table td:first-child {
+  min-width: 210px;
 }
 
 .admin-data-table tr.inventory-row-empty td {
@@ -1131,8 +1148,10 @@ body:has(.admin-shell),
 
 .inventory-stock-cell {
   display: grid;
+  grid-template-columns: minmax(86px, auto) 70px max-content;
+  align-items: center;
   gap: 8px;
-  min-width: 168px;
+  min-width: 230px;
 }
 
 .inventory-stock-meta {
@@ -1142,20 +1161,20 @@ body:has(.admin-shell),
 
 .inventory-stock-meta strong {
   color: var(--admin-primary);
-  font-size: .9rem;
+  font-size: .82rem;
   font-weight: 950;
 }
 
 .inventory-stock-meta small {
   margin: 0;
   color: var(--admin-muted);
-  font-size: .78rem;
+  font-size: .72rem;
   font-weight: 800;
 }
 
 .inventory-stock-bar {
   width: 100%;
-  height: 8px;
+  height: 6px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(38, 49, 43, .10);
@@ -1192,14 +1211,14 @@ body:has(.admin-shell),
 .admin-avatar-line {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: 220px;
+  gap: 10px;
+  min-width: 210px;
 }
 
 .admin-avatar {
-  flex: 0 0 46px;
-  width: 46px;
-  height: 46px;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -1207,7 +1226,7 @@ body:has(.admin-shell),
   background: var(--admin-primary-soft);
   border: 1px solid rgba(36, 72, 54, .12);
   color: var(--admin-primary);
-  font-size: .74rem;
+  font-size: .68rem;
   font-weight: 950;
 }
 
@@ -1227,7 +1246,8 @@ body:has(.admin-shell),
 
 .admin-item-title {
   display: grid;
-  gap: 2px;
+  gap: 1px;
+  min-width: 0;
 }
 
 .admin-item-title strong {
@@ -1240,8 +1260,14 @@ body:has(.admin-shell),
 
 .admin-table-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  min-width: max-content;
+}
+
+.admin-table-actions > * {
+  flex: 0 0 auto;
 }
 
 .admin-table-actions form {
@@ -1251,14 +1277,16 @@ body:has(.admin-shell),
 
 .admin-table-actions a,
 .admin-table-actions button {
-  min-height: 32px;
-  padding: 7px 10px;
+  min-height: 30px;
+  padding: 6px 9px;
   border-radius: var(--admin-radius-sm);
   border: 1px solid var(--admin-line);
   background: #fff;
   color: var(--admin-primary);
-  font-size: .78rem;
+  font-size: .76rem;
   font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -1486,10 +1514,10 @@ body.admin-modal-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  padding: 6px 9px;
+  min-height: 24px;
+  padding: 5px 8px;
   border-radius: var(--admin-radius-sm);
-  font-size: .72rem;
+  font-size: .68rem;
   font-weight: 900;
   line-height: 1;
   white-space: nowrap;
@@ -2858,20 +2886,20 @@ body.admin-modal-open {
 .admin-tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 7px;
+  gap: 4px;
+  margin-top: 4px;
 }
 
 .admin-tag-list span {
-  min-height: 24px;
+  min-height: 20px;
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: var(--admin-radius-sm);
   background: var(--admin-surface-3);
   border: 1px solid rgba(36, 72, 54, .10);
   color: var(--admin-primary);
-  font-size: .68rem;
+  font-size: .64rem;
   font-weight: 900;
   line-height: 1;
 }
@@ -2990,25 +3018,26 @@ body.admin-modal-open {
 }
 
 .order-actions {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .order-actions form {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 5px;
   align-items: center;
 }
 
 .order-actions select {
-  min-height: 34px;
-  max-width: 170px;
+  min-height: 30px;
+  max-width: 156px;
   border: 1px solid rgba(47, 72, 58, .16);
   border-radius: 9px;
   background: #fffdf8;
   color: #244836;
   font-weight: 800;
-  padding: 0 10px;
+  padding: 0 9px;
+  font-size: .76rem;
 }
 
 .admin-order-details {
@@ -3017,14 +3046,14 @@ body.admin-modal-open {
 
 .admin-order-details summary {
   display: inline-flex;
-  min-height: 34px;
+  min-height: 30px;
   align-items: center;
-  padding: 0 11px;
+  padding: 0 10px;
   border-radius: 9px;
   background: #edf3e9;
   color: #244836;
   cursor: pointer;
-  font-size: .78rem;
+  font-size: .76rem;
   font-weight: 950;
   list-style: none;
 }
