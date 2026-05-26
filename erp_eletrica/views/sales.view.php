@@ -138,115 +138,104 @@
 
                 <div class="mb-4">
                     <label class="form-label small fw-bold text-uppercase text-muted">Método de Pagamento</label>
-                    <div class="row g-2">
-                        <div class="col-12 col-sm-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_dinheiro" value="dinheiro" checked>
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_dinheiro">
-                                <i class="fas fa-money-bill-wave me-2 text-success"></i> Dinheiro (F1)
-                            </label>
-                        </div>
-                        <div class="col-12 col-sm-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_pix" value="pix">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_pix">
-                                <i class="fa-brands fa-pix me-2 text-info"></i> Pix (Ctrl+F1)
-                            </label>
-                        </div>
-                        <div class="col-12 col-sm-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_credito" value="cartao_credito">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_credito">
-                                <i class="fas fa-credit-card me-2 text-primary"></i> Crédito (F6)
-                            </label>
-                        </div>
-                        <div class="col-12 col-sm-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_debito" value="cartao_debito">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_debito">
-                                <i class="fas fa-credit-card me-2 text-info"></i> Débito (F7)
-                            </label>
-                        </div>
-                        <div class="col-12 col-sm-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_boleto" value="boleto">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_boleto">
-                                <i class="fas fa-barcode me-2 text-secondary"></i> Boleto (F11)
-                            </label>
-                        </div>
-                        <div class="col-12 col-sm-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_fiado" value="fiado">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_fiado">
-                                <i class="fas fa-hand-holding-usd me-2 text-warning"></i> A Prazo (Fiado) (F8)
-                            </label>
-                        </div>
-                        <div class="col-12 col-sm-6">
-                            <input type="radio" class="btn-check" name="payment" id="pay_multiplo" value="multiplo">
-                            <label class="btn btn-outline-secondary d-block text-start p-3 border" for="pay_multiplo">
-                                <i class="fas fa-layer-group me-2 text-dark"></i> Múltiplo (Ctrl+M)
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Card Tax Input -->
-                    <div id="cardTaxContainer" class="d-none mt-3 p-3 bg-info bg-opacity-10 border border-info border-opacity-10 rounded">
-                        <label class="form-label extra-small fw-bold text-uppercase opacity-75">Taxa da Maquininha (%)</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0 text-info"><i class="fas fa-percent"></i></span>
-                            <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="renderCart()">
-                        </div>
+
+                    <!-- Hidden inputs to keep compatibility with existing JS and hotkeys -->
+                    <input type="radio" class="d-none" name="payment" id="pay_dinheiro" value="dinheiro" checked>
+                    <input type="radio" class="d-none" name="payment" id="pay_pix" value="pix">
+                    <input type="radio" class="d-none" name="payment" id="pay_credito" value="cartao_credito">
+                    <input type="radio" class="d-none" name="payment" id="pay_debito" value="cartao_debito">
+                    <input type="radio" class="d-none" name="payment" id="pay_boleto" value="boleto">
+                    <input type="radio" class="d-none" name="payment" id="pay_fiado" value="fiado">
+                    <input type="radio" class="d-none" name="payment" id="pay_multiplo" value="multiplo">
+
+                    <!-- Toggle Mode Chips: Único vs Múltiplos -->
+                    <div class="chip-toggle mb-3">
+                        <div class="chip active" id="chipPagUnico" onclick="setPayMode('unico')">Único</div>
+                        <div class="chip" id="chipPagMulti" onclick="setPayMode('multiplo')">Múltiplos</div>
                     </div>
 
-                    <!-- Cash Change Calculator (Dinheiro) -->
-                    <div id="cashChangeContainer" class="d-none mt-3 p-3 bg-success bg-opacity-10 border border-success border-opacity-10 rounded">
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor Recebido (R$)</label>
-                                <input type="number" id="valor_recebido" class="form-control form-control-lg fw-bold text-success border-success" placeholder="0,00" step="0.01" min="0" oninput="calculateChange()">
+                    <!-- Single Mode (Único) -->
+                    <div id="wrapPagUnico">
+                        <div class="pay-grid mb-3" id="payBtns">
+                            <div class="pay-btn active" data-pay="dinheiro" onclick="selectSinglePay('dinheiro')">
+                                <i class="fas fa-money-bill-wave text-success"></i> Dinheiro
                             </div>
-                            <div class="col-6">
-                                <label class="form-label extra-small fw-bold text-uppercase opacity-75">Troco (R$)</label>
-                                <div id="troco_display" class="form-control form-control-lg fw-bold bg-white text-danger border-0 d-flex align-items-center justify-content-center" style="height: calc(1.5em + 1rem + 2px);">
-                                    R$ 0,00
+                            <div class="pay-btn" data-pay="pix" onclick="selectSinglePay('pix')">
+                                <i class="fa-brands fa-pix text-info"></i> Pix
+                            </div>
+                            <div class="pay-btn" data-pay="cartao_credito" onclick="selectSinglePay('cartao_credito')">
+                                <i class="fas fa-credit-card text-primary"></i> Crédito
+                            </div>
+                            <div class="pay-btn" data-pay="cartao_debito" onclick="selectSinglePay('cartao_debito')">
+                                <i class="fas fa-credit-card text-info"></i> Débito
+                            </div>
+                            <div class="pay-btn" data-pay="boleto" onclick="selectSinglePay('boleto')">
+                                <i class="fas fa-barcode text-secondary"></i> Boleto
+                            </div>
+                            <div class="pay-btn" data-pay="fiado" onclick="selectSinglePay('fiado')">
+                                <i class="fas fa-hand-holding-usd text-warning"></i> A Prazo
+                            </div>
+                        </div>
+
+                        <!-- Card Tax Input -->
+                        <div id="cardTaxContainer" class="d-none mb-3 p-3 bg-info bg-opacity-10 border border-info border-opacity-10 rounded">
+                            <label class="form-label extra-small fw-bold text-uppercase opacity-75">Taxa da Maquininha (%)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-info"><i class="fas fa-percent"></i></span>
+                                <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="renderCart()">
+                            </div>
+                        </div>
+
+                        <!-- Cash Change Calculator (Dinheiro) -->
+                        <div id="cashChangeContainer" class="d-none mb-3 p-3 bg-success bg-opacity-10 border border-success border-opacity-10 rounded">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Valor Recebido (R$)</label>
+                                    <input type="number" id="valor_recebido" class="form-control form-control-lg fw-bold text-success border-success" placeholder="0,00" step="0.01" min="0" oninput="calculateChange()">
                                 </div>
-                                <input type="hidden" id="troco_input" value="0">
+                                <div class="col-6">
+                                    <label class="form-label extra-small fw-bold text-uppercase opacity-75">Troco (R$)</label>
+                                    <div id="troco_display" class="form-control form-control-lg fw-bold bg-white text-danger border-0 d-flex align-items-center justify-content-center" style="height: calc(1.5em + 1rem + 2px);">
+                                        R$ 0,00
+                                    </div>
+                                    <input type="hidden" id="troco_input" value="0">
+                                </div>
                             </div>
+                            <div class="extra-small text-success mt-1"><i class="fas fa-calculator me-1"></i> O troco é calculated automaticamente.</div>
                         </div>
-                        <div class="extra-small text-success mt-1"><i class="fas fa-calculator me-1"></i> O troco é calculado automaticamente.</div>
                     </div>
 
-                    <!-- Multi-payment details container -->
-                    <div id="multiPaymentContainer" class="d-none mt-3 p-3 bg-secondary bg-opacity-10 border border-secondary border-opacity-10 rounded">
-                        <label class="form-label extra-small fw-bold text-uppercase opacity-75 d-block mb-2"><i class="fas fa-layer-group me-1"></i> Detalhes do Pagamento Múltiplo</label>
-                        <div class="row g-2">
-                            <div class="col-6 mb-2">
-                                <label class="form-label extra-small opacity-75">Dinheiro (R$)</label>
-                                <input type="number" id="multi_val_dinheiro" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
-                            </div>
-                            <div class="col-6 mb-2">
-                                <label class="form-label extra-small opacity-75">Pix (R$)</label>
-                                <input type="number" id="multi_val_pix" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
-                            </div>
-                            <div class="col-6 mb-2">
-                                <label class="form-label extra-small opacity-75">Crédito (R$)</label>
-                                <input type="number" id="multi_val_credito" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
-                            </div>
-                            <div class="col-6 mb-2">
-                                <label class="form-label extra-small opacity-75">Débito (R$)</label>
-                                <input type="number" id="multi_val_debito" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
-                            </div>
-                            <div class="col-6 mb-2">
-                                <label class="form-label extra-small opacity-75">Boleto (R$)</label>
-                                <input type="number" id="multi_val_boleto" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
-                            </div>
-                            <div class="col-6 mb-2">
-                                <label class="form-label extra-small opacity-75">A Prazo/Fiado (R$)</label>
-                                <input type="number" id="multi_val_fiado" class="form-control form-control-sm fw-bold multi-pay-input" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()">
-                            </div>
+                    <!-- Multiple Mode (Múltiplos) -->
+                    <div id="wrapPagMulti" class="d-none">
+                        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                            <div class="muted extra-small">Some os pagamentos para fechar o total. Se passar do total, precisa ter Dinheiro (troco).</div>
+                            <button class="btn btn-sm btn-outline-primary fw-bold" id="btnAddPay" type="button" onclick="addPayRow()">
+                                <i class="fas fa-plus me-1"></i> Adicionar
+                            </button>
                         </div>
-                        <div class="mt-3 pt-2 border-top">
+
+                        <div id="paysWrap">
+                            <!-- Dynamic rows loaded here -->
+                        </div>
+
+                        <div class="totals mt-3 p-3 bg-light border rounded">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="small fw-bold">Total Recebido:</span>
-                                <span class="small fw-bold text-success" id="multi_total_recebido">R$ 0,00</span>
+                                <span class="small fw-bold">Somatório:</span>
+                                <span class="small fw-bold" id="multi_somatorio">R$ 0,00</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="small fw-bold">Diferença (Pag - Total):</span>
+                                <span class="small fw-bold" id="multi_diferenca">R$ 0,00</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="small fw-bold" id="multi_status_label">Falta Receber:</span>
-                                <span class="small fw-bold text-danger" id="multi_status_val">R$ 0,00</span>
+                                <span class="small fw-bold">Troco:</span>
+                                <span class="small fw-bold" id="multi_troco">R$ 0,00</span>
+                            </div>
+                            <div class="msg-ok mt-2 text-success fw-bold d-none" id="multi_ok_msg">
+                                <i class="fas fa-check-circle me-1"></i> Pagamento OK
+                            </div>
+                            <div class="msg-err mt-2 text-danger fw-bold d-none" id="multi_err_msg">
+                                <i class="fas fa-exclamation-triangle me-1"></i> Pagamento inválido. Ajuste os valores.
                             </div>
                         </div>
                     </div>
@@ -827,39 +816,52 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cashChangeContainer').classList.remove('d-none');
     }
     
-    // Payment Options Handler
+    // Enhanced Payment Options Handler
     document.querySelectorAll('input[name="payment"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
             const cardContainer = document.getElementById('cardTaxContainer');
             const cashContainer = document.getElementById('cashChangeContainer');
-            const multiContainer = document.getElementById('multiPaymentContainer');
+            const multiContainer = document.getElementById('wrapPagMulti');
+            const singleContainer = document.getElementById('wrapPagUnico');
             
-            // Toggle Card Tax
-            if (e.target.value.includes('cartao')) {
-                cardContainer.classList.remove('d-none');
-                document.getElementById('taxa_cartao').focus();
-            } else {
-                cardContainer.classList.add('d-none');
-            }
-
-            // Toggle Cash Change Calculator
-            if (e.target.value === 'dinheiro') {
-                cashContainer.classList.remove('d-none');
-                const valorRecebido = document.getElementById('valor_recebido');
-                valorRecebido.value = '';
-                valorRecebido.dataset.autoFilled = 'true';
-                setTimeout(() => valorRecebido.focus(), 100);
-            } else {
-                cashContainer.classList.add('d-none');
-            }
-
-            // Toggle Multi Payment
-            if (e.target.value === 'multiplo') {
-                multiContainer.classList.remove('d-none');
+            const isMulti = e.target.value === 'multiplo';
+            
+            // Toggle active state on chips
+            document.getElementById('chipPagMulti').classList.toggle('active', isMulti);
+            document.getElementById('chipPagUnico').classList.toggle('active', !isMulti);
+            
+            // Toggle container displays
+            multiContainer.classList.toggle('d-none', !isMulti);
+            singleContainer.classList.toggle('d-none', isMulti);
+            
+            if (isMulti) {
+                ensureOnePayRow();
                 calculateMultiPay();
-                setTimeout(() => document.getElementById('multi_val_dinheiro').focus(), 100);
             } else {
-                multiContainer.classList.add('d-none');
+                // Update active state on single pay-btns
+                document.querySelectorAll('#payBtns .pay-btn').forEach(btn => {
+                    const payVal = btn.getAttribute('data-pay');
+                    btn.classList.toggle('active', payVal === e.target.value);
+                });
+                
+                // Toggle Card Tax
+                if (e.target.value.includes('cartao')) {
+                    cardContainer.classList.remove('d-none');
+                    document.getElementById('taxa_cartao').focus();
+                } else {
+                    cardContainer.classList.add('d-none');
+                }
+
+                // Toggle Cash Change Calculator
+                if (e.target.value === 'dinheiro') {
+                    cashContainer.classList.remove('d-none');
+                    const valorRecebido = document.getElementById('valor_recebido');
+                    valorRecebido.value = '';
+                    valorRecebido.dataset.autoFilled = 'true';
+                    setTimeout(() => valorRecebido.focus(), 100);
+                } else {
+                    cashContainer.classList.add('d-none');
+                }
             }
 
             renderCart();
@@ -890,44 +892,134 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Single payment selector click handler
+function selectSinglePay(method) {
+    const radio = document.querySelector(`input[name="payment"][value="${method}"]`);
+    if (radio) {
+        radio.checked = true;
+        radio.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
+// Payment Mode toggle helper (Único vs Múltiplos)
+function setPayMode(mode) {
+    if (mode === 'unico') {
+        const activeRadio = document.querySelector('input[name="payment"]:checked');
+        if (activeRadio && activeRadio.value !== 'multiplo') {
+            activeRadio.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            selectSinglePay('dinheiro');
+        }
+    } else {
+        const radio = document.getElementById('pay_multiplo');
+        if (radio) {
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+}
+
+// Múltiplos dynamic row template
+function payRowTpl(method = "pix", value = "") {
+    return `
+        <div class="pay-split-row border p-2 mb-2 rounded bg-white shadow-sm position-relative">
+            <div class="row g-2 align-items-end">
+                <div class="col-5">
+                    <label class="form-label extra-small fw-bold text-muted text-uppercase mb-1">Forma</label>
+                    <select class="form-select form-select-sm mMethod" onchange="calculateMultiPay()">
+                        <option value="dinheiro" ${method==="dinheiro"?"selected":""}>Dinheiro</option>
+                        <option value="pix" ${method==="pix"?"selected":""}>Pix</option>
+                        <option value="credito" ${method==="credito"?"selected":""}>Crédito</option>
+                        <option value="debito" ${method==="debito"?"selected":""}>Débito</option>
+                        <option value="boleto" ${method==="boleto"?"selected":""}>Boleto</option>
+                        <option value="fiado" ${method==="fiado"?"selected":""}>A Prazo (Fiado)</option>
+                    </select>
+                </div>
+                <div class="col-5">
+                    <label class="form-label extra-small fw-bold text-muted text-uppercase mb-1">Valor</label>
+                    <input type="number" class="form-control form-control-sm fw-bold mValue text-success" value="${value}" placeholder="0,00" step="0.01" min="0" oninput="calculateMultiPay()" />
+                </div>
+                <div class="col-2 text-end">
+                    <button class="btn btn-sm btn-outline-danger w-100" type="button" onclick="removePayRow(this)" style="height: 31px; padding: 0;">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function addPayRow(method = "pix", value = "") {
+    const paysWrap = document.getElementById('paysWrap');
+    paysWrap.insertAdjacentHTML('beforeend', payRowTpl(method, value));
+    calculateMultiPay();
+}
+
+function removePayRow(btn) {
+    const row = btn.closest('.pay-split-row');
+    if (row) {
+        row.remove();
+    }
+    ensureOnePayRow();
+    calculateMultiPay();
+}
+
+function ensureOnePayRow() {
+    const paysWrap = document.getElementById('paysWrap');
+    if (!paysWrap.querySelector('.pay-split-row')) {
+        addPayRow("pix", "");
+    }
+}
+
 function calculateMultiPay() {
     const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
     const total = parseFloat(finalTotalText) || 0;
 
-    const valDinheiro = parseFloat(document.getElementById('multi_val_dinheiro').value) || 0;
-    const valPix = parseFloat(document.getElementById('multi_val_pix').value) || 0;
-    const valCredito = parseFloat(document.getElementById('multi_val_credito').value) || 0;
-    const valDebito = parseFloat(document.getElementById('multi_val_debito').value) || 0;
-    const valBoleto = parseFloat(document.getElementById('multi_val_boleto').value) || 0;
-    const valFiado = parseFloat(document.getElementById('multi_val_fiado').value) || 0;
+    let valDinheiro = 0;
+    let valPix = 0;
+    let valCredito = 0;
+    let valDebito = 0;
+    let valBoleto = 0;
+    let valFiado = 0;
 
-    const totalRecebido = valDinheiro + valPix + valCredito + valDebito + valBoleto + valFiado;
-    
-    document.getElementById('multi_total_recebido').innerText = `R$ ${totalRecebido.toFixed(2).replace('.', ',')}`;
+    document.querySelectorAll('.pay-split-row').forEach(row => {
+        const method = row.querySelector('.mMethod').value;
+        const val = parseFloat(row.querySelector('.mValue').value) || 0;
+        if (method === 'dinheiro') valDinheiro += val;
+        else if (method === 'pix') valPix += val;
+        else if (method === 'credito') valCredito += val;
+        else if (method === 'debito') valDebito += val;
+        else if (method === 'boleto') valBoleto += val;
+        else if (method === 'fiado') valFiado += val;
+    });
 
-    const diff = total - totalRecebido;
-    const statusLabel = document.getElementById('multi_status_label');
-    const statusVal = document.getElementById('multi_status_val');
+    const sum = valDinheiro + valPix + valCredito + valDebito + valBoleto + valFiado;
+    const diff = sum - total;
+    const hasCash = valDinheiro > 0;
 
-    if (diff > 0.005) {
-        statusLabel.innerText = "Falta Receber:";
-        statusVal.innerText = `R$ ${diff.toFixed(2).replace('.', ',')}`;
-        statusVal.className = "small fw-bold text-danger";
-    } else if (diff < -0.005) {
-        if (valDinheiro > 0) {
-            const troco = Math.abs(diff);
-            statusLabel.innerText = "Troco (Dinheiro):";
-            statusVal.innerText = `R$ ${troco.toFixed(2).replace('.', ',')}`;
-            statusVal.className = "small fw-bold text-success";
-        } else {
-            statusLabel.innerText = "Excesso:";
-            statusVal.innerText = `R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}`;
-            statusVal.className = "small fw-bold text-warning";
-        }
+    let ok = false;
+    let troco = 0;
+
+    if (Math.abs(diff) < 0.009) {
+        ok = true;
+    } else if (diff > 0.009 && hasCash) {
+        ok = true;
+        troco = diff;
+    }
+
+    document.getElementById('multi_somatorio').innerText = `R$ ${sum.toFixed(2).replace('.', ',')}`;
+    document.getElementById('multi_diferenca').innerText = `${diff >= 0 ? '' : '-' }R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}`;
+    document.getElementById('multi_troco').innerText = `R$ ${troco.toFixed(2).replace('.', ',')}`;
+
+    const okMsg = document.getElementById('multi_ok_msg');
+    const errMsg = document.getElementById('multi_err_msg');
+
+    if (ok && sum > 0) {
+        okMsg.classList.remove('d-none');
+        errMsg.classList.add('d-none');
     } else {
-        statusLabel.innerText = "Total Recebido:";
-        statusVal.innerText = "OK!";
-        statusVal.className = "small fw-bold text-success";
+        okMsg.classList.add('d-none');
+        errMsg.classList.remove('d-none');
     }
 
     updateCheckoutButtonState();
@@ -951,7 +1043,6 @@ function calculateChange() {
         document.getElementById('troco_display').classList.add('text-danger');
     }
 
-    // New: Trigger button state update on change calculation
     updateCheckoutButtonState();
 }
 
@@ -978,16 +1069,33 @@ function updateCheckoutButtonState() {
         const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
         const total = parseFloat(finalTotalText) || 0;
         
-        const valDinheiro = parseFloat(document.getElementById('multi_val_dinheiro').value) || 0;
-        const valPix = parseFloat(document.getElementById('multi_val_pix').value) || 0;
-        const valCredito = parseFloat(document.getElementById('multi_val_credito').value) || 0;
-        const valDebito = parseFloat(document.getElementById('multi_val_debito').value) || 0;
-        const valBoleto = parseFloat(document.getElementById('multi_val_boleto').value) || 0;
-        const valFiado = parseFloat(document.getElementById('multi_val_fiado').value) || 0;
+        let valDinheiro = 0;
+        let valPix = 0;
+        let valCredito = 0;
+        let valDebito = 0;
+        let valBoleto = 0;
+        let valFiado = 0;
         
-        const totalRecebido = valDinheiro + valPix + valCredito + valDebito + valBoleto + valFiado;
+        document.querySelectorAll('.pay-split-row').forEach(row => {
+            const method = row.querySelector('.mMethod').value;
+            const val = parseFloat(row.querySelector('.mValue').value) || 0;
+            if (method === 'dinheiro') valDinheiro += val;
+            else if (method === 'pix') valPix += val;
+            else if (method === 'credito') valCredito += val;
+            else if (method === 'debito') valDebito += val;
+            else if (method === 'boleto') valBoleto += val;
+            else if (method === 'fiado') valFiado += val;
+        });
         
-        btnCheckout.disabled = (totalRecebido < total || totalRecebido === 0);
+        const sum = valDinheiro + valPix + valCredito + valDebito + valBoleto + valFiado;
+        const diff = sum - total;
+        const hasCash = valDinheiro > 0;
+
+        let ok = false;
+        if (Math.abs(diff) < 0.009) ok = true;
+        else if (diff > 0.009 && hasCash) ok = true;
+
+        btnCheckout.disabled = (!ok || sum === 0);
     } else {
         btnCheckout.disabled = false;
     }
@@ -2644,7 +2752,12 @@ if (btnCheckout) {
         
         let hasFiado = payment === 'fiado';
         if (payment === 'multiplo') {
-            const valFiado = parseFloat(document.getElementById('multi_val_fiado').value) || 0;
+            let valFiado = 0;
+            document.querySelectorAll('.pay-split-row').forEach(row => {
+                const method = row.querySelector('.mMethod').value;
+                const val = parseFloat(row.querySelector('.mValue').value) || 0;
+                if (method === 'fiado') valFiado += val;
+            });
             if (valFiado > 0) hasFiado = true;
         }
 
@@ -2777,13 +2890,23 @@ async function processarCheckout() {
         troco = parseCurrencyToFloat(document.getElementById('troco_input').value) || (valorRecebido - total);
     } else if (payment === 'multiplo') {
         multiDetalhes = {
-            dinheiro: parseFloat(document.getElementById('multi_val_dinheiro').value) || 0,
-            pix: parseFloat(document.getElementById('multi_val_pix').value) || 0,
-            credito: parseFloat(document.getElementById('multi_val_credito').value) || 0,
-            debito: parseFloat(document.getElementById('multi_val_debito').value) || 0,
-            boleto: parseFloat(document.getElementById('multi_val_boleto').value) || 0,
-            fiado: parseFloat(document.getElementById('multi_val_fiado').value) || 0
+            dinheiro: 0,
+            pix: 0,
+            credito: 0,
+            debito: 0,
+            boleto: 0,
+            fiado: 0
         };
+        document.querySelectorAll('.pay-split-row').forEach(row => {
+            const method = row.querySelector('.mMethod').value;
+            const val = parseFloat(row.querySelector('.mValue').value) || 0;
+            if (method === 'dinheiro') multiDetalhes.dinheiro += val;
+            else if (method === 'pix') multiDetalhes.pix += val;
+            else if (method === 'credito') multiDetalhes.credito += val;
+            else if (method === 'debito') multiDetalhes.debito += val;
+            else if (method === 'boleto') multiDetalhes.boleto += val;
+            else if (method === 'fiado') multiDetalhes.fiado += val;
+        });
         const totalRecebido = Object.values(multiDetalhes).reduce((a, b) => a + b, 0);
         if (totalRecebido > total && multiDetalhes.dinheiro > 0) {
             troco = totalRecebido - total;
@@ -2859,6 +2982,12 @@ async function processarCheckout() {
             document.getElementById('discountPercent').value = 0;
             if (document.getElementById('entradaValor')) document.getElementById('entradaValor').value = 0;
             document.getElementById('taxa_cartao').value = '';
+            
+            // Reset payment mode to single 'dinheiro'
+            setPayMode('unico');
+            selectSinglePay('dinheiro');
+            document.getElementById('paysWrap').innerHTML = '';
+
             renderCart();
             loadRecentSales();
         } else {
@@ -3291,5 +3420,69 @@ function printOrcamentoFormat(type) {
     .discount-toggle-slider.to-percent {
         transform: translateX(100%);
         background: #3b82f6; /* Primary Blue */
+    }
+
+    /* Premium Payment Selector Styles */
+    .chip-toggle {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .chip {
+        border: 1px solid rgba(148, 163, 184, .35);
+        border-radius: 999px;
+        padding: 6px 16px;
+        cursor: pointer;
+        font-weight: 800;
+        font-size: 0.75rem;
+        user-select: none;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+    .chip.active {
+        background: rgba(239, 246, 255, .85);
+        border-color: #3b82f6;
+        outline: 2px solid rgba(59, 130, 246, .25);
+        color: #1d4ed8;
+    }
+    .pay-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .pay-btn {
+        border: 1px solid rgba(148, 163, 184, .35);
+        background: #fff;
+        border-radius: 10px;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: flex-start;
+        font-weight: 700;
+        font-size: 0.8rem;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s ease;
+    }
+    .pay-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    }
+    .pay-btn.active {
+        outline: 2px solid rgba(59, 130, 246, .25);
+        border-color: #3b82f6;
+        background: rgba(239, 246, 255, .85);
+        color: #1d4ed8;
+    }
+    .pay-btn i {
+        font-size: 1.1rem;
+    }
+    .pay-split-row {
+        border: 1px solid rgba(148, 163, 184, .2);
+        border-radius: 10px;
+        padding: 10px;
+        background: #f8fafc;
+        margin-bottom: 8px;
     }
 </style>

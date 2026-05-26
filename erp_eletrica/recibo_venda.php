@@ -385,13 +385,36 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
                     <td class="left" style="font-size:14px;padding-top:4px"><b>TOTAL R$</b></td>
                     <td class="right" style="font-size:14px;padding-top:4px"><b><?= number_format($valorTotal,2,',','.') ?></b></td>
                 </tr>
+                <?php if ($venda['forma_pagamento'] === 'multiplo' && !empty($venda['multi_detalhes'])): ?>
+                    <?php 
+                    $detalhes = json_decode($venda['multi_detalhes'], true);
+                    $paymentNames = [
+                        'dinheiro' => 'Dinheiro',
+                        'pix'      => 'PIX',
+                        'credito'  => 'Cartão de Crédito',
+                        'debito'   => 'Cartão de Débito',
+                        'boleto'   => 'Boleto',
+                        'fiado'    => 'A Prazo (Fiado)',
+                    ];
+                    ?>
+                    <tr>
+                        <td class="left" colspan="2"><b>FORMA DE PAGAMENTO (MÚLTIPLO)</b></td>
+                    </tr>
+                    <?php foreach ($detalhes as $k => $val): if ((float)$val > 0): ?>
+                    <tr>
+                        <td class="left" style="padding-left: 10px;"><?= $paymentNames[$k] ?? ucfirst($k) ?></td>
+                        <td class="right">R$ <?= number_format((float)$val, 2, ',', '.') ?></td>
+                    </tr>
+                    <?php endif; endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td class="left"><b>FORMA DE PAGAMENTO</b></td>
+                        <td class="right"><?= htmlspecialchars($formaPag) ?></td>
+                    </tr>
+                <?php endif; ?>
+                <?php if ($valorRecebido !== null && ($venda['forma_pagamento'] === 'dinheiro' || ($venda['forma_pagamento'] === 'multiplo' && $valorRecebido > 0))): ?>
                 <tr>
-                    <td class="left"><b>FORMA DE PAGAMENTO</b></td>
-                    <td class="right"><?= htmlspecialchars($formaPag) ?></td>
-                </tr>
-                <?php if ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinheiro'): ?>
-                <tr>
-                    <td class="left">VL. RECEBIDO R$</td>
+                    <td class="left">VL. RECEBIDO (DINHEIRO) R$</td>
                     <td class="right"><?= number_format($valorRecebido,2,',','.') ?></td>
                 </tr>
                 <tr>
