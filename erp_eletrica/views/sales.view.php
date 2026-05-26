@@ -140,7 +140,7 @@
                     <label class="form-label small fw-bold text-uppercase text-muted">Método de Pagamento</label>
 
                     <!-- Hidden inputs to keep compatibility with existing JS and hotkeys -->
-                    <input type="radio" class="d-none" name="payment" id="pay_dinheiro" value="dinheiro" checked>
+                    <input type="radio" class="d-none" name="payment" id="pay_dinheiro" value="dinheiro 2" checked>
                     <input type="radio" class="d-none" name="payment" id="pay_pix" value="pix">
                     <input type="radio" class="d-none" name="payment" id="pay_credito" value="cartao_credito">
                     <input type="radio" class="d-none" name="payment" id="pay_debito" value="cartao_debito">
