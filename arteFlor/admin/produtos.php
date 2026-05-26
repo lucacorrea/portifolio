@@ -56,6 +56,12 @@ $modalProducts = array_map(static function (array $product) use ($productImagesB
     'descricaoCurta' => (string) ($product['descricao_curta'] ?? ''),
     'descricaoCompleta' => (string) ($product['descricao_completa'] ?? ''),
     'tags' => array_values($product['tags'] ?? []),
+    'cores' => array_map(static fn(array $color): array => [
+      'nome' => (string) ($color['nome'] ?? ''),
+      'hex' => product_color_normalize_hex((string) ($color['hex'] ?? '#FFFFFF')),
+      'estoque' => (int) ($color['estoque'] ?? 0),
+      'ativo' => !empty($color['ativo']),
+    ], array_values((array) ($product['cores'] ?? []))),
     'destaque' => !empty($product['destaque']) ? 'Sim' : 'Normal',
     'sobEncomenda' => !empty($product['sob_encomenda']) ? 'Sim' : 'Não',
     'images' => $images,
@@ -369,6 +375,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
         $inventoryStatus = product_inventory_status($p);
         $inventoryPercent = product_inventory_percent($p);
         $tags = array_values($p['tags'] ?? []);
+        $colors = array_values((array) ($p['cores'] ?? []));
         $statusAction = $status === 'inativo' ? 'ativar' : 'inativar';
         ?>
         <tr class="<?= e(product_inventory_row_class($inventoryStatus)) ?>">
@@ -380,6 +387,18 @@ require_once __DIR__ . '/../includes/admin-head.php';
               <div class="admin-item-title">
                 <strong><?= e($p['nome']) ?></strong>
                 <small><?= e($p['sku'] ?? $p['slug']) ?></small>
+                <?php if (!empty($colors)): ?>
+                  <div class="product-card-colors" aria-label="Cores cadastradas">
+                    <?php foreach (array_slice($colors, 0, 5) as $color): ?>
+                      <span
+                        class="<?= !empty($color['ativo']) && (int) ($color['estoque'] ?? 0) > 0 ? '' : 'is-empty' ?>"
+                        title="<?= e((string) $color['nome']) ?>"
+                        style="--color: <?= e(product_color_normalize_hex((string) ($color['hex'] ?? '#FFFFFF'))) ?>"
+                      ></span>
+                    <?php endforeach; ?>
+                    <?php if (count($colors) > 5): ?><em>+<?= count($colors) - 5 ?></em><?php endif; ?>
+                  </div>
+                <?php endif; ?>
                 <?php if (!empty($tags)): ?>
                   <div class="admin-tag-list">
                     <?php foreach (array_slice($tags, 0, 3) as $tag): ?>
@@ -478,6 +497,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
         </div>
       </dl>
       <div class="admin-product-modal-tags admin-tag-list" data-product-modal-tags hidden></div>
+      <div class="admin-product-modal-tags admin-tag-list" data-product-modal-colors hidden></div>
       <div class="admin-product-modal-stock inventory-stock-cell">
         <div class="inventory-stock-meta">
           <strong data-product-modal-stock>Estoque: -</strong>

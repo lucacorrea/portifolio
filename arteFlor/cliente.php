@@ -73,6 +73,9 @@ require_once __DIR__ . '/includes/header.php';
                     <div>
                       <strong><?= (int) $item['quantidade'] ?>x <?= e((string) $item['produto_nome']) ?></strong>
                       <small><?= e((string) ($item['produto_sku'] ?? '')) ?> · <?= money_br((float) $item['preco_unitario']) ?></small>
+                      <?php if (!empty($item['produto_cor_nome'])): ?>
+                        <small class="cart-color-line"><i class="cart-color-dot" style="--color: <?= e((string) ($item['produto_cor_hex'] ?: '#FFFFFF')) ?>"></i>Cor: <?= e((string) $item['produto_cor_nome']) ?></small>
+                      <?php endif; ?>
                       <?php if (!empty($item['mensagem_cartao'])): ?>
                         <p class="muted"><?= e((string) $item['mensagem_cartao']) ?></p>
                       <?php endif; ?>

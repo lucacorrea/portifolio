@@ -44,7 +44,12 @@ $stock = max(0, (int) ($produto['estoque'] ?? 0));
 $minStock = max(0, (int) ($produto['estoque_minimo'] ?? 0));
 $categoryName = (string) ($produto['categoria_nome'] ?? 'Produto');
 $tags = array_values(array_filter((array) ($produto['tags'] ?? [])));
-$isAvailable = $status === 'disponivel' && $stock > 0 && !empty($produto['permitir_venda_online']);
+$colors = array_values(array_filter((array) ($produto['cores'] ?? product_colors((int) $produto['id'], true)), static fn(array $color): bool => !empty($color['ativo'])));
+$availableColors = array_values(array_filter($colors, static fn(array $color): bool => (int) ($color['estoque'] ?? 0) > 0));
+$hasColors = !empty($colors);
+$selectedColor = $availableColors[0] ?? ($colors[0] ?? null);
+$selectedStock = $selectedColor ? max(0, (int) ($selectedColor['estoque'] ?? 0)) : $stock;
+$isAvailable = $status === 'disponivel' && !empty($produto['permitir_venda_online']) && ($hasColors ? !empty($availableColors) : $stock > 0);
 $isOrderOnly = $status === 'sob_encomenda' || !empty($produto['sob_encomenda']);
 $inventoryStatus = product_inventory_status($produto);
 $relacionados = product_related((int) $produto['id'], isset($produto['categoria_id']) ? (int) $produto['categoria_id'] : null, 4);
@@ -109,7 +114,7 @@ require_once __DIR__ . '/includes/header.php';
       </div>
 
       <div class="product-meta-grid">
-        <div><span>Estoque</span><strong><?= $stock ?> un.</strong></div>
+        <div><span>Estoque</span><strong><?= $hasColors ? array_sum(array_map(static fn(array $color): int => max(0, (int) ($color['estoque'] ?? 0)), $colors)) : $stock ?> un.</strong></div>
         <div><span>Mínimo</span><strong><?= $minStock ?> un.</strong></div>
         <div><span>SKU</span><strong><?= e($produto['sku'] ?? 'AF') ?></strong></div>
       </div>
@@ -122,10 +127,50 @@ require_once __DIR__ . '/includes/header.php';
         </div>
       <?php endif; ?>
 
+      <?php if ($hasColors): ?>
+        <div class="product-color-options" role="radiogroup" aria-label="Escolha a cor">
+          <strong>Cores disponíveis</strong>
+          <div class="product-color-grid">
+            <?php foreach ($colors as $index => $color): ?>
+              <?php
+                $colorStock = max(0, (int) ($color['estoque'] ?? 0));
+                $colorImage = (string) ($color['imagem'] ?? product_public_image_url((string) ($color['imagem_url'] ?? '')));
+                $colorHex = product_color_normalize_hex((string) ($color['hex'] ?? '#FFFFFF'));
+                $isColorAvailable = $colorStock > 0;
+                $isChecked = isset($selectedColor['id']) && (int) $selectedColor['id'] === (int) ($color['id'] ?? 0);
+              ?>
+              <label class="product-color-choice <?= $isColorAvailable ? '' : 'is-empty' ?>">
+                <input
+                  type="radio"
+                  name="produto_cor_id"
+                  value="<?= (int) ($color['id'] ?? 0) ?>"
+                  data-cor-id="<?= (int) ($color['id'] ?? 0) ?>"
+                  data-cor-nome="<?= e((string) ($color['nome'] ?? '')) ?>"
+                  data-cor-hex="<?= e($colorHex) ?>"
+                  data-cor-imagem="<?= e($colorImage) ?>"
+                  data-cor-estoque="<?= $colorStock ?>"
+                  <?= $isChecked ? 'checked' : '' ?>
+                  <?= $isColorAvailable ? '' : 'disabled' ?>
+                >
+                <span class="product-color-thumb" style="--color: <?= e($colorHex) ?>">
+                  <?php if ($colorImage !== ''): ?>
+                    <img src="<?= e($colorImage) ?>" alt="<?= e((string) ($color['nome'] ?? 'Cor')) ?>" loading="lazy">
+                  <?php endif; ?>
+                </span>
+                <span>
+                  <b><?= e((string) ($color['nome'] ?? 'Cor')) ?></b>
+                  <small><?= $isColorAvailable ? $colorStock . ' un.' : 'Sem estoque' ?></small>
+                </span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      <?php endif; ?>
+
       <div class="form-grid product-options">
         <label class="form-group">
           <span>Quantidade</span>
-          <input id="productQty" type="number" value="1" min="1" max="<?= max(1, $stock) ?>" <?= $isAvailable ? '' : 'disabled' ?>>
+          <input id="productQty" type="number" value="1" min="1" max="<?= max(1, $selectedStock) ?>" <?= $isAvailable ? '' : 'disabled' ?>>
         </label>
         <label class="form-group">
           <span>Mensagem para cartão</span>
@@ -149,8 +194,9 @@ require_once __DIR__ . '/includes/header.php';
             data-categoria="<?= e($categoryName) ?>"
             data-preco="<?= e((string) $price) ?>"
             data-imagem="<?= e($mainImage) ?>"
-            data-estoque="<?= $stock ?>"
+            data-estoque="<?= $hasColors ? max(1, $selectedStock) : $stock ?>"
             data-status="<?= e($status) ?>"
+            <?= $hasColors ? 'data-require-color="1" data-color-target="input[name=\'produto_cor_id\']:checked"' : '' ?>
             data-qty-target="#productQty"
             data-message-target="#productMessage"
             data-note-target="#productNotes"

@@ -843,7 +843,8 @@ function whatsapp_render_order_message(array $pedido, array $itens): string
     $config = whatsapp_config();
     $itemsText = [];
     foreach ($itens as $item) {
-        $itemsText[] = '- ' . (int) $item['quantidade'] . 'x ' . $item['produto_nome'] . ' - ' . money_br((float) $item['total_linha']);
+        $color = !empty($item['produto_cor_nome']) ? ' (' . $item['produto_cor_nome'] . ')' : '';
+        $itemsText[] = '- ' . (int) $item['quantidade'] . 'x ' . $item['produto_nome'] . $color . ' - ' . money_br((float) $item['total_linha']);
     }
 
     $address = (string) ($pedido['recebimento'] ?? '') === 'entrega'

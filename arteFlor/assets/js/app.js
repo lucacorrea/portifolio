@@ -92,19 +92,33 @@
     });
   };
 
-  const normalizeProduct = (product) => ({
-    id: String(product.id || product.slug || Date.now()),
-    nome: product.nome || 'Produto Arte&Flor',
-    slug: product.slug || '',
-    categoria: product.categoria || '',
-    preco: Number(product.preco || 0),
-    imagem: product.imagem || '',
-    estoque: Number(product.estoque || 0),
-    status: product.status || 'disponivel',
-    mensagem: product.mensagem || '',
-    observacoes: product.observacoes || '',
-    qty: Math.max(1, Number(product.qty || 1))
-  });
+  const normalizeProduct = (product) => {
+    const id = String(product.id || product.produto_id || product.slug || Date.now());
+    const corId = String(product.cor_id || product.produto_cor_id || '').trim();
+    const cartKey = corId ? `${id}:cor:${corId}` : id;
+
+    return {
+      id,
+      produto_id: id,
+      cartKey,
+      nome: product.nome || 'Produto Arte&Flor',
+      slug: product.slug || '',
+      categoria: product.categoria || '',
+      preco: Number(product.preco || 0),
+      imagem: product.cor_imagem || product.imagem || '',
+      estoque: Number(product.cor_estoque || product.estoque || 0),
+      status: product.status || 'disponivel',
+      cor_id: corId,
+      cor_nome: product.cor_nome || '',
+      cor_hex: product.cor_hex || '',
+      cor_imagem: product.cor_imagem || '',
+      mensagem: product.mensagem || '',
+      observacoes: product.observacoes || '',
+      qty: Math.max(1, Number(product.qty || 1))
+    };
+  };
+
+  const cartItemKey = (item) => String(item?.cartKey || item?.id || item?.produto_id || '');
 
   const api = {
     cartKey: CART_KEY,
@@ -123,7 +137,7 @@
     addToCart(product) {
       const nextProduct = normalizeProduct(product);
       const cart = this.getCart();
-      const current = cart.find((item) => item.id === nextProduct.id);
+      const current = cart.find((item) => cartItemKey(item) === nextProduct.cartKey);
 
       if (current) {
         current.qty = Math.max(1, Number(current.qty || 1) + nextProduct.qty);
@@ -138,11 +152,11 @@
     },
     updateCartItem(id, qty) {
       const cart = this.getCart()
-        .map((item) => item.id === String(id) ? { ...item, qty: Math.max(1, Number(qty || 1)) } : item);
+        .map((item) => cartItemKey(item) === String(id) ? { ...item, qty: Math.max(1, Number(qty || 1)) } : item);
       this.setCart(cart);
     },
     removeFromCart(id) {
-      this.setCart(this.getCart().filter((item) => item.id !== String(id)));
+      this.setCart(this.getCart().filter((item) => cartItemKey(item) !== String(id)));
       toast('Item removido do carrinho.', 'info');
     },
     clearCart() {
@@ -241,7 +255,17 @@
       button.addEventListener('click', () => {
         const status = button.dataset.status || 'disponivel';
         const stock = Number(button.dataset.estoque || 0);
-        if (status !== 'disponivel' || stock <= 0) {
+        const colorTarget = button.dataset.colorTarget ? document.querySelector(button.dataset.colorTarget) : null;
+        const requiresColor = button.dataset.requireColor === '1';
+        if (requiresColor && !colorTarget) {
+          toast('Escolha a cor antes de adicionar ao carrinho.', 'warning');
+          return;
+        }
+
+        const colorData = colorTarget instanceof HTMLElement ? colorTarget.dataset : {};
+        const effectiveStock = colorData.corEstoque ? Number(colorData.corEstoque || 0) : stock;
+
+        if (status !== 'disponivel' || effectiveStock <= 0) {
           toast('Este produto não está disponível para compra direta.', 'warning');
           return;
         }
@@ -257,12 +281,44 @@
           categoria: button.dataset.categoria,
           preco: Number(button.dataset.preco || 0),
           imagem: button.dataset.imagem || '',
-          estoque: stock,
+          estoque: effectiveStock,
           status,
+          cor_id: colorData.corId || '',
+          cor_nome: colorData.corNome || '',
+          cor_hex: colorData.corHex || '',
+          cor_imagem: colorData.corImagem || '',
+          cor_estoque: effectiveStock,
           qty: qtyTarget ? Number(qtyTarget.value || 1) : Number(button.dataset.qty || 1),
           mensagem: messageTarget ? messageTarget.value.trim() : '',
           observacoes: noteTarget ? noteTarget.value.trim() : ''
         });
+      });
+    });
+  };
+
+  const bindProductColors = () => {
+    const qtyInput = document.querySelector('#productQty');
+    const addButton = document.querySelector('[data-add-cart][data-color-target]');
+    const mainImage = document.querySelector('[data-gallery-main]');
+
+    document.querySelectorAll('input[name="produto_cor_id"]').forEach((input) => {
+      input.addEventListener('change', () => {
+        const stock = Number(input.dataset.corEstoque || 0);
+        const image = input.dataset.corImagem || '';
+
+        if (qtyInput instanceof HTMLInputElement) {
+          qtyInput.max = String(Math.max(1, stock));
+          qtyInput.value = String(Math.min(Math.max(1, Number(qtyInput.value || 1)), Math.max(1, stock)));
+        }
+
+        if (addButton) {
+          addButton.dataset.estoque = String(stock);
+        }
+
+        if (mainImage instanceof HTMLImageElement && image) {
+          mainImage.src = image;
+          mainImage.alt = `${addButton?.dataset.nome || 'Produto'} - ${input.dataset.corNome || 'cor selecionada'}`;
+        }
       });
     });
   };
@@ -310,6 +366,7 @@
   bindMenu();
   bindConfirmForms();
   bindAddButtons();
+  bindProductColors();
   bindGallery();
   bindCopy();
   bindAdminFlashAlerts();

@@ -445,19 +445,308 @@ function product_tags_by_product_ids(array $productIds): array
     return $grouped;
 }
 
-function product_attach_tags(array $products): array
+function product_color_normalize_hex(?string $value): string
+{
+    $value = strtoupper(trim((string) $value));
+    if ($value !== '' && $value[0] !== '#') {
+        $value = '#' . $value;
+    }
+
+    return preg_match('/^#[0-9A-F]{6}$/', $value) ? $value : '#FFFFFF';
+}
+
+function product_color_unique_slug(int $productId, string $name, ?int $ignoreId = null): string
+{
+    $base = product_slugify($name, 100);
+    $slug = $base;
+    $suffix = 2;
+
+    do {
+        $sql = 'SELECT id FROM produto_cores WHERE produto_id = :produto_id AND slug = :slug';
+        $params = [
+            'produto_id' => $productId,
+            'slug' => $slug,
+        ];
+        if ($ignoreId !== null) {
+            $sql .= ' AND id <> :id';
+            $params['id'] = $ignoreId;
+        }
+        $sql .= ' LIMIT 1';
+
+        $statement = db()->prepare($sql);
+        $statement->execute($params);
+        if (!$statement->fetch()) {
+            return $slug;
+        }
+
+        $slug = trim(substr($base, 0, 92), '-') . '-' . $suffix;
+        $suffix += 1;
+    } while ($suffix < 100);
+
+    return trim(substr($base, 0, 90), '-') . '-' . bin2hex(random_bytes(3));
+}
+
+function product_colors_by_product_ids(array $productIds, bool $publicOnly = false): array
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $productIds), static fn(int $id): bool => $id > 0)));
+    if (empty($ids)) {
+        return [];
+    }
+
+    $placeholders = [];
+    $params = [];
+    foreach ($ids as $index => $id) {
+        $key = 'id' . $index;
+        $placeholders[] = ':' . $key;
+        $params[$key] = $id;
+    }
+
+    $where = 'produto_id IN (' . implode(', ', $placeholders) . ')';
+    if ($publicOnly) {
+        $where .= ' AND ativo = 1';
+    }
+
+    try {
+        $statement = db()->prepare(
+            'SELECT id, produto_id, nome, slug, hex, imagem_url, estoque, ativo, ordem
+             FROM produto_cores
+             WHERE ' . $where . '
+             ORDER BY produto_id ASC, ordem ASC, nome ASC, id ASC'
+        );
+        $statement->execute($params);
+    } catch (PDOException $error) {
+        if (str_contains($error->getMessage(), 'produto_cores')) {
+            return [];
+        }
+        throw $error;
+    }
+
+    $grouped = [];
+    foreach ($statement->fetchAll() as $color) {
+        $productId = (int) $color['produto_id'];
+        $image = product_public_image_url($color['imagem_url'] ?? '');
+        $grouped[$productId][] = [
+            'id' => (int) $color['id'],
+            'produto_id' => $productId,
+            'nome' => (string) $color['nome'],
+            'slug' => (string) $color['slug'],
+            'hex' => product_color_normalize_hex($color['hex'] ?? null),
+            'imagem_url' => (string) ($color['imagem_url'] ?? ''),
+            'imagem' => $image,
+            'estoque' => max(0, (int) $color['estoque']),
+            'ativo' => (int) $color['ativo'],
+            'ordem' => (int) $color['ordem'],
+        ];
+    }
+
+    return $grouped;
+}
+
+function product_colors(int $productId, bool $publicOnly = false): array
+{
+    if ($productId <= 0) {
+        return [];
+    }
+
+    $grouped = product_colors_by_product_ids([$productId], $publicOnly);
+
+    return $grouped[$productId] ?? [];
+}
+
+function product_color_has_upload(string|int $key): bool
+{
+    if (empty($_FILES['cores_imagens']) || !is_array($_FILES['cores_imagens']['error'] ?? null)) {
+        return false;
+    }
+
+    return (int) ($_FILES['cores_imagens']['error'][$key] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+}
+
+function product_upload_color_image(string|int $key, string $altText): ?array
+{
+    if (!product_color_has_upload($key)) {
+        return null;
+    }
+
+    if (!is_dir(PRODUCT_UPLOAD_DIR) && !mkdir(PRODUCT_UPLOAD_DIR, 0755, true) && !is_dir(PRODUCT_UPLOAD_DIR)) {
+        throw new RuntimeException('Não foi possível criar a pasta de upload dos produtos.');
+    }
+
+    $error = (int) ($_FILES['cores_imagens']['error'][$key] ?? UPLOAD_ERR_NO_FILE);
+    if ($error !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Uma imagem de cor não foi enviada corretamente.');
+    }
+
+    $tmpName = (string) ($_FILES['cores_imagens']['tmp_name'][$key] ?? '');
+    $size = (int) ($_FILES['cores_imagens']['size'][$key] ?? 0);
+    if ($size <= 0 || $size > PRODUCT_MAX_UPLOAD_BYTES) {
+        throw new RuntimeException('Cada imagem de cor deve ter até 5 MB.');
+    }
+
+    $imageInfo = @getimagesize($tmpName);
+    if ($imageInfo === false) {
+        throw new RuntimeException('Envie apenas imagens válidas para as cores.');
+    }
+
+    $allowedMimes = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+        'image/avif' => 'avif',
+    ];
+    $mime = (string) ($imageInfo['mime'] ?? '');
+    if (class_exists('finfo')) {
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = (string) $finfo->file($tmpName);
+    }
+    if (!isset($allowedMimes[$mime])) {
+        throw new RuntimeException('Formato de imagem da cor não permitido. Use JPG, PNG, WEBP, GIF ou AVIF.');
+    }
+
+    $extension = $allowedMimes[$mime];
+    $filename = date('YmdHis') . '-cor-' . bin2hex(random_bytes(8)) . '.' . $extension;
+    $destination = PRODUCT_UPLOAD_DIR . DIRECTORY_SEPARATOR . $filename;
+
+    if (!move_uploaded_file($tmpName, $destination)) {
+        throw new RuntimeException('Não foi possível salvar a imagem de uma cor.');
+    }
+
+    return [
+        'path' => $destination,
+        'url' => PRODUCT_UPLOAD_PUBLIC_PREFIX . $filename,
+        'alt' => $altText,
+    ];
+}
+
+function product_save_colors_from_request(int $productId, string $productName): array
+{
+    $rows = $_POST['cores'] ?? [];
+    if (!is_array($rows)) {
+        return ['saved_files' => [], 'has_colors' => false, 'stock_total' => null];
+    }
+
+    $savedFiles = [];
+    $savedColors = 0;
+    $stockTotal = 0;
+    $order = 0;
+
+    foreach ($rows as $key => $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $colorId = max(0, (int) ($row['id'] ?? 0));
+        $remove = !empty($row['remover']);
+        if ($remove) {
+            if ($colorId > 0) {
+                db()->prepare('DELETE FROM produto_cores WHERE id = :id AND produto_id = :produto_id')
+                    ->execute([
+                        'id' => $colorId,
+                        'produto_id' => $productId,
+                    ]);
+            }
+            continue;
+        }
+
+        $name = trim((string) ($row['nome'] ?? ''));
+        $imageUrl = trim((string) ($row['imagem_url'] ?? ''));
+        $hasUpload = product_color_has_upload($key);
+        $hasPartialInput = $name !== '' || $imageUrl !== '' || $hasUpload || (int) ($row['estoque'] ?? 0) > 0;
+        if ($name === '') {
+            if ($hasPartialInput) {
+                throw new InvalidArgumentException('Informe o nome de todas as cores preenchidas.');
+            }
+            continue;
+        }
+
+        if (strlen($name) > 80) {
+            throw new InvalidArgumentException('O nome da cor deve ter até 80 caracteres.');
+        }
+        if (strlen($imageUrl) > 1000) {
+            throw new InvalidArgumentException('A URL da imagem da cor é muito longa.');
+        }
+
+        $upload = product_upload_color_image($key, $productName . ' - ' . $name);
+        if ($upload !== null) {
+            $savedFiles[] = $upload['path'];
+            $imageUrl = $upload['url'];
+        }
+
+        $stock = max(0, (int) ($row['estoque'] ?? 0));
+        $active = (int) ($row['ativo'] ?? 0) === 1 ? 1 : 0;
+        $hex = product_color_normalize_hex($row['hex'] ?? null);
+        $slug = product_color_unique_slug($productId, $name, $colorId > 0 ? $colorId : null);
+        $order += 1;
+
+        if ($colorId > 0) {
+            $statement = db()->prepare(
+                'UPDATE produto_cores
+                 SET nome = :nome,
+                     slug = :slug,
+                     hex = :hex,
+                     imagem_url = :imagem_url,
+                     estoque = :estoque,
+                     ativo = :ativo,
+                     ordem = :ordem
+                 WHERE id = :id AND produto_id = :produto_id'
+            );
+            $statement->execute([
+                'nome' => $name,
+                'slug' => $slug,
+                'hex' => $hex,
+                'imagem_url' => $imageUrl !== '' ? $imageUrl : null,
+                'estoque' => $stock,
+                'ativo' => $active,
+                'ordem' => $order,
+                'id' => $colorId,
+                'produto_id' => $productId,
+            ]);
+        } else {
+            $statement = db()->prepare(
+                'INSERT INTO produto_cores (produto_id, nome, slug, hex, imagem_url, estoque, ativo, ordem)
+                 VALUES (:produto_id, :nome, :slug, :hex, :imagem_url, :estoque, :ativo, :ordem)'
+            );
+            $statement->execute([
+                'produto_id' => $productId,
+                'nome' => $name,
+                'slug' => $slug,
+                'hex' => $hex,
+                'imagem_url' => $imageUrl !== '' ? $imageUrl : null,
+                'estoque' => $stock,
+                'ativo' => $active,
+                'ordem' => $order,
+            ]);
+        }
+
+        $savedColors += 1;
+        if ($active === 1) {
+            $stockTotal += $stock;
+        }
+    }
+
+    return [
+        'saved_files' => $savedFiles,
+        'has_colors' => $savedColors > 0,
+        'stock_total' => $savedColors > 0 ? $stockTotal : null,
+    ];
+}
+
+function product_attach_tags(array $products, bool $publicColors = false): array
 {
     if (empty($products)) {
         return [];
     }
 
     $tagsByProduct = product_tags_by_product_ids(array_column($products, 'id'));
+    $colorsByProduct = product_colors_by_product_ids(array_column($products, 'id'), $publicColors);
     foreach ($products as $index => $product) {
         $productId = (int) ($product['id'] ?? 0);
         $tagRows = $tagsByProduct[$productId] ?? [];
         $products[$index]['tag_rows'] = $tagRows;
         $products[$index]['tags'] = array_column($tagRows, 'nome');
         $products[$index]['tags_text'] = implode(', ', array_column($tagRows, 'nome'));
+        $products[$index]['cores'] = $colorsByProduct[$productId] ?? [];
     }
 
     return $products;
@@ -1214,7 +1503,22 @@ function product_save_from_request(): int
             $productId = (int) db()->lastInsertId();
         }
 
-        $savedFiles = product_upload_files($productId, $name);
+        $savedFiles = array_merge($savedFiles, product_upload_files($productId, $name));
+        $colorSave = product_save_colors_from_request($productId, $name);
+        $savedFiles = array_merge($savedFiles, $colorSave['saved_files']);
+        if ($colorSave['has_colors'] && $colorSave['stock_total'] !== null) {
+            db()->prepare(
+                'UPDATE produtos
+                 SET estoque = :estoque,
+                     status = CASE WHEN :estoque_status <= 0 AND status = "disponivel" THEN "sem_estoque" ELSE status END,
+                     atualizado_em = CURRENT_TIMESTAMP
+                 WHERE id = :id'
+            )->execute([
+                'id' => $productId,
+                'estoque' => (int) $colorSave['stock_total'],
+                'estoque_status' => (int) $colorSave['stock_total'],
+            ]);
+        }
         product_save_tags($productId, (string) ($_POST['tags'] ?? ''));
         db()->commit();
 
@@ -1322,7 +1626,7 @@ function product_public_list(array $filters = []): array
     $statement = db()->prepare($sql);
     $statement->execute($params);
 
-    return product_attach_tags($statement->fetchAll());
+    return product_attach_tags($statement->fetchAll(), true);
 }
 
 function product_featured(int $limit = 6): array
@@ -1363,7 +1667,7 @@ function product_find_by_slug(string $slug): ?array
     $statement->execute(['slug' => $slug]);
     $product = $statement->fetch();
 
-    return $product ? product_attach_tags([$product])[0] : null;
+    return $product ? product_attach_tags([$product], true)[0] : null;
 }
 
 function product_public_find_by_id(int $productId): ?array

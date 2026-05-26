@@ -99,9 +99,12 @@ function inventory_recent_movements(int $limit = 20): array
             m.*,
             p.nome AS produto_nome,
             p.sku AS produto_sku,
+            pc.nome AS produto_cor_nome,
+            pc.hex AS produto_cor_hex,
             u.nome AS usuario_nome
          FROM estoque_movimentacoes m
          INNER JOIN produtos p ON p.id = m.produto_id
+         LEFT JOIN produto_cores pc ON pc.id = m.produto_cor_id
          LEFT JOIN usuarios_admin u ON u.id = m.usuario_admin_id
          ORDER BY m.movimentado_em DESC, m.id DESC
          LIMIT {$limit}"

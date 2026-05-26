@@ -11,7 +11,10 @@ $status = (string) ($produto['status'] ?? 'disponivel');
 $stock = max(0, (int) ($produto['estoque'] ?? 0));
 $minStock = max(0, (int) ($produto['estoque_minimo'] ?? 0));
 $tags = array_values(array_filter((array) ($produto['tags'] ?? [])));
-$isAvailable = $status === 'disponivel' && $stock > 0 && !empty($produto['permitir_venda_online']);
+$colors = array_values(array_filter((array) ($produto['cores'] ?? []), static fn(array $color): bool => !empty($color['ativo'])));
+$availableColors = array_values(array_filter($colors, static fn(array $color): bool => (int) ($color['estoque'] ?? 0) > 0));
+$hasColors = !empty($colors);
+$isAvailable = $status === 'disponivel' && !empty($produto['permitir_venda_online']) && ($hasColors ? !empty($availableColors) : $stock > 0);
 $isOrderOnly = $status === 'sob_encomenda' || !empty($produto['sob_encomenda']);
 $stockLabel = $stock <= 0 ? 'Sem estoque' : ($minStock > 0 && $stock <= $minStock ? 'Estoque baixo' : 'Em estoque');
 ?>
@@ -45,6 +48,19 @@ $stockLabel = $stock <= 0 ? 'Sem estoque' : ($minStock > 0 && $stock <= $minStoc
       </div>
     <?php endif; ?>
 
+    <?php if ($hasColors): ?>
+      <div class="product-card-colors" aria-label="Cores disponíveis">
+        <?php foreach (array_slice($colors, 0, 5) as $color): ?>
+          <span
+            class="<?= (int) ($color['estoque'] ?? 0) > 0 ? '' : 'is-empty' ?>"
+            title="<?= e((string) $color['nome']) ?>"
+            style="--color: <?= e(product_color_normalize_hex((string) ($color['hex'] ?? '#FFFFFF'))) ?>"
+          ></span>
+        <?php endforeach; ?>
+        <?php if (count($colors) > 5): ?><em>+<?= count($colors) - 5 ?></em><?php endif; ?>
+      </div>
+    <?php endif; ?>
+
     <div class="price-stack">
       <?php if ($hasPromo && $originalPrice > 0): ?>
         <del><?= money_br($originalPrice) ?></del>
@@ -54,7 +70,9 @@ $stockLabel = $stock <= 0 ? 'Sem estoque' : ($minStock > 0 && $stock <= $minStoc
 
     <div class="product-actions">
       <a class="btn btn-soft" href="<?= e($detailUrl) ?>">Ver detalhes</a>
-      <?php if ($isAvailable): ?>
+      <?php if ($isAvailable && $hasColors): ?>
+        <a class="btn btn-primary" href="<?= e($detailUrl) ?>">Escolher cor</a>
+      <?php elseif ($isAvailable): ?>
         <button
           class="btn btn-primary"
           type="button"

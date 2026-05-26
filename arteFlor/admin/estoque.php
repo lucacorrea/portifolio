@@ -161,7 +161,13 @@ require_once __DIR__ . '/../includes/admin-head.php';
           ?>
           <tr>
             <td><?= $movedAt ? e(date('d/m/Y H:i', $movedAt)) : '-' ?></td>
-            <td><strong><?= e($movement['produto_nome']) ?></strong><small><?= e($movement['produto_sku']) ?></small></td>
+            <td>
+              <strong><?= e($movement['produto_nome']) ?></strong>
+              <?php if (!empty($movement['produto_cor_nome'])): ?>
+                <small class="admin-color-line"><i class="admin-color-dot" style="--color: <?= e((string) ($movement['produto_cor_hex'] ?: '#FFFFFF')) ?>"></i><?= e((string) $movement['produto_cor_nome']) ?></small>
+              <?php endif; ?>
+              <small><?= e($movement['produto_sku']) ?></small>
+            </td>
             <td><span class="<?= inventory_type_badge_class($type) ?>"><?= e(inventory_movement_type_options()[$type] ?? $type) ?></span></td>
             <td><?= (int) $movement['quantidade'] ?></td>
             <td><strong><?= (int) $movement['estoque_novo'] ?> un.</strong><small>Antes: <?= (int) $movement['estoque_anterior'] ?></small></td>

@@ -55,6 +55,23 @@ $topProducts = db()->query(
      LIMIT 5'
 )->fetchAll();
 
+$topColors = db()->query(
+    'SELECT
+        pi.produto_nome,
+        COALESCE(NULLIF(pi.produto_cor_nome, ""), "Sem cor") AS produto_cor_nome,
+        COALESCE(NULLIF(pi.produto_cor_hex, ""), "#FFFFFF") AS produto_cor_hex,
+        SUM(pi.quantidade) AS quantidade,
+        COALESCE(SUM(pi.total_linha), 0) AS total
+     FROM pedido_itens pi
+     INNER JOIN pedidos p ON p.id = pi.pedido_id
+     WHERE p.status <> "cancelado"
+       AND pi.produto_cor_nome IS NOT NULL
+       AND ' . $itemsPeriodWhere . '
+     GROUP BY pi.produto_nome, produto_cor_nome, produto_cor_hex
+     ORDER BY quantidade DESC, total DESC
+     LIMIT 6'
+)->fetchAll();
+
 $categorySales = dashboard_category_sales($days === 0 ? 1 : $days);
 $productStats = product_stats();
 $maxPaymentTotal = max(1, ...array_map(static fn (array $row): float => (float) $row['total'], $payments ?: [['total' => 1]]));
@@ -146,6 +163,39 @@ require_once __DIR__ . '/../includes/admin-head.php';
       <div class="admin-metric-row"><span>Receita</span><strong><?= money_br((float) ($summary['receita'] ?? 0)) ?></strong></div>
       <div class="admin-metric-row"><span>Descontos</span><strong><?= money_br((float) ($summary['descontos'] ?? 0)) ?></strong></div>
       <div class="admin-metric-row total"><span>Saldo</span><strong><?= money_br(max(0, (float) ($summary['receita'] ?? 0) - (float) ($summary['descontos'] ?? 0))) ?></strong></div>
+    </div>
+  </article>
+</section>
+
+<section class="admin-grid-2">
+  <article class="admin-panel-card">
+    <span class="badge">Cores</span>
+    <h2>Vendas por cor</h2>
+    <div class="admin-metric-list">
+      <?php foreach ($topColors as $color): ?>
+        <div class="admin-metric-row">
+          <span class="admin-color-line">
+            <i class="admin-color-dot" style="--color: <?= e((string) $color['produto_cor_hex']) ?>"></i>
+            <?= e((string) $color['produto_nome']) ?> · <?= e((string) $color['produto_cor_nome']) ?>
+          </span>
+          <strong><?= (int) $color['quantidade'] ?></strong>
+        </div>
+      <?php endforeach; ?>
+      <?php if (empty($topColors)): ?><div class="admin-empty-row"><strong>Sem cores vendidas</strong><span>Os dados aparecem quando pedidos com cor forem finalizados.</span></div><?php endif; ?>
+    </div>
+  </article>
+
+  <article class="admin-panel-card">
+    <span class="badge">Leitura comercial</span>
+    <h2>Comparativo</h2>
+    <div class="admin-metric-list">
+      <?php foreach (array_slice($topColors, 0, 4) as $color): ?>
+        <div class="admin-metric-row">
+          <span><?= e((string) $color['produto_cor_nome']) ?></span>
+          <strong><?= money_br((float) $color['total']) ?></strong>
+        </div>
+      <?php endforeach; ?>
+      <?php if (empty($topColors)): ?><div class="admin-empty-row"><strong>Aguardando vendas</strong><span>Compare vermelho, azul e outras variações aqui.</span></div><?php endif; ?>
     </div>
   </article>
 </section>

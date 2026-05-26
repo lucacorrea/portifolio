@@ -33,6 +33,8 @@
     const valid = cart.filter(validCartItem).map((item) => ({
       ...item,
       id: String(item.id || item.produto_id),
+      produto_id: String(item.produto_id || item.id),
+      cartKey: String(item.cartKey || (item.cor_id ? `${item.id || item.produto_id}:cor:${item.cor_id}` : item.id || item.produto_id)),
       qty: Math.max(1, toNumber(item.qty || item.quantidade, 1))
     }));
 
@@ -53,6 +55,7 @@
         ${item.imagem ? `<img src="${ArteFlor.escapeHtml(item.imagem)}" alt="${ArteFlor.escapeHtml(item.nome)}">` : '<span>A&F</span>'}
         <div>
           <strong>${Number(item.qty || 1)}x ${ArteFlor.escapeHtml(item.nome)}</strong>
+          ${item.cor_nome ? `<small class="checkout-color-line"><i class="checkout-color-dot" style="--color: ${ArteFlor.escapeHtml(item.cor_hex || '#FFFFFF')}"></i>Cor: ${ArteFlor.escapeHtml(item.cor_nome)}</small>` : ''}
           <small>${ArteFlor.formatMoney(Number(item.preco || 0) * Number(item.qty || 1))}</small>
         </div>
       </div>
@@ -101,7 +104,8 @@
     observacoes: data.observacoes,
     forma_pagamento: data.pagamento,
     itens: cart.map((item) => ({
-      produto_id: Number(item.id || item.produto_id),
+      produto_id: Number(item.produto_id || item.id),
+      produto_cor_id: Number(item.cor_id || item.produto_cor_id || 0) || null,
       quantidade: Number(item.qty || item.quantidade || 1),
       mensagem_cartao: item.mensagem || '',
       observacoes: item.observacoes || ''

@@ -11,6 +11,9 @@
   const stockSource = document.querySelector('[data-product-preview-stock-source]');
   const minStockSource = document.querySelector('[data-product-preview-min-stock-source]');
   const flagSources = document.querySelectorAll('[data-product-preview-flag-source]');
+  const colorList = document.querySelector('[data-product-color-list]');
+  const colorTemplate = document.querySelector('[data-product-color-template]');
+  const colorAddButton = document.querySelector('[data-product-color-add]');
   const nameTarget = document.querySelector('[data-product-preview-name]');
   const descriptionTarget = document.querySelector('[data-product-preview-description]');
   const priceTarget = document.querySelector('[data-product-preview-price]');
@@ -98,6 +101,35 @@
     if (!element) return;
     element.classList.remove('admin-badge-ok', 'admin-badge-warn', 'admin-badge-danger', 'admin-badge-info', 'admin-badge-soft');
     element.classList.add(className);
+  };
+
+  const bindColorRow = (row) => {
+    if (!(row instanceof HTMLElement)) return;
+
+    const hexInput = row.querySelector('[data-product-color-hex]');
+    const swatch = row.querySelector('.product-color-admin-swatch');
+    const updateSwatch = () => {
+      if (swatch && hexInput instanceof HTMLInputElement) {
+        swatch.style.setProperty('--color', hexInput.value || '#FFFFFF');
+      }
+    };
+
+    hexInput?.addEventListener('input', updateSwatch);
+    updateSwatch();
+  };
+
+  const addColorRow = () => {
+    if (!colorList || !(colorTemplate instanceof HTMLTemplateElement)) return;
+
+    const nextIndex = String(colorList.querySelectorAll('[data-product-color-row]').length + Date.now());
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = colorTemplate.innerHTML.replaceAll('__INDEX__', nextIndex).trim();
+    const row = wrapper.firstElementChild;
+    if (!(row instanceof HTMLElement)) return;
+
+    colorList.appendChild(row);
+    bindColorRow(row);
+    row.querySelector('input[name*="[nome]"]')?.focus();
   };
 
   const revokeObjectUrls = () => {
@@ -264,6 +296,8 @@
   flagSources.forEach((field) => {
     field.addEventListener('change', updateTextPreview);
   });
+  colorList?.querySelectorAll('[data-product-color-row]').forEach(bindColorRow);
+  colorAddButton?.addEventListener('click', addColorRow);
 
   window.addEventListener('beforeunload', revokeObjectUrls);
   updateTextPreview();

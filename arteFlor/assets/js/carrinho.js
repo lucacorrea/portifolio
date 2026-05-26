@@ -25,6 +25,8 @@
     const valid = current.filter(validCartItem).map((item) => ({
       ...item,
       id: String(item.id || item.produto_id),
+      produto_id: String(item.produto_id || item.id),
+      cartKey: String(item.cartKey || (item.cor_id ? `${item.id || item.produto_id}:cor:${item.cor_id}` : item.id || item.produto_id)),
       qty: Math.max(1, toNumber(item.qty || item.quantidade, 1))
     }));
 
@@ -37,6 +39,7 @@
   };
 
   const itemQuantity = (item) => Math.max(1, toNumber(item.qty || item.quantidade, 1));
+  const itemKey = (item) => String(item?.cartKey || item?.id || item?.produto_id || '');
 
   const itemMaxStock = (item) => {
     const stock = toNumber(item.estoque, 0);
@@ -51,7 +54,7 @@
 
   const updateQuantity = (id, nextQty) => {
     const cart = ArteFlor.getCart().map((item) => {
-      if (String(item.id) !== String(id)) return item;
+      if (itemKey(item) !== String(id)) return item;
       return { ...item, qty: clampQuantity(item, nextQty) };
     });
 
@@ -80,6 +83,8 @@
     const lineTotal = toNumber(item.preco) * qty;
     const priceLabel = ArteFlor.formatMoney(toNumber(item.preco));
     const stockLabel = maxStock ? `<small>Disponível: ${maxStock} un.</small>` : '';
+    const colorLine = item.cor_nome ? `<small class="cart-color-line"><i class="cart-color-dot" style="--color: ${ArteFlor.escapeHtml(item.cor_hex || '#FFFFFF')}"></i>Cor: ${ArteFlor.escapeHtml(item.cor_nome)}</small>` : '';
+    const key = itemKey(item);
     const canDecrease = qty > 1;
     const canIncrease = !maxStock || qty < maxStock;
     const image = item.imagem
@@ -88,23 +93,24 @@
     const thumbClass = item.imagem ? 'cart-thumb' : 'cart-thumb fallback';
 
     return `
-      <article class="cart-item" data-cart-row="${ArteFlor.escapeHtml(item.id)}">
+      <article class="cart-item" data-cart-row="${ArteFlor.escapeHtml(key)}">
         <div class="${thumbClass}">${image}</div>
         <div class="cart-item-info">
           <strong>${ArteFlor.escapeHtml(item.nome || 'Produto Arte&Flor')}</strong>
           <span>${ArteFlor.escapeHtml(item.categoria || 'Produto Arte&Flor')} • ${priceLabel} cada</span>
+          ${colorLine}
           ${stockLabel}
           ${item.mensagem ? `<small>Cartão: ${ArteFlor.escapeHtml(item.mensagem)}</small>` : ''}
           ${item.observacoes ? `<small>Obs.: ${ArteFlor.escapeHtml(item.observacoes)}</small>` : ''}
         </div>
         <div class="qty-control" aria-label="Quantidade de ${ArteFlor.escapeHtml(item.nome || 'produto')}">
-          <button type="button" data-cart-minus="${ArteFlor.escapeHtml(item.id)}" ${canDecrease ? '' : 'disabled'} aria-label="Diminuir quantidade">-</button>
+          <button type="button" data-cart-minus="${ArteFlor.escapeHtml(key)}" ${canDecrease ? '' : 'disabled'} aria-label="Diminuir quantidade">-</button>
           <strong>${qty}</strong>
-          <button type="button" data-cart-plus="${ArteFlor.escapeHtml(item.id)}" ${canIncrease ? '' : 'disabled'} aria-label="Aumentar quantidade">+</button>
+          <button type="button" data-cart-plus="${ArteFlor.escapeHtml(key)}" ${canIncrease ? '' : 'disabled'} aria-label="Aumentar quantidade">+</button>
         </div>
         <div class="cart-line-total">
           <strong>${ArteFlor.formatMoney(lineTotal)}</strong>
-          <button type="button" data-cart-remove="${ArteFlor.escapeHtml(item.id)}">Remover</button>
+          <button type="button" data-cart-remove="${ArteFlor.escapeHtml(key)}">Remover</button>
         </div>
       </article>
     `;
@@ -148,13 +154,13 @@
     const cart = ArteFlor.getCart();
 
     if (minusId) {
-      const item = cart.find((row) => String(row.id) === String(minusId));
+      const item = cart.find((row) => itemKey(row) === String(minusId));
       updateQuantity(minusId, itemQuantity(item || {}) - 1);
       render();
     }
 
     if (plusId) {
-      const item = cart.find((row) => String(row.id) === String(plusId));
+      const item = cart.find((row) => itemKey(row) === String(plusId));
       updateQuantity(plusId, itemQuantity(item || {}) + 1);
       render();
     }

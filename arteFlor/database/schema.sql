@@ -100,6 +100,28 @@ CREATE TABLE IF NOT EXISTS produto_imagens (
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS produto_cores (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  produto_id BIGINT UNSIGNED NOT NULL,
+  nome VARCHAR(80) NOT NULL,
+  slug VARCHAR(100) NOT NULL,
+  hex CHAR(7) NOT NULL DEFAULT '#FFFFFF',
+  imagem_url TEXT NULL,
+  estoque INT NOT NULL DEFAULT 0,
+  ativo TINYINT(1) NOT NULL DEFAULT 1,
+  ordem INT UNSIGNED NOT NULL DEFAULT 0,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_produto_cores_produto_slug (produto_id, slug),
+  KEY idx_produto_cores_produto (produto_id),
+  KEY idx_produto_cores_ativo (ativo),
+  CONSTRAINT fk_produto_cores_produto
+    FOREIGN KEY (produto_id) REFERENCES produtos (id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT chk_produto_cores_estoque CHECK (estoque >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS tags (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   nome VARCHAR(80) NOT NULL,
@@ -274,9 +296,13 @@ CREATE TABLE IF NOT EXISTS pedido_itens (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   pedido_id BIGINT UNSIGNED NOT NULL,
   produto_id BIGINT UNSIGNED NULL,
+  produto_cor_id BIGINT UNSIGNED NULL,
   produto_sku VARCHAR(60) NULL,
   produto_nome VARCHAR(180) NOT NULL,
   produto_categoria VARCHAR(120) NULL,
+  produto_cor_nome VARCHAR(80) NULL,
+  produto_cor_hex CHAR(7) NULL,
+  produto_cor_imagem TEXT NULL,
   quantidade INT UNSIGNED NOT NULL DEFAULT 1,
   preco_unitario DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   desconto_unitario DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -287,11 +313,15 @@ CREATE TABLE IF NOT EXISTS pedido_itens (
   PRIMARY KEY (id),
   KEY idx_pedido_itens_pedido (pedido_id),
   KEY idx_pedido_itens_produto (produto_id),
+  KEY idx_pedido_itens_cor (produto_cor_id),
   CONSTRAINT fk_pedido_itens_pedido
     FOREIGN KEY (pedido_id) REFERENCES pedidos (id)
     ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_pedido_itens_produto
     FOREIGN KEY (produto_id) REFERENCES produtos (id)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  CONSTRAINT fk_pedido_itens_cor
+    FOREIGN KEY (produto_cor_id) REFERENCES produto_cores (id)
     ON UPDATE CASCADE ON DELETE SET NULL,
   CONSTRAINT chk_pedido_itens_quantidade CHECK (quantidade > 0),
   CONSTRAINT chk_pedido_itens_preco CHECK (preco_unitario >= 0),
@@ -419,6 +449,7 @@ CREATE TABLE IF NOT EXISTS pdv_vendas (
 CREATE TABLE IF NOT EXISTS estoque_movimentacoes (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   produto_id BIGINT UNSIGNED NOT NULL,
+  produto_cor_id BIGINT UNSIGNED NULL,
   pedido_id BIGINT UNSIGNED NULL,
   usuario_admin_id BIGINT UNSIGNED NULL,
   tipo ENUM('entrada', 'saida', 'ajuste', 'perda', 'reserva') NOT NULL,
@@ -434,12 +465,16 @@ CREATE TABLE IF NOT EXISTS estoque_movimentacoes (
   criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_estoque_mov_produto (produto_id),
+  KEY idx_estoque_mov_cor (produto_cor_id),
   KEY idx_estoque_mov_pedido (pedido_id),
   KEY idx_estoque_mov_tipo (tipo),
   KEY idx_estoque_mov_data (movimentado_em),
   CONSTRAINT fk_estoque_mov_produto
     FOREIGN KEY (produto_id) REFERENCES produtos (id)
     ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_estoque_mov_cor
+    FOREIGN KEY (produto_cor_id) REFERENCES produto_cores (id)
+    ON UPDATE CASCADE ON DELETE SET NULL,
   CONSTRAINT fk_estoque_mov_pedido
     FOREIGN KEY (pedido_id) REFERENCES pedidos (id)
     ON UPDATE CASCADE ON DELETE SET NULL,

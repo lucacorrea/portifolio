@@ -207,6 +207,7 @@ function order_checkout_payload(array $payload): array
         }
 
         $productId = (int) ($item['produto_id'] ?? $item['product_id'] ?? $item['id'] ?? 0);
+        $colorId = (int) ($item['produto_cor_id'] ?? $item['cor_id'] ?? $item['color_id'] ?? 0);
         $quantity = (int) ($item['quantidade'] ?? $item['qty'] ?? 0);
         if ($productId <= 0 || $quantity <= 0) {
             continue;
@@ -217,6 +218,7 @@ function order_checkout_payload(array $payload): array
 
         $normalizedItems[] = [
             'produto_id' => $productId,
+            'produto_cor_id' => $colorId > 0 ? $colorId : null,
             'quantidade' => $quantity,
             'mensagem_cartao' => order_clean_text($item['mensagem_cartao'] ?? $item['mensagem'] ?? '', 500),
             'observacoes' => order_clean_text($item['observacoes'] ?? '', 1000),
@@ -314,6 +316,48 @@ function order_load_products_for_update(array $items): array
     return $products;
 }
 
+function order_load_color_variants_for_update(array $items): array
+{
+    $productIds = array_values(array_unique(array_filter(array_map(static fn(array $item): int => (int) $item['produto_id'], $items), static fn(int $id): bool => $id > 0)));
+    $colorIds = array_values(array_unique(array_filter(array_map(static fn(array $item): int => (int) ($item['produto_cor_id'] ?? 0), $items), static fn(int $id): bool => $id > 0)));
+
+    $activeCounts = [];
+    if (!empty($productIds)) {
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $statement = db()->prepare(
+            'SELECT produto_id, COUNT(*) AS total
+             FROM produto_cores
+             WHERE produto_id IN (' . $placeholders . ')
+               AND ativo = 1
+             GROUP BY produto_id'
+        );
+        $statement->execute($productIds);
+        foreach ($statement->fetchAll() as $row) {
+            $activeCounts[(int) $row['produto_id']] = (int) $row['total'];
+        }
+    }
+
+    $colors = [];
+    if (!empty($colorIds)) {
+        $placeholders = implode(',', array_fill(0, count($colorIds), '?'));
+        $statement = db()->prepare(
+            'SELECT id, produto_id, nome, hex, imagem_url, estoque, ativo
+             FROM produto_cores
+             WHERE id IN (' . $placeholders . ')
+             FOR UPDATE'
+        );
+        $statement->execute($colorIds);
+        foreach ($statement->fetchAll() as $color) {
+            $colors[(int) $color['id']] = $color;
+        }
+    }
+
+    return [
+        'active_counts' => $activeCounts,
+        'colors' => $colors,
+    ];
+}
+
 function order_calculate_discount(float $subtotal): float
 {
     return $subtotal >= 250 ? round($subtotal * 0.05, 2) : 0.0;
@@ -327,9 +371,17 @@ function order_create_from_checkout(array $payload): array
 
     try {
         $products = order_load_products_for_update($data['itens']);
+        $colorState = order_load_color_variants_for_update($data['itens']);
         $requiredStock = [];
+        $requiredColorStock = [];
+
         foreach ($data['itens'] as $item) {
-            $requiredStock[$item['produto_id']] = ($requiredStock[$item['produto_id']] ?? 0) + $item['quantidade'];
+            $productId = (int) $item['produto_id'];
+            $requiredStock[$productId] = ($requiredStock[$productId] ?? 0) + $item['quantidade'];
+            $colorId = (int) ($item['produto_cor_id'] ?? 0);
+            if ($colorId > 0) {
+                $requiredColorStock[$colorId] = ($requiredColorStock[$colorId] ?? 0) + $item['quantidade'];
+            }
         }
 
         foreach ($requiredStock as $productId => $quantity) {
@@ -348,15 +400,46 @@ function order_create_from_checkout(array $payload): array
             }
         }
 
+        foreach ($data['itens'] as $item) {
+            $product = $products[(int) $item['produto_id']] ?? null;
+            if (!$product) {
+                continue;
+            }
+
+            $activeColorCount = (int) ($colorState['active_counts'][(int) $product['id']] ?? 0);
+            $colorId = (int) ($item['produto_cor_id'] ?? 0);
+            if ($activeColorCount > 0 && $colorId <= 0) {
+                throw new InvalidArgumentException('Escolha uma cor para "' . $product['nome'] . '".');
+            }
+            if ($colorId <= 0) {
+                continue;
+            }
+
+            $color = $colorState['colors'][$colorId] ?? null;
+            if (!$color || (int) $color['produto_id'] !== (int) $product['id'] || (int) $color['ativo'] !== 1) {
+                throw new InvalidArgumentException('A cor escolhida para "' . $product['nome'] . '" não está disponível.');
+            }
+        }
+
+        foreach ($requiredColorStock as $colorId => $quantity) {
+            $color = $colorState['colors'][$colorId] ?? null;
+            if (!$color || (int) $color['estoque'] < $quantity) {
+                throw new InvalidArgumentException('Estoque insuficiente para a cor "' . (string) ($color['nome'] ?? 'selecionada') . '".');
+            }
+        }
+
         $lines = [];
         $subtotal = 0.0;
         foreach ($data['itens'] as $item) {
             $product = $products[$item['produto_id']];
+            $colorId = (int) ($item['produto_cor_id'] ?? 0);
+            $color = $colorId > 0 ? ($colorState['colors'][$colorId] ?? null) : null;
             $unitPrice = effective_price($product);
             $lineTotal = round($unitPrice * $item['quantidade'], 2);
             $subtotal += $lineTotal;
             $lines[] = [
                 'produto' => $product,
+                'cor' => $color,
                 'quantidade' => $item['quantidade'],
                 'preco_unitario' => $unitPrice,
                 'total_linha' => $lineTotal,
@@ -411,22 +494,29 @@ function order_create_from_checkout(array $payload): array
 
         foreach ($lines as $line) {
             $product = $line['produto'];
+            $color = $line['cor'];
             $pdo->prepare(
                 'INSERT INTO pedido_itens (
-                    pedido_id, produto_id, produto_sku, produto_nome, produto_categoria,
+                    pedido_id, produto_id, produto_cor_id, produto_sku, produto_nome, produto_categoria,
+                    produto_cor_nome, produto_cor_hex, produto_cor_imagem,
                     quantidade, preco_unitario, desconto_unitario, total_linha,
                     mensagem_cartao, observacoes
                  ) VALUES (
-                    :pedido_id, :produto_id, :produto_sku, :produto_nome, :produto_categoria,
+                    :pedido_id, :produto_id, :produto_cor_id, :produto_sku, :produto_nome, :produto_categoria,
+                    :produto_cor_nome, :produto_cor_hex, :produto_cor_imagem,
                     :quantidade, :preco_unitario, 0, :total_linha,
                     :mensagem_cartao, :observacoes
                  )'
             )->execute([
                 'pedido_id' => $orderId,
                 'produto_id' => (int) $product['id'],
+                'produto_cor_id' => $color ? (int) $color['id'] : null,
                 'produto_sku' => $product['sku'],
                 'produto_nome' => $product['nome'],
                 'produto_categoria' => $product['categoria_nome'] ?? null,
+                'produto_cor_nome' => $color['nome'] ?? null,
+                'produto_cor_hex' => $color['hex'] ?? null,
+                'produto_cor_imagem' => $color['imagem_url'] ?? null,
                 'quantidade' => $line['quantidade'],
                 'preco_unitario' => $line['preco_unitario'],
                 'total_linha' => $line['total_linha'],
@@ -461,10 +551,16 @@ function order_create_from_checkout(array $payload): array
             'observacao' => 'Pedido criado pelo checkout público.',
         ]);
 
-        foreach ($requiredStock as $productId => $quantity) {
-            $product = $products[$productId];
-            $before = (int) $product['estoque'];
-            $after = $before - (int) $quantity;
+        $productStockBalance = [];
+        $colorStockBalance = [];
+        foreach ($lines as $line) {
+            $product = $line['produto'];
+            $color = $line['cor'];
+            $productId = (int) $product['id'];
+            $quantity = (int) $line['quantidade'];
+            $before = $productStockBalance[$productId] ?? (int) $product['estoque'];
+            $after = $before - $quantity;
+            $productStockBalance[$productId] = $after;
             $newStatus = $after <= 0 ? 'sem_estoque' : $product['status'];
 
             $pdo->prepare(
@@ -477,16 +573,33 @@ function order_create_from_checkout(array $payload): array
                 'status' => $newStatus,
             ]);
 
+            if ($color) {
+                $colorId = (int) $color['id'];
+                $colorBefore = $colorStockBalance[$colorId] ?? (int) $color['estoque'];
+                $colorAfter = $colorBefore - $quantity;
+                $colorStockBalance[$colorId] = $colorAfter;
+                $pdo->prepare(
+                    'UPDATE produto_cores
+                     SET estoque = :estoque, atualizado_em = CURRENT_TIMESTAMP
+                     WHERE id = :id AND produto_id = :produto_id'
+                )->execute([
+                    'id' => $colorId,
+                    'produto_id' => $productId,
+                    'estoque' => $colorAfter,
+                ]);
+            }
+
             $pdo->prepare(
                 'INSERT INTO estoque_movimentacoes (
-                    produto_id, pedido_id, tipo, origem, quantidade,
+                    produto_id, produto_cor_id, pedido_id, tipo, origem, quantidade,
                     estoque_anterior, estoque_novo, responsavel_nome, motivo, status, movimentado_em
                  ) VALUES (
-                    :produto_id, :pedido_id, "saida", "venda", :quantidade,
+                    :produto_id, :produto_cor_id, :pedido_id, "saida", "venda", :quantidade,
                     :estoque_anterior, :estoque_novo, "Checkout público", :motivo, "concluido", CURRENT_TIMESTAMP
                  )'
             )->execute([
                 'produto_id' => $productId,
+                'produto_cor_id' => $color ? (int) $color['id'] : null,
                 'pedido_id' => $orderId,
                 'quantidade' => $quantity,
                 'estoque_anterior' => $before,
@@ -550,13 +663,13 @@ function order_items(int $orderId): array
 
     $statement = db()->prepare(
         'SELECT pi.*,
-            (
+            COALESCE(pi.produto_cor_imagem, (
               SELECT img.url
               FROM produto_imagens img
               WHERE img.produto_id = pi.produto_id
               ORDER BY img.principal DESC, img.ordem ASC, img.id ASC
               LIMIT 1
-            ) AS imagem
+            )) AS imagem
          FROM pedido_itens pi
          WHERE pi.pedido_id = :pedido_id
          ORDER BY pi.id ASC'

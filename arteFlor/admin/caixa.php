@@ -994,6 +994,8 @@ body.pdv-terminal-clean-mode .admin-main {
 
     const image = card.querySelector('img');
     const name = card.querySelector('strong')?.textContent?.trim() || 'Produto selecionado';
+    const color = card.querySelector('.admin-color-line')?.textContent?.trim() || '';
+    const displayName = color ? `${name} · ${color}` : name;
 
     const priceText = [...card.querySelectorAll('span, small, strong')]
       .map((el) => el.textContent.trim())
@@ -1003,7 +1005,7 @@ body.pdv-terminal-clean-mode .admin-main {
     const itemTotal = unitValue * getQty();
 
     if (image?.src) {
-      selectedImage.innerHTML = `<img src="${image.src}" alt="${name}">`;
+      selectedImage.innerHTML = `<img src="${image.src}" alt="${displayName}">`;
     } else {
       selectedImage.innerHTML = `
         <div class="pdv-product-placeholder">
@@ -1013,7 +1015,7 @@ body.pdv-terminal-clean-mode .admin-main {
       `;
     }
 
-    selectedName.textContent = name;
+    selectedName.textContent = displayName;
     selectedPrice.textContent = priceText || 'Produto selecionado';
 
     if (selectedUnit) {

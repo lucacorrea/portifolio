@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/orders.php';
+require_once __DIR__ . '/products.php';
 
 function pdv_products(): array
 {
@@ -28,17 +29,49 @@ function pdv_products(): array
          ORDER BY p.nome ASC'
     );
 
-    return array_map(static function (array $product): array {
-        return [
-            'id' => (int) $product['id'],
+    $rows = $statement->fetchAll();
+    $colorsByProduct = product_colors_by_product_ids(array_column($rows, 'id'), true);
+    $products = [];
+
+    foreach ($rows as $product) {
+        $productId = (int) $product['id'];
+        $base = [
+            'id' => $productId,
+            'produto_id' => $productId,
+            'saleKey' => (string) $productId,
             'sku' => (string) ($product['sku'] ?? ''),
             'nome' => (string) $product['nome'],
             'categoria' => (string) ($product['categoria'] ?? 'Sem categoria'),
             'preco' => effective_price($product),
-            'imagem' => (string) ($product['imagem'] ?? ''),
+            'imagem' => product_public_image_url((string) ($product['imagem'] ?? '')),
             'estoque' => (int) $product['estoque'],
+            'cor_id' => null,
+            'cor_nome' => '',
+            'cor_hex' => '',
+            'cor_imagem' => '',
         ];
-    }, $statement->fetchAll());
+
+        $colors = $colorsByProduct[$productId] ?? [];
+        if (empty($colors)) {
+            $products[] = $base;
+            continue;
+        }
+
+        foreach ($colors as $color) {
+            $colorId = (int) $color['id'];
+            $products[] = array_merge($base, [
+                'saleKey' => $productId . ':cor:' . $colorId,
+                'cor_id' => $colorId,
+                'cor_nome' => (string) $color['nome'],
+                'cor_hex' => (string) $color['hex'],
+                'cor_imagem' => (string) ($color['imagem'] ?? ''),
+                'imagem' => (string) ($color['imagem'] ?: $base['imagem']),
+                'estoque' => (int) $color['estoque'],
+            ]);
+        }
+    }
+
+    return $products;
 }
 
 function pdv_generate_code(): string
@@ -80,9 +113,18 @@ function pdv_create_sale_from_payload(array $payload, array $adminUser): array
             continue;
         }
         $productId = filter_var($item['produto_id'] ?? $item['id'] ?? 0, FILTER_VALIDATE_INT) ?: 0;
+        $colorId = filter_var($item['produto_cor_id'] ?? $item['cor_id'] ?? 0, FILTER_VALIDATE_INT) ?: 0;
         $quantity = filter_var($item['quantidade'] ?? $item['qty'] ?? 0, FILTER_VALIDATE_INT) ?: 0;
         if ($productId > 0 && $quantity > 0) {
-            $normalizedItems[$productId] = ($normalizedItems[$productId] ?? 0) + $quantity;
+            $key = $productId . ':' . max(0, $colorId);
+            if (!isset($normalizedItems[$key])) {
+                $normalizedItems[$key] = [
+                    'produto_id' => $productId,
+                    'produto_cor_id' => $colorId > 0 ? $colorId : null,
+                    'quantidade' => 0,
+                ];
+            }
+            $normalizedItems[$key]['quantidade'] += $quantity;
         }
     }
 
@@ -94,26 +136,28 @@ function pdv_create_sale_from_payload(array $payload, array $adminUser): array
     $pdo->beginTransaction();
 
     try {
-        $ids = array_keys($normalizedItems);
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $statement = $pdo->prepare(
-            'SELECT p.*, c.nome AS categoria_nome
-             FROM produtos p
-             LEFT JOIN categorias c ON c.id = p.categoria_id
-             WHERE p.id IN (' . $placeholders . ')
-               AND p.removido_em IS NULL
-             FOR UPDATE'
-        );
-        $statement->execute($ids);
-
-        $products = [];
-        foreach ($statement->fetchAll() as $product) {
-            $products[(int) $product['id']] = $product;
-        }
+        $itemsForValidation = array_values($normalizedItems);
+        $products = order_load_products_for_update($itemsForValidation);
+        $colorState = order_load_color_variants_for_update($itemsForValidation);
 
         $lines = [];
         $subtotal = 0.0;
-        foreach ($normalizedItems as $productId => $quantity) {
+        $requiredStock = [];
+        $requiredColorStock = [];
+        foreach ($itemsForValidation as $item) {
+            $productId = (int) $item['produto_id'];
+            $quantity = (int) $item['quantidade'];
+            $colorId = (int) ($item['produto_cor_id'] ?? 0);
+            $requiredStock[$productId] = ($requiredStock[$productId] ?? 0) + $quantity;
+            if ($colorId > 0) {
+                $requiredColorStock[$colorId] = ($requiredColorStock[$colorId] ?? 0) + $quantity;
+            }
+        }
+
+        foreach ($itemsForValidation as $item) {
+            $productId = (int) $item['produto_id'];
+            $quantity = (int) $item['quantidade'];
+            $colorId = (int) ($item['produto_cor_id'] ?? 0);
             $product = $products[$productId] ?? null;
             if (!$product) {
                 throw new InvalidArgumentException('Um produto da venda não foi encontrado.');
@@ -121,8 +165,24 @@ function pdv_create_sale_from_payload(array $payload, array $adminUser): array
             if ((int) $product['disponivel_pdv'] !== 1 || (string) $product['status'] !== 'disponivel') {
                 throw new InvalidArgumentException('O produto "' . $product['nome'] . '" não está disponível no PDV.');
             }
-            if ((int) $product['estoque'] < $quantity) {
+            if ((int) $product['estoque'] < ($requiredStock[$productId] ?? $quantity)) {
                 throw new InvalidArgumentException('Estoque insuficiente para "' . $product['nome'] . '".');
+            }
+
+            $activeColorCount = (int) ($colorState['active_counts'][$productId] ?? 0);
+            if ($activeColorCount > 0 && $colorId <= 0) {
+                throw new InvalidArgumentException('Escolha uma cor para "' . $product['nome'] . '" no PDV.');
+            }
+
+            $color = null;
+            if ($colorId > 0) {
+                $color = $colorState['colors'][$colorId] ?? null;
+                if (!$color || (int) $color['produto_id'] !== $productId || (int) $color['ativo'] !== 1) {
+                    throw new InvalidArgumentException('A cor escolhida para "' . $product['nome'] . '" não está disponível.');
+                }
+                if ((int) $color['estoque'] < ($requiredColorStock[$colorId] ?? $quantity)) {
+                    throw new InvalidArgumentException('Estoque insuficiente para a cor "' . (string) $color['nome'] . '".');
+                }
             }
 
             $unitPrice = effective_price($product);
@@ -130,6 +190,7 @@ function pdv_create_sale_from_payload(array $payload, array $adminUser): array
             $subtotal += $lineTotal;
             $lines[] = [
                 'produto' => $product,
+                'cor' => $color,
                 'quantidade' => $quantity,
                 'preco_unitario' => $unitPrice,
                 'total_linha' => $lineTotal,
@@ -175,29 +236,41 @@ function pdv_create_sale_from_payload(array $payload, array $adminUser): array
         ]);
         $orderId = (int) $pdo->lastInsertId();
 
+        $productStockBalance = [];
+        $colorStockBalance = [];
         foreach ($lines as $line) {
             $product = $line['produto'];
+            $color = $line['cor'];
             $pdo->prepare(
                 'INSERT INTO pedido_itens (
-                    pedido_id, produto_id, produto_sku, produto_nome, produto_categoria,
+                    pedido_id, produto_id, produto_cor_id, produto_sku, produto_nome, produto_categoria,
+                    produto_cor_nome, produto_cor_hex, produto_cor_imagem,
                     quantidade, preco_unitario, desconto_unitario, total_linha
                  ) VALUES (
-                    :pedido_id, :produto_id, :produto_sku, :produto_nome, :produto_categoria,
+                    :pedido_id, :produto_id, :produto_cor_id, :produto_sku, :produto_nome, :produto_categoria,
+                    :produto_cor_nome, :produto_cor_hex, :produto_cor_imagem,
                     :quantidade, :preco_unitario, 0, :total_linha
                  )'
             )->execute([
                 'pedido_id' => $orderId,
                 'produto_id' => (int) $product['id'],
+                'produto_cor_id' => $color ? (int) $color['id'] : null,
                 'produto_sku' => $product['sku'],
                 'produto_nome' => $product['nome'],
                 'produto_categoria' => $product['categoria_nome'] ?? null,
+                'produto_cor_nome' => $color['nome'] ?? null,
+                'produto_cor_hex' => $color['hex'] ?? null,
+                'produto_cor_imagem' => $color['imagem_url'] ?? null,
                 'quantidade' => $line['quantidade'],
                 'preco_unitario' => $line['preco_unitario'],
                 'total_linha' => $line['total_linha'],
             ]);
 
-            $before = (int) $product['estoque'];
-            $after = $before - (int) $line['quantidade'];
+            $productId = (int) $product['id'];
+            $quantity = (int) $line['quantidade'];
+            $before = $productStockBalance[$productId] ?? (int) $product['estoque'];
+            $after = $before - $quantity;
+            $productStockBalance[$productId] = $after;
             $pdo->prepare(
                 'UPDATE produtos
                  SET estoque = :estoque,
@@ -205,24 +278,41 @@ function pdv_create_sale_from_payload(array $payload, array $adminUser): array
                      atualizado_em = CURRENT_TIMESTAMP
                  WHERE id = :id'
             )->execute([
-                'id' => (int) $product['id'],
+                'id' => $productId,
                 'estoque' => $after,
                 'estoque_status' => $after,
             ]);
 
+            if ($color) {
+                $colorId = (int) $color['id'];
+                $colorBefore = $colorStockBalance[$colorId] ?? (int) $color['estoque'];
+                $colorAfter = $colorBefore - $quantity;
+                $colorStockBalance[$colorId] = $colorAfter;
+                $pdo->prepare(
+                    'UPDATE produto_cores
+                     SET estoque = :estoque, atualizado_em = CURRENT_TIMESTAMP
+                     WHERE id = :id AND produto_id = :produto_id'
+                )->execute([
+                    'id' => $colorId,
+                    'produto_id' => $productId,
+                    'estoque' => $colorAfter,
+                ]);
+            }
+
             $pdo->prepare(
                 'INSERT INTO estoque_movimentacoes (
-                    produto_id, pedido_id, usuario_admin_id, tipo, origem, quantidade,
+                    produto_id, produto_cor_id, pedido_id, usuario_admin_id, tipo, origem, quantidade,
                     estoque_anterior, estoque_novo, responsavel_nome, motivo, status, movimentado_em
                  ) VALUES (
-                    :produto_id, :pedido_id, :usuario_admin_id, "saida", "venda", :quantidade,
+                    :produto_id, :produto_cor_id, :pedido_id, :usuario_admin_id, "saida", "venda", :quantidade,
                     :estoque_anterior, :estoque_novo, :responsavel_nome, :motivo, "concluido", CURRENT_TIMESTAMP
                  )'
             )->execute([
-                'produto_id' => (int) $product['id'],
+                'produto_id' => $productId,
+                'produto_cor_id' => $color ? (int) $color['id'] : null,
                 'pedido_id' => $orderId,
                 'usuario_admin_id' => (int) ($adminUser['id'] ?? 0) ?: null,
-                'quantidade' => (int) $line['quantidade'],
+                'quantidade' => $quantity,
                 'estoque_anterior' => $before,
                 'estoque_novo' => $after,
                 'responsavel_nome' => order_clean_text($adminUser['nome'] ?? 'Admin', 140),

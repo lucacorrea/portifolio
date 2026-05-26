@@ -138,7 +138,13 @@ $errorKey = is_string($_GET['error'] ?? null) ? (string) $_GET['error'] : '';
                 <div class="admin-order-detail-panel">
                   <h3>Itens</h3>
                   <?php foreach ($items as $item): ?>
-                    <p><strong><?= (int) $item['quantidade'] ?>x <?= e((string) $item['produto_nome']) ?></strong> · <?= money_br((float) $item['total_linha']) ?></p>
+                    <p>
+                      <strong><?= (int) $item['quantidade'] ?>x <?= e((string) $item['produto_nome']) ?></strong>
+                      <?php if (!empty($item['produto_cor_nome'])): ?>
+                        <span class="admin-color-chip"><i class="admin-color-dot" style="--color: <?= e((string) ($item['produto_cor_hex'] ?: '#FFFFFF')) ?>"></i><?= e((string) $item['produto_cor_nome']) ?></span>
+                      <?php endif; ?>
+                      · <?= money_br((float) $item['total_linha']) ?>
+                    </p>
                   <?php endforeach; ?>
 
                   <h3>Recebimento</h3>

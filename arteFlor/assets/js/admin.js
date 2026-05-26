@@ -33,6 +33,8 @@
   let sale = [];
 
   const getQty = () => Math.max(1, Number(qtyInput?.value || 1));
+  const saleKey = (item) => String(item.saleKey || item.cartKey || item.id || item.produto_id || '');
+  const productLabel = (product) => product.cor_nome ? `${product.nome} · ${product.cor_nome}` : product.nome;
 
   const saleTotals = () => {
     const subtotal = sale.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 1), 0);
@@ -41,7 +43,8 @@
   };
 
   const addProduct = (product, qty = getQty()) => {
-    const current = sale.find((item) => item.id === String(product.id));
+    const key = saleKey(product);
+    const current = sale.find((item) => saleKey(item) === key);
     const stock = Number(product.estoque || 0);
     if (current) {
       if (stock > 0 && current.qty + qty > stock) {
@@ -54,25 +57,26 @@
         ArteFlor.toast('Quantidade maior que o estoque disponível.', 'warning');
         return;
       }
-      sale.push({ ...product, id: String(product.id), qty });
+      sale.push({ ...product, id: String(product.id), saleKey: key, qty });
     }
     renderSale();
-    ArteFlor.toast(`${product.nome} adicionado ao caixa.`);
+    ArteFlor.toast(`${productLabel(product)} adicionado ao caixa.`);
   };
 
   const renderProducts = () => {
     if (!productGrid) return;
     const term = (search?.value || '').toLocaleLowerCase('pt-BR').trim();
     const filtered = products.filter((product) => {
-      const text = `${product.sku} ${product.nome} ${product.categoria}`.toLocaleLowerCase('pt-BR');
+      const text = `${product.sku} ${product.nome} ${product.categoria} ${product.cor_nome || ''}`.toLocaleLowerCase('pt-BR');
       const categoryOk = currentCategory === 'todos' || product.categoria === currentCategory;
       return categoryOk && (!term || text.includes(term));
     });
 
     productGrid.innerHTML = filtered.map((product) => `
-      <button class="pdv-product-card" type="button" data-pdv-add="${ArteFlor.escapeHtml(product.id)}">
-        ${product.imagem ? `<img src="${ArteFlor.escapeHtml(product.imagem)}" alt="${ArteFlor.escapeHtml(product.nome)}">` : '<span>A&F</span>'}
+      <button class="pdv-product-card" type="button" data-pdv-add="${ArteFlor.escapeHtml(saleKey(product))}">
+        ${product.imagem ? `<img src="${ArteFlor.escapeHtml(product.imagem)}" alt="${ArteFlor.escapeHtml(productLabel(product))}">` : '<span>A&F</span>'}
         <strong>${ArteFlor.escapeHtml(product.nome)}</strong>
+        ${product.cor_nome ? `<small class="admin-color-line"><i class="admin-color-dot" style="--color: ${ArteFlor.escapeHtml(product.cor_hex || '#FFFFFF')}"></i>${ArteFlor.escapeHtml(product.cor_nome)}</small>` : ''}
         <small>${ArteFlor.escapeHtml(product.sku || product.categoria)} · ${Number(product.estoque || 0)} un.</small>
         <em>${ArteFlor.formatMoney(product.preco)}</em>
       </button>
@@ -84,17 +88,18 @@
 
     currentList.innerHTML = sale.length ? sale.map((item) => `
       <article class="pdv-sale-item">
-        ${item.imagem ? `<img src="${ArteFlor.escapeHtml(item.imagem)}" alt="${ArteFlor.escapeHtml(item.nome)}">` : '<span>A&F</span>'}
+        ${item.imagem ? `<img src="${ArteFlor.escapeHtml(item.imagem)}" alt="${ArteFlor.escapeHtml(productLabel(item))}">` : '<span>A&F</span>'}
         <div>
           <strong>${ArteFlor.escapeHtml(item.nome)}</strong>
+          ${item.cor_nome ? `<small class="admin-color-line"><i class="admin-color-dot" style="--color: ${ArteFlor.escapeHtml(item.cor_hex || '#FFFFFF')}"></i>${ArteFlor.escapeHtml(item.cor_nome)}</small>` : ''}
           <small>${ArteFlor.formatMoney(item.preco)} un.</small>
         </div>
         <div class="qty-control">
-          <button type="button" data-pdv-minus="${ArteFlor.escapeHtml(item.id)}">-</button>
+          <button type="button" data-pdv-minus="${ArteFlor.escapeHtml(saleKey(item))}">-</button>
           <strong>${item.qty}</strong>
-          <button type="button" data-pdv-plus="${ArteFlor.escapeHtml(item.id)}">+</button>
+          <button type="button" data-pdv-plus="${ArteFlor.escapeHtml(saleKey(item))}">+</button>
         </div>
-        <button type="button" data-pdv-remove="${ArteFlor.escapeHtml(item.id)}">Remover</button>
+        <button type="button" data-pdv-remove="${ArteFlor.escapeHtml(saleKey(item))}">Remover</button>
       </article>
     `).join('') : '<div class="empty-state small"><strong>Venda vazia</strong><p>Busque produtos ou use os atalhos rápidos.</p></div>';
 
@@ -119,13 +124,13 @@
     const source = event.target;
     const target = source instanceof HTMLElement ? source.closest('[data-pdv-add]') : null;
     if (!target) return;
-    const product = products.find((item) => String(item.id) === target.dataset.pdvAdd);
+    const product = products.find((item) => saleKey(item) === target.dataset.pdvAdd);
     if (product) addProduct(product);
   });
 
   document.querySelector('[data-pdv-add-search]')?.addEventListener('click', () => {
     const term = (search?.value || '').toLocaleLowerCase('pt-BR').trim();
-    const product = products.find((item) => `${item.id} ${item.sku} ${item.nome}`.toLocaleLowerCase('pt-BR').includes(term));
+    const product = products.find((item) => `${item.id} ${item.sku} ${item.nome} ${item.cor_nome || ''}`.toLocaleLowerCase('pt-BR').includes(term));
     if (product) {
       addProduct(product);
     } else {
@@ -150,7 +155,7 @@
     const remove = target.dataset.pdvRemove;
 
     if (plus) {
-      const item = sale.find((row) => row.id === plus);
+      const item = sale.find((row) => saleKey(row) === plus);
       if (item) {
         const stock = Number(item.estoque || 0);
         if (stock > 0 && item.qty + 1 > stock) {
@@ -161,11 +166,11 @@
       }
     }
     if (minus) {
-      const item = sale.find((row) => row.id === minus);
+      const item = sale.find((row) => saleKey(row) === minus);
       if (item) item.qty = Math.max(1, item.qty - 1);
     }
     if (remove) {
-      sale = sale.filter((row) => row.id !== remove);
+      sale = sale.filter((row) => saleKey(row) !== remove);
     }
     renderSale();
   });
@@ -194,7 +199,8 @@
           desconto: totals.discount,
           valor_recebido: Number(document.querySelector('[data-pdv-received]')?.value || totals.total),
           itens: sale.map((item) => ({
-            produto_id: Number(item.id),
+            produto_id: Number(item.produto_id || item.id),
+            produto_cor_id: Number(item.cor_id || 0) || null,
             quantidade: Number(item.qty || 1)
           }))
         })

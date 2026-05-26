@@ -43,6 +43,39 @@ $field = fn(string $key, mixed $default = ''): mixed => $_POST[$key] ?? $product
 $categoryName = (string) ($_POST['categoria_nome'] ?? $product['categoria_nome'] ?? 'Buquês');
 $statusValue = (string) $field('status', 'disponivel');
 $tagsText = (string) ($_POST['tags'] ?? ($isEditing ? product_tags_text((int) $product['id']) : ''));
+$submittedColors = is_array($_POST['cores'] ?? null) ? $_POST['cores'] : null;
+if ($submittedColors !== null) {
+    $colorRows = [];
+    foreach ($submittedColors as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $colorRows[] = [
+            'id' => (int) ($row['id'] ?? 0),
+            'nome' => (string) ($row['nome'] ?? ''),
+            'hex' => product_color_normalize_hex((string) ($row['hex'] ?? '#FFFFFF')),
+            'imagem_url' => (string) ($row['imagem_url'] ?? ''),
+            'imagem' => product_public_image_url((string) ($row['imagem_url'] ?? '')),
+            'estoque' => max(0, (int) ($row['estoque'] ?? 0)),
+            'ativo' => (int) ($row['ativo'] ?? 0),
+            'ordem' => (int) ($row['ordem'] ?? 0),
+        ];
+    }
+} else {
+    $colorRows = $isEditing ? product_colors((int) $product['id']) : [];
+}
+if (empty($colorRows)) {
+    $colorRows[] = [
+        'id' => 0,
+        'nome' => '',
+        'hex' => '#B7202E',
+        'imagem_url' => '',
+        'imagem' => '',
+        'estoque' => 0,
+        'ativo' => 1,
+        'ordem' => 0,
+    ];
+}
 $previewImage = !empty($images[0]['url'] ?? '') ? product_public_image_url($images[0]['url']) : '';
 $previewStockValue = $field('estoque', 0);
 $previewMinStockValue = $field('estoque_minimo', 0);
@@ -161,6 +194,93 @@ require_once __DIR__ . '/../includes/admin-head.php';
           <input name="estoque_minimo" type="number" min="0" value="<?= e((string) $field('estoque_minimo', 0)) ?>" data-product-preview-min-stock-source>
         </label>
       </div>
+    </div>
+
+    <div class="admin-form-section">
+      <div class="admin-section-title">
+        <strong>Cores e variações</strong>
+        <p>Cadastre as cores vendidas separadamente. Se houver cores ativas, o estoque geral acompanha a soma delas.</p>
+      </div>
+
+      <div class="product-color-admin-list" data-product-color-list>
+        <?php foreach ($colorRows as $index => $color): ?>
+          <?php
+            $colorId = (int) ($color['id'] ?? 0);
+            $colorHex = product_color_normalize_hex((string) ($color['hex'] ?? '#FFFFFF'));
+            $colorImage = product_public_image_url((string) ($color['imagem_url'] ?? $color['imagem'] ?? ''));
+          ?>
+          <article class="product-color-admin-row" data-product-color-row>
+            <input type="hidden" name="cores[<?= $index ?>][id]" value="<?= $colorId ?>">
+            <input type="hidden" name="cores[<?= $index ?>][ordem]" value="<?= (int) ($color['ordem'] ?? $index) ?>">
+            <div class="product-color-admin-swatch" style="--color: <?= e($colorHex) ?>" aria-hidden="true"></div>
+            <label class="admin-field">
+              <span>Cor</span>
+              <input name="cores[<?= $index ?>][nome]" value="<?= e((string) ($color['nome'] ?? '')) ?>" placeholder="Vermelho, azul, branco">
+            </label>
+            <label class="admin-field compact">
+              <span>Hex</span>
+              <input name="cores[<?= $index ?>][hex]" type="color" value="<?= e($colorHex) ?>" data-product-color-hex>
+            </label>
+            <label class="admin-field compact">
+              <span>Estoque</span>
+              <input name="cores[<?= $index ?>][estoque]" type="number" min="0" value="<?= (int) ($color['estoque'] ?? 0) ?>">
+            </label>
+            <label class="admin-field">
+              <span>Imagem da cor</span>
+              <input name="cores_imagens[<?= $index ?>]" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">
+            </label>
+            <label class="admin-field">
+              <span>URL atual</span>
+              <input name="cores[<?= $index ?>][imagem_url]" value="<?= e((string) ($color['imagem_url'] ?? '')) ?>" placeholder="Opcional: imagem já publicada">
+            </label>
+            <div class="product-color-admin-state">
+              <div class="product-color-admin-thumb">
+                <?php if ($colorImage !== ''): ?>
+                  <img src="<?= e($colorImage) ?>" alt="<?= e((string) ($color['nome'] ?? 'Cor do produto')) ?>">
+                <?php else: ?>
+                  <span>A&F</span>
+                <?php endif; ?>
+              </div>
+              <label><input type="hidden" name="cores[<?= $index ?>][ativo]" value="0"><input name="cores[<?= $index ?>][ativo]" type="checkbox" value="1" <?= !empty($color['ativo']) ? 'checked' : '' ?>> Ativa</label>
+              <label><input name="cores[<?= $index ?>][remover]" type="checkbox" value="1"> Remover</label>
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+
+      <button class="btn btn-soft" type="button" data-product-color-add>Adicionar cor</button>
+      <template data-product-color-template>
+        <article class="product-color-admin-row" data-product-color-row>
+          <input type="hidden" name="cores[__INDEX__][id]" value="0">
+          <input type="hidden" name="cores[__INDEX__][ordem]" value="__INDEX__">
+          <div class="product-color-admin-swatch" style="--color: #B7202E" aria-hidden="true"></div>
+          <label class="admin-field">
+            <span>Cor</span>
+            <input name="cores[__INDEX__][nome]" value="" placeholder="Vermelho, azul, branco">
+          </label>
+          <label class="admin-field compact">
+            <span>Hex</span>
+            <input name="cores[__INDEX__][hex]" type="color" value="#B7202E" data-product-color-hex>
+          </label>
+          <label class="admin-field compact">
+            <span>Estoque</span>
+            <input name="cores[__INDEX__][estoque]" type="number" min="0" value="0">
+          </label>
+          <label class="admin-field">
+            <span>Imagem da cor</span>
+            <input name="cores_imagens[__INDEX__]" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">
+          </label>
+          <label class="admin-field">
+            <span>URL atual</span>
+            <input name="cores[__INDEX__][imagem_url]" value="" placeholder="Opcional: imagem já publicada">
+          </label>
+          <div class="product-color-admin-state">
+            <div class="product-color-admin-thumb"><span>A&F</span></div>
+            <label><input type="hidden" name="cores[__INDEX__][ativo]" value="0"><input name="cores[__INDEX__][ativo]" type="checkbox" value="1" checked> Ativa</label>
+            <label><input name="cores[__INDEX__][remover]" type="checkbox" value="1"> Remover</label>
+          </div>
+        </article>
+      </template>
     </div>
 
     <div class="admin-form-section">
