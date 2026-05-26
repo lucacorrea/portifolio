@@ -9,7 +9,18 @@ class UserController extends BaseController {
         $filialModel = new \App\Models\Filial();
         
         $page = (int)($_GET['page'] ?? 1);
-        $pagination = $userModel->paginate(6, $page);
+        
+        // Obter filtros da requisição
+        $filters = [
+            'q' => $_GET['q'] ?? '',
+            'nivel' => $_GET['nivel'] ?? '',
+            'filial_id' => $_GET['filial_id'] ?? ''
+        ];
+        
+        // Ordem por hierarquia (admin -> gerente -> vendedor) e depois por ordem alfabética de nome
+        $order = "CASE WHEN u.nivel = 'admin' THEN 1 WHEN u.nivel = 'gerente' THEN 2 WHEN u.nivel = 'vendedor' THEN 3 ELSE 4 END ASC, u.nome ASC";
+        
+        $pagination = $userModel->paginate(6, $page, $order, $filters);
         $users = $pagination['data'];
         $branches = $filialModel->all();
 
@@ -17,6 +28,7 @@ class UserController extends BaseController {
             'users' => $users,
             'pagination' => $pagination,
             'branches' => $branches,
+            'filters' => $filters,
             'title' => 'Gestão de Usuários',
             'pageTitle' => 'Operadores do Sistema'
         ]);

@@ -12,6 +12,10 @@ switch ($action) {
         \App\Services\AuthService::checkPermission('estoque', $permissionAction);
         $controller->save();
         break;
+    case 'replicate_catalog':
+        \App\Services\AuthService::checkPermission('estoque', 'editar');
+        $controller->replicateCatalog();
+        break;
     case 'move':
         \App\Services\AuthService::checkPermission('estoque', 'editar');
         $controller->move();

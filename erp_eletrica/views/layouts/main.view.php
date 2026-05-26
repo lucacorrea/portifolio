@@ -1,3 +1,16 @@
+<?php
+if (!isset($_SESSION['filial_nome']) && isset($_SESSION['filial_id'])) {
+    try {
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT nome FROM filiais WHERE id = ?");
+        $stmt->execute([$_SESSION['filial_id']]);
+        $_SESSION['filial_nome'] = $stmt->fetchColumn() ?: 'Não Identificada';
+    } catch (\Exception $e) {
+        $_SESSION['filial_nome'] = 'Não Identificada';
+    }
+}
+$filialNome = $_SESSION['filial_nome'] ?? 'Não Identificada';
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -12,8 +25,8 @@
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom Corporate UI -->
-    <link rel="stylesheet" href="public/css/corporate.css?v=11.0">
-    <link rel="stylesheet" href="style.css?v=11.0">
+    <link rel="stylesheet" href="public/css/corporate.css?v=12.0">
+    <link rel="stylesheet" href="style.css?v=12.0">
     
     <script>
         // Critical: Apply sidebar state before rendering to avoid flash
@@ -44,8 +57,11 @@
                 
                 <div class="d-flex align-items-center gap-3">
                     <div class="text-end d-none d-md-block border-end pe-3">
-                        <div class="fw-bold small erp-user-name"><?= $_SESSION['usuario_nome'] ?></div>
-                        <div class="badge erp-user-badge extra-small text-uppercase"><?= $_SESSION['usuario_nivel'] ?></div>
+                        <div class="fw-bold small erp-user-name mb-1"><?= $_SESSION['usuario_nome'] ?></div>
+                        <div class="d-flex align-items-center justify-content-end gap-1 flex-wrap">
+                            <span class="badge erp-user-badge extra-small text-uppercase"><i class="fas fa-user-shield me-1"></i><?= $_SESSION['usuario_nivel'] ?></span>
+                            <span class="badge erp-store-badge extra-small text-uppercase" title="Unidade Logada"><i class="fas fa-store me-1"></i><?= $filialNome ?></span>
+                        </div>
                     </div>
                     <div class="dropdown">
                         <a href="#" class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">

@@ -1,10 +1,45 @@
 <!-- Actions Bar -->
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 py-3">
-        <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-users-cog me-2"></i>Diretório de Colaboradores</h6>
-        <button class="btn btn-primary fw-bold w-100 w-md-auto" onclick="openUserModal()">
-            <i class="fas fa-user-plus me-2"></i>Novo Operador
-        </button>
+    <div class="card-body py-3">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+            <h6 class="mb-0 fw-bold text-secondary"><i class="fas fa-users-cog me-2"></i>Diretório de Colaboradores</h6>
+            <button class="btn btn-primary fw-bold w-100 w-md-auto shadow-sm" onclick="openUserModal()">
+                <i class="fas fa-user-plus me-2"></i>Novo Operador
+            </button>
+        </div>
+        
+        <!-- Filtros de Busca -->
+        <form method="GET" action="usuarios.php" class="row g-2 align-items-end" id="userFilterForm">
+            <div class="col-md-5">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="fas fa-search me-1"></i> Buscar por Nome ou E-mail</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                    <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="Digite o nome ou e-mail..." value="<?= htmlspecialchars($filters['q'] ?? '') ?>">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="fas fa-shield-alt me-1"></i> Nível de Acesso</label>
+                <select name="nivel" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todos os Níveis</option>
+                    <option value="admin" <?= ($filters['nivel'] ?? '') === 'admin' ? 'selected' : '' ?>>Administrador</option>
+                    <option value="gerente" <?= ($filters['nivel'] ?? '') === 'gerente' ? 'selected' : '' ?>>Gerente</option>
+                    <option value="vendedor" <?= ($filters['nivel'] ?? '') === 'vendedor' ? 'selected' : '' ?>>Vendedor</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="fas fa-building me-1"></i> Unidade / Filial</label>
+                <select name="filial_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todas as Filiais</option>
+                    <?php foreach ($branches as $branch): ?>
+                        <option value="<?= $branch['id'] ?>" <?= ($filters['filial_id'] ?? '') == $branch['id'] ? 'selected' : '' ?>><?= htmlspecialchars($branch['nome']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-1 d-flex gap-1 justify-content-end">
+                <button type="submit" class="btn btn-sm btn-primary w-100" title="Filtrar"><i class="fas fa-filter"></i></button>
+                <a href="usuarios.php" class="btn btn-sm btn-outline-danger w-100" title="Limpar Filtros"><i class="fas fa-eraser"></i></a>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -37,7 +72,13 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="small"><?= $u['email'] ?></td>
+                        <td class="small">
+                            <?php if (str_starts_with($u['email'], 'sememail_')): ?>
+                                <span class="text-muted italic"><i class="fas fa-envelope-slash me-1"></i>Não informado</span>
+                            <?php else: ?>
+                                <?= htmlspecialchars($u['email']) ?>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <div class="small fw-bold text-primary">
                                 <i class="fas fa-building me-1 opacity-50"></i>
@@ -75,7 +116,7 @@
     </div>
     <!-- Pagination -->
     <div class="card-footer bg-white border-top py-3">
-        <?= renderPagination($pagination, 'usuarios.php') ?>
+        <?= renderPagination($pagination, 'usuarios.php', $filters ?? []) ?>
     </div>
 </div>
 
@@ -95,8 +136,8 @@
                         <input type="text" name="nome" id="edit-user-nome" class="form-control shadow-sm" required>
                     </div>
                     <div class="col-12">
-                        <label class="form-label small fw-bold">E-mail Corporativo</label>
-                        <input type="email" name="email" id="edit-user-email" class="form-control shadow-sm" required>
+                        <label class="form-label small fw-bold">E-mail Corporativo <span class="text-muted">(Opcional)</span></label>
+                        <input type="email" name="email" id="edit-user-email" class="form-control shadow-sm" placeholder="Ex: colaborador@empresa.com (Opcional)">
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">Unidade de Lotação</label>
@@ -278,7 +319,7 @@ function editUser(user) {
     document.getElementById('user-modal-title').innerText = 'Editar Colaborador';
     document.getElementById('edit-user-id').value = user.id;
     document.getElementById('edit-user-nome').value = user.nome;
-    document.getElementById('edit-user-email').value = user.email;
+    document.getElementById('edit-user-email').value = user.email.startsWith('sememail_') ? '' : user.email;
     document.getElementById('edit-user-filial').value = user.filial_id;
     document.getElementById('edit-user-nivel').value = user.nivel;
     document.getElementById('edit-user-ativo').checked = user.ativo == 1;
