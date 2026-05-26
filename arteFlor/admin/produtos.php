@@ -65,6 +65,209 @@ $modalProducts = array_map(static function (array $product) use ($productImagesB
 
 require_once __DIR__ . '/../includes/admin-head.php';
 ?>
+<style>
+  [data-product-delete-modal] {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 140 !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: clamp(16px, 3vw, 32px) !important;
+    background: rgba(18, 31, 24, .58) !important;
+    backdrop-filter: blur(8px);
+  }
+
+  [data-product-delete-modal][hidden] {
+    display: none !important;
+  }
+
+  .admin-delete-modal {
+    position: relative !important;
+    width: min(520px, 100%) !important;
+    max-height: min(620px, calc(100vh - 36px)) !important;
+    overflow: auto !important;
+    display: grid !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    border-radius: 18px !important;
+    background: #fffdf8 !important;
+    border: 1px solid rgba(255, 255, 255, .72) !important;
+    box-shadow: 0 28px 90px rgba(16, 28, 21, .36) !important;
+  }
+
+  .admin-delete-modal .admin-modal-close {
+    position: absolute !important;
+    top: 14px !important;
+    right: 14px !important;
+    z-index: 2 !important;
+    width: 36px !important;
+    height: 36px !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    background: #fff !important;
+    border-color: rgba(154, 61, 68, .16) !important;
+    color: var(--admin-danger) !important;
+    font-size: 1.35rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+  }
+
+  .product-delete-header {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 16px;
+    padding: 28px 28px 18px;
+    border-bottom: 1px solid rgba(154, 61, 68, .12);
+  }
+
+  .product-delete-icon {
+    width: 54px;
+    height: 54px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: var(--admin-danger-soft);
+    border: 1px solid rgba(154, 61, 68, .18);
+    color: var(--admin-danger);
+    font-size: 1.35rem;
+    font-weight: 950;
+  }
+
+  .product-delete-copy {
+    min-width: 0;
+    padding-right: 34px;
+  }
+
+  .product-delete-copy .badge {
+    margin-bottom: 10px;
+    background: #f6e5e3;
+    color: var(--admin-danger);
+  }
+
+  .product-delete-copy h2 {
+    margin: 0 0 8px;
+    color: var(--admin-primary);
+    font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+    line-height: 1.1;
+  }
+
+  .product-delete-copy p {
+    margin: 0;
+    color: var(--admin-muted);
+    font-size: .94rem;
+    line-height: 1.55;
+  }
+
+  .product-delete-body {
+    display: grid;
+    gap: 14px;
+    padding: 20px 28px 24px;
+  }
+
+  .product-delete-target {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: #fbf5e6;
+    border: 1px solid rgba(176, 116, 29, .22);
+  }
+
+  .product-delete-target span {
+    color: var(--admin-muted);
+    font-size: .72rem;
+    font-weight: 950;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .product-delete-target strong {
+    min-width: 0;
+    color: var(--admin-primary);
+    font-size: 1.04rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .product-delete-effects {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .product-delete-effects li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    color: var(--admin-muted);
+    font-size: .9rem;
+    line-height: 1.4;
+  }
+
+  .product-delete-effects li::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    margin-top: 7px;
+    flex: 0 0 8px;
+    border-radius: 999px;
+    background: var(--admin-danger);
+    opacity: .72;
+  }
+
+  .product-delete-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 18px 28px 28px;
+    border-top: 1px solid rgba(36, 72, 54, .10);
+  }
+
+  .product-delete-actions .btn {
+    min-width: 138px;
+  }
+
+  .product-delete-actions .btn-danger {
+    background: var(--admin-danger);
+    border-color: var(--admin-danger);
+    color: #fff;
+  }
+
+  .product-delete-actions .btn-danger:hover {
+    background: #7f3138;
+    border-color: #7f3138;
+  }
+
+  @media (max-width: 640px) {
+    .product-delete-header {
+      grid-template-columns: 1fr;
+      padding: 24px 20px 16px;
+    }
+
+    .product-delete-copy {
+      padding-right: 30px;
+    }
+
+    .product-delete-body,
+    .product-delete-actions {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .product-delete-actions {
+      flex-direction: column-reverse;
+    }
+
+    .product-delete-actions .btn {
+      width: 100%;
+    }
+  }
+</style>
 <section class="admin-page-hero">
   <div class="admin-page-title">
     <span class="badge">Catálogo</span>
@@ -323,18 +526,25 @@ require_once __DIR__ . '/../includes/admin-head.php';
 <div class="admin-modal-backdrop" data-product-delete-modal hidden>
   <section class="admin-stock-modal admin-delete-modal" role="dialog" aria-modal="true" aria-labelledby="deleteProductModalTitle">
     <button class="admin-modal-close" type="button" data-product-delete-cancel aria-label="Cancelar exclusão">&times;</button>
-    <div class="admin-panel-header compact">
-      <div>
-        <span class="badge">Confirmação</span>
+    <div class="product-delete-header">
+      <span class="product-delete-icon" aria-hidden="true">!</span>
+      <div class="product-delete-copy">
+        <span class="badge">Confirmação necessária</span>
         <h2 id="deleteProductModalTitle">Excluir produto?</h2>
         <p>Essa ação remove o produto do catálogo, do PDV e da listagem administrativa, preservando pedidos e movimentações anteriores.</p>
       </div>
     </div>
-    <div class="admin-alert-card admin-alert-warning product-delete-warning" role="alert">
-      <strong data-product-delete-name>Produto selecionado</strong>
-      Confirme apenas se este produto não deve mais aparecer para venda.
+    <div class="product-delete-body">
+      <div class="product-delete-target" role="alert">
+        <span>Produto selecionado</span>
+        <strong data-product-delete-name>Produto selecionado</strong>
+      </div>
+      <ul class="product-delete-effects">
+        <li>Não aparece mais para venda online nem no PDV.</li>
+        <li>Não remove pedidos, relatórios ou movimentações antigas.</li>
+      </ul>
     </div>
-    <div class="admin-action-row">
+    <div class="product-delete-actions">
       <button class="btn btn-soft" type="button" data-product-delete-cancel>Cancelar</button>
       <button class="btn btn-danger" type="button" data-product-delete-confirm>Excluir produto</button>
     </div>
