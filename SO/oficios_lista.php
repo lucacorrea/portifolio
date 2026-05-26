@@ -11,15 +11,65 @@ $where_clauses = ["TRUE"];
 $params = [];
 $status_options = ['PENDENTE_ITENS', 'ENVIADO', 'EM_ANALISE', 'APROVADO', 'REPROVADO', 'ARQUIVADO'];
 
+function parse_money_filter_value($valor): ?float {
+    $valor = trim((string)$valor);
+
+    if ($valor === '') {
+        return null;
+    }
+
+    $valor = str_ireplace('R$', '', $valor);
+    $valor = preg_replace('/\s+/', '', $valor);
+
+    if (strpos($valor, ',') !== false) {
+        $valor = str_replace('.', '', $valor);
+        $valor = str_replace(',', '.', $valor);
+    } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $valor)) {
+        $valor = str_replace('.', '', $valor);
+    }
+
+    if (!is_numeric($valor)) {
+        return null;
+    }
+
+    return (float)$valor;
+}
+
+function secretaria_sigla_label($nome): string {
+    $nome = trim((string)$nome);
+
+    if ($nome === '') {
+        return '';
+    }
+
+    if (preg_match('/-\s*([A-Z0-9]{2,15})\s*$/u', $nome, $matches)) {
+        return $matches[1];
+    }
+
+    return $nome;
+}
+
 if (isset($_GET['status']) && $_GET['status'] != '' && in_array($_GET['status'], $status_options, true)) {
     $where_clauses[] = "o.status = ?";
     $params[] = $_GET['status'];
 }
 if (isset($_GET['busca']) && $_GET['busca'] != '') {
-    $busca = '%' . trim((string)$_GET['busca']) . '%';
-    $where_clauses[] = "(o.numero LIKE ? OR s.nome LIKE ?)";
-    $params[] = $busca;
-    $params[] = $busca;
+    $busca_texto = trim((string)$_GET['busca']);
+    $busca = '%' . $busca_texto . '%';
+    $valor_busca = parse_money_filter_value($busca_texto);
+
+    $valor_clauses = ["CAST(o.valor_orcamento AS CHAR) LIKE ?"];
+    $params_busca = [$busca, $busca, $busca];
+
+    if ($valor_busca !== null) {
+        $valor_clauses[] = "ABS(COALESCE(o.valor_orcamento, 0) - ?) < 0.01";
+        $params_busca[] = $valor_busca;
+    }
+
+    $where_clauses[] = "(o.numero LIKE ? OR s.nome LIKE ? OR " . implode(' OR ', $valor_clauses) . ")";
+    foreach ($params_busca as $param_busca) {
+        $params[] = $param_busca;
+    }
 }
 if (isset($_GET['secretaria_id']) && $_GET['secretaria_id'] != '') {
     $where_clauses[] = "o.secretaria_id = ?";
@@ -102,7 +152,7 @@ include 'views/layout/header.php';
     }
 
     .lista-table {
-        min-width: 980px;
+        min-width: 1080px;
     }
 
     .acoes-wrap {
@@ -179,7 +229,7 @@ include 'views/layout/header.php';
         <form action="" method="GET" class="filtros-grid">
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">Termo de busca</label>
-                <input type="text" name="busca" class="form-control" placeholder="Número ou secretaria..." value="<?php echo htmlspecialchars($_GET['busca'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="text" name="busca" class="form-control" placeholder="Número, secretaria ou valor..." value="<?php echo htmlspecialchars($_GET['busca'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
             </div>
 
             <div class="form-group" style="margin-bottom: 0;">
@@ -238,6 +288,7 @@ include 'views/layout/header.php';
                         <th>Número</th>
                         <th>Secretaria</th>
                         <th>Data</th>
+                        <th style="text-align: right;">Valor</th>
                         <th>Status</th>
                         <th>Cadastrado por</th>
                         <th class="w-1">Ações</th>
@@ -250,9 +301,14 @@ include 'views/layout/header.php';
                                 <?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>
                             </td>
                             <td>
-                                <span class="text-muted"><?php echo htmlspecialchars($o['secretaria'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span class="text-muted" title="<?php echo htmlspecialchars($o['secretaria'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php echo htmlspecialchars(secretaria_sigla_label($o['secretaria']), ENT_QUOTES, 'UTF-8'); ?>
+                                </span>
                             </td>
                             <td><?php echo format_date($o['criado_em']); ?></td>
+                            <td style="text-align: right; font-weight: 700; color: #157347;">
+                                <?php echo $o['valor_orcamento'] !== null && $o['valor_orcamento'] !== '' ? format_money($o['valor_orcamento']) : '---'; ?>
+                            </td>
                             <td>
                                 <?php
                                 $status_badge = 'pending';
@@ -305,7 +361,7 @@ include 'views/layout/header.php';
 
                     <?php if (empty($oficios)): ?>
                         <tr>
-                            <td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-muted);">
+                            <td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-muted);">
                                 Nenhuma solicitação encontrada.
                             </td>
                         </tr>

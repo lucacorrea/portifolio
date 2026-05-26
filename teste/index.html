@@ -1,528 +1,354 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>L&J Soluções Tecnológicas | Portfólio</title>
+    <meta name="description" content="Portfólio estático da L&J Soluções Tecnológicas: sites, sistemas web, SaaS, automação, identidade visual e drone." />
+    <meta name="theme-color" content="#fbfaf7" />
+    <meta property="og:title" content="L&J Soluções Tecnológicas | Portfólio" />
+    <meta property="og:description" content="Software, SaaS, sistemas e presença digital com base técnica segura." />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page noise-overlay" id="topo">
+      <header class="site-header" data-header>
+        <nav class="nav-shell" aria-label="Navegação principal">
+          <div class="nav-inner">
+            <a href="#topo" class="brand" aria-label="L&J Soluções Tecnológicas">
+              <span class="brand-name">L&J</span>
+              <span class="brand-mark">TECH</span>
+            </a>
 
-  <title>L&J Editions | Digital Renaissance</title>
-  <meta name="description" content="Experiência institucional estilo Editions para L&J Soluções Tecnológicas: sites, sistemas, automações, dashboards e identidade digital." />
-  <meta name="theme-color" content="#0b0d07" />
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://images.unsplash.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-
-  <link rel="stylesheet" href="assets/css/style.css" />
-</head>
-
-<body class="is-loading">
-  <div class="preloader" id="preloader" aria-hidden="true">
-    <div class="preloader-card">
-      <div class="preloader-logo">L&J</div>
-      <div class="preloader-copy">
-        <strong>Digital Renaissance</strong>
-        <span>carregando edição</span>
-      </div>
-      <div class="preloader-track"><i id="preloaderBar"></i></div>
-      <small><b id="preloaderCount">0</b>%</small>
-    </div>
-  </div>
-
-  <div class="scrollbar" id="scrollbar" aria-hidden="true"></div>
-  <canvas id="canvasField" aria-hidden="true"></canvas>
-  <canvas id="threeField" aria-hidden="true"></canvas>
-  <div class="grain" aria-hidden="true"></div>
-  <div class="cursor" id="cursor" aria-hidden="true"></div>
-
-  <header class="topbar" id="topbar">
-    <a class="brand" href="#top" aria-label="L&J Editions">
-      <span class="brand-mark">L&J</span>
-      <span>
-        <strong>Editions</strong>
-        <small>Digital Renaissance</small>
-      </span>
-    </a>
-
-    <button class="mobile-button" id="mobileButton" type="button" aria-label="Abrir menu" aria-expanded="false">
-      <span></span>
-      <span></span>
-    </button>
-
-    <nav class="main-menu" id="mainMenu" aria-label="Menu principal">
-      <button class="menu-action" id="openSearch" type="button">Search</button>
-      <a href="#editionNav">Updates</a>
-      <a href="#sidekick">AI</a>
-      <a href="#online">Online</a>
-      <a href="#operations">Operations</a>
-      <a href="#developer">Developer</a>
-      <a class="topbar-cta" href="#contact">Start project</a>
-    </nav>
-  </header>
-
-  <div class="search-overlay" id="searchOverlay" aria-hidden="true">
-    <button class="search-close" id="closeSearch" type="button" aria-label="Fechar busca">×</button>
-    <div class="search-panel">
-      <p class="mini-label">Search L&J Editions</p>
-      <input id="searchInput" type="search" placeholder="Busque por site, dashboard, automação..." />
-      <div class="search-results" id="searchResults"></div>
-    </div>
-  </div>
-
-  <main id="top">
-    <section class="hero-edition">
-      <div class="hero-stage" aria-hidden="true">
-        <figure class="hero-tile tile-a parallax-float" data-speed="-0.22">
-          <img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=85" alt="" />
-        </figure>
-        <figure class="hero-tile tile-b parallax-float" data-speed="0.18">
-          <img src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=900&q=85" alt="" />
-        </figure>
-        <figure class="hero-tile tile-c parallax-float" data-speed="-0.14">
-          <img src="https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=900&q=85" alt="" />
-        </figure>
-        <figure class="hero-tile tile-d parallax-float" data-speed="0.12">
-          <img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=85" alt="" />
-        </figure>
-      </div>
-
-      <div class="hero-inner container">
-        <div class="edition-pill reveal">
-          <span>Winter ’26 inspired</span>
-          <b>L&J Edition</b>
-        </div>
-
-        <h1 class="edition-title reveal-title">The Digital Renaissance Edition</h1>
-
-        <p class="edition-subtitle reveal">
-          Uma nova experiência para apresentar tecnologia, presença digital e automação.
-          50+ blocos, movimentos e detalhes visuais para sua empresa parecer maior desde o primeiro clique.
-        </p>
-
-        <div class="hero-buttons reveal">
-          <a class="button button-primary magnetic" href="#editionNav">Explore updates</a>
-          <a class="button button-ghost magnetic" href="#contact">Solicitar projeto</a>
-        </div>
-
-        <div class="edition-meta reveal">
-          <span>Canvas 2D</span>
-          <span>Three.js</span>
-          <span>GSAP</span>
-          <span>Lenis</span>
-          <span>Hostinger ready</span>
-        </div>
-      </div>
-
-      <a href="#editionNav" class="scroll-cue">
-        <span></span>
-        Scroll
-      </a>
-    </section>
-
-    <section class="edition-index" id="editionNav">
-      <div class="container">
-        <div class="index-head reveal">
-          <p class="mini-label">Edition Navigation</p>
-          <h2>Escolha uma área e explore os updates.</h2>
-        </div>
-
-        <div class="index-grid">
-          <a href="#sidekick" class="index-card tilt-card" data-color="green">
-            <span>01</span>
-            <h3>AI Sidekick</h3>
-            <p>Estratégia, textos, conteúdo e automações inteligentes.</p>
-          </a>
-          <a href="#agentic" class="index-card tilt-card" data-color="cyan">
-            <span>02</span>
-            <h3>Agentic Web</h3>
-            <p>Presença digital preparada para buscas, IA e conversão.</p>
-          </a>
-          <a href="#online" class="index-card tilt-card" data-color="purple">
-            <span>03</span>
-            <h3>Online</h3>
-            <p>Sites, landing pages e páginas institucionais premium.</p>
-          </a>
-          <a href="#marketing" class="index-card tilt-card" data-color="orange">
-            <span>04</span>
-            <h3>Marketing</h3>
-            <p>Campanhas, prova social, captação e autoridade.</p>
-          </a>
-          <a href="#operations" class="index-card tilt-card" data-color="green">
-            <span>05</span>
-            <h3>Operations</h3>
-            <p>Sistemas, dashboards, processos e gestão interna.</p>
-          </a>
-          <a href="#developer" class="index-card tilt-card" data-color="cyan">
-            <span>06</span>
-            <h3>Developer</h3>
-            <p>Base técnica, performance, integrações e estrutura.</p>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <nav class="category-nav" aria-label="Navegação por categoria">
-      <div class="category-track">
-        <a href="#sidekick">Sidekick</a>
-        <a href="#agentic">Agentic</a>
-        <a href="#online">Online</a>
-        <a href="#marketing">Marketing</a>
-        <a href="#operations">Operations</a>
-        <a href="#developer">Developer</a>
-        <a href="#contact">Contact</a>
-      </div>
-    </nav>
-
-    <section class="edition-section" id="sidekick" data-section="Sidekick">
-      <div class="container edition-layout">
-        <aside class="section-intro">
-          <p class="section-kicker">01 / AI Sidekick</p>
-          <h2>Um assistente visual para sua empresa comunicar melhor.</h2>
-          <p>
-            Na lógica da Shopify Editions, cada área apresenta atualizações de produto.
-            Aqui, cada área mostra melhorias que a L&J pode aplicar na sua presença digital.
-          </p>
-          <a href="#editionNav" class="back-link">Back to navigation</a>
-        </aside>
-
-        <div class="section-content">
-          <article class="spotlight-card reveal">
-            <div class="spotlight-copy">
-              <p class="mini-label">Main update</p>
-              <h3>Brand Intelligence</h3>
-              <p>
-                Uma camada de estratégia para transformar o site em ferramenta de venda:
-                mensagem, hierarquia, CTA, prova social e narrativa visual.
-              </p>
-              <button class="read-more" data-modal-title="Brand Intelligence" data-modal-text="Antes de animar a página, é preciso posicionar a empresa. Essa etapa define tom, promessa, público, serviços principais e chamadas de ação.">Read update</button>
+            <div class="desktop-links">
+              <a href="#features">Soluções</a>
+              <a href="#how-it-works">Método</a>
+              <a href="#developers">Engenharia</a>
+              <a href="#pricing">Projetos</a>
             </div>
-            <figure class="spotlight-media img-depth" data-speed="-0.16">
-              <img src="https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1200&q=85" alt="Equipe analisando estratégia digital" />
-            </figure>
-          </article>
 
-          <div class="update-grid">
-            <article class="update-card reveal" data-search="copywriting textos comerciais ai estratégia">
-              <span>AI.01</span>
-              <h4>Copy comercial guiada</h4>
-              <p>Textos organizados para explicar valor e conduzir o visitante ao contato.</p>
-              <button class="read-more" data-modal-title="Copy comercial guiada" data-modal-text="Criação de textos com headline, subtítulo, blocos de benefícios, objeções e chamada clara para WhatsApp.">Read update</button>
-            </article>
-            <article class="update-card reveal" data-search="seções inteligentes landing page estrutura">
-              <span>AI.02</span>
-              <h4>Seções inteligentes</h4>
-              <p>Blocos pensados como módulos: problema, solução, serviços, provas e CTA.</p>
-              <button class="read-more" data-modal-title="Seções inteligentes" data-modal-text="A página ganha ritmo visual e cada seção tem uma função dentro do funil de conversão.">Read update</button>
-            </article>
-            <article class="update-card reveal" data-search="prova social depoimentos confiança">
-              <span>AI.03</span>
-              <h4>Prova de confiança</h4>
-              <p>Áreas para depoimentos, números, portfólio, clientes e diferenciais.</p>
-              <button class="read-more" data-modal-title="Prova de confiança" data-modal-text="Sem confiança, o cliente hesita. Por isso a página precisa mostrar autoridade, clareza e sinais reais de credibilidade.">Read update</button>
-            </article>
+            <div class="desktop-actions">
+              <a href="https://ljsolucoestech.com.br/contato.php" class="signin">Contato</a>
+              <a href="https://ljsolucoestech.com.br/contato.php" class="btn btn-dark btn-small">Solicitar diagnóstico</a>
+            </div>
+
+            <button class="mobile-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" data-menu-toggle>
+              <span class="menu-icon menu-open"></span>
+              <span class="menu-icon menu-close"></span>
+            </button>
           </div>
+        </nav>
 
-          <div class="prompt-rail reveal">
-            <div class="prompt-track">
-              <article>/site-premium <b>Crie uma página institucional forte.</b></article>
-              <article>/landing-vendas <b>Monte uma estrutura de conversão.</b></article>
-              <article>/dashboard <b>Organize indicadores para decisão.</b></article>
-              <article>/automacao <b>Reduza processos manuais.</b></article>
-              <article>/identidade <b>Fortaleça a marca visual.</b></article>
+        <div class="mobile-menu" data-mobile-menu>
+          <div class="mobile-menu-content">
+            <div class="mobile-menu-links">
+              <a href="#features">Soluções</a>
+              <a href="#how-it-works">Método</a>
+              <a href="#developers">Engenharia</a>
+              <a href="#pricing">Projetos</a>
+            </div>
+            <div class="mobile-menu-actions">
+              <a href="https://ljsolucoestech.com.br/contato.php" class="btn btn-outline">Contato</a>
+              <a href="https://ljsolucoestech.com.br/contato.php" class="btn btn-dark">Diagnóstico</a>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </header>
 
-    <section class="edition-section" id="agentic" data-section="Agentic">
-      <div class="container edition-layout">
-        <aside class="section-intro">
-          <p class="section-kicker">02 / Agentic Web</p>
-          <h2>Prepare sua presença digital para o novo jeito de pesquisar e decidir.</h2>
-          <p>
-            Conteúdo claro, estrutura semântica, carregamento rápido e comunicação direta
-            ajudam sua empresa a ser entendida por pessoas, buscadores e ferramentas de IA.
-          </p>
-          <a href="#editionNav" class="back-link">Back to navigation</a>
-        </aside>
+      <section class="hero-section">
+        <div class="hero-sphere"><canvas id="sphereCanvas" aria-hidden="true"></canvas></div>
 
-        <div class="section-content">
-          <article class="wide-visual reveal">
-            <figure class="img-depth" data-speed="0.12">
-              <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=85" alt="Notebook com aplicação web" />
-            </figure>
-            <div class="wide-visual-copy">
-              <span>Agentic visibility</span>
-              <h3>Informação organizada para ser encontrada.</h3>
-            </div>
-          </article>
-
-          <div class="mini-updates">
-            <article class="mini-update reveal" data-search="seo ia semantica buscadores">
-              <h4>SEO semântico</h4>
-              <p>Títulos, seções e conteúdos com lógica clara para leitura e ranqueamento.</p>
-            </article>
-            <article class="mini-update reveal" data-search="velocidade performance carregamento">
-              <h4>Performance visual</h4>
-              <p>Imagens otimizadas, estrutura leve e carregamento mais direto.</p>
-            </article>
-            <article class="mini-update reveal" data-search="conteudo autoridade institucional">
-              <h4>Autoridade institucional</h4>
-              <p>Conteúdo que explica quem é a empresa, o que faz e por que confiar.</p>
-            </article>
-            <article class="mini-update reveal" data-search="whatsapp conversao contato">
-              <h4>Contato sem fricção</h4>
-              <p>Botões estratégicos para WhatsApp, e-mail e proposta.</p>
-            </article>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="edition-section dark-section" id="online" data-section="Online">
-      <div class="container edition-layout">
-        <aside class="section-intro">
-          <p class="section-kicker">03 / Online</p>
-          <h2>Sites e landing pages com visual de produto premium.</h2>
-          <p>
-            A experiência precisa impressionar, mas também precisa ser clara e funcionar bem
-            no celular, notebook e desktop.
-          </p>
-          <a href="#editionNav" class="back-link">Back to navigation</a>
-        </aside>
-
-        <div class="section-content">
-          <div class="product-showcase">
-            <article class="product-card large reveal">
-              <img src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1300&q=85" alt="Escritório moderno" />
-              <div>
-                <span>Online.01</span>
-                <h3>Institutional storefront</h3>
-                <p>Página institucional com cara de vitrine premium.</p>
-              </div>
-            </article>
-            <article class="product-card reveal">
-              <img src="https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=900&q=85" alt="Ambiente corporativo" />
-              <div>
-                <span>Online.02</span>
-                <h3>Landing page</h3>
-              </div>
-            </article>
-            <article class="product-card reveal">
-              <img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=85" alt="Equipe trabalhando" />
-              <div>
-                <span>Online.03</span>
-                <h3>Serviços organizados</h3>
-              </div>
-            </article>
-          </div>
-
-          <div class="browser-demo reveal tilt-card">
-            <div class="browser-top"><i></i><i></i><i></i><span>lj-website-preview</span></div>
-            <div class="browser-body">
-              <div class="browser-sidebar"></div>
-              <div class="browser-main">
-                <span class="line w70"></span>
-                <div class="browser-cards">
-                  <i></i><i></i><i></i>
-                </div>
-                <span class="line w50"></span>
-                <span class="line w90"></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="horizontal-edition" id="marketing">
-      <div class="horizontal-pin">
-        <div class="horizontal-intro">
-          <p class="section-kicker">04 / Marketing</p>
-          <h2>Uma sequência visual para mostrar valor sem cansar o visitante.</h2>
-          <p>Scroll horizontal com cards grandes, parecido com uma vitrine de novidades.</p>
+        <div class="grid-lines" aria-hidden="true">
+          <span style="top:12.5%"></span><span style="top:25%"></span><span style="top:37.5%"></span><span style="top:50%"></span><span style="top:62.5%"></span><span style="top:75%"></span><span style="top:87.5%"></span>
+          <i style="left:8.33%"></i><i style="left:16.66%"></i><i style="left:24.99%"></i><i style="left:33.32%"></i><i style="left:41.65%"></i><i style="left:49.98%"></i><i style="left:58.31%"></i><i style="left:66.64%"></i><i style="left:74.97%"></i><i style="left:83.3%"></i><i style="left:91.63%"></i>
         </div>
 
-        <div class="horizontal-track" id="horizontalTrack">
-          <article class="h-card">
-            <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=1100&q=85" alt="Reunião de equipe" />
-            <span>MKT.01</span>
-            <h3>Campanhas com narrativa</h3>
-          </article>
-          <article class="h-card tall">
-            <img src="https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1100&q=85" alt="Pessoas em projeto" />
-            <span>MKT.02</span>
-            <h3>Prova social visual</h3>
-          </article>
-          <article class="h-card">
-            <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1100&q=85" alt="Profissional em reunião" />
-            <span>MKT.03</span>
-            <h3>Autoridade comercial</h3>
-          </article>
-          <article class="h-card tall">
-            <img src="https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=1100&q=85" alt="Design de marca" />
-            <span>MKT.04</span>
-            <h3>Identidade memorável</h3>
-          </article>
-          <article class="h-card">
-            <img src="https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=1100&q=85" alt="Tecnologia e automação" />
-            <span>MKT.05</span>
-            <h3>CTA sem fricção</h3>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="edition-section" id="operations" data-section="Operations">
-      <div class="container edition-layout">
-        <aside class="section-intro">
-          <p class="section-kicker">05 / Operations</p>
-          <h2>Quando o site vira sistema, a empresa ganha controle.</h2>
-          <p>
-            Além da presença digital, a L&J pode criar sistemas para organizar processos,
-            clientes, cobranças, protocolos, relatórios e operações internas.
-          </p>
-          <a href="#editionNav" class="back-link">Back to navigation</a>
-        </aside>
-
-        <div class="section-content">
-          <article class="dashboard-panel reveal tilt-card">
-            <div class="dash-side"></div>
-            <div class="dash-content">
-              <span class="dash-title"></span>
-              <div class="dash-stats">
-                <article><b>128</b><span>Atendimentos</span></article>
-                <article><b>89</b><span>Concluídos</span></article>
-                <article><b>42</b><span>Pendentes</span></article>
-              </div>
-              <div class="dash-bars">
-                <i style="--h:44%"></i>
-                <i style="--h:72%"></i>
-                <i style="--h:58%"></i>
-                <i style="--h:95%"></i>
-                <i style="--h:68%"></i>
-                <i style="--h:82%"></i>
-              </div>
-            </div>
-          </article>
-
-          <div class="update-grid">
-            <article class="update-card reveal" data-search="sistema php mysql dashboard">
-              <span>OPS.01</span>
-              <h4>Sistema web</h4>
-              <p>Login, usuários, permissões, cadastros e relatórios.</p>
-              <button class="read-more" data-modal-title="Sistema web" data-modal-text="Construção de sistemas PHP/MySQL com áreas por perfil, dashboards e rotinas de gestão.">Read update</button>
-            </article>
-            <article class="update-card reveal" data-search="dashboard relatorio graficos">
-              <span>OPS.02</span>
-              <h4>Dashboards</h4>
-              <p>Indicadores visuais para acompanhar a operação.</p>
-              <button class="read-more" data-modal-title="Dashboards" data-modal-text="Cards, gráficos, filtros por período e relatórios para tomada de decisão.">Read update</button>
-            </article>
-            <article class="update-card reveal" data-search="automacao whatsapp pix processos">
-              <span>OPS.03</span>
-              <h4>Automações</h4>
-              <p>Fluxos automáticos com WhatsApp, PIX e notificações.</p>
-              <button class="read-more" data-modal-title="Automações" data-modal-text="Redução de tarefas manuais com APIs, mensagens, alertas e rotinas automáticas.">Read update</button>
-            </article>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="edition-section" id="developer" data-section="Developer">
-      <div class="container edition-layout">
-        <aside class="section-intro">
-          <p class="section-kicker">06 / Developer</p>
-          <h2>Base técnica simples de publicar, mas com experiência de alto nível.</h2>
-          <p>
-            Sem React, sem build e sem package.json. Você sobe direto na Hostinger:
-            HTML, CSS, JavaScript e bibliotecas por CDN.
-          </p>
-          <a href="#editionNav" class="back-link">Back to navigation</a>
-        </aside>
-
-        <div class="section-content">
-          <div class="terminal-card reveal">
-            <div class="terminal-top"><i></i><i></i><i></i><span>stack.config</span></div>
-<pre><code>{
-  "front": ["HTML5", "CSS3", "JavaScript"],
-  "motion": ["GSAP", "ScrollTrigger", "Lenis"],
-  "visual": ["Canvas 2D", "Three.js", "Parallax"],
-  "hosting": "Hostinger ready",
-  "goal": "premium editorial experience"
-}</code></pre>
+        <div class="container hero-content">
+          <div class="eyebrow intro-reveal">
+            <span></span>
+            Software, SaaS, automação e presença digital
           </div>
 
-          <div class="mini-updates">
-            <article class="mini-update reveal">
-              <h4>Static deploy</h4>
-              <p>Suba direto em public_html, inclusive em /teste/.</p>
-            </article>
-            <article class="mini-update reveal">
-              <h4>External CSS</h4>
-              <p>CSS separado em assets/css/style.css.</p>
-            </article>
-            <article class="mini-update reveal">
-              <h4>External JS</h4>
-              <p>JavaScript separado em assets/js/main.js.</p>
-            </article>
-            <article class="mini-update reveal">
-              <h4>No build</h4>
-              <p>Nada de npm install, Vite ou React para publicar.</p>
-            </article>
+          <div class="headline-wrap intro-reveal delay-1">
+            <h1 class="hero-title">
+              <span>A base para</span>
+              <span>
+                sua empresa
+                <span class="rotating-word" data-rotating-word></span>
+              </span>
+            </h1>
           </div>
-        </div>
-      </div>
-    </section>
 
-    <section class="contact" id="contact">
-      <div class="container">
-        <div class="contact-card reveal">
-          <div>
-            <p class="mini-label">Start your edition</p>
-            <h2>A L&J pode transformar sua empresa em uma experiência digital premium.</h2>
-            <p>
-              Essa versão está mais próxima da lógica do Shopify Editions: navegação por áreas,
-              cards de updates, visual editorial, imagens grandes, parallax, 3D e narrativa.
+          <div class="hero-bottom">
+            <p class="hero-description intro-reveal delay-2">
+              Sites, sistemas web, SaaS, automações, identidade visual e soluções com drone para transformar processos em experiências digitais profissionais.
             </p>
-          </div>
-          <div class="contact-actions">
-            <a class="button button-primary magnetic" href="https://wa.me/5592991515710?text=Ol%C3%A1%2C%20quero%20uma%20p%C3%A1gina%20estilo%20Editions%20para%20minha%20empresa." target="_blank" rel="noopener">WhatsApp</a>
-            <a class="button button-ghost magnetic" href="mailto:ljsolucoestechh@gmail.com">E-mail</a>
+            <div class="hero-actions intro-reveal delay-3">
+              <a href="https://ljsolucoestech.com.br/contato.php" class="btn btn-dark btn-large group-arrow">
+                Solicitar diagnóstico
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg>
+              </a>
+              <a href="#features" class="btn btn-outline btn-large">Ver soluções</a>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
-  </main>
 
-  <div class="modal" id="updateModal" aria-hidden="true" role="dialog" aria-modal="true">
-    <button class="modal-backdrop" id="modalBackdrop" type="button" aria-label="Fechar"></button>
-    <div class="modal-box">
-      <button class="modal-close" id="modalClose" type="button" aria-label="Fechar modal">×</button>
-      <p class="mini-label">Update detail</p>
-      <h2 id="modalTitle">Título</h2>
-      <p id="modalText">Descrição</p>
-      <a href="#contact" class="button button-primary" id="modalCta">Solicitar isso</a>
-    </div>
-  </div>
+        <div class="hero-marquee" aria-hidden="true">
+          <div class="marquee-track">
+            <span>Sistemas Web</span><span>SaaS</span><span>Automação</span><span>Sites</span><span>Identidade Visual</span><span>Drone</span><span>UX</span><span>Segurança</span>
+            <span>Sistemas Web</span><span>SaaS</span><span>Automação</span><span>Sites</span><span>Identidade Visual</span><span>Drone</span><span>UX</span><span>Segurança</span>
+          </div>
+        </div>
+      </section>
 
-  <footer class="footer">
-    <div class="container footer-inner">
-      <p>© <span id="year"></span> L&J Soluções Tecnológicas. Todos os direitos reservados.</p>
-      <a href="#top">Back to top</a>
-    </div>
-  </footer>
+      <section id="features" class="features-section section-padding">
+        <div class="container">
+          <div class="section-header">
+            <div class="eyebrow"><span></span>Capacidades</div>
+            <h2 class="section-title reveal">Tudo que sua empresa precisa.<br><span>Nada de improviso.</span></h2>
+          </div>
 
-  <a class="float-whatsapp magnetic" href="https://wa.me/5592991515710?text=Ol%C3%A1%2C%20vi%20o%20site%20L%26J%20Editions%20e%20quero%20conversar." target="_blank" rel="noopener">
-    WhatsApp
-  </a>
+          <div class="feature-list">
+            <article class="feature-card reveal">
+              <div class="feature-number">01</div>
+              <div class="feature-grid">
+                <div>
+                  <h3>Sistemas web sob medida</h3>
+                  <p>Plataformas administrativas, painéis internos, sistemas de gestão, portais e ferramentas digitais adaptadas ao fluxo real da empresa.</p>
+                </div>
+                <div class="feature-visual" data-visual="deploy"></div>
+              </div>
+            </article>
+            <article class="feature-card reveal">
+              <div class="feature-number">02</div>
+              <div class="feature-grid">
+                <div>
+                  <h3>SaaS e produtos digitais</h3>
+                  <p>Produtos recorrentes com módulos, planos, usuários, permissões, métricas e evolução organizada para vender tecnologia como serviço.</p>
+                </div>
+                <div class="feature-visual" data-visual="ai"></div>
+              </div>
+            </article>
+            <article class="feature-card reveal">
+              <div class="feature-number">03</div>
+              <div class="feature-grid">
+                <div>
+                  <h3>Sites, landing pages e UX</h3>
+                  <p>Páginas profissionais para transmitir confiança, apresentar serviços com clareza e gerar contato comercial com CTA estratégico.</p>
+                </div>
+                <div class="feature-visual" data-visual="collab"></div>
+              </div>
+            </article>
+            <article class="feature-card reveal">
+              <div class="feature-number">04</div>
+              <div class="feature-grid">
+                <div>
+                  <h3>Automação, segurança e drone</h3>
+                  <p>Fluxos digitais para reduzir retrabalho, base segura para dados e captação visual aérea para valorizar empresas, obras, eventos e campanhas.</p>
+                </div>
+                <div class="feature-visual" data-visual="security"></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/bundled/lenis.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-  <script src="assets/js/main.js"></script>
-</body>
+      <section id="how-it-works" class="process-section section-padding-dark">
+        <div class="diagonal-pattern" aria-hidden="true"></div>
+        <div class="container process-content">
+          <div class="section-header">
+            <div class="eyebrow inverse"><span></span>Processo</div>
+            <h2 class="section-title inverse reveal">Três passos.<br><span>Entrega com direção.</span></h2>
+          </div>
+
+          <div class="process-grid">
+            <div class="steps" data-steps></div>
+            <div class="code-sticky">
+              <div class="code-window inverse-code">
+                <div class="window-header">
+                  <div class="traffic"><span></span><span></span><span></span></div>
+                  <span id="processFileName">diagnostico.php</span>
+                </div>
+                <pre class="code-content" id="processCode"></pre>
+                <div class="status-bar"><span class="pulse-dot"></span><span>Pronto para planejar</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="infrastructure-section section-padding">
+        <div class="container infra-grid">
+          <div class="reveal slide-left">
+            <div class="eyebrow"><span></span>Arquitetura</div>
+            <h2 class="section-title compact">Preparado para<br>hospedagem real.</h2>
+            <p class="large-muted">CSS e JavaScript leves, PHP quando fizer sentido, estrutura responsiva e base pronta para evoluir para área administrativa, banco de dados e automações.</p>
+            <div class="stats-row">
+              <div><strong>6</strong><span>frentes de atuação</span></div>
+              <div><strong>PHP</strong><span>base leve</span></div>
+              <div><strong>CSRF</strong><span>segurança em formulário</span></div>
+            </div>
+          </div>
+
+          <div class="reveal slide-right">
+            <div class="location-panel">
+              <div class="panel-header"><span>Ecossistema LJ</span><em><b></b>Operacional</em></div>
+              <div class="locations" data-locations></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="studio" class="metrics-section section-padding border-y">
+        <div class="container">
+          <div class="metrics-header">
+            <div>
+              <div class="eyebrow"><span></span>Métricas da oferta</div>
+              <h2 class="section-title reveal">Valor que o cliente<br>consegue entender.</h2>
+            </div>
+            <div class="live-clock"><span class="pulse-dot dark"></span><span>Live</span><i>|</i><time id="liveTime"></time></div>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card reveal"><strong data-counter="6">0</strong><span>frentes de atuação</span></div>
+            <div class="metric-card reveal"><strong data-counter="3">0</strong><span>produtos próprios destacados</span></div>
+            <div class="metric-card reveal"><strong data-counter="6">0</strong><span>etapas de entrega</span></div>
+            <div class="metric-card reveal"><strong data-counter="1">0</strong><span>ecossistema digital integrado</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="integrations" class="integrations-section section-padding overflow-hidden">
+        <div class="container narrow center reveal">
+          <div class="eyebrow centered"><span></span>Stack e frentes<span></span></div>
+          <h2 class="section-title">Conecta com o que sua operação já usa.</h2>
+          <p class="large-muted">Web, sistemas, automação, mídia e comunicação comercial organizados no mesmo ecossistema.</p>
+        </div>
+        <div class="marquee-row">
+          <div class="integration-track marquee-track" data-integrations-a></div>
+        </div>
+        <div class="marquee-row reverse">
+          <div class="integration-track marquee-reverse" data-integrations-b></div>
+        </div>
+      </section>
+
+      <section id="security" class="security-section section-padding subtle-bg">
+        <div class="container security-grid">
+          <div class="reveal">
+            <div class="eyebrow"><span></span>Segurança</div>
+            <h2 class="section-title compact">Confiança não é<br>opcional.</h2>
+            <p class="large-muted">A base técnica precisa proteger dados, evitar falhas comuns e continuar fácil de manter depois da publicação.</p>
+            <div class="badges"><span>CSRF</span><span>Honeypot</span><span>Sanitização</span><span>Validação</span><span>Banco estruturado</span></div>
+          </div>
+          <div class="security-cards">
+            <article class="security-card reveal"><i data-icon="shield"></i><div><h3>Formulários protegidos</h3><p>CSRF, honeypot e validação reduzem abuso e entradas inválidas.</p></div></article>
+            <article class="security-card reveal"><i data-icon="lock"></i><div><h3>Dados tratados com cuidado</h3><p>Sanitização de saída e estrutura preparada para áreas restritas.</p></div></article>
+            <article class="security-card reveal"><i data-icon="eye"></i><div><h3>Manutenção sem bagunça</h3><p>Código organizado para evoluir sem refazer a base.</p></div></article>
+            <article class="security-card reveal"><i data-icon="file"></i><div><h3>Banco pensado para crescer</h3><p>Modelagem para leads, serviços, projetos, produtos e usuários.</p></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="developers" class="developers-section section-padding">
+        <div class="container dev-grid">
+          <div class="reveal">
+            <div class="eyebrow"><span></span>Para evolução</div>
+            <h2 class="section-title compact">Construído por devs.<br><span>Para produção.</span></h2>
+            <p class="large-muted">A entrega não pode ser só visual. Precisa ter estrutura, validação, performance, responsividade e caminho claro para virar sistema completo.</p>
+            <div class="dev-features">
+              <div><h3>Responsivo</h3><p>Boa experiência no celular, tablet e desktop.</p></div>
+              <div><h3>Leve</h3><p>CSS e JS sem excesso para hospedagem comum.</p></div>
+              <div><h3>Escalável</h3><p>Pronto para evoluir para painel e banco.</p></div>
+              <div><h3>Seguro</h3><p>Validação e proteção desde o primeiro formulário.</p></div>
+            </div>
+          </div>
+
+          <div class="reveal slide-right code-sticky">
+            <div class="code-window light-code">
+              <div class="tabs" data-code-tabs></div>
+              <pre class="code-content light" id="devCode"></pre>
+            </div>
+            <div class="dev-links"><a href="https://ljsolucoestech.com.br/">Site oficial</a><span>|</span><a href="https://ljsolucoestech.com.br/contato.php">Abrir contato</a></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="testimonials-section border-top">
+        <div class="container">
+          <div class="quote-label"><span>Como o portfólio comunica valor</span><i></i><b id="quoteCount">01 / 04</b></div>
+          <div class="quote-grid">
+            <div>
+              <blockquote id="quoteText"></blockquote>
+              <div class="quote-author" id="quoteAuthor"></div>
+            </div>
+            <div class="quote-metric" id="quoteMetric"></div>
+          </div>
+          <div class="logo-label">Frentes apresentadas</div>
+        </div>
+        <div class="brand-marquee"><div class="marquee-track" data-brand-track></div></div>
+      </section>
+
+      <section id="pricing" class="pricing-section border-top">
+        <div class="container narrow-left">
+          <div class="pricing-header">
+            <span class="caps">Projetos</span>
+            <h2 class="pricing-title">Escopos claros,<br><span>evolução sob demanda</span></h2>
+            <p>Comece com uma entrega objetiva e evolua para sistema, automação, SaaS ou mídia organizada conforme o negócio validar.</p>
+          </div>
+
+          <div class="billing-toggle" aria-label="Alternar tipo de contratação">
+            <span data-billing-label="initial">Inicial</span>
+            <button type="button" data-billing-toggle aria-pressed="true"><i></i></button>
+            <span data-billing-label="evolution">Evolução</span>
+            <b data-save-badge>sob medida</b>
+          </div>
+
+          <div class="pricing-grid" data-pricing-grid></div>
+          <p class="pricing-note">Todos os escopos devem ser fechados com diagnóstico técnico para evitar promessa vaga, prazo irreal e retrabalho.</p>
+        </div>
+      </section>
+
+      <section id="contato" class="cta-section section-padding">
+        <div class="container">
+          <div class="cta-box reveal" data-spotlight>
+            <div class="spotlight" data-spotlight-bg></div>
+            <div class="cta-content">
+              <div class="cta-copy">
+                <h2>Pronto para construir<br>algo profissional?</h2>
+                <p>Chame a LJ e explique o que você precisa: site, sistema, SaaS, identidade visual, drone ou uma solução completa.</p>
+                <div class="cta-actions">
+                  <a href="https://ljsolucoestech.com.br/contato.php" class="btn btn-dark btn-large group-arrow">Solicitar diagnóstico agora<svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" /></svg></a>
+                  <a href="https://ljsolucoestech.com.br/contato.php" class="btn btn-outline btn-large">Abrir formulário</a>
+                </div>
+                <small>Sem orçamento automático: primeiro vem diagnóstico.</small>
+              </div>
+              <div class="tetra-wrap"><canvas id="tetraCanvas" aria-hidden="true"></canvas></div>
+            </div>
+            <span class="corner top-right"></span><span class="corner bottom-left"></span>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer border-top">
+        <div class="footer-wave"><canvas id="waveCanvas" aria-hidden="true"></canvas></div>
+        <div class="container footer-content">
+          <div class="footer-main">
+            <div class="footer-brand">
+              <a href="#topo" class="brand footer-logo"><span class="brand-name">L&J</span><span class="brand-mark">TECH</span></a>
+              <p>Software, sistemas, SaaS, presença digital, identidade visual e drone para empresas que precisam de tecnologia com aparência profissional e base segura.</p>
+              <div class="socials"><a href="https://ljsolucoestech.com.br/">Site oficial</a><a href="https://ljsolucoestech.com.br/contato.php">Contato</a><a href="https://ljsolucoestech.com.br/contato.php">WhatsApp</a></div>
+            </div>
+            <div class="footer-col"><h3>Empresa</h3><a href="#features">Soluções</a><a href="#how-it-works">Método</a><a href="#pricing">Projetos</a><a href="#contato">Contato</a></div>
+            <div class="footer-col"><h3>Soluções</h3><a href="#features">Sistemas web</a><a href="#features">Sites e landing pages</a><a href="#features">SaaS</a><a href="#integrations">Automação</a></div>
+            <div class="footer-col"><h3>Técnico</h3><a href="#security">Segurança</a><a href="#developers">Código</a><a href="#studio">Métricas</a><a href="#integrations">Stack</a></div>
+            <div class="footer-col"><h3>Atendimento</h3><a href="https://ljsolucoestech.com.br/contato.php">WhatsApp</a><a href="https://ljsolucoestech.com.br/contato.php">Formulário</a><a href="#topo">Voltar ao topo</a></div>
+          </div>
+          <div class="footer-bottom"><p>© 2026 LJ Soluções Tecnológicas. Todos os direitos reservados.</p><span><b></b> Site estático pronto para Hostinger</span></div>
+        </div>
+      </footer>
+    </main>
+
+    <script src="script.js" defer></script>
+  </body>
 </html>

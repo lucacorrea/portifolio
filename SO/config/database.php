@@ -63,6 +63,11 @@ try {
             $pdo->exec("CREATE INDEX idx_itens_aquisicao_oficio_item ON itens_aquisicao (oficio_item_id)");
         }
 
+        $query = $pdo->query("SHOW COLUMNS FROM itens_oficio LIKE 'valor_unitario'");
+        if (!$query->fetch()) {
+            $pdo->exec("ALTER TABLE itens_oficio ADD COLUMN valor_unitario DECIMAL(15,2) NULL DEFAULT 0.00 AFTER unidade");
+        }
+
         $query = $pdo->query("SHOW COLUMNS FROM oficios LIKE 'resumo_itens'");
         if (!$query->fetch()) {
             $pdo->exec("ALTER TABLE oficios ADD COLUMN resumo_itens TEXT NULL AFTER justificativa");

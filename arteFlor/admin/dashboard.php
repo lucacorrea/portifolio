@@ -1,10 +1,27 @@
 <?php
 $adminTitle = 'Dashboard';
 $activeAdmin = 'dashboard';
+require_once __DIR__ . '/../includes/dashboard.php';
+require_once __DIR__ . '/../includes/whatsapp.php';
+$adminUser = require_admin();
+
+$productStats = product_stats();
+$todaySummary = dashboard_today_summary();
+$paymentSummary = dashboard_payment_summary_today();
+$categorySales = dashboard_category_sales(30);
+$recentOrders = dashboard_recent_orders(5);
+$lowStockProducts = dashboard_low_stock_products(5);
+$alerts = dashboard_alerts($todaySummary, $lowStockProducts, $productStats);
+$whatsappErrors = whatsapp_error_count();
+if ($whatsappErrors > 0) {
+    $alerts[] = [
+        'class' => 'admin-alert-danger',
+        'title' => 'WhatsApp',
+        'text' => $whatsappErrors . ' notificação(ões) com erro precisam de revisão em integrações.',
+    ];
+}
+
 require_once __DIR__ . '/../includes/admin-head.php';
-$produtos = load_json('produtos.json');
-$ativos = count(array_filter($produtos, fn($p) => ($p['status'] ?? '') === 'disponivel'));
-$estoqueBaixo = count(array_filter($produtos, fn($p) => (int) ($p['estoque'] ?? 0) <= 3));
 ?>
 <section class="admin-page-hero">
   <div class="admin-page-title">
@@ -19,22 +36,15 @@ $estoqueBaixo = count(array_filter($produtos, fn($p) => (int) ($p['estoque'] ?? 
 </section>
 
 <section class="admin-kpi-grid six">
-  <article class="admin-kpi-card"><span>Vendas de hoje</span><strong>R$ 820</strong><small>12 vendas no sistema visual</small></article>
-  <article class="admin-kpi-card"><span>Pedidos pendentes</span><strong>7</strong><small>4 em preparo</small></article>
-  <article class="admin-kpi-card"><span>Produtos ativos</span><strong><?= $ativos ?></strong><small>Catálogo publicado</small></article>
-  <article class="admin-kpi-card"><span>Estoque baixo</span><strong><?= $estoqueBaixo ?></strong><small>Reposição sugerida</small></article>
-  <article class="admin-kpi-card"><span>Pix pendente</span><strong>3</strong><small>Confirmação manual</small></article>
-  <article class="admin-kpi-card"><span>Ticket médio</span><strong>R$ 136</strong><small>Pedidos e PDV</small></article>
+  <article class="admin-kpi-card"><span>Vendas de hoje</span><strong><?= money_br($todaySummary['vendas_hoje']) ?></strong><small><?= $todaySummary['pedidos_hoje'] ?> pedido(s) no banco</small></article>
+  <article class="admin-kpi-card"><span>Pedidos pendentes</span><strong><?= $todaySummary['pedidos_pendentes'] ?></strong><small><?= $todaySummary['em_preparo'] ?> em preparo</small></article>
+  <article class="admin-kpi-card"><span>Produtos ativos</span><strong><?= $productStats['disponiveis'] ?></strong><small><?= $productStats['total'] ?> produto(s) cadastrados</small></article>
+  <article class="admin-kpi-card"><span>Estoque baixo</span><strong><?= $productStats['estoque_baixo'] ?></strong><small><?= $productStats['sem_estoque'] ?> sem estoque</small></article>
+  <article class="admin-kpi-card"><span>Pix pendente</span><strong><?= $todaySummary['pix_pendente'] ?></strong><small>Confirmação manual</small></article>
+  <article class="admin-kpi-card"><span>Ticket médio</span><strong><?= money_br($todaySummary['ticket_medio']) ?></strong><small>Pedidos de hoje</small></article>
 </section>
 
-<section class="admin-quick-grid">
-  <a class="admin-quick-card" href="<?= site_url('admin/produto-form.php') ?>"><i>Novo</i><div><strong>Novo produto</strong><small>Cadastro visual completo</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/caixa.php') ?>"><i>PDV</i><div><strong>Frente de caixa</strong><small>Venda presencial rápida</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/pedidos.php') ?>"><i>Fila</i><div><strong>Pedidos</strong><small>Status e pagamentos</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/estoque.php') ?>"><i>Estoq.</i><div><strong>Estoque</strong><small>Entradas e saídas</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/relatorios.php') ?>"><i>BI</i><div><strong>Relatórios</strong><small>Indicadores visuais</small></div></a>
-  <a class="admin-quick-card" href="<?= site_url('admin/integracoes.php') ?>"><i>API</i><div><strong>Integrações</strong><small>Pix e atendimento</small></div></a>
-</section>
+
 
 <section class="admin-grid-2">
   <article class="admin-panel-card">
@@ -42,14 +52,23 @@ $estoqueBaixo = count(array_filter($produtos, fn($p) => (int) ($p['estoque'] ?? 
       <div>
         <span class="badge">Vendas</span>
         <h2>Vendas por categoria</h2>
-        <p>Gráfico visual em CSS para apresentação comercial.</p>
+        <p>Baseado nos itens de pedidos dos últimos 30 dias.</p>
       </div>
     </div>
     <div class="admin-chart-bars">
-      <div class="admin-chart-row"><span>Buquês</span><div class="admin-chart-track"><div class="admin-chart-fill" style="width:82%"></div></div><strong>82%</strong></div>
-      <div class="admin-chart-row"><span>Arranjos</span><div class="admin-chart-track"><div class="admin-chart-fill" style="width:64%"></div></div><strong>64%</strong></div>
-      <div class="admin-chart-row"><span>Presentes</span><div class="admin-chart-track"><div class="admin-chart-fill" style="width:48%"></div></div><strong>48%</strong></div>
-      <div class="admin-chart-row"><span>Vasos</span><div class="admin-chart-track"><div class="admin-chart-fill" style="width:36%"></div></div><strong>36%</strong></div>
+      <?php foreach ($categorySales as $sale): ?>
+        <div class="admin-chart-row">
+          <span><?= e($sale['categoria']) ?></span>
+          <div class="admin-chart-track"><div class="admin-chart-fill" style="width:<?= (int) $sale['percentual'] ?>%"></div></div>
+          <strong><?= money_br($sale['total']) ?></strong>
+        </div>
+      <?php endforeach; ?>
+      <?php if (empty($categorySales)): ?>
+        <div class="admin-empty-row">
+          <strong>Sem vendas por categoria</strong>
+          <span>Os dados aparecem quando pedidos com itens forem gravados.</span>
+        </div>
+      <?php endif; ?>
     </div>
   </article>
 
@@ -58,15 +77,18 @@ $estoqueBaixo = count(array_filter($produtos, fn($p) => (int) ($p['estoque'] ?? 
       <div>
         <span class="badge">Financeiro</span>
         <h2>Resumo do dia</h2>
-        <p>Valores fictícios para validar o painel com a cliente.</p>
+        <p>Totais agrupados por forma de pagamento dos pedidos de hoje.</p>
       </div>
       <a class="btn btn-soft" href="<?= site_url('admin/relatorios.php') ?>">Ver relatórios</a>
     </div>
     <div class="admin-metric-list">
-      <div class="admin-metric-row"><span>Pix confirmado</span><strong>R$ 420,00</strong></div>
-      <div class="admin-metric-row"><span>Dinheiro</span><strong>R$ 210,00</strong></div>
-      <div class="admin-metric-row"><span>Cartão presencial</span><strong>R$ 190,00</strong></div>
-      <div class="admin-metric-row total"><span>Total líquido visual</span><strong>R$ 820,00</strong></div>
+      <?php foreach ($paymentSummary as $payment): ?>
+        <div class="admin-metric-row">
+          <span><?= e($payment['label']) ?></span>
+          <strong><?= money_br($payment['total_valor']) ?></strong>
+        </div>
+      <?php endforeach; ?>
+      <div class="admin-metric-row total"><span>Total vendido hoje</span><strong><?= money_br($todaySummary['vendas_hoje']) ?></strong></div>
     </div>
   </article>
 </section>
@@ -84,9 +106,17 @@ $estoqueBaixo = count(array_filter($produtos, fn($p) => (int) ($p['estoque'] ?? 
       <table>
         <thead><tr><th>Pedido</th><th>Cliente</th><th>Status</th><th>Total</th></tr></thead>
         <tbody>
-          <tr><td><strong>#AF-1030</strong><small>Buquê de Rosas</small></td><td>Marina</td><td><span class="admin-badge-info">Aguardando Pix</span></td><td>R$ 129,90</td></tr>
-          <tr><td><strong>#AF-1029</strong><small>Kit Romântico</small></td><td>Rafael</td><td><span class="admin-badge-warn">Em preparo</span></td><td>R$ 179,90</td></tr>
-          <tr><td><strong>#AF-1028</strong><small>Orquídea</small></td><td>Beatriz</td><td><span class="admin-badge-ok">Finalizado</span></td><td>R$ 79,90</td></tr>
+          <?php foreach ($recentOrders as $pedido): ?>
+            <tr>
+              <td><strong><?= e($pedido['codigo']) ?></strong><small><?= e(dashboard_origin_label((string) $pedido['origem'])) ?></small></td>
+              <td><?= e($pedido['cliente_nome']) ?></td>
+              <td><span class="<?= dashboard_order_badge_class((string) $pedido['status']) ?>"><?= e(dashboard_order_status_label((string) $pedido['status'])) ?></span></td>
+              <td><?= money_br((float) $pedido['total']) ?></td>
+            </tr>
+          <?php endforeach; ?>
+          <?php if (empty($recentOrders)): ?>
+            <tr><td colspan="4"><strong>Nenhum pedido cadastrado</strong><small>Os pedidos aparecerão aqui assim que forem gravados no banco.</small></td></tr>
+          <?php endif; ?>
         </tbody>
       </table>
     </div>
@@ -100,10 +130,34 @@ $estoqueBaixo = count(array_filter($produtos, fn($p) => (int) ($p['estoque'] ?? 
       </div>
     </div>
     <div class="admin-metric-list">
-      <div class="admin-alert-card"><strong>Pix pendente</strong>3 pedidos aguardam confirmação manual no painel.</div>
-      <div class="admin-alert-card"><strong>Estoque crítico</strong>Cesta Afeto e Kit Presente Romântico precisam de reposição.</div>
-      <div class="admin-alert-card"><strong>Apresentação</strong>Fluxos de checkout e PDV finalizam dentro do sistema visual.</div>
+      <?php foreach ($alerts as $alert): ?>
+        <div class="admin-alert-card <?= e($alert['class']) ?>">
+          <strong><?= e($alert['title']) ?></strong><?= e($alert['text']) ?>
+        </div>
+      <?php endforeach; ?>
     </div>
+    <?php if (!empty($lowStockProducts)): ?>
+      <div class="critical-products-list">
+        <div class="critical-products-title">
+          <strong>Produtos críticos</strong>
+          <small>Até 5 itens com estoque zerado ou abaixo do mínimo.</small>
+        </div>
+        <?php foreach ($lowStockProducts as $criticalProduct): ?>
+          <?php $inventoryStatus = product_inventory_status($criticalProduct); ?>
+          <a class="critical-product-row <?= e(product_inventory_row_class($inventoryStatus)) ?>" href="<?= site_url('admin/produto-form.php?id=' . (int) $criticalProduct['id']) ?>">
+            <span>
+              <strong><?= e($criticalProduct['nome']) ?></strong>
+              <small><?= e($criticalProduct['sku'] ?: 'Sem SKU') ?></small>
+            </span>
+            <span>
+              Estoque: <?= (int) ($criticalProduct['estoque'] ?? 0) ?> un.
+              <small>Mínimo: <?= (int) ($criticalProduct['estoque_minimo'] ?? 0) ?> un.</small>
+            </span>
+            <span class="<?= e(product_inventory_badge_class($inventoryStatus)) ?>"><?= e(product_inventory_label($inventoryStatus)) ?></span>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
   </article>
 </section>
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>

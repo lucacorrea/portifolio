@@ -1,15 +1,22 @@
 <?php
 $pageTitle = 'Início';
 $activePage = 'inicio';
-require_once __DIR__ . '/includes/header.php';
-$produtos = load_json('produtos.json');
-$destaques = array_values(array_filter($produtos, fn($item) => !empty($item['destaque'])));
-$categorias = [
-    ['nome' => 'Buquês', 'texto' => 'Rosas, tons pastel e composições românticas.', 'imagem' => 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=700&q=80'],
-    ['nome' => 'Arranjos', 'texto' => 'Peças elegantes para homenagens e eventos.', 'imagem' => 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=700&q=80'],
-    ['nome' => 'Vasos', 'texto' => 'Orquídeas, violetas e plantas para decorar.', 'imagem' => 'https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=700&q=80'],
-    ['nome' => 'Presentes', 'texto' => 'Cestas, kits e mimos para datas especiais.', 'imagem' => 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=700&q=80'],
+require_once __DIR__ . '/includes/products.php';
+$destaques = product_featured(6);
+if (empty($destaques)) {
+    $destaques = product_public_list(['limit' => 6]);
+}
+$categorias = product_public_categories();
+$fallbackCategoryImages = [
+    'buques' => 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=700&q=80',
+    'arranjos' => 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=700&q=80',
+    'vasos' => 'https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=700&q=80',
+    'presentes' => 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=700&q=80',
+    'plantas' => 'https://images.unsplash.com/photo-1521334884684-d80222895322?auto=format&fit=crop&w=700&q=80',
+    'datas-especiais' => 'https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=700&q=80',
+    'encomendas' => 'https://images.unsplash.com/photo-1455659817273-f96807779a8a?auto=format&fit=crop&w=700&q=80',
 ];
+require_once __DIR__ . '/includes/header.php';
 ?>
 <section class="hero">
   <div class="container hero-grid">
@@ -41,11 +48,22 @@ $categorias = [
       <p class="section-subtitle">Um catálogo visual para compra rápida, com produtos prontos e opções sob encomenda.</p>
     </div>
     <div class="category-grid">
-      <?php foreach ($categorias as $categoria): ?>
-        <a class="category-card" href="<?= site_url('catalogo.php') ?>">
-          <img src="<?= e($categoria['imagem']) ?>" alt="<?= e($categoria['nome']) ?>" loading="lazy">
+      <?php foreach (array_slice($categorias, 0, 4) as $categoria): ?>
+        <?php
+          $categorySlug = (string) ($categoria['slug'] ?? product_slugify((string) $categoria['nome'], 140));
+          $categoryImage = (string) ($categoria['imagem'] ?? '');
+          if ($categoryImage === '') {
+              $categoryImage = $fallbackCategoryImages[$categorySlug] ?? reset($fallbackCategoryImages);
+          }
+          $categoryDescription = trim((string) ($categoria['descricao'] ?? ''));
+          if ($categoryDescription === '') {
+              $categoryDescription = 'Produtos selecionados para compor momentos especiais.';
+          }
+        ?>
+        <a class="category-card" href="<?= site_url('catalogo.php?categoria=' . rawurlencode($categorySlug)) ?>">
+          <img src="<?= e($categoryImage) ?>" alt="<?= e($categoria['nome']) ?>" loading="lazy">
           <span><?= e($categoria['nome']) ?></span>
-          <p><?= e($categoria['texto']) ?></p>
+          <p><?= e($categoryDescription) ?></p>
         </a>
       <?php endforeach; ?>
     </div>
@@ -62,9 +80,16 @@ $categorias = [
       <a class="btn btn-soft" href="<?= site_url('catalogo.php') ?>">Catálogo completo</a>
     </div>
     <div class="grid-3 product-grid-spaced">
-      <?php foreach (array_slice($destaques, 0, 6) as $produto): ?>
-        <?php require __DIR__ . '/includes/product-card.php'; ?>
-      <?php endforeach; ?>
+      <?php if (empty($destaques)): ?>
+        <div class="empty-results">
+          <strong>Nenhum produto disponível no momento.</strong>
+          <p>Assim que o admin cadastrar e ativar produtos, eles aparecerão aqui automaticamente.</p>
+        </div>
+      <?php else: ?>
+        <?php foreach (array_slice($destaques, 0, 6) as $produto): ?>
+          <?php require __DIR__ . '/includes/product-card.php'; ?>
+        <?php endforeach; ?>
+      <?php endif; ?>
     </div>
   </div>
 </section>
@@ -74,7 +99,7 @@ $categorias = [
     <div>
       <span class="badge">Como funciona</span>
       <h2 class="section-title">Compra visual do início ao fim</h2>
-      <p class="section-subtitle">O MVP não usa backend real, mas já demonstra o fluxo comercial correto para a apresentação.</p>
+      <p class="section-subtitle">A vitrine usa os produtos cadastrados no admin e mantém o fluxo comercial dentro do sistema.</p>
     </div>
     <div class="steps-grid">
       <article class="card step-card"><strong>1</strong><h3>Escolha</h3><p>Cliente navega pelo catálogo, vê detalhes e adiciona ao carrinho.</p></article>

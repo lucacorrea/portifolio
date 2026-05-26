@@ -2,13 +2,20 @@
   if (!window.ArteFlor) return;
 
   const productScript = document.getElementById('pdvProducts');
+  const configScript = document.getElementById('pdvConfig');
   if (!productScript) return;
 
   let products = [];
+  let config = {};
   try {
     products = JSON.parse(productScript.textContent || '[]');
   } catch (error) {
     products = [];
+  }
+  try {
+    config = JSON.parse(configScript?.textContent || '{}');
+  } catch (error) {
+    config = {};
   }
 
   const productGrid = document.querySelector('[data-pdv-product-grid]');
@@ -26,6 +33,8 @@
   let sale = [];
 
   const getQty = () => Math.max(1, Number(qtyInput?.value || 1));
+  const saleKey = (item) => String(item.saleKey || item.cartKey || item.id || item.produto_id || '');
+  const productLabel = (product) => product.cor_nome ? `${product.nome} · ${product.cor_nome}` : product.nome;
 
   const saleTotals = () => {
     const subtotal = sale.reduce((sum, item) => sum + Number(item.preco || 0) * Number(item.qty || 1), 0);
@@ -34,30 +43,41 @@
   };
 
   const addProduct = (product, qty = getQty()) => {
-    const current = sale.find((item) => item.id === String(product.id));
+    const key = saleKey(product);
+    const current = sale.find((item) => saleKey(item) === key);
+    const stock = Number(product.estoque || 0);
     if (current) {
+      if (stock > 0 && current.qty + qty > stock) {
+        ArteFlor.toast('Quantidade maior que o estoque disponível.', 'warning');
+        return;
+      }
       current.qty += qty;
     } else {
-      sale.push({ ...product, id: String(product.id), qty });
+      if (stock > 0 && qty > stock) {
+        ArteFlor.toast('Quantidade maior que o estoque disponível.', 'warning');
+        return;
+      }
+      sale.push({ ...product, id: String(product.id), saleKey: key, qty });
     }
     renderSale();
-    ArteFlor.toast(`${product.nome} adicionado ao caixa.`);
+    ArteFlor.toast(`${productLabel(product)} adicionado ao caixa.`);
   };
 
   const renderProducts = () => {
     if (!productGrid) return;
     const term = (search?.value || '').toLocaleLowerCase('pt-BR').trim();
     const filtered = products.filter((product) => {
-      const text = `${product.sku} ${product.nome} ${product.categoria}`.toLocaleLowerCase('pt-BR');
+      const text = `${product.sku} ${product.nome} ${product.categoria} ${product.cor_nome || ''}`.toLocaleLowerCase('pt-BR');
       const categoryOk = currentCategory === 'todos' || product.categoria === currentCategory;
       return categoryOk && (!term || text.includes(term));
     });
 
     productGrid.innerHTML = filtered.map((product) => `
-      <button class="pdv-product-card" type="button" data-pdv-add="${ArteFlor.escapeHtml(product.id)}">
-        ${product.imagem ? `<img src="${ArteFlor.escapeHtml(product.imagem)}" alt="${ArteFlor.escapeHtml(product.nome)}">` : '<span>A&F</span>'}
+      <button class="pdv-product-card" type="button" data-pdv-add="${ArteFlor.escapeHtml(saleKey(product))}">
+        ${product.imagem ? `<img src="${ArteFlor.escapeHtml(product.imagem)}" alt="${ArteFlor.escapeHtml(productLabel(product))}">` : '<span>A&F</span>'}
         <strong>${ArteFlor.escapeHtml(product.nome)}</strong>
-        <small>${ArteFlor.escapeHtml(product.sku || product.categoria)}</small>
+        ${product.cor_nome ? `<small class="admin-color-line"><i class="admin-color-dot" style="--color: ${ArteFlor.escapeHtml(product.cor_hex || '#FFFFFF')}"></i>${ArteFlor.escapeHtml(product.cor_nome)}</small>` : ''}
+        <small>${ArteFlor.escapeHtml(product.sku || product.categoria)} · ${Number(product.estoque || 0)} un.</small>
         <em>${ArteFlor.formatMoney(product.preco)}</em>
       </button>
     `).join('') || '<div class="empty-state small"><strong>Nenhum produto</strong><p>Ajuste a busca do PDV.</p></div>';
@@ -68,17 +88,18 @@
 
     currentList.innerHTML = sale.length ? sale.map((item) => `
       <article class="pdv-sale-item">
-        ${item.imagem ? `<img src="${ArteFlor.escapeHtml(item.imagem)}" alt="${ArteFlor.escapeHtml(item.nome)}">` : '<span>A&F</span>'}
+        ${item.imagem ? `<img src="${ArteFlor.escapeHtml(item.imagem)}" alt="${ArteFlor.escapeHtml(productLabel(item))}">` : '<span>A&F</span>'}
         <div>
           <strong>${ArteFlor.escapeHtml(item.nome)}</strong>
+          ${item.cor_nome ? `<small class="admin-color-line"><i class="admin-color-dot" style="--color: ${ArteFlor.escapeHtml(item.cor_hex || '#FFFFFF')}"></i>${ArteFlor.escapeHtml(item.cor_nome)}</small>` : ''}
           <small>${ArteFlor.formatMoney(item.preco)} un.</small>
         </div>
         <div class="qty-control">
-          <button type="button" data-pdv-minus="${ArteFlor.escapeHtml(item.id)}">-</button>
+          <button type="button" data-pdv-minus="${ArteFlor.escapeHtml(saleKey(item))}">-</button>
           <strong>${item.qty}</strong>
-          <button type="button" data-pdv-plus="${ArteFlor.escapeHtml(item.id)}">+</button>
+          <button type="button" data-pdv-plus="${ArteFlor.escapeHtml(saleKey(item))}">+</button>
         </div>
-        <button type="button" data-pdv-remove="${ArteFlor.escapeHtml(item.id)}">Remover</button>
+        <button type="button" data-pdv-remove="${ArteFlor.escapeHtml(saleKey(item))}">Remover</button>
       </article>
     `).join('') : '<div class="empty-state small"><strong>Venda vazia</strong><p>Busque produtos ou use os atalhos rápidos.</p></div>';
 
@@ -103,13 +124,13 @@
     const source = event.target;
     const target = source instanceof HTMLElement ? source.closest('[data-pdv-add]') : null;
     if (!target) return;
-    const product = products.find((item) => String(item.id) === target.dataset.pdvAdd);
+    const product = products.find((item) => saleKey(item) === target.dataset.pdvAdd);
     if (product) addProduct(product);
   });
 
   document.querySelector('[data-pdv-add-search]')?.addEventListener('click', () => {
     const term = (search?.value || '').toLocaleLowerCase('pt-BR').trim();
-    const product = products.find((item) => `${item.id} ${item.sku} ${item.nome}`.toLocaleLowerCase('pt-BR').includes(term));
+    const product = products.find((item) => `${item.id} ${item.sku} ${item.nome} ${item.cor_nome || ''}`.toLocaleLowerCase('pt-BR').includes(term));
     if (product) {
       addProduct(product);
     } else {
@@ -134,45 +155,70 @@
     const remove = target.dataset.pdvRemove;
 
     if (plus) {
-      const item = sale.find((row) => row.id === plus);
-      if (item) item.qty += 1;
+      const item = sale.find((row) => saleKey(row) === plus);
+      if (item) {
+        const stock = Number(item.estoque || 0);
+        if (stock > 0 && item.qty + 1 > stock) {
+          ArteFlor.toast('Quantidade maior que o estoque disponível.', 'warning');
+          return;
+        }
+        item.qty += 1;
+      }
     }
     if (minus) {
-      const item = sale.find((row) => row.id === minus);
+      const item = sale.find((row) => saleKey(row) === minus);
       if (item) item.qty = Math.max(1, item.qty - 1);
     }
     if (remove) {
-      sale = sale.filter((row) => row.id !== remove);
+      sale = sale.filter((row) => saleKey(row) !== remove);
     }
     renderSale();
   });
 
-  const finishSale = () => {
+  const finishSale = async () => {
     if (!sale.length) {
       ArteFlor.toast('Adicione produtos antes de finalizar a venda.', 'warning');
       return;
     }
 
     const totals = saleTotals();
-    const code = `#PDV-${String(Math.floor(1000 + Math.random() * 9000))}`;
-    ArteFlor.saveSale({
-      codigo: code,
-      cliente: clientInput?.value || 'Cliente balcão',
-      contato: contactInput?.value || '',
-      pagamento: paymentInput?.value || 'Pix',
-      subtotal: totals.subtotal,
-      desconto: totals.discount,
-      total: totals.total,
-      status: 'Venda finalizada no sistema',
-      itens: sale,
-      criadoEm: new Date().toISOString()
-    });
+    const endpoint = config.endpoint || 'actions/pdv-finalizar.php';
 
-    sale = [];
-    if (discountInput) discountInput.value = 0;
-    renderSale();
-    renderHistory();
-    ArteFlor.toast(`Venda ${code} finalizada no sistema.`);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          csrf_token: config.csrfToken || '',
+          cliente: clientInput?.value || 'Cliente balcão',
+          contato: contactInput?.value || 'Balcão',
+          pagamento: paymentInput?.value || 'Pix',
+          desconto: totals.discount,
+          valor_recebido: Number(document.querySelector('[data-pdv-received]')?.value || totals.total),
+          itens: sale.map((item) => ({
+            produto_id: Number(item.produto_id || item.id),
+            produto_cor_id: Number(item.cor_id || 0) || null,
+            quantidade: Number(item.qty || 1)
+          }))
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Não foi possível finalizar a venda.');
+      }
+
+      sale = [];
+      if (discountInput) discountInput.value = 0;
+      renderSale();
+      renderHistory();
+      ArteFlor.toast(`Venda ${result.codigo} finalizada no banco.`);
+    } catch (error) {
+      ArteFlor.toast(error.message || 'Não foi possível finalizar a venda.', 'error');
+    }
   };
 
   document.querySelectorAll('[data-pdv-finish]').forEach((button) => button.addEventListener('click', finishSale));
@@ -182,7 +228,7 @@
     ArteFlor.toast('Venda atual cancelada.', 'info');
   });
   document.querySelectorAll('[data-pdv-suspend]').forEach((button) => {
-    button.addEventListener('click', () => ArteFlor.toast('Venda suspensa visualmente.', 'info'));
+    button.addEventListener('click', () => ArteFlor.toast('Venda suspensa localmente nesta tela.', 'info'));
   });
 
   search?.addEventListener('input', renderProducts);

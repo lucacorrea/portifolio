@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#1657A7" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="L&J Caixa" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <title>L&J Caixa Premium</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+
+<body>
+  <main class="phone-app" id="phoneApp">
+    <section class="screen active" data-screen="dashboard">
+      <header class="blue-area">
+        <div class="statusbar">
+          <strong data-time>09:41</strong>
+          <div class="device-icons" aria-hidden="true">
+            <span class="signal"></span>
+            <span class="wifi"></span>
+            <span class="battery"></span>
+          </div>
+        </div>
+
+        <div class="balance-row">
+          <div>
+            <p class="micro-label">Vendido hoje</p>
+            <h1>R$ 8.742,90</h1>
+            <span class="subtle-light">L&J Soluções Tech</span>
+          </div>
+
+          <button class="avatar-btn" data-screen-target="profile" aria-label="Abrir perfil">
+            <img src="assets/icons/icon.svg" alt="L&J" />
+          </button>
+        </div>
+
+        <nav class="quick-menu" aria-label="Ações rápidas">
+          <button data-screen-target="sales">
+            <i>
+              <svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/><path d="M9 4h6"/><path d="M9 20h6"/></svg>
+            </i>
+            <span>Venda</span>
+          </button>
+
+          <button data-screen-target="products">
+            <i>
+              <svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg>
+            </i>
+            <span>Produtos</span>
+          </button>
+
+          <button data-screen-target="reports">
+            <i>
+              <svg viewBox="0 0 24 24"><path d="M6 18V9"/><path d="M12 18V5"/><path d="M18 18v-7"/></svg>
+            </i>
+            <span>Relatórios</span>
+          </button>
+
+          <button data-toast="Estoque em demonstração">
+            <i>
+              <svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/></svg>
+            </i>
+            <span>Estoque</span>
+          </button>
+        </nav>
+      </header>
+
+      <section class="white-sheet">
+        <div class="sheet-title">
+          <div>
+            <h2>Vendas recentes</h2>
+            <p>Movimentações do caixa</p>
+          </div>
+          <button class="small-link" data-screen-target="sales">Ver tudo</button>
+        </div>
+
+        <div class="filter-pills">
+          <button class="active">Todas</button>
+          <button>PIX</button>
+          <button>Cartão</button>
+        </div>
+
+        <p class="group-label">Hoje</p>
+        <div class="list-card compact-list" id="todaySales"></div>
+
+        <p class="group-label">Ontem</p>
+        <div class="list-card compact-list" id="yesterdaySales"></div>
+
+        <div class="sheet-title section-gap">
+          <div>
+            <h2>Resumo financeiro</h2>
+            <p>Recebimentos do dia</p>
+          </div>
+        </div>
+
+        <div class="finance-grid" id="financeGrid"></div>
+
+        <div class="sheet-title section-gap">
+          <div>
+            <h2>Produtos em destaque</h2>
+            <p>Mais vendidos hoje</p>
+          </div>
+        </div>
+
+        <div class="list-card" id="topProducts"></div>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="sales">
+      <header class="plain-header">
+        <div class="statusbar dark">
+          <strong data-time>09:41</strong>
+          <div class="device-icons" aria-hidden="true">
+            <span class="signal"></span>
+            <span class="wifi"></span>
+            <span class="battery"></span>
+          </div>
+        </div>
+
+        <div class="page-title-row">
+          <div>
+            <p class="micro-label dark-text">Frente de caixa</p>
+            <h1>Nova venda</h1>
+          </div>
+          <button class="round-btn" data-toast="Produto adicionado">+</button>
+        </div>
+      </header>
+
+      <section class="content-pad">
+        <article class="checkout-summary">
+          <p>Total da venda</p>
+          <h2>R$ 246,80</h2>
+          <span>3 itens adicionados</span>
+          <button data-toast="Pagamento simulado com sucesso">Receber pagamento</button>
+        </article>
+
+        <div class="sheet-title section-gap">
+          <div>
+            <h2>Itens no carrinho</h2>
+            <p>Venda em andamento</p>
+          </div>
+        </div>
+
+        <div class="list-card" id="cartItems"></div>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="products">
+      <header class="plain-header">
+        <div class="statusbar dark">
+          <strong data-time>09:41</strong>
+          <div class="device-icons" aria-hidden="true">
+            <span class="signal"></span>
+            <span class="wifi"></span>
+            <span class="battery"></span>
+          </div>
+        </div>
+
+        <div class="page-title-row">
+          <div>
+            <p class="micro-label dark-text">Catálogo</p>
+            <h1>Produtos</h1>
+          </div>
+          <button class="round-btn" data-toast="Cadastro de produto">+</button>
+        </div>
+      </header>
+
+      <section class="content-pad">
+        <label class="search-box">
+          <svg viewBox="0 0 24 24"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z"/><path d="M16 16l5 5"/></svg>
+          <input id="productSearch" type="search" placeholder="Buscar produto ou SKU" />
+        </label>
+
+        <div class="list-card section-gap-small" id="catalogList"></div>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="reports">
+      <header class="plain-header">
+        <div class="statusbar dark">
+          <strong data-time>09:41</strong>
+          <div class="device-icons" aria-hidden="true">
+            <span class="signal"></span>
+            <span class="wifi"></span>
+            <span class="battery"></span>
+          </div>
+        </div>
+
+        <div class="page-title-row">
+          <div>
+            <p class="micro-label dark-text">Indicadores</p>
+            <h1>Relatórios</h1>
+          </div>
+        </div>
+      </header>
+
+      <section class="content-pad">
+        <article class="report-summary">
+          <p>Faturamento semanal</p>
+          <h2>R$ 42.830,70</h2>
+          <span>+12,8% comparado à semana anterior</span>
+        </article>
+
+        <div class="sheet-title section-gap">
+          <div>
+            <h2>Evolução semanal</h2>
+            <p>Vendas por dia</p>
+          </div>
+        </div>
+
+        <div class="chart-card" id="weeklyBars"></div>
+
+        <div class="sheet-title section-gap">
+          <div>
+            <h2>Pagamentos</h2>
+            <p>Distribuição por método</p>
+          </div>
+        </div>
+
+        <div class="payment-card">
+          <div class="donut" aria-label="Distribuição dos pagamentos"></div>
+          <div class="payment-lines">
+            <p><span class="dot pix"></span>PIX <strong>44%</strong></p>
+            <p><span class="dot card"></span>Cartão <strong>42%</strong></p>
+            <p><span class="dot cash"></span>Dinheiro <strong>14%</strong></p>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="profile">
+      <header class="blue-area profile-blue">
+        <div class="statusbar">
+          <strong data-time>09:41</strong>
+          <div class="device-icons" aria-hidden="true">
+            <span class="signal"></span>
+            <span class="wifi"></span>
+            <span class="battery"></span>
+          </div>
+        </div>
+
+        <div class="profile-box">
+          <img src="assets/icons/icon.svg" alt="L&J" />
+          <h1>L&J Soluções Tech</h1>
+          <p>Sistema comercial premium</p>
+        </div>
+      </header>
+
+      <section class="white-sheet profile-sheet">
+        <div class="list-card settings-list">
+          <button><span>Minha empresa</span><strong>›</strong></button>
+          <button><span>Usuários e permissões</span><strong>›</strong></button>
+          <button><span>Integrações futuras</span><strong>›</strong></button>
+          <button><span>Segurança</span><strong>›</strong></button>
+        </div>
+      </section>
+    </section>
+
+    <nav class="bottom-nav" aria-label="Navegação principal">
+      <button class="active" data-screen-target="dashboard">
+        <svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4z"/></svg>
+        <span>Início</span>
+      </button>
+
+      <button data-screen-target="sales">
+        <svg viewBox="0 0 24 24"><path d="M6 5h12v14H6z"/><path d="M9 9h6"/><path d="M9 13h4"/></svg>
+        <span>Vendas</span>
+      </button>
+
+      <button class="center-action" data-screen-target="sales" aria-label="Nova venda">
+        <strong>+</strong>
+      </button>
+
+      <button data-screen-target="products">
+        <svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg>
+        <span>Produtos</span>
+      </button>
+
+      <button data-screen-target="profile">
+        <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>Perfil</span>
+      </button>
+    </nav>
+
+    <div class="toast" id="toast"></div>
+  </main>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

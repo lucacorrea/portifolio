@@ -1,0 +1,29 @@
+
+# Node / Ruflo local
+node_modules/
+
+# Ruflo / Claude Flow runtime local
+.swarm/
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.claude-flow/*.log
+ruvector.db
+
+# Bancos locais / temporários
+*.db
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+
+# Claude Flow: versionar só configuração principal
+.claude-flow/*
+!.claude-flow/
+!.claude-flow/config.yaml
+
+# Claude Flow runtime - ignorar tudo exceto config principal
+.claude-flow/**
+!.claude-flow/
+!.claude-flow/config.yaml

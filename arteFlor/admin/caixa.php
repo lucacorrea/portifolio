@@ -2,18 +2,11 @@
 $adminTitle = 'Frente de caixa';
 $activeAdmin = 'caixa';
 
+require_once __DIR__ . '/../includes/pdv.php';
+$adminUser = require_admin();
+$pdvProdutos = pdv_products();
+
 require_once __DIR__ . '/../includes/admin-head.php';
-
-$produtos = load_json('produtos.json');
-
-$pdvProdutos = array_map(fn($p) => [
-    'id' => (string) ($p['id'] ?? ''),
-    'sku' => $p['sku'] ?? '',
-    'nome' => $p['nome'] ?? '',
-    'categoria' => $p['categoria'] ?? '',
-    'preco' => effective_price($p),
-    'imagem' => first_image($p),
-], $produtos);
 ?>
 
 <script>
@@ -766,7 +759,11 @@ body.pdv-terminal-clean-mode .admin-main {
     </div>
   </section>
 
-  <script type="application/json" id="pdvProducts"><?= json_encode($pdvProdutos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
+  <script type="application/json" id="pdvProducts"><?= json_encode($pdvProdutos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>
+  <script type="application/json" id="pdvConfig"><?= json_encode([
+      'endpoint' => site_url('admin/actions/pdv-finalizar.php'),
+      'csrfToken' => admin_csrf_token(),
+  ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>
 
   <section class="pdv-clean-grid">
     <!-- Produto / entrada -->
@@ -997,6 +994,8 @@ body.pdv-terminal-clean-mode .admin-main {
 
     const image = card.querySelector('img');
     const name = card.querySelector('strong')?.textContent?.trim() || 'Produto selecionado';
+    const color = card.querySelector('.admin-color-line')?.textContent?.trim() || '';
+    const displayName = color ? `${name} · ${color}` : name;
 
     const priceText = [...card.querySelectorAll('span, small, strong')]
       .map((el) => el.textContent.trim())
@@ -1006,7 +1005,7 @@ body.pdv-terminal-clean-mode .admin-main {
     const itemTotal = unitValue * getQty();
 
     if (image?.src) {
-      selectedImage.innerHTML = `<img src="${image.src}" alt="${name}">`;
+      selectedImage.innerHTML = `<img src="${image.src}" alt="${displayName}">`;
     } else {
       selectedImage.innerHTML = `
         <div class="pdv-product-placeholder">
@@ -1016,7 +1015,7 @@ body.pdv-terminal-clean-mode .admin-main {
       `;
     }
 
-    selectedName.textContent = name;
+    selectedName.textContent = displayName;
     selectedPrice.textContent = priceText || 'Produto selecionado';
 
     if (selectedUnit) {

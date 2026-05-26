@@ -1,74 +1,409 @@
 <?php
 $adminTitle = 'Cadastro de produto';
 $activeAdmin = 'produto-form';
+$pageScripts = ['js/product-form.js'];
+require_once __DIR__ . '/../includes/products.php';
+$adminUser = require_admin();
+
+$productId = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
+$product = $productId > 0 ? product_find($productId) : null;
+$images = $product ? product_images((int) $product['id']) : [];
+$categories = product_categories();
+$adminMessage = product_admin_message_from_query();
+$csrfToken = admin_csrf_token();
+$error = '';
+
+if ($productId > 0 && !$product && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(404);
+    $error = 'Produto não encontrado.';
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!admin_csrf_is_valid($_POST['csrf_token'] ?? null)) {
+        http_response_code(403);
+        $error = 'Sessão expirada. Recarregue a página e tente novamente.';
+    } else {
+        try {
+            $savedId = product_save_from_request();
+            header('Location: ' . site_url('admin/produtos.php?success=produto_salvo'));
+            exit;
+        } catch (Throwable $exception) {
+            error_log('[ArteFlor][product-save] ' . $exception->getMessage());
+            $error = $exception instanceof InvalidArgumentException
+                ? $exception->getMessage()
+                : 'Não foi possível salvar o produto. Verifique os dados e tente novamente.';
+            $product = array_merge($product ?? [], $_POST);
+            $images = $productId > 0 ? product_images($productId) : [];
+        }
+    }
+}
+
+$isEditing = !empty($product['id']);
+$field = fn(string $key, mixed $default = ''): mixed => $_POST[$key] ?? $product[$key] ?? $default;
+$categoryName = (string) ($_POST['categoria_nome'] ?? $product['categoria_nome'] ?? 'Buquês');
+$statusValue = (string) $field('status', 'disponivel');
+$tagsText = (string) ($_POST['tags'] ?? ($isEditing ? product_tags_text((int) $product['id']) : ''));
+$submittedColors = is_array($_POST['cores'] ?? null) ? $_POST['cores'] : null;
+if ($submittedColors !== null) {
+    $colorRows = [];
+    foreach ($submittedColors as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $colorRows[] = [
+            'id' => (int) ($row['id'] ?? 0),
+            'nome' => (string) ($row['nome'] ?? ''),
+            'hex' => product_color_normalize_hex((string) ($row['hex'] ?? '#FFFFFF')),
+            'imagem_url' => (string) ($row['imagem_url'] ?? ''),
+            'imagem' => product_public_image_url((string) ($row['imagem_url'] ?? '')),
+            'estoque' => max(0, (int) ($row['estoque'] ?? 0)),
+            'ativo' => (int) ($row['ativo'] ?? 0),
+            'ordem' => (int) ($row['ordem'] ?? 0),
+        ];
+    }
+} else {
+    $colorRows = $isEditing ? product_colors((int) $product['id']) : [];
+}
+if (empty($colorRows)) {
+    $colorRows[] = [
+        'id' => 0,
+        'nome' => '',
+        'hex' => '#B7202E',
+        'imagem_url' => '',
+        'imagem' => '',
+        'estoque' => 0,
+        'ativo' => 1,
+        'ordem' => 0,
+    ];
+}
+$previewImage = !empty($images[0]['url'] ?? '') ? product_public_image_url($images[0]['url']) : '';
+$previewStockValue = $field('estoque', 0);
+$previewMinStockValue = $field('estoque_minimo', 0);
+$previewPriceValue = $field('preco', 0);
+$previewPromoValue = $field('preco_promocional', 0);
+$previewStockProduct = [
+    'estoque' => is_scalar($previewStockValue) ? (int) $previewStockValue : 0,
+    'estoque_minimo' => is_scalar($previewMinStockValue) ? (int) $previewMinStockValue : 0,
+];
+$previewStockStatus = product_inventory_status($previewStockProduct);
+$previewStockPercent = product_inventory_percent($previewStockProduct);
+$previewRegularPrice = product_normalize_money(is_scalar($previewPriceValue) ? $previewPriceValue : 0);
+$previewPromoPrice = product_normalize_money(is_scalar($previewPromoValue) ? $previewPromoValue : 0);
+$checked = function (string $key, bool $default = false) use ($product): string {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        return isset($_POST[$key]) ? 'checked' : '';
+    }
+
+    if ($product && array_key_exists($key, $product)) {
+        return !empty($product[$key]) ? 'checked' : '';
+    }
+
+    return $default ? 'checked' : '';
+};
+
 require_once __DIR__ . '/../includes/admin-head.php';
-$previewImage = 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=700&q=80';
 ?>
 <section class="admin-page-hero">
   <div class="admin-page-title">
     <span class="badge">Cadastro</span>
-    <h1>Cadastrar produto</h1>
-    <p>Template visual para cadastrar produto com informações comerciais, fotos, SEO e opções de venda.</p>
+    <h1><?= $isEditing ? 'Editar produto' : 'Cadastrar produto' ?></h1>
+    <p>Cadastro real no banco com upload múltiplo de imagens validadas.</p>
   </div>
   <div class="admin-hero-actions">
     <a class="btn btn-soft" href="<?= site_url('admin/produtos.php') ?>">Voltar para produtos</a>
-    <button class="btn btn-primary" type="button">Salvar demonstração</button>
+    <button class="btn btn-primary" type="submit" form="productForm">Salvar produto</button>
   </div>
 </section>
 
-<form class="admin-form-shell">
+<?php if ($error !== ''): ?>
+  <div class="admin-alert-card admin-alert-danger" role="alert">
+    <strong>Erro ao salvar</strong>
+    <?= e($error) ?>
+  </div>
+<?php endif; ?>
+
+<?php if ($adminMessage): ?>
+  <div class="admin-alert-card <?= e($adminMessage['class']) ?>" role="status">
+    <strong><?= e($adminMessage['title']) ?></strong>
+    <?= e($adminMessage['body']) ?>
+  </div>
+<?php endif; ?>
+
+<form id="productForm" class="admin-form-shell" method="post" action="<?= site_url('admin/produto-form.php' . ($isEditing ? '?id=' . (int) $product['id'] : '')) ?>" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+  <input type="hidden" name="id" value="<?= (int) ($product['id'] ?? 0) ?>">
+
   <section class="admin-form-card">
     <div class="admin-form-section">
       <div class="admin-section-title"><strong>Dados principais</strong><p>Informações exibidas no catálogo e no detalhe do produto.</p></div>
       <div class="admin-form-grid">
-        <label class="admin-field"><span>Nome</span><input placeholder="Buquê de Rosas Vermelhas" required></label>
-        <label class="admin-field"><span>Categoria</span><select><option>Buquês</option><option>Arranjos</option><option>Vasos</option><option>Plantas</option><option>Presentes</option><option>Datas especiais</option></select></label>
-        <label class="admin-field"><span>SKU</span><input placeholder="AF-BUQ-001"></label>
-        <label class="admin-field"><span>Status</span><select><option>Disponível</option><option>Sob encomenda</option><option>Inativo</option><option>Sem estoque</option></select></label>
-        <label class="admin-field full"><span>Descrição curta</span><input placeholder="Resumo que aparece no card"></label>
-        <label class="admin-field full"><span>Descrição completa</span><textarea placeholder="Composição, ocasião indicada, cuidados e observações"></textarea></label>
+        <label class="admin-field">
+          <span>Nome</span>
+          <input name="nome" value="<?= e((string) $field('nome')) ?>" placeholder="Buquê de Rosas Vermelhas" data-product-preview-name-source required>
+        </label>
+        <label class="admin-field">
+          <span>Categoria</span>
+          <select name="categoria_nome" data-product-preview-category-source required>
+            <?php foreach ($categories as $category): ?>
+              <option value="<?= e($category['nome']) ?>" <?= $categoryName === $category['nome'] ? 'selected' : '' ?>>
+                <?= e($category['nome']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <label class="admin-field">
+          <span>SKU</span>
+          <input name="sku" value="<?= e((string) $field('sku')) ?>" placeholder="Gerado automaticamente se vazio">
+        </label>
+        <label class="admin-field">
+          <span>Status</span>
+          <select name="status" data-product-preview-status-source required>
+            <?php foreach (product_status_options() as $value => $label): ?>
+              <option value="<?= e($value) ?>" <?= $statusValue === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <label class="admin-field full">
+          <span>Descrição curta</span>
+          <input name="descricao_curta" value="<?= e((string) $field('descricao_curta')) ?>" placeholder="Resumo que aparece no card" data-product-preview-description-source>
+        </label>
+        <label class="admin-field full">
+          <span>Descrição completa</span>
+          <textarea name="descricao_completa" placeholder="Composição, ocasião indicada, cuidados e observações"><?= e((string) $field('descricao_completa')) ?></textarea>
+        </label>
       </div>
     </div>
 
     <div class="admin-form-section">
       <div class="admin-section-title"><strong>Preço e estoque</strong><p>Campos comerciais para venda online e PDV.</p></div>
       <div class="admin-form-grid">
-        <label class="admin-field"><span>Preço</span><input type="number" step="0.01" placeholder="149.90"></label>
-        <label class="admin-field"><span>Preço promocional</span><input type="number" step="0.01" placeholder="129.90"></label>
-        <label class="admin-field"><span>Estoque</span><input type="number" placeholder="8"></label>
-        <label class="admin-field"><span>Estoque mínimo</span><input type="number" placeholder="3"></label>
+        <label class="admin-field">
+          <span>Preço</span>
+          <input name="preco" type="number" min="0" step="0.01" value="<?= e((string) $field('preco', '')) ?>" placeholder="149.90" data-product-preview-price-source required>
+        </label>
+        <label class="admin-field">
+          <span>Preço promocional</span>
+          <input name="preco_promocional" type="number" min="0" step="0.01" value="<?= e((string) $field('preco_promocional', '')) ?>" placeholder="129.90" data-product-preview-promo-source>
+        </label>
+        <label class="admin-field">
+          <span>Estoque</span>
+          <input name="estoque" type="number" min="0" value="<?= e((string) $field('estoque', 0)) ?>" data-product-preview-stock-source>
+        </label>
+        <label class="admin-field">
+          <span>Estoque mínimo</span>
+          <input name="estoque_minimo" type="number" min="0" value="<?= e((string) $field('estoque_minimo', 0)) ?>" data-product-preview-min-stock-source>
+        </label>
       </div>
     </div>
 
     <div class="admin-form-section">
-      <div class="admin-section-title"><strong>Fotos, tags e SEO visual</strong><p>Simulação dos campos que serão persistidos no backend futuro.</p></div>
-      <div class="admin-form-grid">
-        <label class="admin-field full"><span>URLs das fotos</span><textarea placeholder="https://images.unsplash.com/..."></textarea></label>
-        <label class="admin-field"><span>Tags</span><input placeholder="Romântico, Mais vendido"></label>
-        <label class="admin-field"><span>Slug/SEO</span><input placeholder="buque-rosas-vermelhas"></label>
+      <div class="admin-section-title">
+        <strong>Cores e variações</strong>
+        <p>Cadastre as cores vendidas separadamente. Se houver cores ativas, o estoque geral acompanha a soma delas.</p>
       </div>
+
+      <div class="product-color-admin-list" data-product-color-list>
+        <?php foreach ($colorRows as $index => $color): ?>
+          <?php
+            $colorId = (int) ($color['id'] ?? 0);
+            $colorHex = product_color_normalize_hex((string) ($color['hex'] ?? '#FFFFFF'));
+            $colorImage = product_public_image_url((string) ($color['imagem_url'] ?? $color['imagem'] ?? ''));
+          ?>
+          <article class="product-color-admin-row" data-product-color-row>
+            <input type="hidden" name="cores[<?= $index ?>][id]" value="<?= $colorId ?>">
+            <input type="hidden" name="cores[<?= $index ?>][ordem]" value="<?= (int) ($color['ordem'] ?? $index) ?>">
+            <div class="product-color-admin-swatch" style="--color: <?= e($colorHex) ?>" aria-hidden="true"></div>
+            <label class="admin-field">
+              <span>Cor</span>
+              <input name="cores[<?= $index ?>][nome]" value="<?= e((string) ($color['nome'] ?? '')) ?>" placeholder="Vermelho, azul, branco">
+            </label>
+            <label class="admin-field compact">
+              <span>Hex</span>
+              <input name="cores[<?= $index ?>][hex]" type="color" value="<?= e($colorHex) ?>" data-product-color-hex>
+            </label>
+            <label class="admin-field compact">
+              <span>Estoque</span>
+              <input name="cores[<?= $index ?>][estoque]" type="number" min="0" value="<?= (int) ($color['estoque'] ?? 0) ?>">
+            </label>
+            <label class="admin-field">
+              <span>Imagem da cor</span>
+              <input name="cores_imagens[<?= $index ?>]" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">
+            </label>
+            <label class="admin-field">
+              <span>URL atual</span>
+              <input name="cores[<?= $index ?>][imagem_url]" value="<?= e((string) ($color['imagem_url'] ?? '')) ?>" placeholder="Opcional: imagem já publicada">
+            </label>
+            <div class="product-color-admin-state">
+              <div class="product-color-admin-thumb">
+                <?php if ($colorImage !== ''): ?>
+                  <img src="<?= e($colorImage) ?>" alt="<?= e((string) ($color['nome'] ?? 'Cor do produto')) ?>">
+                <?php else: ?>
+                  <span>A&F</span>
+                <?php endif; ?>
+              </div>
+              <label><input type="hidden" name="cores[<?= $index ?>][ativo]" value="0"><input name="cores[<?= $index ?>][ativo]" type="checkbox" value="1" <?= !empty($color['ativo']) ? 'checked' : '' ?>> Ativa</label>
+              <label><input name="cores[<?= $index ?>][remover]" type="checkbox" value="1"> Remover</label>
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+
+      <button class="btn btn-soft" type="button" data-product-color-add>Adicionar cor</button>
+      <template data-product-color-template>
+        <article class="product-color-admin-row" data-product-color-row>
+          <input type="hidden" name="cores[__INDEX__][id]" value="0">
+          <input type="hidden" name="cores[__INDEX__][ordem]" value="__INDEX__">
+          <div class="product-color-admin-swatch" style="--color: #B7202E" aria-hidden="true"></div>
+          <label class="admin-field">
+            <span>Cor</span>
+            <input name="cores[__INDEX__][nome]" value="" placeholder="Vermelho, azul, branco">
+          </label>
+          <label class="admin-field compact">
+            <span>Hex</span>
+            <input name="cores[__INDEX__][hex]" type="color" value="#B7202E" data-product-color-hex>
+          </label>
+          <label class="admin-field compact">
+            <span>Estoque</span>
+            <input name="cores[__INDEX__][estoque]" type="number" min="0" value="0">
+          </label>
+          <label class="admin-field">
+            <span>Imagem da cor</span>
+            <input name="cores_imagens[__INDEX__]" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">
+          </label>
+          <label class="admin-field">
+            <span>URL atual</span>
+            <input name="cores[__INDEX__][imagem_url]" value="" placeholder="Opcional: imagem já publicada">
+          </label>
+          <div class="product-color-admin-state">
+            <div class="product-color-admin-thumb"><span>A&F</span></div>
+            <label><input type="hidden" name="cores[__INDEX__][ativo]" value="0"><input name="cores[__INDEX__][ativo]" type="checkbox" value="1" checked> Ativa</label>
+            <label><input name="cores[__INDEX__][remover]" type="checkbox" value="1"> Remover</label>
+          </div>
+        </article>
+      </template>
+    </div>
+
+    <div class="admin-form-section">
+      <div class="admin-section-title"><strong>Fotos, tags e SEO</strong><p>Envie imagens reais do produto. SVG e arquivos executáveis não são aceitos por segurança.</p></div>
+      <div class="admin-form-grid">
+        <label class="admin-field full product-upload-field">
+          <span>Imagens do produto</span>
+          <input name="imagens[]" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple data-product-images-input>
+          <small>Você pode enviar até 8 imagens por vez, com até 5 MB cada. Formatos: JPG, PNG, WEBP, GIF e AVIF.</small>
+        </label>
+        <label class="admin-field">
+          <span>Slug/SEO</span>
+          <input name="slug" value="<?= e((string) $field('slug')) ?>" placeholder="Gerado automaticamente se vazio">
+        </label>
+        <label class="admin-field full">
+          <span>Tags</span>
+          <input name="tags" value="<?= e($tagsText) ?>" placeholder="Romântico, Mais vendido, Presente especial">
+          <small>Separe por vírgulas. As tags aparecem no admin e no catálogo público.</small>
+        </label>
+      </div>
+
+      <div class="product-live-preview" data-product-image-preview hidden></div>
+
+      <?php if (!empty($images)): ?>
+        <div class="admin-section-title compact product-images-note">
+          <strong>Imagens cadastradas</strong>
+          <p>A imagem principal aparece primeiro no catálogo e na página do produto.</p>
+        </div>
+        <div class="product-image-admin-grid">
+          <?php foreach ($images as $image): ?>
+            <?php $imageId = (int) $image['id']; ?>
+            <figure class="<?= !empty($image['principal']) ? 'is-primary' : '' ?>">
+              <img src="<?= e(product_public_image_url($image['url'])) ?>" alt="<?= e($image['texto_alternativo'] ?? 'Imagem do produto') ?>">
+              <figcaption><?= !empty($image['principal']) ? 'Principal' : 'Imagem' ?></figcaption>
+              <div class="product-image-actions">
+                <?php if (empty($image['principal'])): ?>
+                  <button type="submit" form="productImagePrimary<?= $imageId ?>">Definir principal</button>
+                <?php endif; ?>
+                <button class="admin-action-danger" type="submit" form="productImageRemove<?= $imageId ?>">Remover</button>
+              </div>
+            </figure>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
     </div>
   </section>
 
   <aside class="admin-form-card admin-side-card">
     <div class="admin-preview-product">
-      <img src="<?= e($previewImage) ?>" alt="Preview do produto">
+      <div class="admin-preview-media" data-product-main-preview>
+        <?php if ($previewImage !== ''): ?>
+          <img src="<?= e($previewImage) ?>" alt="Preview do produto">
+        <?php else: ?>
+          <div class="admin-upload-placeholder">A&F</div>
+        <?php endif; ?>
+      </div>
       <div>
-        <span class="badge">Preview</span>
-        <h3>Buquê de Rosas Vermelhas</h3>
-        <p>Clássico, romântico e elegante.</p>
-        <strong>R$ 129,90</strong>
+        <div class="product-preview-topline">
+          <span class="badge">Preview</span>
+          <span class="admin-badge-soft" data-product-preview-category><?= e($categoryName) ?></span>
+        </div>
+        <h3 data-product-preview-name><?= e((string) $field('nome', 'Novo produto')) ?></h3>
+        <p data-product-preview-description><?= e((string) $field('descricao_curta', 'Produto pronto para catálogo.')) ?></p>
+        <div class="product-preview-price">
+          <strong data-product-preview-price><?= money_br($previewPromoPrice > 0 ? $previewPromoPrice : $previewRegularPrice) ?></strong>
+          <span data-product-preview-original-price <?= $previewPromoPrice > 0 ? '' : 'hidden' ?>><?= $previewPromoPrice > 0 ? 'Original: ' . money_br($previewRegularPrice) : '' ?></span>
+        </div>
+        <span class="admin-badge-soft product-preview-status" data-product-preview-status><?= e(status_label($statusValue)) ?></span>
+        <div class="product-preview-stock inventory-stock-cell">
+          <div class="inventory-stock-meta">
+            <strong data-product-preview-stock-value>Estoque: <?= (int) $previewStockProduct['estoque'] ?> un.</strong>
+            <small data-product-preview-min-stock-value>Mínimo: <?= (int) $previewStockProduct['estoque_minimo'] ?> un.</small>
+          </div>
+          <div class="inventory-stock-bar" aria-hidden="true">
+            <span class="inventory-stock-fill <?= e($previewStockStatus) ?>" data-product-preview-stock-fill style="width: <?= $previewStockPercent ?>%"></span>
+          </div>
+          <span class="<?= e(product_inventory_badge_class($previewStockStatus)) ?>" data-product-preview-stock-label><?= e(product_inventory_label($previewStockStatus)) ?></span>
+        </div>
+        <div class="product-preview-badges">
+          <span data-product-preview-flag="exibir_catalogo">Exibir no catálogo</span>
+          <span data-product-preview-flag="permitir_venda_online">Venda online</span>
+          <span data-product-preview-flag="disponivel_pdv">Disponível no PDV</span>
+          <span data-product-preview-flag="destaque">Destaque</span>
+          <span data-product-preview-flag="sob_encomenda">Sob encomenda</span>
+        </div>
       </div>
     </div>
     <div class="admin-check-list">
-      <label><input type="checkbox" checked> Exibir no catálogo</label>
-      <label><input type="checkbox" checked> Permitir venda online</label>
-      <label><input type="checkbox" checked> Disponível no PDV</label>
-      <label><input type="checkbox"> Produto em destaque</label>
-      <label><input type="checkbox"> Produto sob encomenda</label>
+      <label><input name="exibir_catalogo" type="checkbox" value="1" <?= $checked('exibir_catalogo', true) ?> data-product-preview-flag-source="exibir_catalogo"> Exibir no catálogo</label>
+      <label><input name="permitir_venda_online" type="checkbox" value="1" <?= $checked('permitir_venda_online', true) ?> data-product-preview-flag-source="permitir_venda_online"> Permitir venda online</label>
+      <label><input name="disponivel_pdv" type="checkbox" value="1" <?= $checked('disponivel_pdv', true) ?> data-product-preview-flag-source="disponivel_pdv"> Disponível no PDV</label>
+      <label><input name="destaque" type="checkbox" value="1" <?= $checked('destaque') ?> data-product-preview-flag-source="destaque"> Produto em destaque</label>
+      <label><input name="sob_encomenda" type="checkbox" value="1" <?= $checked('sob_encomenda') ?> data-product-preview-flag-source="sob_encomenda"> Produto sob encomenda</label>
     </div>
-    <button class="btn btn-primary" type="button">Salvar demonstração</button>
+    <button class="btn btn-primary" type="submit">Salvar produto</button>
     <a class="btn btn-soft" href="<?= site_url('admin/produtos.php') ?>">Ver listagem</a>
   </aside>
 </form>
+<?php if ($isEditing && !empty($images)): ?>
+  <?php foreach ($images as $image): ?>
+    <?php $imageId = (int) $image['id']; ?>
+    <form
+      id="productImagePrimary<?= $imageId ?>"
+      method="post"
+      action="<?= site_url('admin/actions/produto-imagem-principal.php') ?>"
+      data-confirm="Definir esta imagem como principal?"
+      hidden
+    >
+      <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+      <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
+      <input type="hidden" name="image_id" value="<?= $imageId ?>">
+    </form>
+    <form
+      id="productImageRemove<?= $imageId ?>"
+      method="post"
+      action="<?= site_url('admin/actions/produto-imagem-remover.php') ?>"
+      data-confirm="Remover esta imagem do produto?"
+      hidden
+    >
+      <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+      <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
+      <input type="hidden" name="image_id" value="<?= $imageId ?>">
+    </form>
+  <?php endforeach; ?>
+<?php endif; ?>
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>

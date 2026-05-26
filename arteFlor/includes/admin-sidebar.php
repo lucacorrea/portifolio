@@ -3,7 +3,7 @@
     <a class="brand" href="<?= site_url('admin/dashboard.php') ?>"><span class="brand-icon" aria-hidden="true">A&F</span><span>Arte<span>&</span>Flor</span></a>
     <div class="admin-store-card">
       <strong>Painel da Floricultura</strong>
-      <small>Catálogo, PDV, pedidos e gestão visual</small>
+      <small><?= e($adminUser['nome'] ?? 'Admin') ?> · <?= e($adminUser['perfil'] ?? 'operador') ?></small>
     </div>
   </div>
 
@@ -30,9 +30,18 @@
 
     <span class="admin-menu-label">Gestão</span>
     <a class="<?= ($activeAdmin ?? '') === 'relatorios' ? 'active' : '' ?>" href="<?= site_url('admin/relatorios.php') ?>">Relatórios</a>
+    <?php if (($adminUser['perfil'] ?? '') === 'admin'): ?>
+      <a class="<?= ($activeAdmin ?? '') === 'usuarios' ? 'active' : '' ?>" href="<?= site_url('admin/usuarios.php') ?>">Usuários</a>
+      <a class="<?= ($activeAdmin ?? '') === 'usuario-form' ? 'active' : '' ?>" href="<?= site_url('admin/usuario-form.php') ?>">Cadastrar usuário</a>
+    <?php endif; ?>
     <a class="<?= ($activeAdmin ?? '') === 'integracoes' ? 'active' : '' ?>" href="<?= site_url('admin/integracoes.php') ?>">Integrações</a>
 
     <span class="admin-menu-label">Site</span>
     <a href="<?= site_url('index.php') ?>">Ver catálogo público</a>
+
+    <form class="admin-logout-form" method="post" action="<?= site_url('admin/logout.php') ?>">
+      <input type="hidden" name="csrf_token" value="<?= e(admin_csrf_token()) ?>">
+      <button class="admin-logout-button" type="submit">Sair do painel</button>
+    </form>
   </nav>
 </aside>

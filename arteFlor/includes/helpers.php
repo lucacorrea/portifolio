@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/database.php';
 
 function load_json(string $file): array
 {
@@ -49,6 +49,7 @@ function status_label(string $status): string
         'disponivel' => 'Disponível',
         'sob_encomenda' => 'Sob encomenda',
         'inativo' => 'Inativo',
+        'sem_estoque' => 'Sem estoque',
         default => ucfirst(str_replace('_', ' ', $status)),
     };
 }
