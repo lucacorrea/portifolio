@@ -205,6 +205,11 @@ require_once __DIR__ . '/../includes/admin-head.php';
               <input type="hidden" name="action" value="<?= e($statusAction) ?>">
               <button type="submit" class="<?= $statusAction === 'ativar' ? 'admin-action-success' : 'admin-action-danger' ?>"><?= $statusAction === 'ativar' ? 'Ativar' : 'Inativar' ?></button>
             </form>
+            <form method="post" action="<?= site_url('admin/actions/produto-excluir.php') ?>" data-confirm="Excluir este produto? Ele sairá do catálogo, do PDV e da listagem administrativa, mas pedidos e movimentações anteriores serão preservados.">
+              <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+              <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
+              <button type="submit" class="admin-action-danger">Excluir</button>
+            </form>
             <button
               type="button"
               data-stock-modal-open

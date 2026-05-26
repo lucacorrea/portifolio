@@ -810,6 +810,49 @@ function product_duplicate(int $productId): int
     }
 }
 
+function product_delete(int $productId): void
+{
+    if ($productId <= 0) {
+        throw new InvalidArgumentException('Produto inválido.');
+    }
+
+    db()->beginTransaction();
+
+    try {
+        $statement = db()->prepare(
+            'SELECT id
+             FROM produtos
+             WHERE id = :id AND removido_em IS NULL
+             LIMIT 1
+             FOR UPDATE'
+        );
+        $statement->execute(['id' => $productId]);
+
+        if (!$statement->fetch()) {
+            throw new InvalidArgumentException('Produto não encontrado.');
+        }
+
+        db()->prepare(
+            'UPDATE produtos
+             SET status = "inativo",
+                 exibir_catalogo = 0,
+                 permitir_venda_online = 0,
+                 disponivel_pdv = 0,
+                 destaque = 0,
+                 atualizado_em = CURRENT_TIMESTAMP,
+                 removido_em = CURRENT_TIMESTAMP
+             WHERE id = :id AND removido_em IS NULL'
+        )->execute(['id' => $productId]);
+
+        db()->commit();
+    } catch (Throwable $error) {
+        if (db()->inTransaction()) {
+            db()->rollBack();
+        }
+        throw $error;
+    }
+}
+
 function product_update_status(int $productId, string $action): void
 {
     if ($productId <= 0 || !in_array($action, ['ativar', 'inativar'], true)) {
@@ -1079,6 +1122,21 @@ function product_save_from_request(): int
     db()->beginTransaction();
 
     try {
+        if ($id > 0) {
+            $existingStatement = db()->prepare(
+                'SELECT id
+                 FROM produtos
+                 WHERE id = :id AND removido_em IS NULL
+                 LIMIT 1
+                 FOR UPDATE'
+            );
+            $existingStatement->execute(['id' => $id]);
+
+            if (!$existingStatement->fetch()) {
+                throw new InvalidArgumentException('Produto não encontrado.');
+            }
+        }
+
         $categoryId = product_ensure_category($categoryName);
         $slug = trim((string) ($_POST['slug'] ?? ''));
         $slug = product_unique_slug($slug !== '' ? $slug : $name, $id > 0 ? $id : null);
@@ -1441,6 +1499,7 @@ function product_admin_message_from_query(): ?array
         'produto_duplicado' => ['admin-alert-success', 'Produto duplicado', 'A cópia foi criada inativa e com estoque zerado para revisão.'],
         'produto_inativado' => ['admin-alert-warning', 'Produto inativado', 'O produto foi retirado da venda pública sem ser excluído.'],
         'produto_ativado' => ['admin-alert-success', 'Produto ativado', 'O status comercial foi atualizado conforme o estoque atual.'],
+        'produto_excluido' => ['admin-alert-warning', 'Produto excluído', 'O produto saiu do catálogo, do PDV e da listagem. O histórico foi preservado.'],
         'estoque_atualizado' => ['admin-alert-success', 'Estoque atualizado', 'A movimentação foi registrada e o saldo foi recalculado.'],
     ];
 
