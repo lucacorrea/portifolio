@@ -283,6 +283,18 @@
                                     <label class="form-label small fw-bold">E-mail</label>
                                     <input type="email" name="email" id="f_email" class="form-control shadow-sm">
                                 </div>
+                                <div class="col-md-6 mt-3">
+                                    <label class="form-label small fw-bold">Dados Bancários</label>
+                                    <input type="text" name="dados_bancarios" id="f_dados_bancarios" class="form-control shadow-sm" placeholder="Ex: Banco Sicoob - Cod: 756 - Ag: 0002 C/C: 91103-7">
+                                </div>
+                                <div class="col-md-3 mt-3">
+                                    <label class="form-label small fw-bold">Chave Pix</label>
+                                    <input type="text" name="chave_pix" id="f_chave_pix" class="form-control shadow-sm" placeholder="Ex: 9298115-4226">
+                                </div>
+                                <div class="col-md-3 mt-3">
+                                    <label class="form-label small fw-bold">Titular da Conta</label>
+                                    <input type="text" name="titular_conta" id="f_titular_conta" class="form-control shadow-sm" placeholder="Ex: RAYLSON DE ARAUJO BEZERRA">
+                                </div>
                             </div>
                         </div>
 
@@ -442,6 +454,9 @@ function abrirModalFilial(data = null) {
         document.getElementById('f_cod_uf').value = data ? (data.codigo_uf || '') : '';
         document.getElementById('f_fone').value = data ? (data.telefone || '') : '';
         document.getElementById('f_email').value = data ? (data.email || '') : '';
+        document.getElementById('f_dados_bancarios').value = data ? (data.dados_bancarios || '') : '';
+        document.getElementById('f_chave_pix').value = data ? (data.chave_pix || '') : '';
+        document.getElementById('f_titular_conta').value = data ? (data.titular_conta || '') : '';
         
         // Pre-fill fiscal and certificate with data if editing, or global defaults if new
         document.getElementById('f_csc_id').value = data ? (data.csc_id || defaultSefaz.csc_id) : defaultSefaz.csc_id;
