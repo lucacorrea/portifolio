@@ -1151,7 +1151,6 @@ body:has(.admin-shell),
   grid-template-columns: minmax(86px, auto) 70px max-content;
   align-items: center;
   gap: 8px;
-  min-width: 230px;
 }
 
 .inventory-stock-meta {
