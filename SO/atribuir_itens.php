@@ -529,7 +529,7 @@ include 'views/layout/header.php';
         <div class="planilha-import">
             <div>
                 <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar orçamento ou ofício</h4>
-                <p class="planilha-import-text">Aceita um ou vários PDF, DOCX, TXT, CSV e imagens. Cada importação adiciona itens à lista atual e limita o nome importado a 10 palavras.</p>
+                <p class="planilha-import-text">Aceita um ou vários PDF, DOCX, TXT, CSV e imagens. Cada importação adiciona itens à lista atual.</p>
             </div>
             <div>
                 <input type="file" id="planilha-pdf-input" accept=".pdf,.docx,.txt,.csv,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,image/*" multiple hidden>
@@ -873,10 +873,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const valorUnitario = Number.isFinite(valorUnitarioRaw) ? valorUnitarioRaw : 0;
                 const valorTotalRaw = Number(item.valor_total ?? (quantidade * valorUnitario));
                 const valorTotal = Number.isFinite(valorTotalRaw) ? valorTotalRaw : 0;
+                const produto = String(item.produto || '').replace(/\s+/g, ' ').trim();
 
                 return {
                     ...item,
-                    produto: limitImportedProductName(item.produto, 10),
+                    produto: item.preservar_nome_importado ? produto : limitImportedProductName(produto, 10),
                     unidade: normalizeUnitLabel(item.unidade || 'UN'),
                     quantidade,
                     valor_unitario: valorUnitario,
@@ -1529,6 +1530,16 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/[|_\[\]]+/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
+        clean = clean
+            .replace(/^\d{1,5}\s*[\).:-]?\s+/u, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const btuMatch = clean.match(/^(.+?\bB\s*\.?\s*T\s*\.?\s*U\s*\.?\s*S?\.?)(?=\s|[.,;:]|$)/iu);
+
+        if (btuMatch?.[1]) {
+            clean = btuMatch[1];
+        }
+
         const caracteristicasIndex = clean.search(/\bCaracter\S{0,3}sticas?\s*:/iu);
 
         if (caracteristicasIndex > 6) {
@@ -1536,7 +1547,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         return clean
-            .replace(/^\d{1,5}\s*[\).:-]?\s+/u, '')
+            .replace(/\bB\s*\.?\s*T\s*\.?\s*U\s*\.?\s*S?\b/giu, match => normalizeToken(match).startsWith('BTUS') ? 'BTUS' : 'BTU')
+            .replace(/[.;:,]+$/u, '')
             .replace(/\s+/g, ' ')
             .trim();
     }
@@ -1576,7 +1588,8 @@ document.addEventListener('DOMContentLoaded', function() {
             unidade: 'SERV',
             quantidade,
             valor_unitario: valorUnitario,
-            valor_total: valorTotal
+            valor_total: valorTotal,
+            preservar_nome_importado: true
         };
     }
 
@@ -2365,7 +2378,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     bestPricedRows = { text: tableText, score: directScore, rotate };
                 }
 
-                if (directScore >= 1) {
+                if (directScore >= 3) {
                     break;
                 }
 
@@ -2415,12 +2428,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         bestPricedRows = { text: serviceRowsText, score, rotate };
                     }
 
-                    if (score >= 1) {
+                    if (score >= 3) {
                         break;
                     }
                 }
 
-                if (bestPricedRows.score >= 1) {
+                if (bestPricedRows.score >= 3) {
                     break;
                 }
             }
