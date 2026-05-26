@@ -268,7 +268,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
     }
   }
   .inventory-stock-cell{
-    min-width: none;
+    min-width: 100px !important;
   }
 </style>
 <section class="admin-page-hero">
