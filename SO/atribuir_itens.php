@@ -743,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function parsePlanilhaMoney(valor) {
         const normalized = String(valor || '')
-            .replace(/R\$/gi, '')
+            .replace(/R\$|RS/gi, '')
             .replace(/\s/g, '')
             .replace(/\./g, '')
             .replace(',', '.');
@@ -803,6 +803,28 @@ document.addEventListener('DOMContentLoaded', function() {
         return String(value || '').trim().split(/\s+/).filter(Boolean);
     }
 
+    function parseImportedQuantity(value) {
+        const normalized = String(value ?? '')
+            .replace(/\s/g, '')
+            .trim();
+
+        if (!normalized) {
+            return 0;
+        }
+
+        const decimalNormalized = /^\d{1,3}(?:\.\d{3})+(?:,\d+)?$/u.test(normalized)
+            ? normalized.replace(/\./g, '').replace(',', '.')
+            : normalized.replace(',', '.');
+        const parsed = Number(decimalNormalized);
+
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function limitImportedProductName(value, maxWords = 10) {
+        const words = splitWords(String(value || '').replace(/\s+/g, ' ').trim());
+        return words.length > maxWords ? words.slice(0, maxWords).join(' ') : words.join(' ');
+    }
+
     function getCommonPrefixTokens(descriptions) {
         if (descriptions.length < 2) {
             return [];
@@ -844,17 +866,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const parsedItems = items
             .map(item => {
                 const quantidadeRaw = typeof item.quantidade === 'string'
-                    ? Number(item.quantidade.replace(',', '.'))
+                    ? parseImportedQuantity(item.quantidade)
                     : Number(item.quantidade || 0);
                 const quantidade = Number.isFinite(quantidadeRaw) ? quantidadeRaw : 0;
                 const valorUnitarioRaw = Number(item.valor_unitario ?? 0);
                 const valorUnitario = Number.isFinite(valorUnitarioRaw) ? valorUnitarioRaw : 0;
                 const valorTotalRaw = Number(item.valor_total ?? (quantidade * valorUnitario));
                 const valorTotal = Number.isFinite(valorTotalRaw) ? valorTotalRaw : 0;
+                const produto = String(item.produto || '').replace(/\s+/g, ' ').trim();
 
                 return {
                     ...item,
-                    produto: String(item.produto || '').replace(/\s+/g, ' ').trim(),
+                    produto: item.preservar_nome_importado ? produto : limitImportedProductName(produto, 10),
                     unidade: normalizeUnitLabel(item.unidade || 'UN'),
                     quantidade,
                     valor_unitario: valorUnitario,
@@ -1493,6 +1516,187 @@ document.addEventListener('DOMContentLoaded', function() {
         return buildBudgetParseResult(items);
     }
 
+    function budgetMoneyPattern() {
+        return '(?:R\\$|RS|R\\s*\\$)?\\s*(?:\\d{1,3}(?:[.\\s]\\d{3})+|\\d+),\\d{2}\\s*(?:R\\$)?';
+    }
+
+    function findBudgetMoneyMatches(text) {
+        return Array.from(String(text || '').matchAll(new RegExp(budgetMoneyPattern(), 'giu')));
+    }
+
+    function cleanServiceBudgetProduct(value) {
+        let clean = cleanImportedLine(value)
+            .replace(/\b(DESCRI[CÇ][AÃ]O\s+DO\s+SERVI[CÇ]O|DESCRI[CÇ][AÃ]O|SERVI[CÇ]OS?\s+A\s+SER\s+REALIZADO|VLR\s+UNIT|VLR\s+TOTAL|VALOR\s+UNIT[AÁ]RIO|VALOR\s+TOTAL|QUANT\.?|ITEM)\b/giu, ' ')
+            .replace(/[|_\[\]]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        clean = clean
+            .replace(/^\d{1,5}\s*[\).:-]?\s+/u, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const btuMatch = clean.match(/^(.+?\bB\s*\.?\s*T\s*\.?\s*U\s*\.?\s*S?\.?)(?=\s|[.,;:]|$)/iu);
+
+        if (btuMatch?.[1]) {
+            clean = btuMatch[1];
+        }
+
+        const caracteristicasIndex = clean.search(/\bCaracter\S{0,3}sticas?\s*:/iu);
+
+        if (caracteristicasIndex > 6) {
+            clean = clean.slice(0, caracteristicasIndex).trim();
+        }
+
+        return clean
+            .replace(/\bB\s*\.?\s*T\s*\.?\s*U\s*\.?\s*S?\b/giu, match => normalizeToken(match).startsWith('BTUS') ? 'BTUS' : 'BTU')
+            .replace(/[.;:,]+$/u, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function parsePricedServiceBudgetBlock(block) {
+        const normalized = cleanImportedLine(block)
+            .replace(/\bRS\b/gi, 'R$')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const moneyMatches = findBudgetMoneyMatches(normalized);
+
+        if (moneyMatches.length < 2) {
+            return null;
+        }
+
+        const unitMoneyMatch = moneyMatches[moneyMatches.length - 2];
+        const totalMoneyMatch = moneyMatches[moneyMatches.length - 1];
+        const beforeUnitMoney = normalized.slice(0, unitMoneyMatch.index).trim();
+        const qtyMatch = beforeUnitMoney.match(/(?:^|\s)(\d{1,5}(?:[,.]\d+)?)\s*$/u);
+
+        if (!qtyMatch) {
+            return null;
+        }
+
+        const qtyIndex = qtyMatch.index ?? beforeUnitMoney.lastIndexOf(qtyMatch[1]);
+        const produto = cleanServiceBudgetProduct(beforeUnitMoney.slice(0, qtyIndex));
+        const quantidade = parseImportedQuantity(qtyMatch[1]);
+        const valorUnitario = parsePlanilhaMoney(unitMoneyMatch[0]);
+        const valorTotal = parsePlanilhaMoney(totalMoneyMatch[0]);
+
+        if (!produto || normalizeToken(produto).length < 4 || quantidade <= 0 || valorUnitario <= 0 || valorTotal <= 0) {
+            return null;
+        }
+
+        return {
+            produto,
+            unidade: 'SERV',
+            quantidade,
+            valor_unitario: valorUnitario,
+            valor_total: valorTotal,
+            preservar_nome_importado: true
+        };
+    }
+
+    function isPricedServiceRowStart(line) {
+        const normalized = normalizeToken(line);
+
+        return /^\d{1,5}\s*[\).:-]?\s+/u.test(line)
+            || /^(INSTALA[CÇ][AÃ]O|MANUTEN[CÇ][AÃ]O|CARGA|HIGIENIZA[CÇ][AÃ]O|LIMPEZA|SERVI[CÇ]O|TROCA|CONSERTO|REPARO|FORNECIMENTO)\b/iu.test(line)
+            || normalized.includes('ARCONDICIONADO')
+            || normalized.includes('SPLIT');
+    }
+
+    function parsePricedServiceBudgetText(text) {
+        const lines = String(text || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .map(line => line.replace(/[|_]+/g, ' ').replace(/\s+/g, ' ').trim())
+            .filter(Boolean);
+        const items = [];
+        let buffer = '';
+
+        function flushBuffer() {
+            if (!buffer) {
+                return;
+            }
+
+            const parsed = parsePricedServiceBudgetBlock(buffer);
+            if (parsed) {
+                items.push(parsed);
+            }
+
+            buffer = '';
+        }
+
+        for (const line of lines) {
+            const normalized = normalizeToken(line);
+            if (
+                (normalized.includes('VALORTOTAL') && !findBudgetMoneyMatches(line).length)
+                || normalized.includes('CNPJ')
+                || normalized.includes('CPF')
+                || normalized.includes('ENDERECO')
+                || normalized.includes('AUTORIZACAO')
+            ) {
+                flushBuffer();
+                continue;
+            }
+
+            if (isPricedServiceRowStart(line) && buffer) {
+                const parsed = parsePricedServiceBudgetBlock(buffer);
+                if (parsed) {
+                    items.push(parsed);
+                    buffer = '';
+                }
+            }
+
+            buffer = `${buffer} ${line}`.trim();
+
+            if (findBudgetMoneyMatches(buffer).length >= 2) {
+                flushBuffer();
+            }
+        }
+
+        flushBuffer();
+
+        return buildBudgetParseResult(items);
+    }
+
+    function parseSingleLineBudgetSummary(text) {
+        const normalized = String(text || '')
+            .normalize('NFC')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const quantityMatch = normalized.match(/\bQuantidade\b\s+(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[,.]\d+)?)/iu);
+        const tableMatch = normalized.match(/Produto\s+Utilizado\s+ou\s+Servi[cç?]o\s+Prestado\s+Valor\s+Unit[aá?]rio\s+Valor\s+Total\s+(.+?)(?=\s+(?:ENDERE[CÇ?]O|CPF\/CNPJ|OR[CÇ?]AMENTO|DATA|NOME\s+CLIENTE)\b|$)/iu);
+
+        if (!tableMatch) {
+            return null;
+        }
+
+        const rowText = cleanImportedLine(tableMatch[1]).replace(/\bRS\b/gi, 'R$');
+        const moneyMatches = findBudgetMoneyMatches(rowText);
+        if (moneyMatches.length < 2) {
+            return null;
+        }
+
+        const unitMoneyMatch = moneyMatches[moneyMatches.length - 2];
+        const totalMoneyMatch = moneyMatches[moneyMatches.length - 1];
+        const produto = cleanServiceBudgetProduct(rowText.slice(0, unitMoneyMatch.index));
+        const valorUnitario = parsePlanilhaMoney(unitMoneyMatch[0]);
+        const valorTotal = parsePlanilhaMoney(totalMoneyMatch[0]);
+        const quantidade = quantityMatch
+            ? parseImportedQuantity(quantityMatch[1])
+            : (valorUnitario > 0 ? valorTotal / valorUnitario : 0);
+
+        if (!produto || quantidade <= 0 || valorUnitario <= 0 || valorTotal <= 0) {
+            return null;
+        }
+
+        return buildBudgetParseResult([{
+            produto,
+            unidade: 'UN',
+            quantidade,
+            valor_unitario: valorUnitario,
+            valor_total: valorTotal
+        }], valorTotal);
+    }
+
     function parseSiahPositionedBudget(rows) {
         if (!Array.isArray(rows) || !rows.length) {
             return null;
@@ -1698,6 +1902,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const parsers = [
             () => parseSiahPositionedBudget(rows),
             () => parseDelimitedBudget(text),
+            () => parseSingleLineBudgetSummary(text),
+            () => parsePricedServiceBudgetText(text),
             () => parseOfficeItemsTableText(text),
             () => parseCurrencyColumnsBudget(normalized),
             () => parseSiahVisualLinesBudget(text),
@@ -1781,6 +1987,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
             pages.push(pageText);
             rows.push(...groupPageItemsByRow(pageItems, pageNumber));
+        }
+
+        if (!pages.join(' ').replace(/\s+/g, '') && !rows.length) {
+            const ocrPages = [];
+
+            for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+                const page = await pdf.getPage(pageNumber);
+                const viewport = page.getViewport({ scale: 2 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+
+                if (!context) {
+                    continue;
+                }
+
+                setPlanilhaStatus(`PDF escaneado: aplicando OCR local na página ${pageNumber} de ${pdf.numPages}...`, 'warning');
+                canvas.width = Math.round(viewport.width);
+                canvas.height = Math.round(viewport.height);
+                await page.render({ canvasContext: context, viewport }).promise;
+
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(imageBlob => resolve(imageBlob), 'image/png');
+                });
+
+                if (!blob) {
+                    continue;
+                }
+
+                const pageText = await extractImageText(blob);
+                ocrPages.push(pageText?.text || '');
+            }
+
+            return {
+                text: ocrPages.join('\n'),
+                rows: [],
+                source: 'image'
+            };
         }
 
         return {
@@ -1965,6 +2208,96 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function isBudgetColumnNoise(line) {
+        const normalized = normalizeToken(line);
+
+        return !normalized
+            || normalized === 'ITEM'
+            || normalized === 'QUANT'
+            || normalized.includes('DESCRICAO')
+            || normalized.includes('SERVICO')
+            || normalized.includes('VLRUNIT')
+            || normalized.includes('VLRTOTAL')
+            || normalized.includes('VALORUNITARIO')
+            || normalized.includes('VALORTOTAL')
+            || normalized.includes('CARACTERISTICAS')
+            || normalized.includes('CNPJ')
+            || normalized.includes('ENDERECO');
+    }
+
+    function parseServiceDescriptionColumn(text) {
+        const descriptions = [];
+        let current = '';
+
+        function pushCurrent() {
+            const produto = cleanServiceBudgetProduct(current);
+            if (produto && normalizeToken(produto).length >= 4) {
+                descriptions.push(produto);
+            }
+            current = '';
+        }
+
+        String(text || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .map(line => line.replace(/[|_\[\]]+/g, ' ').replace(/\s+/g, ' ').trim())
+            .filter(Boolean)
+            .forEach(line => {
+                if (isBudgetColumnNoise(line) || findBudgetMoneyMatches(line).length) {
+                    return;
+                }
+
+                const startsRow = isPricedServiceRowStart(line);
+
+                if (startsRow && current) {
+                    pushCurrent();
+                }
+
+                current = `${current} ${line}`.trim();
+            });
+
+        pushCurrent();
+
+        return descriptions;
+    }
+
+    function parseBudgetQuantityColumn(text) {
+        return String(text || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .flatMap(line => line.match(/\d{1,5}(?:[,.]\d+)?/gu) || [])
+            .map(parseImportedQuantity)
+            .filter(value => value > 0 && value <= 99999);
+    }
+
+    function parseBudgetMoneyColumn(text) {
+        return findBudgetMoneyMatches(String(text || '').replace(/\bRS\b/gi, 'R$'))
+            .map(match => parsePlanilhaMoney(match[0]))
+            .filter(value => value > 0);
+    }
+
+    function buildPricedRowsFromColumnOcr(descriptionText, quantityText, unitValueText, totalValueText) {
+        const descriptions = parseServiceDescriptionColumn(descriptionText);
+        const quantities = parseBudgetQuantityColumn(quantityText);
+        const unitValues = parseBudgetMoneyColumn(unitValueText);
+        const totalValues = parseBudgetMoneyColumn(totalValueText);
+        const count = Math.min(descriptions.length, quantities.length, unitValues.length, totalValues.length);
+
+        if (count < 1) {
+            return '';
+        }
+
+        return descriptions
+            .slice(0, count)
+            .map((produto, index) => `${index + 1}. ${produto} ${quantities[index]} ${formatInputMoneyBR(unitValues[index])} ${formatInputMoneyBR(totalValues[index])}`)
+            .join('\n');
+    }
+
+    function scorePricedBudgetRows(text) {
+        const parsed = parsePricedServiceBudgetText(text);
+        return parsed?.items?.length || 0;
+    }
+
     async function extractImageText(file) {
         if (!window.Tesseract?.createWorker) {
             throw new Error('OCR local não está disponível neste navegador.');
@@ -2027,6 +2360,92 @@ document.addEventListener('DOMContentLoaded', function() {
             const rotations = imageWidth > imageHeight
                 ? [90, 270, 0, 180]
                 : [0, 90, 270, 180];
+            const pricedRotations = imageWidth > imageHeight
+                ? [90, 270]
+                : [0, 180];
+            let bestPricedRows = { text: '', score: 0, rotate: 0 };
+
+            for (const rotate of pricedRotations) {
+                const tableText = await recognizeRegion('tabela com valores', 6, {
+                    x: 0.07,
+                    y: 0.12,
+                    width: 0.91,
+                    height: 0.82
+                }, { rotate, removeLines: true, targetLongSide: 3000 });
+                const directScore = scorePricedBudgetRows(tableText);
+
+                if (directScore > bestPricedRows.score) {
+                    bestPricedRows = { text: tableText, score: directScore, rotate };
+                }
+
+                if (directScore >= 3) {
+                    break;
+                }
+
+                if (findBudgetMoneyMatches(tableText).length < 2) {
+                    continue;
+                }
+
+                const columnPresets = [
+                    { label: 'principal', y: 0.24, height: 0.68 },
+                    { label: 'continuação', y: 0.12, height: 0.78 }
+                ];
+
+                for (const preset of columnPresets) {
+                    const serviceDescriptionText = await recognizeRegion(`descrição da tabela de valores ${preset.label}`, 4, {
+                        x: 0.18,
+                        y: preset.y,
+                        width: 0.43,
+                        height: preset.height
+                    }, { rotate, removeLines: true, targetLongSide: 2800 });
+                    const serviceQuantityText = await recognizeRegion(`quantidade da tabela de valores ${preset.label}`, 6, {
+                        x: 0.60,
+                        y: preset.y,
+                        width: 0.10,
+                        height: preset.height
+                    }, { rotate, removeLines: true, targetLongSide: 2200 });
+                    const serviceUnitValueText = await recognizeRegion(`valor unitário ${preset.label}`, 6, {
+                        x: 0.69,
+                        y: preset.y,
+                        width: 0.15,
+                        height: preset.height
+                    }, { rotate, removeLines: true, targetLongSide: 2200 });
+                    const serviceTotalValueText = await recognizeRegion(`valor total ${preset.label}`, 6, {
+                        x: 0.83,
+                        y: preset.y,
+                        width: 0.15,
+                        height: preset.height
+                    }, { rotate, removeLines: true, targetLongSide: 2200 });
+                    const serviceRowsText = buildPricedRowsFromColumnOcr(
+                        serviceDescriptionText,
+                        serviceQuantityText,
+                        serviceUnitValueText,
+                        serviceTotalValueText
+                    );
+                    const score = scorePricedBudgetRows(serviceRowsText);
+
+                    if (score > bestPricedRows.score) {
+                        bestPricedRows = { text: serviceRowsText, score, rotate };
+                    }
+
+                    if (score >= 3) {
+                        break;
+                    }
+                }
+
+                if (bestPricedRows.score >= 3) {
+                    break;
+                }
+            }
+
+            if (bestPricedRows.score >= 1) {
+                return {
+                    text: bestPricedRows.text,
+                    rows: [],
+                    source: 'image'
+                };
+            }
+
             let bestOfficeRows = { text: '', score: 0, rotate: 0 };
 
             for (const rotate of rotations) {
