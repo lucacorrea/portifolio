@@ -391,7 +391,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
           <td><?= (float) ($p['preco_promocional'] ?? 0) > 0 ? money_br((float) $p['preco_promocional']) : money_br((float) $p['preco']) ?></td>
           <td>
             <div class="inventory-stock-cell">
-              <div class="inventory-stock-meta">
+              <div>
                 <strong>Estoque: <?= (int) ($p['estoque'] ?? 0) ?> un.</strong>
                 <small>Mínimo: <?= (int) ($p['estoque_minimo'] ?? 0) ?> un.</small>
               </div>
