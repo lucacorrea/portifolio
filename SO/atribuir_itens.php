@@ -862,6 +862,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return hasPrefix ? tokens.slice(prefixTokens.length).join(' ') : String(value || '').trim();
     }
 
+    function isLikelyImportedDescriptionContinuation(value) {
+        const normalized = normalizeToken(value);
+
+        return /^(APORTARIA|PORTARIA|BUCHA|CANO|FITA|SUPORTE|ALTURA|METROS|APARELHO|CONTRATADA|RECOMENDACOES|NORMAS|ABNT|RELATORIO|INFORMANDO|COMPONENTES|PRAZO|UTILIZACAO|VACUOMETRO|RETIRAR|SISTEMA)/u.test(normalized);
+    }
+
     function buildBudgetParseResult(items, totalPdf = 0) {
         const parsedItems = items
             .map(item => {
@@ -1461,6 +1467,7 @@ document.addEventListener('DOMContentLoaded', function() {
             /^(.+?)\s+(\d+(?:[,.]\d+)?)\s+(?:R\$\s*)?([\d.]+,\d{2})\s+(?:R\$\s*)?([\d.]+,\d{2})$/iu
         ];
         const items = [];
+        const productHasMoney = value => /(?:R\$|RS)\s*\d|(?:^|\s)\d{1,3}(?:[.\s]\d{3})*,\d{2}/iu.test(String(value || ''));
 
         for (const line of lines) {
             const normalized = normalizeToken(line);
@@ -1477,8 +1484,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 continue;
             }
 
+            if (findBudgetMoneyMatches(line).length > 2) {
+                continue;
+            }
+
             let match = line.match(patterns[0]);
             if (match) {
+                if (productHasMoney(match[1]) || isLikelyImportedDescriptionContinuation(match[1])) {
+                    continue;
+                }
+
                 items.push({
                     produto: match[1].trim(),
                     unidade: match[2].trim().toUpperCase(),
@@ -1491,6 +1506,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             match = line.match(patterns[1]);
             if (match) {
+                if (productHasMoney(match[3]) || isLikelyImportedDescriptionContinuation(match[3])) {
+                    continue;
+                }
+
                 items.push({
                     produto: match[3].trim(),
                     unidade: match[2].trim().toUpperCase(),
@@ -1503,6 +1522,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             match = line.match(patterns[2]);
             if (match) {
+                if (productHasMoney(match[1]) || isLikelyImportedDescriptionContinuation(match[1])) {
+                    continue;
+                }
+
                 items.push({
                     produto: match[1].trim(),
                     unidade: 'UN',
@@ -1553,6 +1576,22 @@ document.addEventListener('DOMContentLoaded', function() {
             .trim();
     }
 
+    function isValidPricedServiceProduct(produto) {
+        const normalized = normalizeToken(produto);
+
+        if (!normalized || normalized.length < 4) {
+            return false;
+        }
+
+        const startsWithServiceAction = /^(INSTALACAO|MANUTENCAO|CARGA|HIGIENIZACAO|LIMPEZA|SERVICO|TROCA|CONSERTO|REPARO|FORNECIMENTO)\b/u.test(normalized);
+        const hasCoolingMarker = normalized.includes('SPLIT')
+            || normalized.includes('BTU')
+            || normalized.includes('ARCONDICIONADO')
+            || normalized.includes('REFRIGERANTE');
+
+        return startsWithServiceAction || hasCoolingMarker;
+    }
+
     function parsePricedServiceBudgetBlock(block) {
         const normalized = cleanImportedLine(block)
             .replace(/\bRS\b/gi, 'R$')
@@ -1579,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const valorUnitario = parsePlanilhaMoney(unitMoneyMatch[0]);
         const valorTotal = parsePlanilhaMoney(totalMoneyMatch[0]);
 
-        if (!produto || normalizeToken(produto).length < 4 || quantidade <= 0 || valorUnitario <= 0 || valorTotal <= 0) {
+        if (!produto || !isValidPricedServiceProduct(produto) || quantidade <= 0 || valorUnitario <= 0 || valorTotal <= 0) {
             return null;
         }
 
@@ -1626,6 +1665,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         for (const line of lines) {
             const normalized = normalizeToken(line);
+            const startsRow = isPricedServiceRowStart(line);
+            const isBareRowNumber = /^\d{1,5}\s*$/u.test(line);
             if (
                 (normalized.includes('VALORTOTAL') && !findBudgetMoneyMatches(line).length)
                 || normalized.includes('CNPJ')
@@ -1637,12 +1678,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 continue;
             }
 
-            if (isPricedServiceRowStart(line) && buffer) {
+            if (!buffer && !startsRow && !isBareRowNumber) {
+                continue;
+            }
+
+            if ((startsRow || isBareRowNumber) && buffer && !/^\d{1,5}\s*$/u.test(buffer)) {
                 const parsed = parsePricedServiceBudgetBlock(buffer);
                 if (parsed) {
                     items.push(parsed);
-                    buffer = '';
                 }
+                buffer = '';
             }
 
             buffer = `${buffer} ${line}`.trim();
@@ -1783,6 +1828,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function parseCurrencyColumnsBudget(normalizedText) {
         const normalized = String(normalizedText || '').normalize('NFC').replace(/\s+/g, ' ').trim();
         const headerMatch = normalized.match(/\bORD\b.*?\bVALOR\s+L[ÍI]QUIDO\b/iu);
+        if (!headerMatch) {
+            return null;
+        }
+
         const tableText = headerMatch
             ? normalized.slice((headerMatch.index || 0) + headerMatch[0].length)
             : normalized;
@@ -2231,7 +2280,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function pushCurrent() {
             const produto = cleanServiceBudgetProduct(current);
-            if (produto && normalizeToken(produto).length >= 4) {
+            if (produto && isValidPricedServiceProduct(produto)) {
                 descriptions.push(produto);
             }
             current = '';
