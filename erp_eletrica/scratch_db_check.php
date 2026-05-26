@@ -1,17 +1,11 @@
 <?php
 require_once 'config.php';
-$db = \App\Config\Database::getInstance()->getConnection();
+
 try {
-    echo "--- CLIENTES ---\n";
-    $stmt = $db->query("DESCRIBE clientes");
-    $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    print_r($columns);
-
-    echo "\n--- PRE_VENDAS ---\n";
-    $stmt = $db->query("DESCRIBE pre_vendas");
-    $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    print_r($columns);
+    $db = \App\Config\Database::getInstance()->getConnection();
+    $stmt = $db->query("SELECT id, nome, razao_social, cnpj, inscricao_estadual, logradouro, numero, complemento, bairro, municipio, uf, cep, principal FROM filiais");
+    $filiais = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode($filiais, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
 } catch (Exception $e) {
-    echo $e->getMessage();
+    echo "Error: " . $e->getMessage() . "\n";
 }
-
