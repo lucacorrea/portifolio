@@ -386,8 +386,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
               <small>Mínimo: <?= (int) ($p['estoque_minimo'] ?? 0) ?> un.</small>
             </div>
             
-            <span class="<?= e(product_inventory_badge_class($inventoryStatus)) ?>"><?= e(product_inventory_label($inventoryStatus)) ?></span>
-          </div>
+           </div>
         </td>
         <td><span class="<?= $status === 'disponivel' ? 'admin-badge-ok' : ($status === 'inativo' ? 'admin-badge-danger' : 'admin-badge-warn') ?>"><?= e(status_label($status)) ?></span></td>
         <td><span class="<?= !empty($p['destaque']) ? 'admin-badge-soft' : 'admin-badge-info' ?>"><?= !empty($p['destaque']) ? 'Sim' : 'Normal' ?></span></td>
