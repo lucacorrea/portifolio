@@ -259,6 +259,19 @@ body:has(.admin-shell),
   border-color: #173327;
 }
 
+.admin-shell .btn-danger,
+.admin-login-body .btn-danger {
+  background: var(--admin-danger);
+  border-color: var(--admin-danger);
+  color: #fff;
+}
+
+.admin-shell .btn-danger:hover,
+.admin-login-body .btn-danger:hover {
+  background: #7f3138;
+  border-color: #7f3138;
+}
+
 .admin-shell .btn-soft,
 .admin-login-body .btn-soft {
   background: var(--admin-primary-soft);

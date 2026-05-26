@@ -2,6 +2,72 @@
   const payload = document.getElementById('productListPayload');
   const modal = document.querySelector('[data-product-modal]');
   const stockModal = document.querySelector('[data-stock-modal]');
+  const deleteModal = document.querySelector('[data-product-delete-modal]');
+
+  const bindDeleteModal = () => {
+    if (!deleteModal) return;
+
+    const productName = deleteModal.querySelector('[data-product-delete-name]');
+    const confirmButton = deleteModal.querySelector('[data-product-delete-confirm]');
+    let pendingForm = null;
+    let lastFocus = null;
+
+    const close = () => {
+      deleteModal.hidden = true;
+      document.body.classList.remove('admin-modal-open');
+      pendingForm = null;
+      if (lastFocus instanceof HTMLElement) {
+        lastFocus.focus();
+      }
+    };
+
+    const open = (form) => {
+      pendingForm = form;
+      lastFocus = document.activeElement;
+      if (productName) {
+        productName.textContent = form.dataset.productName || 'Produto selecionado';
+      }
+      deleteModal.hidden = false;
+      document.body.classList.add('admin-modal-open');
+      confirmButton?.focus();
+    };
+
+    document.addEventListener('submit', (event) => {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement) || !form.matches('[data-product-delete-form]')) return;
+
+      event.preventDefault();
+      open(form);
+    });
+
+    document.addEventListener('click', (event) => {
+      const source = event.target;
+      if (!(source instanceof HTMLElement)) return;
+
+      if (source.closest('[data-product-delete-confirm]')) {
+        const form = pendingForm;
+        if (!form) {
+          close();
+          return;
+        }
+
+        deleteModal.hidden = true;
+        document.body.classList.remove('admin-modal-open');
+        HTMLFormElement.prototype.submit.call(form);
+        return;
+      }
+
+      if (source.closest('[data-product-delete-cancel]') || source === deleteModal) {
+        close();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !deleteModal.hidden) {
+        close();
+      }
+    });
+  };
 
   const bindStockModal = () => {
     if (!stockModal) return;
@@ -56,6 +122,7 @@
   };
 
   bindStockModal();
+  bindDeleteModal();
 
   if (!payload || !modal) return;
 

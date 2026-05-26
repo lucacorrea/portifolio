@@ -205,7 +205,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
               <input type="hidden" name="action" value="<?= e($statusAction) ?>">
               <button type="submit" class="<?= $statusAction === 'ativar' ? 'admin-action-success' : 'admin-action-danger' ?>"><?= $statusAction === 'ativar' ? 'Ativar' : 'Inativar' ?></button>
             </form>
-            <form method="post" action="<?= site_url('admin/actions/produto-excluir.php') ?>" data-confirm="Excluir este produto? Ele sairá do catálogo, do PDV e da listagem administrativa, mas pedidos e movimentações anteriores serão preservados.">
+            <form method="post" action="<?= site_url('admin/actions/produto-excluir.php') ?>" data-product-delete-form data-product-name="<?= e((string) $p['nome']) ?>">
               <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
               <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
               <button type="submit" class="admin-action-danger">Excluir</button>
@@ -318,6 +318,26 @@ require_once __DIR__ . '/../includes/admin-head.php';
         <button class="btn btn-soft" type="button" data-stock-modal-close>Cancelar</button>
       </div>
     </form>
+  </section>
+</div>
+<div class="admin-modal-backdrop" data-product-delete-modal hidden>
+  <section class="admin-stock-modal admin-delete-modal" role="dialog" aria-modal="true" aria-labelledby="deleteProductModalTitle">
+    <button class="admin-modal-close" type="button" data-product-delete-cancel aria-label="Cancelar exclusão">&times;</button>
+    <div class="admin-panel-header compact">
+      <div>
+        <span class="badge">Confirmação</span>
+        <h2 id="deleteProductModalTitle">Excluir produto?</h2>
+        <p>Essa ação remove o produto do catálogo, do PDV e da listagem administrativa, preservando pedidos e movimentações anteriores.</p>
+      </div>
+    </div>
+    <div class="admin-alert-card admin-alert-warning product-delete-warning" role="alert">
+      <strong data-product-delete-name>Produto selecionado</strong>
+      Confirme apenas se este produto não deve mais aparecer para venda.
+    </div>
+    <div class="admin-action-row">
+      <button class="btn btn-soft" type="button" data-product-delete-cancel>Cancelar</button>
+      <button class="btn btn-danger" type="button" data-product-delete-confirm>Excluir produto</button>
+    </div>
   </section>
 </div>
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>
