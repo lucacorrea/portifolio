@@ -173,7 +173,7 @@
                                 <i class="fas fa-barcode text-secondary"></i> Boleto (F11)
                             </div>
                             <div class="pay-btn" data-pay="fiado" onclick="selectSinglePay('fiado')">
-                                <i class="fas fa-hand-holding-usd text-warning"></i> A Prazo
+                                <i class="fas fa-hand-holding-usd text-warning"></i> A Prazo (F8)
                             </div>
                         </div>
 
