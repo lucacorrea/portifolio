@@ -385,9 +385,7 @@ require_once __DIR__ . '/../includes/admin-head.php';
               <strong>Estoque: <?= (int) ($p['estoque'] ?? 0) ?> un.</strong>
               <small>Mínimo: <?= (int) ($p['estoque_minimo'] ?? 0) ?> un.</small>
             </div>
-            <div class="inventory-stock-bar" aria-hidden="true">
-              <span class="inventory-stock-fill <?= e($inventoryStatus) ?>" style="width: <?= $inventoryPercent ?>%"></span>
-            </div>
+            
             <span class="<?= e(product_inventory_badge_class($inventoryStatus)) ?>"><?= e(product_inventory_label($inventoryStatus)) ?></span>
           </div>
         </td>
