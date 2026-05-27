@@ -11,7 +11,491 @@
   <title>Coari por Elas — MVP Institucional</title>
   <link rel="stylesheet" href="css/apps.css" />
 </head>
+<style>
+  /* =========================================================
+   MAPA REAL - RESPONSIVIDADE MOBILE
+   Cole no final do css/style.css
+   ========================================================= */
 
+/* Tela de localização/mapa */
+#screen-localizacao {
+  padding-top: 82px;
+  padding-bottom: calc(var(--nav-h) + 22px);
+}
+
+/* Container principal do mapa real */
+.map-real-card,
+.real-map-card,
+.map-panel,
+.support-map-card,
+.map-section,
+.map-container-card {
+  position: relative;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 26px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(30, 24, 38, 0.10);
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Mapa Leaflet / OpenStreetMap */
+#supportMap,
+.support-map,
+.map-real,
+.real-map,
+.leaflet-container {
+  width: 100%;
+  height: clamp(285px, 48dvh, 430px);
+  min-height: 285px;
+  max-height: 430px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #e9e7ed;
+  z-index: 1;
+  touch-action: pan-x pan-y;
+}
+
+/* Evita o mapa ficar por cima dos botões */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 2 !important;
+}
+
+.leaflet-control-container {
+  position: relative;
+  z-index: 3;
+}
+
+.app-header {
+  z-index: 1100;
+}
+
+.bottom-nav {
+  z-index: 1200;
+}
+
+/* Botões superiores: Atualizar GPS / Buscar perto */
+.map-toolbar,
+.map-top-actions,
+.map-header-actions,
+.location-tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 14px 0 12px;
+}
+
+.map-toolbar button,
+.map-top-actions button,
+.map-header-actions button,
+.location-tools button {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 14px;
+  color: #ffffff;
+  background: #111014;
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 10px 22px rgba(30, 24, 38, 0.10);
+}
+
+.map-toolbar button:first-child,
+.map-top-actions button:first-child,
+.map-header-actions button:first-child,
+.location-tools button:first-child {
+  color: #111014;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+/* Filtros: Todos, UBS/Saúde, CRAS/Social, Segurança e Agências */
+.map-filters,
+.service-filters,
+.filter-row,
+.category-filters,
+.place-filters {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin: 12px 0 14px;
+  padding: 2px 2px 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.map-filters::-webkit-scrollbar,
+.service-filters::-webkit-scrollbar,
+.filter-row::-webkit-scrollbar,
+.category-filters::-webkit-scrollbar,
+.place-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.map-filters button,
+.service-filters button,
+.filter-row button,
+.category-filters button,
+.place-filters button,
+.filter-chip,
+.map-filter {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: #625b68;
+  background: #ffffff;
+  border: 1px solid #e6e1eb;
+  font-size: 0.76rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(30, 24, 38, 0.06);
+}
+
+.map-filters button.active,
+.service-filters button.active,
+.filter-row button.active,
+.category-filters button.active,
+.place-filters button.active,
+.filter-chip.active,
+.map-filter.active,
+.map-filters button.is-active,
+.service-filters button.is-active,
+.filter-row button.is-active,
+.category-filters button.is-active,
+.place-filters button.is-active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--wine), #c24e86);
+  border-color: transparent;
+}
+
+/* Card do destino selecionado */
+.selected-place,
+.selected-destination,
+.destination-card,
+.nearest-place-card,
+.map-result-selected {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #eee8f0;
+  box-shadow: 0 12px 28px rgba(30, 24, 38, 0.08);
+}
+
+.selected-place strong,
+.selected-destination strong,
+.destination-card strong,
+.nearest-place-card strong,
+.map-result-selected strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.96rem;
+  line-height: 1.25;
+}
+
+.selected-place small,
+.selected-destination small,
+.destination-card small,
+.nearest-place-card small,
+.map-result-selected small,
+.selected-place p,
+.selected-destination p,
+.destination-card p,
+.nearest-place-card p,
+.map-result-selected p {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+/* Lista de locais próximos */
+.places-list,
+.nearby-list,
+.map-results,
+.support-places-list,
+.units-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.place-card,
+.nearby-item,
+.map-result-item,
+.support-place-item,
+.unit-card {
+  width: 100%;
+  padding: 14px;
+  border-radius: 18px;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #eee8f0;
+  box-shadow: 0 10px 22px rgba(30, 24, 38, 0.06);
+}
+
+.place-card strong,
+.nearby-item strong,
+.map-result-item strong,
+.support-place-item strong,
+.unit-card strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.place-card small,
+.nearby-item small,
+.map-result-item small,
+.support-place-item small,
+.unit-card small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+/* Ações inferiores: Copiar rota / Abrir no Maps / Iniciar rota */
+.map-route-actions,
+.map-actions,
+.location-actions,
+.route-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.map-route-actions > *:first-child,
+.map-actions > *:first-child,
+.location-actions > *:first-child,
+.route-actions > *:first-child {
+  grid-column: 1 / -1;
+}
+
+.map-route-actions button,
+.map-route-actions a,
+.map-actions button,
+.map-actions a,
+.location-actions button,
+.location-actions a,
+.route-actions button,
+.route-actions a,
+.map-link {
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: #111014;
+  text-decoration: none;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.map-route-actions > *:first-child,
+.map-actions > *:first-child,
+.location-actions > *:first-child,
+.route-actions > *:first-child {
+  color: #111014;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+/* Popup do Leaflet mais institucional */
+.leaflet-popup-content-wrapper {
+  border-radius: 16px;
+  box-shadow: 0 16px 34px rgba(30, 24, 38, 0.18);
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+  color: #17151c;
+  font-family: inherit;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.leaflet-popup-content strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--wine);
+}
+
+/* Controles de zoom menores no celular */
+.leaflet-control-zoom {
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(30, 24, 38, 0.14) !important;
+}
+
+.leaflet-control-zoom a {
+  width: 34px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+  color: #111014 !important;
+  border: 0 !important;
+}
+
+/* Mobile real */
+@media (max-width: 430px) {
+  #screen-localizacao {
+    padding-inline: 14px;
+    padding-top: 78px;
+    padding-bottom: calc(var(--nav-h) + 18px);
+  }
+
+  .map-real-card,
+  .real-map-card,
+  .map-panel,
+  .support-map-card,
+  .map-section,
+  .map-container-card {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 24px;
+  }
+
+  #supportMap,
+  .support-map,
+  .map-real,
+  .real-map,
+  .leaflet-container {
+    height: 330px;
+    min-height: 330px;
+    max-height: 330px;
+    border-radius: 20px;
+  }
+
+  .map-toolbar,
+  .map-top-actions,
+  .map-header-actions,
+  .location-tools {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .map-toolbar button,
+  .map-top-actions button,
+  .map-header-actions button,
+  .location-tools button {
+    min-height: 42px;
+    font-size: 0.72rem;
+    border-radius: 13px;
+  }
+
+  .map-filters,
+  .service-filters,
+  .filter-row,
+  .category-filters,
+  .place-filters {
+    margin-top: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 7px;
+  }
+
+  .map-filters button,
+  .service-filters button,
+  .filter-row button,
+  .category-filters button,
+  .place-filters button,
+  .filter-chip,
+  .map-filter {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 0.7rem;
+  }
+
+  .selected-place,
+  .selected-destination,
+  .destination-card,
+  .nearest-place-card,
+  .map-result-selected {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .places-list,
+  .nearby-list,
+  .map-results,
+  .support-places-list,
+  .units-list {
+    gap: 9px;
+  }
+
+  .place-card,
+  .nearby-item,
+  .map-result-item,
+  .support-place-item,
+  .unit-card {
+    padding: 13px;
+    border-radius: 16px;
+  }
+
+  .map-route-actions,
+  .map-actions,
+  .location-actions,
+  .route-actions {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .map-route-actions button,
+  .map-route-actions a,
+  .map-actions button,
+  .map-actions a,
+  .location-actions button,
+  .location-actions a,
+  .route-actions button,
+  .route-actions a,
+  .map-link {
+    width: 100%;
+    min-height: 46px;
+    font-size: 0.76rem;
+  }
+}
+
+/* Celulares muito baixos */
+@media (max-height: 740px) and (max-width: 430px) {
+  #supportMap,
+  .support-map,
+  .map-real,
+  .real-map,
+  .leaflet-container {
+    height: 285px;
+    min-height: 285px;
+    max-height: 285px;
+  }
+
+  .page-copy p {
+    margin-top: 8px;
+  }
+}
+
+/* Celulares grandes */
+@media (min-width: 431px) and (max-width: 768px) {
+  #supportMap,
+  .support-map,
+  .map-real,
+  .real-map,
+  .leaflet-container {
+    height: 390px;
+  }
+}
+</style>
 <body>
   <main class="prototype-stage" aria-label="Protótipo mobile Coari por Elas">
     <section class="phone" aria-label="Aplicativo mobile clicável">
