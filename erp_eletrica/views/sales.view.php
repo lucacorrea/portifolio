@@ -1300,11 +1300,37 @@ function renderSearchResults(products) {
 
 function showPreview(p) {
     if (p.imagens) {
-        productPreviewImg.innerHTML = `<img src="public/uploads/produtos/${p.imagens}" style="width:100%; height:100%; object-fit:contain; cursor:pointer;" class="fade-in" onclick="if(window.openLightbox) window.openLightbox(this.src)">`;
+        productPreviewImg.innerHTML = `<img src="${resolveSmartProductImage(p.imagens)}" style="width:100%; height:100%; object-fit:contain; cursor:pointer;" class="fade-in" onclick="if(window.openLightbox) window.openLightbox(this.src)" onerror="smartSwapImg(this)">`;
     } else {
         productPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
     }
     productPreviewName.innerText = p.nome;
+}
+
+function resolveSmartProductImage(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('/')) return raw;
+    const cleaned = raw.replace(/^\.\/+/, '').replace(/^\/+/, '');
+    if (cleaned.includes('/')) return cleaned;
+    return `public/uploads/produtos/${cleaned}`;
+}
+
+function smartSwapImg(img) {
+    const src = img.getAttribute('src') || '';
+    const m = src.match(/^(.*\/)?([^\/]+?)(?:\.([^.\/]+))?$/);
+    if (!m) return;
+    const prefix = m[1] || 'public/uploads/produtos/';
+    const base = m[2];
+    const currentExt = m[3] || '';
+    const candidates = currentExt
+        ? [currentExt.toLowerCase(), currentExt.toUpperCase(), currentExt]
+        : ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp', 'WEBP', 'gif', 'GIF', 'avif', 'AVIF'];
+    let idx = parseInt(img.dataset.extIdx || '0', 10) + 1;
+    const unique = [...new Set(candidates)];
+    if (idx >= unique.length) return;
+    img.dataset.extIdx = String(idx);
+    img.src = `${prefix}${base}.${unique[idx]}`;
 }
 
 function selectForQty(product) {

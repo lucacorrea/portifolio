@@ -150,7 +150,7 @@
                             <div class="d-flex align-items-center">
                                 <?php if ($p['imagens']): ?>
                                     <div class="product-zoom-container rounded me-3 border" style="cursor: zoom-in; width: 40px; height: 40px; flex-shrink: 0;">
-                                        <img src="public/uploads/produtos/<?= $p['imagens'] ?>" width="40" height="40" style="object-fit: cover;">
+                                        <img src="<?= htmlspecialchars($p['imagens'], ENT_QUOTES, 'UTF-8') ?>" data-image-name="<?= htmlspecialchars($p['imagens'], ENT_QUOTES, 'UTF-8') ?>" onerror="smartProductImageFallback(this)" width="40" height="40" style="object-fit: cover;">
                                     </div>
                                 <?php else: ?>
                                     <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center border" width="40" height="40" style="min-width: 40px; min-height: 40px;">
@@ -683,6 +683,74 @@
 </div>
 
 <script>
+function productImageCandidates(imageValue) {
+    const raw = String(imageValue || '').trim();
+    if (!raw) return [];
+
+    if (/^https?:\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('/')) {
+        return [raw];
+    }
+
+    const normalized = raw.replace(/^\.\/+/, '').replace(/^\/+/, '');
+    const hasPath = normalized.includes('/');
+    const fileName = hasPath ? normalized.split('/').pop() : normalized;
+    const dot = fileName.lastIndexOf('.');
+    const base = dot > 0 ? fileName.slice(0, dot) : fileName;
+    const ext = dot > 0 ? fileName.slice(dot + 1) : '';
+
+    const exts = [];
+    if (ext) {
+        exts.push(ext, ext.toLowerCase(), ext.toUpperCase());
+        const cap = ext.charAt(0).toUpperCase() + ext.slice(1).toLowerCase();
+        exts.push(cap);
+    } else {
+        exts.push('jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp', 'WEBP', 'gif', 'GIF', 'avif', 'AVIF');
+    }
+
+    const uniqueExts = [...new Set(exts)];
+    const paths = new Set();
+    if (hasPath) {
+        paths.add(normalized);
+    } else {
+        uniqueExts.forEach(e => paths.add(`public/uploads/produtos/${base}.${e}`));
+        paths.add(`public/uploads/produtos/${base}`);
+    }
+
+    return [...paths];
+}
+
+function setSmartImageSource(imgEl, imageValue) {
+    const candidates = productImageCandidates(imageValue);
+    if (!candidates.length) return false;
+    imgEl.dataset.imageCandidates = JSON.stringify(candidates);
+    imgEl.dataset.imageIdx = '0';
+    imgEl.src = candidates[0];
+    return true;
+}
+
+function smartProductImageFallback(imgEl) {
+    let candidates = [];
+    try {
+        candidates = JSON.parse(imgEl.dataset.imageCandidates || '[]');
+    } catch (e) {
+        candidates = [];
+    }
+    let idx = parseInt(imgEl.dataset.imageIdx || '0', 10);
+    idx += 1;
+    if (idx < candidates.length) {
+        imgEl.dataset.imageIdx = String(idx);
+        imgEl.src = candidates[idx];
+        return;
+    }
+    imgEl.style.display = 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('img[data-image-name]').forEach((img) => {
+        setSmartImageSource(img, img.getAttribute('data-image-name'));
+    });
+});
+
 function openNewProduct() {
     const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
     const form = document.querySelector('#newProductModal form');
@@ -745,7 +813,8 @@ function editProduct(product) {
     const preview = document.getElementById('edit_preview');
     const icon = document.getElementById('preview-icon');
     if (product.imagens) {
-        preview.src = 'public/uploads/produtos/' + product.imagens;
+        setSmartImageSource(preview, product.imagens);
+        preview.onerror = function() { smartProductImageFallback(preview); };
         preview.classList.remove('d-none');
         icon.classList.add('d-none');
     } else {
@@ -987,7 +1056,8 @@ function viewProduct(product) {
     const viewFoto = document.getElementById('view_foto');
     const viewNoFoto = document.getElementById('view_no_foto');
     if (product.imagens) {
-        viewFoto.src = 'public/uploads/produtos/' + product.imagens;
+        setSmartImageSource(viewFoto, product.imagens);
+        viewFoto.onerror = function() { smartProductImageFallback(viewFoto); };
         viewFoto.classList.remove('d-none');
         viewNoFoto.classList.add('d-none');
     } else {
