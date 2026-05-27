@@ -1513,3 +1513,90 @@ svg {
     grid-template-columns: 1fr;
   }
 }
+
+/* Correções mobile: evita camada do mapa bloqueando cliques e deixa links externos confiáveis no celular */
+html,
+body,
+button,
+a,
+input {
+  touch-action: manipulation;
+}
+
+.phone-inner {
+  isolation: isolate;
+}
+
+.screen {
+  position: relative;
+  z-index: 1;
+}
+
+.app-header {
+  z-index: 1100;
+}
+
+.bottom-nav {
+  z-index: 1200;
+}
+
+.map-visual-real {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.support-map,
+.leaflet-container {
+  position: relative;
+  z-index: 1;
+}
+
+.map-loading {
+  z-index: 8;
+  pointer-events: none;
+}
+
+.map-filters,
+.nearest-card,
+.places-list,
+.map-actions {
+  position: relative;
+  z-index: 20;
+}
+
+a.primary-button,
+.map-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.map-actions a.primary-button,
+.map-actions button.primary-button {
+  white-space: nowrap;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 25 !important;
+}
+
+.leaflet-popup-content a {
+  color: var(--wine);
+  font-weight: 900;
+}
+
+@media (max-width: 430px) {
+  .map-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .map-actions .primary-button {
+    min-height: 48px;
+  }
+}

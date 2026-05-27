@@ -1,8 +1,17 @@
-# Coari por Elas — MVP com mapa real
+# Coari por Elas — MVP com mapa real corrigida para mobile
 
 MVP front-end em HTML, CSS e JavaScript para demonstração mobile.
 
-## O que foi adicionado
+## Correções aplicadas
+
+- Troca dos botões externos do Google Maps por links `<a>` reais, evitando bloqueio de `window.open()` no celular.
+- Remoção de `window.open()` depois de GPS/Promise.
+- JavaScript refeito com maior compatibilidade mobile, sem `async/await`, `optional chaining`, `replaceAll`, `globalThis` e outros recursos que podem quebrar em WebViews antigos.
+- Correção de `z-index` para o mapa Leaflet não bloquear botões, menu inferior ou cabeçalho.
+- Links de rota sincronizados automaticamente com a localização e com o destino selecionado.
+- Fallback de pontos demonstrativos caso o OpenStreetMap/Overpass não retorne dados próximos.
+
+## Recursos
 
 - Mapa real com Leaflet + OpenStreetMap.
 - Geolocalização do dispositivo pelo navegador.
@@ -10,15 +19,14 @@ MVP front-end em HTML, CSS e JavaScript para demonstração mobile.
 - Filtros para UBS/Saúde, CRAS/Social, Segurança e Agências.
 - Lista de unidades próximas com distância aproximada.
 - Botões para copiar rota e abrir rota no Google Maps.
-- Fallback visual com pontos demonstrativos quando o OpenStreetMap não retorna dados próximos.
 
 ## Como testar
 
-1. Abra o `index.html` em um servidor local ou hospedagem HTTPS.
-2. No celular, permita o acesso à localização.
-3. Acesse **Mais > Localização compartilhável** ou toque no card **Mapa de apoio** na tela inicial.
-4. Use os filtros e o botão **Iniciar rota**.
+1. Suba a pasta em hospedagem HTTPS ou rode em um servidor local.
+2. No celular, permita a localização.
+3. Acesse **Mapa de apoio** pela tela inicial ou por **Mais > Localização compartilhável**.
+4. Toque nos filtros, selecione um local e use **Abrir no Maps** ou **Iniciar rota**.
 
 ## Observação técnica
 
-Para uma versão de produção, o correto é manter uma base oficial própria de UBS, CRAS, CREAS, Delegacia, Patrulha Maria da Penha e demais órgãos, validada pela prefeitura/secretaria. O OpenStreetMap é útil para demonstração, mas pode estar incompleto ou desatualizado em algumas regiões.
+Para produção, mantenha uma base oficial própria de UBS, CRAS, CREAS, Delegacia, Patrulha Maria da Penha e demais órgãos, validada pela prefeitura/secretaria. O OpenStreetMap é útil para demonstração, mas pode estar incompleto ou desatualizado em algumas regiões.

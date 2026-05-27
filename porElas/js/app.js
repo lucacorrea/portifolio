@@ -1,19 +1,34 @@
-(() => {
+(function () {
   'use strict';
 
-  const STORAGE_KEYS = {
-    contacts: 'coari_por_elas_contacts_v2',
-    history: 'coari_por_elas_history_v2'
+  if (!Element.prototype.matches) {
+    Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
+  }
+
+  if (!Element.prototype.closest) {
+    Element.prototype.closest = function (selector) {
+      var element = this;
+      while (element && element.nodeType === 1) {
+        if (element.matches(selector)) return element;
+        element = element.parentElement || element.parentNode;
+      }
+      return null;
+    };
+  }
+
+  var STORAGE_KEYS = {
+    contacts: 'coari_por_elas_contacts_v3',
+    history: 'coari_por_elas_history_v3'
   };
 
-  const FALLBACK_LOCATION = {
+  var FALLBACK_LOCATION = {
     lat: -4.0853,
     lng: -63.1411
   };
 
-  const SUPPORT_RADIUS_METERS = 5000;
+  var SUPPORT_RADIUS_METERS = 6000;
 
-  const CATEGORY_LABELS = {
+  var CATEGORY_LABELS = {
     all: 'Todos',
     health: 'Saúde',
     social: 'Assistência social',
@@ -22,7 +37,7 @@
     support: 'Apoio'
   };
 
-  const CATEGORY_ICONS = {
+  var CATEGORY_ICONS = {
     health: 'ri-hospital-line',
     social: 'ri-hand-heart-line',
     safety: 'ri-shield-user-line',
@@ -30,50 +45,50 @@
     support: 'ri-map-pin-line'
   };
 
-  const DEMO_SUPPORT_POINTS = [
+  var DEMO_SUPPORT_POINTS = [
     {
       id: 'demo-health-1',
-      name: 'Ponto de saúde — demonstração',
+      name: 'UBS / Unidade de saúde próxima',
       category: 'health',
       lat: -4.0842,
       lng: -63.1391,
-      address: 'Referência visual próxima ao centro de Coari',
+      address: 'Referência demonstrativa em Coari',
       source: 'Base demonstrativa'
     },
     {
       id: 'demo-social-1',
-      name: 'CRAS / CREAS — demonstração',
+      name: 'CRAS / CREAS de referência',
       category: 'social',
       lat: -4.0884,
       lng: -63.1431,
-      address: 'Referência visual para assistência social',
+      address: 'Ponto demonstrativo para assistência social',
       source: 'Base demonstrativa'
     },
     {
       id: 'demo-safety-1',
-      name: 'Segurança pública — demonstração',
+      name: 'Delegacia / segurança pública',
       category: 'safety',
       lat: -4.0819,
       lng: -63.1452,
-      address: 'Referência visual para delegacia/patrulha',
+      address: 'Ponto demonstrativo para apoio policial',
       source: 'Base demonstrativa'
     },
     {
       id: 'demo-agency-1',
-      name: 'Órgão ou agência — demonstração',
+      name: 'Órgão público / agência de apoio',
       category: 'agency',
       lat: -4.0908,
       lng: -63.1384,
-      address: 'Referência visual para órgãos e agências próximas',
+      address: 'Referência demonstrativa para serviços públicos',
       source: 'Base demonstrativa'
     }
   ];
 
-  const state = {
+  var state = {
     currentScreen: 'inicio',
     historyStack: [],
     emergencyTimers: [],
-    lastLocation: { ...FALLBACK_LOCATION },
+    lastLocation: { lat: FALLBACK_LOCATION.lat, lng: FALLBACK_LOCATION.lng },
     supportMap: null,
     userMarker: null,
     supportMarkers: [],
@@ -84,327 +99,438 @@
     isLoadingPlaces: false
   };
 
-  const $ = (selector, root = document) => root.querySelector(selector);
-  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+  function $(selector, root) {
+    return (root || document).querySelector(selector);
+  }
 
-  const screens = $$('.screen');
-  const headerTitle = $('#headerTitle');
-  const btnBack = $('#btnBack');
-  const toast = $('#toast');
-  const navButtons = $$('.bottom-nav [data-nav]');
+  function $$(selector, root) {
+    var list = (root || document).querySelectorAll(selector);
+    return Array.prototype.slice.call(list);
+  }
+
+  function on(element, eventName, handler) {
+    if (element) element.addEventListener(eventName, handler, false);
+  }
+
+  function twoDigits(value) {
+    return value < 10 ? '0' + value : String(value);
+  }
 
   function nowTime() {
-    return new Intl.DateTimeFormat('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date());
+    var date = new Date();
+    return twoDigits(date.getHours()) + ':' + twoDigits(date.getMinutes());
   }
 
   function nowDateTime() {
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date());
+    var date = new Date();
+    return twoDigits(date.getDate()) + '/' + twoDigits(date.getMonth() + 1) + '/' + date.getFullYear() + ' ' + twoDigits(date.getHours()) + ':' + twoDigits(date.getMinutes());
   }
 
-  function showToast(message, duration = 2200) {
+  function showToast(message, duration) {
+    var toast = $('#toast');
     if (!toast) return;
+
     toast.textContent = message;
     toast.classList.add('show');
     clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(() => toast.classList.remove('show'), duration);
+    showToast.timer = setTimeout(function () {
+      toast.classList.remove('show');
+    }, duration || 2200);
   }
 
   function safeJsonParse(value, fallback) {
     try {
-      return JSON.parse(value) ?? fallback;
-    } catch (_) {
+      var parsed = JSON.parse(value);
+      return parsed || fallback;
+    } catch (error) {
       return fallback;
     }
   }
 
-  function escapeHtml(value = '') {
-    return String(value)
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function storageGet(key, fallback) {
+    try {
+      return safeJsonParse(localStorage.getItem(key), fallback);
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function storageSet(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      showToast('Não foi possível salvar neste navegador.', 2400);
+    }
+  }
+
+  function storageRemove(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {}
   }
 
   function getContacts() {
-    const contacts = safeJsonParse(localStorage.getItem(STORAGE_KEYS.contacts), []);
-    return Array.isArray(contacts) ? contacts.filter(Boolean) : [];
+    var contacts = storageGet(STORAGE_KEYS.contacts, []);
+    if (!Array.isArray(contacts)) return [];
+
+    return contacts.filter(function (contact) {
+      return Boolean(contact);
+    });
   }
 
   function setContacts(contacts) {
-    localStorage.setItem(STORAGE_KEYS.contacts, JSON.stringify(contacts.filter(Boolean)));
+    var clean = contacts.filter(function (contact) {
+      return Boolean(contact);
+    });
+
+    storageSet(STORAGE_KEYS.contacts, clean);
     updateContactsStatus();
   }
 
   function getHistory() {
-    const history = safeJsonParse(localStorage.getItem(STORAGE_KEYS.history), []);
+    var history = storageGet(STORAGE_KEYS.history, []);
     return Array.isArray(history) ? history : [];
   }
 
   function setHistory(history) {
-    localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(history.slice(0, 20)));
+    storageSet(STORAGE_KEYS.history, history.slice(0, 20));
     renderHistory();
   }
 
-  function addHistory(source = 'Botão de emergência') {
-    const contacts = getContacts();
-    const item = {
-      id: globalThis.crypto?.randomUUID?.() || String(Date.now()),
+  function randomId() {
+    return 'id_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+  }
+
+  function addHistory(source) {
+    var contacts = getContacts();
+    var item = {
+      id: randomId(),
       date: nowDateTime(),
-      source,
+      source: source || 'Botão de emergência',
       contacts: contacts.length,
       lat: state.lastLocation.lat,
       lng: state.lastLocation.lng,
       status: 'Simulado'
     };
-    setHistory([item, ...getHistory()]);
+
+    setHistory([item].concat(getHistory()));
   }
 
   function getScreenTitle(screenId) {
-    const screen = $(`#screen-${screenId}`);
-    return screen?.dataset?.title || 'Coari por Elas';
+    var screen = $('#screen-' + screenId);
+    return screen && screen.getAttribute('data-title') ? screen.getAttribute('data-title') : 'Coari por Elas';
   }
 
   function setActiveNav(screenId) {
-    navButtons.forEach(button => {
-      const target = button.dataset.nav;
-      const active = target === screenId
-        || (screenId === 'contatos' && target === 'rede')
-        || (screenId === 'orientacoes' && target === 'mais')
-        || (screenId === 'localizacao' && target === 'mais');
+    var buttons = $$('.bottom-nav [data-nav]');
+
+    buttons.forEach(function (button) {
+      var target = button.getAttribute('data-nav');
+      var active = target === screenId ||
+        (screenId === 'contatos' && target === 'rede') ||
+        (screenId === 'orientacoes' && target === 'mais') ||
+        (screenId === 'localizacao' && target === 'mais');
+
       button.classList.toggle('active', active);
     });
   }
 
-  function goTo(screenId, push = true) {
-    const target = $(`#screen-${screenId}`);
+  function goTo(screenId, push) {
+    var target = $('#screen-' + screenId);
+    var screens = $$('.screen');
+    var headerTitle = $('#headerTitle');
+    var btnBack = $('#btnBack');
+
     if (!target) return;
 
-    if (push && state.currentScreen !== screenId) {
+    if (push !== false && state.currentScreen !== screenId) {
       state.historyStack.push(state.currentScreen);
     }
 
-    screens.forEach(screen => screen.classList.remove('is-active'));
+    screens.forEach(function (screen) {
+      screen.classList.remove('is-active');
+    });
+
     target.classList.add('is-active');
     target.scrollTop = 0;
-
     state.currentScreen = screenId;
-    headerTitle.textContent = getScreenTitle(screenId);
+
+    if (headerTitle) headerTitle.textContent = getScreenTitle(screenId);
     setActiveNav(screenId);
-    btnBack.style.visibility = screenId === 'inicio' ? 'hidden' : 'visible';
+    if (btnBack) btnBack.style.visibility = screenId === 'inicio' ? 'hidden' : 'visible';
 
     if (screenId === 'localizacao') {
-      setTimeout(() => loadNearbyPlaces({ force: false }), 120);
+      setTimeout(function () {
+        loadNearbyPlaces(false);
+      }, 180);
     }
   }
 
   function clearEmergencyTimers() {
-    state.emergencyTimers.forEach(timer => clearTimeout(timer));
+    state.emergencyTimers.forEach(function (timer) {
+      clearTimeout(timer);
+    });
     state.emergencyTimers = [];
   }
 
   function resetEmergencyRoute() {
-    $$('.route-step').forEach((step, index) => {
+    $$('.route-step').forEach(function (step, index) {
       step.classList.toggle('done', index === 0);
       step.classList.remove('active');
-      const time = $('time', step);
+      var time = $('time', step);
       if (time) time.textContent = index === 0 ? nowTime() : '--:--';
     });
   }
 
   function markEmergencyStep(index) {
-    const step = $(`.route-step[data-step="${index}"]`);
+    var step = $('.route-step[data-step="' + index + '"]');
     if (!step) return;
+
     step.classList.add('done');
     step.classList.remove('active');
-    const time = $('time', step);
+
+    var time = $('time', step);
     if (time) time.textContent = nowTime();
   }
 
   function setRouteActive(index) {
-    $$('.route-step').forEach(step => step.classList.remove('active'));
-    const step = $(`.route-step[data-step="${index}"]`);
-    step?.classList.add('active');
+    $$('.route-step').forEach(function (step) {
+      step.classList.remove('active');
+    });
+
+    var step = $('.route-step[data-step="' + index + '"]');
+    if (step) step.classList.add('active');
   }
 
-  function updateLocation() {
-    if (!('geolocation' in navigator)) {
-      return Promise.resolve(state.lastLocation);
+  function updateLocation(callback) {
+    if (!navigator.geolocation) {
+      syncMapLinks();
+      if (callback) callback(state.lastLocation);
+      return;
     }
 
-    return new Promise(resolve => {
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          state.lastLocation = {
-            lat: Number(position.coords.latitude.toFixed(6)),
-            lng: Number(position.coords.longitude.toFixed(6))
-          };
-          resolve(state.lastLocation);
-        },
-        () => resolve(state.lastLocation),
-        { enableHighAccuracy: true, timeout: 3500, maximumAge: 60000 }
-      );
-    });
+    navigator.geolocation.getCurrentPosition(
+      function (position) {
+        state.lastLocation = {
+          lat: Number(position.coords.latitude.toFixed(6)),
+          lng: Number(position.coords.longitude.toFixed(6))
+        };
+        syncMapLinks();
+        if (callback) callback(state.lastLocation);
+      },
+      function () {
+        syncMapLinks();
+        if (callback) callback(state.lastLocation);
+      },
+      { enableHighAccuracy: true, timeout: 3500, maximumAge: 60000 }
+    );
   }
 
   function mapsUrl() {
-    const { lat, lng } = state.lastLocation;
-    return `https://maps.google.com/?q=${lat},${lng}`;
+    return 'https://www.google.com/maps/search/?api=1&query=' +
+      encodeURIComponent(state.lastLocation.lat + ',' + state.lastLocation.lng);
   }
 
   function selectedPlace() {
-    return state.places.find(place => place.id === state.selectedPlaceId) || null;
+    for (var i = 0; i < state.places.length; i += 1) {
+      if (state.places[i].id === state.selectedPlaceId) return state.places[i];
+    }
+    return null;
   }
 
-  function routeUrl(place = selectedPlace()) {
-    const { lat, lng } = state.lastLocation;
-    if (!place) return mapsUrl();
-    return `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${place.lat},${place.lng}&travelmode=driving`;
+  function routeUrl(place) {
+    var selected = place || selectedPlace();
+    var origin = state.lastLocation.lat + ',' + state.lastLocation.lng;
+
+    if (!selected) return mapsUrl();
+
+    var destination = selected.lat + ',' + selected.lng;
+    return 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(origin) +
+      '&destination=' + encodeURIComponent(destination) + '&travelmode=driving';
+  }
+
+  function syncMapLinks() {
+    var linkOpenMap = $('#linkOpenMap');
+    var linkOpenRoute = $('#linkOpenSelectedRoute');
+
+    if (linkOpenMap) linkOpenMap.setAttribute('href', mapsUrl());
+    if (linkOpenRoute) linkOpenRoute.setAttribute('href', routeUrl());
   }
 
   function distanceInMeters(origin, destination) {
-    const earthRadius = 6371000;
-    const toRad = value => value * Math.PI / 180;
-    const dLat = toRad(destination.lat - origin.lat);
-    const dLng = toRad(destination.lng - origin.lng);
-    const lat1 = toRad(origin.lat);
-    const lat2 = toRad(destination.lat);
-    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    var earthRadius = 6371000;
+    var toRad = function (value) { return value * Math.PI / 180; };
+    var dLat = toRad(destination.lat - origin.lat);
+    var dLng = toRad(destination.lng - origin.lng);
+    var lat1 = toRad(origin.lat);
+    var lat2 = toRad(destination.lat);
+    var a = Math.pow(Math.sin(dLat / 2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dLng / 2), 2);
     return Math.round(earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   }
 
-  function formatDistance(meters = 0) {
-    if (meters < 1000) return `${meters} m`;
-    return `${(meters / 1000).toFixed(1).replace('.', ',')} km`;
+  function formatDistance(meters) {
+    var value = Number(meters || 0);
+    if (value < 1000) return value + ' m';
+    return (value / 1000).toFixed(1).replace('.', ',') + ' km';
   }
 
-  function categoryFromTags(tags = {}) {
-    const amenity = tags.amenity || '';
-    const healthcare = tags.healthcare || '';
-    const office = tags.office || '';
-    const socialFacility = tags.social_facility || '';
+  function categoryFromTags(tags) {
+    var amenity = tags.amenity || '';
+    var healthcare = tags.healthcare || '';
+    var office = tags.office || '';
+    var socialFacility = tags.social_facility || '';
 
     if (amenity === 'police') return 'safety';
-    if (['hospital', 'clinic', 'doctors', 'pharmacy', 'dentist'].includes(amenity) || healthcare) return 'health';
-    if (['social_facility', 'community_centre'].includes(amenity) || socialFacility) return 'social';
-    if (['bank', 'townhall', 'public_building'].includes(amenity) || ['government', 'ngo', 'social'].includes(office)) return 'agency';
+    if (['hospital', 'clinic', 'doctors', 'pharmacy', 'dentist'].indexOf(amenity) !== -1 || healthcare) return 'health';
+    if (['social_facility', 'community_centre'].indexOf(amenity) !== -1 || socialFacility) return 'social';
+    if (['bank', 'townhall', 'public_building'].indexOf(amenity) !== -1 || ['government', 'ngo', 'social'].indexOf(office) !== -1) return 'agency';
     return 'support';
   }
 
-  function buildOverpassQuery({ lat, lng }, radius = SUPPORT_RADIUS_METERS) {
-    return `
-      [out:json][timeout:25];
-      (
-        node(around:${radius},${lat},${lng})["amenity"~"hospital|clinic|doctors|pharmacy|police|social_facility|community_centre|townhall|bank|public_building"];
-        way(around:${radius},${lat},${lng})["amenity"~"hospital|clinic|doctors|pharmacy|police|social_facility|community_centre|townhall|bank|public_building"];
-        relation(around:${radius},${lat},${lng})["amenity"~"hospital|clinic|doctors|pharmacy|police|social_facility|community_centre|townhall|bank|public_building"];
-        node(around:${radius},${lat},${lng})["healthcare"];
-        way(around:${radius},${lat},${lng})["healthcare"];
-        relation(around:${radius},${lat},${lng})["healthcare"];
-        node(around:${radius},${lat},${lng})["office"~"government|ngo|social"];
-        way(around:${radius},${lat},${lng})["office"~"government|ngo|social"];
-        relation(around:${radius},${lat},${lng})["office"~"government|ngo|social"];
-      );
-      out center tags 40;
-    `;
+  function buildOverpassQuery(location, radius) {
+    return '[out:json][timeout:20];(' +
+      'node(around:' + radius + ',' + location.lat + ',' + location.lng + ')["amenity"~"hospital|clinic|doctors|pharmacy|police|social_facility|community_centre|townhall|bank|public_building"];' +
+      'way(around:' + radius + ',' + location.lat + ',' + location.lng + ')["amenity"~"hospital|clinic|doctors|pharmacy|police|social_facility|community_centre|townhall|bank|public_building"];' +
+      'relation(around:' + radius + ',' + location.lat + ',' + location.lng + ')["amenity"~"hospital|clinic|doctors|pharmacy|police|social_facility|community_centre|townhall|bank|public_building"];' +
+      'node(around:' + radius + ',' + location.lat + ',' + location.lng + ')["healthcare"];' +
+      'way(around:' + radius + ',' + location.lat + ',' + location.lng + ')["healthcare"];' +
+      'relation(around:' + radius + ',' + location.lat + ',' + location.lng + ')["healthcare"];' +
+      'node(around:' + radius + ',' + location.lat + ',' + location.lng + ')["office"~"government|ngo|social"];' +
+      'way(around:' + radius + ',' + location.lat + ',' + location.lng + ')["office"~"government|ngo|social"];' +
+      'relation(around:' + radius + ',' + location.lat + ',' + location.lng + ')["office"~"government|ngo|social"];' +
+      ');out center tags 40;';
   }
 
-  function normalizeOsmElements(elements = []) {
-    const origin = state.lastLocation;
-    const seen = new Set();
+  function normalizeOsmElements(elements) {
+    var origin = state.lastLocation;
+    var seen = {};
+    var places = [];
 
-    return elements
-      .map(element => {
-        const tags = element.tags || {};
-        const lat = Number(element.lat ?? element.center?.lat);
-        const lng = Number(element.lon ?? element.center?.lon);
-        const name = tags.name || tags.official_name || tags.operator || '';
-        if (!Number.isFinite(lat) || !Number.isFinite(lng) || !name) return null;
+    for (var i = 0; i < elements.length; i += 1) {
+      var element = elements[i];
+      var tags = element.tags || {};
+      var lat = Number(element.lat || (element.center && element.center.lat));
+      var lng = Number(element.lon || (element.center && element.center.lon));
+      var name = tags.name || tags.official_name || tags.operator || '';
 
-        const category = categoryFromTags(tags);
-        const key = `${name.toLowerCase()}_${lat.toFixed(4)}_${lng.toFixed(4)}`;
-        if (seen.has(key)) return null;
-        seen.add(key);
+      if (!isFinite(lat) || !isFinite(lng) || !name) continue;
 
-        const addressParts = [
-          tags['addr:street'],
-          tags['addr:housenumber'],
-          tags['addr:suburb'],
-          tags['addr:city']
-        ].filter(Boolean);
+      var key = name.toLowerCase() + '_' + lat.toFixed(4) + '_' + lng.toFixed(4);
+      if (seen[key]) continue;
+      seen[key] = true;
 
-        return {
-          id: `osm-${element.type}-${element.id}`,
-          name,
-          category,
-          lat,
-          lng,
-          address: addressParts.join(', ') || 'Endereço não informado no OpenStreetMap',
-          source: 'OpenStreetMap',
-          distance: distanceInMeters(origin, { lat, lng })
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 20);
+      var addressParts = [
+        tags['addr:street'],
+        tags['addr:housenumber'],
+        tags['addr:suburb'],
+        tags['addr:city']
+      ].filter(function (value) { return Boolean(value); });
+
+      var category = categoryFromTags(tags);
+      places.push({
+        id: 'osm-' + element.type + '-' + element.id,
+        name: name,
+        category: category,
+        lat: lat,
+        lng: lng,
+        address: addressParts.join(', ') || 'Endereço não informado no OpenStreetMap',
+        source: 'OpenStreetMap',
+        distance: distanceInMeters(origin, { lat: lat, lng: lng })
+      });
+    }
+
+    places.sort(function (a, b) { return a.distance - b.distance; });
+    return places.slice(0, 20);
   }
 
   function demoPointsWithDistance() {
-    const origin = state.lastLocation;
-    return DEMO_SUPPORT_POINTS.map(place => ({
-      ...place,
-      distance: distanceInMeters(origin, place),
-      demo: true
-    })).sort((a, b) => a.distance - b.distance);
+    var origin = state.lastLocation;
+    var places = DEMO_SUPPORT_POINTS.map(function (place) {
+      var copy = {};
+      for (var key in place) copy[key] = place[key];
+      copy.distance = distanceInMeters(origin, place);
+      copy.demo = true;
+      return copy;
+    });
+
+    places.sort(function (a, b) { return a.distance - b.distance; });
+    return places;
   }
 
-  async function fetchOsmPlaces() {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 9000);
+  function fetchOsmPlaces(callback) {
+    if (!window.XMLHttpRequest) {
+      callback([]);
+      return;
+    }
+
+    var xhr = new XMLHttpRequest();
+    var finished = false;
+    var timer = setTimeout(function () {
+      if (finished) return;
+      finished = true;
+      try { xhr.abort(); } catch (error) {}
+      callback([]);
+    }, 9000);
+
+    xhr.open('POST', 'https://overpass-api.de/api/interpreter', true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8');
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4 || finished) return;
+      finished = true;
+      clearTimeout(timer);
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        callback([]);
+        return;
+      }
+
+      try {
+        var data = JSON.parse(xhr.responseText);
+        callback(normalizeOsmElements(data.elements || []));
+      } catch (error) {
+        callback([]);
+      }
+    };
 
     try {
-      const response = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-        body: new URLSearchParams({ data: buildOverpassQuery(state.lastLocation) }),
-        signal: controller.signal
-      });
-
-      if (!response.ok) throw new Error('Falha ao buscar dados no OpenStreetMap.');
-      const data = await response.json();
-      return normalizeOsmElements(data.elements || []);
-    } finally {
-      clearTimeout(timeout);
+      xhr.send('data=' + encodeURIComponent(buildOverpassQuery(state.lastLocation, SUPPORT_RADIUS_METERS)));
+    } catch (error) {
+      clearTimeout(timer);
+      callback([]);
     }
   }
 
-  function showMapLoading(message, visible = true) {
-    const loading = $('#mapLoading');
+  function showMapLoading(message, visible) {
+    var loading = $('#mapLoading');
     if (!loading) return;
-    loading.textContent = message;
+
+    loading.textContent = message || '';
     loading.classList.toggle('is-hidden', !visible);
   }
 
   function ensureSupportMap() {
-    const mapElement = $('#supportMap');
-    if (!mapElement || !globalThis.L) {
-      showMapLoading('Mapa indisponível. Verifique a internet.', true);
+    var mapElement = $('#supportMap');
+
+    if (!mapElement || !window.L) {
+      showMapLoading('Mapa indisponível. A lista continua funcionando.', true);
       return null;
     }
 
     if (!state.supportMap) {
       state.supportMap = L.map(mapElement, {
         zoomControl: false,
-        attributionControl: false
+        attributionControl: false,
+        tap: true
       }).setView([state.lastLocation.lat, state.lastLocation.lng], 14);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -416,15 +542,19 @@
       L.control.zoom({ position: 'bottomright' }).addTo(state.supportMap);
     }
 
-    setTimeout(() => state.supportMap?.invalidateSize(), 120);
+    setTimeout(function () {
+      if (state.supportMap) state.supportMap.invalidateSize();
+    }, 160);
+
     return state.supportMap;
   }
 
-  function markerIcon(category, selected = false) {
-    const icon = CATEGORY_ICONS[category] || CATEGORY_ICONS.support;
+  function markerIcon(category, selected) {
+    var icon = CATEGORY_ICONS[category] || CATEGORY_ICONS.support;
+
     return L.divIcon({
       className: '',
-      html: `<span class="map-marker ${category} ${selected ? 'selected' : ''}"><i class="${icon}"></i></span>`,
+      html: '<span class="map-marker ' + escapeHtml(category) + (selected ? ' selected' : '') + '"><i class="' + escapeHtml(icon) + '"></i></span>',
       iconSize: selected ? [42, 42] : [34, 34],
       iconAnchor: selected ? [21, 42] : [17, 34],
       popupAnchor: [0, -34]
@@ -442,8 +572,9 @@
   }
 
   function setUserMarker() {
-    if (!state.supportMap || !globalThis.L) return;
-    const latLng = [state.lastLocation.lat, state.lastLocation.lng];
+    if (!state.supportMap || !window.L) return;
+
+    var latLng = [state.lastLocation.lat, state.lastLocation.lng];
 
     if (!state.userMarker) {
       state.userMarker = L.marker(latLng, { icon: userIcon() })
@@ -455,25 +586,30 @@
   }
 
   function renderMapMarkers() {
-    if (!state.supportMap || !globalThis.L) return;
+    if (!state.supportMap || !window.L) return;
 
-    state.supportMarkers.forEach(marker => marker.remove());
+    state.supportMarkers.forEach(function (marker) {
+      try { state.supportMap.removeLayer(marker); } catch (error) {}
+    });
     state.supportMarkers = [];
 
-    const filtered = filteredPlaces();
-    const bounds = [[state.lastLocation.lat, state.lastLocation.lng]];
+    var filtered = filteredPlaces();
+    var bounds = [[state.lastLocation.lat, state.lastLocation.lng]];
 
-    filtered.forEach(place => {
-      const isSelected = place.id === state.selectedPlaceId;
-      const marker = L.marker([place.lat, place.lng], { icon: markerIcon(place.category, isSelected) })
+    filtered.forEach(function (place) {
+      var isSelected = place.id === state.selectedPlaceId;
+      var marker = L.marker([place.lat, place.lng], { icon: markerIcon(place.category, isSelected) })
         .addTo(state.supportMap)
-        .bindPopup(`
-          <strong>${escapeHtml(place.name)}</strong><br>
-          <small>${escapeHtml(CATEGORY_LABELS[place.category] || 'Apoio')} • ${escapeHtml(formatDistance(place.distance))}</small><br>
-          <a href="${routeUrl(place)}" target="_blank" rel="noopener">Abrir rota</a>
-        `);
+        .bindPopup(
+          '<strong>' + escapeHtml(place.name) + '</strong><br>' +
+          '<small>' + escapeHtml(CATEGORY_LABELS[place.category] || 'Apoio') + ' • ' + escapeHtml(formatDistance(place.distance)) + '</small><br>' +
+          '<a href="' + escapeHtml(routeUrl(place)) + '" target="_blank" rel="noopener noreferrer">Abrir rota</a>'
+        );
 
-      marker.on('click', () => selectPlace(place.id, { pan: false }));
+      marker.on('click', function () {
+        selectPlace(place.id, { pan: false });
+      });
+
       state.supportMarkers.push(marker);
       bounds.push([place.lat, place.lng]);
     });
@@ -487,238 +623,252 @@
 
   function filteredPlaces() {
     if (state.placeFilter === 'all') return state.places;
-    return state.places.filter(place => place.category === state.placeFilter);
+    return state.places.filter(function (place) {
+      return place.category === state.placeFilter;
+    });
   }
 
   function renderSelectedPlace() {
-    const name = $('#selectedPlaceName');
-    const meta = $('#selectedPlaceMeta');
-    const place = selectedPlace();
+    var name = $('#selectedPlaceName');
+    var meta = $('#selectedPlaceMeta');
+    var place = selectedPlace();
 
     if (!name || !meta) return;
 
     if (!place) {
       name.textContent = 'Nenhuma unidade selecionada';
       meta.textContent = 'Selecione um ponto no mapa ou na lista.';
+      syncMapLinks();
       return;
     }
 
     name.textContent = place.name;
-    meta.textContent = `${CATEGORY_LABELS[place.category] || 'Apoio'} • ${formatDistance(place.distance)} • ${place.demo ? 'referência demonstrativa' : place.source}`;
+    meta.textContent = (CATEGORY_LABELS[place.category] || 'Apoio') + ' • ' + formatDistance(place.distance) + ' • ' + (place.demo ? 'referência demonstrativa' : place.source);
+    syncMapLinks();
   }
 
   function renderPlacesList() {
-    const list = $('#placesList');
+    var list = $('#placesList');
     if (!list) return;
 
-    const places = filteredPlaces();
+    var places = filteredPlaces();
 
     if (!places.length) {
-      list.innerHTML = `
-        <article class="places-empty">
-          Nenhum serviço encontrado para este filtro. Tente outro filtro ou atualize o GPS.
-        </article>
-      `;
+      list.innerHTML = '<article class="places-empty">Nenhum serviço encontrado para este filtro. Tente outro filtro ou atualize o GPS.</article>';
       renderSelectedPlace();
       return;
     }
 
-    list.innerHTML = places.map(place => {
-      const icon = CATEGORY_ICONS[place.category] || CATEGORY_ICONS.support;
-      const active = place.id === state.selectedPlaceId ? ' is-active' : '';
-      const source = place.demo ? 'Demonstração' : place.source;
-      return `
-        <button class="place-card${active}" type="button" data-place-id="${escapeHtml(place.id)}">
-          <span class="place-type-icon ${escapeHtml(place.category)}"><i class="${escapeHtml(icon)}" aria-hidden="true"></i></span>
-          <span>
-            <strong>${escapeHtml(place.name)}</strong>
-            <small>${escapeHtml(CATEGORY_LABELS[place.category] || 'Apoio')} • ${escapeHtml(place.address)} • ${escapeHtml(source)}</small>
-          </span>
-          <em class="place-distance">${escapeHtml(formatDistance(place.distance))}</em>
-        </button>
-      `;
+    var html = places.map(function (place) {
+      var icon = CATEGORY_ICONS[place.category] || CATEGORY_ICONS.support;
+      var active = place.id === state.selectedPlaceId ? ' is-active' : '';
+      var source = place.demo ? 'Demonstração' : place.source;
+
+      return '<button class="place-card' + active + '" type="button" data-place-id="' + escapeHtml(place.id) + '">' +
+        '<span class="place-type-icon ' + escapeHtml(place.category) + '"><i class="' + escapeHtml(icon) + '" aria-hidden="true"></i></span>' +
+        '<span><strong>' + escapeHtml(place.name) + '</strong>' +
+        '<small>' + escapeHtml(CATEGORY_LABELS[place.category] || 'Apoio') + ' • ' + escapeHtml(place.address) + ' • ' + escapeHtml(source) + '</small></span>' +
+        '<em class="place-distance">' + escapeHtml(formatDistance(place.distance)) + '</em>' +
+        '</button>';
     }).join('');
 
+    list.innerHTML = html;
     renderSelectedPlace();
   }
 
-  function selectPlace(placeId, options = {}) {
-    const place = state.places.find(item => item.id === placeId);
+  function selectPlace(placeId, options) {
+    var place = null;
+
+    for (var i = 0; i < state.places.length; i += 1) {
+      if (state.places[i].id === placeId) {
+        place = state.places[i];
+        break;
+      }
+    }
+
     if (!place) return;
 
     state.selectedPlaceId = place.id;
     renderPlacesList();
     renderMapMarkers();
 
+    if (!options) options = {};
     if (options.pan !== false && state.supportMap) {
       state.supportMap.setView([place.lat, place.lng], Math.max(state.supportMap.getZoom(), 15), { animate: true });
     }
+
+    syncMapLinks();
   }
 
-  async function loadNearbyPlaces({ force = false } = {}) {
+  function loadNearbyPlaces(force) {
     if (state.isLoadingPlaces) return;
 
-    const map = ensureSupportMap();
-    if (!map) return;
+    var map = ensureSupportMap();
 
     if (state.placesLoaded && !force) {
-      setTimeout(() => state.supportMap?.invalidateSize(), 120);
-      renderMapMarkers();
+      if (map) {
+        setTimeout(function () {
+          if (state.supportMap) state.supportMap.invalidateSize();
+        }, 160);
+        renderMapMarkers();
+      }
+      renderPlacesList();
+      syncMapLinks();
       return;
     }
 
     state.isLoadingPlaces = true;
     showMapLoading('Buscando unidades próximas...', true);
 
-    try {
-      await updateLocation();
+    updateLocation(function () {
       ensureSupportMap();
       setUserMarker();
 
-      let places = [];
-      try {
-        places = await fetchOsmPlaces();
-      } catch (_) {
-        places = [];
-      }
+      fetchOsmPlaces(function (places) {
+        if (!places || !places.length) {
+          places = demoPointsWithDistance();
+          showToast('Exibindo pontos demonstrativos no mapa real.', 2600);
+        } else {
+          showToast(places.length + ' unidade' + (places.length > 1 ? 's' : '') + ' encontrada' + (places.length > 1 ? 's' : '') + '.', 2200);
+        }
 
-      if (!places.length) {
-        places = demoPointsWithDistance();
-        showToast('Não encontrei dados OSM próximos. Exibindo pontos demonstrativos.', 3200);
-      } else {
-        showToast(`${places.length} unidade${places.length > 1 ? 's' : ''} encontrada${places.length > 1 ? 's' : ''} no mapa real.`, 2200);
-      }
+        state.places = places;
+        state.selectedPlaceId = places[0] ? places[0].id : null;
+        state.placesLoaded = true;
+        state.isLoadingPlaces = false;
 
-      state.places = places;
-      state.selectedPlaceId = places[0]?.id || null;
-      state.placesLoaded = true;
-      renderPlacesList();
-      renderMapMarkers();
-      showMapLoading('', false);
-    } finally {
-      state.isLoadingPlaces = false;
-    }
+        renderPlacesList();
+        renderMapMarkers();
+        showMapLoading('', false);
+        syncMapLinks();
+      });
+    });
   }
 
-  function startEmergency(source = 'Botão de emergência') {
+  function startEmergency(source) {
     clearEmergencyTimers();
     resetEmergencyRoute();
 
-    const contacts = getContacts();
-    const contactsLabel = $('#contactsAlertLabel');
+    var contacts = getContacts();
+    var contactsLabel = $('#contactsAlertLabel');
+
     if (contactsLabel) {
       contactsLabel.textContent = contacts.length > 0
-        ? `${contacts.length} contato${contacts.length > 1 ? 's' : ''} avisado${contacts.length > 1 ? 's' : ''}`
+        ? contacts.length + ' contato' + (contacts.length > 1 ? 's' : '') + ' avisado' + (contacts.length > 1 ? 's' : '')
         : 'Nenhum contato cadastrado';
     }
 
     goTo('acionamento');
     showToast('Acionamento demonstrativo iniciado. Nenhum SMS real será enviado.', 2800);
 
-    updateLocation().then(() => {
-      const sequence = [
+    updateLocation(function () {
+      var sequence = [
         { index: 1, delay: 650, message: 'Localização preparada para compartilhamento.' },
         { index: 2, delay: 1400, message: contacts.length ? 'Rede de apoio notificada na simulação.' : 'Cadastre contatos para o fluxo real.' },
         { index: 3, delay: 2200, message: 'Ligação para 190 simulada.' }
       ];
 
-      sequence.forEach(({ index, delay, message }) => {
-        state.emergencyTimers.push(setTimeout(() => {
-          setRouteActive(index);
-          markEmergencyStep(index);
-          showToast(message, 1600);
-        }, delay));
+      sequence.forEach(function (item) {
+        var timer = setTimeout(function () {
+          setRouteActive(item.index);
+          markEmergencyStep(item.index);
+          showToast(item.message, 1600);
+        }, item.delay);
+        state.emergencyTimers.push(timer);
       });
 
-      state.emergencyTimers.push(setTimeout(() => {
-        addHistory(source);
+      state.emergencyTimers.push(setTimeout(function () {
+        addHistory(source || 'Botão de emergência');
         showToast('Registro salvo no histórico local.', 1800);
       }, 2600));
     });
   }
 
   function formatPhone(value) {
-    const digits = value.replace(/\D/g, '').slice(0, 11);
+    var digits = String(value || '').replace(/\D/g, '').slice(0, 11);
     if (digits.length <= 2) return digits;
-    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    if (digits.length <= 7) return '(' + digits.slice(0, 2) + ') ' + digits.slice(2);
+    return '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 7) + '-' + digits.slice(7);
   }
 
   function phoneIsValid(value) {
-    const digits = value.replace(/\D/g, '');
+    var digits = String(value || '').replace(/\D/g, '');
     return digits.length >= 10 && digits.length <= 11;
   }
 
   function loadContactsIntoForm() {
-    const contacts = getContacts();
-    ['contact1', 'contact2', 'contact3'].forEach((id, index) => {
-      const input = $(`#${id}`);
+    var contacts = getContacts();
+    ['contact1', 'contact2', 'contact3'].forEach(function (id, index) {
+      var input = $('#' + id);
       if (input) input.value = contacts[index] || '';
     });
     updateContactsStatus();
   }
 
   function updateContactsStatus() {
-    const contacts = getContacts();
-    const status = $('#contactsStatus');
+    var contacts = getContacts();
+    var status = $('#contactsStatus');
+
     if (!status) return;
+
     status.textContent = contacts.length
-      ? `${contacts.length} contato${contacts.length > 1 ? 's' : ''} cadastrado${contacts.length > 1 ? 's' : ''}`
+      ? contacts.length + ' contato' + (contacts.length > 1 ? 's' : '') + ' cadastrado' + (contacts.length > 1 ? 's' : '')
       : 'Nenhum contato cadastrado';
   }
 
   function renderHistory() {
-    const list = $('#historyList');
+    var list = $('#historyList');
     if (!list) return;
 
-    const history = getHistory();
+    var history = getHistory();
     if (!history.length) {
-      list.innerHTML = `
-        <article class="history-empty">
-          <strong>Nenhum acionamento registrado</strong>
-          <small>Os registros desta MVP ficam apenas no navegador.</small>
-        </article>
-      `;
+      list.innerHTML = '<article class="history-empty"><strong>Nenhum acionamento registrado</strong><small>Os registros desta MVP ficam apenas no navegador.</small></article>';
       return;
     }
 
-    list.innerHTML = history.map(item => `
-      <article class="history-item">
-        <div>
-          <strong>${escapeHtml(item.source)}</strong>
-          <small>${escapeHtml(item.date)} • ${item.contacts} contato${item.contacts === 1 ? '' : 's'} • ${escapeHtml(item.status)}</small>
-        </div>
-        <a href="https://maps.google.com/?q=${item.lat},${item.lng}" target="_blank" rel="noopener">Mapa</a>
-      </article>
-    `).join('');
+    list.innerHTML = history.map(function (item) {
+      var coords = encodeURIComponent(item.lat + ',' + item.lng);
+      return '<article class="history-item">' +
+        '<div><strong>' + escapeHtml(item.source) + '</strong>' +
+        '<small>' + escapeHtml(item.date) + ' • ' + Number(item.contacts || 0) + ' contato' + (Number(item.contacts || 0) === 1 ? '' : 's') + ' • ' + escapeHtml(item.status) + '</small></div>' +
+        '<a href="https://www.google.com/maps/search/?api=1&query=' + coords + '" target="_blank" rel="noopener noreferrer">Mapa</a>' +
+        '</article>';
+    }).join('');
   }
 
   function setupContactForm() {
-    ['contact1', 'contact2', 'contact3'].forEach(id => {
-      const input = $(`#${id}`);
-      input?.addEventListener('input', () => {
+    ['contact1', 'contact2', 'contact3'].forEach(function (id) {
+      var input = $('#' + id);
+      on(input, 'input', function () {
         input.value = formatPhone(input.value);
-        input.setSelectionRange(input.value.length, input.value.length);
       });
     });
 
-    $('#contactForm')?.addEventListener('submit', event => {
+    on($('#contactForm'), 'submit', function (event) {
       event.preventDefault();
-      const values = ['contact1', 'contact2', 'contact3']
-        .map(id => $(`#${id}`)?.value.trim() || '')
-        .filter(Boolean);
 
-      const invalid = values.find(value => !phoneIsValid(value));
+      var values = ['contact1', 'contact2', 'contact3'].map(function (id) {
+        var input = $('#' + id);
+        return input ? input.value.trim() : '';
+      }).filter(function (value) {
+        return Boolean(value);
+      });
+
+      var invalid = false;
+      values.forEach(function (value) {
+        if (!phoneIsValid(value)) invalid = true;
+      });
+
       if (invalid) {
         showToast('Revise os telefones. Use DDD + número.', 2400);
         return;
       }
 
       setContacts(values);
-      showToast('Contatos salvos com segurança neste navegador.');
+      showToast('Contatos salvos neste navegador.');
     });
 
-    $('#btnClearContacts')?.addEventListener('click', () => {
+    on($('#btnClearContacts'), 'click', function () {
       setContacts([]);
       loadContactsIntoForm();
       showToast('Contatos removidos da demonstração.');
@@ -726,139 +876,187 @@
   }
 
   function wipeLocalData() {
-    localStorage.removeItem(STORAGE_KEYS.contacts);
-    localStorage.removeItem(STORAGE_KEYS.history);
+    storageRemove(STORAGE_KEYS.contacts);
+    storageRemove(STORAGE_KEYS.history);
     loadContactsIntoForm();
     renderHistory();
     showToast('Dados locais apagados.');
   }
 
-  function copyText(text) {
-    if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+  function copyText(text, callback) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        if (callback) callback(true);
+      }).catch(function () {
+        copyTextFallback(text, callback);
+      });
+      return;
+    }
 
-    const textarea = document.createElement('textarea');
+    copyTextFallback(text, callback);
+  }
+
+  function copyTextFallback(text, callback) {
+    var textarea = document.createElement('textarea');
     textarea.value = text;
+    textarea.setAttribute('readonly', '');
     textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
     textarea.style.opacity = '0';
     document.body.appendChild(textarea);
     textarea.select();
-    document.execCommand('copy');
-    textarea.remove();
-    return Promise.resolve();
+
+    var success = false;
+    try {
+      success = document.execCommand('copy');
+    } catch (error) {
+      success = false;
+    }
+
+    document.body.removeChild(textarea);
+    if (callback) callback(success);
   }
 
   function setupNavigation() {
-    document.addEventListener('click', event => {
-      const navTrigger = event.target.closest('[data-nav]');
+    document.addEventListener('click', function (event) {
+      var navTrigger = event.target.closest('[data-nav]');
       if (navTrigger) {
-        goTo(navTrigger.dataset.nav);
+        event.preventDefault();
+        goTo(navTrigger.getAttribute('data-nav'));
         return;
       }
 
-      const filterTrigger = event.target.closest('[data-place-filter]');
+      var filterTrigger = event.target.closest('[data-place-filter]');
       if (filterTrigger) {
-        state.placeFilter = filterTrigger.dataset.placeFilter;
-        $$('.map-filters button').forEach(button => button.classList.toggle('active', button === filterTrigger));
-        const firstFiltered = filteredPlaces()[0];
-        state.selectedPlaceId = firstFiltered?.id || null;
+        event.preventDefault();
+        state.placeFilter = filterTrigger.getAttribute('data-place-filter');
+        $$('.map-filters button').forEach(function (button) {
+          button.classList.toggle('active', button === filterTrigger);
+        });
+
+        var firstFiltered = filteredPlaces()[0];
+        state.selectedPlaceId = firstFiltered ? firstFiltered.id : null;
         renderPlacesList();
         renderMapMarkers();
+        syncMapLinks();
         return;
       }
 
-      const placeTrigger = event.target.closest('[data-place-id]');
+      var placeTrigger = event.target.closest('[data-place-id]');
       if (placeTrigger) {
-        selectPlace(placeTrigger.dataset.placeId);
+        event.preventDefault();
+        selectPlace(placeTrigger.getAttribute('data-place-id'));
         return;
       }
 
-      const toastTrigger = event.target.closest('[data-toast]');
+      var toastTrigger = event.target.closest('[data-toast]');
       if (toastTrigger) {
-        showToast(toastTrigger.dataset.toast);
+        showToast(toastTrigger.getAttribute('data-toast'));
       }
-    });
+    }, false);
 
-    btnBack?.addEventListener('click', () => {
-      const previous = state.historyStack.pop();
+    on($('#btnBack'), 'click', function () {
+      var previous = state.historyStack.pop();
       goTo(previous || 'inicio', false);
     });
 
-    $('#btnMore')?.addEventListener('click', () => goTo('mais'));
+    on($('#btnMore'), 'click', function () {
+      goTo('mais');
+    });
   }
 
   function setupActions() {
-    $('#btnEmergency')?.addEventListener('click', () => startEmergency('Botão de emergência'));
-    $('#btnShakeDemo')?.addEventListener('click', () => startEmergency('Shake simulado'));
+    on($('#btnEmergency'), 'click', function () {
+      startEmergency('Botão de emergência');
+    });
 
-    $('#btnSafe')?.addEventListener('click', () => {
+    on($('#btnShakeDemo'), 'click', function () {
+      startEmergency('Shake simulado');
+    });
+
+    on($('#btnSafe'), 'click', function () {
       clearEmergencyTimers();
       addHistory('Confirmação de segurança');
       showToast('Status registrado como em segurança.');
       goTo('inicio');
     });
 
-    $('#btnCancelAction')?.addEventListener('click', () => {
+    on($('#btnCancelAction'), 'click', function () {
       clearEmergencyTimers();
       showToast('Acionamento cancelado na demonstração.');
       goTo('inicio');
     });
 
-    $('#btnLocateMe')?.addEventListener('click', async () => {
+    on($('#btnLocateMe'), 'click', function () {
       showMapLoading('Atualizando GPS...', true);
-      await updateLocation();
-      setUserMarker();
+      updateLocation(function () {
+        setUserMarker();
+        state.placesLoaded = false;
+        loadNearbyPlaces(true);
+      });
+    });
+
+    on($('#btnRefreshPlaces'), 'click', function () {
       state.placesLoaded = false;
-      await loadNearbyPlaces({ force: true });
+      loadNearbyPlaces(true);
     });
 
-    $('#btnRefreshPlaces')?.addEventListener('click', () => loadNearbyPlaces({ force: true }));
-
-    $('#btnOpenMap')?.addEventListener('click', () => {
-      updateLocation().then(() => window.open(routeUrl(), '_blank', 'noopener'));
+    on($('#linkOpenMap'), 'click', function () {
+      syncMapLinks();
     });
 
-    $('#btnOpenSelectedRoute')?.addEventListener('click', () => {
-      updateLocation().then(() => window.open(routeUrl(), '_blank', 'noopener'));
+    on($('#linkOpenSelectedRoute'), 'click', function () {
+      syncMapLinks();
     });
 
-    $('#btnCopyMap')?.addEventListener('click', () => {
-      updateLocation()
-        .then(() => copyText(routeUrl()))
-        .then(() => showToast('Link da rota copiado.'))
-        .catch(() => showToast('Não foi possível copiar o link.'));
+    on($('#btnCopyMap'), 'click', function () {
+      updateLocation(function () {
+        copyText(routeUrl(), function (success) {
+          showToast(success ? 'Link da rota copiado.' : 'Não foi possível copiar o link.');
+        });
+      });
     });
 
-    $('#btnDemoHistory')?.addEventListener('click', () => {
+    on($('#btnDemoHistory'), 'click', function () {
       addHistory('Registro demonstrativo');
       showToast('Histórico demonstrativo adicionado.');
     });
 
-    $('#btnClearHistory')?.addEventListener('click', () => {
+    on($('#btnClearHistory'), 'click', function () {
       setHistory([]);
       showToast('Histórico limpo.');
     });
 
-    $('#btnQuickExit')?.addEventListener('click', () => {
-      $('#stealth')?.removeAttribute('hidden');
+    on($('#btnQuickExit'), 'click', function () {
+      var stealth = $('#stealth');
+      if (stealth) stealth.removeAttribute('hidden');
     });
 
-    $('#btnReturn')?.addEventListener('click', () => {
-      $('#stealth')?.setAttribute('hidden', '');
+    on($('#btnReturn'), 'click', function () {
+      var stealth = $('#stealth');
+      if (stealth) stealth.setAttribute('hidden', '');
       goTo('inicio');
     });
 
-    $('#btnWipeData')?.addEventListener('click', wipeLocalData);
+    on($('#btnWipeData'), 'click', wipeLocalData);
   }
 
   function init() {
-    btnBack.style.visibility = 'hidden';
+    var btnBack = $('#btnBack');
+    if (btnBack) btnBack.style.visibility = 'hidden';
+
     setupNavigation();
     setupContactForm();
     setupActions();
     loadContactsIntoForm();
     renderHistory();
     resetEmergencyRoute();
+    syncMapLinks();
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, false);
+  } else {
+    init();
+  }
 })();
