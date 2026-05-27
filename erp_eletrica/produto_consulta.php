@@ -58,7 +58,6 @@ SVG;
     return 'data:image/svg+xml;charset=UTF-8,' . rawurlencode($svg);
 }
 
-<?php
 function normalizarImagemUrl(?string $imagem): string
 {
     $imagem = trim((string)$imagem);
@@ -95,9 +94,13 @@ function normalizarImagemUrl(?string $imagem): string
     // Remove leading './' for relative paths
     $imagem = ltrim($imagem, './');
 
+    // Quando apenas o nome do arquivo é salvo no banco, assume pasta padrão.
+    if (!str_contains($imagem, '/')) {
+        $imagem = 'public/uploads/produtos/' . $imagem;
+    }
+
     return baseUrl() . appBasePath() . '/' . $imagem;
 }
-?>
 
 function primeiraImagemDoCampo(?string $imagens): string
 {
