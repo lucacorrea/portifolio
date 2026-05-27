@@ -52,6 +52,26 @@ button {
   border: 0;
   cursor: pointer;
 }
+.brand-symbol {
+  width: 58px;
+  height: 58px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(135deg, rgba(122, 28, 83, 0.12), rgba(209, 75, 125, 0.18)),
+    #ffffff;
+  border: 1px solid rgba(122, 28, 83, 0.14);
+  box-shadow: 0 16px 34px rgba(122, 28, 83, 0.14);
+  color: #7a1c53;
+  flex: 0 0 auto;
+}
+
+.brand-symbol i {
+  font-size: 30px;
+  line-height: 1;
+}
 
 svg {
   width: 22px;

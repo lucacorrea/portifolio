@@ -1,26 +1,33 @@
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#f6f4f7" />
   <meta name="description" content="MVP institucional mobile para apoio à mulher - Coari por Elas" />
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
   <title>Coari por Elas — MVP Institucional</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
+
 <body>
   <main class="prototype-stage" aria-label="Protótipo mobile Coari por Elas">
     <section class="phone" aria-label="Aplicativo mobile clicável">
       <div class="phone-inner">
         <header class="app-header">
           <button class="icon-button" id="btnBack" type="button" aria-label="Voltar">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
           </button>
 
           <strong id="headerTitle">Coari por Elas</strong>
 
           <button class="icon-button" id="btnMore" type="button" aria-label="Menu rápido">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h.01M12 12h.01M19 12h.01" />
+            </svg>
           </button>
         </header>
 
@@ -28,15 +35,18 @@
           <div class="home-brand">
             <div class="brand-row">
               <div class="brand-symbol" aria-hidden="true">
-                <span></span>
+                <i class="ri-shield-user-line"></i>
               </div>
               <div>
                 <h1>Coari<br><small>por Elas</small></h1>
                 <p>Rede institucional de apoio, orientação e proteção.</p>
               </div>
             </div>
-            <button class="bell-button" type="button" data-toast="Notificações de apoio ativadas para demonstração." aria-label="Notificações">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <button class="bell-button" type="button" data-toast="Notificações de apoio ativadas para demonstração."
+              aria-label="Notificações">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
             </button>
           </div>
 
@@ -46,12 +56,14 @@
               <h2>Apoio rápido, sigiloso e orientado.</h2>
               <p>Acione sua rede de proteção, compartilhe localização e consulte canais oficiais de atendimento.</p>
             </div>
-           
+
           </article>
 
           <button class="emergency-card" id="btnEmergency" type="button">
             <span class="siren-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M8 12V9a4 4 0 0 1 8 0v3M6 12h12l1 8H5l1-8ZM4 9 2 7M20 9l2-2M12 3V1"/></svg>
+              <svg viewBox="0 0 24 24">
+                <path d="M8 12V9a4 4 0 0 1 8 0v3M6 12h12l1 8H5l1-8ZM4 9 2 7M20 9l2-2M12 3V1" />
+              </svg>
             </span>
             <span>
               <strong>Pedir ajuda</strong>
@@ -84,7 +96,10 @@
 
           <article class="location-card">
             <div class="pin-badge" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 22s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              <svg viewBox="0 0 24 24">
+                <path d="M12 22s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
             </div>
             <div>
               <strong>Localização ativa</strong>
@@ -138,14 +153,18 @@
 
           <div class="action-ticket" id="actionTicket">
             <div class="ticket-shield" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6l8-3Z"/><path d="m8.8 12 2.1 2.1 4.5-5"/></svg>
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3 20 6v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6l8-3Z" />
+                <path d="m8.8 12 2.1 2.1 4.5-5" />
+              </svg>
             </div>
             <h3>Ajuda acionada</h3>
             <p>Estamos cuidando de você.</p>
 
             <ul class="action-checklist">
               <li><span></span><strong>Localização compartilhada</strong><small>Enviada com sucesso</small></li>
-              <li><span></span><strong id="contactsAlertLabel">Contatos avisados</strong><small>Seus contatos serão notificados</small></li>
+              <li><span></span><strong id="contactsAlertLabel">Contatos avisados</strong><small>Seus contatos serão
+                  notificados</small></li>
               <li><span></span><strong>Patrulha notificada</strong><small>Patrulha Maria da Penha acionada</small></li>
               <li><span></span><strong>Ligação para 190</strong><small>Conexão simulada</small></li>
             </ul>
@@ -211,15 +230,18 @@
           <form class="contact-form" id="contactForm" novalidate>
             <label>
               <span>Contato 1</span>
-              <input id="contact1" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999" autocomplete="tel" />
+              <input id="contact1" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999"
+                autocomplete="tel" />
             </label>
             <label>
               <span>Contato 2</span>
-              <input id="contact2" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999" autocomplete="tel" />
+              <input id="contact2" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999"
+                autocomplete="tel" />
             </label>
             <label>
               <span>Contato 3</span>
-              <input id="contact3" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999" autocomplete="tel" />
+              <input id="contact3" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999"
+                autocomplete="tel" />
             </label>
 
             <button class="primary-button" type="submit">Salvar contatos</button>
@@ -329,7 +351,8 @@
         </section>
 
         <nav class="bottom-nav" aria-label="Navegação principal">
-          <button class="active" type="button" data-nav="inicio"><span class="nav-home"></span><small>Início</small></button>
+          <button class="active" type="button" data-nav="inicio"><span
+              class="nav-home"></span><small>Início</small></button>
           <button type="button" data-nav="historico"><span class="nav-clock"></span><small>Histórico</small></button>
           <button type="button" data-nav="rede"><span class="nav-shield"></span><small>Apoio</small></button>
           <button type="button" data-nav="mais"><span class="nav-menu"></span><small>Mais</small></button>
@@ -351,4 +374,5 @@
 
   <script src="js/app.js"></script>
 </body>
+
 </html>
