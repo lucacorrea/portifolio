@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#f6f4f7" />
   <meta name="description" content="MVP institucional mobile para apoio à mulher - Coari por Elas" />
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <title>Coari por Elas — MVP Institucional</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -77,10 +78,10 @@
               <strong>Contatos</strong>
               <small>Rede de confiança</small>
             </button>
-            <button class="feature-card" type="button" data-nav="rede">
-              <span class="feature-icon shield-icon" aria-hidden="true"></span>
-              <strong>Delegacia</strong>
-              <small>Atendimento oficial</small>
+            <button class="feature-card" type="button" data-nav="localizacao">
+              <span class="feature-icon map-icon" aria-hidden="true"></span>
+              <strong>Mapa de apoio</strong>
+              <small>UBS, CRAS e delegacia</small>
             </button>
             <button class="feature-card" type="button" data-nav="rede">
               <span class="feature-icon patrol-icon" aria-hidden="true"></span>
@@ -254,41 +255,46 @@
           </article>
         </section>
 
-        <section class="screen" id="screen-localizacao" data-title="Localização">
-          <div class="map-visual" aria-label="Mapa ilustrativo">
-            <div class="map-grid"></div>
-            <span class="map-pin main-pin"></span>
-            <span class="map-pin second-pin"></span>
-            <button type="button" id="btnOpenMap">Abrir mapa</button>
+        <section class="screen" id="screen-localizacao" data-title="Mapa de apoio">
+          <div class="page-copy compact-copy map-copy">
+            <span class="label">Mapa real</span>
+            <h2>Unidades próximas</h2>
+            <p>Veja no mapa serviços de saúde, assistência social, segurança e agências próximas da sua localização.</p>
           </div>
 
-          <article class="route-form-card">
-            <div class="route-line">
-              <span></span>
-              <i></i>
-            </div>
-            <div class="route-fields">
-              <label>
-                <small>Origem</small>
-                <strong>Minha localização</strong>
-              </label>
-              <label>
-                <small>Destino</small>
-                <strong>Rede de apoio mais próxima</strong>
-              </label>
+          <div class="map-toolbar">
+            <button type="button" id="btnLocateMe"><i class="ri-focus-3-line" aria-hidden="true"></i> Atualizar GPS</button>
+            <button type="button" id="btnRefreshPlaces"><i class="ri-refresh-line" aria-hidden="true"></i> Buscar perto</button>
+          </div>
+
+          <div class="map-visual map-visual-real" aria-label="Mapa real com unidades de apoio próximas">
+            <div id="supportMap" class="support-map" role="application" aria-label="Mapa interativo"></div>
+            <div class="map-loading" id="mapLoading">Carregando mapa...</div>
+          </div>
+
+          <div class="map-filters" aria-label="Filtros de serviços próximos">
+            <button type="button" class="active" data-place-filter="all">Todos</button>
+            <button type="button" data-place-filter="health">UBS/Saúde</button>
+            <button type="button" data-place-filter="social">CRAS/Social</button>
+            <button type="button" data-place-filter="safety">Segurança</button>
+            <button type="button" data-place-filter="agency">Agências</button>
+          </div>
+
+          <article class="nearest-card" id="nearestCard">
+            <span class="nearest-icon"><i class="ri-map-pin-user-line" aria-hidden="true"></i></span>
+            <div>
+              <small>Destino selecionado</small>
+              <strong id="selectedPlaceName">Buscando unidade próxima...</strong>
+              <p id="selectedPlaceMeta">Use o GPS para localizar serviços ao redor.</p>
             </div>
           </article>
 
-          <div class="time-tabs" aria-label="Simulação de saída">
-            <button type="button">12:21</button>
-            <button type="button" class="active">12:24</button>
-            <button type="button">5 min</button>
-            <button type="button">10 min</button>
-          </div>
+          <div class="places-list" id="placesList" aria-live="polite"></div>
 
-          <div class="location-actions">
-            <button class="primary-button light" type="button" id="btnCopyMap">Copiar link</button>
-            <button class="primary-button" type="button" data-nav="acionamento">Usar no acionamento</button>
+          <div class="location-actions map-actions">
+            <button class="primary-button light" type="button" id="btnCopyMap">Copiar rota</button>
+            <button class="primary-button light" type="button" id="btnOpenMap">Abrir no Maps</button>
+            <button class="primary-button" type="button" id="btnOpenSelectedRoute">Iniciar rota</button>
           </div>
         </section>
 
@@ -372,6 +378,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="js/app.js"></script>
 </body>
 

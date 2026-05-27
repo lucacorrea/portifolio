@@ -1,30 +1,24 @@
-# Coari por Elas — MVP Institucional
+# Coari por Elas — MVP com mapa real
 
-Protótipo mobile-first clicável em HTML, CSS e JavaScript puro.
+MVP front-end em HTML, CSS e JavaScript para demonstração mobile.
 
-## Como executar
+## O que foi adicionado
 
-1. Extraia o ZIP.
-2. Abra `index.html` no navegador ou use a extensão Live Server no VS Code.
-3. Para testar no celular, hospede a pasta ou acesse pelo IP local do computador.
+- Mapa real com Leaflet + OpenStreetMap.
+- Geolocalização do dispositivo pelo navegador.
+- Busca de unidades próximas via Overpass/OpenStreetMap.
+- Filtros para UBS/Saúde, CRAS/Social, Segurança e Agências.
+- Lista de unidades próximas com distância aproximada.
+- Botões para copiar rota e abrir rota no Google Maps.
+- Fallback visual com pontos demonstrativos quando o OpenStreetMap não retorna dados próximos.
 
-## Telas principais
+## Como testar
 
-- Início institucional
-- Acionamento de ajuda demonstrativo
-- Rede de apoio
-- Cadastro de até 3 contatos
-- Localização
-- Histórico local
-- Orientações
-- Mais / privacidade / saída rápida
+1. Abra o `index.html` em um servidor local ou hospedagem HTTPS.
+2. No celular, permita o acesso à localização.
+3. Acesse **Mais > Localização compartilhável** ou toque no card **Mapa de apoio** na tela inicial.
+4. Use os filtros e o botão **Iniciar rota**.
 
-## Observações técnicas
+## Observação técnica
 
-- Esta versão é somente front-end demonstrativo.
-- Não envia SMS real.
-- Não realiza ligação real.
-- Usa `localStorage` apenas para simular persistência local.
-- Usa `navigator.geolocation` quando disponível, com coordenada de fallback para demonstração.
-
-Para produção, recomenda-se Flutter ou app nativo, com permissões reais de SMS, localização, telefonia, criptografia local, logs mínimos e política rigorosa de privacidade.
+Para uma versão de produção, o correto é manter uma base oficial própria de UBS, CRAS, CREAS, Delegacia, Patrulha Maria da Penha e demais órgãos, validada pela prefeitura/secretaria. O OpenStreetMap é útil para demonstração, mas pode estar incompleto ou desatualizado em algumas regiões.
