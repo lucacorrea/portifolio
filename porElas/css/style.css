@@ -69,8 +69,9 @@ button {
 }
 
 .brand-symbol i {
-  font-size: 120px;
+  font-size: 50px;
   line-height: 1;
+  color:#f7f6f9
 }
 
 svg {
