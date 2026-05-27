@@ -142,10 +142,11 @@ $sql_order = "
         a.id ASC
 ";
 
-if ($export === 'excel') {
+if (in_array($export, ['excel', 'pdf'], true)) {
     $stmt_export = $pdo->prepare($sql_select . $sql_order);
     $stmt_export->execute($params);
     $aquisicoes_export = $stmt_export->fetchAll(PDO::FETCH_ASSOC);
+    $is_pdf_export = $export === 'pdf';
 
     $total_export = 0;
     foreach ($aquisicoes_export as $aq_export) {
@@ -159,20 +160,50 @@ if ($export === 'excel') {
         $periodo_texto = $inicio_txt . ' até ' . $fim_txt;
     }
 
-    $filename = 'relatorio_aquisicoes_' . date('Ymd_His') . '.xls';
+    $filename = 'relatorio_aquisicoes_' . date('Ymd_His');
+    $back_query = $_GET;
+    unset($back_query['export'], $back_query['page']);
+    $back_url = 'aquisicoes_lista.php';
+    if (!empty($back_query)) {
+        $back_url .= '?' . http_build_query($back_query);
+    }
 
-    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Pragma: no-cache');
-    header('Expires: 0');
+    if ($is_pdf_export) {
+        header('Content-Type: text/html; charset=UTF-8');
+    } else {
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '.xls"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
 
-    echo "\xEF\xBB\xBF";
+        echo "\xEF\xBB\xBF";
+    }
 ?>
-    <html>
+    <!DOCTYPE html>
+    <html lang="pt-br">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Relatório de Aquisições</title>
+        <?php if ($is_pdf_export): ?>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <?php endif; ?>
         <style>
-            body { font-family: Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 18px; }
+            <?php if ($is_pdf_export): ?>
+            @page {
+                size: A4 landscape;
+                margin: 8mm;
+            }
+            <?php endif; ?>
+
+            * { box-sizing: border-box; }
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                color: #1f2937;
+                margin: <?php echo $is_pdf_export ? '0' : '18px'; ?>;
+                background: <?php echo $is_pdf_export ? '#eef2f7' : '#ffffff'; ?>;
+            }
             table { border-collapse: collapse; width: 100%; table-layout: fixed; }
             .sheet td, .sheet th { border: 1px solid #7c8aa5; padding: 7px 8px; vertical-align: middle; word-wrap: break-word; }
             .title-main { background: #dbeafe; color: #0f172a; font-size: 18px; font-weight: bold; text-align: center; padding: 12px; }
@@ -187,9 +218,114 @@ if ($export === 'excel') {
             .text-cell { mso-number-format: "\@"; }
             .total-row { background: #eef2ff; font-weight: bold; }
             .spacer td { border: none !important; height: 8px; padding: 0; background: transparent; }
+
+            <?php if ($is_pdf_export): ?>
+            .print-toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+                padding: 14px 18px;
+                background: #ffffff;
+                border-bottom: 1px solid #dbe2ea;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }
+
+            .toolbar-title {
+                color: #0f172a;
+                font-size: 14px;
+                font-weight: 800;
+            }
+
+            .toolbar-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: .6rem;
+            }
+
+            .pdf-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: .45rem;
+                border: 1px solid #dbe2ea;
+                border-radius: 8px;
+                padding: .62rem .9rem;
+                background: #ffffff;
+                color: #334155;
+                text-decoration: none;
+                font-weight: 800;
+                cursor: pointer;
+            }
+
+            .pdf-btn-primary {
+                background: #1d4ed8;
+                border-color: #1d4ed8;
+                color: #ffffff;
+            }
+
+            .pdf-wrap {
+                padding: 14px;
+            }
+
+            .pdf-page {
+                width: 100%;
+                background: #ffffff;
+                margin: 0 auto;
+                padding: 0;
+            }
+
+            .sheet td,
+            .sheet th {
+                line-height: 1.15;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .sheet tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            @media print {
+                body {
+                    background: #ffffff !important;
+                }
+
+                .no-print {
+                    display: none !important;
+                }
+
+                .pdf-wrap {
+                    padding: 0 !important;
+                }
+
+                .pdf-page {
+                    margin: 0 !important;
+                    width: 100% !important;
+                }
+            }
+            <?php endif; ?>
         </style>
     </head>
     <body>
+        <?php if ($is_pdf_export): ?>
+            <div class="print-toolbar no-print">
+                <div class="toolbar-title">Relatório de Aquisições - PDF em paisagem</div>
+                <div class="toolbar-actions">
+                    <a href="<?php echo h($back_url); ?>" class="pdf-btn">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                    <button type="button" class="pdf-btn pdf-btn-primary" onclick="window.print()">
+                        <i class="fas fa-file-pdf"></i> Imprimir / Salvar PDF
+                    </button>
+                </div>
+            </div>
+            <div class="pdf-wrap">
+                <div class="pdf-page">
+        <?php endif; ?>
+
         <table class="sheet">
             <colgroup>
                 <col style="width: 14%;">
@@ -265,6 +401,10 @@ if ($export === 'excel') {
                 </tr>
             <?php endif; ?>
         </table>
+        <?php if ($is_pdf_export): ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </body>
     </html>
 <?php
@@ -667,6 +807,16 @@ include 'views/layout/header.php';
                     class="btn btn-primary btn-sm"
                     title="Exportar Excel">
                     <i class="fas fa-file-excel"></i> Excel
+                </button>
+
+                <button
+                    type="submit"
+                    name="export"
+                    value="pdf"
+                    formtarget="_blank"
+                    class="btn btn-outline btn-sm"
+                    title="Baixar PDF">
+                    <i class="fas fa-file-pdf"></i> PDF
                 </button>
 
                 <button
