@@ -118,19 +118,27 @@ class TransferenciasController extends BaseController {
         $mid = $this->matrizId;
 
         // Produtos do catálogo da Matriz (com estoque específico da filial-matriz)
+        $origemEstoqueId = $this->isMatriz ? $mid : (int)$this->filialLogada;
+
         try {
-            $produtosMatriz = $this->pdo->query(
+            $stmtProdutos = $this->pdo->prepare(
                 "SELECT p.*, COALESCE(
-                    (SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = $mid),
+                    (SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = ?),
                     p.quantidade
                 ) as qtd_matriz FROM produtos p ORDER BY p.nome"
-            )->fetchAll();
+            );
+            $stmtProdutos->execute([$origemEstoqueId]);
+            $produtosMatriz = $stmtProdutos->fetchAll();
         } catch (\Exception $e) {
             $produtosMatriz = $this->pdo->query("SELECT *, quantidade as qtd_matriz FROM produtos ORDER BY nome")->fetchAll();
         }
 
         // Filiais de destino (exceto a própria Matriz)
-        $filiais = $this->pdo->query("SELECT * FROM filiais WHERE principal = 0 ORDER BY nome")->fetchAll();
+        if ($this->isMatriz) {
+            $filiais = $this->pdo->query("SELECT * FROM filiais WHERE principal = 0 ORDER BY nome")->fetchAll();
+        } else {
+            $filiais = $this->pdo->query("SELECT * FROM filiais WHERE principal = 1 ORDER BY nome LIMIT 1")->fetchAll();
+        }
 
         $recebidas = [];
         $historico_envios = [];
@@ -143,6 +151,16 @@ class TransferenciasController extends BaseController {
         $fStatus = $_GET['filtro_status'] ?? '';
         $fInicio = $_GET['filtro_inicio'] ?? '';
         $fFim    = $_GET['filtro_fim']    ?? '';
+
+        $stmt = $this->pdo->prepare(
+            "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial
+             FROM erp_transferencias t
+             LEFT JOIN filiais f ON t.origem_filial_id = f.id
+             WHERE t.destino_filial_id = ? AND t.status = 'em_transito'
+             ORDER BY t.data_envio DESC"
+        );
+        $stmt->execute([$this->filialLogada]);
+        $em_transito = $stmt->fetchAll();
 
         if ($this->isMatriz) {
             // Solicitações pendentes recebidas das filiais
@@ -266,19 +284,24 @@ class TransferenciasController extends BaseController {
     }
 
     public function novaTransferencia() {
-        if (!$this->isMatriz) {
-            $this->redirect('transferencias.php?erro=Acesso negado.');
-        }
-
         $itens = $_POST['itens'] ?? [];
         $destino_id = (int)($_POST['destino_filial_id'] ?? 0);
         $observacoes = trim($_POST['observacoes'] ?? '');
         $mid = $this->matrizId;
+        $origem_id = $this->isMatriz ? $mid : (int)$this->filialLogada;
 
         $itensValidos = array_filter($itens, fn($item) => !empty($item['selecionado']) && $item['quantidade'] > 0);
 
         if (count($itensValidos) === 0 || $destino_id === 0) {
             $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Selecione a filial destino e os produtos.'));
+        }
+
+        if ($destino_id === $origem_id) {
+            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('A origem e o destino nÃ£o podem ser a mesma unidade.'));
+        }
+
+        if (!$this->isMatriz && $destino_id !== $mid) {
+            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Filiais sÃ³ podem enviar produtos para a Matriz.'));
         }
 
         try {
@@ -290,7 +313,7 @@ class TransferenciasController extends BaseController {
                     (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio)
                  VALUES (?, 'transferencia', ?, ?, 'em_transito', ?, ?, NOW())"
             );
-            $stmt->execute([$codigo, $mid, $destino_id, $observacoes, $_SESSION['usuario_id'] ?? 0]);
+            $stmt->execute([$codigo, $origem_id, $destino_id, $observacoes, $_SESSION['usuario_id'] ?? 0]);
             $transf_id = $this->pdo->lastInsertId();
 
             $stmtItem    = $this->pdo->prepare(
@@ -319,7 +342,7 @@ class TransferenciasController extends BaseController {
                 }
 
                 // 1. Validação de Estoque (Servidor)
-                $stmtCheck->execute([$mid, $pid]);
+                $stmtCheck->execute([$origem_id, $pid]);
                 $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
                 
                 if (!$estoque || $estoque['estoque_atual'] < $qtd) {
@@ -334,9 +357,13 @@ class TransferenciasController extends BaseController {
                 
                 $stmtItem->execute([$transf_id, $pid, $qtd, $qtd, $custo]);
                 try {
-                    $stmtDec->execute([$qtd, $pid]);
+                    $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = ?")->execute([$qtd, $pid, $origem_id]);
                 } catch (\Exception $ex) {
-                    $stmtDecGlob->execute([$qtd, $pid]);
+                    if ($this->isMatriz) {
+                        $stmtDecGlob->execute([$qtd, $pid]);
+                    } else {
+                        throw $ex;
+                    }
                 }
                 $totalItensValidos++;
             }
@@ -347,7 +374,7 @@ class TransferenciasController extends BaseController {
 
             $this->pdo->commit();
             setFlash('success', 'Transferência despachada com sucesso!');
-            $this->redirect('transferencias.php?aba=historico_envios');
+            $this->redirect('transferencias.php?aba=' . ($this->isMatriz ? 'historico_envios' : 'historico_recebimentos'));
         } catch (\Exception $e) {
             $this->pdo->rollBack();
             $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Erro: ' . $e->getMessage()));
@@ -431,9 +458,6 @@ class TransferenciasController extends BaseController {
     }
 
     public function confirmarRecebimento() {
-        if ($this->isMatriz) {
-            $this->redirect('transferencias.php?erro=Ação inválida para a Matriz.');
-        }
 
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
 
@@ -488,7 +512,7 @@ class TransferenciasController extends BaseController {
 
             $this->pdo->commit();
             setFlash('success', 'Estoque internalizado com sucesso!');
-            $this->redirect('transferencias.php?aba=historico_recebimentos');
+            $this->redirect('transferencias.php?aba=' . ($this->isMatriz ? 'em_transito' : 'historico_recebimentos'));
         } catch (\Exception $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode('Falha na Internalização: ' . $e->getMessage()));
@@ -496,9 +520,6 @@ class TransferenciasController extends BaseController {
     }
 
     public function relatarProblema() {
-        if ($this->isMatriz) {
-            $this->redirect('transferencias.php?aba=em_transito&erro=Ação inválida para a Matriz.');
-        }
 
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
         $mensagem  = trim($_POST['mensagem'] ?? '');
@@ -594,13 +615,13 @@ class TransferenciasController extends BaseController {
         }
 
         // 2. Itens
-        $mid = $this->matrizId;
         $sqlItems = "SELECT ti.*, p.nome, p.codigo, 
                 COALESCE(ef.quantidade, p.quantidade) as disp_matriz,
                 (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
                 FROM erp_transferencias_itens ti 
+                JOIN erp_transferencias t ON t.id = ti.transferencia_id
                 JOIN produtos p ON ti.produto_id = p.id 
-                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = $mid
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = t.origem_filial_id
                 WHERE ti.transferencia_id = ?";
         
         $stmtI = $this->pdo->prepare($sqlItems);

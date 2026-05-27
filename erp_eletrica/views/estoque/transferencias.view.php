@@ -61,6 +61,12 @@
                     <button class="tab-btn <?= $aba == 'nova_transferencia' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_transferencia'">
                         <i class="fas fa-truck-loading me-1"></i>Novo Despacho
                     </button>
+                    <button class="tab-btn <?= $aba == 'em_transito' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=em_transito'">
+                        <i class="fas fa-box-open me-1"></i>Recebimentos
+                        <?php if (!empty($em_transito)): ?>
+                            <span class="badge bg-warning text-dark ms-1"><?= count($em_transito) ?></span>
+                        <?php endif; ?>
+                    </button>
                     <button class="tab-btn <?= $aba == 'historico_envios' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=historico_envios'">
                         <i class="fas fa-history me-1"></i>Histórico <span class="d-none d-md-inline">de Envios</span>
                         <?php if (($problemas_pendentes ?? 0) > 0): ?>
@@ -70,6 +76,9 @@
                 <?php else: ?>
                     <button class="tab-btn <?= $aba == 'nova_solicitacao' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_solicitacao'">
                         <i class="fas fa-plus-circle me-1"></i><span class="d-none d-md-inline">Pedir ao </span>CD (Matriz)
+                    </button>
+                    <button class="tab-btn <?= $aba == 'nova_transferencia' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_transferencia'">
+                        <i class="fas fa-truck-loading me-1"></i><span class="d-none d-md-inline">Enviar p/ </span>Matriz
                     </button>
                     <button class="tab-btn <?= $aba == 'em_transito' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=em_transito'">
                         <i class="fas fa-truck me-1"></i>Em Trânsito
