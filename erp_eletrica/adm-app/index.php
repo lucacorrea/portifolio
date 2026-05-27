@@ -59,7 +59,7 @@ $cssVersion = file_exists($cssPath) ? filemtime($cssPath) : time();
                         <div class="logo">
                             <img
                                 class="logo-img"
-                                src="../../erp_eletrica/logo_sistema_erp_eletrica.PNG"
+                                src="../../erp_eletrica/logo_sistema_erp_eletrica.png"
                                 alt="Centro do Eletricista">
                         </div>
                     </div>

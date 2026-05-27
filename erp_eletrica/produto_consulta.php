@@ -58,6 +58,7 @@ SVG;
     return 'data:image/svg+xml;charset=UTF-8,' . rawurlencode($svg);
 }
 
+<?php
 function normalizarImagemUrl(?string $imagem): string
 {
     $imagem = trim((string)$imagem);
@@ -66,6 +67,7 @@ function normalizarImagemUrl(?string $imagem): string
         return placeholderImagem();
     }
 
+    // Absolute URLs or data URIs are returned as is
     if (
         preg_match('#^https?://#i', $imagem) ||
         str_starts_with($imagem, 'data:')
@@ -73,21 +75,29 @@ function normalizarImagemUrl(?string $imagem): string
         return $imagem;
     }
 
+    // Protocol-relative URLs
     if (str_starts_with($imagem, '//')) {
-
         $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-
         return ($https ? 'https:' : 'http:') . $imagem;
     }
 
+    // If HTTP_HOST is not set (e.g., when running via file://), use a relative path
+    if (empty($_SERVER['HTTP_HOST'] ?? null)) {
+        // Ensure the path starts with a slash for proper relative linking
+        return str_starts_with($imagem, '/') ? $imagem : '/' . $imagem;
+    }
+
+    // Root-relative paths
     if (str_starts_with($imagem, '/')) {
         return baseUrl() . $imagem;
     }
 
+    // Remove leading './' for relative paths
     $imagem = ltrim($imagem, './');
 
     return baseUrl() . appBasePath() . '/' . $imagem;
 }
+?>
 
 function primeiraImagemDoCampo(?string $imagens): string
 {
