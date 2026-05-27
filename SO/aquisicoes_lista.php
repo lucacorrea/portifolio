@@ -187,6 +187,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
         <title>Relatório de Aquisições</title>
         <?php if ($is_pdf_export): ?>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
         <?php endif; ?>
         <style>
             <?php if ($is_pdf_export): ?>
@@ -259,6 +260,11 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 cursor: pointer;
             }
 
+            .pdf-btn[disabled] {
+                cursor: not-allowed;
+                opacity: .75;
+            }
+
             .pdf-btn-primary {
                 background: #1d4ed8;
                 border-color: #1d4ed8;
@@ -270,7 +276,8 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             }
 
             .pdf-page {
-                width: 100%;
+                width: 281mm;
+                max-width: 100%;
                 background: #ffffff;
                 margin: 0 auto;
                 padding: 0;
@@ -317,13 +324,16 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                     <a href="<?php echo h($back_url); ?>" class="pdf-btn">
                         <i class="fas fa-arrow-left"></i> Voltar
                     </a>
-                    <button type="button" class="pdf-btn pdf-btn-primary" onclick="window.print()">
-                        <i class="fas fa-file-pdf"></i> Imprimir / Salvar PDF
+                    <button type="button" id="download-pdf-btn" class="pdf-btn pdf-btn-primary" onclick="downloadAquisicoesPdf()">
+                        <i class="fas fa-file-pdf"></i> Baixar PDF
+                    </button>
+                    <button type="button" class="pdf-btn" onclick="window.print()">
+                        <i class="fas fa-print"></i> Imprimir
                     </button>
                 </div>
             </div>
             <div class="pdf-wrap">
-                <div class="pdf-page">
+                <div class="pdf-page" id="pdf-report-page">
         <?php endif; ?>
 
         <table class="sheet">
@@ -404,6 +414,50 @@ if (in_array($export, ['excel', 'pdf'], true)) {
         <?php if ($is_pdf_export): ?>
                 </div>
             </div>
+
+            <script>
+                async function downloadAquisicoesPdf() {
+                    const report = document.getElementById('pdf-report-page');
+                    const button = document.getElementById('download-pdf-btn');
+                    const originalHtml = button.innerHTML;
+
+                    if (!window.html2pdf) {
+                        window.print();
+                        return;
+                    }
+
+                    button.disabled = true;
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+
+                    try {
+                        await window.html2pdf().set({
+                            margin: [8, 8, 8, 8],
+                            filename: <?php echo json_encode($filename . '.pdf'); ?>,
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: {
+                                scale: 2,
+                                useCORS: true,
+                                backgroundColor: '#ffffff'
+                            },
+                            jsPDF: {
+                                unit: 'mm',
+                                format: 'a4',
+                                orientation: 'landscape'
+                            },
+                            pagebreak: {
+                                mode: ['css', 'legacy'],
+                                avoid: ['tr']
+                            }
+                        }).from(report).save();
+                    } catch (error) {
+                        console.error('Falha ao baixar PDF:', error);
+                        window.print();
+                    } finally {
+                        button.disabled = false;
+                        button.innerHTML = originalHtml;
+                    }
+                }
+            </script>
         <?php endif; ?>
     </body>
     </html>
