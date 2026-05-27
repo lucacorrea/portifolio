@@ -1,0 +1,1253 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f4f7" />
+  
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <title>Coari por Elas — MVP Institucional</title>
+  <link rel="stylesheet" href="css/apps.css" />
+</head>
+<style>
+  /* =========================================================
+   MAPA REAL - RESPONSIVIDADE MOBILE
+   Cole no final do css/style.css
+   ========================================================= */
+
+/* Tela de localização/mapa */
+#screen-localizacao {
+  padding-top: 82px;
+  padding-bottom: calc(var(--nav-h) + 22px);
+}
+
+/* Container principal do mapa real */
+.map-real-card,
+.real-map-card,
+.map-panel,
+.support-map-card,
+.map-section,
+.map-container-card {
+  position: relative;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 26px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(30, 24, 38, 0.10);
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Mapa Leaflet / OpenStreetMap */
+#supportMap,
+.support-map,
+.map-real,
+.real-map,
+.leaflet-container {
+  width: 100%;
+  height: clamp(285px, 48dvh, 430px);
+  min-height: 285px;
+  max-height: 430px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #e9e7ed;
+  z-index: 1;
+  touch-action: pan-x pan-y;
+}
+
+/* Evita o mapa ficar por cima dos botões */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 2 !important;
+}
+
+.leaflet-control-container {
+  position: relative;
+  z-index: 3;
+}
+
+.app-header {
+  z-index: 1100;
+}
+
+.bottom-nav {
+  z-index: 1200;
+}
+
+/* Botões superiores: Atualizar GPS / Buscar perto */
+.map-toolbar,
+.map-top-actions,
+.map-header-actions,
+.location-tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 14px 0 12px;
+}
+
+.map-toolbar button,
+.map-top-actions button,
+.map-header-actions button,
+.location-tools button {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 14px;
+  color: #ffffff;
+  background: #111014;
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 10px 22px rgba(30, 24, 38, 0.10);
+}
+
+.map-toolbar button:first-child,
+.map-top-actions button:first-child,
+.map-header-actions button:first-child,
+.location-tools button:first-child {
+  color: #111014;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+/* Filtros: Todos, UBS/Saúde, CRAS/Social, Segurança e Agências */
+.map-filters,
+.service-filters,
+.filter-row,
+.category-filters,
+.place-filters {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin: 12px 0 14px;
+  padding: 2px 2px 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.map-filters::-webkit-scrollbar,
+.service-filters::-webkit-scrollbar,
+.filter-row::-webkit-scrollbar,
+.category-filters::-webkit-scrollbar,
+.place-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.map-filters button,
+.service-filters button,
+.filter-row button,
+.category-filters button,
+.place-filters button,
+.filter-chip,
+.map-filter {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: #625b68;
+  background: #ffffff;
+  border: 1px solid #e6e1eb;
+  font-size: 0.76rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(30, 24, 38, 0.06);
+}
+
+.map-filters button.active,
+.service-filters button.active,
+.filter-row button.active,
+.category-filters button.active,
+.place-filters button.active,
+.filter-chip.active,
+.map-filter.active,
+.map-filters button.is-active,
+.service-filters button.is-active,
+.filter-row button.is-active,
+.category-filters button.is-active,
+.place-filters button.is-active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--wine), #c24e86);
+  border-color: transparent;
+}
+
+/* Card do destino selecionado */
+.selected-place,
+.selected-destination,
+.destination-card,
+.nearest-place-card,
+.map-result-selected {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #eee8f0;
+  box-shadow: 0 12px 28px rgba(30, 24, 38, 0.08);
+}
+
+.selected-place strong,
+.selected-destination strong,
+.destination-card strong,
+.nearest-place-card strong,
+.map-result-selected strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.96rem;
+  line-height: 1.25;
+}
+
+.selected-place small,
+.selected-destination small,
+.destination-card small,
+.nearest-place-card small,
+.map-result-selected small,
+.selected-place p,
+.selected-destination p,
+.destination-card p,
+.nearest-place-card p,
+.map-result-selected p {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+/* Lista de locais próximos */
+.places-list,
+.nearby-list,
+.map-results,
+.support-places-list,
+.units-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.place-card,
+.nearby-item,
+.map-result-item,
+.support-place-item,
+.unit-card {
+  width: 100%;
+  padding: 14px;
+  border-radius: 18px;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #eee8f0;
+  box-shadow: 0 10px 22px rgba(30, 24, 38, 0.06);
+}
+
+.place-card strong,
+.nearby-item strong,
+.map-result-item strong,
+.support-place-item strong,
+.unit-card strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.place-card small,
+.nearby-item small,
+.map-result-item small,
+.support-place-item small,
+.unit-card small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+/* Ações inferiores: Copiar rota / Abrir no Maps / Iniciar rota */
+.map-route-actions,
+.map-actions,
+.location-actions,
+.route-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.map-route-actions > *:first-child,
+.map-actions > *:first-child,
+.location-actions > *:first-child,
+.route-actions > *:first-child {
+  grid-column: 1 / -1;
+}
+
+.map-route-actions button,
+.map-route-actions a,
+.map-actions button,
+.map-actions a,
+.location-actions button,
+.location-actions a,
+.route-actions button,
+.route-actions a,
+.map-link {
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: #111014;
+  text-decoration: none;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.map-route-actions > *:first-child,
+.map-actions > *:first-child,
+.location-actions > *:first-child,
+.route-actions > *:first-child {
+  color: #111014;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+/* Popup do Leaflet mais institucional */
+.leaflet-popup-content-wrapper {
+  border-radius: 16px;
+  box-shadow: 0 16px 34px rgba(30, 24, 38, 0.18);
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+  color: #17151c;
+  font-family: inherit;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.leaflet-popup-content strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--wine);
+}
+
+/* Controles de zoom menores no celular */
+.leaflet-control-zoom {
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(30, 24, 38, 0.14) !important;
+}
+
+.leaflet-control-zoom a {
+  width: 34px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+  color: #111014 !important;
+  border: 0 !important;
+}
+
+/* Mobile real */
+@media (max-width: 430px) {
+  #screen-localizacao {
+    padding-inline: 14px;
+    padding-top: 78px;
+    padding-bottom: calc(var(--nav-h) + 18px);
+  }
+
+  .map-real-card,
+  .real-map-card,
+  .map-panel,
+  .support-map-card,
+  .map-section,
+  .map-container-card {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 24px;
+  }
+
+  #supportMap,
+  .support-map,
+  .map-real,
+  .real-map,
+  .leaflet-container {
+    height: 330px;
+    min-height: 330px;
+    max-height: 330px;
+    border-radius: 20px;
+  }
+
+  .map-toolbar,
+  .map-top-actions,
+  .map-header-actions,
+  .location-tools {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .map-toolbar button,
+  .map-top-actions button,
+  .map-header-actions button,
+  .location-tools button {
+    min-height: 42px;
+    font-size: 0.72rem;
+    border-radius: 13px;
+  }
+
+  .map-filters,
+  .service-filters,
+  .filter-row,
+  .category-filters,
+  .place-filters {
+    margin-top: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 7px;
+  }
+
+  .map-filters button,
+  .service-filters button,
+  .filter-row button,
+  .category-filters button,
+  .place-filters button,
+  .filter-chip,
+  .map-filter {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 0.7rem;
+  }
+
+  .selected-place,
+  .selected-destination,
+  .destination-card,
+  .nearest-place-card,
+  .map-result-selected {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .places-list,
+  .nearby-list,
+  .map-results,
+  .support-places-list,
+  .units-list {
+    gap: 9px;
+  }
+
+  .place-card,
+  .nearby-item,
+  .map-result-item,
+  .support-place-item,
+  .unit-card {
+    padding: 13px;
+    border-radius: 16px;
+  }
+
+  .map-route-actions,
+  .map-actions,
+  .location-actions,
+  .route-actions {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .map-route-actions button,
+  .map-route-actions a,
+  .map-actions button,
+  .map-actions a,
+  .location-actions button,
+  .location-actions a,
+  .route-actions button,
+  .route-actions a,
+  .map-link {
+    width: 100%;
+    min-height: 46px;
+    font-size: 0.76rem;
+  }
+}
+
+/* Celulares muito baixos */
+@media (max-height: 740px) and (max-width: 430px) {
+  #supportMap,
+  .support-map,
+  .map-real,
+  .real-map,
+  .leaflet-container {
+    height: 285px;
+    min-height: 285px;
+    max-height: 285px;
+  }
+
+  .page-copy p {
+    margin-top: 8px;
+  }
+}
+
+/* Celulares grandes */
+@media (min-width: 431px) and (max-width: 768px) {
+  #supportMap,
+  .support-map,
+  .map-real,
+  .real-map,
+  .leaflet-container {
+    height: 390px;
+  }
+}
+/* =========================================================
+   FIX DEFINITIVO - MAPA NÃO VAZAR NO MOBILE
+   Cole por último no CSS
+   ========================================================= */
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden !important;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.prototype-stage,
+.phone,
+.phone-inner,
+.screen {
+  max-width: 100%;
+  overflow-x: hidden !important;
+}
+
+#screen-localizacao {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  overflow-x: hidden !important;
+}
+
+#screen-localizacao * {
+  min-width: 0;
+}
+
+.map-copy,
+.map-copy p,
+.page-copy,
+.page-copy p {
+  max-width: 100% !important;
+}
+
+/* Botões Atualizar GPS / Buscar perto */
+.map-toolbar {
+  width: 100%;
+  max-width: 100%;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 8px !important;
+  margin: 14px 0 12px !important;
+  overflow: hidden;
+}
+
+.map-toolbar button {
+  width: 100%;
+  min-width: 0 !important;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0 8px !important;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.68rem !important;
+  line-height: 1;
+}
+
+.map-toolbar button i {
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+}
+
+/* Card do mapa */
+.map-visual-real {
+  position: relative;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 320px !important;
+  min-height: 320px !important;
+  max-height: 320px !important;
+  margin: 12px 0 0 !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  background: #e9e7ed;
+  box-shadow: 0 14px 30px rgba(30, 24, 38, 0.1);
+}
+
+/* Mapa Leaflet */
+#supportMap,
+.support-map,
+.leaflet-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+}
+
+.leaflet-pane,
+.leaflet-map-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-marker-pane,
+.leaflet-shadow-pane,
+.leaflet-popup-pane {
+  max-width: 100% !important;
+}
+
+.leaflet-control-container {
+  max-width: 100%;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 5 !important;
+}
+
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+/* Loading do mapa */
+.map-loading {
+  position: absolute;
+  inset: auto 12px 12px 12px;
+  z-index: 8;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: #111014;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(30, 24, 38, 0.12);
+}
+
+/* Filtros */
+.map-filters {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 14px 0 14px !important;
+  padding: 0 0 8px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.map-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.map-filters button {
+  flex: 0 0 auto;
+  min-width: max-content;
+  min-height: 36px;
+  padding: 0 12px !important;
+  border-radius: 999px;
+  font-size: 0.7rem !important;
+  white-space: nowrap;
+}
+
+/* Destino selecionado */
+.nearest-card {
+  width: 100%;
+  max-width: 100%;
+  display: grid !important;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 14px !important;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.nearest-card .nearest-icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+}
+
+.nearest-card div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.nearest-card small,
+.nearest-card strong,
+.nearest-card p {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.nearest-card strong {
+  font-size: 0.9rem !important;
+  line-height: 1.25;
+}
+
+.nearest-card p {
+  font-size: 0.74rem !important;
+  line-height: 1.4;
+}
+
+/* Lista de unidades */
+.places-list {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.place-card,
+.nearby-item,
+.map-result-item,
+.support-place-item,
+.unit-card {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.place-card strong,
+.nearby-item strong,
+.map-result-item strong,
+.support-place-item strong,
+.unit-card strong,
+.place-card small,
+.nearby-item small,
+.map-result-item small,
+.support-place-item small,
+.unit-card small {
+  overflow-wrap: anywhere;
+}
+
+/* Botões finais: Copiar rota / Abrir no Maps / Iniciar rota */
+.location-actions.map-actions,
+.map-actions {
+  width: 100%;
+  max-width: 100%;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 9px !important;
+  margin-top: 14px !important;
+  overflow: hidden;
+}
+
+.map-actions button,
+.map-actions a,
+.location-actions button,
+.location-actions a,
+.map-link {
+  width: 100%;
+  max-width: 100%;
+  min-height: 46px;
+  padding: 0 12px !important;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 0.76rem !important;
+}
+
+/* Header e menu acima do Leaflet */
+.app-header {
+  z-index: 1100 !important;
+}
+
+.bottom-nav {
+  z-index: 1200 !important;
+}
+
+/* Mobile real */
+@media (max-width: 430px) {
+  .prototype-stage {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-height: 100dvh;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .phone {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .phone-inner {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0 !important;
+  }
+
+  .screen {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  #screen-localizacao {
+    padding-top: 78px !important;
+    padding-bottom: calc(var(--nav-h) + 18px) !important;
+  }
+
+  .map-toolbar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .map-toolbar button {
+    min-height: 42px;
+    padding-inline: 6px !important;
+    font-size: 0.63rem !important;
+  }
+
+  .map-visual-real {
+    height: 310px !important;
+    min-height: 310px !important;
+    max-height: 310px !important;
+    border-radius: 20px !important;
+  }
+
+  #supportMap,
+  .support-map,
+  .leaflet-container {
+    border-radius: 20px !important;
+  }
+}
+
+/* Celulares muito estreitos */
+@media (max-width: 360px) {
+  .map-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .map-toolbar button {
+    font-size: 0.72rem !important;
+  }
+
+  .map-visual-real {
+    height: 285px !important;
+    min-height: 285px !important;
+    max-height: 285px !important;
+  }
+
+  .map-filters button {
+    font-size: 0.66rem !important;
+    padding-inline: 10px !important;
+  }
+}
+
+/* Celulares baixos */
+@media (max-height: 740px) and (max-width: 430px) {
+  .map-visual-real {
+    height: 275px !important;
+    min-height: 275px !important;
+    max-height: 275px !important;
+  }
+}
+</style>
+<body>
+  <main class="prototype-stage" aria-label="Protótipo mobile Coari por Elas">
+    <section class="phone" aria-label="Aplicativo mobile clicável">
+      <div class="phone-inner">
+        <header class="app-header">
+          <button class="icon-button" id="btnBack" type="button" aria-label="Voltar">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+
+          <strong id="headerTitle">Coari por Elas</strong>
+
+          <button class="icon-button" id="btnMore" type="button" aria-label="Menu rápido">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h.01M12 12h.01M19 12h.01" />
+            </svg>
+          </button>
+        </header>
+
+        <section class="screen is-active" id="screen-inicio" data-title="Coari por Elas">
+          <div class="home-brand">
+            <div class="brand-row">
+              <div class="brand-symbol" aria-hidden="true">
+                <i class="ri-shield-user-line"></i>
+              </div>
+              <div>
+                <h1>Coari<br><small>por Elas</small></h1>
+                <p>Rede institucional de apoio, orientação e proteção.</p>
+              </div>
+            </div>
+            <button class="bell-button" type="button" data-toast="Notificações de apoio ativadas para demonstração."
+              aria-label="Notificações">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </button>
+          </div>
+
+          <article class="hero-panel">
+            <div>
+              <span class="label">Você não está sozinha</span>
+              <h2>Apoio rápido, sigiloso e orientado.</h2>
+              <p>Acione sua rede de proteção, compartilhe localização e consulte canais oficiais de atendimento.</p>
+            </div>
+
+          </article>
+
+          <button class="emergency-card" id="btnEmergency" type="button">
+            <span class="siren-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 12V9a4 4 0 0 1 8 0v3M6 12h12l1 8H5l1-8ZM4 9 2 7M20 9l2-2M12 3V1" />
+              </svg>
+            </span>
+            <span>
+              <strong>Pedir ajuda</strong>
+              <small>Emergência • Toque aqui</small>
+            </span>
+          </button>
+
+          <div class="quick-grid" aria-label="Atalhos principais">
+            <button class="feature-card" type="button" data-nav="contatos">
+              <span class="feature-icon phone-icon" aria-hidden="true"></span>
+              <strong>Contatos</strong>
+              <small>Rede de confiança</small>
+            </button>
+            <button class="feature-card" type="button" data-nav="localizacao">
+              <span class="feature-icon map-icon" aria-hidden="true"></span>
+              <strong>Mapa de apoio</strong>
+              <small>UBS, CRAS e delegacia</small>
+            </button>
+            <button class="feature-card" type="button" data-nav="rede">
+              <span class="feature-icon patrol-icon" aria-hidden="true"></span>
+              <strong>Patrulha</strong>
+              <small>Maria da Penha</small>
+            </button>
+            <button class="feature-card" type="button" data-nav="orientacoes">
+              <span class="feature-icon book-icon" aria-hidden="true"></span>
+              <strong>Orientações</strong>
+              <small>Direitos e segurança</small>
+            </button>
+          </div>
+
+          <article class="location-card">
+            <div class="pin-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 22s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+            </div>
+            <div>
+              <strong>Localização ativa</strong>
+              <p>Sua localização pode ser compartilhada com segurança no acionamento.</p>
+              <span><i></i> Tudo seguro</span>
+            </div>
+          </article>
+        </section>
+
+        <section class="screen" id="screen-acionamento" data-title="Acionamento">
+          <div class="page-copy compact-copy">
+            <span class="label">Em caso de emergência</span>
+            <h2>Siga os passos abaixo</h2>
+            <p>Estamos conectando você à rede de proteção.</p>
+          </div>
+
+          <div class="process-route" id="processRoute">
+            <article class="route-step done" data-step="0">
+              <span class="route-dot">1</span>
+              <div>
+                <strong>Confirmar pedido</strong>
+                <small>Seu pedido de ajuda foi confirmado.</small>
+              </div>
+              <time>12:21</time>
+            </article>
+            <article class="route-step" data-step="1">
+              <span class="route-dot">2</span>
+              <div>
+                <strong>Enviar localização</strong>
+                <small>Compartilhamento seguro da rota.</small>
+              </div>
+              <time>--:--</time>
+            </article>
+            <article class="route-step" data-step="2">
+              <span class="route-dot">3</span>
+              <div>
+                <strong>Avisar rede de apoio</strong>
+                <small>Contatos confiáveis e patrulha.</small>
+              </div>
+              <time>--:--</time>
+            </article>
+            <article class="route-step" data-step="3">
+              <span class="route-dot">4</span>
+              <div>
+                <strong>Ligar para 190</strong>
+                <small>Etapa de emergência simulada.</small>
+              </div>
+              <time>--:--</time>
+            </article>
+          </div>
+
+          <div class="action-ticket" id="actionTicket">
+            <div class="ticket-shield" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3 20 6v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6l8-3Z" />
+                <path d="m8.8 12 2.1 2.1 4.5-5" />
+              </svg>
+            </div>
+            <h3>Ajuda acionada</h3>
+            <p>Estamos cuidando de você.</p>
+
+            <ul class="action-checklist">
+              <li><span></span><strong>Localização compartilhada</strong><small>Enviada com sucesso</small></li>
+              <li><span></span><strong id="contactsAlertLabel">Contatos avisados</strong><small>Seus contatos serão
+                  notificados</small></li>
+              <li><span></span><strong>Patrulha notificada</strong><small>Patrulha Maria da Penha acionada</small></li>
+              <li><span></span><strong>Ligação para 190</strong><small>Conexão simulada</small></li>
+            </ul>
+
+            <button class="safe-button" type="button" id="btnSafe">Estou em segurança</button>
+            <button class="cancel-button" type="button" id="btnCancelAction">Cancelar acionamento</button>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-rede" data-title="Rede de apoio">
+          <div class="page-copy">
+            <span class="round-shield" aria-hidden="true"></span>
+            <h2>Você não está sozinha.</h2>
+            <p>Conheça os serviços disponíveis para apoiar, orientar e proteger.</p>
+          </div>
+
+          <div class="support-route">
+            <article class="support-item">
+              <span class="support-node police"></span>
+              <div>
+                <div class="support-title-row"><strong>Patrulha Maria da Penha</strong><em>atendimento</em></div>
+                <p>Acompanhamento e proteção para mulheres em situação de violência.</p>
+                <a href="tel:92992221234">(92) 99222-1234</a>
+              </div>
+            </article>
+
+            <article class="support-item">
+              <span class="support-node building"></span>
+              <div>
+                <div class="support-title-row"><strong>Delegacia da Mulher</strong><em>atendimento</em></div>
+                <p>Registro de ocorrências, medidas protetivas e atendimento especializado.</p>
+                <a href="tel:9235612240">(92) 3561-2240</a>
+              </div>
+            </article>
+
+            <article class="support-item">
+              <span class="support-node people"></span>
+              <div>
+                <div class="support-title-row"><strong>CRAS / CREAS</strong><em>acolhimento</em></div>
+                <p>Apoio psicossocial, orientação e encaminhamento para serviços da rede.</p>
+                <a href="tel:9235611408">(92) 3561-1408</a>
+              </div>
+            </article>
+
+            <article class="support-item">
+              <span class="support-node call"></span>
+              <div>
+                <div class="support-title-row"><strong>Disque 180</strong><em>orientação</em></div>
+                <p>Central de atendimento à mulher. Ligação gratuita e confidencial.</p>
+                <a href="tel:180">180</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-contatos" data-title="Contatos">
+          <div class="page-copy">
+            <span class="label">Rede de confiança</span>
+            <h2>Cadastre até 3 contatos</h2>
+            <p>Na MVP, os contatos ficam salvos apenas neste navegador para demonstração.</p>
+          </div>
+
+          <form class="contact-form" id="contactForm" novalidate>
+            <label>
+              <span>Contato 1</span>
+              <input id="contact1" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999"
+                autocomplete="tel" />
+            </label>
+            <label>
+              <span>Contato 2</span>
+              <input id="contact2" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999"
+                autocomplete="tel" />
+            </label>
+            <label>
+              <span>Contato 3</span>
+              <input id="contact3" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999"
+                autocomplete="tel" />
+            </label>
+
+            <button class="primary-button" type="submit">Salvar contatos</button>
+            <button class="text-danger" type="button" id="btnClearContacts">Limpar contatos</button>
+          </form>
+
+          <article class="status-panel">
+            <strong id="contactsStatus">Nenhum contato cadastrado</strong>
+            <small>O acionamento completo exige pelo menos um contato válido.</small>
+          </article>
+        </section>
+
+        <section class="screen" id="screen-localizacao" data-title="Mapa de apoio">
+          <div class="page-copy compact-copy map-copy">
+            <span class="label">Mapa real</span>
+            <h2>Unidades próximas</h2>
+            <p>Veja no mapa serviços de saúde, assistência social, segurança e agências próximas da sua localização.</p>
+          </div>
+
+          <div class="map-toolbar">
+            <button type="button" id="btnLocateMe"><i class="ri-focus-3-line" aria-hidden="true"></i> Atualizar GPS</button>
+            <button type="button" id="btnRefreshPlaces"><i class="ri-refresh-line" aria-hidden="true"></i> Buscar perto</button>
+          </div>
+
+          <div class="map-visual map-visual-real" aria-label="Mapa real com unidades de apoio próximas">
+            <div id="supportMap" class="support-map" role="application" aria-label="Mapa interativo"></div>
+            <div class="map-loading" id="mapLoading">Carregando mapa...</div>
+          </div>
+
+          <div class="map-filters" aria-label="Filtros de serviços próximos">
+            <button type="button" class="active" data-place-filter="all">Todos</button>
+            <button type="button" data-place-filter="health">UBS/Saúde</button>
+            <button type="button" data-place-filter="social">CRAS/Social</button>
+            <button type="button" data-place-filter="safety">Segurança</button>
+            <button type="button" data-place-filter="agency">Agências</button>
+          </div>
+
+          <article class="nearest-card" id="nearestCard">
+            <span class="nearest-icon"><i class="ri-map-pin-user-line" aria-hidden="true"></i></span>
+            <div>
+              <small>Destino selecionado</small>
+              <strong id="selectedPlaceName">Buscando unidade próxima...</strong>
+              <p id="selectedPlaceMeta">Use o GPS para localizar serviços ao redor.</p>
+            </div>
+          </article>
+
+          <div class="places-list" id="placesList" aria-live="polite"></div>
+
+          <div class="location-actions map-actions">
+            <button class="primary-button light" type="button" id="btnCopyMap">Copiar rota</button>
+            <a class="primary-button light map-link" id="linkOpenMap" href="https://www.google.com/maps/search/?api=1&query=-4.0853,-63.1411" target="_blank" rel="noopener noreferrer">Abrir no Maps</a>
+            <a class="primary-button map-link" id="linkOpenSelectedRoute" href="https://www.google.com/maps/dir/?api=1&origin=-4.0853,-63.1411&destination=-4.0853,-63.1411&travelmode=driving" target="_blank" rel="noopener noreferrer">Iniciar rota</a>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-historico" data-title="Histórico">
+          <div class="page-copy">
+            <span class="label">Registros locais</span>
+            <h2>Histórico de acionamentos</h2>
+            <p>Lista demonstrativa. Em produção, essa área precisa de política forte de privacidade.</p>
+          </div>
+
+          <div class="history-actions">
+            <button type="button" id="btnDemoHistory">Adicionar demo</button>
+            <button type="button" id="btnClearHistory">Limpar</button>
+          </div>
+
+          <div class="history-list" id="historyList"></div>
+        </section>
+
+        <section class="screen" id="screen-orientacoes" data-title="Orientações">
+          <div class="page-copy">
+            <span class="label">Informação institucional</span>
+            <h2>Orientações importantes</h2>
+            <p>Conteúdo para apoio preventivo, direitos e segurança.</p>
+          </div>
+
+          <div class="guidance-list">
+            <article>
+              <strong>Mantenha contatos atualizados</strong>
+              <p>Cadastre pessoas de confiança e revise os números com frequência.</p>
+            </article>
+            <article>
+              <strong>Ative GPS e sinal de celular</strong>
+              <p>O envio de localização depende do GPS e de cobertura da operadora.</p>
+            </article>
+            <article>
+              <strong>Use saída rápida</strong>
+              <p>Em situação de risco, o app pode exibir uma tela neutra rapidamente.</p>
+            </article>
+            <article>
+              <strong>Procure atendimento seguro</strong>
+              <p>Quando possível, busque a rede de proteção presencialmente.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-mais" data-title="Mais">
+          <div class="page-copy">
+            <span class="label">Configurações</span>
+            <h2>Privacidade e demonstração</h2>
+            <p>Controles úteis para apresentação do MVP.</p>
+          </div>
+
+          <div class="settings-card">
+            <button type="button" data-nav="localizacao">Localização compartilhável</button>
+            <button type="button" data-nav="orientacoes">Orientações</button>
+            <button type="button" id="btnShakeDemo">Simular shake</button>
+            <button type="button" id="btnQuickExit">Saída rápida</button>
+            <button type="button" class="danger" id="btnWipeData">Apagar dados locais</button>
+          </div>
+        </section>
+
+        <nav class="bottom-nav" aria-label="Navegação principal">
+          <button class="active" type="button" data-nav="inicio"><span
+              class="nav-home"></span><small>Início</small></button>
+          <button type="button" data-nav="historico"><span class="nav-clock"></span><small>Histórico</small></button>
+          <button type="button" data-nav="rede"><span class="nav-shield"></span><small>Apoio</small></button>
+          <button type="button" data-nav="mais"><span class="nav-menu"></span><small>Mais</small></button>
+        </nav>
+      </div>
+    </section>
+  </main>
+
+  <section class="stealth" id="stealth" hidden>
+    <article>
+      <span>☁</span>
+      <h2>Agenda</h2>
+      <p>Nenhum compromisso pendente.</p>
+      <button type="button" id="btnReturn">Voltar</button>
+    </article>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="js/apps.js"></script>
+</body>
+
+</html>
