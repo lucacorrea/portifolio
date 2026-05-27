@@ -1,327 +1,413 @@
-(function () {
+(() => {
   'use strict';
 
   const STORAGE_KEYS = {
-    contacts: 'coariPorElas.contacts.v1',
-    history: 'coariPorElas.history.v1',
-    settings: 'coariPorElas.settings.v1'
+    contacts: 'coari_por_elas_contacts_v2',
+    history: 'coari_por_elas_history_v2'
   };
 
-  const demoLocation = {
+  const FALLBACK_LOCATION = {
     lat: -4.0853,
     lng: -63.1411
   };
 
-  const els = {
-    screens: document.querySelectorAll('.app-screen'),
-    navButtons: document.querySelectorAll('[data-nav]'),
-    bottomNavItems: document.querySelectorAll('.bottom-nav .nav-item'),
-    toast: document.getElementById('toast'),
-    contactsForm: document.getElementById('contactsForm'),
-    contactInputs: [
-      document.getElementById('contact1'),
-      document.getElementById('contact2'),
-      document.getElementById('contact3')
-    ],
-    contactsSummary: document.getElementById('contactsSummary'),
-    btnClearContacts: document.getElementById('btnClearContacts'),
-    btnPanic: document.getElementById('btnPanic'),
-    btnShakeDemo: document.getElementById('btnShakeDemo'),
-    panicModal: document.getElementById('panicModal'),
-    btnCloseModal: document.getElementById('btnCloseModal'),
-    modalText: document.getElementById('panicModalText'),
-    modalProgress: document.getElementById('modalProgress'),
-    stepList: document.getElementById('stepList'),
-    historyList: document.getElementById('historyList'),
-    btnAddDemoHistory: document.getElementById('btnAddDemoHistory'),
-    btnClearHistory: document.getElementById('btnClearHistory'),
-    btnCopyLocation: document.getElementById('btnCopyLocation'),
-    btnQuickExit: document.getElementById('btnQuickExit'),
-    stealthScreen: document.getElementById('stealthScreen'),
-    btnReturnApp: document.getElementById('btnReturnApp'),
-    btnWipeData: document.getElementById('btnWipeData'),
-    demoCallButtons: document.querySelectorAll('[data-demo-call]'),
-    toggleDiscreet: document.getElementById('toggleDiscreet'),
-    toggleShake: document.getElementById('toggleShake')
+  const state = {
+    currentScreen: 'inicio',
+    historyStack: [],
+    emergencyTimers: [],
+    lastLocation: { ...FALLBACK_LOCATION }
   };
 
-  const getMapUrl = () => `https://maps.google.com/?q=${demoLocation.lat},${demoLocation.lng}`;
-  const getMessage = () => `SOCORRO! App Coari por Elas. Estou em perigo! Minha localização: ${getMapUrl()}`;
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
-  let toastTimeout = null;
-  let modalTimer = null;
+  const screens = $$('.screen');
+  const headerTitle = $('#headerTitle');
+  const btnBack = $('#btnBack');
+  const toast = $('#toast');
+  const navButtons = $$('.bottom-nav [data-nav]');
 
-  function safeParse(raw, fallback) {
+  function nowTime() {
+    return new Intl.DateTimeFormat('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date());
+  }
+
+  function nowDateTime() {
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date());
+  }
+
+  function showToast(message, duration = 2200) {
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => toast.classList.remove('show'), duration);
+  }
+
+  function safeJsonParse(value, fallback) {
     try {
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (error) {
+      return JSON.parse(value) ?? fallback;
+    } catch (_) {
       return fallback;
     }
   }
 
-  function loadContacts() {
-    return safeParse(localStorage.getItem(STORAGE_KEYS.contacts), ['', '', '']);
+  function getContacts() {
+    const contacts = safeJsonParse(localStorage.getItem(STORAGE_KEYS.contacts), []);
+    return Array.isArray(contacts) ? contacts.filter(Boolean) : [];
   }
 
-  function saveContacts(contacts) {
-    localStorage.setItem(STORAGE_KEYS.contacts, JSON.stringify(contacts));
+  function setContacts(contacts) {
+    localStorage.setItem(STORAGE_KEYS.contacts, JSON.stringify(contacts.filter(Boolean)));
+    updateContactsStatus();
   }
 
-  function loadHistory() {
-    return safeParse(localStorage.getItem(STORAGE_KEYS.history), []);
+  function getHistory() {
+    const history = safeJsonParse(localStorage.getItem(STORAGE_KEYS.history), []);
+    return Array.isArray(history) ? history : [];
   }
 
-  function saveHistory(history) {
-    localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(history));
+  function setHistory(history) {
+    localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(history.slice(0, 20)));
+    renderHistory();
   }
 
-  function normalizePhone(value) {
-    return String(value || '').replace(/\D/g, '').slice(0, 11);
+  function addHistory(source = 'Botão de emergência') {
+    const contacts = getContacts();
+    const item = {
+      id: globalThis.crypto?.randomUUID?.() || String(Date.now()),
+      date: nowDateTime(),
+      source,
+      contacts: contacts.length,
+      lat: state.lastLocation.lat,
+      lng: state.lastLocation.lng,
+      status: 'Simulado'
+    };
+    setHistory([item, ...getHistory()]);
+  }
+
+  function getScreenTitle(screenId) {
+    const screen = $(`#screen-${screenId}`);
+    return screen?.dataset?.title || 'Coari por Elas';
+  }
+
+  function setActiveNav(screenId) {
+    navButtons.forEach(button => {
+      const target = button.dataset.nav;
+      const active = target === screenId || (screenId === 'contatos' && target === 'rede') || (screenId === 'orientacoes' && target === 'mais') || (screenId === 'localizacao' && target === 'mais');
+      button.classList.toggle('active', active);
+    });
+  }
+
+  function goTo(screenId, push = true) {
+    const target = $(`#screen-${screenId}`);
+    if (!target) return;
+
+    if (push && state.currentScreen !== screenId) {
+      state.historyStack.push(state.currentScreen);
+    }
+
+    screens.forEach(screen => screen.classList.remove('is-active'));
+    target.classList.add('is-active');
+    target.scrollTop = 0;
+
+    state.currentScreen = screenId;
+    headerTitle.textContent = getScreenTitle(screenId);
+    setActiveNav(screenId);
+    btnBack.style.visibility = screenId === 'inicio' ? 'hidden' : 'visible';
+  }
+
+  function clearEmergencyTimers() {
+    state.emergencyTimers.forEach(timer => clearTimeout(timer));
+    state.emergencyTimers = [];
+  }
+
+  function resetEmergencyRoute() {
+    $$('.route-step').forEach((step, index) => {
+      step.classList.toggle('done', index === 0);
+      step.classList.remove('active');
+      const time = $('time', step);
+      if (time) time.textContent = index === 0 ? nowTime() : '--:--';
+    });
+  }
+
+  function markEmergencyStep(index) {
+    const step = $(`.route-step[data-step="${index}"]`);
+    if (!step) return;
+    step.classList.add('done');
+    step.classList.remove('active');
+    const time = $('time', step);
+    if (time) time.textContent = nowTime();
+  }
+
+  function setRouteActive(index) {
+    $$('.route-step').forEach(step => step.classList.remove('active'));
+    const step = $(`.route-step[data-step="${index}"]`);
+    step?.classList.add('active');
+  }
+
+  function updateLocation() {
+    if (!('geolocation' in navigator)) {
+      return Promise.resolve(state.lastLocation);
+    }
+
+    return new Promise(resolve => {
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          state.lastLocation = {
+            lat: Number(position.coords.latitude.toFixed(6)),
+            lng: Number(position.coords.longitude.toFixed(6))
+          };
+          resolve(state.lastLocation);
+        },
+        () => resolve(state.lastLocation),
+        { enableHighAccuracy: true, timeout: 2500, maximumAge: 60000 }
+      );
+    });
+  }
+
+  function mapsUrl() {
+    const { lat, lng } = state.lastLocation;
+    return `https://maps.google.com/?q=${lat},${lng}`;
+  }
+
+  function startEmergency(source = 'Botão de emergência') {
+    clearEmergencyTimers();
+    resetEmergencyRoute();
+
+    const contacts = getContacts();
+    const contactsLabel = $('#contactsAlertLabel');
+    if (contactsLabel) {
+      contactsLabel.textContent = contacts.length > 0
+        ? `${contacts.length} contato${contacts.length > 1 ? 's' : ''} avisado${contacts.length > 1 ? 's' : ''}`
+        : 'Nenhum contato cadastrado';
+    }
+
+    goTo('acionamento');
+    showToast('Acionamento demonstrativo iniciado. Nenhum SMS real será enviado.', 2800);
+
+    updateLocation().then(() => {
+      const sequence = [
+        { index: 1, delay: 650, message: 'Localização preparada para compartilhamento.' },
+        { index: 2, delay: 1400, message: contacts.length ? 'Rede de apoio notificada na simulação.' : 'Cadastre contatos para o fluxo real.' },
+        { index: 3, delay: 2200, message: 'Ligação para 190 simulada.' }
+      ];
+
+      sequence.forEach(({ index, delay, message }) => {
+        state.emergencyTimers.push(setTimeout(() => {
+          setRouteActive(index);
+          markEmergencyStep(index);
+          showToast(message, 1600);
+        }, delay));
+      });
+
+      state.emergencyTimers.push(setTimeout(() => {
+        addHistory(source);
+        showToast('Registro salvo no histórico local.', 1800);
+      }, 2600));
+    });
   }
 
   function formatPhone(value) {
-    const digits = normalizePhone(value);
+    const digits = value.replace(/\D/g, '').slice(0, 11);
     if (digits.length <= 2) return digits;
     if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   }
 
-  function isValidPhone(value) {
-    const digits = normalizePhone(value);
-    return digits.length === 10 || digits.length === 11;
+  function phoneIsValid(value) {
+    const digits = value.replace(/\D/g, '');
+    return digits.length >= 10 && digits.length <= 11;
   }
 
-  function showToast(message) {
-    window.clearTimeout(toastTimeout);
-    els.toast.textContent = message;
-    els.toast.classList.add('is-visible');
-    toastTimeout = window.setTimeout(() => {
-      els.toast.classList.remove('is-visible');
-    }, 1800);
-  }
-
-  function goTo(screenName) {
-    const target = document.getElementById(`screen-${screenName}`);
-    if (!target) return;
-
-    els.screens.forEach((screen) => screen.classList.toggle('is-active', screen === target));
-    els.bottomNavItems.forEach((item) => item.classList.toggle('is-active', item.dataset.nav === screenName));
-  }
-
-  function hydrateContacts() {
-    const contacts = loadContacts();
-    els.contactInputs.forEach((input, index) => {
-      input.value = contacts[index] ? formatPhone(contacts[index]) : '';
+  function loadContactsIntoForm() {
+    const contacts = getContacts();
+    ['contact1', 'contact2', 'contact3'].forEach((id, index) => {
+      const input = $(`#${id}`);
+      if (input) input.value = contacts[index] || '';
     });
-    updateContactsSummary();
+    updateContactsStatus();
   }
 
-  function getValidContacts() {
-    return loadContacts().map(normalizePhone).filter(Boolean).filter(isValidPhone);
-  }
-
-  function updateContactsSummary() {
-    const total = getValidContacts().length;
-    if (!total) {
-      els.contactsSummary.textContent = 'Nenhum contato cadastrado';
-      return;
-    }
-    els.contactsSummary.textContent = `${total} contato${total > 1 ? 's' : ''} pronto${total > 1 ? 's' : ''} para simulação`;
+  function updateContactsStatus() {
+    const contacts = getContacts();
+    const status = $('#contactsStatus');
+    if (!status) return;
+    status.textContent = contacts.length
+      ? `${contacts.length} contato${contacts.length > 1 ? 's' : ''} cadastrado${contacts.length > 1 ? 's' : ''}`
+      : 'Nenhum contato cadastrado';
   }
 
   function renderHistory() {
-    const history = loadHistory();
-    els.historyList.innerHTML = '';
+    const list = $('#historyList');
+    if (!list) return;
 
+    const history = getHistory();
     if (!history.length) {
-      const empty = document.createElement('div');
-      empty.className = 'timeline-empty';
-      empty.textContent = 'Nenhum alerta registrado ainda.';
-      els.historyList.appendChild(empty);
+      list.innerHTML = `
+        <article class="history-empty">
+          <strong>Nenhum acionamento registrado</strong>
+          <small>Os registros desta MVP ficam apenas no navegador.</small>
+        </article>
+      `;
       return;
     }
 
-    history
-      .slice()
-      .reverse()
-      .forEach((item) => {
-        const row = document.createElement('article');
-        row.className = 'timeline-item';
-        row.innerHTML = `
-          <strong>${item.title}</strong>
-          <small>${item.when}</small>
-          <small>${item.details}</small>
-        `;
-        els.historyList.appendChild(row);
-      });
+    list.innerHTML = history.map(item => `
+      <article class="history-item">
+        <div>
+          <strong>${item.source}</strong>
+          <small>${item.date} • ${item.contacts} contato${item.contacts === 1 ? '' : 's'} • ${item.status}</small>
+        </div>
+        <a href="https://maps.google.com/?q=${item.lat},${item.lng}" target="_blank" rel="noopener">Mapa</a>
+      </article>
+    `).join('');
   }
 
-  function addHistory(details) {
-    const now = new Date();
-    const history = loadHistory();
-    history.push({
-      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-      title: 'Alerta simulado registrado',
-      when: now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
-      details: details || `${getValidContacts().length} contato(s) + localização ${demoLocation.lat}, ${demoLocation.lng}`
-    });
-    saveHistory(history.slice(-20));
-    renderHistory();
-  }
-
-  function resetModal() {
-    window.clearTimeout(modalTimer);
-    els.modalProgress.style.width = '0%';
-    els.stepList.querySelectorAll('li').forEach((li) => li.classList.remove('done'));
-    els.modalText.textContent = 'Validando contatos e localização...';
-  }
-
-  function openModal() {
-    resetModal();
-    els.panicModal.hidden = false;
-  }
-
-  function closeModal() {
-    resetModal();
-    els.panicModal.hidden = true;
-  }
-
-  function simulatePanicFlow(source) {
-    const contacts = getValidContacts();
-
-    if (!contacts.length) {
-      showToast('Cadastre pelo menos 1 contato para simular o alerta.');
-      goTo('contatos');
-      return;
-    }
-
-    openModal();
-
-    const steps = [
-      'GPS validado com coordenadas de Coari.',
-      'Mensagem montada com link do Google Maps.',
-      'SMS para Patrulha Maria da Penha simulado.',
-      `SMS para ${contacts.length} contato(s) simulado.`,
-      source === 'shake' ? 'Histórico registrado via shake simulado.' : 'Histórico registrado pelo botão de apoio.'
-    ];
-
-    let index = 0;
-
-    function advance() {
-      const li = els.stepList.querySelector(`[data-step="${index}"]`);
-      if (li) li.classList.add('done');
-      els.modalText.textContent = steps[index];
-      els.modalProgress.style.width = `${((index + 1) / steps.length) * 100}%`;
-
-      index += 1;
-      if (index < steps.length) {
-        modalTimer = window.setTimeout(advance, 720);
-      } else {
-        addHistory(source === 'shake' ? 'Acionamento por shake simulado.' : 'Acionamento pelo botão principal simulado.');
-        showToast('Fluxo de apoio simulado com sucesso.');
-      }
-    }
-
-    modalTimer = window.setTimeout(advance, 420);
-  }
-
-  function bindEvents() {
-    els.navButtons.forEach((button) => {
-      button.addEventListener('click', () => goTo(button.dataset.nav));
-    });
-
-    els.contactInputs.forEach((input) => {
-      input.addEventListener('input', () => {
+  function setupContactForm() {
+    ['contact1', 'contact2', 'contact3'].forEach(id => {
+      const input = $(`#${id}`);
+      input?.addEventListener('input', () => {
+        const cursor = input.selectionStart;
         input.value = formatPhone(input.value);
+        input.setSelectionRange(input.value.length, input.value.length);
       });
     });
 
-    els.contactsForm.addEventListener('submit', (event) => {
+    $('#contactForm')?.addEventListener('submit', event => {
       event.preventDefault();
-      const values = els.contactInputs.map((input) => normalizePhone(input.value));
-      const filled = values.filter(Boolean);
-      const invalid = filled.filter((phone) => !isValidPhone(phone));
+      const values = ['contact1', 'contact2', 'contact3']
+        .map(id => $(`#${id}`)?.value.trim() || '')
+        .filter(Boolean);
 
-      if (invalid.length) {
-        showToast('Revise os números. Use DDD + telefone.');
+      const invalid = values.find(value => !phoneIsValid(value));
+      if (invalid) {
+        showToast('Revise os telefones. Use DDD + número.', 2400);
         return;
       }
 
-      saveContacts(values);
-      updateContactsSummary();
-      showToast('Contatos salvos no navegador.');
+      setContacts(values);
+      showToast('Contatos salvos com segurança neste navegador.');
     });
 
-    els.btnClearContacts.addEventListener('click', () => {
-      saveContacts(['', '', '']);
-      hydrateContacts();
-      showToast('Contatos removidos.');
+    $('#btnClearContacts')?.addEventListener('click', () => {
+      setContacts([]);
+      loadContactsIntoForm();
+      showToast('Contatos removidos da demonstração.');
     });
+  }
 
-    els.btnPanic.addEventListener('click', () => simulatePanicFlow('button'));
-    els.btnShakeDemo.addEventListener('click', () => {
-      if (!els.toggleShake.checked) {
-        showToast('Shake está desativado nas configurações.');
+  function wipeLocalData() {
+    localStorage.removeItem(STORAGE_KEYS.contacts);
+    localStorage.removeItem(STORAGE_KEYS.history);
+    loadContactsIntoForm();
+    renderHistory();
+    showToast('Dados locais apagados.');
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    textarea.remove();
+    return Promise.resolve();
+  }
+
+  function setupNavigation() {
+    document.addEventListener('click', event => {
+      const navTrigger = event.target.closest('[data-nav]');
+      if (navTrigger) {
+        goTo(navTrigger.dataset.nav);
         return;
       }
-      simulatePanicFlow('shake');
+
+      const toastTrigger = event.target.closest('[data-toast]');
+      if (toastTrigger) {
+        showToast(toastTrigger.dataset.toast);
+      }
     });
 
-    els.btnCloseModal.addEventListener('click', closeModal);
-    els.panicModal.addEventListener('click', (event) => {
-      if (event.target === els.panicModal) closeModal();
+    btnBack?.addEventListener('click', () => {
+      const previous = state.historyStack.pop();
+      goTo(previous || 'inicio', false);
     });
 
-    els.btnAddDemoHistory.addEventListener('click', () => {
-      addHistory('Registro manual de demonstração.');
-      showToast('Histórico demo adicionado.');
+    $('#btnMore')?.addEventListener('click', () => goTo('mais'));
+  }
+
+  function setupActions() {
+    $('#btnEmergency')?.addEventListener('click', () => startEmergency('Botão de emergência'));
+    $('#btnShakeDemo')?.addEventListener('click', () => startEmergency('Shake simulado'));
+
+    $('#btnSafe')?.addEventListener('click', () => {
+      clearEmergencyTimers();
+      addHistory('Confirmação de segurança');
+      showToast('Status registrado como em segurança.');
+      goTo('inicio');
     });
 
-    els.btnClearHistory.addEventListener('click', () => {
-      saveHistory([]);
-      renderHistory();
+    $('#btnCancelAction')?.addEventListener('click', () => {
+      clearEmergencyTimers();
+      showToast('Acionamento cancelado na demonstração.');
+      goTo('inicio');
+    });
+
+    $('#btnOpenMap')?.addEventListener('click', () => {
+      updateLocation().then(() => window.open(mapsUrl(), '_blank', 'noopener'));
+    });
+
+    $('#btnCopyMap')?.addEventListener('click', () => {
+      updateLocation()
+        .then(() => copyText(mapsUrl()))
+        .then(() => showToast('Link de localização copiado.'))
+        .catch(() => showToast('Não foi possível copiar o link.'));
+    });
+
+    $('#btnDemoHistory')?.addEventListener('click', () => {
+      addHistory('Registro demonstrativo');
+      showToast('Histórico demonstrativo adicionado.');
+    });
+
+    $('#btnClearHistory')?.addEventListener('click', () => {
+      setHistory([]);
       showToast('Histórico limpo.');
     });
 
-    els.btnCopyLocation.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(getMapUrl());
-        showToast('Link copiado.');
-      } catch (error) {
-        showToast(getMapUrl());
-      }
+    $('#btnQuickExit')?.addEventListener('click', () => {
+      $('#stealth')?.removeAttribute('hidden');
     });
 
-    els.demoCallButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        showToast(`Demonstração: chamada para ${button.dataset.demoCall}.`);
-      });
+    $('#btnReturn')?.addEventListener('click', () => {
+      $('#stealth')?.setAttribute('hidden', '');
+      goTo('inicio');
     });
 
-    els.btnQuickExit.addEventListener('click', () => {
-      els.stealthScreen.hidden = false;
-    });
-
-    els.btnReturnApp.addEventListener('click', () => {
-      els.stealthScreen.hidden = true;
-    });
-
-    els.btnWipeData.addEventListener('click', () => {
-      localStorage.removeItem(STORAGE_KEYS.contacts);
-      localStorage.removeItem(STORAGE_KEYS.history);
-      localStorage.removeItem(STORAGE_KEYS.settings);
-      hydrateContacts();
-      renderHistory();
-      showToast('Dados locais apagados.');
-    });
+    $('#btnWipeData')?.addEventListener('click', wipeLocalData);
   }
 
   function init() {
-    hydrateContacts();
+    btnBack.style.visibility = 'hidden';
+    setupNavigation();
+    setupContactForm();
+    setupActions();
+    loadContactsIntoForm();
     renderHistory();
-    bindEvents();
-    document.getElementById('messagePreview').textContent = getMessage();
+    resetEmergencyRoute();
   }
 
-  init();
+  document.addEventListener('DOMContentLoaded', init);
 })();

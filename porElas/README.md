@@ -1,26 +1,30 @@
 # Coari por Elas — MVP Institucional
 
-Protótipo mobile-first em HTML, CSS e JavaScript puro, sem build.
+Protótipo mobile-first clicável em HTML, CSS e JavaScript puro.
 
-## Como testar
+## Como executar
 
-1. Abra `index.html` no navegador.
-2. Para testar no celular, suba a pasta em uma hospedagem estática ou use Live Server no VS Code.
-3. Cadastre ao menos um contato na tela **Contatos**.
-4. Volte para **Início** e toque em **Acionar apoio** ou **Simular shake**.
+1. Extraia o ZIP.
+2. Abra `index.html` no navegador ou use a extensão Live Server no VS Code.
+3. Para testar no celular, hospede a pasta ou acesse pelo IP local do computador.
 
-## O que está funcional na MVP
+## Telas principais
 
-- Navegação mobile clicável entre telas.
-- Cadastro de até 3 contatos em `localStorage`.
-- Simulação de GPS com link do Google Maps.
-- Simulação de envio para Patrulha Maria da Penha e contatos.
-- Simulação de acionamento por shake.
-- Histórico local de alertas simulados.
-- Tela de apoio institucional.
-- Saída rápida para tela neutra.
+- Início institucional
+- Acionamento de ajuda demonstrativo
+- Rede de apoio
+- Cadastro de até 3 contatos
+- Localização
+- Histórico local
+- Orientações
+- Mais / privacidade / saída rápida
 
-## Observação importante
+## Observações técnicas
 
-Este projeto é apenas front-end demonstrativo. Ele não envia SMS real, não faz ligação real e não coleta GPS real.
-Para produção, implementar aplicativo nativo/Flutter com permissões reais, auditoria de segurança, testes de UX em situação de stress e política de privacidade.
+- Esta versão é somente front-end demonstrativo.
+- Não envia SMS real.
+- Não realiza ligação real.
+- Usa `localStorage` apenas para simular persistência local.
+- Usa `navigator.geolocation` quando disponível, com coordenada de fallback para demonstração.
+
+Para produção, recomenda-se Flutter ou app nativo, com permissões reais de SMS, localização, telefonia, criptografia local, logs mínimos e política rigorosa de privacidade.

@@ -3,303 +3,353 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#3f1235" />
+  <meta name="theme-color" content="#f6f4f7" />
+  <meta name="description" content="MVP institucional mobile para apoio à mulher - Coari por Elas" />
   <title>Coari por Elas — MVP Institucional</title>
   <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
-  <main class="device-stage" aria-label="Protótipo mobile Coari por Elas">
-    <div class="phone-shell">
-      <div class="app" id="app">
-        <header class="topbar">
-          <button class="icon-button ghost" id="btnQuickExit" type="button" aria-label="Sair rápido">
-            <span aria-hidden="true">↗</span>
+  <main class="prototype-stage" aria-label="Protótipo mobile Coari por Elas">
+    <section class="phone" aria-label="Aplicativo mobile clicável">
+      <div class="phone-inner">
+        <header class="app-header">
+          <button class="icon-button" id="btnBack" type="button" aria-label="Voltar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
 
-          <div class="brand">
-            <div class="brand-mark" aria-hidden="true">C</div>
-            <div>
-              <strong>Coari por Elas</strong>
-              <small>Apoio institucional</small>
-            </div>
-          </div>
+          <strong id="headerTitle">Coari por Elas</strong>
 
-          <button class="avatar-button" type="button" data-nav="perfil" aria-label="Abrir perfil">
-            <span aria-hidden="true">⚙</span>
+          <button class="icon-button" id="btnMore" type="button" aria-label="Menu rápido">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>
           </button>
         </header>
 
-        <section class="app-screen is-active" id="screen-inicio" aria-labelledby="title-inicio">
-          <div class="hero-card">
-            <div class="hero-copy">
-              <span class="eyebrow">MVP demonstrativa</span>
-              <h1 id="title-inicio">Apoio rápido, discreto e orientado.</h1>
-              <p>Protótipo institucional para acolhimento, contatos de emergência e simulação de alerta com localização.</p>
-            </div>
-            <div class="safety-orb" aria-hidden="true">
-              <span></span>
-            </div>
-          </div>
-
-          <div class="status-grid" aria-label="Status do dispositivo">
-            <article class="mini-card success">
-              <span class="mini-icon">⌖</span>
-              <div>
-                <strong>GPS ativo</strong>
-                <small id="gpsStatus">Coari, AM</small>
+        <section class="screen is-active" id="screen-inicio" data-title="Coari por Elas">
+          <div class="home-brand">
+            <div class="brand-row">
+              <div class="brand-symbol" aria-hidden="true">
+                <span></span>
               </div>
-            </article>
-            <article class="mini-card">
-              <span class="mini-icon">☊</span>
               <div>
-                <strong>SMS pronto</strong>
-                <small>Envio simulado</small>
+                <h1>Coari<br><small>por Elas</small></h1>
+                <p>Rede institucional de apoio, orientação e proteção.</p>
               </div>
-            </article>
-          </div>
-
-          <article class="panic-card">
-            <div class="panic-header">
-              <div>
-                <span class="eyebrow danger">Ação principal</span>
-                <h2>Preciso de apoio agora</h2>
-              </div>
-              <span class="secure-badge">Discreto</span>
             </div>
-
-            <button class="panic-button" id="btnPanic" type="button">
-              <span class="panic-pulse" aria-hidden="true"></span>
-              <span>Acionar apoio</span>
-              <small>simula SMS + localização + 190</small>
+            <button class="bell-button" type="button" data-toast="Notificações de apoio ativadas para demonstração." aria-label="Notificações">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             </button>
+          </div>
 
-            <div class="panic-actions">
-              <button class="secondary-action" type="button" id="btnShakeDemo">Simular shake</button>
-              <button class="secondary-action" type="button" data-nav="contatos">Editar contatos</button>
+          <article class="hero-panel">
+            <div>
+              <span class="label">Você não está sozinha</span>
+              <h2>Apoio rápido, sigiloso e orientado.</h2>
+              <p>Acione sua rede de proteção, compartilhe localização e consulte canais oficiais de atendimento.</p>
+            </div>
+            <div class="portrait-group" aria-hidden="true">
+              <span class="person p1"></span>
+              <span class="person p2"></span>
+              <span class="person p3"></span>
             </div>
           </article>
 
-          <section class="section-block">
-            <div class="section-title-row">
-              <div>
-                <span class="eyebrow">Acesso rápido</span>
-                <h2>Rede de proteção</h2>
-              </div>
-              <button class="text-button" type="button" data-nav="apoio">Ver tudo</button>
-            </div>
+          <button class="emergency-card" id="btnEmergency" type="button">
+            <span class="siren-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 12V9a4 4 0 0 1 8 0v3M6 12h12l1 8H5l1-8ZM4 9 2 7M20 9l2-2M12 3V1"/></svg>
+            </span>
+            <span>
+              <strong>Pedir ajuda</strong>
+              <small>Emergência • Toque aqui</small>
+            </span>
+          </button>
 
-            <div class="quick-list">
-              <button class="quick-card" type="button" data-nav="apoio">
-                <span>☎</span>
-                <div><strong>Ligue 180</strong><small>Central de Atendimento</small></div>
-              </button>
-              <button class="quick-card" type="button" data-nav="mapa">
-                <span>⌖</span>
-                <div><strong>Minha localização</strong><small>Link para compartilhar</small></div>
-              </button>
-              <button class="quick-card" type="button" data-nav="historico">
-                <span>◷</span>
-                <div><strong>Histórico</strong><small>Alertas simulados</small></div>
-              </button>
+          <div class="quick-grid" aria-label="Atalhos principais">
+            <button class="feature-card" type="button" data-nav="contatos">
+              <span class="feature-icon phone-icon" aria-hidden="true"></span>
+              <strong>Contatos</strong>
+              <small>Rede de confiança</small>
+            </button>
+            <button class="feature-card" type="button" data-nav="rede">
+              <span class="feature-icon shield-icon" aria-hidden="true"></span>
+              <strong>Delegacia</strong>
+              <small>Atendimento oficial</small>
+            </button>
+            <button class="feature-card" type="button" data-nav="rede">
+              <span class="feature-icon patrol-icon" aria-hidden="true"></span>
+              <strong>Patrulha</strong>
+              <small>Maria da Penha</small>
+            </button>
+            <button class="feature-card" type="button" data-nav="orientacoes">
+              <span class="feature-icon book-icon" aria-hidden="true"></span>
+              <strong>Orientações</strong>
+              <small>Direitos e segurança</small>
+            </button>
+          </div>
+
+          <article class="location-card">
+            <div class="pin-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 22s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
             </div>
-          </section>
+            <div>
+              <strong>Localização ativa</strong>
+              <p>Sua localização pode ser compartilhada com segurança no acionamento.</p>
+              <span><i></i> Tudo seguro</span>
+            </div>
+          </article>
         </section>
 
-        <section class="app-screen" id="screen-apoio" aria-labelledby="title-apoio">
-          <div class="page-heading">
-            <span class="eyebrow">Informação segura</span>
-            <h1 id="title-apoio">Canais de apoio</h1>
-            <p>Contatos úteis, orientações e conteúdo institucional para acolhimento.</p>
+        <section class="screen" id="screen-acionamento" data-title="Acionamento">
+          <div class="page-copy compact-copy">
+            <span class="label">Em caso de emergência</span>
+            <h2>Siga os passos abaixo</h2>
+            <p>Estamos conectando você à rede de proteção.</p>
           </div>
 
-          <div class="support-stack">
-            <article class="support-card primary">
-              <span class="support-icon">180</span>
+          <div class="process-route" id="processRoute">
+            <article class="route-step done" data-step="0">
+              <span class="route-dot">1</span>
               <div>
-                <h2>Central de Atendimento à Mulher</h2>
-                <p>Orientação e encaminhamento para rede de proteção.</p>
-                <button class="pill-button" type="button" data-demo-call="180">Ligar 180</button>
+                <strong>Confirmar pedido</strong>
+                <small>Seu pedido de ajuda foi confirmado.</small>
               </div>
+              <time>12:21</time>
             </article>
-
-            <article class="support-card">
-              <span class="support-icon">190</span>
+            <article class="route-step" data-step="1">
+              <span class="route-dot">2</span>
               <div>
-                <h2>Polícia Militar</h2>
-                <p>Emergência imediata. No app real, a ligação pode ser acionada após o envio dos SMS.</p>
-                <button class="pill-button" type="button" data-demo-call="190">Ligar 190</button>
+                <strong>Enviar localização</strong>
+                <small>Compartilhamento seguro da rota.</small>
+              </div>
+              <time>--:--</time>
+            </article>
+            <article class="route-step" data-step="2">
+              <span class="route-dot">3</span>
+              <div>
+                <strong>Avisar rede de apoio</strong>
+                <small>Contatos confiáveis e patrulha.</small>
+              </div>
+              <time>--:--</time>
+            </article>
+            <article class="route-step" data-step="3">
+              <span class="route-dot">4</span>
+              <div>
+                <strong>Ligar para 190</strong>
+                <small>Etapa de emergência simulada.</small>
+              </div>
+              <time>--:--</time>
+            </article>
+          </div>
+
+          <div class="action-ticket" id="actionTicket">
+            <div class="ticket-shield" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6l8-3Z"/><path d="m8.8 12 2.1 2.1 4.5-5"/></svg>
+            </div>
+            <h3>Ajuda acionada</h3>
+            <p>Estamos cuidando de você.</p>
+
+            <ul class="action-checklist">
+              <li><span></span><strong>Localização compartilhada</strong><small>Enviada com sucesso</small></li>
+              <li><span></span><strong id="contactsAlertLabel">Contatos avisados</strong><small>Seus contatos serão notificados</small></li>
+              <li><span></span><strong>Patrulha notificada</strong><small>Patrulha Maria da Penha acionada</small></li>
+              <li><span></span><strong>Ligação para 190</strong><small>Conexão simulada</small></li>
+            </ul>
+
+            <button class="safe-button" type="button" id="btnSafe">Estou em segurança</button>
+            <button class="cancel-button" type="button" id="btnCancelAction">Cancelar acionamento</button>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-rede" data-title="Rede de apoio">
+          <div class="page-copy">
+            <span class="round-shield" aria-hidden="true"></span>
+            <h2>Você não está sozinha.</h2>
+            <p>Conheça os serviços disponíveis para apoiar, orientar e proteger.</p>
+          </div>
+
+          <div class="support-route">
+            <article class="support-item">
+              <span class="support-node police"></span>
+              <div>
+                <div class="support-title-row"><strong>Patrulha Maria da Penha</strong><em>atendimento</em></div>
+                <p>Acompanhamento e proteção para mulheres em situação de violência.</p>
+                <a href="tel:92992221234">(92) 99222-1234</a>
               </div>
             </article>
 
-            <article class="info-panel">
-              <h2>Lei Maria da Penha</h2>
-              <p>Espaço para explicar medidas protetivas, tipos de violência, canais institucionais locais e documentos necessários para atendimento.</p>
-              <div class="tag-row">
-                <span>Violência física</span>
-                <span>Psicológica</span>
-                <span>Patrimonial</span>
-                <span>Moral</span>
-                <span>Sexual</span>
+            <article class="support-item">
+              <span class="support-node building"></span>
+              <div>
+                <div class="support-title-row"><strong>Delegacia da Mulher</strong><em>atendimento</em></div>
+                <p>Registro de ocorrências, medidas protetivas e atendimento especializado.</p>
+                <a href="tel:9235612240">(92) 3561-2240</a>
               </div>
             </article>
 
-            <article class="checklist-card">
-              <h2>Orientações de segurança</h2>
-              <ul>
-                <li>Cadastre contatos confiáveis.</li>
-                <li>Mantenha GPS e sinal de celular ativos.</li>
-                <li>Use a saída rápida caso precise ocultar a tela.</li>
-                <li>Procure atendimento presencial quando estiver em local seguro.</li>
-              </ul>
+            <article class="support-item">
+              <span class="support-node people"></span>
+              <div>
+                <div class="support-title-row"><strong>CRAS / CREAS</strong><em>acolhimento</em></div>
+                <p>Apoio psicossocial, orientação e encaminhamento para serviços da rede.</p>
+                <a href="tel:9235611408">(92) 3561-1408</a>
+              </div>
+            </article>
+
+            <article class="support-item">
+              <span class="support-node call"></span>
+              <div>
+                <div class="support-title-row"><strong>Disque 180</strong><em>orientação</em></div>
+                <p>Central de atendimento à mulher. Ligação gratuita e confidencial.</p>
+                <a href="tel:180">180</a>
+              </div>
             </article>
           </div>
         </section>
 
-        <section class="app-screen" id="screen-contatos" aria-labelledby="title-contatos">
-          <div class="page-heading">
-            <span class="eyebrow">Emergência</span>
-            <h1 id="title-contatos">Contatos confiáveis</h1>
-            <p>Cadastre até 3 números. Nesta MVP, os dados ficam apenas no navegador usando armazenamento local.</p>
+        <section class="screen" id="screen-contatos" data-title="Contatos">
+          <div class="page-copy">
+            <span class="label">Rede de confiança</span>
+            <h2>Cadastre até 3 contatos</h2>
+            <p>Na MVP, os contatos ficam salvos apenas neste navegador para demonstração.</p>
           </div>
 
-          <form class="form-card" id="contactsForm" novalidate>
-            <label class="field">
+          <form class="contact-form" id="contactForm" novalidate>
+            <label>
               <span>Contato 1</span>
-              <input id="contact1" name="contact1" inputmode="tel" autocomplete="tel" placeholder="Ex.: 92991234567" maxlength="16" />
+              <input id="contact1" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999" autocomplete="tel" />
             </label>
-            <label class="field">
+            <label>
               <span>Contato 2</span>
-              <input id="contact2" name="contact2" inputmode="tel" autocomplete="tel" placeholder="Ex.: 92987654321" maxlength="16" />
+              <input id="contact2" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999" autocomplete="tel" />
             </label>
-            <label class="field">
+            <label>
               <span>Contato 3</span>
-              <input id="contact3" name="contact3" inputmode="tel" autocomplete="tel" placeholder="Ex.: 92912345678" maxlength="16" />
+              <input id="contact3" type="tel" inputmode="tel" maxlength="16" placeholder="(92) 99999-9999" autocomplete="tel" />
             </label>
 
-            <div class="form-actions">
-              <button class="primary-button" type="submit">Salvar contatos</button>
-              <button class="outline-button" type="button" id="btnClearContacts">Limpar</button>
-            </div>
+            <button class="primary-button" type="submit">Salvar contatos</button>
+            <button class="text-danger" type="button" id="btnClearContacts">Limpar contatos</button>
           </form>
 
-          <article class="summary-card">
-            <span class="summary-icon">✓</span>
-            <div>
-              <strong id="contactsSummary">Nenhum contato cadastrado</strong>
-              <small>O acionamento exige pelo menos 1 contato para simular o fluxo completo.</small>
-            </div>
+          <article class="status-panel">
+            <strong id="contactsStatus">Nenhum contato cadastrado</strong>
+            <small>O acionamento completo exige pelo menos um contato válido.</small>
           </article>
         </section>
 
-        <section class="app-screen" id="screen-mapa" aria-labelledby="title-mapa">
-          <div class="page-heading">
-            <span class="eyebrow">Localização</span>
-            <h1 id="title-mapa">Compartilhamento seguro</h1>
-            <p>Exemplo de localização usada na simulação. No app real, vem do GPS do Android.</p>
+        <section class="screen" id="screen-localizacao" data-title="Localização">
+          <div class="map-visual" aria-label="Mapa ilustrativo">
+            <div class="map-grid"></div>
+            <span class="map-pin main-pin"></span>
+            <span class="map-pin second-pin"></span>
+            <button type="button" id="btnOpenMap">Abrir mapa</button>
           </div>
 
-          <article class="map-card">
-            <div class="fake-map" aria-label="Mapa ilustrativo">
-              <span class="pin"></span>
-              <span class="road road-a"></span>
-              <span class="road road-b"></span>
-              <span class="road road-c"></span>
+          <article class="route-form-card">
+            <div class="route-line">
+              <span></span>
+              <i></i>
             </div>
-            <div class="map-info">
-              <strong>Coari, Amazonas</strong>
-              <small id="locationCoords">-4.0853, -63.1411</small>
-              <button class="primary-button" id="btnCopyLocation" type="button">Copiar link Google Maps</button>
+            <div class="route-fields">
+              <label>
+                <small>Origem</small>
+                <strong>Minha localização</strong>
+              </label>
+              <label>
+                <small>Destino</small>
+                <strong>Rede de apoio mais próxima</strong>
+              </label>
             </div>
           </article>
 
-          <article class="info-panel compact">
-            <h2>Mensagem simulada</h2>
-            <p id="messagePreview">SOCORRO! App Coari por Elas. Estou em perigo! Minha localização: https://maps.google.com/?q=-4.0853,-63.1411</p>
-          </article>
+          <div class="time-tabs" aria-label="Simulação de saída">
+            <button type="button">12:21</button>
+            <button type="button" class="active">12:24</button>
+            <button type="button">5 min</button>
+            <button type="button">10 min</button>
+          </div>
+
+          <div class="location-actions">
+            <button class="primary-button light" type="button" id="btnCopyMap">Copiar link</button>
+            <button class="primary-button" type="button" data-nav="acionamento">Usar no acionamento</button>
+          </div>
         </section>
 
-        <section class="app-screen" id="screen-historico" aria-labelledby="title-historico">
-          <div class="page-heading">
-            <span class="eyebrow">Registros locais</span>
-            <h1 id="title-historico">Histórico de alertas</h1>
-            <p>Lista gerada somente para demonstração. Em produção, precisa de política clara de privacidade.</p>
+        <section class="screen" id="screen-historico" data-title="Histórico">
+          <div class="page-copy">
+            <span class="label">Registros locais</span>
+            <h2>Histórico de acionamentos</h2>
+            <p>Lista demonstrativa. Em produção, essa área precisa de política forte de privacidade.</p>
           </div>
 
-          <div class="history-toolbar">
-            <button class="outline-button small" type="button" id="btnAddDemoHistory">Adicionar demo</button>
-            <button class="outline-button small danger-outline" type="button" id="btnClearHistory">Limpar</button>
+          <div class="history-actions">
+            <button type="button" id="btnDemoHistory">Adicionar demo</button>
+            <button type="button" id="btnClearHistory">Limpar</button>
           </div>
 
-          <div class="timeline" id="historyList" aria-live="polite"></div>
+          <div class="history-list" id="historyList"></div>
         </section>
 
-        <section class="app-screen" id="screen-perfil" aria-labelledby="title-perfil">
-          <div class="page-heading">
-            <span class="eyebrow">Configurações</span>
-            <h1 id="title-perfil">Segurança e privacidade</h1>
-            <p>Preferências da MVP e pontos técnicos para a próxima fase.</p>
+        <section class="screen" id="screen-orientacoes" data-title="Orientações">
+          <div class="page-copy">
+            <span class="label">Informação institucional</span>
+            <h2>Orientações importantes</h2>
+            <p>Conteúdo para apoio preventivo, direitos e segurança.</p>
           </div>
 
-          <div class="settings-list">
-            <label class="toggle-row">
-              <div>
-                <strong>Modo discreto</strong>
-                <small>Oculta linguagem explícita em áreas sensíveis.</small>
-              </div>
-              <input type="checkbox" id="toggleDiscreet" checked />
-            </label>
-            <label class="toggle-row">
-              <div>
-                <strong>Shake para alerta</strong>
-                <small>Nesta MVP, é demonstrado por botão.</small>
-              </div>
-              <input type="checkbox" id="toggleShake" checked />
-            </label>
-            <button class="danger-button" type="button" id="btnWipeData">Apagar dados locais</button>
+          <div class="guidance-list">
+            <article>
+              <strong>Mantenha contatos atualizados</strong>
+              <p>Cadastre pessoas de confiança e revise os números com frequência.</p>
+            </article>
+            <article>
+              <strong>Ative GPS e sinal de celular</strong>
+              <p>O envio de localização depende do GPS e de cobertura da operadora.</p>
+            </article>
+            <article>
+              <strong>Use saída rápida</strong>
+              <p>Em situação de risco, o app pode exibir uma tela neutra rapidamente.</p>
+            </article>
+            <article>
+              <strong>Procure atendimento seguro</strong>
+              <p>Quando possível, busque a rede de proteção presencialmente.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-mais" data-title="Mais">
+          <div class="page-copy">
+            <span class="label">Configurações</span>
+            <h2>Privacidade e demonstração</h2>
+            <p>Controles úteis para apresentação do MVP.</p>
           </div>
 
-          <article class="info-panel compact">
-            <h2>Próximo passo técnico</h2>
-            <p>Transformar este protótipo em Flutter/Kotlin com permissões reais de SMS, GPS, ligação, armazenamento seguro e testes de usabilidade em situação de stress.</p>
-          </article>
+          <div class="settings-card">
+            <button type="button" data-nav="localizacao">Localização compartilhável</button>
+            <button type="button" data-nav="orientacoes">Orientações</button>
+            <button type="button" id="btnShakeDemo">Simular shake</button>
+            <button type="button" id="btnQuickExit">Saída rápida</button>
+            <button type="button" class="danger" id="btnWipeData">Apagar dados locais</button>
+          </div>
         </section>
 
         <nav class="bottom-nav" aria-label="Navegação principal">
-          <button class="nav-item is-active" type="button" data-nav="inicio"><span>⌂</span><small>Início</small></button>
-          <button class="nav-item" type="button" data-nav="apoio"><span>☎</span><small>Apoio</small></button>
-          <button class="nav-item" type="button" data-nav="contatos"><span>♡</span><small>Contatos</small></button>
-          <button class="nav-item" type="button" data-nav="historico"><span>◷</span><small>Histórico</small></button>
-          <button class="nav-item" type="button" data-nav="perfil"><span>⚙</span><small>Perfil</small></button>
+          <button class="active" type="button" data-nav="inicio"><span class="nav-home"></span><small>Início</small></button>
+          <button type="button" data-nav="historico"><span class="nav-clock"></span><small>Histórico</small></button>
+          <button type="button" data-nav="rede"><span class="nav-shield"></span><small>Apoio</small></button>
+          <button type="button" data-nav="mais"><span class="nav-menu"></span><small>Mais</small></button>
         </nav>
       </div>
-    </div>
+    </section>
   </main>
 
-  <div class="modal" id="panicModal" role="dialog" aria-modal="true" aria-labelledby="panicModalTitle" hidden>
-    <div class="modal-card">
-      <button class="modal-close" type="button" id="btnCloseModal" aria-label="Fechar">×</button>
-      <span class="modal-icon">⌁</span>
-      <h2 id="panicModalTitle">Simulando acionamento</h2>
-      <p id="panicModalText">Validando contatos e localização...</p>
-      <div class="progress-track"><span id="modalProgress"></span></div>
-      <ul class="step-list" id="stepList">
-        <li data-step="0">Validar GPS</li>
-        <li data-step="1">Montar mensagem com link</li>
-        <li data-step="2">Enviar para Patrulha Maria da Penha</li>
-        <li data-step="3">Enviar para contatos cadastrados</li>
-        <li data-step="4">Registrar histórico</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="stealth-screen" id="stealthScreen" hidden>
-    <div class="stealth-card">
-      <span class="weather-icon">☁</span>
-      <h1>Agenda de hoje</h1>
+  <section class="stealth" id="stealth" hidden>
+    <article>
+      <span>☁</span>
+      <h2>Agenda</h2>
       <p>Nenhum compromisso pendente.</p>
-      <button type="button" id="btnReturnApp">Voltar</button>
-    </div>
-  </div>
+      <button type="button" id="btnReturn">Voltar</button>
+    </article>
+  </section>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
