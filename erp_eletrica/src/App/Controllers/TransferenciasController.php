@@ -124,10 +124,10 @@ class TransferenciasController extends BaseController {
             $stmtProdutos = $this->pdo->prepare(
                 "SELECT p.*, COALESCE(
                     (SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = ?),
-                    p.quantidade
+                    CASE WHEN ? = 1 THEN p.quantidade ELSE 0 END
                 ) as qtd_matriz FROM produtos p ORDER BY p.nome"
             );
-            $stmtProdutos->execute([$origemEstoqueId]);
+            $stmtProdutos->execute([$origemEstoqueId, $this->isMatriz ? 1 : 0]);
             $produtosMatriz = $stmtProdutos->fetchAll();
         } catch (\Exception $e) {
             $produtosMatriz = $this->pdo->query("SELECT *, quantidade as qtd_matriz FROM produtos ORDER BY nome")->fetchAll();
@@ -204,8 +204,8 @@ class TransferenciasController extends BaseController {
             $em_transito = $stmt->fetchAll();
 
             // Histórico completo desta filial (COM FILTRO)
-            $sqlF = "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial FROM erp_transferencias t LEFT JOIN filiais f ON t.origem_filial_id = f.id WHERE t.destino_filial_id = ?";
-            $paramsF = [$this->filialLogada];
+            $sqlF = "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial FROM erp_transferencias t LEFT JOIN filiais f ON t.origem_filial_id = f.id WHERE (t.destino_filial_id = ? OR t.origem_filial_id = ?)";
+            $paramsF = [$this->filialLogada, $this->filialLogada];
 
             if ($fCodigo) { $sqlF .= " AND t.codigo_transferencia LIKE ?"; $paramsF[] = "%$fCodigo%"; }
             if ($fStatus) { $sqlF .= " AND t.status = ?"; $paramsF[] = $fStatus; }
@@ -326,7 +326,7 @@ class TransferenciasController extends BaseController {
 
             // Query para verificar estoque atual
             $stmtCheck = $this->pdo->prepare("
-                SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
+                SELECT p.nome, COALESCE(ef.quantidade, CASE WHEN ? = 1 THEN p.quantidade ELSE 0 END) as estoque_atual
                 FROM produtos p
                 LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 WHERE p.id = ?
@@ -342,7 +342,7 @@ class TransferenciasController extends BaseController {
                 }
 
                 // 1. Validação de Estoque (Servidor)
-                $stmtCheck->execute([$origem_id, $pid]);
+                $stmtCheck->execute([$this->isMatriz ? 1 : 0, $origem_id, $pid]);
                 $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
                 
                 if (!$estoque || $estoque['estoque_atual'] < $qtd) {
