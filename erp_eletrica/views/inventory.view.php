@@ -1,3 +1,71 @@
+<?php
+if (!function_exists('erp_first_product_image')) {
+    function erp_first_product_image(?string $imagens): string {
+        $imagens = trim((string)$imagens);
+        if ($imagens === '') {
+            return '';
+        }
+
+        $json = json_decode($imagens, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
+            if (!empty($json['url']) && is_string($json['url'])) {
+                return trim($json['url']);
+            }
+            if (!empty($json['imagem']) && is_string($json['imagem'])) {
+                return trim($json['imagem']);
+            }
+            if (!empty($json['path']) && is_string($json['path'])) {
+                return trim($json['path']);
+            }
+            foreach ($json as $item) {
+                if (is_string($item) && trim($item) !== '') {
+                    return trim($item);
+                }
+                if (is_array($item)) {
+                    foreach (['url', 'imagem', 'path'] as $key) {
+                        if (!empty($item[$key]) && is_string($item[$key])) {
+                            return trim($item[$key]);
+                        }
+                    }
+                }
+            }
+        }
+
+        $partes = preg_split('/[\r\n,;|]+/', $imagens);
+        if (is_array($partes)) {
+            foreach ($partes as $parte) {
+                $parte = trim((string)$parte);
+                if ($parte !== '') {
+                    return $parte;
+                }
+            }
+        }
+
+        return $imagens;
+    }
+}
+
+if (!function_exists('erp_product_image_url')) {
+    function erp_product_image_url(?string $imagens): string {
+        $imagem = erp_first_product_image($imagens);
+        if ($imagem === '') {
+            return '';
+        }
+        if (preg_match('#^(https?:)?//#i', $imagem) || str_starts_with($imagem, 'data:')) {
+            return $imagem;
+        }
+        $imagem = ltrim($imagem, './');
+        if (str_starts_with($imagem, '/')) {
+            return $imagem;
+        }
+        if (str_contains($imagem, '/')) {
+            return $imagem;
+        }
+        return 'public/uploads/produtos/' . $imagem;
+    }
+}
+?>
+
 <?php if (isset($_GET['msg'])): ?>
     <div class="alert alert-dismissible fade show shadow-sm border-0 mb-4 text-white" style="background-color: #2b8a3e; font-weight: 500;" role="alert">
         <i class="fas fa-check-circle me-2"></i> <?= htmlspecialchars($_GET['msg']) ?>
@@ -148,9 +216,10 @@
                         </td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <?php if ($p['imagens']): ?>
+                                <?php $productImageUrl = erp_product_image_url((string)($p['imagens'] ?? '')); ?>
+                                <?php if ($productImageUrl !== ''): ?>
                                     <div class="product-zoom-container rounded me-3 border" style="cursor: zoom-in; width: 40px; height: 40px; flex-shrink: 0;">
-                                        <img src="<?= htmlspecialchars($p['imagens'], ENT_QUOTES, 'UTF-8') ?>" data-image-name="<?= htmlspecialchars($p['imagens'], ENT_QUOTES, 'UTF-8') ?>" onerror="smartProductImageFallback(this)" width="40" height="40" style="object-fit: cover;">
+                                        <img src="<?= htmlspecialchars($productImageUrl, ENT_QUOTES, 'UTF-8') ?>" data-base-name="<?= htmlspecialchars(pathinfo(erp_first_product_image((string)($p['imagens'] ?? '')), PATHINFO_FILENAME), ENT_QUOTES, 'UTF-8') ?>" data-try-exts="jpg,JPG,jpeg,JPEG,png,PNG,webp,WEBP,gif,GIF,avif,AVIF" data-ext-idx="0" onerror="smartImgTryExt(this)" width="40" height="40" style="object-fit: cover;">
                                     </div>
                                 <?php else: ?>
                                     <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center border" width="40" height="40" style="min-width: 40px; min-height: 40px;">
@@ -683,73 +752,51 @@
 </div>
 
 <script>
-function productImageCandidates(imageValue) {
-    const raw = String(imageValue || '').trim();
-    if (!raw) return [];
+function firstProductImage(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
 
-    if (/^https?:\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('/')) {
-        return [raw];
-    }
-
-    const normalized = raw.replace(/^\.\/+/, '').replace(/^\/+/, '');
-    const hasPath = normalized.includes('/');
-    const fileName = hasPath ? normalized.split('/').pop() : normalized;
-    const dot = fileName.lastIndexOf('.');
-    const base = dot > 0 ? fileName.slice(0, dot) : fileName;
-    const ext = dot > 0 ? fileName.slice(dot + 1) : '';
-
-    const exts = [];
-    if (ext) {
-        exts.push(ext, ext.toLowerCase(), ext.toUpperCase());
-        const cap = ext.charAt(0).toUpperCase() + ext.slice(1).toLowerCase();
-        exts.push(cap);
-    } else {
-        exts.push('jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp', 'WEBP', 'gif', 'GIF', 'avif', 'AVIF');
-    }
-
-    const uniqueExts = [...new Set(exts)];
-    const paths = new Set();
-    if (hasPath) {
-        paths.add(normalized);
-    } else {
-        uniqueExts.forEach(e => paths.add(`public/uploads/produtos/${base}.${e}`));
-        paths.add(`public/uploads/produtos/${base}`);
-    }
-
-    return [...paths];
-}
-
-function setSmartImageSource(imgEl, imageValue) {
-    const candidates = productImageCandidates(imageValue);
-    if (!candidates.length) return false;
-    imgEl.dataset.imageCandidates = JSON.stringify(candidates);
-    imgEl.dataset.imageIdx = '0';
-    imgEl.src = candidates[0];
-    return true;
-}
-
-function smartProductImageFallback(imgEl) {
-    let candidates = [];
     try {
-        candidates = JSON.parse(imgEl.dataset.imageCandidates || '[]');
-    } catch (e) {
-        candidates = [];
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+                if (typeof item === 'string' && item.trim()) return item.trim();
+                if (item && typeof item === 'object') {
+                    const found = item.url || item.imagem || item.path;
+                    if (typeof found === 'string' && found.trim()) return found.trim();
+                }
+            }
+        } else if (parsed && typeof parsed === 'object') {
+            const found = parsed.url || parsed.imagem || parsed.path;
+            if (typeof found === 'string' && found.trim()) return found.trim();
+        }
+    } catch (e) {}
+
+    return raw.split(/[\r\n,;|]+/).map(s => s.trim()).find(Boolean) || raw;
+}
+
+function productImageUrl(value) {
+    const image = firstProductImage(value);
+    if (!image) return '';
+    if (/^(https?:)?\/\//i.test(image) || image.startsWith('data:') || image.startsWith('/')) {
+        return image;
     }
-    let idx = parseInt(imgEl.dataset.imageIdx || '0', 10);
-    idx += 1;
-    if (idx < candidates.length) {
-        imgEl.dataset.imageIdx = String(idx);
-        imgEl.src = candidates[idx];
+    const clean = image.replace(/^\.\//, '');
+    return clean.includes('/') ? clean : `public/uploads/produtos/${clean}`;
+}
+
+function smartImgTryExt(imgEl) {
+    const base = imgEl.dataset.baseName || '';
+    const list = (imgEl.dataset.tryExts || '').split(',').map(s => s.trim()).filter(Boolean);
+    let idx = parseInt(imgEl.dataset.extIdx || '0', 10);
+    if (!base || !list.length || idx >= list.length) {
+        imgEl.style.display = 'none';
         return;
     }
-    imgEl.style.display = 'none';
+    const nextExt = list[idx];
+    imgEl.dataset.extIdx = String(idx + 1);
+    imgEl.src = `public/uploads/produtos/${base}.${nextExt}`;
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('img[data-image-name]').forEach((img) => {
-        setSmartImageSource(img, img.getAttribute('data-image-name'));
-    });
-});
 
 function openNewProduct() {
     const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
@@ -812,9 +859,13 @@ function editProduct(product) {
     // Preview da Imagem
     const preview = document.getElementById('edit_preview');
     const icon = document.getElementById('preview-icon');
-    if (product.imagens) {
-        setSmartImageSource(preview, product.imagens);
-        preview.onerror = function() { smartProductImageFallback(preview); };
+    const productImage = productImageUrl(product.imagens);
+    if (productImage) {
+        preview.src = productImage;
+        preview.dataset.baseName = firstProductImage(product.imagens).replace(/\.[^/.]+$/, '');
+        preview.dataset.tryExts = 'jpg,JPG,jpeg,JPEG,png,PNG,webp,WEBP,gif,GIF,avif,AVIF';
+        preview.dataset.extIdx = '0';
+        preview.onerror = function() { smartImgTryExt(preview); };
         preview.classList.remove('d-none');
         icon.classList.add('d-none');
     } else {
@@ -1055,9 +1106,13 @@ function viewProduct(product) {
     // Image resolution
     const viewFoto = document.getElementById('view_foto');
     const viewNoFoto = document.getElementById('view_no_foto');
-    if (product.imagens) {
-        setSmartImageSource(viewFoto, product.imagens);
-        viewFoto.onerror = function() { smartProductImageFallback(viewFoto); };
+    const viewProductImage = productImageUrl(product.imagens);
+    if (viewProductImage) {
+        viewFoto.src = viewProductImage;
+        viewFoto.dataset.baseName = firstProductImage(product.imagens).replace(/\.[^/.]+$/, '');
+        viewFoto.dataset.tryExts = 'jpg,JPG,jpeg,JPEG,png,PNG,webp,WEBP,gif,GIF,avif,AVIF';
+        viewFoto.dataset.extIdx = '0';
+        viewFoto.onerror = function() { smartImgTryExt(viewFoto); };
         viewFoto.classList.remove('d-none');
         viewNoFoto.classList.add('d-none');
     } else {

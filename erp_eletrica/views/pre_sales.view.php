@@ -390,8 +390,32 @@ function showPvPreview(p) {
 function resolveSmartProductImage(value) {
     const raw = String(value || '').trim();
     if (!raw) return '';
-    if (/^https?:\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('/')) return raw;
-    const cleaned = raw.replace(/^\.\/+/, '').replace(/^\/+/, '');
+    let image = raw;
+    try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+                if (typeof item === 'string' && item.trim()) {
+                    image = item.trim();
+                    break;
+                }
+                if (item && typeof item === 'object') {
+                    const found = item.url || item.imagem || item.path;
+                    if (typeof found === 'string' && found.trim()) {
+                        image = found.trim();
+                        break;
+                    }
+                }
+            }
+        } else if (parsed && typeof parsed === 'object') {
+            const found = parsed.url || parsed.imagem || parsed.path;
+            if (typeof found === 'string' && found.trim()) image = found.trim();
+        }
+    } catch (e) {
+        image = raw.split(/[\r\n,;|]+/).map(s => s.trim()).find(Boolean) || raw;
+    }
+    if (/^(https?:)?\/\//i.test(image) || image.startsWith('data:') || image.startsWith('/')) return image;
+    const cleaned = image.replace(/^\.\/+/, '').replace(/^\/+/, '');
     if (cleaned.includes('/')) return cleaned;
     return `public/uploads/produtos/${cleaned}`;
 }

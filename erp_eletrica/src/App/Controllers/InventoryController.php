@@ -107,8 +107,12 @@ class InventoryController extends BaseController {
                     // Define a extensão com base no que a imagem REALMENTE é
                     $extension = $allowedMimeTypes[$mimeType];
                     
-                    // Gera o nome único com a extensão correta
-                    $filename = uniqid() . "." . $extension;
+                    // Gera um nome com entropia alta para evitar colisao entre uploads rapidos.
+                    try {
+                        $filename = bin2hex(random_bytes(16)) . "." . $extension;
+                    } catch (\Exception $e) {
+                        $filename = str_replace('.', '', uniqid('', true)) . "." . $extension;
+                    }
                     
                     if (move_uploaded_file($tmpName, $dir . $filename)) {
                         $data['imagens'] = $filename;
