@@ -210,9 +210,15 @@ class Sale extends BaseModel {
         return $this->query("SELECT COUNT(*) FROM {$this->table} v $join $where", $params)->fetchColumn();
     }
 
-    public function getFilteredStats($filters = []) {
-        list($where, $params) = $this->buildFilteredWhere($filters);
-        $join = "LEFT JOIN clientes c ON v.cliente_id = c.id";
+    public function getTodayStats() {
+        $filialId = $this->getFilialContext();
+        $where = "WHERE DATE(v.data_venda) = CURRENT_DATE";
+        $params = [];
+
+        if ($filialId) {
+            $where .= " AND v.filial_id = ?";
+            $params[] = $filialId;
+        }
 
         $stats = $this->query("
             SELECT
@@ -221,7 +227,6 @@ class Sale extends BaseModel {
                 COALESCE(SUM(CASE WHEN v.status = 'cancelado' THEN 1 ELSE 0 END), 0) as cancelamentos,
                 COALESCE(AVG(CASE WHEN v.status = 'concluido' THEN v.valor_total ELSE NULL END), 0) as ticket_medio
             FROM {$this->table} v
-            $join
             $where
         ", $params)->fetch();
 

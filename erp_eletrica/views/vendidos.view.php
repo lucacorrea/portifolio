@@ -2,7 +2,7 @@
     <div class="col-12 col-sm-6 col-lg-3">
         <div class="stat-card primary">
             <div>
-                <div class="stat-label">Vendas Hoje</div>
+                <div class="stat-label">Vendas hoje</div>
                 <div class="stat-value" id="stat-today-count">0</div>
             </div>
             <div class="stat-icon"><i class="fas fa-shopping-cart"></i></div>

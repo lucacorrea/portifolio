@@ -644,7 +644,7 @@ class SalesController extends BaseController {
         $saleModel = new Sale();
         $sales = $saleModel->getFiltered($filters, $page, $perPage);
         $total = $saleModel->getTotalFiltered($filters);
-        $stats = $saleModel->getFilteredStats($filters);
+        $stats = $saleModel->getTodayStats();
         
         foreach ($sales as &$s) {
             $s['data_formatada'] = date('d/m/Y H:i', strtotime($s['data_venda']));
