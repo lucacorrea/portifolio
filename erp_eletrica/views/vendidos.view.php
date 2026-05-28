@@ -261,6 +261,12 @@
                 </div>
 
                 <div class="mb-3">
+                    <label class="form-label small fw-bold">Quantidade que será devolvida</label>
+                    <input type="number" id="exch-return-qty" class="form-control" step="0.001" min="0.001" value="1">
+                    <div class="form-text">Pode devolver apenas parte da quantidade vendida.</div>
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label fw-bold">Buscar Novo Produto</label>
                     <div class="position-relative">
                         <input type="text" id="new-prod-search" class="form-control" placeholder="Digite nome ou código...">
@@ -678,6 +684,9 @@
             exchData = { vendaId: vId, itemId: iId, oldPrice: price, oldQtd: qtd };
             document.getElementById('exch-original-name').textContent = name;
             document.getElementById('exch-original-qtd').textContent = qtd + ' unid.';
+            const returnQtyInput = document.getElementById('exch-return-qty');
+            returnQtyInput.value = qtd;
+            returnQtyInput.max = qtd;
             document.getElementById('new-prod-search').value = '';
             document.getElementById('exchange-results').classList.add('d-none');
             document.getElementById('exchange-new-data').classList.add('d-none');
@@ -714,29 +723,41 @@
             resultsBox.classList.add('d-none');
             searchInput.value = name;
             document.getElementById('exch-new-price').value = price;
-            document.getElementById('exch-new-qty').value = exchData.oldQtd;
+            document.getElementById('exch-new-qty').value = document.getElementById('exch-return-qty').value || exchData.oldQtd;
             document.getElementById('exchange-new-data').classList.remove('d-none');
             document.getElementById('confirmExchangeBtn').classList.remove('d-none');
             calculateDiff();
         };
 
         const calculateDiff = () => {
+            const returnQty = parseFloat(document.getElementById('exch-return-qty').value) || 0;
             const q = parseFloat(document.getElementById('exch-new-qty').value) || 0;
             const p = parseFloat(document.getElementById('exch-new-price').value) || 0;
             const newTotal = q * p;
-            const oldTotal = exchData.oldQtd * exchData.oldPrice;
+            const oldTotal = returnQty * exchData.oldPrice;
             const diff = newTotal - oldTotal;
             const diffEl = document.getElementById('exch-diff');
             diffEl.textContent = (diff >= 0 ? '+ ' : '- ') + 'R$ ' + Math.abs(diff).toLocaleString('pt-BR', {minimumFractionDigits:2});
             diffEl.className = diff >= 0 ? 'fw-bold text-success' : 'fw-bold text-danger';
         };
 
+        document.getElementById('exch-return-qty').addEventListener('input', calculateDiff);
         document.getElementById('exch-new-qty').addEventListener('input', calculateDiff);
         document.getElementById('exch-new-price').addEventListener('input', calculateDiff);
 
         document.getElementById('confirmExchangeBtn').addEventListener('click', async function() {
+            const returnQty = parseFloat(document.getElementById('exch-return-qty').value);
             const newQty = parseFloat(document.getElementById('exch-new-qty').value);
             const newPrice = parseFloat(document.getElementById('exch-new-price').value);
+
+            if (!returnQty || returnQty <= 0 || returnQty > exchData.oldQtd) {
+                alert('Informe uma quantidade devolvida válida, sem passar da quantidade vendida.');
+                return;
+            }
+            if (!newQty || newQty <= 0 || newPrice < 0) {
+                alert('Informe quantidade e preço válidos para o novo produto.');
+                return;
+            }
             
             this.disabled = true;
             try {
@@ -746,6 +767,7 @@
                     body: JSON.stringify({
                         venda_id: exchData.vendaId,
                         item_id: exchData.itemId,
+                        return_qty: returnQty,
                         new_product_id: exchData.newProdId,
                         new_qty: newQty,
                         new_price: newPrice

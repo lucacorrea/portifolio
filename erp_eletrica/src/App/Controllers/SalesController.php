@@ -916,8 +916,6 @@ class SalesController extends BaseController {
             $oldTotalReturned = round($returnQty * $oldPrice, 2);
             $newTotalTaken = round($newQty * $newPrice, 2);
             $exchangeDiff = round($newTotalTaken - $oldTotalReturned, 2);
-            if (!$oldItem) throw new \Exception("Item original não encontrado.");
-
             // 2. Devolver estoque antigo
             $productModel->updateStock($oldItem['produto_id'], $returnQty, 'entrada');
 
@@ -929,22 +927,67 @@ class SalesController extends BaseController {
             // 4. Debitar estoque novo
             $productModel->updateStock($newProdId, $newQty, 'saida');
 
-            // 5. Atualizar vendas_itens
-            $db->prepare("UPDATE vendas_itens SET produto_id = ?, quantidade = ?, preco_unitario = ? WHERE id = ?")
-               ->execute([$newProdId, $newQty, $newPrice, $itemId]);
+            $stmtCols = $db->query("DESCRIBE vendas_itens");
+            $existingCols = array_column($stmtCols->fetchAll(\PDO::FETCH_ASSOC), 'Field');
+
+            $stmtProd = $db->prepare("SELECT * FROM produtos WHERE id = ? LIMIT 1");
+            $stmtProd->execute([$newProdId]);
+            $newProd = $stmtProd->fetch(\PDO::FETCH_ASSOC);
+            if (!$newProd) throw new \Exception("Novo produto não encontrado.");
+
+            $newItemData = [
+                'venda_id' => $vendaId,
+                'produto_id' => $newProdId,
+                'quantidade' => $newQty,
+                'preco_unitario' => $newPrice,
+            ];
+
+            foreach (['preco_tier', 'valor_comissao', 'comissao_percentual_aplicado'] as $col) {
+                if (in_array($col, $existingCols, true)) {
+                    $newItemData[$col] = $col === 'preco_tier' ? 1 : 0;
+                }
+            }
+
+            foreach (['ncm', 'cean', 'cest', 'cfop', 'origem', 'csosn', 'unidade'] as $col) {
+                if (in_array($col, $existingCols, true)) {
+                    $newItemData[$col] = $newProd[$col] ?? ($oldItem[$col] ?? null);
+                }
+            }
+
+            // 5. Atualizar vendas_itens mantendo a parte que não foi devolvida.
+            if (abs($returnQty - $oldQty) <= 0.0001) {
+                $set = [];
+                $params = [];
+                foreach ($newItemData as $col => $value) {
+                    if ($col === 'venda_id') continue;
+                    $set[] = "$col = ?";
+                    $params[] = $value;
+                }
+                $params[] = $itemId;
+                $db->prepare("UPDATE vendas_itens SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+            } else {
+                $remainingQty = round($oldQty - $returnQty, 3);
+                $db->prepare("UPDATE vendas_itens SET quantidade = ? WHERE id = ?")->execute([$remainingQty, $itemId]);
+
+                $cols = array_keys($newItemData);
+                $placeholders = implode(', ', array_fill(0, count($cols), '?'));
+                $db->prepare("INSERT INTO vendas_itens (" . implode(', ', $cols) . ") VALUES ($placeholders)")
+                   ->execute(array_values($newItemData));
+            }
 
             // 6. Recalcular total da venda
             $stmtTotal = $db->prepare("SELECT SUM(quantidade * preco_unitario) as total FROM vendas_itens WHERE venda_id = ?");
             $stmtTotal->execute([$vendaId]);
             $newTotalItems = $stmtTotal->fetchColumn() ?: 0;
-            
-            $sale = $saleModel->findById($vendaId);
-            $newTotalVenda = $newTotalItems - ($sale['desconto_total'] ?? 0);
+            $newTotalVenda = max(0, round($newTotalItems - ($sale['desconto_total'] ?? 0), 2));
 
             $db->prepare("UPDATE vendas SET valor_total = ? WHERE id = ?")->execute([$newTotalVenda, $vendaId]);
 
             // 7. Financeiro (Ajuste no caixa se necessário)
-            $diff = $newTotalVenda - $sale['valor_total'];
+            $diff = round($newTotalVenda - (float)$sale['valor_total'], 2);
+            if (abs($diff - $exchangeDiff) > 0.01) {
+                throw new \Exception("Falha de conferência no cálculo da troca. Revise os itens e tente novamente.");
+            }
             if ($diff != 0 && $sale['forma_pagamento'] !== 'fiado') {
                 $cashierModel = new \App\Models\Cashier();
                 $caixaAberto = $cashierModel->getOpenForFilial($sale['filial_id']);
@@ -971,8 +1014,8 @@ class SalesController extends BaseController {
                 $vendaId,
                 $itemId,
                 $oldItem['produto_id'],
-                $oldItem['quantidade'],
-                $oldItem['preco_unitario'],
+                $returnQty,
+                $oldPrice,
                 $newProdId,
                 $newQty,
                 $newPrice,
@@ -985,7 +1028,12 @@ class SalesController extends BaseController {
             $audit->record('Troca de item em venda', 'vendas', $vendaId, null, "Item ID {$itemId} trocado por Prod ID {$newProdId}");
 
             $db->commit();
-            echo json_encode(['success' => true, 'exchange_id' => $exchangeId]);
+            echo json_encode([
+                'success' => true,
+                'exchange_id' => $exchangeId,
+                'diferenca_valor' => $diff,
+                'novo_total_venda' => $newTotalVenda
+            ]);
 
         } catch (\Exception $e) {
             $db->rollBack();

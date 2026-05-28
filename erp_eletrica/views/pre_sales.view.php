@@ -1244,8 +1244,18 @@ async function salvarQuickClient() {
                         <span class="fw-bold text-end" id="exchangeOldName"></span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-success fw-bold"><i class="fas fa-arrow-up me-2"></i>LEVANDO (1 UN):</span>
+                        <span class="text-success fw-bold"><i class="fas fa-arrow-up me-2"></i>LEVANDO:</span>
                         <span class="fw-bold text-end" id="exchangeNewName"></span>
+                    </div>
+                    <div class="row g-3 mt-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Qtd. devolvida</label>
+                            <input type="number" id="exchangeReturnQty" class="form-control" step="0.001" min="0.001" value="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Qtd. do novo item</label>
+                            <input type="number" id="exchangeNewQty" class="form-control" step="0.001" min="0.001" value="1">
+                        </div>
                     </div>
                     <hr class="my-4">
                     <div class="d-flex justify-content-between align-items-center bg-white p-3 border rounded">
@@ -1278,9 +1288,12 @@ let exchangeState = {
     vendaId: null,
     oldItemId: null,
     oldItemName: null,
+    oldItemQty: 0,
     oldItemPrice: 0,
+    returnQty: 1,
     newProductId: null,
     newProductName: null,
+    newQty: 1,
     newProductPrice: 0
 };
 
@@ -1551,6 +1564,8 @@ async function openExchangeFlow() {
             
             exchangeState.oldItemId = item.id;
             exchangeState.oldItemName = item.produto_nome;
+            exchangeState.oldItemQty = parseFloat(item.quantidade);
+            exchangeState.returnQty = exchangeState.oldItemQty;
             exchangeState.oldItemPrice = parseFloat(item.preco_unitario); 
             
             document.getElementById('exchangeStep2').classList.remove('d-none');
@@ -1562,7 +1577,36 @@ async function openExchangeFlow() {
     });
 }
 
+function calculateExchangeFlowDiff() {
+    const returnInput = document.getElementById('exchangeReturnQty');
+    const newQtyInput = document.getElementById('exchangeNewQty');
+    const returnQty = parseFloat(returnInput?.value) || 0;
+    const newQty = parseFloat(newQtyInput?.value) || 0;
+    exchangeState.returnQty = returnQty;
+    exchangeState.newQty = newQty;
+
+    const diff = (exchangeState.newProductPrice * newQty) - (exchangeState.oldItemPrice * returnQty);
+    const diffEl = document.getElementById('exchangeDiff');
+    if (diff > 0) {
+        diffEl.innerHTML = `<span class="text-success"><i class="fas fa-plus me-1"></i>RECEBER R$ ${diff.toFixed(2).replace('.', ',')}</span>`;
+    } else if (diff < 0) {
+        diffEl.innerHTML = `<span class="text-danger"><i class="fas fa-minus me-1"></i>DEVOLVER R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}</span>`;
+    } else {
+        diffEl.innerHTML = `<span class="text-secondary">R$ 0,00 (Tudo Certo)</span>`;
+    }
+}
+
+document.getElementById('exchangeReturnQty')?.addEventListener('input', calculateExchangeFlowDiff);
+document.getElementById('exchangeNewQty')?.addEventListener('input', calculateExchangeFlowDiff);
+
 async function confirmExchange() {
+    calculateExchangeFlowDiff();
+    if (!exchangeState.returnQty || exchangeState.returnQty <= 0 || exchangeState.returnQty > exchangeState.oldItemQty) {
+        return alert("Informe uma quantidade devolvida válida, sem passar da quantidade vendida.");
+    }
+    if (!exchangeState.newQty || exchangeState.newQty <= 0) {
+        return alert("Informe uma quantidade válida para o novo item.");
+    }
     if (!exchangeState.vendaId || !exchangeState.oldItemId || !exchangeState.newProductId) {
         return alert("Por favor, selecione qual item será devolvido e qual produto será pego no lugar.");
     }
@@ -1576,7 +1620,8 @@ async function confirmExchange() {
             venda_id: exchangeState.vendaId,
             item_id: exchangeState.oldItemId,
             new_product_id: exchangeState.newProductId,
-            new_qty: 1,
+            return_qty: exchangeState.returnQty,
+            new_qty: exchangeState.newQty,
             new_price: exchangeState.newProductPrice
         })
     });
@@ -1775,16 +1820,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     document.getElementById('exchangeOldName').innerText = exchangeState.oldItemName;
                     document.getElementById('exchangeNewName').innerText = exchangeState.newProductName;
-                    
-                    const diff = exchangeState.newProductPrice - exchangeState.oldItemPrice;
-                    const diffEl = document.getElementById('exchangeDiff');
-                    if (diff > 0) {
-                        diffEl.innerHTML = `<span class="text-success"><i class="fas fa-plus me-1"></i>RECEBER R$ ${diff.toFixed(2).replace('.', ',')}</span>`;
-                    } else if (diff < 0) {
-                        diffEl.innerHTML = `<span class="text-danger"><i class="fas fa-minus me-1"></i>DEVOLVER R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}</span>`;
-                    } else {
-                        diffEl.innerHTML = `<span class="text-secondary">R$ 0,00 (Tudo Certo)</span>`;
-                    }
+                    document.getElementById('exchangeReturnQty').value = exchangeState.oldItemQty || 1;
+                    document.getElementById('exchangeReturnQty').max = exchangeState.oldItemQty || 1;
+                    document.getElementById('exchangeNewQty').value = exchangeState.oldItemQty || 1;
+                    calculateExchangeFlowDiff();
                     
                     document.getElementById('exchangeStep3').classList.remove('d-none');
                     resultsDiv.innerHTML = '';
