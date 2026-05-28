@@ -139,10 +139,8 @@ class Sale extends BaseModel {
         return $this->query("UPDATE {$this->table} SET status = ? WHERE id = ?", [$status, $id]);
     }
 
-    public function getFiltered($filters = [], $page = 1, $perPage = 9) {
-        $offset = ($page - 1) * $perPage;
+    private function buildFilteredWhere($filters = []) {
         $filialId = $this->getFilialContext();
-        
         $where = "WHERE 1=1";
         $params = [];
 
@@ -183,6 +181,13 @@ class Sale extends BaseModel {
             $params[] = "%{$filters['search']}%";
             $params[] = "%{$filters['search']}%";
         }
+
+        return [$where, $params];
+    }
+
+    public function getFiltered($filters = [], $page = 1, $perPage = 12) {
+        $offset = ($page - 1) * $perPage;
+        list($where, $params) = $this->buildFilteredWhere($filters);
 
         $nameField = $this->columnExists('nome_cliente_avulso') ? 'v.nome_cliente_avulso' : 'NULL';
 
@@ -199,46 +204,32 @@ class Sale extends BaseModel {
     }
 
     public function getTotalFiltered($filters = []) {
-        $filialId = $this->getFilialContext();
-        $where = "WHERE 1=1";
-        $params = [];
-
-        if ($filialId) {
-            $where .= " AND v.filial_id = ?";
-            $params[] = $filialId;
-        }
-        
-        // Add same filters as getFiltered
-        if (!empty($filters['status'])) {
-            $where .= " AND v.status = ?";
-            $params[] = $filters['status'];
-        }
-        if (!empty($filters['tipo_nota'])) {
-            $where .= " AND v.tipo_nota = ?";
-            $params[] = $filters['tipo_nota'];
-        }
-        if (!empty($filters['forma_pagamento'])) {
-            $where .= " AND v.forma_pagamento = ?";
-            $params[] = $filters['forma_pagamento'];
-        }
-        if (!empty($filters['data_inicio'])) {
-            $where .= " AND DATE(v.data_venda) >= ?";
-            $params[] = $filters['data_inicio'];
-        }
-        if (!empty($filters['data_fim'])) {
-            $where .= " AND DATE(v.data_venda) <= ?";
-            $params[] = $filters['data_fim'];
-        }
-        if (!empty($filters['search'])) {
-            $where .= " AND (v.id = ? OR c.nome LIKE ? OR v.nome_cliente_avulso LIKE ? OR v.cpf_cliente LIKE ?)";
-            $params[] = $filters['search'];
-            $params[] = "%{$filters['search']}%";
-            $params[] = "%{$filters['search']}%";
-            $params[] = "%{$filters['search']}%";
-        }
-
+        list($where, $params) = $this->buildFilteredWhere($filters);
         $join = "LEFT JOIN clientes c ON v.cliente_id = c.id";
 
         return $this->query("SELECT COUNT(*) FROM {$this->table} v $join $where", $params)->fetchColumn();
+    }
+
+    public function getFilteredStats($filters = []) {
+        list($where, $params) = $this->buildFilteredWhere($filters);
+        $join = "LEFT JOIN clientes c ON v.cliente_id = c.id";
+
+        $stats = $this->query("
+            SELECT
+                COALESCE(SUM(CASE WHEN v.status = 'concluido' THEN 1 ELSE 0 END), 0) as vendas_concluidas,
+                COALESCE(SUM(CASE WHEN v.status = 'concluido' THEN v.valor_total ELSE 0 END), 0) as total_vendido,
+                COALESCE(SUM(CASE WHEN v.status = 'cancelado' THEN 1 ELSE 0 END), 0) as cancelamentos,
+                COALESCE(AVG(CASE WHEN v.status = 'concluido' THEN v.valor_total ELSE NULL END), 0) as ticket_medio
+            FROM {$this->table} v
+            $join
+            $where
+        ", $params)->fetch();
+
+        return [
+            'vendas_concluidas' => (int)($stats['vendas_concluidas'] ?? 0),
+            'total_vendido' => (float)($stats['total_vendido'] ?? 0),
+            'cancelamentos' => (int)($stats['cancelamentos'] ?? 0),
+            'ticket_medio' => (float)($stats['ticket_medio'] ?? 0)
+        ];
     }
 }

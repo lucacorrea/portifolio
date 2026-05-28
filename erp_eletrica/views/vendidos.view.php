@@ -317,7 +317,7 @@
                 const data = await response.json();
                 renderTable(data.sales);
                 renderPagination(data);
-                if (page === 1) updateStats(data.sales);
+                updateStats(data.stats, data.sales);
             } catch (err) {
                 salesList.innerHTML = '<tr><td colspan="9" class="text-center py-5 text-danger">Erro ao carregar dados.</td></tr>';
             }
@@ -450,12 +450,26 @@
             paginationArea.innerHTML = html;
         }
 
-        function updateStats(sales) {
-            // Summary logic here (mocked for speed)
-            document.getElementById('stat-today-count').textContent = sales.filter(s => s.status === 'concluido').length;
-            const total = sales.filter(s => s.status === 'concluido').reduce((acc, s) => acc + parseFloat(s.valor_total), 0);
-            document.getElementById('stat-total-val').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits:2});
-            document.getElementById('stat-cancel-count').textContent = sales.filter(s => s.status === 'cancelado').length;
+        function updateStats(stats, fallbackSales = []) {
+            if (!stats) {
+                const concluidas = fallbackSales.filter(s => s.status === 'concluido');
+                const total = concluidas.reduce((acc, s) => acc + parseFloat(s.valor_total || 0), 0);
+                const cancelamentos = fallbackSales.filter(s => s.status === 'cancelado').length;
+                stats = {
+                    vendas_concluidas: concluidas.length,
+                    total_vendido: total,
+                    cancelamentos,
+                    ticket_medio: concluidas.length ? total / concluidas.length : 0
+                };
+            }
+
+            const totalVendido = parseFloat(stats.total_vendido || 0);
+            const ticketMedio = parseFloat(stats.ticket_medio || 0);
+
+            document.getElementById('stat-today-count').textContent = stats.vendas_concluidas || 0;
+            document.getElementById('stat-total-val').textContent = 'R$ ' + totalVendido.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('stat-cancel-count').textContent = stats.cancelamentos || 0;
+            document.getElementById('stat-avg-ticket').textContent = 'R$ ' + ticketMedio.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
         // --- Interaction Handlers ---

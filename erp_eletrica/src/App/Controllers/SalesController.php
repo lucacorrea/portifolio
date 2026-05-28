@@ -633,11 +633,18 @@ class SalesController extends BaseController {
     public function sold_search() {
         $filters = $_GET;
         $page = (int)($filters['page'] ?? 1);
-        $perPage = (int)($filters['perPage'] ?? 9);
+        if ($page <= 0) {
+            $page = 1;
+        }
+        $perPage = (int)($filters['perPage'] ?? 12);
+        if ($perPage <= 0) {
+            $perPage = 12;
+        }
         
         $saleModel = new Sale();
         $sales = $saleModel->getFiltered($filters, $page, $perPage);
         $total = $saleModel->getTotalFiltered($filters);
+        $stats = $saleModel->getFilteredStats($filters);
         
         foreach ($sales as &$s) {
             $s['data_formatada'] = date('d/m/Y H:i', strtotime($s['data_venda']));
@@ -649,7 +656,8 @@ class SalesController extends BaseController {
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
-            'totalPages' => ceil($total / $perPage)
+            'totalPages' => ceil($total / $perPage),
+            'stats' => $stats
         ]);
         exit;
     }
