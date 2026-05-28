@@ -1116,7 +1116,7 @@ async function salvarQuickClient() {
                 </div>
                 
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary fw-bold py-3 shadow-sm hover-shadow" onclick="imprimirCupom(activeManageId)">
+                    <button class="btn btn-outline-primary fw-bold py-3 shadow-sm hover-shadow" id="btnManageCupom" onclick="imprimirCupom(activeManageId)">
                         <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
                     </button>
                     <button class="btn btn-outline-info fw-bold py-3 shadow-sm hover-shadow" id="btnManageA4" onclick="imprimirA4(activeManageId)" style="display: none;">
@@ -1422,6 +1422,11 @@ function manageSale(sale) {
         
         const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
 
+        const btnCupom = document.getElementById('btnManageCupom');
+        if (btnCupom) {
+            btnCupom.style.display = isFiscal ? 'none' : 'block';
+        }
+
         const btnDanfe = document.getElementById('btnManageDanfe');
         if (btnDanfe) {
             btnDanfe.style.display = isFiscal ? 'block' : 'none';
@@ -1624,6 +1629,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
                 
                 const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
+
+                const btnCupom = document.getElementById('btnManageCupom');
+                if (btnCupom) {
+                    btnCupom.style.display = isFiscal ? 'none' : 'block';
+                }
 
                 const btnDanfe = document.getElementById('btnManageDanfe');
                 if (btnDanfe) {

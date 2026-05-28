@@ -2389,6 +2389,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
 
+                const btnCupom = document.getElementById('btnManageCupom');
+                if (btnCupom) {
+                    btnCupom.style.display = isFiscal ? 'none' : 'block';
+                }
+
                 const btnDanfe = document.getElementById('btnManageDanfe');
                 if (btnDanfe) {
                     btnDanfe.style.display = isFiscal ? 'block' : 'none';
