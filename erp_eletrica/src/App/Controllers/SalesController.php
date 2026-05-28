@@ -872,11 +872,17 @@ class SalesController extends BaseController {
         $vendaId = $data['venda_id'] ?? null;
         $itemId = $data['item_id'] ?? null; // ID da linha em vendas_itens
         $newProdId = $data['new_product_id'] ?? null;
-        $newQty = $data['new_qty'] ?? 1;
-        $newPrice = $data['new_price'] ?? 0;
+        $returnQty = isset($data['return_qty']) ? (float)$data['return_qty'] : null;
+        $newQty = isset($data['new_qty']) ? (float)$data['new_qty'] : 1;
+        $newPrice = isset($data['new_price']) ? (float)$data['new_price'] : 0;
 
         if (!$vendaId || !$itemId || !$newProdId) {
             echo json_encode(['success' => false, 'error' => 'Dados incompletos para a troca']);
+            exit;
+        }
+
+        if ($newQty <= 0 || $newPrice < 0) {
+            echo json_encode(['success' => false, 'error' => 'Quantidade ou preço do novo produto inválido.']);
             exit;
         }
 
@@ -887,14 +893,33 @@ class SalesController extends BaseController {
         try {
             $db->beginTransaction();
 
+            $sale = $saleModel->findById($vendaId);
+            if (!$sale) throw new \Exception("Venda não encontrada.");
+            if (($sale['status'] ?? '') === 'cancelado') {
+                throw new \Exception("Não é possível realizar troca em venda cancelada.");
+            }
+
             // 1. Obter item atual
-            $stmtItem = $db->prepare("SELECT * FROM vendas_itens WHERE id = ? AND venda_id = ?");
+            $stmtItem = $db->prepare("SELECT * FROM vendas_itens WHERE id = ? AND venda_id = ? FOR UPDATE");
             $stmtItem->execute([$itemId, $vendaId]);
             $oldItem = $stmtItem->fetch(\PDO::FETCH_ASSOC);
             if (!$oldItem) throw new \Exception("Item original não encontrado.");
 
+            $oldQty = (float)$oldItem['quantidade'];
+            $returnQty = $returnQty === null ? $oldQty : $returnQty;
+            if ($returnQty <= 0) throw new \Exception("Quantidade devolvida deve ser maior que zero.");
+            if ($returnQty > $oldQty + 0.0001) {
+                throw new \Exception("Quantidade devolvida não pode ser maior que a quantidade vendida.");
+            }
+
+            $oldPrice = (float)$oldItem['preco_unitario'];
+            $oldTotalReturned = round($returnQty * $oldPrice, 2);
+            $newTotalTaken = round($newQty * $newPrice, 2);
+            $exchangeDiff = round($newTotalTaken - $oldTotalReturned, 2);
+            if (!$oldItem) throw new \Exception("Item original não encontrado.");
+
             // 2. Devolver estoque antigo
-            $productModel->updateStock($oldItem['produto_id'], $oldItem['quantidade'], 'entrada');
+            $productModel->updateStock($oldItem['produto_id'], $returnQty, 'entrada');
 
             // 3. Verificar estoque novo
             if (!$productModel->hasEnoughStock($newProdId, $newQty)) {
