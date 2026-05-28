@@ -106,8 +106,13 @@ function normalizarImagemUrl(?string $imagem): string
     $imagem = ltrim($imagem, './');
 
     // Quando apenas o nome do arquivo é salvo no banco, assume pasta padrão.
+    if (str_starts_with($imagem, 'public/uploads/produtos/')) {
+        $imagem = basename($imagem);
+    }
+
     if (!str_contains($imagem, '/')) {
-        $imagem = 'public/uploads/produtos/' . $imagem;
+        $imagem = 'produto_imagem.php?f=' . rawurlencode($imagem);
+        return baseUrl() . appBasePath() . '/' . $imagem;
     }
 
     return baseUrl() . appBasePath() . '/' . $imagem;

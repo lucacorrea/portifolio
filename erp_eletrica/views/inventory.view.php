@@ -58,10 +58,13 @@ if (!function_exists('erp_product_image_url')) {
         if (str_starts_with($imagem, '/')) {
             return $imagem;
         }
+        if (str_starts_with($imagem, 'public/uploads/produtos/')) {
+            $imagem = basename($imagem);
+        }
         if (str_contains($imagem, '/')) {
             return $imagem;
         }
-        return 'public/uploads/produtos/' . $imagem;
+        return 'produto_imagem.php?f=' . rawurlencode($imagem);
     }
 }
 ?>
@@ -782,7 +785,10 @@ function productImageUrl(value) {
         return image;
     }
     const clean = image.replace(/^\.\//, '');
-    return clean.includes('/') ? clean : `public/uploads/produtos/${clean}`;
+    if (clean.startsWith('public/uploads/produtos/')) {
+        return `produto_imagem.php?f=${encodeURIComponent(clean.split('/').pop())}`;
+    }
+    return clean.includes('/') ? clean : `produto_imagem.php?f=${encodeURIComponent(clean)}`;
 }
 
 function smartImgTryExt(imgEl) {
@@ -795,7 +801,7 @@ function smartImgTryExt(imgEl) {
     }
     const nextExt = list[idx];
     imgEl.dataset.extIdx = String(idx + 1);
-    imgEl.src = `public/uploads/produtos/${base}.${nextExt}`;
+    imgEl.src = `produto_imagem.php?f=${encodeURIComponent(`${base}.${nextExt}`)}`;
 }
 
 function openNewProduct() {

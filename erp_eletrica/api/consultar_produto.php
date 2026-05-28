@@ -90,6 +90,9 @@ try {
         $rawImage = trim((string)$rawImage);
         if ($rawImage !== '') {
             $cleanImage = ltrim($rawImage, './');
+            if (str_starts_with($cleanImage, 'public/uploads/produtos/')) {
+                $cleanImage = basename($cleanImage);
+            }
             if (
                 preg_match('#^(https?:)?//#i', $rawImage) ||
                 str_starts_with($rawImage, 'data:') ||
@@ -98,7 +101,7 @@ try {
             ) {
                 $imagem = $rawImage;
             } else {
-                $imagem = 'public/uploads/produtos/' . $cleanImage;
+                $imagem = 'produto_imagem.php?f=' . rawurlencode($cleanImage);
             }
         }
     }

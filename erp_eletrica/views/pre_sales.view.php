@@ -416,12 +416,31 @@ function resolveSmartProductImage(value) {
     }
     if (/^(https?:)?\/\//i.test(image) || image.startsWith('data:') || image.startsWith('/')) return image;
     const cleaned = image.replace(/^\.\/+/, '').replace(/^\/+/, '');
+    if (cleaned.startsWith('public/uploads/produtos/')) {
+        return `produto_imagem.php?f=${encodeURIComponent(cleaned.split('/').pop())}`;
+    }
     if (cleaned.includes('/')) return cleaned;
-    return `public/uploads/produtos/${cleaned}`;
+    return `produto_imagem.php?f=${encodeURIComponent(cleaned)}`;
 }
 
 function smartSwapImg(img) {
     const src = img.getAttribute('src') || '';
+    if (src.includes('produto_imagem.php')) {
+        const current = new URL(src, window.location.href).searchParams.get('f') || '';
+        const mProxy = current.match(/^(.+?)(?:\.([^.]+))?$/);
+        if (!mProxy) return;
+        const baseProxy = mProxy[1];
+        const currentExtProxy = mProxy[2] || '';
+        const candidatesProxy = currentExtProxy
+            ? [currentExtProxy.toLowerCase(), currentExtProxy.toUpperCase(), currentExtProxy]
+            : ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp', 'WEBP', 'gif', 'GIF', 'avif', 'AVIF'];
+        let idxProxy = parseInt(img.dataset.extIdx || '0', 10) + 1;
+        const uniqueProxy = [...new Set(candidatesProxy)];
+        if (idxProxy >= uniqueProxy.length) return;
+        img.dataset.extIdx = String(idxProxy);
+        img.src = `produto_imagem.php?f=${encodeURIComponent(`${baseProxy}.${uniqueProxy[idxProxy]}`)}`;
+        return;
+    }
     const m = src.match(/^(.*\/)?([^\/]+?)(?:\.([^.\/]+))?$/);
     if (!m) return;
     const prefix = m[1] || 'public/uploads/produtos/';

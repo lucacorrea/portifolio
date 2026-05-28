@@ -11,6 +11,15 @@ class InventoryController extends BaseController {
         $this->service = new InventoryService();
     }
 
+    private function productUploadDir(): string {
+        $appRoot = dirname(__DIR__, 3);
+        $dir = getenv('ERP_PRODUCT_UPLOAD_DIR');
+        if (!$dir) {
+            $dir = dirname(dirname($appRoot)) . DIRECTORY_SEPARATOR . 'erp_eletrica_uploads' . DIRECTORY_SEPARATOR . 'produtos';
+        }
+        return rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    }
+
     public function index() {
         $productModel = new \App\Models\Product();
         $movementModel = new \App\Models\StockMovement();
@@ -80,7 +89,7 @@ class InventoryController extends BaseController {
 
             // LEITURA INTELIGENTE DE IMAGEM (Qualquer formato válido)
             if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
-                $dir = dirname(__DIR__, 3) . "/public/uploads/produtos/";
+                $dir = $this->productUploadDir();
                 if (!is_dir($dir)) mkdir($dir, 0777, true);
 
                 $tmpName = $_FILES['foto']['tmp_name'];
