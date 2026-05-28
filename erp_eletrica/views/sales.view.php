@@ -448,7 +448,7 @@
                 </div>
                 
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary fw-bold py-3" onclick="imprimirCupom(activeManageId)">
+                    <button class="btn btn-outline-primary fw-bold py-3" id="btnManageCupom" onclick="imprimirCupom(activeManageId)">
                         <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
                     </button>
                     <button class="btn btn-outline-info fw-bold py-3" id="btnManageA4" onclick="imprimirA4(activeManageId)" style="display: none;">
@@ -2191,6 +2191,11 @@ function manageSale(sale) {
         
         const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
 
+        const btnCupom = document.getElementById('btnManageCupom');
+        if (btnCupom) {
+            btnCupom.style.display = isFiscal ? 'none' : 'block';
+        }
+
         const btnDanfe = document.getElementById('btnManageDanfe');
         if (btnDanfe) {
             btnDanfe.style.display = isFiscal ? 'block' : 'none';
@@ -3112,22 +3117,21 @@ function showSuccessModal(saleId, total, tipoNota, troco = 0, valorRecebido = nu
         <button class="btn btn-outline-secondary btn-lg fw-bold py-3 shadow-sm mb-2" disabled>
             <i class="fas fa-clock me-2"></i>AGUARDANDO SINCRONIZAÇÃO
         </button>`;
+    } else if (isFiscal) {
+        btnPrint = `
+            <button class="btn btn-info btn-lg fw-bold py-3 shadow-sm text-white mb-2 w-100" onclick="imprimirA4(${saleId})">
+                <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
+            </button>
+            <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm mb-2 w-100" id="btnNFCeModal" onclick="imprimirDanfe(${saleId})">
+                <i class="fas fa-file-invoice-dollar me-2"></i>IMPRIMIR DANFE (NFC-e)
+            </button>
+        `;
     } else {
         btnPrint = `
             <button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm mb-2 w-100" onclick="imprimirCupom(${saleId})">
                 <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
             </button>
         `;
-        if (isFiscal) {
-            btnPrint += `
-            <button class="btn btn-info btn-lg fw-bold py-3 shadow-sm text-white mb-2 w-100" onclick="imprimirA4(${saleId})">
-                <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
-            </button>
-            <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm mb-2 w-100" id="btnNFCeModal" onclick="issueNFCe(${saleId})">
-                <i class="fas fa-file-invoice-dollar me-2"></i>EMITIR NFC-e (DANFE)
-            </button>
-            `;
-        }
     }
 
     const saleIdDisplay = isOffline ? saleId : `#${saleId}`;
