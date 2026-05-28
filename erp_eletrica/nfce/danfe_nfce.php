@@ -424,8 +424,8 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
   :root {
     --ticket-screen-max: 384px;
     --ticket-print-width: 72mm;
-    --pad: 10px;
-    --qr: 190px;
+    --pad: 8px;
+    --qr: 175px;
     --accent: #1a73e8;
     --ink: #111;
     --paper: #fff;
@@ -444,7 +444,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     padding: 0;
     background: var(--bg);
     color: var(--ink);
-    font: 13px/1.35 monospace;
+    font: 12px/1.16 monospace;
     height: auto;
     min-height: 0;
   }
@@ -456,9 +456,9 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
   .wrapper {
     width: 100%;
     max-width: var(--ticket-screen-max);
-    margin: 10px auto 92px auto;
+    margin: 6px auto 76px auto;
     background: var(--paper);
-    border-radius: 12px;
+    border-radius: 10px;
     box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
     padding: var(--pad);
     display: block;
@@ -477,12 +477,12 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
   }
 
   .small {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .hr {
     border-top: 1px dashed #000;
-    margin: 6px 0;
+    margin: 4px 0;
     height: 0;
   }
 
@@ -494,11 +494,11 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 
   .tbl th {
     border-bottom: 1px dashed #000;
-    padding: 4px 0;
+    padding: 2px 0;
   }
 
   .tbl td {
-    padding: 3px 0;
+    padding: 1px 0;
     vertical-align: top;
     word-wrap: break-word;
     overflow-wrap: break-word;
@@ -508,15 +508,15 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     display: inline-block;
     background: #eef2ff;
     color: #1f2937;
-    padding: 3px 6px;
-    border-radius: 6px;
+    padding: 2px 5px;
+    border-radius: 4px;
     font-size: 10px;
   }
 
   .nome_empresa {
-    margin: 0 0 4px 0;
-    font-size: 15px;
-    line-height: 1.25;
+    margin: 0 0 2px 0;
+    font-size: 13px;
+    line-height: 1.1;
     word-break: break-word;
   }
 
@@ -559,8 +559,8 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     background: #fee2e2;
     color: #b91c1c;
     border: 2px solid #b91c1c;
-    padding: 15px;
-    margin-bottom: 20px;
+    padding: 8px;
+    margin-bottom: 8px;
     border-radius: 8px;
     text-align: center;
     font-weight: bold;
@@ -574,7 +574,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 6px auto;
+    margin: 4px auto;
     width: var(--qr);
     min-height: var(--qr);
   }
@@ -624,7 +624,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
       width: 72mm !important;
       max-width: 72mm !important;
       margin: 0 !important;
-      padding: 3mm 2mm 0 2mm !important;
+      padding: 2mm 2mm 0 2mm !important;
       border: none !important;
       border-radius: 0 !important;
       box-shadow: none !important;
@@ -643,9 +643,9 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     }
 
     #qrcode {
-      width: 180px !important;
-      min-height: 180px !important;
-      margin: 4px auto !important;
+      width: 165px !important;
+      min-height: 165px !important;
+      margin: 3px auto !important;
     }
 
     .hr {
@@ -654,7 +654,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
 
     .tbl th,
     .tbl td {
-      padding: 2px 0 !important;
+      padding: 1px 0 !important;
     }
 
     body::after,

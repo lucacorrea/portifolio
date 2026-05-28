@@ -81,6 +81,10 @@ class InventoryController extends BaseController {
             validateCsrf($_POST['csrf_token'] ?? '');
             $model = new \App\Models\Product();
             $data = $_POST;
+            $data['ncm'] = preg_replace('/\D+/', '', (string)($data['ncm'] ?? ''));
+            if (strlen($data['ncm']) !== 8) {
+                $this->redirect('estoque.php?error=' . urlencode('Informe um NCM valido com 8 digitos para cadastrar o produto.'));
+            }
             
             // Fix: ensure product is linked to the correct filial
             if (empty($data['filial_id'])) {

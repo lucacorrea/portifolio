@@ -65,14 +65,14 @@ if (!$xmlRaw) {
     <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>NFC-e #<?= $vendaId ?></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
-        *{box-sizing:border-box;} body{font:13px/1.45 monospace;margin:0;padding:0;background:#f5f7fb;}
-        .wrapper{max-width:384px;margin:10px auto 90px;background:#fff;border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.08);padding:14px;}
+        *{box-sizing:border-box;} body{font:12px/1.18 monospace;margin:0;padding:0;background:#f5f7fb;}
+        .wrapper{max-width:384px;margin:6px auto 76px;background:#fff;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.08);padding:8px;}
         .center{text-align:center;} .right{text-align:right;} .left{text-align:left;}
-        .small{font-size:11px;} .hr{border-top:1px dashed #000;margin:8px 0;}
+        .small{font-size:10px;} .hr{border-top:1px dashed #000;margin:4px 0;}
         .tbl{width:100%;border-collapse:collapse;table-layout:fixed;}
-        .tbl thead th{border-bottom:1px dashed #000;font-weight:700;padding:4px 0;}
-        .tbl td{padding:3px 0;vertical-align:top;}
-        .badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;}
+        .tbl thead th{border-bottom:1px dashed #000;font-weight:700;padding:2px 0;}
+        .tbl td{padding:1px 0;vertical-align:top;}
+        .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;}
         .badge-ok{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;}
         .badge-pend{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}
         .badge-rej{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
@@ -82,7 +82,7 @@ if (!$xmlRaw) {
         @page { size: 72mm auto; margin: 0; }
         @media print { 
             body { background:#fff; width: 72mm; margin: 0; padding: 0; } 
-            .wrapper { box-shadow:none; border-radius:0; margin: 0 auto !important; max-width:unset; width:68mm; padding: 4mm 0; font-size:14px; } 
+            .wrapper { box-shadow:none; border-radius:0; margin: 0 auto !important; max-width:unset; width:68mm; padding: 2mm 0; font-size:12px; } 
             .actions { display:none; }
         }
     </style></head><body>
@@ -264,29 +264,29 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
     <title>DANFE NFC-e</title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <style>
-        :root{--ticket-max:384px;--pad:12px;--accent:#1a73e8;--ink:#111;--paper:#fff;--bg:#f5f7fb}
+        :root{--ticket-max:384px;--pad:8px;--accent:#1a73e8;--ink:#111;--paper:#fff;--bg:#f5f7fb}
         *{box-sizing:border-box;-webkit-font-smoothing:antialiased;}
         html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);-webkit-text-size-adjust:100%}
-        body{font:13px/1.45 monospace}
-        .wrapper{width:100%;max-width:var(--ticket-max);margin:10px auto 92px;background:var(--paper);border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.08);padding:var(--pad)}
-        header h2{font-size:14px;margin:4px 0 2px;text-transform:uppercase}
-        .small{font-size:11px;color:#111} .hr{border-top:1px dashed #000;margin:8px 0}
+        body{font:12px/1.18 monospace}
+        .wrapper{width:100%;max-width:var(--ticket-max);margin:6px auto 76px;background:var(--paper);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.08);padding:var(--pad)}
+        header h2{font-size:13px;margin:2px 0 1px;text-transform:uppercase}
+        .small{font-size:10px;color:#111} .hr{border-top:1px dashed #000;margin:4px 0}
         .tbl{width:100%;border-collapse:collapse;table-layout:fixed}
-        .tbl thead th{border-bottom:1px dashed #000;font-weight:700;padding:4px 0}
-        .tbl td{padding:3px 0;vertical-align:top}
+        .tbl thead th{border-bottom:1px dashed #000;font-weight:700;padding:2px 0}
+        .tbl td{padding:1px 0;vertical-align:top}
         .left{text-align:left} .right{text-align:right} .center{text-align:center}
         .key{letter-spacing:1px;word-spacing:4px}
-        .qr{display:block;margin:8px auto;width:min(210px,calc(100% - 2*var(--pad)));height:auto;aspect-ratio:1/1}
-        .badge{display:inline-block;background:#eef2ff;color:#1f2937;padding:3px 6px;border-radius:6px;font-size:10px}
+        .qr{display:block;margin:5px auto;width:min(190px,calc(100% - 16px));height:auto;aspect-ratio:1/1}
+        .badge{display:inline-block;background:#eef2ff;color:#1f2937;padding:2px 5px;border-radius:4px;font-size:10px}
         .actions{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px env(safe-area-inset-right) calc(10px + env(safe-area-inset-bottom)) env(safe-area-inset-left);background:#fff;border-top:1px solid #e5e7eb;display:flex;gap:10px;justify-content:center}
         .btn{appearance:none;border:0;border-radius:10px;padding:11px 16px;font-family:system-ui,sans-serif;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
         .btn-primary{background:var(--accent);color:#fff} .btn-secondary{background:#6b7280;color:#fff}
         @page { size: 72mm auto; margin: 0; }
         @media print { 
             html, body { background:#fff; width: 72mm; margin: 0; padding: 0; } 
-            .wrapper { box-shadow:none; border-radius:0; margin: 0 auto !important; max-width:unset; width:68mm; padding: 4mm 0; font-size:14px; } 
+            .wrapper { box-shadow:none; border-radius:0; margin: 0 auto !important; max-width:unset; width:68mm; padding: 2mm 0; font-size:12px; } 
             .actions { display:none; } 
-            .qr { width:180px; height:180px; }
+            .qr { width:165px; height:165px; }
         }
     </style>
 </head>

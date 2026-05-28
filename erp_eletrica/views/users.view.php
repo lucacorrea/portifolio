@@ -176,7 +176,13 @@
                         </div>
                         <div class="extra-small text-muted">Aplicada apenas nos Preços 2 e 3 dos produtos.</div>
                     </div>
-                    <div class="col-md-12">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="desconto_ativo" id="edit-user-desconto-ativo" onchange="toggleDiscountInput()">
+                            <label class="form-check-label small fw-bold" for="edit-user-desconto-ativo">Ativar Desconto</label>
+                        </div>
+                    </div>
+                    <div class="col-md-12 d-none" id="discount-input-container">
                         <label class="form-label small fw-bold text-primary"><i class="fas fa-percentage me-1"></i> Desconto Máximo Permitido (%)</label>
                         <input type="number" step="0.1" name="desconto_maximo" id="edit-user-desconto" class="form-control shadow-sm" value="0.0">
                         <div class="extra-small text-muted">Aplica-se apenas ao nível Vendedor no PDV.</div>
@@ -292,6 +298,20 @@ function toggleCommissionInput() {
     }
 }
 
+function toggleDiscountInput() {
+    const isActive = document.getElementById('edit-user-desconto-ativo').checked;
+    const container = document.getElementById('discount-input-container');
+    const input = document.getElementById('edit-user-desconto');
+    if (isActive) {
+        container.classList.remove('d-none');
+        input.disabled = false;
+    } else {
+        container.classList.add('d-none');
+        input.value = '0.0';
+        input.disabled = true;
+    }
+}
+
 function openUserModal() {
     const modal = new bootstrap.Modal(document.getElementById('modal-user'));
     document.getElementById('user-modal-title').innerText = 'Novo Operador de Sistema';
@@ -303,6 +323,7 @@ function openUserModal() {
     document.getElementById('edit-user-ativo').checked = true;
     document.getElementById('edit-user-comissao-ativa').checked = false;
     document.getElementById('edit-user-comissao-porcentagem').value = '0.00';
+    document.getElementById('edit-user-desconto-ativo').checked = false;
     document.getElementById('edit-user-desconto').value = '0.0';
     document.getElementById('edit-user-auth-type').value = 'password';
     document.getElementById('edit-user-auth-pin').value = '';
@@ -311,6 +332,7 @@ function openUserModal() {
     toggleAuthFields();
     togglePinField();
     toggleCommissionInput();
+    toggleDiscountInput();
     modal.show();
 }
 
@@ -325,6 +347,8 @@ function editUser(user) {
     document.getElementById('edit-user-ativo').checked = user.ativo == 1;
     document.getElementById('edit-user-comissao-ativa').checked = user.comissao_ativa == 1;
     document.getElementById('edit-user-comissao-porcentagem').value = user.comissao_porcentagem || '0.00';
+    const descontoMaximo = parseFloat(user.desconto_maximo || 0);
+    document.getElementById('edit-user-desconto-ativo').checked = descontoMaximo > 0;
     document.getElementById('edit-user-desconto').value = user.desconto_maximo || '0.0';
     document.getElementById('edit-user-auth-type').value = user.auth_type || 'password';
     document.getElementById('edit-user-auth-pin').value = user.auth_pin || '';
@@ -333,6 +357,7 @@ function editUser(user) {
     toggleAuthFields();
     togglePinField();
     toggleCommissionInput();
+    toggleDiscountInput();
     modal.show();
 }
 </script>

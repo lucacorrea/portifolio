@@ -76,7 +76,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
     <style>
         :root {
             --ticket-max: 384px;
-            --pad: 12px;
+            --pad: 8px;
             --qr: 210px;
             --accent: #1a73e8;
             --ink: #111;
@@ -100,13 +100,13 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
         }
 
         body {
-            font: 13px/1.45 monospace
+            font: 12px/1.18 monospace
         }
 
         .wrapper {
             width: 100%;
             max-width: var(--ticket-max);
-            margin: 10px auto 92px;
+            margin: 6px auto 76px;
             background: var(--paper);
             border-radius: 12px;
             box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
@@ -115,18 +115,18 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
 
         header h2 {
             font-size: 14px;
-            margin: 4px 0 2px;
+            margin: 2px 0 1px;
             text-transform: uppercase
         }
 
         .small {
-            font-size: 11px;
+            font-size: 10px;
             color: #111
         }
 
         .hr {
             border-top: 1px dashed #000;
-            margin: 8px 0
+            margin: 4px 0
         }
 
         .tbl {
@@ -138,11 +138,11 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
         .tbl thead th {
             border-bottom: 1px dashed #000;
             font-weight: 700;
-            padding: 4px 0
+            padding: 2px 0
         }
 
         .tbl td {
-            padding: 3px 0;
+            padding: 1px 0;
             vertical-align: top
         }
 
@@ -179,13 +179,13 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
             display: inline-block;
             background: #eef2ff;
             color: #1f2937;
-            padding: 3px 6px;
+            padding: 2px 5px;
             border-radius: 6px;
             font-size: 10px
         }
         
         .badge-nf { 
-            display:inline-block; background:#fee2e2; color:#991b1b; padding:4px 8px; border-radius:6px; font-size:12px; border:1px solid #fca5a5; font-weight: bold;
+            display:inline-block; background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-size:11px; border:1px solid #fca5a5; font-weight: bold;
         }
 
         .actions {
@@ -243,7 +243,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
             }
 
             .wrapper {
-                margin: 6px auto 88px;
+                margin: 4px auto 76px;
                 border-radius: 10px
             }
 
@@ -253,7 +253,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
 
             .tbl thead th,
             .tbl td {
-                padding: 2px 0
+                padding: 1px 0
             }
         }
 
@@ -287,8 +287,8 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
                 max-width: unset;
                 width: 72mm;
                 zoom: 113% !important;
-                padding: 4mm 0;
-                font-size: 14px;
+                padding: 2mm 0;
+                font-size: 12px;
             }
 
             .actions {
@@ -307,7 +307,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
     <div class="wrapper" role="document" aria-label="Recibo Não Fiscal">
         <header class="center">
             <h2>CENTRO DO ELETRICISTA</h2>
-            <div class="small" style="text-transform: uppercase; margin-top: -2px; margin-bottom: 4px;">
+            <div class="small" style="text-transform: uppercase; margin-top: -2px; margin-bottom: 2px;">
                 <?= htmlspecialchars($venda['filial_nome'] ?? '') ?>
             </div>
             <div class="small">
@@ -382,8 +382,8 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
                 </tr>
                 <?php endif; ?>
                 <tr style="border-top:1px dashed #000">
-                    <td class="left" style="font-size:14px;padding-top:4px"><b>TOTAL R$</b></td>
-                    <td class="right" style="font-size:14px;padding-top:4px"><b><?= number_format($valorTotal,2,',','.') ?></b></td>
+                    <td class="left" style="font-size:13px;padding-top:2px"><b>TOTAL R$</b></td>
+                    <td class="right" style="font-size:13px;padding-top:2px"><b><?= number_format($valorTotal,2,',','.') ?></b></td>
                 </tr>
                 <?php if ($venda['forma_pagamento'] === 'multiplo' && !empty($venda['multi_detalhes'])): ?>
                     <?php 
@@ -435,7 +435,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
 
         <div class="hr"></div>
 
-        <div class="center small" style="color:#111; font-weight: bold; margin-bottom: 5px;">
+        <div class="center small" style="color:#111; font-weight: bold; margin-bottom: 2px;">
             "Dai graças ao Senhor sempre, Amém"
         </div>
 

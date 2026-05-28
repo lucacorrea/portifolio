@@ -441,11 +441,12 @@ if (!function_exists('erp_product_image_url')) {
 
                     <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-primary small border-bottom pb-2"><i class="fas fa-file-invoice me-1"></i>Informações Fiscais (SEFAZ)</h6></div>
                     <div class="col-md-4 position-relative">
-                        <label class="form-label small fw-bold">NCM</label>
+                        <label class="form-label small fw-bold">NCM <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm shadow-sm">
-                            <input type="text" name="ncm" class="form-control" id="edit_ncm" placeholder="Digite cód. ou nome..." autocomplete="off" onkeyup="searchNcmInline(this.value)">
+                            <input type="text" name="ncm" class="form-control" id="edit_ncm" placeholder="Digite cód. ou nome..." autocomplete="off" inputmode="numeric" maxlength="8" pattern="\d{8}" required onkeyup="searchNcmInline(this.value)">
                             <span class="input-group-text bg-white" id="ncmLoader" style="display:none;"><i class="fas fa-spinner fa-spin text-primary" style="font-size:0.75rem;"></i></span>
                         </div>
+                        <div class="extra-small text-muted">Obrigatorio para emissao fiscal. Use 8 digitos.</div>
                         <ul id="ncmDropdown" class="list-group shadow-lg" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:2000; max-height:220px; overflow-y:auto; background-color:#fff; border:1px solid #dee2e6; border-top:none; border-radius:0 0 6px 6px;"></ul>
                     </div>
 
