@@ -8,6 +8,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!headers_sent()) {
+    header('Content-Type: text/html; charset=utf-8');
+}
+
 // Database Credentials
 define('DB_HOST', 'localhost');
 define('DB_USER', 'u784961086_pdv');

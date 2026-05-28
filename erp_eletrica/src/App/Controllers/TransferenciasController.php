@@ -297,11 +297,11 @@ class TransferenciasController extends BaseController {
         }
 
         if ($destino_id === $origem_id) {
-            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('A origem e o destino nÃ£o podem ser a mesma unidade.'));
+            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('A origem e o destino não podem ser a mesma unidade.'));
         }
 
         if (!$this->isMatriz && $destino_id !== $mid) {
-            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Filiais sÃ³ podem enviar produtos para a Matriz.'));
+            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Filiais só podem enviar produtos para a Matriz.'));
         }
 
         try {
