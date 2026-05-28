@@ -1119,12 +1119,13 @@ async function salvarQuickClient() {
                     <button class="btn btn-outline-primary fw-bold py-3 shadow-sm hover-shadow" id="btnManageCupom" onclick="imprimirCupom(activeManageId)">
                         <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
                     </button>
+                      <button class="btn btn-outline-success fw-bold py-3 shadow-sm hover-shadow" id="btnManageDanfe" onclick="imprimirDanfe(activeManageId)" style="display: none;">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>IMPRIMIR DANFE (NFC-e)
+                    </button>
                     <button class="btn btn-outline-info fw-bold py-3 shadow-sm hover-shadow" id="btnManageA4" onclick="imprimirA4(activeManageId)" style="display: none;">
                         <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
                     </button>
-                    <button class="btn btn-outline-success fw-bold py-3 shadow-sm hover-shadow" id="btnManageDanfe" onclick="imprimirDanfe(activeManageId)" style="display: none;">
-                        <i class="fas fa-file-invoice-dollar me-2"></i>IMPRIMIR DANFE (NFC-e)
-                    </button>
+                  
                     <hr>
                     <button class="btn btn-outline-danger fw-bold py-3 shadow-sm hover-shadow" onclick="cancelSaleAction()">
                         <i class="fas fa-trash-alt me-2"></i>CANCELAR VENDA (ESTORNO)
