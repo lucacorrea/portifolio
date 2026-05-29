@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nome VARCHAR(255) NOT NULL,
     usuario VARCHAR(100) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL,
-    nivel ENUM('SUPORTE', 'ADMIN', 'FUNCIONARIO') NOT NULL,
+    nivel ENUM('ADMIN', 'SUPORTE', 'SECRETARIO', 'CASA_CIVIL', 'SEFAZ', 'FUNCIONARIO') NOT NULL,
     criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -35,13 +35,27 @@ CREATE TABLE IF NOT EXISTS oficios (
     local VARCHAR(150) DEFAULT NULL,
     justificativa TEXT,
     resumo_itens TEXT DEFAULT NULL,
-    status ENUM('ENVIADO', 'APROVADO', 'REPROVADO', 'ARQUIVADO') DEFAULT 'ENVIADO',
+    status ENUM('PENDENTE_ITENS', 'ENVIADO', 'EM_ANALISE', 'APROVADO', 'REPROVADO', 'ARQUIVADO') DEFAULT 'PENDENTE_ITENS',
     usuario_id INT NOT NULL, -- Quem cadastrou
-    arquivo_orcamento VARCHAR(255) DEFAULT NULL, -- Caminho do anexo
+    arquivo_orcamento VARCHAR(255) DEFAULT NULL,
+    arquivo_oficio VARCHAR(255) DEFAULT NULL,
+    valor_orcamento DECIMAL(15,2) NULL DEFAULT NULL,
     criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (secretaria_id) REFERENCES secretarias(id),
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
+
+-- Anexos do Ofício (orçamentos, fotos, scans e ofícios)
+CREATE TABLE IF NOT EXISTS oficio_anexos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    oficio_id INT NOT NULL,
+    caminho VARCHAR(255) NOT NULL,
+    tipo ENUM('ORCAMENTO', 'OFICIO') NOT NULL,
+    nome_original VARCHAR(255),
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (oficio_id) REFERENCES oficios(id) ON DELETE CASCADE
+);
+
 -- Itens do Ofício
 CREATE TABLE IF NOT EXISTS itens_oficio (
     id INT AUTO_INCREMENT PRIMARY KEY,

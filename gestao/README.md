@@ -1,37 +1,58 @@
-# L&J Caixa Premium - Versão Clean App
+# L&J Caixa Premium - Páginas Separadas
 
-Versão ajustada para seguir mais de perto a referência visual enviada:
-
-- topo azul sólido;
-- valor vendido em destaque;
-- ações rápidas com ícones em cards brancos;
-- área branca arredondada;
-- listas limpas;
-- bottom navigation semelhante a app mobile;
-- menos animações;
-- menos sombras;
-- poucos gradientes;
-- visual mais premium e organizado.
-
-## Rodar
-
-Abra o `index.html`.
-
-## Instalar no celular como app
-
-1. Suba a pasta na Hostinger.
-2. Acesse pelo Chrome Android.
-3. Toque em `⋮ > Adicionar à tela inicial`.
-4. Abra pelo ícone criado.
+Projeto HTML/CSS/JS com estrutura separada por páginas, mantendo o padrão visual premium clean.
 
 ## Estrutura
 
 ```txt
 index.html
-manifest.json
-service-worker.js
+pages/
+  nova-venda.html
+  produtos.html
+  produto-form.html
+  relatorios.html
+  clientes.html
+  cliente-detalhes.html
+  historico-vendas.html
+  venda-detalhes.html
+  comprovante.html
+  configuracoes.html
 assets/
   css/styles.css
+  js/data.js
   js/app.js
   icons/icon.svg
+  img/
+manifest.json
+service-worker.js
+```
+
+## Como testar
+
+Abra o `index.html`.
+
+## Como instalar no celular
+
+1. Suba a pasta para a Hostinger com HTTPS ativo.
+2. Abra pelo Chrome Android.
+3. Toque em `⋮ > Adicionar à tela inicial`.
+4. Abra pelo ícone criado.
+
+## Observações
+
+- Dados estão mockados em `assets/js/data.js`.
+- Layout e interações estão em `assets/js/app.js`.
+- Câmera depende de HTTPS ou localhost.
+
+## Correção aplicada
+
+Foi corrigido o problema da tela ficar embaçada ao abrir no navegador.
+A causa era o backdrop do modal permanecendo visível mesmo com `hidden`.
+
+Correção adicionada em `assets/css/styles.css`:
+
+```css
+.modal-backdrop[hidden] {
+  display: none !important;
+}
 ```

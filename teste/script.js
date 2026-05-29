@@ -38,7 +38,7 @@
     revealObserver.observe(el);
   });
 
-  const rotatingWords = ['criar', 'organizar', 'escalar', 'publicar'];
+  const rotatingWords = ['criar', 'gerir', 'automatizar', 'escalar'];
   let wordIndex = 0;
   const rotatingEl = $('[data-rotating-word]');
   function renderRotatingWord() {
@@ -109,7 +109,8 @@
 $objetivo = diagnosticar([
   'empresa' => 'cliente',
   'dor' => 'processo manual',
-  'prioridade' => 'vender melhor'
+  'segmento' => 'publico | industria | empresa | autonomo',
+  'prioridade' => 'organizar e vender melhor'
 ]);`
     },
     {
@@ -118,8 +119,8 @@ $objetivo = diagnosticar([
       description: 'Definir páginas, módulos, banco de dados, fluxos, permissões, protótipo e pontos de segurança antes de codar.',
       file: 'arquitetura.js',
       code: `const projeto = planejar({
-  paginas: ['home', 'portfolio', 'contato'],
-  modulos: ['leads', 'clientes', 'relatorios'],
+  interfaces: ['app', 'web', 'dashboard'],
+  modulos: ['clientes', 'vendas', 'relatorios', 'permissoes'],
   seguranca: ['csrf', 'validacao', 'sanitizacao']
 })`
     },
@@ -130,6 +131,7 @@ $objetivo = diagnosticar([
       file: 'deploy.sh',
       code: `npm run build
 # ou HTML/PHP estático
+testar_app_web
 validar_responsivo
 publicar_hostinger
 
@@ -179,12 +181,12 @@ publicar_hostinger
   }, 5000);
 
   const locations = [
-    ['Sites institucionais', 'Presença digital', 'CTA'],
-    ['Sistemas web', 'Gestão e portal', 'Admin'],
-    ['Fluxo Pay', 'Cobranças', 'SaaS'],
-    ['SaaS Contábil', 'Clientes e prazos', 'B2B'],
-    ['LJ Media Vault', 'Fotos e vídeos', 'Mídia'],
-    ['Drone', 'Imagem institucional', 'Aéreo']
+    ['Apps e web', 'Produto digital', 'UI'],
+    ['Gestão pública', 'Protocolos e setores', 'Gov'],
+    ['Indústria', 'Processos e produção', 'Ops'],
+    ['Empresários', 'Vendas e clientes', 'ERP'],
+    ['Autônomos', 'Agenda e cobrança', 'CRM'],
+    ['JL Media Vault', 'Fotos e vídeos', 'Mídia']
   ];
   let activeLocation = 0;
   const locationsEl = $('[data-locations]');
@@ -224,7 +226,7 @@ publicar_hostinger
   setInterval(updateTime, 1000);
 
   const integrations = [
-    ['PHP leve', 'Back-end'], ['MySQL', 'Banco'], ['JavaScript', 'Interação'], ['HTML/CSS', 'Front-end'], ['WhatsApp', 'Contato'], ['SEO técnico', 'Presença'], ['CSRF', 'Segurança'], ['Drone', 'Imagem'], ['Media Vault', 'Mídia'], ['SaaS', 'Produto'], ['UX', 'Conversão'], ['Automação', 'Operação']
+    ['Apps', 'Mobile'], ['Web', 'Front-end'], ['PHP leve', 'Back-end'], ['MySQL', 'Banco'], ['JavaScript', 'Interação'], ['Gestão pública', 'Setores'], ['Indústria', 'Operação'], ['Empresários', 'Gestão'], ['Autônomos', 'CRM'], ['CSRF', 'Segurança'], ['UX', 'Conversão'], ['Automação', 'Operação']
   ];
   function renderIntegrations(target, reverse = false) {
     const list = reverse ? [...integrations].reverse() : integrations;
@@ -250,7 +252,8 @@ publicar_hostinger
   nome,
   telefone,
   mensagem,
-  origem: 'portfolio'
+  origem: 'portfolio',
+  interesse: 'app | web | sistema'
 })`
     },
     {
@@ -266,6 +269,7 @@ $nome = sanitize($_POST['nome']);`
       code: `compactar_arquivos
 subir_para_public_html
 testar_menu_mobile
+testar_app_web
 testar_formulario
 validar_performance`
     }
@@ -299,13 +303,13 @@ validar_performance`
 
   const quotes = [
     {
-      quote: 'Não é só site bonito. É estratégia, produto e engenharia para a empresa evoluir.',
-      author: 'LJ Soluções Tecnológicas',
+      quote: 'Não é só página bonita. É estratégia, produto e engenharia para a operação evoluir.',
+      author: 'JL Soluções Tecnológicas',
       role: 'Estúdio de produto digital',
       metric: 'Estratégia + execução'
     },
     {
-      quote: 'O site precisa vender. O sistema precisa organizar. O SaaS precisa escalar.',
+      quote: 'O app precisa ser simples. O sistema precisa organizar. A web precisa vender.',
       author: 'Linha de posicionamento',
       role: 'Presença digital e operação',
       metric: 'Objetivo claro por dobra'
@@ -317,9 +321,9 @@ validar_performance`
       metric: 'Sem gambiarra'
     },
     {
-      quote: 'Produtos próprios mostram visão de negócio digital, não apenas criação de páginas.',
-      author: 'Ecossistema LJ',
-      role: 'Fluxo Pay, SaaS Contábil e Media Vault',
+      quote: 'Portfólio forte mostra domínio de produto, gestão e operação, não apenas criação de telas.',
+      author: 'Ecossistema JL',
+      role: 'Apps, sistemas personalizados e Media Vault',
       metric: 'Produto + recorrência'
     }
   ];
@@ -346,15 +350,15 @@ validar_performance`
 
   const brandTrack = $('[data-brand-track]');
   if (brandTrack) {
-    const brands = ['Sistemas Web', 'Fluxo Pay', 'SaaS Contábil', 'Media Vault', 'Drone', 'Identidade Visual', 'Automação', 'UX profissional'];
+    const brands = ['Apps', 'Web', 'Gestão Pública', 'Indústria', 'Empresários', 'Autônomos', 'Media Vault', 'Automação', 'UX profissional'];
     brandTrack.innerHTML = [0, 1].map(() => brands.map(brand => `<span>${brand}</span>`).join('')).join('');
   }
 
   const pricing = {
     initial: [
-      ['01', 'Site premium', 'Para presença digital e captação de leads.', 'Diagnóstico', ['Landing page ou institucional', 'Copy e estrutura comercial', 'Responsivo e SEO base', 'CTA para WhatsApp', 'Pronto para Hostinger'], false, 'Começar conversa'],
-      ['02', 'Sistema web', 'Para organizar operação, clientes e processos.', 'Sob medida', ['Painel administrativo', 'Cadastro e permissões', 'Relatórios e status', 'Banco estruturado', 'Validação e segurança'], true, 'Planejar sistema'],
-      ['03', 'Produto SaaS', 'Para transformar serviço em plataforma recorrente.', 'Projeto', ['Módulos e planos', 'Usuários e áreas internas', 'Fluxos de cobrança', 'Métricas e evolução', 'Arquitetura escalável'], false, 'Desenhar SaaS']
+      ['01', 'App + Web', 'Para transformar atendimento e operação em produto digital.', 'Diagnóstico', ['Interface mobile e web', 'Fluxos de cadastro', 'Painel administrativo', 'Responsivo e rápido', 'Pronto para evoluir'], false, 'Planejar app'],
+      ['02', 'Sistema personalizado', 'Para gestão pública, indústria, empresários e autônomos.', 'Sob medida', ['Permissões por setor', 'Relatórios e status', 'Banco estruturado', 'PDF e documentos', 'Validação e segurança'], true, 'Planejar sistema'],
+      ['03', 'Presença premium', 'Para fortalecer marca e gerar contato comercial.', 'Projeto', ['Landing page ou institucional', 'Copy e estrutura comercial', 'SEO base', 'CTA para WhatsApp', 'Hospedagem simples'], false, 'Começar presença']
     ],
     evolution: [
       ['01', 'Otimização', 'Melhorias em performance, conteúdo e conversão.', 'Evolução', ['Ajustes de UX', 'Novas seções', 'SEO técnico', 'Eventos e métricas', 'Correções contínuas'], false, 'Otimizar'],
@@ -448,7 +452,7 @@ validar_performance`
     points.sort((a, b) => a.z - b.z);
     points.forEach(point => {
       const alpha = 0.2 + (point.z + 1) * 0.4;
-      ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+      ctx.fillStyle = frame % 7 === 0 ? `rgba(37, 99, 235, ${Math.min(alpha, .36)})` : `rgba(0, 0, 0, ${alpha})`;
       ctx.fillText(point.char, point.x, point.y);
     });
   });
@@ -496,7 +500,7 @@ validar_performance`
     points.sort((a, b) => a.z - b.z);
     points.forEach(point => {
       const alpha = Math.min(0.15 + (point.z + 1.5) * 0.25, 0.9);
-      ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+      ctx.fillStyle = frame % 7 === 0 ? `rgba(37, 99, 235, ${Math.min(alpha, .36)})` : `rgba(0, 0, 0, ${alpha})`;
       ctx.fillText(point.char, point.x, point.y);
     });
   });

@@ -1,7 +1,7 @@
 {
   "name": "L&J Caixa Premium",
   "short_name": "L&J Caixa",
-  "description": "Demonstração mobile premium para gestão comercial e frente de caixa.",
+  "description": "Demonstração mobile premium com páginas separadas.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

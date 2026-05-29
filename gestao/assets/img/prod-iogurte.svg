@@ -1,0 +1,6 @@
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="240" height="240" rx="54" fill="#FCEBEE"/>
+  <circle cx="184" cy="54" r="34" fill="white" fill-opacity=".28"/>
+  <rect x="80" y="55" width="80" height="104" rx="24" fill="white"/><path d="M96 48h48" stroke="#C63B50" stroke-width="12" stroke-linecap="round"/><circle cx="120" cy="111" r="22" fill="#C63B50" fill-opacity=".14"/>
+  <text x="120" y="193" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="800" fill="#C63B50">Iogurte</text>
+</svg>

@@ -1,21 +1,21 @@
-# L&J Soluções Tecnológicas — Portfólio estilo Optimus
+# JL Soluções Tecnológicas — Portfólio estilo Optimus
 
-Versão estática para hospedagem comum, baseada na estética do template Optimus.
+Versão estática em HTML, CSS e JavaScript puro, pronta para hospedagem comum como Hostinger `public_html`.
 
 ## Arquivos
 
-- `index.html` — estrutura da página
-- `styles.css` — layout, paleta Optimus, responsividade e animações CSS
-- `script.js` — animações JS: navbar, menu mobile, esfera ASCII, tetraedro, onda, tabs, contadores, carrossel e cards dinâmicos
-- `assets/favicon.svg` — ícone do site
+- `index.html`
+- `styles.css`
+- `script.js`
+- `assets/favicon.svg`
 
-## Publicação na Hostinger
+## Publicação
 
-1. Extraia o ZIP.
-2. Envie o conteúdo da pasta `lj-optimus-full-static` para `public_html`.
-3. O arquivo `index.html` precisa ficar diretamente dentro de `public_html`.
-4. Não precisa de Node.js, npm, build, Next.js ou React no servidor.
+Extraia o ZIP e envie o conteúdo da pasta para `public_html`. Não precisa de Node.js, Next.js, React, build ou terminal.
 
-## Observação técnica
+## Alterações principais
 
-Esta versão preserva a estética do Optimus com HTML, CSS e JavaScript puro para simplificar a publicação em hospedagem compartilhada.
+- Nome atualizado para **JL Soluções Tecnológicas**.
+- Seções de portfólio e skills adicionadas.
+- Conteúdo focado em apps, web e sistemas personalizados para gestão pública, indústria, empresários e autônomos.
+- Estética Optimus preservada com detalhes sutis em azul.

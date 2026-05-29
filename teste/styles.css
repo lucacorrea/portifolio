@@ -455,3 +455,76 @@ button { cursor: pointer; }
   .quote-label { align-items: flex-start; }
   #quoteText { font-size: 40px; }
 }
+
+/* JL subtle blue layer: mantém a estética Optimus e adiciona detalhes discretos */
+:root {
+  --blue: #2563eb;
+  --blue-2: #60a5fa;
+  --blue-soft: rgba(37, 99, 235, 0.08);
+  --blue-border: rgba(37, 99, 235, 0.18);
+  --blue-glow: rgba(37, 99, 235, 0.18);
+}
+.brand-mark,
+.caps,
+.plan-num,
+.portfolio-kicker { color: var(--blue); }
+.eyebrow span { background: linear-gradient(90deg, var(--blue), rgba(29,26,22,.22)); }
+.eyebrow.inverse span { background: linear-gradient(90deg, var(--blue-2), rgba(251,250,247,.25)); }
+.rotating-word::after { background: linear-gradient(90deg, var(--blue-soft), rgba(29,26,22,.08)); }
+.btn-dark { box-shadow: 0 12px 30px rgba(29,26,22,.14), 0 0 0 1px rgba(37,99,235,.06) inset; }
+.btn-dark:hover { box-shadow: 0 16px 42px rgba(29,26,22,.18), 0 0 36px rgba(37,99,235,.10); }
+.feature-card:hover,
+.security-card:hover,
+.plan-card:hover { border-color: var(--blue-border); }
+.pulse-dot,
+.location-dot { box-shadow: 0 0 0 6px rgba(37,99,235,.08); }
+.integration-card:hover,
+.metric-card:hover { border-color: var(--blue-border); box-shadow: 0 18px 40px rgba(37,99,235,.06); }
+
+.portfolio-section { background: linear-gradient(180deg, rgba(37,99,235,.025), transparent 34%); }
+.portfolio-head { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .7fr); gap: 64px; align-items: end; margin-bottom: 56px; }
+.portfolio-head .large-muted { margin: 0 0 10px; }
+.portfolio-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+.portfolio-card { position: relative; min-height: 430px; padding: 28px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); background: rgba(251,250,247,.62); overflow: hidden; transition: transform 400ms ease, background 400ms ease, box-shadow 400ms ease; }
+.portfolio-card::before { content: ''; position: absolute; inset: auto 24px 24px auto; width: 120px; height: 120px; border: 1px solid var(--blue-border); border-radius: 50%; opacity: .45; transform: translate(40%, 40%); transition: transform 500ms ease, opacity 500ms ease; }
+.portfolio-card::after { content: ''; position: absolute; inset: 0; background: radial-gradient(450px circle at 80% 20%, rgba(37,99,235,.08), transparent 38%); opacity: 0; transition: opacity 400ms ease; }
+.portfolio-card:hover { transform: translateY(-6px); background: #fffefd; box-shadow: 0 24px 70px rgba(29,26,22,.10); z-index: 2; }
+.portfolio-card:hover::before { transform: translate(18%, 18%) scale(1.15); opacity: .8; }
+.portfolio-card:hover::after { opacity: 1; }
+.portfolio-card.featured { background: rgba(29,26,22,.96); color: var(--background); }
+.portfolio-card.featured p,
+.portfolio-card.featured li { color: rgba(251,250,247,.68); }
+.portfolio-card.featured .portfolio-kicker { color: var(--blue-2); }
+.portfolio-kicker { position: relative; z-index: 1; display: inline-flex; margin-bottom: 70px; font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.portfolio-card h3 { position: relative; z-index: 1; margin: 0 0 18px; font-family: var(--display); font-weight: 400; letter-spacing: -.035em; line-height: 1.02; font-size: clamp(28px, 2.8vw, 44px); }
+.portfolio-card p { position: relative; z-index: 1; margin: 0; color: var(--muted); line-height: 1.65; font-size: 16px; }
+.portfolio-card ul { position: absolute; z-index: 1; left: 28px; right: 28px; bottom: 28px; margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.portfolio-card li { color: var(--muted); font-family: var(--mono); font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.portfolio-card li::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: var(--blue); opacity: .75; }
+
+.skills-grid-wrap { display: grid; grid-template-columns: .85fr 1.15fr; gap: 72px; align-items: center; }
+.skills-copy .large-muted { max-width: 620px; }
+.skill-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.skill-tags span { border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; font-family: var(--mono); font-size: 12px; color: rgba(29,26,22,.68); background: rgba(255,255,255,.42); }
+.skill-tags span:nth-child(odd) { border-color: var(--blue-border); color: var(--blue); }
+.skills-panel { position: relative; border: 1px solid var(--border); border-radius: 28px; padding: 28px; background: rgba(251,250,247,.86); box-shadow: 0 28px 80px rgba(29,26,22,.08); overflow: hidden; }
+.skills-panel::before { content: ''; position: absolute; inset: -30% -20% auto auto; width: 360px; height: 360px; background: radial-gradient(circle, rgba(37,99,235,.13), transparent 62%); pointer-events: none; }
+.skill-line { position: relative; z-index: 1; display: grid; grid-template-columns: 190px 1fr; gap: 18px; padding: 22px 0 30px; border-bottom: 1px solid var(--border); }
+.skill-line:last-child { border-bottom: 0; padding-bottom: 10px; }
+.skill-line strong { font-family: var(--display); font-size: 26px; font-weight: 400; letter-spacing: -.025em; }
+.skill-line span { color: var(--muted); line-height: 1.55; }
+.skill-line i { position: absolute; left: 208px; right: 0; bottom: 14px; height: 3px; background: rgba(29,26,22,.08); overflow: hidden; }
+.skill-line i::after { content: ''; display: block; height: 100%; width: var(--value); background: linear-gradient(90deg, var(--foreground), var(--blue)); transform-origin: left; animation: skill-fill 1600ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes skill-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+@media (max-width: 1100px) {
+  .portfolio-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .portfolio-head,
+  .skills-grid-wrap { grid-template-columns: 1fr; gap: 36px; }
+}
+@media (max-width: 700px) {
+  .portfolio-grid { grid-template-columns: 1fr; }
+  .portfolio-card { min-height: 380px; }
+  .skill-line { grid-template-columns: 1fr; gap: 8px; }
+  .skill-line i { left: 0; }
+}
