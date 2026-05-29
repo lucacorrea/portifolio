@@ -365,10 +365,10 @@
                         <select name="destino_filial_id" class="form-select" required>
                             <option value="">Selecione a unidade...</option>
                             <?php foreach ($filiais as $f): ?>
-                                <?php if ((int)$f['id'] === (int)$matrizId) continue; ?>
                                 <?php if ((int)$f['id'] === (int)($_SESSION['filial_id'] ?? 0)) continue; ?>
+                                <?php $isMatrizDestino = (int)$f['id'] === (int)$matrizId; ?>
                                 <option value="<?= $f['id'] ?>">
-                                    <?= htmlspecialchars($f['nome']) ?> (Unidade #<?= $f['id'] ?>)
+                                    <?= htmlspecialchars($f['nome']) ?> (Unidade #<?= $f['id'] ?><?= $isMatrizDestino ? ' - Matriz' : '' ?>)
                                 </option>
                             <?php endforeach; ?>
                         </select>
