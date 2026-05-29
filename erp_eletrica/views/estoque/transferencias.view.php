@@ -361,12 +361,13 @@
             <?php if ($aba == 'nova_solicitacao'): ?>
                 <form action="transferencias.php?action=nova_solicitacao" method="POST" id="formReq">
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Unidade Solicitante</label>
+                        <label class="form-label fw-bold small">Unidade que vai receber o pedido</label>
                         <select name="destino_filial_id" class="form-select" required>
                             <option value="">Selecione a unidade...</option>
                             <?php foreach ($filiais as $f): ?>
                                 <?php if ((int)$f['id'] === (int)$matrizId) continue; ?>
-                                <option value="<?= $f['id'] ?>" <?= (int)$f['id'] === (int)($_SESSION['filial_id'] ?? 0) ? 'selected' : '' ?>>
+                                <?php if ((int)$f['id'] === (int)($_SESSION['filial_id'] ?? 0)) continue; ?>
+                                <option value="<?= $f['id'] ?>">
                                     <?= htmlspecialchars($f['nome']) ?> (Unidade #<?= $f['id'] ?>)
                                 </option>
                             <?php endforeach; ?>
@@ -445,8 +446,13 @@
                             <select name="destino_filial_id" class="form-select" required>
                                 <option value="">Selecione o destino...</option>
                                 <?php foreach ($filiais as $f): ?>
-                                    <?php if ((int)$f['id'] === (int)($_SESSION['filial_id'] ?? 0)) continue; ?>
-                                    <option value="<?= $f['id'] ?>"><?= htmlspecialchars($f['nome']) ?> (Unidade #<?= $f['id'] ?>)</option>
+                                    <?php
+                                        $isAtual = (int)$f['id'] === (int)($_SESSION['filial_id'] ?? 0);
+                                        $isMatrizDestino = (int)$f['id'] === (int)$matrizId;
+                                    ?>
+                                    <option value="<?= $f['id'] ?>" <?= $isAtual ? 'disabled' : '' ?>>
+                                        <?= htmlspecialchars($f['nome']) ?> (Unidade #<?= $f['id'] ?><?= $isMatrizDestino ? ' - Matriz' : '' ?><?= $isAtual ? ' - unidade atual' : '' ?>)
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

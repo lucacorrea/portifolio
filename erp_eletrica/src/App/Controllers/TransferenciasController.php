@@ -248,8 +248,8 @@ class TransferenciasController extends BaseController {
 
         $itensValidos = array_filter($itens, fn($item) => !empty($item['selecionado']) && $item['quantidade'] > 0);
 
-        if ($destino_id === 0 || $destino_id === $mid) {
-            $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode('Selecione uma unidade de destino diferente da Matriz.'));
+        if ($destino_id === 0 || $destino_id === $mid || $destino_id === (int)$this->filialLogada) {
+            $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode('Selecione uma unidade de destino diferente da Matriz e da unidade atual.'));
         }
 
         if (count($itensValidos) === 0) {
