@@ -61,6 +61,12 @@
                     <button class="tab-btn <?= $aba == 'nova_transferencia' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_transferencia'">
                         <i class="fas fa-truck-loading me-1"></i>Novo Despacho
                     </button>
+                    <button class="tab-btn <?= $aba == 'em_transito' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=em_transito'">
+                        <i class="fas fa-box-open me-1"></i>Recebimentos
+                        <?php if (!empty($em_transito)): ?>
+                            <span class="badge bg-warning text-dark ms-1"><?= count($em_transito) ?></span>
+                        <?php endif; ?>
+                    </button>
                     <button class="tab-btn <?= $aba == 'historico_envios' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=historico_envios'">
                         <i class="fas fa-history me-1"></i>Histórico <span class="d-none d-md-inline">de Envios</span>
                         <?php if (($problemas_pendentes ?? 0) > 0): ?>
@@ -70,6 +76,9 @@
                 <?php else: ?>
                     <button class="tab-btn <?= $aba == 'nova_solicitacao' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_solicitacao'">
                         <i class="fas fa-plus-circle me-1"></i><span class="d-none d-md-inline">Pedir ao </span>CD (Matriz)
+                    </button>
+                    <button class="tab-btn <?= $aba == 'nova_transferencia' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_transferencia'">
+                        <i class="fas fa-truck-loading me-1"></i><span class="d-none d-md-inline">Enviar p/ </span>Matriz
                     </button>
                     <button class="tab-btn <?= $aba == 'em_transito' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=em_transito'">
                         <i class="fas fa-truck me-1"></i>Em Trânsito
@@ -125,6 +134,47 @@
                                         <td class="text-end pe-3">
                                             <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="abrirProcessarSolicitacao(<?= $req['id'] ?>)">
                                                 <i class="fas fa-tasks me-2"></i>Processar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ($aba == 'em_transito'): ?>
+                <?php if (empty($em_transito)): ?>
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-box-open fa-3x mb-3 opacity-25"></i>
+                        <h6 class="fw-bold">Nenhum envio para receber</h6>
+                        <p class="small">Quando uma filial enviar produtos para a Matriz, o recebimento aparecerá aqui.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Código</th>
+                                        <th>Origem</th>
+                                        <th>Despachado em</th>
+                                        <th>Status</th>
+                                        <th class="text-end pe-3">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($em_transito as $et): ?>
+                                    <tr>
+                                        <td class="ps-3"><strong class="text-primary"><?= htmlspecialchars($et['codigo_transferencia']) ?></strong></td>
+                                        <td><span class="fw-bold small"><?= htmlspecialchars($et['nome_filial']) ?></span></td>
+                                        <td><span class="extra-small text-muted"><?= date('d/m/Y H:i', strtotime($et['data_envio'])) ?></span></td>
+                                        <td><span class="badge bg-warning text-dark extra-small">EM TRÂNSITO</span></td>
+                                        <td class="text-end pe-3">
+                                            <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
+                                                <i class="fas fa-clipboard-check me-2"></i>Receber
                                             </button>
                                         </td>
                                     </tr>
@@ -359,6 +409,80 @@
                 </form>
             <?php endif; ?>
 
+            <?php if ($aba == 'nova_transferencia'): ?>
+                <form action="transferencias.php?action=nova_transferencia" method="POST" id="formTransf">
+                    <div class="row mb-4 g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Destino</label>
+                            <select name="destino_filial_id" class="form-select" required>
+                                <?php foreach ($filiais as $f): ?>
+                                    <option value="<?= $f['id'] ?>"><?= htmlspecialchars($f['nome']) ?> (Matriz)</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Observações do Envio</label>
+                            <input type="text" name="observacoes" class="form-control" placeholder="Ex: Devolução, excesso de estoque, remanejamento...">
+                        </div>
+                    </div>
+
+                    <div class="alert alert-primary bg-primary bg-opacity-10 border-0 text-primary small mb-3">
+                        <i class="fas fa-info-circle me-2"></i><strong>Estoque da filial:</strong> selecione os produtos que serão enviados para a Matriz.
+                    </div>
+
+                    <div class="row g-2 align-items-center mb-3">
+                        <div class="col-md-6">
+                            <div class="b2b-search-bar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchTransf" class="form-control form-control-sm" placeholder="Buscar produto por nome ou SKU..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-6 d-flex justify-content-end align-items-center gap-2">
+                            <small class="text-muted" id="paginfoTransf"></small>
+                            <div class="b2b-pagination" id="paginationTransf"></div>
+                        </div>
+                    </div>
+
+                    <table class="table table-hover align-middle border" id="tableTransf">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:40px">Sel.</th>
+                                <th>Produto</th>
+                                <th>Estoque Filial</th>
+                                <th style="width:130px">Qtd para Enviar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyTransf">
+                            <?php foreach ($produtosMatriz as $pm): ?>
+                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>">
+                                <td>
+                                    <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
+                                    <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>">
+                                </td>
+                                <td>
+                                    <div class="fw-bold small"><?= htmlspecialchars($pm['nome']) ?></div>
+                                    <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?></div>
+                                </td>
+                                <td><span class="badge bg-secondary"><?= formatarQuantidade($pm['qtd_matriz']) ?> UN</span></td>
+                                <td>
+                                    <input type="number" step="1" min="0" max="<?= $pm['qtd_matriz'] ?>"
+                                        name="itens[<?= $pm['id'] ?>][quantidade]"
+                                        class="qty-input form-control-sm" placeholder="0" disabled>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p class="b2b-no-results d-none" id="noResultsTransf"><i class="fas fa-search me-2"></i>Nenhum produto encontrado.</p>
+
+                    <div class="b2b-cart-summary">
+                        <h6 class="m-0 fw-bold"><i class="fas fa-box-open text-primary me-2"></i>Itens para Matriz: <span id="cartCount" class="badge bg-primary ms-1">0</span></h6>
+                        <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitTransf" disabled>
+                            <i class="fas fa-paper-plane me-2"></i>Enviar para Matriz
+                        </button>
+                    </div>
+                </form>
+            <?php endif; ?>
             <?php if ($aba == 'em_transito'): ?>
                 <?php if (empty($em_transito)): ?>
                     <div class="text-center text-muted py-5">
@@ -561,7 +685,7 @@ function initB2BTable(tbodyId, searchId, paginationId, paginfoId, noResultsId, p
         // Anterior
         addBtn('‹', currentPage - 1, currentPage === 1);
 
-        // Lógica de Janela (Mostra Primeira, Última e as próximas à atual)
+        // Lógica de Janela (Mostra Primeira, Ãšltima e as próximas à atual)
         const range = 2; // Páginas para cada lado
         for (let p = 1; p <= totalPages; p++) {
             if (p === 1 || p === totalPages || (p >= currentPage - range && p <= currentPage + range)) {
@@ -1056,7 +1180,7 @@ function abrirProcessarRecebimento(id) {
 }
 </script>
 
-<?php if (!$isMatriz): ?>
+<?php if (true): ?>
 <!-- Modal Resumo de Recebimento -->
 <div class="modal fade" id="modalResumoRecebimento" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">

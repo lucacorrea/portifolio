@@ -380,11 +380,80 @@ function renderPVSearchResults(products) {
 
 function showPvPreview(p) {
     if (p.imagens) {
-        pvPreviewImg.innerHTML = `<img src="public/uploads/produtos/${p.imagens}" style="width:100%; height:100%; object-fit:contain; cursor:pointer;" class="fade-in" onclick="if(window.openLightbox) window.openLightbox(this.src)">`;
+        pvPreviewImg.innerHTML = `<img src="${resolveSmartProductImage(p.imagens)}" style="width:100%; height:100%; object-fit:contain; cursor:pointer;" class="fade-in" onclick="if(window.openLightbox) window.openLightbox(this.src)" onerror="smartSwapImg(this)">`;
     } else {
         pvPreviewImg.innerHTML = `<i class="fas fa-image fs-1 text-muted opacity-25"></i>`;
     }
     pvPreviewName.innerText = p.nome;
+}
+
+function resolveSmartProductImage(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    let image = raw;
+    try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+                if (typeof item === 'string' && item.trim()) {
+                    image = item.trim();
+                    break;
+                }
+                if (item && typeof item === 'object') {
+                    const found = item.url || item.imagem || item.path;
+                    if (typeof found === 'string' && found.trim()) {
+                        image = found.trim();
+                        break;
+                    }
+                }
+            }
+        } else if (parsed && typeof parsed === 'object') {
+            const found = parsed.url || parsed.imagem || parsed.path;
+            if (typeof found === 'string' && found.trim()) image = found.trim();
+        }
+    } catch (e) {
+        image = raw.split(/[\r\n,;|]+/).map(s => s.trim()).find(Boolean) || raw;
+    }
+    if (/^(https?:)?\/\//i.test(image) || image.startsWith('data:') || image.startsWith('/')) return image;
+    const cleaned = image.replace(/^\.\/+/, '').replace(/^\/+/, '');
+    if (cleaned.startsWith('public/uploads/produtos/')) {
+        return `produto_imagem.php?f=${encodeURIComponent(cleaned.split('/').pop())}`;
+    }
+    if (cleaned.includes('/')) return cleaned;
+    return `produto_imagem.php?f=${encodeURIComponent(cleaned)}`;
+}
+
+function smartSwapImg(img) {
+    const src = img.getAttribute('src') || '';
+    if (src.includes('produto_imagem.php')) {
+        const current = new URL(src, window.location.href).searchParams.get('f') || '';
+        const mProxy = current.match(/^(.+?)(?:\.([^.]+))?$/);
+        if (!mProxy) return;
+        const baseProxy = mProxy[1];
+        const currentExtProxy = mProxy[2] || '';
+        const candidatesProxy = currentExtProxy
+            ? [currentExtProxy.toLowerCase(), currentExtProxy.toUpperCase(), currentExtProxy]
+            : ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp', 'WEBP', 'gif', 'GIF', 'avif', 'AVIF'];
+        let idxProxy = parseInt(img.dataset.extIdx || '0', 10) + 1;
+        const uniqueProxy = [...new Set(candidatesProxy)];
+        if (idxProxy >= uniqueProxy.length) return;
+        img.dataset.extIdx = String(idxProxy);
+        img.src = `produto_imagem.php?f=${encodeURIComponent(`${baseProxy}.${uniqueProxy[idxProxy]}`)}`;
+        return;
+    }
+    const m = src.match(/^(.*\/)?([^\/]+?)(?:\.([^.\/]+))?$/);
+    if (!m) return;
+    const prefix = m[1] || 'public/uploads/produtos/';
+    const base = m[2];
+    const currentExt = m[3] || '';
+    const candidates = currentExt
+        ? [currentExt.toLowerCase(), currentExt.toUpperCase(), currentExt]
+        : ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp', 'WEBP', 'gif', 'GIF', 'avif', 'AVIF'];
+    let idx = parseInt(img.dataset.extIdx || '0', 10) + 1;
+    const unique = [...new Set(candidates)];
+    if (idx >= unique.length) return;
+    img.dataset.extIdx = String(idx);
+    img.src = `${prefix}${base}.${unique[idx]}`;
 }
 
 let pendingPvProduct = null;
@@ -1047,15 +1116,16 @@ async function salvarQuickClient() {
                 </div>
                 
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary fw-bold py-3 shadow-sm hover-shadow" onclick="imprimirCupom(activeManageId)">
+                    <button class="btn btn-outline-primary fw-bold py-3 shadow-sm hover-shadow" id="btnManageCupom" onclick="imprimirCupom(activeManageId)">
                         <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
+                    </button>
+                      <button class="btn btn-outline-success fw-bold py-3 shadow-sm hover-shadow" id="btnManageDanfe" onclick="imprimirDanfe(activeManageId)" style="display: none;">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>IMPRIMIR DANFE (NFC-e)
                     </button>
                     <button class="btn btn-outline-info fw-bold py-3 shadow-sm hover-shadow" id="btnManageA4" onclick="imprimirA4(activeManageId)" style="display: none;">
                         <i class="fas fa-file-invoice me-2"></i>IMPRIMIR A4
                     </button>
-                    <button class="btn btn-outline-success fw-bold py-3 shadow-sm hover-shadow" id="btnManageDanfe" onclick="imprimirDanfe(activeManageId)" style="display: none;">
-                        <i class="fas fa-file-invoice-dollar me-2"></i>IMPRIMIR DANFE (NFC-e)
-                    </button>
+                  
                     <hr>
                     <button class="btn btn-outline-danger fw-bold py-3 shadow-sm hover-shadow" onclick="cancelSaleAction()">
                         <i class="fas fa-trash-alt me-2"></i>CANCELAR VENDA (ESTORNO)
@@ -1174,8 +1244,18 @@ async function salvarQuickClient() {
                         <span class="fw-bold text-end" id="exchangeOldName"></span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-success fw-bold"><i class="fas fa-arrow-up me-2"></i>LEVANDO (1 UN):</span>
+                        <span class="text-success fw-bold"><i class="fas fa-arrow-up me-2"></i>LEVANDO:</span>
                         <span class="fw-bold text-end" id="exchangeNewName"></span>
+                    </div>
+                    <div class="row g-3 mt-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Qtd. devolvida</label>
+                            <input type="number" id="exchangeReturnQty" class="form-control" step="0.001" min="0.001" value="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Qtd. do novo item</label>
+                            <input type="number" id="exchangeNewQty" class="form-control" step="0.001" min="0.001" value="1">
+                        </div>
                     </div>
                     <hr class="my-4">
                     <div class="d-flex justify-content-between align-items-center bg-white p-3 border rounded">
@@ -1208,9 +1288,12 @@ let exchangeState = {
     vendaId: null,
     oldItemId: null,
     oldItemName: null,
+    oldItemQty: 0,
     oldItemPrice: 0,
+    returnQty: 1,
     newProductId: null,
     newProductName: null,
+    newQty: 1,
     newProductPrice: 0
 };
 
@@ -1353,6 +1436,11 @@ function manageSale(sale) {
         
         const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
 
+        const btnCupom = document.getElementById('btnManageCupom');
+        if (btnCupom) {
+            btnCupom.style.display = isFiscal ? 'none' : 'block';
+        }
+
         const btnDanfe = document.getElementById('btnManageDanfe');
         if (btnDanfe) {
             btnDanfe.style.display = isFiscal ? 'block' : 'none';
@@ -1476,6 +1564,8 @@ async function openExchangeFlow() {
             
             exchangeState.oldItemId = item.id;
             exchangeState.oldItemName = item.produto_nome;
+            exchangeState.oldItemQty = parseFloat(item.quantidade);
+            exchangeState.returnQty = exchangeState.oldItemQty;
             exchangeState.oldItemPrice = parseFloat(item.preco_unitario); 
             
             document.getElementById('exchangeStep2').classList.remove('d-none');
@@ -1487,7 +1577,36 @@ async function openExchangeFlow() {
     });
 }
 
+function calculateExchangeFlowDiff() {
+    const returnInput = document.getElementById('exchangeReturnQty');
+    const newQtyInput = document.getElementById('exchangeNewQty');
+    const returnQty = parseFloat(returnInput?.value) || 0;
+    const newQty = parseFloat(newQtyInput?.value) || 0;
+    exchangeState.returnQty = returnQty;
+    exchangeState.newQty = newQty;
+
+    const diff = (exchangeState.newProductPrice * newQty) - (exchangeState.oldItemPrice * returnQty);
+    const diffEl = document.getElementById('exchangeDiff');
+    if (diff > 0) {
+        diffEl.innerHTML = `<span class="text-success"><i class="fas fa-plus me-1"></i>RECEBER R$ ${diff.toFixed(2).replace('.', ',')}</span>`;
+    } else if (diff < 0) {
+        diffEl.innerHTML = `<span class="text-danger"><i class="fas fa-minus me-1"></i>DEVOLVER R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}</span>`;
+    } else {
+        diffEl.innerHTML = `<span class="text-secondary">R$ 0,00 (Tudo Certo)</span>`;
+    }
+}
+
+document.getElementById('exchangeReturnQty')?.addEventListener('input', calculateExchangeFlowDiff);
+document.getElementById('exchangeNewQty')?.addEventListener('input', calculateExchangeFlowDiff);
+
 async function confirmExchange() {
+    calculateExchangeFlowDiff();
+    if (!exchangeState.returnQty || exchangeState.returnQty <= 0 || exchangeState.returnQty > exchangeState.oldItemQty) {
+        return alert("Informe uma quantidade devolvida válida, sem passar da quantidade vendida.");
+    }
+    if (!exchangeState.newQty || exchangeState.newQty <= 0) {
+        return alert("Informe uma quantidade válida para o novo item.");
+    }
     if (!exchangeState.vendaId || !exchangeState.oldItemId || !exchangeState.newProductId) {
         return alert("Por favor, selecione qual item será devolvido e qual produto será pego no lugar.");
     }
@@ -1501,7 +1620,8 @@ async function confirmExchange() {
             venda_id: exchangeState.vendaId,
             item_id: exchangeState.oldItemId,
             new_product_id: exchangeState.newProductId,
-            new_qty: 1,
+            return_qty: exchangeState.returnQty,
+            new_qty: exchangeState.newQty,
             new_price: exchangeState.newProductPrice
         })
     });
@@ -1555,6 +1675,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('manageSaleTotal').innerText = 'R$ ' + parseFloat(sale.valor_total).toFixed(2).replace('.', ',');
                 
                 const isFiscal = (sale.tipo_nota === 'fiscal') || (sale.nf_status && ['100','150'].includes(String(sale.nf_status)));
+
+                const btnCupom = document.getElementById('btnManageCupom');
+                if (btnCupom) {
+                    btnCupom.style.display = isFiscal ? 'none' : 'block';
+                }
 
                 const btnDanfe = document.getElementById('btnManageDanfe');
                 if (btnDanfe) {
@@ -1695,16 +1820,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     document.getElementById('exchangeOldName').innerText = exchangeState.oldItemName;
                     document.getElementById('exchangeNewName').innerText = exchangeState.newProductName;
-                    
-                    const diff = exchangeState.newProductPrice - exchangeState.oldItemPrice;
-                    const diffEl = document.getElementById('exchangeDiff');
-                    if (diff > 0) {
-                        diffEl.innerHTML = `<span class="text-success"><i class="fas fa-plus me-1"></i>RECEBER R$ ${diff.toFixed(2).replace('.', ',')}</span>`;
-                    } else if (diff < 0) {
-                        diffEl.innerHTML = `<span class="text-danger"><i class="fas fa-minus me-1"></i>DEVOLVER R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}</span>`;
-                    } else {
-                        diffEl.innerHTML = `<span class="text-secondary">R$ 0,00 (Tudo Certo)</span>`;
-                    }
+                    document.getElementById('exchangeReturnQty').value = exchangeState.oldItemQty || 1;
+                    document.getElementById('exchangeReturnQty').max = exchangeState.oldItemQty || 1;
+                    document.getElementById('exchangeNewQty').value = exchangeState.oldItemQty || 1;
+                    calculateExchangeFlowDiff();
                     
                     document.getElementById('exchangeStep3').classList.remove('d-none');
                     resultsDiv.innerHTML = '';

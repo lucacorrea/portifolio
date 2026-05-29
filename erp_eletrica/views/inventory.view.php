@@ -1,3 +1,74 @@
+<?php
+if (!function_exists('erp_first_product_image')) {
+    function erp_first_product_image(?string $imagens): string {
+        $imagens = trim((string)$imagens);
+        if ($imagens === '') {
+            return '';
+        }
+
+        $json = json_decode($imagens, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
+            if (!empty($json['url']) && is_string($json['url'])) {
+                return trim($json['url']);
+            }
+            if (!empty($json['imagem']) && is_string($json['imagem'])) {
+                return trim($json['imagem']);
+            }
+            if (!empty($json['path']) && is_string($json['path'])) {
+                return trim($json['path']);
+            }
+            foreach ($json as $item) {
+                if (is_string($item) && trim($item) !== '') {
+                    return trim($item);
+                }
+                if (is_array($item)) {
+                    foreach (['url', 'imagem', 'path'] as $key) {
+                        if (!empty($item[$key]) && is_string($item[$key])) {
+                            return trim($item[$key]);
+                        }
+                    }
+                }
+            }
+        }
+
+        $partes = preg_split('/[\r\n,;|]+/', $imagens);
+        if (is_array($partes)) {
+            foreach ($partes as $parte) {
+                $parte = trim((string)$parte);
+                if ($parte !== '') {
+                    return $parte;
+                }
+            }
+        }
+
+        return $imagens;
+    }
+}
+
+if (!function_exists('erp_product_image_url')) {
+    function erp_product_image_url(?string $imagens): string {
+        $imagem = erp_first_product_image($imagens);
+        if ($imagem === '') {
+            return '';
+        }
+        if (preg_match('#^(https?:)?//#i', $imagem) || str_starts_with($imagem, 'data:')) {
+            return $imagem;
+        }
+        $imagem = ltrim($imagem, './');
+        if (str_starts_with($imagem, '/')) {
+            return $imagem;
+        }
+        if (str_starts_with($imagem, 'public/uploads/produtos/')) {
+            $imagem = basename($imagem);
+        }
+        if (str_contains($imagem, '/')) {
+            return $imagem;
+        }
+        return 'produto_imagem.php?f=' . rawurlencode($imagem);
+    }
+}
+?>
+
 <?php if (isset($_GET['msg'])): ?>
     <div class="alert alert-dismissible fade show shadow-sm border-0 mb-4 text-white" style="background-color: #2b8a3e; font-weight: 500;" role="alert">
         <i class="fas fa-check-circle me-2"></i> <?= htmlspecialchars($_GET['msg']) ?>
@@ -148,9 +219,10 @@
                         </td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <?php if ($p['imagens']): ?>
+                                <?php $productImageUrl = erp_product_image_url((string)($p['imagens'] ?? '')); ?>
+                                <?php if ($productImageUrl !== ''): ?>
                                     <div class="product-zoom-container rounded me-3 border" style="cursor: zoom-in; width: 40px; height: 40px; flex-shrink: 0;">
-                                        <img src="public/uploads/produtos/<?= $p['imagens'] ?>" width="40" height="40" style="object-fit: cover;">
+                                        <img src="<?= htmlspecialchars($productImageUrl, ENT_QUOTES, 'UTF-8') ?>" data-base-name="<?= htmlspecialchars(pathinfo(erp_first_product_image((string)($p['imagens'] ?? '')), PATHINFO_FILENAME), ENT_QUOTES, 'UTF-8') ?>" data-try-exts="jpg,JPG,jpeg,JPEG,png,PNG,webp,WEBP,gif,GIF,avif,AVIF" data-ext-idx="0" onerror="smartImgTryExt(this)" width="40" height="40" style="object-fit: cover;">
                                     </div>
                                 <?php else: ?>
                                     <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center border" width="40" height="40" style="min-width: 40px; min-height: 40px;">
@@ -369,11 +441,12 @@
 
                     <div class="col-12 mt-2 mb-1"><h6 class="fw-bold text-primary small border-bottom pb-2"><i class="fas fa-file-invoice me-1"></i>Informações Fiscais (SEFAZ)</h6></div>
                     <div class="col-md-4 position-relative">
-                        <label class="form-label small fw-bold">NCM</label>
+                        <label class="form-label small fw-bold">NCM <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm shadow-sm">
-                            <input type="text" name="ncm" class="form-control" id="edit_ncm" placeholder="Digite cód. ou nome..." autocomplete="off" onkeyup="searchNcmInline(this.value)">
+                            <input type="text" name="ncm" class="form-control" id="edit_ncm" placeholder="Digite cód. ou nome..." autocomplete="off" inputmode="numeric" maxlength="8" pattern="\d{8}" required onkeyup="searchNcmInline(this.value)">
                             <span class="input-group-text bg-white" id="ncmLoader" style="display:none;"><i class="fas fa-spinner fa-spin text-primary" style="font-size:0.75rem;"></i></span>
                         </div>
+                        <div class="extra-small text-muted">Obrigatorio para emissao fiscal. Use 8 digitos.</div>
                         <ul id="ncmDropdown" class="list-group shadow-lg" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:2000; max-height:220px; overflow-y:auto; background-color:#fff; border:1px solid #dee2e6; border-top:none; border-radius:0 0 6px 6px;"></ul>
                     </div>
 
@@ -683,6 +756,55 @@
 </div>
 
 <script>
+function firstProductImage(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+                if (typeof item === 'string' && item.trim()) return item.trim();
+                if (item && typeof item === 'object') {
+                    const found = item.url || item.imagem || item.path;
+                    if (typeof found === 'string' && found.trim()) return found.trim();
+                }
+            }
+        } else if (parsed && typeof parsed === 'object') {
+            const found = parsed.url || parsed.imagem || parsed.path;
+            if (typeof found === 'string' && found.trim()) return found.trim();
+        }
+    } catch (e) {}
+
+    return raw.split(/[\r\n,;|]+/).map(s => s.trim()).find(Boolean) || raw;
+}
+
+function productImageUrl(value) {
+    const image = firstProductImage(value);
+    if (!image) return '';
+    if (/^(https?:)?\/\//i.test(image) || image.startsWith('data:') || image.startsWith('/')) {
+        return image;
+    }
+    const clean = image.replace(/^\.\//, '');
+    if (clean.startsWith('public/uploads/produtos/')) {
+        return `produto_imagem.php?f=${encodeURIComponent(clean.split('/').pop())}`;
+    }
+    return clean.includes('/') ? clean : `produto_imagem.php?f=${encodeURIComponent(clean)}`;
+}
+
+function smartImgTryExt(imgEl) {
+    const base = imgEl.dataset.baseName || '';
+    const list = (imgEl.dataset.tryExts || '').split(',').map(s => s.trim()).filter(Boolean);
+    let idx = parseInt(imgEl.dataset.extIdx || '0', 10);
+    if (!base || !list.length || idx >= list.length) {
+        imgEl.style.display = 'none';
+        return;
+    }
+    const nextExt = list[idx];
+    imgEl.dataset.extIdx = String(idx + 1);
+    imgEl.src = `produto_imagem.php?f=${encodeURIComponent(`${base}.${nextExt}`)}`;
+}
+
 function openNewProduct() {
     const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
     const form = document.querySelector('#newProductModal form');
@@ -744,8 +866,13 @@ function editProduct(product) {
     // Preview da Imagem
     const preview = document.getElementById('edit_preview');
     const icon = document.getElementById('preview-icon');
-    if (product.imagens) {
-        preview.src = 'public/uploads/produtos/' + product.imagens;
+    const productImage = productImageUrl(product.imagens);
+    if (productImage) {
+        preview.src = productImage;
+        preview.dataset.baseName = firstProductImage(product.imagens).replace(/\.[^/.]+$/, '');
+        preview.dataset.tryExts = 'jpg,JPG,jpeg,JPEG,png,PNG,webp,WEBP,gif,GIF,avif,AVIF';
+        preview.dataset.extIdx = '0';
+        preview.onerror = function() { smartImgTryExt(preview); };
         preview.classList.remove('d-none');
         icon.classList.add('d-none');
     } else {
@@ -986,8 +1113,13 @@ function viewProduct(product) {
     // Image resolution
     const viewFoto = document.getElementById('view_foto');
     const viewNoFoto = document.getElementById('view_no_foto');
-    if (product.imagens) {
-        viewFoto.src = 'public/uploads/produtos/' + product.imagens;
+    const viewProductImage = productImageUrl(product.imagens);
+    if (viewProductImage) {
+        viewFoto.src = viewProductImage;
+        viewFoto.dataset.baseName = firstProductImage(product.imagens).replace(/\.[^/.]+$/, '');
+        viewFoto.dataset.tryExts = 'jpg,JPG,jpeg,JPEG,png,PNG,webp,WEBP,gif,GIF,avif,AVIF';
+        viewFoto.dataset.extIdx = '0';
+        viewFoto.onerror = function() { smartImgTryExt(viewFoto); };
         viewFoto.classList.remove('d-none');
         viewNoFoto.classList.add('d-none');
     } else {

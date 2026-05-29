@@ -1,0 +1,7 @@
+cache/
+storage/logs/
+tmp/
+
+# Keep uploaded media on Hostinger. Do not mirror the local uploads folder.
+public/uploads/
+public/uploads/**

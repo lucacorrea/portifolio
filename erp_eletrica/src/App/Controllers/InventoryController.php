@@ -11,6 +11,15 @@ class InventoryController extends BaseController {
         $this->service = new InventoryService();
     }
 
+    private function productUploadDir(): string {
+        $appRoot = dirname(__DIR__, 3);
+        $dir = getenv('ERP_PRODUCT_UPLOAD_DIR');
+        if (!$dir) {
+            $dir = dirname(dirname($appRoot)) . DIRECTORY_SEPARATOR . 'erp_eletrica_uploads' . DIRECTORY_SEPARATOR . 'produtos';
+        }
+        return rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    }
+
     public function index() {
         $productModel = new \App\Models\Product();
         $movementModel = new \App\Models\StockMovement();
@@ -72,6 +81,10 @@ class InventoryController extends BaseController {
             validateCsrf($_POST['csrf_token'] ?? '');
             $model = new \App\Models\Product();
             $data = $_POST;
+            $data['ncm'] = preg_replace('/\D+/', '', (string)($data['ncm'] ?? ''));
+            if (strlen($data['ncm']) !== 8) {
+                $this->redirect('estoque.php?error=' . urlencode('Informe um NCM valido com 8 digitos para cadastrar o produto.'));
+            }
             
             // Fix: ensure product is linked to the correct filial
             if (empty($data['filial_id'])) {
@@ -80,7 +93,7 @@ class InventoryController extends BaseController {
 
             // LEITURA INTELIGENTE DE IMAGEM (Qualquer formato válido)
             if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
-                $dir = dirname(__DIR__, 3) . "/public/uploads/produtos/";
+                $dir = $this->productUploadDir();
                 if (!is_dir($dir)) mkdir($dir, 0777, true);
 
                 $tmpName = $_FILES['foto']['tmp_name'];
@@ -107,8 +120,12 @@ class InventoryController extends BaseController {
                     // Define a extensão com base no que a imagem REALMENTE é
                     $extension = $allowedMimeTypes[$mimeType];
                     
-                    // Gera o nome único com a extensão correta
-                    $filename = uniqid() . "." . $extension;
+                    // Gera um nome com entropia alta para evitar colisao entre uploads rapidos.
+                    try {
+                        $filename = bin2hex(random_bytes(16)) . "." . $extension;
+                    } catch (\Exception $e) {
+                        $filename = str_replace('.', '', uniqid('', true)) . "." . $extension;
+                    }
                     
                     if (move_uploaded_file($tmpName, $dir . $filename)) {
                         $data['imagens'] = $filename;

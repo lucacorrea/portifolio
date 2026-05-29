@@ -2,7 +2,7 @@
     <div class="col-12 col-sm-6 col-lg-3">
         <div class="stat-card primary">
             <div>
-                <div class="stat-label">Vendas Hoje</div>
+                <div class="stat-label">Vendas hoje</div>
                 <div class="stat-value" id="stat-today-count">0</div>
             </div>
             <div class="stat-icon"><i class="fas fa-shopping-cart"></i></div>
@@ -261,6 +261,12 @@
                 </div>
 
                 <div class="mb-3">
+                    <label class="form-label small fw-bold">Quantidade que será devolvida</label>
+                    <input type="number" id="exch-return-qty" class="form-control" step="0.001" min="0.001" value="1">
+                    <div class="form-text">Pode devolver apenas parte da quantidade vendida.</div>
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label fw-bold">Buscar Novo Produto</label>
                     <div class="position-relative">
                         <input type="text" id="new-prod-search" class="form-control" placeholder="Digite nome ou código...">
@@ -317,7 +323,7 @@
                 const data = await response.json();
                 renderTable(data.sales);
                 renderPagination(data);
-                if (page === 1) updateStats(data.sales);
+                updateStats(data.stats, data.sales);
             } catch (err) {
                 salesList.innerHTML = '<tr><td colspan="9" class="text-center py-5 text-danger">Erro ao carregar dados.</td></tr>';
             }
@@ -450,12 +456,26 @@
             paginationArea.innerHTML = html;
         }
 
-        function updateStats(sales) {
-            // Summary logic here (mocked for speed)
-            document.getElementById('stat-today-count').textContent = sales.filter(s => s.status === 'concluido').length;
-            const total = sales.filter(s => s.status === 'concluido').reduce((acc, s) => acc + parseFloat(s.valor_total), 0);
-            document.getElementById('stat-total-val').textContent = 'R$ ' + total.toLocaleString('pt-BR', {minimumFractionDigits:2});
-            document.getElementById('stat-cancel-count').textContent = sales.filter(s => s.status === 'cancelado').length;
+        function updateStats(stats, fallbackSales = []) {
+            if (!stats) {
+                const concluidas = fallbackSales.filter(s => s.status === 'concluido');
+                const total = concluidas.reduce((acc, s) => acc + parseFloat(s.valor_total || 0), 0);
+                const cancelamentos = fallbackSales.filter(s => s.status === 'cancelado').length;
+                stats = {
+                    vendas_concluidas: concluidas.length,
+                    total_vendido: total,
+                    cancelamentos,
+                    ticket_medio: concluidas.length ? total / concluidas.length : 0
+                };
+            }
+
+            const totalVendido = parseFloat(stats.total_vendido || 0);
+            const ticketMedio = parseFloat(stats.ticket_medio || 0);
+
+            document.getElementById('stat-today-count').textContent = stats.vendas_concluidas || 0;
+            document.getElementById('stat-total-val').textContent = 'R$ ' + totalVendido.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('stat-cancel-count').textContent = stats.cancelamentos || 0;
+            document.getElementById('stat-avg-ticket').textContent = 'R$ ' + ticketMedio.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
         // --- Interaction Handlers ---
@@ -664,6 +684,9 @@
             exchData = { vendaId: vId, itemId: iId, oldPrice: price, oldQtd: qtd };
             document.getElementById('exch-original-name').textContent = name;
             document.getElementById('exch-original-qtd').textContent = qtd + ' unid.';
+            const returnQtyInput = document.getElementById('exch-return-qty');
+            returnQtyInput.value = qtd;
+            returnQtyInput.max = qtd;
             document.getElementById('new-prod-search').value = '';
             document.getElementById('exchange-results').classList.add('d-none');
             document.getElementById('exchange-new-data').classList.add('d-none');
@@ -700,29 +723,41 @@
             resultsBox.classList.add('d-none');
             searchInput.value = name;
             document.getElementById('exch-new-price').value = price;
-            document.getElementById('exch-new-qty').value = exchData.oldQtd;
+            document.getElementById('exch-new-qty').value = document.getElementById('exch-return-qty').value || exchData.oldQtd;
             document.getElementById('exchange-new-data').classList.remove('d-none');
             document.getElementById('confirmExchangeBtn').classList.remove('d-none');
             calculateDiff();
         };
 
         const calculateDiff = () => {
+            const returnQty = parseFloat(document.getElementById('exch-return-qty').value) || 0;
             const q = parseFloat(document.getElementById('exch-new-qty').value) || 0;
             const p = parseFloat(document.getElementById('exch-new-price').value) || 0;
             const newTotal = q * p;
-            const oldTotal = exchData.oldQtd * exchData.oldPrice;
+            const oldTotal = returnQty * exchData.oldPrice;
             const diff = newTotal - oldTotal;
             const diffEl = document.getElementById('exch-diff');
             diffEl.textContent = (diff >= 0 ? '+ ' : '- ') + 'R$ ' + Math.abs(diff).toLocaleString('pt-BR', {minimumFractionDigits:2});
             diffEl.className = diff >= 0 ? 'fw-bold text-success' : 'fw-bold text-danger';
         };
 
+        document.getElementById('exch-return-qty').addEventListener('input', calculateDiff);
         document.getElementById('exch-new-qty').addEventListener('input', calculateDiff);
         document.getElementById('exch-new-price').addEventListener('input', calculateDiff);
 
         document.getElementById('confirmExchangeBtn').addEventListener('click', async function() {
+            const returnQty = parseFloat(document.getElementById('exch-return-qty').value);
             const newQty = parseFloat(document.getElementById('exch-new-qty').value);
             const newPrice = parseFloat(document.getElementById('exch-new-price').value);
+
+            if (!returnQty || returnQty <= 0 || returnQty > exchData.oldQtd) {
+                alert('Informe uma quantidade devolvida válida, sem passar da quantidade vendida.');
+                return;
+            }
+            if (!newQty || newQty <= 0 || newPrice < 0) {
+                alert('Informe quantidade e preço válidos para o novo produto.');
+                return;
+            }
             
             this.disabled = true;
             try {
@@ -732,6 +767,7 @@
                     body: JSON.stringify({
                         venda_id: exchData.vendaId,
                         item_id: exchData.itemId,
+                        return_qty: returnQty,
                         new_product_id: exchData.newProdId,
                         new_qty: newQty,
                         new_price: newPrice

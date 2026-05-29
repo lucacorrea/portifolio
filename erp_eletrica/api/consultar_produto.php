@@ -45,14 +45,64 @@ try {
 
     $precoVenda = (float)($produto['preco_venda'] ?? 0);
     
-    // Tratamento de imagem (pega a primeira do JSON se existir)
+    // Tratamento de imagem: aceita nome simples, caminho, URL, JSON e listas legadas.
     $imagem = 'public/img/no-image.png';
     if (!empty($produto['imagens'])) {
-        $imgs = json_decode($produto['imagens'], true);
-        if (is_array($imgs) && !empty($imgs)) {
-            $imagem = $imgs[0];
-        } else if (is_string($produto['imagens'])) {
-            $imagem = $produto['imagens'];
+        $rawImage = trim((string)$produto['imagens']);
+        $imgs = json_decode($rawImage, true);
+
+        if (json_last_error() === JSON_ERROR_NONE && is_array($imgs)) {
+            if (!empty($imgs['url']) && is_string($imgs['url'])) {
+                $rawImage = $imgs['url'];
+            } elseif (!empty($imgs['imagem']) && is_string($imgs['imagem'])) {
+                $rawImage = $imgs['imagem'];
+            } elseif (!empty($imgs['path']) && is_string($imgs['path'])) {
+                $rawImage = $imgs['path'];
+            } else {
+                foreach ($imgs as $item) {
+                    if (is_string($item) && trim($item) !== '') {
+                        $rawImage = $item;
+                        break;
+                    }
+                    if (is_array($item)) {
+                        foreach (['url', 'imagem', 'path'] as $key) {
+                            if (!empty($item[$key]) && is_string($item[$key])) {
+                                $rawImage = $item[$key];
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            $parts = preg_split('/[\r\n,;|]+/', $rawImage);
+            if (is_array($parts)) {
+                foreach ($parts as $part) {
+                    $part = trim((string)$part);
+                    if ($part !== '') {
+                        $rawImage = $part;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $rawImage = trim((string)$rawImage);
+        if ($rawImage !== '') {
+            $cleanImage = ltrim($rawImage, './');
+            if (str_starts_with($cleanImage, 'public/uploads/produtos/')) {
+                $cleanImage = basename($cleanImage);
+            }
+            if (
+                preg_match('#^(https?:)?//#i', $rawImage) ||
+                str_starts_with($rawImage, 'data:') ||
+                str_starts_with($rawImage, '/') ||
+                str_contains($cleanImage, '/')
+            ) {
+                $imagem = $rawImage;
+            } else {
+                $imagem = 'produto_imagem.php?f=' . rawurlencode($cleanImage);
+            }
         }
     }
 

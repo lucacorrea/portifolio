@@ -1,0 +1,13 @@
+cache/
+storage/logs/
+tmp/
+
+# Uploaded files live on the hosting server and must not be replaced by deploys.
+public/uploads/*
+!public/uploads/.gitkeep
+!public/uploads/produtos/
+public/uploads/produtos/*
+!public/uploads/produtos/.gitkeep
+!public/uploads/produtos/.htaccess
+public/uploads/problemas/*
+!public/uploads/problemas/.gitkeep
