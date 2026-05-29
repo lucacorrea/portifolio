@@ -76,10 +76,10 @@
                     </button>
                 <?php else: ?>
                     <button class="tab-btn <?= $aba == 'nova_solicitacao' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_solicitacao'">
-                        <i class="fas fa-plus-circle me-1"></i><span class="d-none d-md-inline">Pedir ao </span>CD (Matriz)
+                        <i class="fas fa-plus-circle me-1"></i><span class="d-none d-md-inline">Pedir ao </span> CD
                     </button>
                     <button class="tab-btn <?= $aba == 'nova_transferencia' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_transferencia'">
-                        <i class="fas fa-truck-loading me-1"></i><span class="d-none d-md-inline">Enviar p/ </span>Matriz
+                        <i class="fas fa-truck-loading me-1"></i><span class="d-none d-md-inline">Enviar</span>
                     </button>
                     <button class="tab-btn <?= $aba == 'em_transito' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=em_transito'">
                         <i class="fas fa-truck me-1"></i>Em Trânsito
@@ -432,7 +432,7 @@
                             <i class="fas fa-eye me-2"></i>Visualizar
                         </button>
                         <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitReq" disabled>
-                            <i class="fas fa-paper-plane me-2"></i>Enviar Pedido à Matriz
+                            <i class="fas fa-paper-plane me-2"></i>Enviar Pedido
                         </button>
                     </div>
                 </form>
@@ -517,7 +517,7 @@
                             <i class="fas fa-eye me-2"></i>Visualizar
                         </button>
                         <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitTransf" disabled>
-                            <i class="fas fa-paper-plane me-2"></i>Enviar para Matriz
+                            <i class="fas fa-paper-plane me-2"></i>Enviar
                         </button>
                     </div>
                 </form>
@@ -1408,7 +1408,7 @@ function abrirProcessarRecebimento(id) {
                 </div>
                 <div class="modal-footer border-0 p-3 pt-0">
                     <button type="button" class="btn btn-light btn-sm fw-bold text-muted px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-4">Enviar Relato à Matriz</button>
+                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-4">Enviar Relato</button>
                 </div>
             </form>
         </div>
