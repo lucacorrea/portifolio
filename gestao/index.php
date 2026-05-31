@@ -15,6 +15,19 @@ $pageId = 'dashboard';
 $pageTitle = 'Dashboard';
 $activeMenu = 'home';
 $prefix = '';
+
+require_once __DIR__ . '/backend/Repositories/DashboardRepository.php';
+$repo = new \App\Repositories\DashboardRepository();
+$empresaId = (int) $user['empresa_id'];
+
+$resumo = $repo->getTodaySummary($empresaId);
+$expiring = $repo->getExpiringProducts($empresaId);
+$latestSales = $repo->getLatestSales($empresaId);
+$featured = $repo->getFeaturedProducts($empresaId);
+
+$totalVendido = (float) $resumo['total_sales'];
+$qtdVendas = (int) $resumo['sales_count'];
+
 require_once __DIR__ . '/pages/layout/header.php';
 ?>
 <header class="blue-area">
@@ -31,8 +44,8 @@ require_once __DIR__ . '/pages/layout/header.php';
   <div class="balance-row">
     <div>
       <p class="micro-label">Vendido hoje</p>
-      <h1 id="todayTotal">R$ 0,00</h1>
-      <span class="subtle-light">L&J Soluções Tech • <span id="todaySalesCount">0</span> vendas</span>
+      <h1>R$ <?= number_format($totalVendido, 2, ',', '.') ?></h1>
+      <span class="subtle-light"><?= htmlspecialchars($user['nome']) ?> • <span><?= $qtdVendas ?></span> vendas</span>
     </div>
     <a class="avatar-btn" href="pages/configuracoes.php" aria-label="Configurações">
       <img src="assets/icons/icon.svg" alt="L&J" />
@@ -56,7 +69,18 @@ require_once __DIR__ . '/pages/layout/header.php';
     </div>
   </div>
 
-  <div class="finance-grid" id="dashboardFinance"></div>
+  <div class="finance-grid">
+    <article class="finance-card">
+      <p>Total vendido</p>
+      <h3>R$ <?= number_format($totalVendido, 2, ',', '.') ?></h3>
+      <span><?= $qtdVendas ?> vendas</span>
+    </article>
+    <article class="finance-card">
+      <p>Lucro estimado</p>
+      <h3>R$ <?= number_format($totalVendido * 0.32, 2, ',', '.') ?></h3>
+      <span>Margem 32%</span>
+    </article>
+  </div>
 
   <div class="sheet-title section-gap">
     <div>
@@ -65,7 +89,16 @@ require_once __DIR__ . '/pages/layout/header.php';
     </div>
   </div>
 
-  <article class="summary-card" id="dailyReport"></article>
+  <article class="summary-card">
+    <div class="summary-line">
+      <span>Vendas realizadas</span>
+      <strong><?= $qtdVendas ?></strong>
+    </div>
+    <div class="summary-line">
+      <span>Ticket médio</span>
+      <strong>R$ <?= number_format($qtdVendas > 0 ? $totalVendido / $qtdVendas : 0, 2, ',', '.') ?></strong>
+    </div>
+  </article>
 
   <div class="sheet-title section-gap">
     <div>
@@ -75,7 +108,24 @@ require_once __DIR__ . '/pages/layout/header.php';
     <a class="small-link" href="pages/produtos.php">Ver</a>
   </div>
 
-  <div class="list-card" id="expiringProducts"></div>
+  <div class="list-card">
+    <?php if (empty($expiring)): ?>
+      <p class="empty-state">Nenhum produto perto de vencer.</p>
+    <?php else: ?>
+      <?php foreach ($expiring as $p): ?>
+        <div class="row-item">
+          <div class="row-icon"><svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg></div>
+          <div class="row-content">
+            <h4><?= htmlspecialchars($p['nome']) ?></h4>
+            <p>Lote <?= htmlspecialchars($p['lote'] ?? '-') ?> • Validade <?= date('d/m/Y', strtotime($p['validade'])) ?></p>
+          </div>
+          <div class="row-value">
+            <strong class="text-orange"><?= number_format((float)$p['quantidade'], 0, '', '') ?> un.</strong>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
 
   <div class="sheet-title section-gap">
     <div>
@@ -85,7 +135,24 @@ require_once __DIR__ . '/pages/layout/header.php';
     <a class="small-link" href="pages/historico-vendas.php">Ver tudo</a>
   </div>
 
-  <div class="list-card" id="latestSales"></div>
+  <div class="list-card">
+    <?php if (empty($latestSales)): ?>
+      <p class="empty-state">Nenhuma venda registrada.</p>
+    <?php else: ?>
+      <?php foreach ($latestSales as $s): ?>
+        <div class="row-item" onclick="location.href='pages/venda-detalhes.php?id=<?= $s['id'] ?>'" style="cursor:pointer">
+          <div class="row-icon"><svg viewBox="0 0 24 24"><path d="M7 4h10v16l-2-1-2 1-2-1-2 1-2-1z"/><path d="M9 8h6"/><path d="M9 12h5"/></svg></div>
+          <div class="row-content">
+            <h4>Venda #<?= str_pad((string)$s['numero_venda'], 4, '0', STR_PAD_LEFT) ?></h4>
+            <p><?= htmlspecialchars($s['vendedor'] ?? 'Operador') ?> • <?= date('d/m/Y H:i', strtotime($s['criado_em'])) ?></p>
+          </div>
+          <div class="row-value">
+            <strong class="text-green">R$ <?= number_format((float)$s['total'], 2, ',', '.') ?></strong>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
 
   <div class="sheet-title section-gap">
     <div>
@@ -94,7 +161,24 @@ require_once __DIR__ . '/pages/layout/header.php';
     </div>
   </div>
 
-  <div class="list-card" id="featuredProducts"></div>
+  <div class="list-card">
+    <?php if (empty($featured)): ?>
+      <p class="empty-state">Nenhum produto vendido hoje.</p>
+    <?php else: ?>
+      <?php foreach ($featured as $p): ?>
+        <div class="row-item">
+          <div class="row-icon"><svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg></div>
+          <div class="row-content">
+            <h4><?= htmlspecialchars($p['nome']) ?></h4>
+            <p>Em destaque</p>
+          </div>
+          <div class="row-value">
+            <strong class="text-blue"><?= number_format((float)$p['total_vendido'], 0, '', '') ?> un. vendidas</strong>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
 </section>
 
 <?php require_once __DIR__ . '/pages/layout/footer.php'; ?>
