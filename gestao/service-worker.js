@@ -1,9 +1,6 @@
-const CACHE_NAME = 'lj-caixa-pages-premium-v1';
+const CACHE_NAME = 'lj-caixa-assets-oo-v3';
 const FILES = [
-  './',
-  './index.html',
-  './manifest.json',
-  './assets/css/styles.css',
+  './assets/css/main.css',
   './assets/js/data.js',
   './assets/js/app.js',
   './assets/icons/icon.svg',
@@ -12,17 +9,7 @@ const FILES = [
   './assets/img/prod-cafe.svg',
   './assets/img/prod-iogurte.svg',
   './assets/img/prod-arroz.svg',
-  './assets/img/prod-sabonete.svg',
-  './pages/nova-venda.html',
-  './pages/produtos.html',
-  './pages/produto-form.html',
-  './pages/relatorios.html',
-  './pages/clientes.html',
-  './pages/cliente-detalhes.html',
-  './pages/historico-vendas.html',
-  './pages/venda-detalhes.html',
-  './pages/comprovante.html',
-  './pages/configuracoes.html'
+  './assets/img/prod-sabonete.svg'
 ];
 
 self.addEventListener('install', event => {
@@ -36,6 +23,10 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
   if (event.request.method !== 'GET') return;
+  if (url.pathname.endsWith('.php') || url.pathname.endsWith('/')) return;
+
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)));
 });

@@ -1,6 +1,7 @@
 const prefix = document.body.dataset.prefix || '';
 const page = document.body.dataset.page || 'dashboard';
 const data = window.AppData;
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const icons = {
@@ -16,15 +17,43 @@ const icons = {
 };
 
 let saleStep = Number(localStorage.getItem('saleStep') || 1);
-let cart = JSON.parse(localStorage.getItem('cart') || '[{"productId":1,"qty":1},{"productId":2,"qty":1},{"productId":4,"qty":1}]');
+let cart = JSON.parse(localStorage.getItem('cart') || '[]');
 let currentPayment = localStorage.getItem('payment') || 'PIX';
 let receivedAmount = Number(localStorage.getItem('receivedAmount') || 0);
 let scannerStream = null;
 
 function $(sel, parent = document) { return parent.querySelector(sel); }
 function $all(sel, parent = document) { return [...parent.querySelectorAll(sel)]; }
-function img(name) { return `${prefix}assets/img/${name}`; }
+function img(name) { return `${prefix}assets/img/${name || 'prod-placeholder.svg'}`; }
 function qs(name) { return new URLSearchParams(location.search).get(name); }
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
+}
+
+async function postJson(url, payload) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ ...payload, csrf_token: csrfToken })
+  });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Não foi possível concluir a operação.');
+  }
+
+  return json;
+}
 
 function updateTime() {
   const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -38,9 +67,15 @@ function formatDate(date) {
 }
 
 function daysTo(date) {
-  const today = new Date('2026-05-28T00:00:00');
+  if (!date) return Number.POSITIVE_INFINITY;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const target = new Date(`${date}T00:00:00`);
   return Math.ceil((target - today) / 86400000);
+}
+
+function emptyState(message, action = '') {
+  return `<article class="summary-card"><p>${escapeHtml(message)}</p>${action}</article>`;
 }
 
 function showToast(message) {
@@ -81,7 +116,7 @@ function rowItem({ title, subtitle, amount, status, icon = 'receipt', image = ''
   const tag = href ? 'a' : 'button';
   const link = href ? `href="${href}"` : '';
   const visual = image
-    ? `<img class="row-thumb" src="${image}" alt="">`
+    ? `<img class="row-thumb" src="${escapeHtml(image)}" alt="">`
     : `<span class="row-icon">${icons[icon] || icons.receipt}</span>`;
   const amountHtml = amount !== undefined ? `<strong class="${type}">${amount < 0 ? '- ' : ''}${brl.format(Math.abs(amount))}</strong>` : '';
 
@@ -90,13 +125,13 @@ function rowItem({ title, subtitle, amount, status, icon = 'receipt', image = ''
       <div class="row-left">
         ${visual}
         <span class="row-text">
-          <strong>${title}</strong>
-          <span>${subtitle}</span>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(subtitle)}</span>
         </span>
       </div>
       <span class="row-right">
         ${amountHtml}
-        <span>${status || ''}</span>
+        <span>${escapeHtml(status || '')}</span>
       </span>
     </${tag}>
   `;
@@ -135,6 +170,20 @@ function saveCart() {
 }
 
 function addToCart(id) {
+  const product = data.products.find(p => p.id === id);
+
+  if (!product) return;
+
+  if (data.settings.blockExpiredProducts && daysTo(product.expiry) < 0) {
+    showToast('Produto vencido bloqueado pelas configurações');
+    return;
+  }
+
+  if (data.settings.blockNegativeStock && product.stock <= 0) {
+    showToast('Estoque indisponível pelas configurações');
+    return;
+  }
+
   const item = cart.find(i => i.productId === id);
   if (item) item.qty += 1;
   else cart.push({ productId: id, qty: 1 });
@@ -156,56 +205,53 @@ function initIcons() {
 }
 
 function initDashboard() {
-  const sales = data.sales.filter(s => s.date === '2026-05-28');
-  const total = sales.reduce((sum, sale) => sum + sale.total, 0);
+  const info = data.dashboardInfo || { sales_count: 0, total_sales: 0 };
+  const total = Number(info.total_sales);
+  const count = Number(info.sales_count);
+  const expiringProducts = data.products
+    .filter(p => daysTo(p.expiry) <= data.settings.expirationAlertDays)
+    .slice(0, 3);
+  const latestSales = data.sales.slice(0, 3);
+  
   $('#todayTotal').textContent = brl.format(total);
-  $('#todaySalesCount').textContent = sales.length;
+  $('#todaySalesCount').textContent = count;
 
   $('#dashboardFinance').innerHTML = [
-    financeCard('Total vendido', total, `${sales.length} vendas`),
-    financeCard('PIX', sales.filter(s => s.payment === 'PIX').reduce((sum, s) => sum + s.total, 0), 'Principal método'),
-    financeCard('Cartão', 3654.10, 'Crédito e débito'),
-    financeCard('Dinheiro', 1268.40, 'Com troco automático'),
+    financeCard('Total vendido', total, `${count} vendas`),
     financeCard('Lucro estimado', total * 0.32, 'Margem 32%')
   ].join('');
 
   $('#dailyReport').innerHTML = [
-    summaryLine('Vendas realizadas', '91'),
-    summaryLine('Ticket médio', 'R$ 96,08'),
-    summaryLine('Produto mais vendido', 'Mouse Sem Fio'),
-    summaryLine('Melhor horário', '15h às 17h'),
-    summaryLine('Meta diária', '72%')
+    summaryLine('Vendas realizadas', String(count)),
+    summaryLine('Ticket médio', count > 0 ? brl.format(total / count) : 'R$ 0,00'),
   ].join('');
 
-  $('#expiringProducts').innerHTML = data.products
-    .filter(p => daysTo(p.expiry) <= data.settings.expirationAlertDays)
-    .slice(0, 3)
-    .map(p => rowItem({
+  $('#expiringProducts').innerHTML = expiringProducts.map(p => rowItem({
       title: p.name,
       subtitle: `Lote ${p.lot} • Validade ${formatDate(p.expiry)}`,
       status: `${Math.max(daysTo(p.expiry), 0)} dias`,
       image: img(p.image),
       type: daysTo(p.expiry) <= 3 ? 'negative' : 'warning',
-      href: 'pages/produtos.html'
-    })).join('');
+      href: 'pages/produtos.php'
+    })).join('') || emptyState('Nenhum produto próximo da validade.');
 
-  $('#latestSales').innerHTML = sales.map(s => rowItem({
+  $('#latestSales').innerHTML = latestSales.map(s => rowItem({
     title: `Venda nº ${String(s.id).padStart(6, '0')}`,
     subtitle: `${s.payment} • ${s.time} • ${s.seller}`,
     amount: s.total,
     status: s.status,
     icon: 'receipt',
-    href: `pages/venda-detalhes.html?id=${s.id}`
-  })).join('');
+    href: `pages/venda-detalhes.php?id=${s.id}`
+  })).join('') || emptyState('Nenhuma venda registrada ainda.');
 
   $('#featuredProducts').innerHTML = data.products.slice(0, 3).map((p, index) => rowItem({
     title: p.name,
-    subtitle: `${index + 8} un. vendidas • ${p.category}`,
-    amount: p.price * (index + 8),
-    status: `Top ${index + 1}`,
+    subtitle: p.category,
+    amount: p.price,
+    status: 'Cadastrado',
     image: img(p.image),
-    href: 'pages/produtos.html'
-  })).join('');
+    href: 'pages/produtos.php'
+  })).join('') || emptyState('Cadastre produtos para começar.', '<a class="primary-btn section-gap-small" href="pages/produto-form.php">Cadastrar produto</a>');
 }
 
 function initSale() {
@@ -251,7 +297,7 @@ function renderSaleProducts(query = '') {
   const q = query.toLowerCase();
   $('#saleProducts').innerHTML = data.products
     .filter(p => `${p.name} ${p.sku} ${p.barcode} ${p.category}`.toLowerCase().includes(q))
-    .map(productCardForSale).join('');
+    .map(productCardForSale).join('') || emptyState('Nenhum produto cadastrado para vender.', '<a class="primary-btn section-gap-small" href="produto-form.php">Cadastrar produto</a>');
 }
 
 function productCardForSale(p) {
@@ -307,7 +353,12 @@ function saleStepReview() {
 
 function saleStepPayment() {
   const total = cartTotal();
-  const change = Math.max(receivedAmount - total, 0);
+  const methods = paymentMethods();
+
+  if (!methods.includes(currentPayment)) {
+    currentPayment = methods[0] || '';
+    saveCart();
+  }
 
   return `
     <div class="sheet-title"><div><h2>Forma de pagamento</h2><p>Escolha como o cliente vai pagar</p></div></div>
@@ -317,22 +368,8 @@ function saleStepPayment() {
       <span>${cartItems().length} itens adicionados</span>
     </article>
     <div class="payment-methods section-gap-small">
-      ${['PIX', 'Crédito', 'Débito', 'Dinheiro', 'Conta do cliente', 'Misto'].map(m => `<button class="${currentPayment === m ? 'active' : ''}" data-payment="${m}">${m}</button>`).join('')}
+      ${methods.map(m => `<button class="${currentPayment === m ? 'active' : ''}" data-payment="${m}">${m}</button>`).join('') || emptyState('Nenhuma forma de pagamento ativa. Ajuste em Configurações.')}
     </div>
-
-    ${currentPayment === 'Dinheiro' ? `
-      <div class="form-card section-gap-small">
-        <div class="field"><label>Valor recebido</label><input id="receivedAmount" type="number" min="0" step="0.01" value="${receivedAmount || ''}" placeholder="Ex.: 50,00"></div>
-        <div class="summary-line"><span>Troco</span><strong>${brl.format(change)}</strong></div>
-      </div>
-    ` : ''}
-
-    ${currentPayment === 'Conta do cliente' ? `
-      <div class="form-card section-gap-small">
-        <div class="field"><label>Cliente</label><select>${data.clients.map(c => `<option>${c.name}</option>`).join('')}</select></div>
-        <div class="field"><label>Data de vencimento</label><input type="date" value="2026-06-10"></div>
-      </div>
-    ` : ''}
 
     <div class="button-row section-gap-small">
       <button class="ghost-btn" data-sale-step="2">Voltar</button>
@@ -349,32 +386,33 @@ function saleStepFinished() {
       <span>Pagamento: ${currentPayment}</span>
     </article>
     <div class="button-row section-gap-small">
-      <a class="ghost-btn" href="../index.html">Dashboard</a>
-      <a class="primary-btn" href="comprovante.html?id=128">Ver comprovante</a>
+      <a class="ghost-btn" href="../index.php">Dashboard</a>
+      <a class="primary-btn" href="historico-vendas.php">Histórico</a>
     </div>
     <button class="secondary-btn section-gap-small" data-reset-sale>Nova venda</button>
   `;
 }
 
 function cartFooter() {
+  const disabled = cartItems().length === 0 ? 'disabled' : '';
+
   return `
     <aside class="cart-sticky">
       <div class="cart-sticky-row">
         <span>${cartItems().length} itens no carrinho</span>
         <strong>${brl.format(cartTotal())}</strong>
       </div>
-      <button class="primary-btn" data-next-sale-step>Continuar</button>
+      <button class="primary-btn" data-next-sale-step ${disabled}>Continuar</button>
     </aside>
   `;
 }
 
 function finishSale() {
   openModal(`
-    <h2>Deseja gerar comprovante?</h2>
-    <p>A venda foi finalizada. Você pode gerar comprovante agora ou apenas concluir a venda.</p>
+    <h2>Finalização em integração</h2>
+    <p>A venda ainda precisa ser gravada no banco antes de gerar comprovante.</p>
     <div class="button-row">
-      <button class="ghost-btn" data-close-modal data-sale-step="4">Não</button>
-      <a class="primary-btn" href="comprovante.html?id=128">Sim, gerar</a>
+      <button class="primary-btn" data-close-modal>Entendi</button>
     </div>
   `);
 }
@@ -415,7 +453,7 @@ function productListCard(p) {
         </div>
         <div class="badge-row">${statusBadges(p)}</div>
         <div class="card-actions">
-          <a href="produto-form.html?id=${p.id}">Editar</a>
+          <a href="produto-form.php?id=${p.id}">Editar</a>
           <button class="danger-mini" data-delete-product="${p.id}">Excluir</button>
         </div>
       </div>
@@ -441,30 +479,57 @@ function initProductForm() {
     $('#productMinStock').value = p.minStock;
     $('#productLot').value = p.lot;
     $('#productExpiry').value = p.expiry;
+  } else {
+    $('#productMinStock').value = Number(data.settings.defaultMinStock || 0);
   }
 }
 
 function initReports() {
   const total = data.sales.reduce((sum, s) => sum + s.total, 0);
+  const count = data.sales.length;
+  const byPayment = data.sales.reduce((acc, sale) => {
+    acc[sale.payment] = (acc[sale.payment] || 0) + sale.total;
+    return acc;
+  }, {});
+
   $('#reportFinance').innerHTML = [
     financeCard('Faturamento', total, 'Período'),
-    financeCard('Lucro', total * 0.32, 'Estimado'),
-    financeCard('Ticket médio', total / 91, 'Média'),
-    financeCard('Total de vendas', '871', 'Movimentos')
+    financeCard('Lucro', 0, 'Configure custos e margens'),
+    financeCard('Ticket médio', count > 0 ? total / count : 0, 'Média'),
+    financeCard('Total de vendas', String(count), 'Movimentos')
   ].join('');
 
-  $('#weeklyBars').innerHTML = [['Seg',54],['Ter',67],['Qua',48],['Qui',76],['Sex',92],['Sáb',70],['Dom',42]]
-    .map(([day, h]) => `<span class="bar" style="height:${h}%" data-day="${day}"></span>`).join('');
+  $('#weeklyBars').innerHTML = data.sales.length
+    ? buildWeeklyBars()
+    : emptyState('Sem vendas no período para montar o gráfico.');
+
+  const paymentTotal = Object.values(byPayment).reduce((sum, value) => sum + value, 0);
+  const paymentLines = Object.entries(byPayment).map(([method, value]) => {
+    const percent = paymentTotal > 0 ? Math.round((value / paymentTotal) * 100) : 0;
+    return `<p><span><span class="dot pix"></span>${escapeHtml(method)}</span><strong>${percent}%</strong></p>`;
+  }).join('') || '<p><span>Nenhum pagamento registrado</span><strong>0%</strong></p>';
+
+  const paymentCard = document.querySelector('.payment-card .payment-lines');
+  if (paymentCard) paymentCard.innerHTML = paymentLines;
 
   $('#reportTables').innerHTML = [
-    reportTable('Produtos mais vendidos', ['Produto', 'Qtde', 'Receita'], [
-      ['Mouse Sem Fio Pro', '28', brl.format(2237.20)],
-      ['Cabo USB-C 2m', '41', brl.format(697)],
-      ['Teclado Mecânico RGB', '12', brl.format(1798.80)]
-    ]),
+    reportTable('Produtos mais vendidos', ['Produto', 'Qtde', 'Receita'], []),
     reportTable('Produtos próximos da validade', ['Produto', 'Lote', 'Validade'], data.products.filter(p => daysTo(p.expiry) <= data.settings.expirationAlertDays).map(p => [p.name, p.lot, formatDate(p.expiry)])),
     reportTable('Estoque baixo', ['Produto', 'Atual', 'Mínimo'], data.products.filter(p => p.stock <= p.minStock).map(p => [p.name, p.stock, p.minStock]))
   ].join('');
+}
+
+function buildWeeklyBars() {
+  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const totals = days.map((day, index) => ({
+    day,
+    total: data.sales
+      .filter(s => new Date(`${s.date}T00:00:00`).getDay() === index)
+      .reduce((sum, s) => sum + s.total, 0)
+  }));
+  const max = Math.max(...totals.map(item => item.total), 1);
+
+  return totals.map(item => `<span class="bar" style="height:${Math.max((item.total / max) * 100, item.total > 0 ? 8 : 0)}%" data-day="${item.day}"></span>`).join('');
 }
 
 function reportTable(title, headers, rows) {
@@ -473,7 +538,7 @@ function reportTable(title, headers, rows) {
     <div class="table-card">
       <table class="mobile-table">
         <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${rows.map(row => `<tr>${row.map(col => `<td>${col}</td>`).join('')}</tr>`).join('')}</tbody>
+        <tbody>${rows.length ? rows.map(row => `<tr>${row.map(col => `<td>${escapeHtml(col)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${headers.length}">Nenhum dado registrado.</td></tr>`}</tbody>
       </table>
     </div>
   `;
@@ -495,7 +560,7 @@ function renderClients() {
     return true;
   });
 
-  $('#clientsList').innerHTML = clients.map(clientCard).join('');
+  $('#clientsList').innerHTML = clients.map(clientCard).join('') || emptyState('Nenhum cliente cadastrado.');
 }
 
 function clientCard(c) {
@@ -512,7 +577,7 @@ function clientCard(c) {
         <div><span>Situação</span><strong>${c.status}</strong></div>
       </div>
       <div class="client-actions">
-        <a href="cliente-detalhes.html?id=${c.id}">Visualizar</a>
+        <a href="cliente-detalhes.php?id=${c.id}">Visualizar</a>
         <button data-client-actions="${c.id}">Mais ações</button>
       </div>
     </article>
@@ -521,6 +586,12 @@ function clientCard(c) {
 
 function initClientDetail() {
   const c = data.clients.find(x => x.id === Number(qs('id') || 1)) || data.clients[0];
+  if (!c) {
+    $('#clientNameTitle').textContent = 'Cliente';
+    $('#clientDetailContent').innerHTML = emptyState('Cliente não encontrado.');
+    return;
+  }
+
   $('#clientNameTitle').textContent = c.name;
   $('#clientDetailContent').innerHTML = `
     <article class="summary-card">
@@ -544,12 +615,12 @@ function initClientDetail() {
 
     <div class="sheet-title section-gap"><div><h2>Compras pendentes</h2><p>Valores em aberto</p></div></div>
     <div class="list-card">
-      ${rowItem({ title: 'Compra nº 000129', subtitle: `Vencimento ${c.due ? formatDate(c.due) : '-'}`, amount: c.debt, status: c.status, icon: 'receipt', type: c.status === 'Atrasado' ? 'negative' : 'warning' })}
+      ${c.debt > 0 ? rowItem({ title: 'Saldo em aberto', subtitle: `Vencimento ${c.due ? formatDate(c.due) : '-'}`, amount: c.debt, status: c.status, icon: 'receipt', type: c.status === 'Atrasado' ? 'negative' : 'warning' }) : emptyState('Nenhuma compra pendente.')}
     </div>
 
     <div class="sheet-title section-gap"><div><h2>Histórico financeiro</h2><p>Auditoria da conta</p></div></div>
     <div class="list-card">
-      ${c.history.map(item => rowItem({ title: item.split('—')[1] || item, subtitle: item.split('—')[0] || '', icon: 'receipt' })).join('')}
+      ${c.history.length ? c.history.map(item => rowItem({ title: item.split('—')[1] || item, subtitle: item.split('—')[0] || '', icon: 'receipt' })).join('') : emptyState('Nenhum histórico financeiro registrado.')}
     </div>
   `;
 }
@@ -564,7 +635,7 @@ function renderSalesHistory() {
   $('#salesHistoryList').innerHTML = data.sales.filter(s => {
     const text = `${s.id} ${s.customer} ${s.seller} ${s.payment} ${s.items.map(i => i.name).join(' ')}`.toLowerCase();
     return text.includes(query);
-  }).map(saleCard).join('');
+  }).map(saleCard).join('') || emptyState('Nenhuma venda registrada.');
 }
 
 function saleCard(s) {
@@ -582,15 +653,21 @@ function saleCard(s) {
         <div><span>Total</span><strong>${brl.format(s.total)}</strong></div>
       </div>
       <div class="client-actions">
-        <a href="venda-detalhes.html?id=${s.id}">Visualizar</a>
-        <a href="comprovante.html?id=${s.id}">Comprovante</a>
+        <a href="venda-detalhes.php?id=${s.id}">Visualizar</a>
+        <a href="comprovante.php?id=${s.id}">Comprovante</a>
       </div>
     </article>
   `;
 }
 
 function initSaleDetail() {
-  const s = data.sales.find(x => x.id === Number(qs('id') || 128)) || data.sales[0];
+  const s = data.sales.find(x => x.id === Number(qs('id') || 0)) || data.sales[0];
+  if (!s) {
+    $('#saleTitle').textContent = 'Venda';
+    $('#saleDetailContent').innerHTML = emptyState('Venda não encontrada.');
+    return;
+  }
+
   $('#saleTitle').textContent = `Venda nº ${String(s.id).padStart(6, '0')}`;
   $('#saleDetailContent').innerHTML = `
     <article class="summary-card">
@@ -623,7 +700,7 @@ function initSaleDetail() {
     </article>
 
     <div class="button-row section-gap-small">
-      <a class="secondary-btn" href="comprovante.html?id=${s.id}">Comprovante</a>
+      <a class="secondary-btn" href="comprovante.php?id=${s.id}">Comprovante</a>
       <button class="secondary-btn" data-download-sale-pdf="${s.id}">Baixar PDF</button>
     </div>
 
@@ -639,7 +716,13 @@ function initSaleDetail() {
 }
 
 function initReceipt() {
-  const s = data.sales.find(x => x.id === Number(qs('id') || 128)) || data.sales[0];
+  const s = data.sales.find(x => x.id === Number(qs('id') || 0)) || data.sales[0];
+  if (!s) {
+    $('#receiptTitle').textContent = 'Comprovante';
+    $('#receiptContentWrap').innerHTML = emptyState('Venda não encontrada para gerar comprovante.');
+    return;
+  }
+
   $('#receiptTitle').textContent = `Venda nº ${String(s.id).padStart(6, '0')}`;
   $('#receiptContentWrap').innerHTML = `
     <article class="receipt-card" id="receiptContent">
@@ -687,7 +770,7 @@ function initReceipt() {
     </div>
     <div class="button-row section-gap-small">
       <button class="secondary-btn" data-download-sale-pdf="${s.id}">Baixar PDF</button>
-      <a class="primary-btn" href="nova-venda.html">Nova venda</a>
+      <a class="primary-btn" href="nova-venda.php">Nova venda</a>
     </div>
   `;
 }
@@ -722,12 +805,11 @@ function openScanner() {
     <p>A câmera precisa de HTTPS na hospedagem. Se não liberar, digite o código manualmente.</p>
     <div class="camera-box"><video id="scannerVideo" playsinline muted></video></div>
     <div class="form-grid section-gap-small">
-      <div class="field"><label>Código manual</label><input id="manualBarcode" value="7891000000011"></div>
+      <div class="field"><label>Código manual</label><input id="manualBarcode" placeholder="Digite o código do produto"></div>
       <div class="button-row">
         <button class="ghost-btn" data-close-modal>Fechar</button>
         <button class="primary-btn" data-use-barcode>Buscar</button>
       </div>
-      <button class="secondary-btn" data-simulate-scan>Simular leitura</button>
     </div>
   `);
 
@@ -774,7 +856,7 @@ function openClientActions(id) {
       <button data-open-payment="${c.id}"><span>Registrar pagamento</span><strong>›</strong></button>
       <button data-send-warning="${c.id}"><span>Enviar aviso da conta</span><strong>›</strong></button>
       <button data-toast="Vencimento renegociado"><span>Renegociar vencimento</span><strong>›</strong></button>
-      <a href="cliente-detalhes.html?id=${c.id}"><span>Ver histórico</span><strong>›</strong></a>
+      <a href="cliente-detalhes.php?id=${c.id}"><span>Ver histórico</span><strong>›</strong></a>
     </div>
     <button class="ghost-btn section-gap-small" data-close-modal>Fechar</button>
   `);
@@ -787,7 +869,7 @@ function openPaymentModal(id) {
     <p>Saldo atual: <strong>${brl.format(c.debt)}</strong></p>
     <div class="form-grid">
       <div class="field"><label>Valor pago agora</label><input id="partialAmount" type="number" min="0" step="0.01" value="100"></div>
-      <div class="field"><label>Novo vencimento do restante</label><input id="newDueDate" type="date" value="2026-06-10"></div>
+      <div class="field"><label>Novo vencimento do restante</label><input id="newDueDate" type="date"></div>
       <div class="field"><label>Forma de pagamento</label><select><option>PIX</option><option>Dinheiro</option><option>Cartão</option></select></div>
       <div class="button-row">
         <button class="ghost-btn" data-close-modal>Cancelar</button>
@@ -804,15 +886,120 @@ function sendWarning(id) {
   window.open(`https://wa.me/55${c.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
+function checked(value) {
+  return value ? 'checked' : '';
+}
+
+function settingToggle(id, label, value) {
+  return `<label class="check-row"><input id="${id}" type="checkbox" ${checked(value)}><span>${label}</span></label>`;
+}
+
+function paymentMethods() {
+  const methods = [
+    ['PIX', 'paymentPix'],
+    ['Crédito', 'paymentCredit'],
+    ['Débito', 'paymentDebit'],
+    ['Dinheiro', 'paymentCash'],
+    ['Conta do cliente', 'paymentAccount'],
+    ['Misto', 'paymentMixed']
+  ];
+
+  return methods.filter(([, key]) => data.settings[key]).map(([label]) => label);
+}
+
 function openSetting(key) {
+  const settings = data.settings;
+  const companyName = escapeHtml(settings.companyName);
+  const companyPhone = escapeHtml(settings.companyPhone);
+  const companyAddress = escapeHtml(settings.companyAddress);
+  const receiptMode = settings.receiptMode || 'perguntar';
+  const receiptTemplate = settings.receiptTemplate || 'detalhado';
+  const usersList = data.users.length
+    ? data.users.map(u => rowItem({ title: u.name, subtitle: `${u.role} • ${u.email}`, status: u.status, icon: 'user' })).join('')
+    : emptyState('Nenhum usuário cadastrado.');
+
   const html = {
-    company: `<h2>Empresa</h2><div class="form-grid section-gap-small"><div class="field"><label>Nome da empresa</label><input value="${data.settings.companyName}"></div><div class="field"><label>Telefone</label><input value="${data.settings.companyPhone}"></div><div class="field"><label>Endereço</label><input value="${data.settings.companyAddress}"></div><button class="primary-btn" data-close-modal data-toast="Configuração salva">Salvar</button></div>`,
-    users: `<h2>Usuários e permissões</h2><div class="list-card section-gap-small">${data.users.map(u => rowItem({ title: u.name, subtitle: u.role, status: u.status, icon: 'user' })).join('')}</div><button class="primary-btn section-gap-small" data-toast="Usuário adicionado">Adicionar usuário</button>`,
-    receipt: `<h2>Comprovantes</h2><div class="form-grid section-gap-small"><div class="field"><label>Ao finalizar venda</label><select><option>Sempre perguntar</option><option>Sempre gerar</option><option>Nunca gerar</option></select></div><div class="field"><label>Modelo</label><select><option>Detalhado</option><option>Simples</option></select></div><button class="primary-btn" data-close-modal data-toast="Configuração salva">Salvar</button></div>`,
-    due: `<h2>Regras de vencimento</h2><div class="form-grid section-gap-small"><div class="field"><label>Alerta de validade</label><input type="number" value="${data.settings.expirationAlertDays}"></div><div class="field"><label>Prazo padrão de dívida</label><input type="number" value="${data.settings.debtDueDays}"></div><button class="primary-btn" data-close-modal data-toast="Configuração salva">Salvar</button></div>`
-  }[key] || `<h2>Configuração</h2><p>Opção preparada para produção.</p>`;
+    company: `<h2>Empresa</h2><div class="form-grid section-gap-small"><div class="field"><label>Nome da empresa</label><input id="settingCompanyName" maxlength="180" value="${companyName}"></div><div class="field"><label>Telefone</label><input id="settingCompanyPhone" maxlength="30" value="${companyPhone}"></div><div class="field"><label>Endereço</label><input id="settingCompanyAddress" maxlength="255" value="${companyAddress}"></div><button class="primary-btn" data-save-setting="company">Salvar</button></div>`,
+    users: `<h2>Usuários e permissões</h2><div class="list-card section-gap-small">${usersList}</div><div class="form-grid section-gap-small"><div class="field"><label>Nome</label><input id="settingUserName" maxlength="140"></div><div class="field"><label>E-mail</label><input id="settingUserEmail" type="email" maxlength="180"></div><div class="field"><label>Senha inicial</label><input id="settingUserPassword" type="password" minlength="8"></div><div class="field"><label>Perfil</label><select id="settingUserRole"><option value="operador">Operador</option><option value="gerente">Gerente</option><option value="estoquista">Estoquista</option><option value="leitor">Leitor</option><option value="admin">Administrador</option></select></div><button class="primary-btn" data-save-setting="users">Adicionar usuário</button></div>`,
+    receipt: `<h2>Comprovantes</h2><div class="form-grid section-gap-small"><div class="field"><label>Ao finalizar venda</label><select id="settingReceiptMode"><option value="perguntar" ${receiptMode === 'perguntar' ? 'selected' : ''}>Sempre perguntar</option><option value="sempre" ${receiptMode === 'sempre' ? 'selected' : ''}>Sempre gerar</option><option value="nunca" ${receiptMode === 'nunca' ? 'selected' : ''}>Nunca gerar</option></select></div><div class="field"><label>Modelo</label><select id="settingReceiptTemplate"><option value="detalhado" ${receiptTemplate === 'detalhado' ? 'selected' : ''}>Detalhado</option><option value="simples" ${receiptTemplate === 'simples' ? 'selected' : ''}>Simples</option></select></div><button class="primary-btn" data-save-setting="receipt">Salvar</button></div>`,
+    due: `<h2>Regras de vencimento</h2><div class="form-grid section-gap-small"><div class="field"><label>Alerta de validade</label><input id="settingExpirationAlertDays" type="number" min="0" max="365" value="${Number(settings.expirationAlertDays || 0)}"></div><div class="field"><label>Prazo padrão de dívida</label><input id="settingDebtDueDays" type="number" min="1" max="365" value="${Number(settings.debtDueDays || 30)}"></div><button class="primary-btn" data-save-setting="due">Salvar</button></div>`,
+    stock: `<h2>Produtos e estoque</h2><div class="form-grid section-gap-small"><div class="field"><label>Estoque mínimo padrão</label><input id="settingDefaultMinStock" type="number" min="0" max="999999" value="${Number(settings.defaultMinStock || 0)}"></div>${settingToggle('settingBlockExpiredProducts', 'Bloquear venda de produto vencido', settings.blockExpiredProducts)}${settingToggle('settingBlockNegativeStock', 'Bloquear estoque negativo', settings.blockNegativeStock)}${settingToggle('settingLowStockAlert', 'Alertar estoque baixo', settings.lowStockAlert)}<button class="primary-btn" data-save-setting="stock">Salvar</button></div>`,
+    payments: `<h2>Formas de pagamento</h2><div class="form-grid section-gap-small">${settingToggle('settingPaymentPix', 'PIX', settings.paymentPix)}${settingToggle('settingPaymentCash', 'Dinheiro', settings.paymentCash)}${settingToggle('settingPaymentCredit', 'Cartão de crédito', settings.paymentCredit)}${settingToggle('settingPaymentDebit', 'Cartão de débito', settings.paymentDebit)}${settingToggle('settingPaymentAccount', 'Conta do cliente', settings.paymentAccount)}${settingToggle('settingPaymentMixed', 'Pagamento misto', settings.paymentMixed)}<button class="primary-btn" data-save-setting="payments">Salvar</button></div>`,
+    cash: `<h2>Vendas e caixa</h2><div class="form-grid section-gap-small">${settingToggle('settingAllowDiscount', 'Permitir desconto na venda', settings.allowDiscount)}<div class="field"><label>Limite de desconto (%)</label><input id="settingDiscountLimitPercent" type="number" min="0" max="100" value="${Number(settings.discountLimitPercent || 0)}"></div>${settingToggle('settingRequireCustomerForAccount', 'Exigir cliente para venda na conta', settings.requireCustomerForAccount)}${settingToggle('settingRequireCancellationReason', 'Exigir motivo para cancelamento', settings.requireCancellationReason)}<button class="primary-btn" data-save-setting="cash">Salvar</button></div>`,
+    security: `<h2>Notificações e segurança</h2><div class="form-grid section-gap-small">${settingToggle('settingAuditLogEnabled', 'Manter auditoria ativa', settings.auditLogEnabled)}${settingToggle('settingConfirmDeletes', 'Confirmar exclusões sensíveis', settings.confirmDeletes)}${settingToggle('settingOperatorPinEnabled', 'Exigir PIN de operador', settings.operatorPinEnabled)}${settingToggle('settingNotificationsEnabled', 'Ativar notificações e alertas', settings.notificationsEnabled)}<button class="primary-btn" data-save-setting="security">Salvar</button></div>`
+  }[key] || `<h2>Configuração</h2><p>Configuração não encontrada.</p>`;
 
   openModal(`${html}<button class="ghost-btn section-gap-small" data-close-modal>Fechar</button>`);
+}
+
+async function saveSetting(section, button) {
+  const payload = { section };
+
+  if (section === 'company') {
+    payload.companyName = $('#settingCompanyName')?.value.trim() || '';
+    payload.companyPhone = $('#settingCompanyPhone')?.value.trim() || '';
+    payload.companyAddress = $('#settingCompanyAddress')?.value.trim() || '';
+  }
+
+  if (section === 'receipt') {
+    payload.receiptMode = $('#settingReceiptMode')?.value || 'perguntar';
+    payload.receiptTemplate = $('#settingReceiptTemplate')?.value || 'detalhado';
+  }
+
+  if (section === 'users') {
+    payload.userName = $('#settingUserName')?.value.trim() || '';
+    payload.userEmail = $('#settingUserEmail')?.value.trim() || '';
+    payload.userPassword = $('#settingUserPassword')?.value || '';
+    payload.userRole = $('#settingUserRole')?.value || 'operador';
+  }
+
+  if (section === 'due') {
+    payload.expirationAlertDays = Number($('#settingExpirationAlertDays')?.value || 0);
+    payload.debtDueDays = Number($('#settingDebtDueDays')?.value || 0);
+  }
+
+  if (section === 'stock') {
+    payload.defaultMinStock = Number($('#settingDefaultMinStock')?.value || 0);
+    payload.blockExpiredProducts = $('#settingBlockExpiredProducts')?.checked || false;
+    payload.blockNegativeStock = $('#settingBlockNegativeStock')?.checked || false;
+    payload.lowStockAlert = $('#settingLowStockAlert')?.checked || false;
+  }
+
+  if (section === 'payments') {
+    payload.paymentPix = $('#settingPaymentPix')?.checked || false;
+    payload.paymentCash = $('#settingPaymentCash')?.checked || false;
+    payload.paymentCredit = $('#settingPaymentCredit')?.checked || false;
+    payload.paymentDebit = $('#settingPaymentDebit')?.checked || false;
+    payload.paymentAccount = $('#settingPaymentAccount')?.checked || false;
+    payload.paymentMixed = $('#settingPaymentMixed')?.checked || false;
+  }
+
+  if (section === 'cash') {
+    payload.allowDiscount = $('#settingAllowDiscount')?.checked || false;
+    payload.discountLimitPercent = Number($('#settingDiscountLimitPercent')?.value || 0);
+    payload.requireCustomerForAccount = $('#settingRequireCustomerForAccount')?.checked || false;
+    payload.requireCancellationReason = $('#settingRequireCancellationReason')?.checked || false;
+  }
+
+  if (section === 'security') {
+    payload.auditLogEnabled = $('#settingAuditLogEnabled')?.checked || false;
+    payload.confirmDeletes = $('#settingConfirmDeletes')?.checked || false;
+    payload.operatorPinEnabled = $('#settingOperatorPinEnabled')?.checked || false;
+    payload.notificationsEnabled = $('#settingNotificationsEnabled')?.checked || false;
+  }
+
+  button.disabled = true;
+
+  try {
+    await postJson(`${prefix}api/configuracoes/salvar.php`, payload);
+    await loadSettings();
+    closeModal();
+    showToast('Configuração salva');
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function downloadCSV() {
@@ -847,7 +1034,11 @@ function downloadPdf(title = 'Relatório Comercial') {
 }
 
 function shareReceipt() {
-  const s = data.sales.find(x => x.id === Number(qs('id') || 128)) || data.sales[0];
+  const s = data.sales.find(x => x.id === Number(qs('id') || 0)) || data.sales[0];
+  if (!s) {
+    showToast('Venda não encontrada');
+    return;
+  }
   const message = `${data.settings.companyName}\nVenda nº ${String(s.id).padStart(6, '0')}\nTotal: ${brl.format(s.total)}\nPagamento: ${s.payment}\nObrigado pela preferência!`;
   if (navigator.share) navigator.share({ title: 'Comprovante', text: message }).catch(() => {});
   else {
@@ -908,7 +1099,6 @@ function bindEvents() {
 
     if (e.target.closest('[data-open-scanner]')) openScanner();
     if (e.target.closest('[data-use-barcode]')) useBarcode($('#manualBarcode').value.trim());
-    if (e.target.closest('[data-simulate-scan]')) useBarcode('7891000000011');
 
     const productFilter = e.target.closest('[data-filter]');
     if (productFilter) {
@@ -936,16 +1126,26 @@ function bindEvents() {
     const del = e.target.closest('[data-delete-product]');
     if (del) {
       const p = data.products.find(x => x.id === Number(del.dataset.deleteProduct));
-      openModal(`<h2>Excluir produto?</h2><p>${p.name}<br>Na produção, o ideal é inativar para não quebrar relatórios antigos.</p><div class="button-row"><button class="ghost-btn" data-close-modal>Cancelar</button><button class="danger-btn" data-close-modal data-toast="Produto excluído">Excluir</button></div>`);
+      if (data.settings.confirmDeletes) {
+        openModal(`<h2>Excluir produto?</h2><p>${escapeHtml(p.name)}<br>O produto deve ser inativado para preservar relatórios antigos.</p><div class="button-row"><button class="ghost-btn" data-close-modal>Cancelar</button><button class="danger-btn" data-close-modal data-toast="Exclusão será conectada ao banco na etapa de produtos">Confirmar</button></div>`);
+      } else {
+        showToast('Exclusão será conectada ao banco na etapa de produtos');
+      }
     }
 
     const cancelSale = e.target.closest('[data-cancel-sale]');
     if (cancelSale) {
-      openModal(`<h2>Cancelar venda?</h2><p>Informe o motivo para auditoria.</p><div class="field"><label>Motivo</label><textarea placeholder="Ex.: Produto lançado errado"></textarea></div><div class="button-row section-gap-small"><button class="ghost-btn" data-close-modal>Voltar</button><button class="danger-btn" data-close-modal data-toast="Venda cancelada">Confirmar</button></div>`);
+      const reasonField = data.settings.requireCancellationReason
+        ? '<div class="field"><label>Motivo</label><textarea placeholder="Descreva o motivo do cancelamento"></textarea></div>'
+        : '';
+      openModal(`<h2>Cancelar venda?</h2><p>${data.settings.auditLogEnabled ? 'A ação ficará registrada na auditoria.' : 'Auditoria desativada nas configurações.'}</p>${reasonField}<div class="button-row section-gap-small"><button class="ghost-btn" data-close-modal>Voltar</button><button class="danger-btn" data-close-modal data-toast="Cancelamento será conectado ao banco na etapa de vendas">Confirmar</button></div>`);
     }
 
     const setting = e.target.closest('[data-setting]');
     if (setting) openSetting(setting.dataset.setting);
+
+    const saveSettingBtn = e.target.closest('[data-save-setting]');
+    if (saveSettingBtn) saveSetting(saveSettingBtn.dataset.saveSetting, saveSettingBtn);
 
     if (e.target.closest('[data-download-report-pdf]')) downloadPdf('Relatório Comercial');
     if (e.target.closest('[data-export-csv]')) downloadCSV();
@@ -981,7 +1181,7 @@ function bindEvents() {
     if (e.target.id === 'productForm') {
       e.preventDefault();
       showToast('Produto salvo');
-      setTimeout(() => location.href = 'produtos.html', 500);
+      setTimeout(() => location.href = 'produtos.php', 500);
     }
   });
 
@@ -1021,7 +1221,82 @@ function registerPWA() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+async function loadSettings() {
+  const res = await fetch(`${prefix}api/configuracoes/listar.php`, { headers: { 'Accept': 'application/json' } });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Falha ao carregar configurações.');
+  }
+
+  window.AppData.settings = { ...window.AppData.settings, ...json.data.settings };
+  window.AppData.users = Array.isArray(json.data.users) ? json.data.users : window.AppData.users;
+}
+
+async function loadClients() {
+  const res = await fetch(`${prefix}api/clientes/listar.php`, { headers: { 'Accept': 'application/json' } });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Falha ao carregar clientes.');
+  }
+
+  window.AppData.clients = Array.isArray(json.data) ? json.data : [];
+}
+
+async function loadSales() {
+  const res = await fetch(`${prefix}api/vendas/listar.php`, { headers: { 'Accept': 'application/json' } });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Falha ao carregar vendas.');
+  }
+
+  window.AppData.sales = Array.isArray(json.data) ? json.data : [];
+}
+
+function syncCartWithProducts() {
+  const validProductIds = new Set(data.products.map(product => product.id));
+  cart = cart.filter(item => validProductIds.has(item.productId));
+  saveCart();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await loadSettings();
+  } catch (e) {
+    console.error('Falha ao carregar configurações:', e);
+  }
+
+  try {
+    const res = await fetch(`${prefix}api/produtos/listar.php`);
+    const json = await res.json();
+    if (json.success) {
+      window.AppData.products = json.data;
+      syncCartWithProducts();
+    }
+  } catch (e) {
+    console.error('Falha ao carregar produtos:', e);
+  }
+
+  try {
+    await Promise.all([loadClients(), loadSales()]);
+  } catch (e) {
+    console.error('Falha ao carregar dados operacionais:', e);
+  }
+
+  if (page === 'dashboard') {
+    try {
+      const res = await fetch(`${prefix}api/dashboard/resumo.php`);
+      const json = await res.json();
+      if (json.success) {
+        window.AppData.dashboardInfo = json.data;
+      }
+    } catch (e) {
+      console.error('Falha ao carregar dashboard:', e);
+    }
+  }
+
   bindEvents();
   initPage();
   registerPWA();

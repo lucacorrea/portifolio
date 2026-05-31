@@ -1,58 +1,57 @@
-# L&J Caixa Premium - Páginas Separadas
+# L&J Caixa — Base PHP OOP + .env + SQL
 
-Projeto HTML/CSS/JS com estrutura separada por páginas, mantendo o padrão visual premium clean.
+Projeto com:
 
-## Estrutura
+- Layout responsivo PC + Mobile;
+- Páginas separadas;
+- PHP orientado a objeto;
+- `.env` para configuração segura;
+- Autoload simples via namespace `App\`;
+- Login com sessão segura;
+- CSRF;
+- Rate limit básico de login;
+- PDO;
+- SQL completo;
+- Estrutura preparada para API real.
+
+## Instalação
+
+1. Importe `database/schema.sql`.
+2. Importe `database/seed.sql`.
+3. Configure o `.env` com os dados reais do banco.
+4. Acesse `login.php`.
+
+## Acesso inicial
 
 ```txt
-index.html
+E-mail: admin@ljsolucoestech.com.br
+Senha: Admin@123
+```
+
+Troque a senha depois do primeiro acesso.
+
+## Estrutura principal
+
+```txt
+backend/
+  Core/
+  Security/
+  Models/
+  Repositories/
+  Services/
+  Controllers/
+  Middlewares/
+api/
 pages/
-  nova-venda.html
-  produtos.html
-  produto-form.html
-  relatorios.html
-  clientes.html
-  cliente-detalhes.html
-  historico-vendas.html
-  venda-detalhes.html
-  comprovante.html
-  configuracoes.html
-assets/
-  css/styles.css
-  js/data.js
-  js/app.js
-  icons/icon.svg
-  img/
-manifest.json
-service-worker.js
+database/
+uploads/
+storage/
 ```
 
-## Como testar
+## Segurança
 
-Abra o `index.html`.
-
-## Como instalar no celular
-
-1. Suba a pasta para a Hostinger com HTTPS ativo.
-2. Abra pelo Chrome Android.
-3. Toque em `⋮ > Adicionar à tela inicial`.
-4. Abra pelo ícone criado.
-
-## Observações
-
-- Dados estão mockados em `assets/js/data.js`.
-- Layout e interações estão em `assets/js/app.js`.
-- Câmera depende de HTTPS ou localhost.
-
-## Correção aplicada
-
-Foi corrigido o problema da tela ficar embaçada ao abrir no navegador.
-A causa era o backdrop do modal permanecendo visível mesmo com `hidden`.
-
-Correção adicionada em `assets/css/styles.css`:
-
-```css
-.modal-backdrop[hidden] {
-  display: none !important;
-}
-```
+- Não suba `.env` para repositório público.
+- Na Hostinger, mantenha `.htaccess`.
+- Use HTTPS.
+- Troque a senha inicial.
+- Integre os endpoints API com regras reais antes de produção.
