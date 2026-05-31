@@ -1,3 +1,9 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../backend/security/auth.php';
+requireLogin();
+$user = currentUser();
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -8,12 +14,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="L&J Caixa" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Comprovante | L&J Caixa</title>
+  <title>Clientes | L&J Caixa</title>
   <link rel="manifest" href="../manifest.json" />
   <link rel="icon" href="../assets/icons/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="../assets/css/styles.css" />
 </head>
-<body data-page="comprovante" data-prefix="../">
+<body data-page="clientes" data-prefix="../">
   <main class="phone-app">
     <section class="screen">
       
@@ -29,24 +35,37 @@
     </div>
     
   <div class="page-title-row">
-    <a class="back-btn" href="historico-vendas.html">‹</a>
     <div>
-      <p class="micro-label dark-text">Comprovante</p>
-      <h1 id="receiptTitle">Venda</h1>
+      <p class="micro-label dark-text">Clientes e contas</p>
+      <h1>Clientes</h1>
     </div>
-    <span></span>
+    <button class="round-btn" data-toast="Cadastro de cliente em demonstração">+</button>
   </div>
 </header>
 
-<section class="content-pad" id="receiptContentWrap"></section>
+<section class="content-pad">
+  <label class="search-box">
+    <span data-icon="search"></span>
+    <input id="clientSearch" type="search" placeholder="Buscar por nome ou telefone">
+  </label>
+
+  <div class="filter-pills" id="clientFilters">
+    <button class="active" data-client-filter="Todos">Todos</button>
+    <button data-client-filter="Em dia">Em dia</button>
+    <button data-client-filter="Devendo">Devendo</button>
+    <button data-client-filter="Atrasados">Atrasados</button>
+  </div>
+
+  <div id="clientsList"></div>
+</section>
 
     </section>
     <nav class="bottom-nav" aria-label="Navegação principal">
-<a class="" href="../index.html"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4z"/></svg><span>Início</span></a>
-<a class="" href="nova-venda.html"><svg viewBox="0 0 24 24"><path d="M6 5h12v14H6z"/><path d="M9 9h6"/><path d="M9 13h4"/></svg><span>Vendas</span></a>
-<a class="center-action" href="nova-venda.html" aria-label="Nova venda"><strong>+</strong></a>
-<a class="" href="produtos.html"><svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg><span>Produtos</span></a>
-<a class="active" href="configuracoes.html"><svg viewBox="0 0 24 24"><path d="M12 5v.01"/><path d="M12 12v.01"/><path d="M12 19v.01"/></svg><span>Mais</span></a>
+<a class="" href="../index.php"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4z"/></svg><span>Início</span></a>
+<a class="" href="nova-venda.php"><svg viewBox="0 0 24 24"><path d="M6 5h12v14H6z"/><path d="M9 9h6"/><path d="M9 13h4"/></svg><span>Vendas</span></a>
+<a class="center-action" href="nova-venda.php" aria-label="Nova venda"><strong>+</strong></a>
+<a class="" href="produtos.php"><svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg><span>Produtos</span></a>
+<a class="active" href="configuracoes.php"><svg viewBox="0 0 24 24"><path d="M12 5v.01"/><path d="M12 12v.01"/><path d="M12 19v.01"/></svg><span>Mais</span></a>
 </nav>
     <div class="modal-backdrop" id="modalBackdrop" hidden>
       <section class="modal-card" id="modalCard" role="dialog" aria-modal="true"></section>

@@ -1,3 +1,9 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/backend/security/auth.php';
+requireLogin();
+$user = currentUser();
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -34,17 +40,17 @@
       <h1 id="todayTotal">R$ 0,00</h1>
       <span class="subtle-light">L&J Soluções Tech • <span id="todaySalesCount">0</span> vendas</span>
     </div>
-    <a class="avatar-btn" href="pages/configuracoes.html" aria-label="Configurações">
+    <a class="avatar-btn" href="pages/configuracoes.php" aria-label="Configurações">
       <img src="assets/icons/icon.svg" alt="L&J" />
     </a>
   </div>
 
   <nav class="quick-menu" aria-label="Ações rápidas">
-    <a href="pages/nova-venda.html"><i data-icon="receipt"></i><span>Venda</span></a>
-    <a href="pages/produtos.html"><i data-icon="product"></i><span>Produtos</span></a>
-    <a href="pages/clientes.html"><i data-icon="user"></i><span>Clientes</span></a>
-    <a href="pages/relatorios.html"><i data-icon="report"></i><span>Relatórios</span></a>
-    <a href="pages/historico-vendas.html"><i data-icon="box"></i><span>Histórico</span></a>
+    <a href="pages/nova-venda.php"><i data-icon="receipt"></i><span>Venda</span></a>
+    <a href="pages/produtos.php"><i data-icon="product"></i><span>Produtos</span></a>
+    <a href="pages/clientes.php"><i data-icon="user"></i><span>Clientes</span></a>
+    <a href="pages/relatorios.php"><i data-icon="report"></i><span>Relatórios</span></a>
+    <a href="pages/historico-vendas.php"><i data-icon="box"></i><span>Histórico</span></a>
   </nav>
 </header>
 
@@ -72,7 +78,7 @@
       <h2>Produtos perto da validade</h2>
       <p>Alertas dos próximos dias</p>
     </div>
-    <a class="small-link" href="pages/produtos.html">Ver</a>
+    <a class="small-link" href="pages/produtos.php">Ver</a>
   </div>
 
   <div class="list-card" id="expiringProducts"></div>
@@ -82,7 +88,7 @@
       <h2>Últimas vendas</h2>
       <p>Movimentações recentes do caixa</p>
     </div>
-    <a class="small-link" href="pages/historico-vendas.html">Ver tudo</a>
+    <a class="small-link" href="pages/historico-vendas.php">Ver tudo</a>
   </div>
 
   <div class="list-card" id="latestSales"></div>
@@ -99,11 +105,11 @@
 
     </section>
     <nav class="bottom-nav" aria-label="Navegação principal">
-<a class="active" href="../index.html"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4z"/></svg><span>Início</span></a>
-<a class="" href="pages/nova-venda.html"><svg viewBox="0 0 24 24"><path d="M6 5h12v14H6z"/><path d="M9 9h6"/><path d="M9 13h4"/></svg><span>Vendas</span></a>
-<a class="center-action" href="pages/nova-venda.html" aria-label="Nova venda"><strong>+</strong></a>
-<a class="" href="pages/produtos.html"><svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg><span>Produtos</span></a>
-<a class="" href="pages/configuracoes.html"><svg viewBox="0 0 24 24"><path d="M12 5v.01"/><path d="M12 12v.01"/><path d="M12 19v.01"/></svg><span>Mais</span></a>
+<a class="active" href="../index.php"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4z"/></svg><span>Início</span></a>
+<a class="" href="pages/nova-venda.php"><svg viewBox="0 0 24 24"><path d="M6 5h12v14H6z"/><path d="M9 9h6"/><path d="M9 13h4"/></svg><span>Vendas</span></a>
+<a class="center-action" href="pages/nova-venda.php" aria-label="Nova venda"><strong>+</strong></a>
+<a class="" href="pages/produtos.php"><svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg><span>Produtos</span></a>
+<a class="" href="pages/configuracoes.php"><svg viewBox="0 0 24 24"><path d="M12 5v.01"/><path d="M12 12v.01"/><path d="M12 19v.01"/></svg><span>Mais</span></a>
 </nav>
     <div class="modal-backdrop" id="modalBackdrop" hidden>
       <section class="modal-card" id="modalCard" role="dialog" aria-modal="true"></section>

@@ -1,81 +1,80 @@
-# L&J Caixa Premium - Páginas Separadas
+# L&J Caixa Premium — Site com Login PHP + MySQL
 
-Projeto HTML/CSS/JS com estrutura separada por páginas, mantendo o padrão visual premium clean.
+Esta versão inclui:
+
+- Layout responsivo PC + Mobile;
+- Páginas separadas;
+- Login com PHP/PDO;
+- Sessão segura;
+- CSRF no login;
+- Rate limit básico de tentativas;
+- Auditoria de login;
+- SQL completo do sistema;
+- Logout;
+- Páginas protegidas por autenticação.
 
 ## Estrutura
 
 ```txt
-index.html
+login.php
+logout.php
+index.php
 pages/
-  nova-venda.html
-  produtos.html
-  produto-form.html
-  relatorios.html
-  clientes.html
-  cliente-detalhes.html
-  historico-vendas.html
-  venda-detalhes.html
-  comprovante.html
-  configuracoes.html
+  nova-venda.php
+  produtos.php
+  produto-form.php
+  relatorios.php
+  clientes.php
+  cliente-detalhes.php
+  historico-vendas.php
+  venda-detalhes.php
+  comprovante.php
+  configuracoes.php
+
+backend/
+  config/database.php
+  core/db.php
+  security/auth.php
+  security/csrf.php
+  security/session.php
+
+database/
+  schema.sql
+
 assets/
   css/styles.css
   js/data.js
   js/app.js
-  icons/icon.svg
-  img/
-manifest.json
-service-worker.js
 ```
 
-## Como testar
+## Instalação na Hostinger
 
-Abra o `index.html`.
+1. Crie um banco MySQL no painel da Hostinger.
+2. Importe `database/schema.sql` pelo phpMyAdmin.
+3. Edite `backend/config/database.php` com:
+   - nome do banco;
+   - usuário;
+   - senha;
+   - host.
+4. Envie os arquivos para `public_html` ou para uma subpasta.
+5. Acesse `login.php`.
 
-## Como instalar no celular
+## Acesso inicial
 
-1. Suba a pasta para a Hostinger com HTTPS ativo.
-2. Abra pelo Chrome Android.
-3. Toque em `⋮ > Adicionar à tela inicial`.
-4. Abra pelo ícone criado.
-
-## Observações
-
-- Dados estão mockados em `assets/js/data.js`.
-- Layout e interações estão em `assets/js/app.js`.
-- Câmera depende de HTTPS ou localhost.
-
-## Correção aplicada
-
-Foi corrigido o problema da tela ficar embaçada ao abrir no navegador.
-A causa era o backdrop do modal permanecendo visível mesmo com `hidden`.
-
-Correção adicionada em `assets/css/styles.css`:
-
-```css
-.modal-backdrop[hidden] {
-  display: none !important;
-}
+```txt
+E-mail: admin@ljsolucoestech.com.br
+Senha: Admin@123
 ```
 
+Troque a senha depois do primeiro acesso.
 
-## Layout responsivo para PC
+## Segurança
 
-Esta versão mantém o layout original no celular e muda automaticamente no PC:
+Para produção, recomendo como próximos passos:
 
-- Mobile: layout app com navegação inferior.
-- Desktop: layout web com sidebar lateral, conteúdo largo, grids e cards mais organizados.
-- O mesmo projeto serve para celular e computador.
-
-Para hospedar na Hostinger, envie todo o conteúdo da pasta para `public_html` ou para uma subpasta.
-
-
-## Ajuste desktop full width
-
-Esta versão usa toda a largura disponível no PC:
-
-- sidebar fixa à esquerda;
-- conteúdo ocupando o restante da tela;
-- cards em grid fluido;
-- produtos/vendas/clientes preenchendo toda a largura;
-- mobile preservado sem alteração visual.
-
+- tela para alterar senha;
+- recuperação de senha por e-mail;
+- permissões por nível de usuário;
+- guardar logs de ações críticas;
+- mover uploads para pasta validada;
+- integrar os dados mockados do JS com endpoints PHP reais.

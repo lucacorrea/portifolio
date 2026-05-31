@@ -186,7 +186,7 @@ function initDashboard() {
       status: `${Math.max(daysTo(p.expiry), 0)} dias`,
       image: img(p.image),
       type: daysTo(p.expiry) <= 3 ? 'negative' : 'warning',
-      href: 'pages/produtos.html'
+      href: 'pages/produtos.php'
     })).join('');
 
   $('#latestSales').innerHTML = sales.map(s => rowItem({
@@ -195,7 +195,7 @@ function initDashboard() {
     amount: s.total,
     status: s.status,
     icon: 'receipt',
-    href: `pages/venda-detalhes.html?id=${s.id}`
+    href: `pages/venda-detalhes.php?id=${s.id}`
   })).join('');
 
   $('#featuredProducts').innerHTML = data.products.slice(0, 3).map((p, index) => rowItem({
@@ -204,7 +204,7 @@ function initDashboard() {
     amount: p.price * (index + 8),
     status: `Top ${index + 1}`,
     image: img(p.image),
-    href: 'pages/produtos.html'
+    href: 'pages/produtos.php'
   })).join('');
 }
 
@@ -349,8 +349,8 @@ function saleStepFinished() {
       <span>Pagamento: ${currentPayment}</span>
     </article>
     <div class="button-row section-gap-small">
-      <a class="ghost-btn" href="../index.html">Dashboard</a>
-      <a class="primary-btn" href="comprovante.html?id=128">Ver comprovante</a>
+      <a class="ghost-btn" href="../index.php">Dashboard</a>
+      <a class="primary-btn" href="comprovante.php?id=128">Ver comprovante</a>
     </div>
     <button class="secondary-btn section-gap-small" data-reset-sale>Nova venda</button>
   `;
@@ -374,7 +374,7 @@ function finishSale() {
     <p>A venda foi finalizada. Você pode gerar comprovante agora ou apenas concluir a venda.</p>
     <div class="button-row">
       <button class="ghost-btn" data-close-modal data-sale-step="4">Não</button>
-      <a class="primary-btn" href="comprovante.html?id=128">Sim, gerar</a>
+      <a class="primary-btn" href="comprovante.php?id=128">Sim, gerar</a>
     </div>
   `);
 }
@@ -415,7 +415,7 @@ function productListCard(p) {
         </div>
         <div class="badge-row">${statusBadges(p)}</div>
         <div class="card-actions">
-          <a href="produto-form.html?id=${p.id}">Editar</a>
+          <a href="produto-form.php?id=${p.id}">Editar</a>
           <button class="danger-mini" data-delete-product="${p.id}">Excluir</button>
         </div>
       </div>
@@ -512,7 +512,7 @@ function clientCard(c) {
         <div><span>Situação</span><strong>${c.status}</strong></div>
       </div>
       <div class="client-actions">
-        <a href="cliente-detalhes.html?id=${c.id}">Visualizar</a>
+        <a href="cliente-detalhes.php?id=${c.id}">Visualizar</a>
         <button data-client-actions="${c.id}">Mais ações</button>
       </div>
     </article>
@@ -582,8 +582,8 @@ function saleCard(s) {
         <div><span>Total</span><strong>${brl.format(s.total)}</strong></div>
       </div>
       <div class="client-actions">
-        <a href="venda-detalhes.html?id=${s.id}">Visualizar</a>
-        <a href="comprovante.html?id=${s.id}">Comprovante</a>
+        <a href="venda-detalhes.php?id=${s.id}">Visualizar</a>
+        <a href="comprovante.php?id=${s.id}">Comprovante</a>
       </div>
     </article>
   `;
@@ -623,7 +623,7 @@ function initSaleDetail() {
     </article>
 
     <div class="button-row section-gap-small">
-      <a class="secondary-btn" href="comprovante.html?id=${s.id}">Comprovante</a>
+      <a class="secondary-btn" href="comprovante.php?id=${s.id}">Comprovante</a>
       <button class="secondary-btn" data-download-sale-pdf="${s.id}">Baixar PDF</button>
     </div>
 
@@ -687,7 +687,7 @@ function initReceipt() {
     </div>
     <div class="button-row section-gap-small">
       <button class="secondary-btn" data-download-sale-pdf="${s.id}">Baixar PDF</button>
-      <a class="primary-btn" href="nova-venda.html">Nova venda</a>
+      <a class="primary-btn" href="nova-venda.php">Nova venda</a>
     </div>
   `;
 }
@@ -774,7 +774,7 @@ function openClientActions(id) {
       <button data-open-payment="${c.id}"><span>Registrar pagamento</span><strong>›</strong></button>
       <button data-send-warning="${c.id}"><span>Enviar aviso da conta</span><strong>›</strong></button>
       <button data-toast="Vencimento renegociado"><span>Renegociar vencimento</span><strong>›</strong></button>
-      <a href="cliente-detalhes.html?id=${c.id}"><span>Ver histórico</span><strong>›</strong></a>
+      <a href="cliente-detalhes.php?id=${c.id}"><span>Ver histórico</span><strong>›</strong></a>
     </div>
     <button class="ghost-btn section-gap-small" data-close-modal>Fechar</button>
   `);
@@ -981,7 +981,7 @@ function bindEvents() {
     if (e.target.id === 'productForm') {
       e.preventDefault();
       showToast('Produto salvo');
-      setTimeout(() => location.href = 'produtos.html', 500);
+      setTimeout(() => location.href = 'produtos.php', 500);
     }
   });
 
