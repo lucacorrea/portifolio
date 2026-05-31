@@ -56,3 +56,26 @@ Correção adicionada em `assets/css/styles.css`:
   display: none !important;
 }
 ```
+
+
+## Layout responsivo para PC
+
+Esta versão mantém o layout original no celular e muda automaticamente no PC:
+
+- Mobile: layout app com navegação inferior.
+- Desktop: layout web com sidebar lateral, conteúdo largo, grids e cards mais organizados.
+- O mesmo projeto serve para celular e computador.
+
+Para hospedar na Hostinger, envie todo o conteúdo da pasta para `public_html` ou para uma subpasta.
+
+
+## Ajuste desktop full width
+
+Esta versão usa toda a largura disponível no PC:
+
+- sidebar fixa à esquerda;
+- conteúdo ocupando o restante da tela;
+- cards em grid fluido;
+- produtos/vendas/clientes preenchendo toda a largura;
+- mobile preservado sem alteração visual.
+
