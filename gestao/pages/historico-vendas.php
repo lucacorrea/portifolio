@@ -10,12 +10,7 @@ Auth::requireLogin();
 
 $user = Auth::user();
 ?>
-<?php
-declare(strict_types=1);
-require_once __DIR__ . '/../backend/security/auth.php';
-requireLogin();
-$user = currentUser();
-?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>

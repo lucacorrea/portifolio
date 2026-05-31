@@ -21,6 +21,7 @@ spl_autoload_register(function (string $class): void {
 
 use App\Core\Config;
 use App\Core\Env;
+use App\Security\Session;
 
 Env::load(BASE_PATH . '/.env');
 
@@ -32,4 +33,18 @@ if ($app['debug']) {
 } else {
     ini_set('display_errors', '0');
     error_reporting(E_ALL);
+}
+
+// Inicia sessão automaticamente
+Session::start();
+
+/**
+ * Escapa HTML para output seguro nos templates.
+ * Uso: <?= e($variavel) ?>
+ */
+if (!function_exists('e')) {
+    function e(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
 }
