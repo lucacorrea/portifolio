@@ -17,8 +17,16 @@ final class Env
         $path ??= dirname(__DIR__, 2) . '/.env';
 
         if (!is_file($path) || !is_readable($path)) {
-            self::$loaded = true;
-            return;
+            // Fallback: Verifica se o .env está um nível acima da pasta do projeto
+            // Isso previne que o Git Auto-deploy apague o arquivo ao sincronizar.
+            $fallbackPath = dirname(__DIR__, 3) . '/.env';
+            
+            if (is_file($fallbackPath) && is_readable($fallbackPath)) {
+                $path = $fallbackPath;
+            } else {
+                self::$loaded = true;
+                return;
+            }
         }
 
         $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
