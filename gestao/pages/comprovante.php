@@ -9,7 +9,7 @@ use App\Security\Auth;
 Auth::requireLogin();
 
 $user = Auth::user();
-?>
+
 
 $pageId = 'comprovante';
 $pageTitle = 'Comprovante';
