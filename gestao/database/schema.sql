@@ -1,10 +1,3 @@
--- Banco de dados do L&J Caixa Premium
--- Compatível com MySQL/MariaDB da Hostinger.
--- Ordem recomendada:
--- 1. Crie o banco no painel da hospedagem.
--- 2. Importe este arquivo no phpMyAdmin.
--- 3. Ajuste backend/config/database.php com usuário, senha e nome do banco.
-
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -38,8 +31,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
     PRIMARY KEY (id),
     UNIQUE KEY uk_usuarios_email (email),
     KEY idx_usuarios_empresa (empresa_id),
-    KEY idx_usuarios_nivel (nivel),
-    KEY idx_usuarios_ativo (ativo),
     CONSTRAINT fk_usuarios_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -94,7 +85,6 @@ CREATE TABLE IF NOT EXISTS produtos (
     KEY idx_produtos_categoria (categoria_id),
     KEY idx_produtos_codigo (codigo_barras),
     KEY idx_produtos_validade (validade),
-    KEY idx_produtos_estoque (quantidade, estoque_minimo),
     CONSTRAINT fk_produtos_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id),
     CONSTRAINT fk_produtos_categoria FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -113,7 +103,6 @@ CREATE TABLE IF NOT EXISTS clientes (
     PRIMARY KEY (id),
     KEY idx_clientes_empresa (empresa_id),
     KEY idx_clientes_nome (nome),
-    KEY idx_clientes_telefone (telefone),
     CONSTRAINT fk_clientes_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -138,7 +127,6 @@ CREATE TABLE IF NOT EXISTS vendas (
     KEY idx_vendas_empresa_data (empresa_id, criado_em),
     KEY idx_vendas_usuario (usuario_id),
     KEY idx_vendas_cliente (cliente_id),
-    KEY idx_vendas_status (status),
     CONSTRAINT fk_vendas_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id),
     CONSTRAINT fk_vendas_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
     CONSTRAINT fk_vendas_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
@@ -173,7 +161,6 @@ CREATE TABLE IF NOT EXISTS pagamentos (
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_pagamentos_venda (venda_id),
-    KEY idx_pagamentos_metodo (metodo),
     CONSTRAINT fk_pagamentos_venda FOREIGN KEY (venda_id) REFERENCES vendas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -193,7 +180,6 @@ CREATE TABLE IF NOT EXISTS cliente_contas (
     KEY idx_contas_empresa (empresa_id),
     KEY idx_contas_cliente (cliente_id),
     KEY idx_contas_vencimento (vencimento),
-    KEY idx_contas_status (status),
     CONSTRAINT fk_contas_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id),
     CONSTRAINT fk_contas_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id),
     CONSTRAINT fk_contas_venda FOREIGN KEY (venda_id) REFERENCES vendas(id) ON DELETE SET NULL
@@ -210,7 +196,6 @@ CREATE TABLE IF NOT EXISTS cliente_pagamentos (
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_cliente_pagamentos_conta (conta_id),
-    KEY idx_cliente_pagamentos_usuario (usuario_id),
     CONSTRAINT fk_cliente_pagamentos_conta FOREIGN KEY (conta_id) REFERENCES cliente_contas(id) ON DELETE CASCADE,
     CONSTRAINT fk_cliente_pagamentos_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -226,33 +211,5 @@ CREATE TABLE IF NOT EXISTS configuracoes (
     UNIQUE KEY uk_config_empresa_chave (empresa_id, chave),
     CONSTRAINT fk_config_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-INSERT INTO empresas (id, nome, nome_fantasia, telefone, endereco, ativo)
-VALUES (1, 'L&J Soluções Tech', 'L&J Caixa', '(97) 99999-0000', 'Coari - AM', 1)
-ON DUPLICATE KEY UPDATE nome = VALUES(nome);
-
--- Usuário inicial:
--- E-mail: admin@ljsolucoestech.com.br
--- Senha: Admin@123
--- Troque após o primeiro acesso.
-INSERT INTO usuarios (id, empresa_id, nome, email, senha_hash, nivel, ativo)
-VALUES
-(1, 1, 'Administrador', 'admin@ljsolucoestech.com.br', '$2y$12$CVdQ49rtTQ7UJF9inzfV5udXRpJV0bXzm5iWrI1kSxd5hmvDlNp72', 'admin', 1)
-ON DUPLICATE KEY UPDATE email = VALUES(email);
-
-INSERT INTO categorias (empresa_id, nome) VALUES
-(1, 'Laticínios'),
-(1, 'Mercearia'),
-(1, 'Higiene')
-ON DUPLICATE KEY UPDATE nome = VALUES(nome);
-
-INSERT INTO configuracoes (empresa_id, chave, valor) VALUES
-(1, 'comprovante_modo', 'perguntar'),
-(1, 'comprovante_modelo', 'detalhado'),
-(1, 'alerta_validade_dias', '7'),
-(1, 'prazo_divida_dias', '30'),
-(1, 'bloquear_produto_vencido', '1'),
-(1, 'bloquear_estoque_negativo', '1')
-ON DUPLICATE KEY UPDATE valor = VALUES(valor);
 
 SET FOREIGN_KEY_CHECKS = 1;

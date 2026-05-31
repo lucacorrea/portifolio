@@ -1,39 +1,45 @@
 <?php
+
 declare(strict_types=1);
 
-require_once __DIR__ . '/backend/security/auth.php';
-require_once __DIR__ . '/backend/security/csrf.php';
+require_once __DIR__ . '/backend/bootstrap.php';
 
-if (isLoggedIn()) {
-    header('Location: index.php');
-    exit;
+use App\Core\Request;
+use App\Core\Response;
+use App\Security\Auth;
+use App\Security\Csrf;
+
+if (Auth::check()) {
+    Response::redirect('index.php');
 }
 
-$erro = '';
+$request = new Request();
+$error = '';
 $email = '';
-$next = $_GET['next'] ?? 'index.php';
+$next = (string)$request->query('next', 'index.php');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $senha = (string)($_POST['senha'] ?? '');
-    $next = $_POST['next'] ?? 'index.php';
+if ($request->isPost()) {
+    $email = trim((string)$request->post('email', ''));
+    $senha = (string)$request->post('senha', '');
+    $next = (string)$request->post('next', 'index.php');
 
-    if (!validateCsrf($_POST['csrf_token'] ?? null)) {
-        $erro = 'Sessão expirada. Atualize a página e tente novamente.';
+    if (!Csrf::validate((string)$request->post('csrf_token', ''))) {
+        $error = 'Sessão expirada. Atualize a página e tente novamente.';
     } else {
-        [$ok, $msg] = attemptLogin($email, $senha);
+        [$ok, $message, $user] = Auth::attempt($email, $senha);
 
-        if ($ok) {
+        if ($ok && $user) {
+            Auth::login($user);
+
             $safeNext = str_starts_with($next, '/') || str_contains($next, '://') ? 'index.php' : $next;
-            header('Location: ' . $safeNext);
-            exit;
+            Response::redirect($safeNext);
         }
 
-        $erro = $msg;
+        $error = $message;
     }
 }
 
-$token = csrfToken();
+$token = Csrf::token();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -49,11 +55,8 @@ $token = csrfToken();
       place-items: center;
       min-height: 100vh;
       padding: 24px;
-      background:
-        radial-gradient(circle at 10% 0%, rgba(22,87,167,.12), transparent 32%),
-        linear-gradient(135deg, #F6F9FE 0%, #EDF3FB 100%);
+      background: radial-gradient(circle at 10% 0%, rgba(22,87,167,.12), transparent 32%), linear-gradient(135deg, #F6F9FE 0%, #EDF3FB 100%);
     }
-
     .login-shell {
       width: min(100%, 430px);
       background: #fff;
@@ -62,35 +65,30 @@ $token = csrfToken();
       padding: 28px;
       box-shadow: 0 20px 55px rgba(29,55,95,.12);
     }
-
     .login-brand {
       display: flex;
       align-items: center;
       gap: 14px;
       margin-bottom: 24px;
     }
-
     .login-brand img {
       width: 54px;
       height: 54px;
       border-radius: 18px;
       background: var(--blue);
     }
-
     .login-brand h1 {
       margin: 0;
       font-size: 26px;
       letter-spacing: -.06em;
       color: var(--ink);
     }
-
     .login-brand p {
       margin: 4px 0 0;
       color: var(--muted);
       font-size: 13px;
       font-weight: 700;
     }
-
     .login-error {
       margin-bottom: 14px;
       padding: 12px 14px;
@@ -100,7 +98,6 @@ $token = csrfToken();
       font-size: 13px;
       font-weight: 800;
     }
-
     .login-help {
       margin-top: 18px;
       color: var(--muted);
@@ -119,17 +116,17 @@ $token = csrfToken();
       </div>
     </div>
 
-    <?php if ($erro): ?>
-      <div class="login-error"><?= htmlspecialchars($erro, ENT_QUOTES, 'UTF-8') ?></div>
+    <?php if ($error): ?>
+      <div class="login-error"><?= e($error) ?></div>
     <?php endif; ?>
 
     <form method="post" class="form-grid" autocomplete="on">
-      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($token, ENT_QUOTES, 'UTF-8') ?>">
-      <input type="hidden" name="next" value="<?= htmlspecialchars($next, ENT_QUOTES, 'UTF-8') ?>">
+      <input type="hidden" name="csrf_token" value="<?= e($token) ?>">
+      <input type="hidden" name="next" value="<?= e($next) ?>">
 
       <div class="field">
         <label for="email">E-mail</label>
-        <input id="email" name="email" type="email" required value="<?= htmlspecialchars($email, ENT_QUOTES, 'UTF-8') ?>" placeholder="admin@ljsolucoestech.com.br">
+        <input id="email" name="email" type="email" required value="<?= e($email) ?>" placeholder="admin@ljsolucoestech.com.br">
       </div>
 
       <div class="field">
@@ -143,8 +140,7 @@ $token = csrfToken();
     <p class="login-help">
       Acesso inicial após importar o SQL:<br>
       <strong>E-mail:</strong> admin@ljsolucoestech.com.br<br>
-      <strong>Senha:</strong> Admin@123<br>
-      Troque essa senha depois do primeiro acesso.
+      <strong>Senha:</strong> Admin@123
     </p>
   </main>
 </body>

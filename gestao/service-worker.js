@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lj-caixa-assets-v2';
+const CACHE_NAME = 'lj-caixa-assets-oo-v1';
 const FILES = [
   './assets/css/styles.css',
   './assets/js/data.js',
@@ -18,17 +18,14 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(key => key !== CACHE_NAME ? caches.delete(key) : null)))
-  );
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(key => key !== CACHE_NAME ? caches.delete(key) : null))));
   self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  if (event.request.method !== 'GET') return;
 
-  // Não faz cache de páginas PHP protegidas.
+  if (event.request.method !== 'GET') return;
   if (url.pathname.endsWith('.php') || url.pathname.endsWith('/')) return;
 
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)));

@@ -1,63 +1,25 @@
-# L&J Caixa Premium — Site com Login PHP + MySQL
+# L&J Caixa — Base PHP OOP + .env + SQL
 
-Esta versão inclui:
+Projeto com:
 
 - Layout responsivo PC + Mobile;
 - Páginas separadas;
-- Login com PHP/PDO;
-- Sessão segura;
-- CSRF no login;
-- Rate limit básico de tentativas;
-- Auditoria de login;
-- SQL completo do sistema;
-- Logout;
-- Páginas protegidas por autenticação.
+- PHP orientado a objeto;
+- `.env` para configuração segura;
+- Autoload simples via namespace `App\`;
+- Login com sessão segura;
+- CSRF;
+- Rate limit básico de login;
+- PDO;
+- SQL completo;
+- Estrutura preparada para API real.
 
-## Estrutura
+## Instalação
 
-```txt
-login.php
-logout.php
-index.php
-pages/
-  nova-venda.php
-  produtos.php
-  produto-form.php
-  relatorios.php
-  clientes.php
-  cliente-detalhes.php
-  historico-vendas.php
-  venda-detalhes.php
-  comprovante.php
-  configuracoes.php
-
-backend/
-  config/database.php
-  core/db.php
-  security/auth.php
-  security/csrf.php
-  security/session.php
-
-database/
-  schema.sql
-
-assets/
-  css/styles.css
-  js/data.js
-  js/app.js
-```
-
-## Instalação na Hostinger
-
-1. Crie um banco MySQL no painel da Hostinger.
-2. Importe `database/schema.sql` pelo phpMyAdmin.
-3. Edite `backend/config/database.php` com:
-   - nome do banco;
-   - usuário;
-   - senha;
-   - host.
-4. Envie os arquivos para `public_html` ou para uma subpasta.
-5. Acesse `login.php`.
+1. Importe `database/schema.sql`.
+2. Importe `database/seed.sql`.
+3. Configure o `.env` com os dados reais do banco.
+4. Acesse `login.php`.
 
 ## Acesso inicial
 
@@ -68,13 +30,28 @@ Senha: Admin@123
 
 Troque a senha depois do primeiro acesso.
 
+## Estrutura principal
+
+```txt
+backend/
+  Core/
+  Security/
+  Models/
+  Repositories/
+  Services/
+  Controllers/
+  Middlewares/
+api/
+pages/
+database/
+uploads/
+storage/
+```
+
 ## Segurança
 
-Para produção, recomendo como próximos passos:
-
-- tela para alterar senha;
-- recuperação de senha por e-mail;
-- permissões por nível de usuário;
-- guardar logs de ações críticas;
-- mover uploads para pasta validada;
-- integrar os dados mockados do JS com endpoints PHP reais.
+- Não suba `.env` para repositório público.
+- Na Hostinger, mantenha `.htaccess`.
+- Use HTTPS.
+- Troque a senha inicial.
+- Integre os endpoints API com regras reais antes de produção.

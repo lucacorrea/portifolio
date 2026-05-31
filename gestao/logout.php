@@ -1,9 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
-require_once __DIR__ . '/backend/security/auth.php';
+require_once __DIR__ . '/backend/bootstrap.php';
 
-logoutUser();
+use App\Core\Response;
+use App\Security\Auth;
 
-header('Location: login.php');
-exit;
+Auth::logout();
+
+Response::redirect('login.php');
