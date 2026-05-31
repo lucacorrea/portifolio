@@ -353,7 +353,6 @@ function saleStepReview() {
 
 function saleStepPayment() {
   const total = cartTotal();
-  const change = Math.max(receivedAmount - total, 0);
   const methods = paymentMethods();
 
   if (!methods.includes(currentPayment)) {
@@ -371,22 +370,6 @@ function saleStepPayment() {
     <div class="payment-methods section-gap-small">
       ${methods.map(m => `<button class="${currentPayment === m ? 'active' : ''}" data-payment="${m}">${m}</button>`).join('') || emptyState('Nenhuma forma de pagamento ativa. Ajuste em Configurações.')}
     </div>
-
-    ${currentPayment === 'Dinheiro' ? `
-      <div class="form-card section-gap-small">
-        <div class="field"><label>Valor recebido</label><input id="receivedAmount" type="number" min="0" step="0.01" value="${receivedAmount || ''}" placeholder="Ex.: 50,00"></div>
-        <div class="summary-line"><span>Troco</span><strong>${brl.format(change)}</strong></div>
-      </div>
-    ` : ''}
-
-    ${currentPayment === 'Conta do cliente' ? `
-      <div class="form-card section-gap-small">
-        ${data.clients.length
-          ? `<div class="field"><label>Cliente</label><select>${data.clients.map(c => `<option>${escapeHtml(c.name)}</option>`).join('')}</select></div>`
-          : `<p>Cadastre um cliente antes de vender na conta.</p>`}
-        <div class="field"><label>Data de vencimento</label><input type="date"></div>
-      </div>
-    ` : ''}
 
     <div class="button-row section-gap-small">
       <button class="ghost-btn" data-sale-step="2">Voltar</button>
