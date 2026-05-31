@@ -14,7 +14,7 @@ final class Env
             return;
         }
 
-        $path ??= dirname(__DIR__, 2) . '/.env';
+        $path ??= dirname(__DIR__, 2) . '/.env1';
 
         if (!is_file($path) || !is_readable($path)) {
             // Fallback: Verifica se o .env está um nível acima da pasta do projeto
