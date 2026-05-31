@@ -53,6 +53,23 @@ final class UserRepository
         return $stmt->fetchAll();
     }
 
+    public function create(int $empresaId, array $data): void
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO usuarios (empresa_id, nome, email, senha_hash, nivel, ativo)
+             VALUES (:empresa_id, :nome, :email, :senha_hash, :nivel, :ativo)'
+        );
+
+        $stmt->execute([
+            ':empresa_id' => $empresaId,
+            ':nome' => $data['nome'],
+            ':email' => mb_strtolower(trim((string)$data['email'])),
+            ':senha_hash' => $data['senha_hash'],
+            ':nivel' => $data['nivel'],
+            ':ativo' => $data['ativo'],
+        ]);
+    }
+
     public function auditLogin(?int $usuarioId, string $email, bool $success, string $reason): void
     {
         $stmt = $this->db->prepare(

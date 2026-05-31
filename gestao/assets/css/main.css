@@ -855,6 +855,26 @@ svg {
   resize: vertical;
 }
 
+.check-row {
+  min-height: 48px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+}
+
 .product-form-preview {
   display: grid;
   grid-template-columns: 74px 1fr;

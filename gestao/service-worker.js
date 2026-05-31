@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lj-caixa-assets-oo-v2';
+const CACHE_NAME = 'lj-caixa-assets-oo-v3';
 const FILES = [
   './assets/css/main.css',
   './assets/js/data.js',

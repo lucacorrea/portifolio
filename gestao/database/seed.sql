@@ -22,6 +22,22 @@ INSERT INTO configuracoes (empresa_id, chave, valor) VALUES
 (1, 'comprovante_modelo', 'detalhado'),
 (1, 'alerta_validade_dias', '7'),
 (1, 'prazo_divida_dias', '30'),
+(1, 'estoque_minimo_padrao', '0'),
 (1, 'bloquear_produto_vencido', '1'),
-(1, 'bloquear_estoque_negativo', '1')
+(1, 'bloquear_estoque_negativo', '1'),
+(1, 'alertar_estoque_baixo', '1'),
+(1, 'pagamento_pix', '1'),
+(1, 'pagamento_dinheiro', '1'),
+(1, 'pagamento_credito', '1'),
+(1, 'pagamento_debito', '1'),
+(1, 'pagamento_conta_cliente', '1'),
+(1, 'pagamento_misto', '1'),
+(1, 'permitir_desconto', '1'),
+(1, 'limite_desconto_percentual', '0'),
+(1, 'exigir_cliente_conta', '1'),
+(1, 'exigir_motivo_cancelamento', '1'),
+(1, 'auditoria_ativa', '1'),
+(1, 'confirmar_exclusoes', '1'),
+(1, 'pin_operador_ativo', '0'),
+(1, 'notificacoes_ativas', '1')
 ON DUPLICATE KEY UPDATE valor = VALUES(valor);

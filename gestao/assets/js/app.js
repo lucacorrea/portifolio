@@ -170,6 +170,20 @@ function saveCart() {
 }
 
 function addToCart(id) {
+  const product = data.products.find(p => p.id === id);
+
+  if (!product) return;
+
+  if (data.settings.blockExpiredProducts && daysTo(product.expiry) < 0) {
+    showToast('Produto vencido bloqueado pelas configurações');
+    return;
+  }
+
+  if (data.settings.blockNegativeStock && product.stock <= 0) {
+    showToast('Estoque indisponível pelas configurações');
+    return;
+  }
+
   const item = cart.find(i => i.productId === id);
   if (item) item.qty += 1;
   else cart.push({ productId: id, qty: 1 });
@@ -340,6 +354,12 @@ function saleStepReview() {
 function saleStepPayment() {
   const total = cartTotal();
   const change = Math.max(receivedAmount - total, 0);
+  const methods = paymentMethods();
+
+  if (!methods.includes(currentPayment)) {
+    currentPayment = methods[0] || '';
+    saveCart();
+  }
 
   return `
     <div class="sheet-title"><div><h2>Forma de pagamento</h2><p>Escolha como o cliente vai pagar</p></div></div>
@@ -349,7 +369,7 @@ function saleStepPayment() {
       <span>${cartItems().length} itens adicionados</span>
     </article>
     <div class="payment-methods section-gap-small">
-      ${['PIX', 'Crédito', 'Débito', 'Dinheiro', 'Conta do cliente', 'Misto'].map(m => `<button class="${currentPayment === m ? 'active' : ''}" data-payment="${m}">${m}</button>`).join('')}
+      ${methods.map(m => `<button class="${currentPayment === m ? 'active' : ''}" data-payment="${m}">${m}</button>`).join('') || emptyState('Nenhuma forma de pagamento ativa. Ajuste em Configurações.')}
     </div>
 
     ${currentPayment === 'Dinheiro' ? `
@@ -476,6 +496,8 @@ function initProductForm() {
     $('#productMinStock').value = p.minStock;
     $('#productLot').value = p.lot;
     $('#productExpiry').value = p.expiry;
+  } else {
+    $('#productMinStock').value = Number(data.settings.defaultMinStock || 0);
   }
 }
 
@@ -881,6 +903,27 @@ function sendWarning(id) {
   window.open(`https://wa.me/55${c.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
+function checked(value) {
+  return value ? 'checked' : '';
+}
+
+function settingToggle(id, label, value) {
+  return `<label class="check-row"><input id="${id}" type="checkbox" ${checked(value)}><span>${label}</span></label>`;
+}
+
+function paymentMethods() {
+  const methods = [
+    ['PIX', 'paymentPix'],
+    ['Crédito', 'paymentCredit'],
+    ['Débito', 'paymentDebit'],
+    ['Dinheiro', 'paymentCash'],
+    ['Conta do cliente', 'paymentAccount'],
+    ['Misto', 'paymentMixed']
+  ];
+
+  return methods.filter(([, key]) => data.settings[key]).map(([label]) => label);
+}
+
 function openSetting(key) {
   const settings = data.settings;
   const companyName = escapeHtml(settings.companyName);
@@ -888,13 +931,20 @@ function openSetting(key) {
   const companyAddress = escapeHtml(settings.companyAddress);
   const receiptMode = settings.receiptMode || 'perguntar';
   const receiptTemplate = settings.receiptTemplate || 'detalhado';
+  const usersList = data.users.length
+    ? data.users.map(u => rowItem({ title: u.name, subtitle: `${u.role} • ${u.email}`, status: u.status, icon: 'user' })).join('')
+    : emptyState('Nenhum usuário cadastrado.');
 
   const html = {
     company: `<h2>Empresa</h2><div class="form-grid section-gap-small"><div class="field"><label>Nome da empresa</label><input id="settingCompanyName" maxlength="180" value="${companyName}"></div><div class="field"><label>Telefone</label><input id="settingCompanyPhone" maxlength="30" value="${companyPhone}"></div><div class="field"><label>Endereço</label><input id="settingCompanyAddress" maxlength="255" value="${companyAddress}"></div><button class="primary-btn" data-save-setting="company">Salvar</button></div>`,
-    users: `<h2>Usuários e permissões</h2><div class="list-card section-gap-small">${data.users.map(u => rowItem({ title: u.name, subtitle: u.role, status: u.status, icon: 'user' })).join('')}</div><button class="primary-btn section-gap-small" data-toast="Usuário adicionado">Adicionar usuário</button>`,
+    users: `<h2>Usuários e permissões</h2><div class="list-card section-gap-small">${usersList}</div><div class="form-grid section-gap-small"><div class="field"><label>Nome</label><input id="settingUserName" maxlength="140"></div><div class="field"><label>E-mail</label><input id="settingUserEmail" type="email" maxlength="180"></div><div class="field"><label>Senha inicial</label><input id="settingUserPassword" type="password" minlength="8"></div><div class="field"><label>Perfil</label><select id="settingUserRole"><option value="operador">Operador</option><option value="gerente">Gerente</option><option value="estoquista">Estoquista</option><option value="leitor">Leitor</option><option value="admin">Administrador</option></select></div><button class="primary-btn" data-save-setting="users">Adicionar usuário</button></div>`,
     receipt: `<h2>Comprovantes</h2><div class="form-grid section-gap-small"><div class="field"><label>Ao finalizar venda</label><select id="settingReceiptMode"><option value="perguntar" ${receiptMode === 'perguntar' ? 'selected' : ''}>Sempre perguntar</option><option value="sempre" ${receiptMode === 'sempre' ? 'selected' : ''}>Sempre gerar</option><option value="nunca" ${receiptMode === 'nunca' ? 'selected' : ''}>Nunca gerar</option></select></div><div class="field"><label>Modelo</label><select id="settingReceiptTemplate"><option value="detalhado" ${receiptTemplate === 'detalhado' ? 'selected' : ''}>Detalhado</option><option value="simples" ${receiptTemplate === 'simples' ? 'selected' : ''}>Simples</option></select></div><button class="primary-btn" data-save-setting="receipt">Salvar</button></div>`,
-    due: `<h2>Regras de vencimento</h2><div class="form-grid section-gap-small"><div class="field"><label>Alerta de validade</label><input id="settingExpirationAlertDays" type="number" min="0" max="365" value="${Number(settings.expirationAlertDays || 0)}"></div><div class="field"><label>Prazo padrão de dívida</label><input id="settingDebtDueDays" type="number" min="1" max="365" value="${Number(settings.debtDueDays || 30)}"></div><button class="primary-btn" data-save-setting="due">Salvar</button></div>`
-  }[key] || `<h2>Configuração</h2><p>Opção preparada para produção.</p>`;
+    due: `<h2>Regras de vencimento</h2><div class="form-grid section-gap-small"><div class="field"><label>Alerta de validade</label><input id="settingExpirationAlertDays" type="number" min="0" max="365" value="${Number(settings.expirationAlertDays || 0)}"></div><div class="field"><label>Prazo padrão de dívida</label><input id="settingDebtDueDays" type="number" min="1" max="365" value="${Number(settings.debtDueDays || 30)}"></div><button class="primary-btn" data-save-setting="due">Salvar</button></div>`,
+    stock: `<h2>Produtos e estoque</h2><div class="form-grid section-gap-small"><div class="field"><label>Estoque mínimo padrão</label><input id="settingDefaultMinStock" type="number" min="0" max="999999" value="${Number(settings.defaultMinStock || 0)}"></div>${settingToggle('settingBlockExpiredProducts', 'Bloquear venda de produto vencido', settings.blockExpiredProducts)}${settingToggle('settingBlockNegativeStock', 'Bloquear estoque negativo', settings.blockNegativeStock)}${settingToggle('settingLowStockAlert', 'Alertar estoque baixo', settings.lowStockAlert)}<button class="primary-btn" data-save-setting="stock">Salvar</button></div>`,
+    payments: `<h2>Formas de pagamento</h2><div class="form-grid section-gap-small">${settingToggle('settingPaymentPix', 'PIX', settings.paymentPix)}${settingToggle('settingPaymentCash', 'Dinheiro', settings.paymentCash)}${settingToggle('settingPaymentCredit', 'Cartão de crédito', settings.paymentCredit)}${settingToggle('settingPaymentDebit', 'Cartão de débito', settings.paymentDebit)}${settingToggle('settingPaymentAccount', 'Conta do cliente', settings.paymentAccount)}${settingToggle('settingPaymentMixed', 'Pagamento misto', settings.paymentMixed)}<button class="primary-btn" data-save-setting="payments">Salvar</button></div>`,
+    cash: `<h2>Vendas e caixa</h2><div class="form-grid section-gap-small">${settingToggle('settingAllowDiscount', 'Permitir desconto na venda', settings.allowDiscount)}<div class="field"><label>Limite de desconto (%)</label><input id="settingDiscountLimitPercent" type="number" min="0" max="100" value="${Number(settings.discountLimitPercent || 0)}"></div>${settingToggle('settingRequireCustomerForAccount', 'Exigir cliente para venda na conta', settings.requireCustomerForAccount)}${settingToggle('settingRequireCancellationReason', 'Exigir motivo para cancelamento', settings.requireCancellationReason)}<button class="primary-btn" data-save-setting="cash">Salvar</button></div>`,
+    security: `<h2>Notificações e segurança</h2><div class="form-grid section-gap-small">${settingToggle('settingAuditLogEnabled', 'Manter auditoria ativa', settings.auditLogEnabled)}${settingToggle('settingConfirmDeletes', 'Confirmar exclusões sensíveis', settings.confirmDeletes)}${settingToggle('settingOperatorPinEnabled', 'Exigir PIN de operador', settings.operatorPinEnabled)}${settingToggle('settingNotificationsEnabled', 'Ativar notificações e alertas', settings.notificationsEnabled)}<button class="primary-btn" data-save-setting="security">Salvar</button></div>`
+  }[key] || `<h2>Configuração</h2><p>Configuração não encontrada.</p>`;
 
   openModal(`${html}<button class="ghost-btn section-gap-small" data-close-modal>Fechar</button>`);
 }
@@ -913,9 +963,46 @@ async function saveSetting(section, button) {
     payload.receiptTemplate = $('#settingReceiptTemplate')?.value || 'detalhado';
   }
 
+  if (section === 'users') {
+    payload.userName = $('#settingUserName')?.value.trim() || '';
+    payload.userEmail = $('#settingUserEmail')?.value.trim() || '';
+    payload.userPassword = $('#settingUserPassword')?.value || '';
+    payload.userRole = $('#settingUserRole')?.value || 'operador';
+  }
+
   if (section === 'due') {
     payload.expirationAlertDays = Number($('#settingExpirationAlertDays')?.value || 0);
     payload.debtDueDays = Number($('#settingDebtDueDays')?.value || 0);
+  }
+
+  if (section === 'stock') {
+    payload.defaultMinStock = Number($('#settingDefaultMinStock')?.value || 0);
+    payload.blockExpiredProducts = $('#settingBlockExpiredProducts')?.checked || false;
+    payload.blockNegativeStock = $('#settingBlockNegativeStock')?.checked || false;
+    payload.lowStockAlert = $('#settingLowStockAlert')?.checked || false;
+  }
+
+  if (section === 'payments') {
+    payload.paymentPix = $('#settingPaymentPix')?.checked || false;
+    payload.paymentCash = $('#settingPaymentCash')?.checked || false;
+    payload.paymentCredit = $('#settingPaymentCredit')?.checked || false;
+    payload.paymentDebit = $('#settingPaymentDebit')?.checked || false;
+    payload.paymentAccount = $('#settingPaymentAccount')?.checked || false;
+    payload.paymentMixed = $('#settingPaymentMixed')?.checked || false;
+  }
+
+  if (section === 'cash') {
+    payload.allowDiscount = $('#settingAllowDiscount')?.checked || false;
+    payload.discountLimitPercent = Number($('#settingDiscountLimitPercent')?.value || 0);
+    payload.requireCustomerForAccount = $('#settingRequireCustomerForAccount')?.checked || false;
+    payload.requireCancellationReason = $('#settingRequireCancellationReason')?.checked || false;
+  }
+
+  if (section === 'security') {
+    payload.auditLogEnabled = $('#settingAuditLogEnabled')?.checked || false;
+    payload.confirmDeletes = $('#settingConfirmDeletes')?.checked || false;
+    payload.operatorPinEnabled = $('#settingOperatorPinEnabled')?.checked || false;
+    payload.notificationsEnabled = $('#settingNotificationsEnabled')?.checked || false;
   }
 
   button.disabled = true;
@@ -1056,12 +1143,19 @@ function bindEvents() {
     const del = e.target.closest('[data-delete-product]');
     if (del) {
       const p = data.products.find(x => x.id === Number(del.dataset.deleteProduct));
-      openModal(`<h2>Excluir produto?</h2><p>${p.name}<br>Na produção, o ideal é inativar para não quebrar relatórios antigos.</p><div class="button-row"><button class="ghost-btn" data-close-modal>Cancelar</button><button class="danger-btn" data-close-modal data-toast="Produto excluído">Excluir</button></div>`);
+      if (data.settings.confirmDeletes) {
+        openModal(`<h2>Excluir produto?</h2><p>${escapeHtml(p.name)}<br>O produto deve ser inativado para preservar relatórios antigos.</p><div class="button-row"><button class="ghost-btn" data-close-modal>Cancelar</button><button class="danger-btn" data-close-modal data-toast="Exclusão será conectada ao banco na etapa de produtos">Confirmar</button></div>`);
+      } else {
+        showToast('Exclusão será conectada ao banco na etapa de produtos');
+      }
     }
 
     const cancelSale = e.target.closest('[data-cancel-sale]');
     if (cancelSale) {
-      openModal(`<h2>Cancelar venda?</h2><p>Informe o motivo para auditoria.</p><div class="field"><label>Motivo</label><textarea placeholder="Ex.: Produto lançado errado"></textarea></div><div class="button-row section-gap-small"><button class="ghost-btn" data-close-modal>Voltar</button><button class="danger-btn" data-close-modal data-toast="Venda cancelada">Confirmar</button></div>`);
+      const reasonField = data.settings.requireCancellationReason
+        ? '<div class="field"><label>Motivo</label><textarea placeholder="Descreva o motivo do cancelamento"></textarea></div>'
+        : '';
+      openModal(`<h2>Cancelar venda?</h2><p>${data.settings.auditLogEnabled ? 'A ação ficará registrada na auditoria.' : 'Auditoria desativada nas configurações.'}</p>${reasonField}<div class="button-row section-gap-small"><button class="ghost-btn" data-close-modal>Voltar</button><button class="danger-btn" data-close-modal data-toast="Cancelamento será conectado ao banco na etapa de vendas">Confirmar</button></div>`);
     }
 
     const setting = e.target.closest('[data-setting]');
