@@ -102,6 +102,31 @@ document.addEventListener('click', (e) => {
     }
 });
 
+document.addEventListener('wheel', function(e) {
+    const activeInput = document.activeElement;
+
+    if (!activeInput || activeInput.tagName !== 'INPUT' || activeInput.type !== 'number') {
+        return;
+    }
+
+    if (e.target !== activeInput && !activeInput.contains(e.target)) {
+        return;
+    }
+
+    e.preventDefault();
+    activeInput.blur();
+
+    const scrollTarget = activeInput.closest('.modal-body, .offcanvas-body, .table-responsive, [data-scroll-container]');
+    const canScrollTarget = scrollTarget && scrollTarget.scrollHeight > scrollTarget.clientHeight;
+
+    if (canScrollTarget) {
+        scrollTarget.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: 'auto' });
+        return;
+    }
+
+    window.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: 'auto' });
+}, { passive: false });
+
 // Global toggle password visibility
 window.togglePasswordVisibility = function(button) {
     const inputGroup = button.closest('.input-group');
