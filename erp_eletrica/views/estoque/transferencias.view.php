@@ -11,6 +11,7 @@
 
     .b2b-cart-summary { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; margin-top: 15px; position: sticky; bottom: 10px; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,.07); }
     .qty-input { width: 90px; text-align: center; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 8px; font-size: .875rem; }
+    .cart-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
     .transfer-card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 15px; border: 1px solid #e2e8f0; overflow: hidden; }
     .transfer-header { background: #f1f5f9; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; }
@@ -75,10 +76,10 @@
                     </button>
                 <?php else: ?>
                     <button class="tab-btn <?= $aba == 'nova_solicitacao' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_solicitacao'">
-                        <i class="fas fa-plus-circle me-1"></i><span class="d-none d-md-inline">Pedir ao </span>CD (Matriz)
+                        <i class="fas fa-plus-circle me-1"></i><span class="d-none d-md-inline">Pedir ao </span> CD
                     </button>
                     <button class="tab-btn <?= $aba == 'nova_transferencia' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=nova_transferencia'">
-                        <i class="fas fa-truck-loading me-1"></i><span class="d-none d-md-inline">Enviar p/ </span>Matriz
+                        <i class="fas fa-truck-loading me-1"></i><span class="d-none d-md-inline">Enviar</span>
                     </button>
                     <button class="tab-btn <?= $aba == 'em_transito' ? 'active' : '' ?>" onclick="location.href='transferencias.php?aba=em_transito'">
                         <i class="fas fa-truck me-1"></i>Em Trânsito
@@ -114,6 +115,7 @@
                                     <tr>
                                         <th class="ps-3">Código</th>
                                         <th>Filial</th>
+                                        <th>Solicitado por</th>
                                         <th>Solicitado em</th>
                                         <th>Observação</th>
                                         <th class="text-end pe-3">Ação</th>
@@ -127,6 +129,7 @@
                                             <strong class="text-primary"><?= htmlspecialchars($req['codigo_transferencia']) ?></strong>
                                         </td>
                                         <td><span class="fw-bold small"><?= htmlspecialchars($req['nome_filial']) ?></span></td>
+                                        <td><span class="small"><?= htmlspecialchars($req['usuario_nome'] ?? 'Sistema') ?></span></td>
                                         <td><span class="extra-small text-muted"><?= date('d/m/Y H:i', strtotime($req['data_solicitacao'])) ?></span></td>
                                         <td class="small text-muted">
                                             <?= $req['observacoes'] ? '"' . mb_strimwidth(htmlspecialchars($req['observacoes']), 0, 40, "...") . '"' : '<span class="opacity-25">-</span>' ?>
@@ -160,6 +163,7 @@
                                     <tr>
                                         <th class="ps-3">Código</th>
                                         <th>Origem</th>
+                                        <th>Enviado por</th>
                                         <th>Despachado em</th>
                                         <th>Status</th>
                                         <th class="text-end pe-3">Ação</th>
@@ -170,6 +174,7 @@
                                     <tr>
                                         <td class="ps-3"><strong class="text-primary"><?= htmlspecialchars($et['codigo_transferencia']) ?></strong></td>
                                         <td><span class="fw-bold small"><?= htmlspecialchars($et['nome_filial']) ?></span></td>
+                                        <td><span class="small"><?= htmlspecialchars($et['usuario_nome'] ?? 'Sistema') ?></span></td>
                                         <td><span class="extra-small text-muted"><?= date('d/m/Y H:i', strtotime($et['data_envio'])) ?></span></td>
                                         <td><span class="badge bg-warning text-dark extra-small">EM TRÂNSITO</span></td>
                                         <td class="text-end pe-3">
@@ -194,6 +199,7 @@
                             <select name="destino_filial_id" class="form-select" required>
                                 <option value="">Selecione o destino...</option>
                                 <?php foreach ($filiais as $f): ?>
+                                    <?php if ((int)$f['id'] === (int)($_SESSION['filial_id'] ?? 0)) continue; ?>
                                     <option value="<?= $f['id'] ?>"><?= htmlspecialchars($f['nome']) ?> (Filial #<?= $f['id'] ?>)</option>
                                 <?php endforeach; ?>
                             </select>
@@ -229,7 +235,7 @@
                         </thead>
                         <tbody id="tbodyTransf">
                             <?php foreach ($produtosMatriz as $pm): ?>
-                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>">
+                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
                                     <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>">
@@ -252,9 +258,14 @@
 
                     <div class="b2b-cart-summary">
                         <h6 class="m-0 fw-bold"><i class="fas fa-box-open text-primary me-2"></i>Itens no Caminhão: <span id="cartCount" class="badge bg-primary ms-1">0</span></h6>
-                        <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitTransf" disabled>
-                            <i class="fas fa-paper-plane me-2"></i>Faturar e Despachar
-                        </button>
+                        <div class="cart-actions">
+                            <button type="button" class="btn btn-outline-primary fw-bold px-3 btnViewCart" onclick="abrirCarrinho('formTransf')" disabled>
+                                <i class="fas fa-eye me-2"></i>Visualizar
+                            </button>
+                            <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitTransf" disabled>
+                                <i class="fas fa-paper-plane me-2"></i>Faturar e Despachar
+                            </button>
+                        </div>
                     </div>
                 </form>
             <?php endif; ?>
@@ -307,6 +318,7 @@
                             <tr>
                                 <th>Código</th>
                                 <th>Destino</th>
+                                <th>Enviado por</th>
                                 <th>Data Envio</th>
                                 <th>Status</th>
                                 <th class="text-end">Ação</th>
@@ -324,6 +336,7 @@
                                     <?php endif; ?>
                                 </td>
                                 <td><?= htmlspecialchars($he['nome_filial']) ?></td>
+                                <td><?= htmlspecialchars($he['usuario_nome'] ?? 'Sistema') ?></td>
                                 <td><?= $he['data_envio'] ? date('d/m/Y H:i', strtotime($he['data_envio'])) : '---' ?></td>
                                 <td>
                                     <span class="badge bg-<?= $he['status'] == 'concluida' ? 'success' : 'warning text-dark' ?>">
@@ -347,6 +360,19 @@
 
             <?php if ($aba == 'nova_solicitacao'): ?>
                 <form action="transferencias.php?action=nova_solicitacao" method="POST" id="formReq">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Unidade que vai receber o pedido</label>
+                        <select name="destino_filial_id" class="form-select" required>
+                            <option value="">Selecione a unidade...</option>
+                            <?php foreach ($filiais as $f): ?>
+                                <?php if ((int)$f['id'] === (int)($_SESSION['filial_id'] ?? 0)) continue; ?>
+                                <?php $isMatrizDestino = (int)$f['id'] === (int)$matrizId; ?>
+                                <option value="<?= $f['id'] ?>">
+                                    <?= htmlspecialchars($f['nome']) ?> (Unidade #<?= $f['id'] ?><?= $isMatrizDestino ? ' - Matriz' : '' ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Justificativa / Observação (Opcional)</label>
                         <input type="text" name="observacoes" class="form-control" placeholder="Ex: Produto em falta devido às chuvas...">
@@ -380,7 +406,7 @@
                         </thead>
                         <tbody id="tbodyReq">
                             <?php foreach ($produtosMatriz as $pm): ?>
-                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>">
+                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
                                     <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>">
@@ -402,8 +428,11 @@
 
                     <div class="b2b-cart-summary">
                         <h6 class="m-0 fw-bold"><i class="fas fa-shopping-cart text-primary me-2"></i>Itens no Carrinho: <span id="cartCount" class="badge bg-primary ms-1">0</span></h6>
+                        <button type="button" class="btn btn-outline-primary fw-bold px-3 btnViewCart" onclick="abrirCarrinho('formReq')" disabled>
+                            <i class="fas fa-eye me-2"></i>Visualizar
+                        </button>
                         <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitReq" disabled>
-                            <i class="fas fa-paper-plane me-2"></i>Enviar Pedido à Matriz
+                            <i class="fas fa-paper-plane me-2"></i>Enviar Pedido
                         </button>
                     </div>
                 </form>
@@ -415,8 +444,15 @@
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">Destino</label>
                             <select name="destino_filial_id" class="form-select" required>
+                                <option value="">Selecione o destino...</option>
                                 <?php foreach ($filiais as $f): ?>
-                                    <option value="<?= $f['id'] ?>"><?= htmlspecialchars($f['nome']) ?> (Matriz)</option>
+                                    <?php
+                                        $isAtual = (int)$f['id'] === (int)($_SESSION['filial_id'] ?? 0);
+                                        $isMatrizDestino = (int)$f['id'] === (int)$matrizId;
+                                    ?>
+                                    <option value="<?= $f['id'] ?>" <?= $isAtual ? 'disabled' : '' ?>>
+                                        <?= htmlspecialchars($f['nome']) ?> (Unidade #<?= $f['id'] ?><?= $isMatrizDestino ? ' - Matriz' : '' ?><?= $isAtual ? ' - unidade atual' : '' ?>)
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -454,7 +490,7 @@
                         </thead>
                         <tbody id="tbodyTransf">
                             <?php foreach ($produtosMatriz as $pm): ?>
-                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>">
+                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
                                     <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>">
@@ -477,8 +513,11 @@
 
                     <div class="b2b-cart-summary">
                         <h6 class="m-0 fw-bold"><i class="fas fa-box-open text-primary me-2"></i>Itens para Matriz: <span id="cartCount" class="badge bg-primary ms-1">0</span></h6>
+                        <button type="button" class="btn btn-outline-primary fw-bold px-3 btnViewCart" onclick="abrirCarrinho('formTransf')" disabled>
+                            <i class="fas fa-eye me-2"></i>Visualizar
+                        </button>
                         <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitTransf" disabled>
-                            <i class="fas fa-paper-plane me-2"></i>Enviar para Matriz
+                            <i class="fas fa-paper-plane me-2"></i>Enviar
                         </button>
                     </div>
                 </form>
@@ -572,6 +611,7 @@
                             <tr>
                                 <th>Cód. Romaneio</th>
                                 <th>Status</th>
+                                <th>Solicitado/Enviado por</th>
                                 <th>Data Pedido</th>
                                 <th>Data Conclusão</th>
                                 <th class="text-end">Ações</th>
@@ -594,6 +634,7 @@
                                     <?php endif; ?>
                                 </td>
                                 <td><span class="badge bg-<?= $badge ?>"><?= strtoupper(str_replace('_', ' ', $h['status'])) ?></span></td>
+                                <td><?= htmlspecialchars($h['usuario_nome'] ?? 'Sistema') ?></td>
                                 <td><?= date('d/m/Y H:i', strtotime($h['data_solicitacao'])) ?></td>
                                 <td><?= $h['data_recebimento'] ? date('d/m/Y H:i', strtotime($h['data_recebimento'])) : '---' ?></td>
                                 <td class="text-end">
@@ -711,6 +752,7 @@ function initCart(formId) {
     const checkboxes = form.querySelectorAll('.chkItem');
     const countLabel = document.getElementById('cartCount');
     const submitBtn  = document.getElementById('btnSubmitReq') || document.getElementById('btnSubmitTransf');
+    const viewBtns = form.querySelectorAll('.btnViewCart');
 
     const getQtyInput = (chk) => chk.closest('tr').querySelector('.qty-input');
 
@@ -729,6 +771,7 @@ function initCart(formId) {
         });
         if (countLabel) countLabel.innerText = cnt;
         if (submitBtn)  submitBtn.disabled = cnt === 0;
+        viewBtns.forEach(btn => btn.disabled = cnt === 0);
     };
 
     checkboxes.forEach(chk => chk.addEventListener('change', updateCart));
@@ -765,6 +808,93 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+let carrinhoModalInstance = null;
+let carrinhoFormId = null;
+
+function getItensSelecionados(form) {
+    return Array.from(form.querySelectorAll('.chkItem:checked')).map(chk => {
+        const tr = chk.closest('tr');
+        const qty = tr.querySelector('.qty-input');
+        return { chk, tr, qty };
+    }).filter(item => item.qty && parseFloat(item.qty.value || 0) > 0);
+}
+
+function abrirCarrinho(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+
+    carrinhoFormId = formId;
+    const tbody = document.getElementById('cartEditTbody');
+    const empty = document.getElementById('cartEditEmpty');
+    const itens = getItensSelecionados(form);
+
+    tbody.innerHTML = itens.map((item, index) => {
+        const nome = item.tr.dataset.produto || item.tr.querySelector('.fw-bold')?.innerText || 'Produto';
+        const sku = item.tr.dataset.sku || '';
+        const max = item.qty.getAttribute('max') || '';
+        const maxAttr = max ? `max="${max}"` : '';
+        return `
+            <tr data-cart-index="${index}">
+                <td>
+                    <div class="fw-bold small">${nome}</div>
+                    <div class="extra-small text-muted">${sku ? `SKU: ${sku}` : ''}</div>
+                </td>
+                <td class="text-center" style="width:130px">
+                    <input type="number" step="1" min="0" ${maxAttr} value="${item.qty.value}" class="form-control form-control-sm text-center cart-edit-qty">
+                </td>
+                <td class="text-end" style="width:70px">
+                    <button type="button" class="btn btn-outline-danger btn-sm" title="Remover" onclick="removerItemCarrinho(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    empty.classList.toggle('d-none', itens.length > 0);
+    tbody.closest('table').classList.toggle('d-none', itens.length === 0);
+
+    const modalEl = document.getElementById('modalEditarCarrinho');
+    if (!carrinhoModalInstance) carrinhoModalInstance = new bootstrap.Modal(modalEl);
+    carrinhoModalInstance.show();
+}
+
+function aplicarCarrinho() {
+    const form = document.getElementById(carrinhoFormId);
+    if (!form) return;
+
+    const itens = getItensSelecionados(form);
+    document.querySelectorAll('#cartEditTbody tr').forEach(row => {
+        const item = itens[parseInt(row.dataset.cartIndex, 10)];
+        if (!item) return;
+        const novaQtd = parseFloat(row.querySelector('.cart-edit-qty').value || 0);
+        if (novaQtd > 0) {
+            item.qty.value = novaQtd;
+            item.qty.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+            item.chk.checked = false;
+            item.chk.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+}
+
+function removerItemCarrinho(index) {
+    const form = document.getElementById(carrinhoFormId);
+    if (!form) return;
+    const item = getItensSelecionados(form)[index];
+    if (item) {
+        item.chk.checked = false;
+        item.chk.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    abrirCarrinho(carrinhoFormId);
+}
+
+function enviarCarrinho() {
+    aplicarCarrinho();
+    const form = document.getElementById(carrinhoFormId);
+    if (form) form.requestSubmit();
+}
 
 let reportModalInstance = null;
 function abrirModalRelato(id, codigo) {
@@ -1181,6 +1311,43 @@ function abrirProcessarRecebimento(id) {
 </script>
 
 <?php if (true): ?>
+<!-- Modal Editar Carrinho -->
+<div class="modal fade" id="modalEditarCarrinho" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <h6 class="modal-title fw-bold"><i class="fas fa-shopping-cart me-2"></i>Itens selecionados</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="table-responsive border rounded">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Produto</th>
+                                <th class="text-center">Quantidade</th>
+                                <th class="text-end">Remover</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartEditTbody"></tbody>
+                    </table>
+                </div>
+                <div id="cartEditEmpty" class="text-center text-muted py-4 d-none">
+                    <i class="fas fa-shopping-cart fa-2x mb-2 opacity-25"></i>
+                    <div class="small fw-bold">Nenhum item selecionado</div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-3 pt-0">
+                <button type="button" class="btn btn-light btn-sm fw-bold px-3" data-bs-dismiss="modal">Continuar editando</button>
+                <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-3" onclick="aplicarCarrinho()" data-bs-dismiss="modal">Aplicar ajustes</button>
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-4" onclick="enviarCarrinho()">
+                    <i class="fas fa-paper-plane me-2"></i>Enviar Pedido
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Resumo de Recebimento -->
 <div class="modal fade" id="modalResumoRecebimento" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -1241,7 +1408,7 @@ function abrirProcessarRecebimento(id) {
                 </div>
                 <div class="modal-footer border-0 p-3 pt-0">
                     <button type="button" class="btn btn-light btn-sm fw-bold text-muted px-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-4">Enviar Relato à Matriz</button>
+                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-4">Enviar Relato</button>
                 </div>
             </form>
         </div>

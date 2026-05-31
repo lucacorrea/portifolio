@@ -134,11 +134,9 @@ class TransferenciasController extends BaseController {
         }
 
         // Filiais de destino (exceto a própria Matriz)
-        if ($this->isMatriz) {
-            $filiais = $this->pdo->query("SELECT * FROM filiais WHERE principal = 0 ORDER BY nome")->fetchAll();
-        } else {
-            $filiais = $this->pdo->query("SELECT * FROM filiais WHERE principal = 1 ORDER BY nome LIMIT 1")->fetchAll();
-        }
+        $stmtFiliais = $this->pdo->prepare("SELECT * FROM filiais ORDER BY principal DESC, nome");
+        $stmtFiliais->execute();
+        $filiais = $stmtFiliais->fetchAll();
 
         $recebidas = [];
         $historico_envios = [];
@@ -153,9 +151,10 @@ class TransferenciasController extends BaseController {
         $fFim    = $_GET['filtro_fim']    ?? '';
 
         $stmt = $this->pdo->prepare(
-            "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial
+            "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial, COALESCE(u.nome, 'Sistema') as usuario_nome
              FROM erp_transferencias t
              LEFT JOIN filiais f ON t.origem_filial_id = f.id
+             LEFT JOIN usuarios u ON u.id = t.usuario_id
              WHERE t.destino_filial_id = ? AND t.status = 'em_transito'
              ORDER BY t.data_envio DESC"
         );
@@ -165,15 +164,16 @@ class TransferenciasController extends BaseController {
         if ($this->isMatriz) {
             // Solicitações pendentes recebidas das filiais
             $recebidas = $this->pdo->query(
-                "SELECT t.*, f.nome as nome_filial
+                "SELECT t.*, f.nome as nome_filial, COALESCE(u.nome, 'Sistema') as usuario_nome
                  FROM erp_transferencias t
                  LEFT JOIN filiais f ON t.destino_filial_id = f.id
+                 LEFT JOIN usuarios u ON u.id = t.usuario_id
                  WHERE t.tipo = 'solicitacao' AND t.status = 'pendente'
                  ORDER BY t.data_solicitacao DESC"
             )->fetchAll();
 
             // Histórico de tudo que a Matriz já enviou (COM FILTRO)
-            $sqlH = "SELECT t.*, f.nome as nome_filial FROM erp_transferencias t LEFT JOIN filiais f ON t.destino_filial_id = f.id WHERE t.origem_filial_id = $mid AND t.status IN ('em_transito', 'concluida')";
+            $sqlH = "SELECT t.*, f.nome as nome_filial, COALESCE(u.nome, 'Sistema') as usuario_nome FROM erp_transferencias t LEFT JOIN filiais f ON t.destino_filial_id = f.id LEFT JOIN usuarios u ON u.id = t.usuario_id WHERE t.origem_filial_id = $mid AND t.status IN ('em_transito', 'concluida')";
             $paramsH = [];
 
             if ($fCodigo) { $sqlH .= " AND t.codigo_transferencia LIKE ?"; $paramsH[] = "%$fCodigo%"; }
@@ -194,9 +194,10 @@ class TransferenciasController extends BaseController {
         } else {
             // Em Trânsito: o que foi despachado pela Matriz para ESTA filial
             $stmt = $this->pdo->prepare(
-                "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial
+                "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial, COALESCE(u.nome, 'Sistema') as usuario_nome
                  FROM erp_transferencias t
                  LEFT JOIN filiais f ON t.origem_filial_id = f.id
+                 LEFT JOIN usuarios u ON u.id = t.usuario_id
                  WHERE t.destino_filial_id = ? AND t.status = 'em_transito'
                  ORDER BY t.data_envio DESC"
             );
@@ -204,8 +205,8 @@ class TransferenciasController extends BaseController {
             $em_transito = $stmt->fetchAll();
 
             // Histórico completo desta filial (COM FILTRO)
-            $sqlF = "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial FROM erp_transferencias t LEFT JOIN filiais f ON t.origem_filial_id = f.id WHERE (t.destino_filial_id = ? OR t.origem_filial_id = ?)";
-            $paramsF = [$this->filialLogada, $this->filialLogada];
+            $sqlF = "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial, COALESCE(u.nome, 'Sistema') as usuario_nome FROM erp_transferencias t LEFT JOIN filiais f ON t.origem_filial_id = f.id LEFT JOIN usuarios u ON u.id = t.usuario_id WHERE (t.destino_filial_id = ? OR t.origem_filial_id = ? OR t.usuario_id = ?)";
+            $paramsF = [$this->filialLogada, $this->filialLogada, $_SESSION['usuario_id'] ?? 0];
 
             if ($fCodigo) { $sqlF .= " AND t.codigo_transferencia LIKE ?"; $paramsF[] = "%$fCodigo%"; }
             if ($fStatus) { $sqlF .= " AND t.status = ?"; $paramsF[] = $fStatus; }
@@ -242,9 +243,14 @@ class TransferenciasController extends BaseController {
 
         $itens = $_POST['itens'] ?? [];
         $observacoes = trim($_POST['observacoes'] ?? '');
+        $destino_id = (int)($_POST['destino_filial_id'] ?? $this->filialLogada);
         $mid = $this->matrizId;
 
         $itensValidos = array_filter($itens, fn($item) => !empty($item['selecionado']) && $item['quantidade'] > 0);
+
+        if ($destino_id === 0 || $destino_id === (int)$this->filialLogada) {
+            $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode('Selecione uma unidade diferente da unidade atual.'));
+        }
 
         if (count($itensValidos) === 0) {
             $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode('Selecione ao menos um produto com quantidade válida.'));
@@ -260,7 +266,7 @@ class TransferenciasController extends BaseController {
                     (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id)
                  VALUES (?, 'solicitacao', ?, ?, 'pendente', ?, ?)"
             );
-            $stmt->execute([$codigo, $mid, $this->filialLogada, $observacoes, $_SESSION['usuario_id'] ?? 0]);
+            $stmt->execute([$codigo, $mid, $destino_id, $observacoes, $_SESSION['usuario_id'] ?? 0]);
             $transf_id = $this->pdo->lastInsertId();
 
             $stmtItem = $this->pdo->prepare(
@@ -285,8 +291,8 @@ class TransferenciasController extends BaseController {
 
     public function novaTransferencia() {
         $itens = $_POST['itens'] ?? [];
-        $destino_id = (int)($_POST['destino_filial_id'] ?? 0);
         $observacoes = trim($_POST['observacoes'] ?? '');
+        $destino_id = (int)($_POST['destino_filial_id'] ?? 0);
         $mid = $this->matrizId;
         $origem_id = $this->isMatriz ? $mid : (int)$this->filialLogada;
 
@@ -298,10 +304,6 @@ class TransferenciasController extends BaseController {
 
         if ($destino_id === $origem_id) {
             $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('A origem e o destino não podem ser a mesma unidade.'));
-        }
-
-        if (!$this->isMatriz && $destino_id !== $mid) {
-            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Filiais só podem enviar produtos para a Matriz.'));
         }
 
         try {
@@ -599,10 +601,11 @@ class TransferenciasController extends BaseController {
         
         // 1. Dados básicos da transferência
         $stmtT = $this->pdo->prepare("
-            SELECT t.*, f_origem.nome as nome_origem, f_destino.nome as nome_destino
+            SELECT t.*, f_origem.nome as nome_origem, f_destino.nome as nome_destino, COALESCE(u.nome, 'Sistema') as usuario_nome
             FROM erp_transferencias t
             LEFT JOIN filiais f_origem ON t.origem_filial_id = f_origem.id
             LEFT JOIN filiais f_destino ON t.destino_filial_id = f_destino.id
+            LEFT JOIN usuarios u ON u.id = t.usuario_id
             WHERE t.id = ?
         ");
         $stmtT->execute([$transf_id]);

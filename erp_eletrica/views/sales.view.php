@@ -2555,28 +2555,44 @@ async function openExchangeFlow() {
     }
     
     data.sale.itens.forEach(item => {
-        const btn = document.createElement('button');
-        btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3';
-        btn.innerHTML = `
-            <div>
-                <div class="fw-bold">${item.produto_nome}</div>
-                <small class="opacity-75">${item.quantidade}x R$ ${item.preco_formatado}</small>
+        const itemQty = parseFloat(item.quantidade);
+        const row = document.createElement('div');
+        row.className = 'list-group-item py-3';
+        row.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                <div class="flex-grow-1">
+                    <div class="fw-bold">${item.produto_nome}</div>
+                    <small class="opacity-75">${item.quantidade}x R$ ${item.preco_formatado}</small>
+                </div>
+                <div style="width: 140px;">
+                    <label class="form-label extra-small fw-bold text-muted mb-1">Qtd devolver</label>
+                    <input type="number" class="form-control form-control-sm exchange-item-return-qty" step="0.001" min="0.001" max="${itemQty}" value="${itemQty}">
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger fw-bold px-3">DEVOLVER</button>
             </div>
-            <span class="btn btn-sm btn-outline-danger fw-bold px-3">DEVOLVER</span>
         `;
-        btn.onclick = () => {
+        const selectBtn = row.querySelector('button');
+        const qtyInput = row.querySelector('.exchange-item-return-qty');
+        selectBtn.onclick = () => {
+            const selectedReturnQty = parseFloat(qtyInput.value) || 0;
+            if (selectedReturnQty <= 0 || selectedReturnQty > itemQty) {
+                alert(`Informe uma quantidade devolvida entre 0,001 e ${itemQty}.`);
+                qtyInput.focus();
+                return;
+            }
+
             Array.from(list.children).forEach(c => {
                 c.classList.remove('active', 'bg-danger', 'text-white', 'border-danger');
-                c.querySelector('.btn')?.classList.replace('btn-light', 'btn-outline-danger');
+                c.querySelector('button')?.classList.replace('btn-light', 'btn-outline-danger');
             });
             
-            btn.classList.add('active', 'bg-danger', 'text-white', 'border-danger');
-            btn.querySelector('.btn').classList.replace('btn-outline-danger', 'btn-light');
+            row.classList.add('active', 'bg-danger', 'text-white', 'border-danger');
+            selectBtn.classList.replace('btn-outline-danger', 'btn-light');
             
             exchangeState.oldItemId = item.id;
             exchangeState.oldItemName = item.produto_nome;
-            exchangeState.oldItemQty = parseFloat(item.quantidade);
-            exchangeState.returnQty = exchangeState.oldItemQty;
+            exchangeState.oldItemQty = itemQty;
+            exchangeState.returnQty = selectedReturnQty;
             // The item price here is unitario because we swap 1 unit at a time physically in this flow
             exchangeState.oldItemPrice = parseFloat(item.preco_unitario); 
             
@@ -2585,7 +2601,20 @@ async function openExchangeFlow() {
             
             setTimeout(() => document.getElementById('exchangeProductSearch').focus(), 300);
         };
-        list.appendChild(btn);
+        qtyInput.addEventListener('click', e => e.stopPropagation());
+        qtyInput.addEventListener('input', () => {
+            const value = parseFloat(qtyInput.value) || 0;
+            if (value > itemQty) qtyInput.value = itemQty;
+            if (row.classList.contains('active')) {
+                exchangeState.returnQty = parseFloat(qtyInput.value) || 0;
+                const summaryQty = document.getElementById('exchangeReturnQty');
+                if (summaryQty && !document.getElementById('exchangeStep3').classList.contains('d-none')) {
+                    summaryQty.value = exchangeState.returnQty || 1;
+                    calculateExchangeFlowDiff();
+                }
+            }
+        });
+        list.appendChild(row);
     });
 }
 
@@ -2642,9 +2671,9 @@ document.getElementById('exchangeProductSearch').addEventListener('input', async
             
             document.getElementById('exchangeOldName').innerText = exchangeState.oldItemName;
             document.getElementById('exchangeNewName').innerText = exchangeState.newProductName;
-            document.getElementById('exchangeReturnQty').value = exchangeState.oldItemQty || 1;
+            document.getElementById('exchangeReturnQty').value = exchangeState.returnQty || 1;
             document.getElementById('exchangeReturnQty').max = exchangeState.oldItemQty || 1;
-            document.getElementById('exchangeNewQty').value = exchangeState.oldItemQty || 1;
+            document.getElementById('exchangeNewQty').value = exchangeState.returnQty || 1;
             calculateExchangeFlowDiff();
             
             document.getElementById('exchangeStep3').classList.remove('d-none');
