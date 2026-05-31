@@ -31,7 +31,7 @@ require_once __DIR__ . '/layout/header.php';
       <p class="micro-label dark-text">Clientes e contas</p>
       <h1>Clientes</h1>
     </div>
-    <button class="round-btn" data-toast="Cadastro de cliente em demonstração">+</button>
+    <button class="round-btn" data-toast="Cadastro de cliente será conectado ao banco na próxima etapa">+</button>
   </div>
 </header>
 

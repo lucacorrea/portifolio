@@ -45,8 +45,8 @@ require_once __DIR__ . '/layout/header.php';
 
   <div id="customReportFilter" hidden class="form-card section-gap-small">
     <div class="form-grid">
-      <div class="field"><label>Data inicial</label><input type="date" value="2026-05-01"></div>
-      <div class="field"><label>Data final</label><input type="date" value="2026-05-28"></div>
+      <div class="field"><label>Data inicial</label><input type="date"></div>
+      <div class="field"><label>Data final</label><input type="date"></div>
     </div>
     <button class="secondary-btn section-gap-small" data-toast="Filtro aplicado">Aplicar filtro</button>
   </div>
@@ -85,9 +85,7 @@ require_once __DIR__ . '/layout/header.php';
   <div class="payment-card">
     <div class="donut"></div>
     <div class="payment-lines">
-      <p><span><span class="dot pix"></span>PIX</span><strong>44%</strong></p>
-      <p><span><span class="dot card"></span>Cartão</span><strong>42%</strong></p>
-      <p><span><span class="dot cash"></span>Dinheiro</span><strong>14%</strong></p>
+      <p><span>Nenhum pagamento registrado</span><strong>0%</strong></p>
     </div>
   </div>
 

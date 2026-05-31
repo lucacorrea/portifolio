@@ -17,14 +17,14 @@ const icons = {
 };
 
 let saleStep = Number(localStorage.getItem('saleStep') || 1);
-let cart = JSON.parse(localStorage.getItem('cart') || '[{"productId":1,"qty":1},{"productId":2,"qty":1},{"productId":4,"qty":1}]');
+let cart = JSON.parse(localStorage.getItem('cart') || '[]');
 let currentPayment = localStorage.getItem('payment') || 'PIX';
 let receivedAmount = Number(localStorage.getItem('receivedAmount') || 0);
 let scannerStream = null;
 
 function $(sel, parent = document) { return parent.querySelector(sel); }
 function $all(sel, parent = document) { return [...parent.querySelectorAll(sel)]; }
-function img(name) { return `${prefix}assets/img/${name}`; }
+function img(name) { return `${prefix}assets/img/${name || 'prod-placeholder.svg'}`; }
 function qs(name) { return new URLSearchParams(location.search).get(name); }
 
 function escapeHtml(value) {
@@ -67,9 +67,15 @@ function formatDate(date) {
 }
 
 function daysTo(date) {
-  const today = new Date('2026-05-28T00:00:00');
+  if (!date) return Number.POSITIVE_INFINITY;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const target = new Date(`${date}T00:00:00`);
   return Math.ceil((target - today) / 86400000);
+}
+
+function emptyState(message, action = '') {
+  return `<article class="summary-card"><p>${escapeHtml(message)}</p>${action}</article>`;
 }
 
 function showToast(message) {
@@ -188,6 +194,10 @@ function initDashboard() {
   const info = data.dashboardInfo || { sales_count: 0, total_sales: 0 };
   const total = Number(info.total_sales);
   const count = Number(info.sales_count);
+  const expiringProducts = data.products
+    .filter(p => daysTo(p.expiry) <= data.settings.expirationAlertDays)
+    .slice(0, 3);
+  const latestSales = data.sales.slice(0, 3);
   
   $('#todayTotal').textContent = brl.format(total);
   $('#todaySalesCount').textContent = count;
@@ -202,35 +212,32 @@ function initDashboard() {
     summaryLine('Ticket médio', count > 0 ? brl.format(total / count) : 'R$ 0,00'),
   ].join('');
 
-  $('#expiringProducts').innerHTML = data.products
-    .filter(p => daysTo(p.expiry) <= data.settings.expirationAlertDays)
-    .slice(0, 3)
-    .map(p => rowItem({
+  $('#expiringProducts').innerHTML = expiringProducts.map(p => rowItem({
       title: p.name,
       subtitle: `Lote ${p.lot} • Validade ${formatDate(p.expiry)}`,
       status: `${Math.max(daysTo(p.expiry), 0)} dias`,
       image: img(p.image),
       type: daysTo(p.expiry) <= 3 ? 'negative' : 'warning',
       href: 'pages/produtos.php'
-    })).join('');
+    })).join('') || emptyState('Nenhum produto próximo da validade.');
 
-  $('#latestSales').innerHTML = sales.map(s => rowItem({
+  $('#latestSales').innerHTML = latestSales.map(s => rowItem({
     title: `Venda nº ${String(s.id).padStart(6, '0')}`,
     subtitle: `${s.payment} • ${s.time} • ${s.seller}`,
     amount: s.total,
     status: s.status,
     icon: 'receipt',
     href: `pages/venda-detalhes.php?id=${s.id}`
-  })).join('');
+  })).join('') || emptyState('Nenhuma venda registrada ainda.');
 
   $('#featuredProducts').innerHTML = data.products.slice(0, 3).map((p, index) => rowItem({
     title: p.name,
-    subtitle: `${index + 8} un. vendidas • ${p.category}`,
-    amount: p.price * (index + 8),
-    status: `Top ${index + 1}`,
+    subtitle: p.category,
+    amount: p.price,
+    status: 'Cadastrado',
     image: img(p.image),
     href: 'pages/produtos.php'
-  })).join('');
+  })).join('') || emptyState('Cadastre produtos para começar.', '<a class="primary-btn section-gap-small" href="pages/produto-form.php">Cadastrar produto</a>');
 }
 
 function initSale() {
@@ -276,7 +283,7 @@ function renderSaleProducts(query = '') {
   const q = query.toLowerCase();
   $('#saleProducts').innerHTML = data.products
     .filter(p => `${p.name} ${p.sku} ${p.barcode} ${p.category}`.toLowerCase().includes(q))
-    .map(productCardForSale).join('');
+    .map(productCardForSale).join('') || emptyState('Nenhum produto cadastrado para vender.', '<a class="primary-btn section-gap-small" href="produto-form.php">Cadastrar produto</a>');
 }
 
 function productCardForSale(p) {
@@ -354,8 +361,10 @@ function saleStepPayment() {
 
     ${currentPayment === 'Conta do cliente' ? `
       <div class="form-card section-gap-small">
-        <div class="field"><label>Cliente</label><select>${data.clients.map(c => `<option>${c.name}</option>`).join('')}</select></div>
-        <div class="field"><label>Data de vencimento</label><input type="date" value="2026-06-10"></div>
+        ${data.clients.length
+          ? `<div class="field"><label>Cliente</label><select>${data.clients.map(c => `<option>${escapeHtml(c.name)}</option>`).join('')}</select></div>`
+          : `<p>Cadastre um cliente antes de vender na conta.</p>`}
+        <div class="field"><label>Data de vencimento</label><input type="date"></div>
       </div>
     ` : ''}
 
@@ -375,31 +384,32 @@ function saleStepFinished() {
     </article>
     <div class="button-row section-gap-small">
       <a class="ghost-btn" href="../index.php">Dashboard</a>
-      <a class="primary-btn" href="comprovante.php?id=128">Ver comprovante</a>
+      <a class="primary-btn" href="historico-vendas.php">Histórico</a>
     </div>
     <button class="secondary-btn section-gap-small" data-reset-sale>Nova venda</button>
   `;
 }
 
 function cartFooter() {
+  const disabled = cartItems().length === 0 ? 'disabled' : '';
+
   return `
     <aside class="cart-sticky">
       <div class="cart-sticky-row">
         <span>${cartItems().length} itens no carrinho</span>
         <strong>${brl.format(cartTotal())}</strong>
       </div>
-      <button class="primary-btn" data-next-sale-step>Continuar</button>
+      <button class="primary-btn" data-next-sale-step ${disabled}>Continuar</button>
     </aside>
   `;
 }
 
 function finishSale() {
   openModal(`
-    <h2>Deseja gerar comprovante?</h2>
-    <p>A venda foi finalizada. Você pode gerar comprovante agora ou apenas concluir a venda.</p>
+    <h2>Finalização em integração</h2>
+    <p>A venda ainda precisa ser gravada no banco antes de gerar comprovante.</p>
     <div class="button-row">
-      <button class="ghost-btn" data-close-modal data-sale-step="4">Não</button>
-      <a class="primary-btn" href="comprovante.php?id=128">Sim, gerar</a>
+      <button class="primary-btn" data-close-modal>Entendi</button>
     </div>
   `);
 }
@@ -471,25 +481,50 @@ function initProductForm() {
 
 function initReports() {
   const total = data.sales.reduce((sum, s) => sum + s.total, 0);
+  const count = data.sales.length;
+  const byPayment = data.sales.reduce((acc, sale) => {
+    acc[sale.payment] = (acc[sale.payment] || 0) + sale.total;
+    return acc;
+  }, {});
+
   $('#reportFinance').innerHTML = [
     financeCard('Faturamento', total, 'Período'),
-    financeCard('Lucro', total * 0.32, 'Estimado'),
-    financeCard('Ticket médio', total / 91, 'Média'),
-    financeCard('Total de vendas', '871', 'Movimentos')
+    financeCard('Lucro', 0, 'Configure custos e margens'),
+    financeCard('Ticket médio', count > 0 ? total / count : 0, 'Média'),
+    financeCard('Total de vendas', String(count), 'Movimentos')
   ].join('');
 
-  $('#weeklyBars').innerHTML = [['Seg',54],['Ter',67],['Qua',48],['Qui',76],['Sex',92],['Sáb',70],['Dom',42]]
-    .map(([day, h]) => `<span class="bar" style="height:${h}%" data-day="${day}"></span>`).join('');
+  $('#weeklyBars').innerHTML = data.sales.length
+    ? buildWeeklyBars()
+    : emptyState('Sem vendas no período para montar o gráfico.');
+
+  const paymentTotal = Object.values(byPayment).reduce((sum, value) => sum + value, 0);
+  const paymentLines = Object.entries(byPayment).map(([method, value]) => {
+    const percent = paymentTotal > 0 ? Math.round((value / paymentTotal) * 100) : 0;
+    return `<p><span><span class="dot pix"></span>${escapeHtml(method)}</span><strong>${percent}%</strong></p>`;
+  }).join('') || '<p><span>Nenhum pagamento registrado</span><strong>0%</strong></p>';
+
+  const paymentCard = document.querySelector('.payment-card .payment-lines');
+  if (paymentCard) paymentCard.innerHTML = paymentLines;
 
   $('#reportTables').innerHTML = [
-    reportTable('Produtos mais vendidos', ['Produto', 'Qtde', 'Receita'], [
-      ['Mouse Sem Fio Pro', '28', brl.format(2237.20)],
-      ['Cabo USB-C 2m', '41', brl.format(697)],
-      ['Teclado Mecânico RGB', '12', brl.format(1798.80)]
-    ]),
+    reportTable('Produtos mais vendidos', ['Produto', 'Qtde', 'Receita'], []),
     reportTable('Produtos próximos da validade', ['Produto', 'Lote', 'Validade'], data.products.filter(p => daysTo(p.expiry) <= data.settings.expirationAlertDays).map(p => [p.name, p.lot, formatDate(p.expiry)])),
     reportTable('Estoque baixo', ['Produto', 'Atual', 'Mínimo'], data.products.filter(p => p.stock <= p.minStock).map(p => [p.name, p.stock, p.minStock]))
   ].join('');
+}
+
+function buildWeeklyBars() {
+  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const totals = days.map((day, index) => ({
+    day,
+    total: data.sales
+      .filter(s => new Date(`${s.date}T00:00:00`).getDay() === index)
+      .reduce((sum, s) => sum + s.total, 0)
+  }));
+  const max = Math.max(...totals.map(item => item.total), 1);
+
+  return totals.map(item => `<span class="bar" style="height:${Math.max((item.total / max) * 100, item.total > 0 ? 8 : 0)}%" data-day="${item.day}"></span>`).join('');
 }
 
 function reportTable(title, headers, rows) {
@@ -498,7 +533,7 @@ function reportTable(title, headers, rows) {
     <div class="table-card">
       <table class="mobile-table">
         <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${rows.map(row => `<tr>${row.map(col => `<td>${col}</td>`).join('')}</tr>`).join('')}</tbody>
+        <tbody>${rows.length ? rows.map(row => `<tr>${row.map(col => `<td>${escapeHtml(col)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${headers.length}">Nenhum dado registrado.</td></tr>`}</tbody>
       </table>
     </div>
   `;
@@ -520,7 +555,7 @@ function renderClients() {
     return true;
   });
 
-  $('#clientsList').innerHTML = clients.map(clientCard).join('');
+  $('#clientsList').innerHTML = clients.map(clientCard).join('') || emptyState('Nenhum cliente cadastrado.');
 }
 
 function clientCard(c) {
@@ -546,6 +581,12 @@ function clientCard(c) {
 
 function initClientDetail() {
   const c = data.clients.find(x => x.id === Number(qs('id') || 1)) || data.clients[0];
+  if (!c) {
+    $('#clientNameTitle').textContent = 'Cliente';
+    $('#clientDetailContent').innerHTML = emptyState('Cliente não encontrado.');
+    return;
+  }
+
   $('#clientNameTitle').textContent = c.name;
   $('#clientDetailContent').innerHTML = `
     <article class="summary-card">
@@ -569,12 +610,12 @@ function initClientDetail() {
 
     <div class="sheet-title section-gap"><div><h2>Compras pendentes</h2><p>Valores em aberto</p></div></div>
     <div class="list-card">
-      ${rowItem({ title: 'Compra nº 000129', subtitle: `Vencimento ${c.due ? formatDate(c.due) : '-'}`, amount: c.debt, status: c.status, icon: 'receipt', type: c.status === 'Atrasado' ? 'negative' : 'warning' })}
+      ${c.debt > 0 ? rowItem({ title: 'Saldo em aberto', subtitle: `Vencimento ${c.due ? formatDate(c.due) : '-'}`, amount: c.debt, status: c.status, icon: 'receipt', type: c.status === 'Atrasado' ? 'negative' : 'warning' }) : emptyState('Nenhuma compra pendente.')}
     </div>
 
     <div class="sheet-title section-gap"><div><h2>Histórico financeiro</h2><p>Auditoria da conta</p></div></div>
     <div class="list-card">
-      ${c.history.map(item => rowItem({ title: item.split('—')[1] || item, subtitle: item.split('—')[0] || '', icon: 'receipt' })).join('')}
+      ${c.history.length ? c.history.map(item => rowItem({ title: item.split('—')[1] || item, subtitle: item.split('—')[0] || '', icon: 'receipt' })).join('') : emptyState('Nenhum histórico financeiro registrado.')}
     </div>
   `;
 }
@@ -589,7 +630,7 @@ function renderSalesHistory() {
   $('#salesHistoryList').innerHTML = data.sales.filter(s => {
     const text = `${s.id} ${s.customer} ${s.seller} ${s.payment} ${s.items.map(i => i.name).join(' ')}`.toLowerCase();
     return text.includes(query);
-  }).map(saleCard).join('');
+  }).map(saleCard).join('') || emptyState('Nenhuma venda registrada.');
 }
 
 function saleCard(s) {
@@ -615,7 +656,13 @@ function saleCard(s) {
 }
 
 function initSaleDetail() {
-  const s = data.sales.find(x => x.id === Number(qs('id') || 128)) || data.sales[0];
+  const s = data.sales.find(x => x.id === Number(qs('id') || 0)) || data.sales[0];
+  if (!s) {
+    $('#saleTitle').textContent = 'Venda';
+    $('#saleDetailContent').innerHTML = emptyState('Venda não encontrada.');
+    return;
+  }
+
   $('#saleTitle').textContent = `Venda nº ${String(s.id).padStart(6, '0')}`;
   $('#saleDetailContent').innerHTML = `
     <article class="summary-card">
@@ -664,7 +711,13 @@ function initSaleDetail() {
 }
 
 function initReceipt() {
-  const s = data.sales.find(x => x.id === Number(qs('id') || 128)) || data.sales[0];
+  const s = data.sales.find(x => x.id === Number(qs('id') || 0)) || data.sales[0];
+  if (!s) {
+    $('#receiptTitle').textContent = 'Comprovante';
+    $('#receiptContentWrap').innerHTML = emptyState('Venda não encontrada para gerar comprovante.');
+    return;
+  }
+
   $('#receiptTitle').textContent = `Venda nº ${String(s.id).padStart(6, '0')}`;
   $('#receiptContentWrap').innerHTML = `
     <article class="receipt-card" id="receiptContent">
@@ -747,12 +800,11 @@ function openScanner() {
     <p>A câmera precisa de HTTPS na hospedagem. Se não liberar, digite o código manualmente.</p>
     <div class="camera-box"><video id="scannerVideo" playsinline muted></video></div>
     <div class="form-grid section-gap-small">
-      <div class="field"><label>Código manual</label><input id="manualBarcode" value="7891000000011"></div>
+      <div class="field"><label>Código manual</label><input id="manualBarcode" placeholder="Digite o código do produto"></div>
       <div class="button-row">
         <button class="ghost-btn" data-close-modal>Fechar</button>
         <button class="primary-btn" data-use-barcode>Buscar</button>
       </div>
-      <button class="secondary-btn" data-simulate-scan>Simular leitura</button>
     </div>
   `);
 
@@ -812,7 +864,7 @@ function openPaymentModal(id) {
     <p>Saldo atual: <strong>${brl.format(c.debt)}</strong></p>
     <div class="form-grid">
       <div class="field"><label>Valor pago agora</label><input id="partialAmount" type="number" min="0" step="0.01" value="100"></div>
-      <div class="field"><label>Novo vencimento do restante</label><input id="newDueDate" type="date" value="2026-06-10"></div>
+      <div class="field"><label>Novo vencimento do restante</label><input id="newDueDate" type="date"></div>
       <div class="field"><label>Forma de pagamento</label><select><option>PIX</option><option>Dinheiro</option><option>Cartão</option></select></div>
       <div class="button-row">
         <button class="ghost-btn" data-close-modal>Cancelar</button>
@@ -912,7 +964,11 @@ function downloadPdf(title = 'Relatório Comercial') {
 }
 
 function shareReceipt() {
-  const s = data.sales.find(x => x.id === Number(qs('id') || 128)) || data.sales[0];
+  const s = data.sales.find(x => x.id === Number(qs('id') || 0)) || data.sales[0];
+  if (!s) {
+    showToast('Venda não encontrada');
+    return;
+  }
   const message = `${data.settings.companyName}\nVenda nº ${String(s.id).padStart(6, '0')}\nTotal: ${brl.format(s.total)}\nPagamento: ${s.payment}\nObrigado pela preferência!`;
   if (navigator.share) navigator.share({ title: 'Comprovante', text: message }).catch(() => {});
   else {
@@ -973,7 +1029,6 @@ function bindEvents() {
 
     if (e.target.closest('[data-open-scanner]')) openScanner();
     if (e.target.closest('[data-use-barcode]')) useBarcode($('#manualBarcode').value.trim());
-    if (e.target.closest('[data-simulate-scan]')) useBarcode('7891000000011');
 
     const productFilter = e.target.closest('[data-filter]');
     if (productFilter) {
@@ -1101,6 +1156,34 @@ async function loadSettings() {
   window.AppData.users = Array.isArray(json.data.users) ? json.data.users : window.AppData.users;
 }
 
+async function loadClients() {
+  const res = await fetch(`${prefix}api/clientes/listar.php`, { headers: { 'Accept': 'application/json' } });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Falha ao carregar clientes.');
+  }
+
+  window.AppData.clients = Array.isArray(json.data) ? json.data : [];
+}
+
+async function loadSales() {
+  const res = await fetch(`${prefix}api/vendas/listar.php`, { headers: { 'Accept': 'application/json' } });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Falha ao carregar vendas.');
+  }
+
+  window.AppData.sales = Array.isArray(json.data) ? json.data : [];
+}
+
+function syncCartWithProducts() {
+  const validProductIds = new Set(data.products.map(product => product.id));
+  cart = cart.filter(item => validProductIds.has(item.productId));
+  saveCart();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     await loadSettings();
@@ -1113,9 +1196,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const json = await res.json();
     if (json.success) {
       window.AppData.products = json.data;
+      syncCartWithProducts();
     }
   } catch (e) {
     console.error('Falha ao carregar produtos:', e);
+  }
+
+  try {
+    await Promise.all([loadClients(), loadSales()]);
+  } catch (e) {
+    console.error('Falha ao carregar dados operacionais:', e);
   }
 
   if (page === 'dashboard') {
