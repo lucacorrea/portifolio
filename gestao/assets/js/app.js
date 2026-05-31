@@ -156,25 +156,21 @@ function initIcons() {
 }
 
 function initDashboard() {
-  const sales = data.sales.filter(s => s.date === '2026-05-28');
-  const total = sales.reduce((sum, sale) => sum + sale.total, 0);
+  const info = data.dashboardInfo || { sales_count: 0, total_sales: 0 };
+  const total = Number(info.total_sales);
+  const count = Number(info.sales_count);
+  
   $('#todayTotal').textContent = brl.format(total);
-  $('#todaySalesCount').textContent = sales.length;
+  $('#todaySalesCount').textContent = count;
 
   $('#dashboardFinance').innerHTML = [
-    financeCard('Total vendido', total, `${sales.length} vendas`),
-    financeCard('PIX', sales.filter(s => s.payment === 'PIX').reduce((sum, s) => sum + s.total, 0), 'Principal método'),
-    financeCard('Cartão', 3654.10, 'Crédito e débito'),
-    financeCard('Dinheiro', 1268.40, 'Com troco automático'),
+    financeCard('Total vendido', total, `${count} vendas`),
     financeCard('Lucro estimado', total * 0.32, 'Margem 32%')
   ].join('');
 
   $('#dailyReport').innerHTML = [
-    summaryLine('Vendas realizadas', '91'),
-    summaryLine('Ticket médio', 'R$ 96,08'),
-    summaryLine('Produto mais vendido', 'Mouse Sem Fio'),
-    summaryLine('Melhor horário', '15h às 17h'),
-    summaryLine('Meta diária', '72%')
+    summaryLine('Vendas realizadas', String(count)),
+    summaryLine('Ticket médio', count > 0 ? brl.format(total / count) : 'R$ 0,00'),
   ].join('');
 
   $('#expiringProducts').innerHTML = data.products
@@ -1021,7 +1017,29 @@ function registerPWA() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch(`${prefix}api/produtos/listar.php`);
+    const json = await res.json();
+    if (json.success) {
+      window.AppData.products = json.data;
+    }
+  } catch (e) {
+    console.error('Falha ao carregar produtos:', e);
+  }
+
+  if (page === 'dashboard') {
+    try {
+      const res = await fetch(`${prefix}api/dashboard/resumo.php`);
+      const json = await res.json();
+      if (json.success) {
+        window.AppData.dashboardInfo = json.data;
+      }
+    } catch (e) {
+      console.error('Falha ao carregar dashboard:', e);
+    }
+  }
+
   bindEvents();
   initPage();
   registerPWA();

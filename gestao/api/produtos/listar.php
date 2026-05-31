@@ -9,8 +9,10 @@ use App\Security\Auth;
 
 Auth::requireLogin();
 
+$repo = new \App\Repositories\ProductRepository();
+$produtos = $repo->findAll((int) Auth::user()['empresa_id']);
+
 Response::json([
     'success' => true,
-    'message' => 'Endpoint preparado para integração real.',
-    'data' => [],
+    'data' => $produtos,
 ]);
