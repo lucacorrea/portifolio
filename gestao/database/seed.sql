@@ -8,7 +8,7 @@ ON DUPLICATE KEY UPDATE nome = VALUES(nome);
 -- E-mail: admin@ljsolucoestech.com.br
 -- Senha: Admin@123
 INSERT INTO usuarios (id, empresa_id, nome, email, senha_hash, nivel, ativo)
-VALUES (1, 1, 'Administrador', 'admin@ljsolucoestech.com.br', '$2y$12$CVdQ49rtTQ7UJF9inzfV5udXRpJV0bXzm5iWrI1kSxd5hmvDlNp72', 'admin', 1)
+VALUES (1, 1, 'Administrador', 'admin@.com.br', '$2y$12$CVdQ49rtTQ7UJF9inzfV5udXRpJV0bXzm5iWrI1kSxd5hmvDlNp72', 'admin', 1)
 ON DUPLICATE KEY UPDATE email = VALUES(email);
 
 INSERT INTO categorias (empresa_id, nome) VALUES

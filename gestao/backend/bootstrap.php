@@ -2,6 +2,19 @@
 
 declare(strict_types=1);
 
+if (version_compare(PHP_VERSION, '8.0.0', '<')) {
+    die('Erro fatal: Este sistema requer o PHP 8.0 ou superior. Sua versão atual é: ' . PHP_VERSION . '. Por favor, atualize o PHP no painel da sua hospedagem.');
+}
+
+set_exception_handler(function (\Throwable $e) {
+    http_response_code(500);
+    echo "<h1>Erro Crítico no Sistema</h1>";
+    echo "<p><strong>Mensagem:</strong> " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p><strong>Arquivo:</strong> " . $e->getFile() . " na linha " . $e->getLine() . "</p>";
+    echo "<!--\n" . $e->getTraceAsString() . "\n-->";
+    exit;
+});
+
 define('BASE_PATH', dirname(__DIR__));
 
 spl_autoload_register(function (string $class): void {
