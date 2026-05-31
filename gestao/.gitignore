@@ -1,11 +1,3 @@
-# =========================
-# L&J Caixa - Git Ignore
-# =========================
-
-# Arquivos sensíveis
-.env
-.env.*
-!.env.example
 
 # Banco de dados / dumps
 *.sql
