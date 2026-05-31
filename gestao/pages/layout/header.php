@@ -16,7 +16,7 @@ $pageTitle = $pageTitle ?? 'Sistema';
   <title><?= e($pageTitle) ?> | L&J Caixa</title>
   <link rel="manifest" href="<?= $prefix ?>manifest.json" />
   <link rel="icon" href="<?= $prefix ?>assets/icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="<?= $prefix ?>assets/css/styles.css" />
+  <link rel="stylesheet" href="<?= $prefix ?>assets/css/main.css" />
 </head>
 <body data-page="<?= e($pageId) ?>" data-prefix="<?= $prefix ?>">
   <main class="phone-app">
