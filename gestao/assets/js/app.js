@@ -1,6 +1,7 @@
 const prefix = document.body.dataset.prefix || '';
 const page = document.body.dataset.page || 'dashboard';
 const data = window.AppData;
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const icons = {
@@ -25,6 +26,34 @@ function $(sel, parent = document) { return parent.querySelector(sel); }
 function $all(sel, parent = document) { return [...parent.querySelectorAll(sel)]; }
 function img(name) { return `${prefix}assets/img/${name}`; }
 function qs(name) { return new URLSearchParams(location.search).get(name); }
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
+}
+
+async function postJson(url, payload) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ ...payload, csrf_token: csrfToken })
+  });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Não foi possível concluir a operação.');
+  }
+
+  return json;
+}
 
 function updateTime() {
   const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -81,7 +110,7 @@ function rowItem({ title, subtitle, amount, status, icon = 'receipt', image = ''
   const tag = href ? 'a' : 'button';
   const link = href ? `href="${href}"` : '';
   const visual = image
-    ? `<img class="row-thumb" src="${image}" alt="">`
+    ? `<img class="row-thumb" src="${escapeHtml(image)}" alt="">`
     : `<span class="row-icon">${icons[icon] || icons.receipt}</span>`;
   const amountHtml = amount !== undefined ? `<strong class="${type}">${amount < 0 ? '- ' : ''}${brl.format(Math.abs(amount))}</strong>` : '';
 
@@ -90,13 +119,13 @@ function rowItem({ title, subtitle, amount, status, icon = 'receipt', image = ''
       <div class="row-left">
         ${visual}
         <span class="row-text">
-          <strong>${title}</strong>
-          <span>${subtitle}</span>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(subtitle)}</span>
         </span>
       </div>
       <span class="row-right">
         ${amountHtml}
-        <span>${status || ''}</span>
+        <span>${escapeHtml(status || '')}</span>
       </span>
     </${tag}>
   `;
@@ -801,14 +830,54 @@ function sendWarning(id) {
 }
 
 function openSetting(key) {
+  const settings = data.settings;
+  const companyName = escapeHtml(settings.companyName);
+  const companyPhone = escapeHtml(settings.companyPhone);
+  const companyAddress = escapeHtml(settings.companyAddress);
+  const receiptMode = settings.receiptMode || 'perguntar';
+  const receiptTemplate = settings.receiptTemplate || 'detalhado';
+
   const html = {
-    company: `<h2>Empresa</h2><div class="form-grid section-gap-small"><div class="field"><label>Nome da empresa</label><input value="${data.settings.companyName}"></div><div class="field"><label>Telefone</label><input value="${data.settings.companyPhone}"></div><div class="field"><label>Endereço</label><input value="${data.settings.companyAddress}"></div><button class="primary-btn" data-close-modal data-toast="Configuração salva">Salvar</button></div>`,
+    company: `<h2>Empresa</h2><div class="form-grid section-gap-small"><div class="field"><label>Nome da empresa</label><input id="settingCompanyName" maxlength="180" value="${companyName}"></div><div class="field"><label>Telefone</label><input id="settingCompanyPhone" maxlength="30" value="${companyPhone}"></div><div class="field"><label>Endereço</label><input id="settingCompanyAddress" maxlength="255" value="${companyAddress}"></div><button class="primary-btn" data-save-setting="company">Salvar</button></div>`,
     users: `<h2>Usuários e permissões</h2><div class="list-card section-gap-small">${data.users.map(u => rowItem({ title: u.name, subtitle: u.role, status: u.status, icon: 'user' })).join('')}</div><button class="primary-btn section-gap-small" data-toast="Usuário adicionado">Adicionar usuário</button>`,
-    receipt: `<h2>Comprovantes</h2><div class="form-grid section-gap-small"><div class="field"><label>Ao finalizar venda</label><select><option>Sempre perguntar</option><option>Sempre gerar</option><option>Nunca gerar</option></select></div><div class="field"><label>Modelo</label><select><option>Detalhado</option><option>Simples</option></select></div><button class="primary-btn" data-close-modal data-toast="Configuração salva">Salvar</button></div>`,
-    due: `<h2>Regras de vencimento</h2><div class="form-grid section-gap-small"><div class="field"><label>Alerta de validade</label><input type="number" value="${data.settings.expirationAlertDays}"></div><div class="field"><label>Prazo padrão de dívida</label><input type="number" value="${data.settings.debtDueDays}"></div><button class="primary-btn" data-close-modal data-toast="Configuração salva">Salvar</button></div>`
+    receipt: `<h2>Comprovantes</h2><div class="form-grid section-gap-small"><div class="field"><label>Ao finalizar venda</label><select id="settingReceiptMode"><option value="perguntar" ${receiptMode === 'perguntar' ? 'selected' : ''}>Sempre perguntar</option><option value="sempre" ${receiptMode === 'sempre' ? 'selected' : ''}>Sempre gerar</option><option value="nunca" ${receiptMode === 'nunca' ? 'selected' : ''}>Nunca gerar</option></select></div><div class="field"><label>Modelo</label><select id="settingReceiptTemplate"><option value="detalhado" ${receiptTemplate === 'detalhado' ? 'selected' : ''}>Detalhado</option><option value="simples" ${receiptTemplate === 'simples' ? 'selected' : ''}>Simples</option></select></div><button class="primary-btn" data-save-setting="receipt">Salvar</button></div>`,
+    due: `<h2>Regras de vencimento</h2><div class="form-grid section-gap-small"><div class="field"><label>Alerta de validade</label><input id="settingExpirationAlertDays" type="number" min="0" max="365" value="${Number(settings.expirationAlertDays || 0)}"></div><div class="field"><label>Prazo padrão de dívida</label><input id="settingDebtDueDays" type="number" min="1" max="365" value="${Number(settings.debtDueDays || 30)}"></div><button class="primary-btn" data-save-setting="due">Salvar</button></div>`
   }[key] || `<h2>Configuração</h2><p>Opção preparada para produção.</p>`;
 
   openModal(`${html}<button class="ghost-btn section-gap-small" data-close-modal>Fechar</button>`);
+}
+
+async function saveSetting(section, button) {
+  const payload = { section };
+
+  if (section === 'company') {
+    payload.companyName = $('#settingCompanyName')?.value.trim() || '';
+    payload.companyPhone = $('#settingCompanyPhone')?.value.trim() || '';
+    payload.companyAddress = $('#settingCompanyAddress')?.value.trim() || '';
+  }
+
+  if (section === 'receipt') {
+    payload.receiptMode = $('#settingReceiptMode')?.value || 'perguntar';
+    payload.receiptTemplate = $('#settingReceiptTemplate')?.value || 'detalhado';
+  }
+
+  if (section === 'due') {
+    payload.expirationAlertDays = Number($('#settingExpirationAlertDays')?.value || 0);
+    payload.debtDueDays = Number($('#settingDebtDueDays')?.value || 0);
+  }
+
+  button.disabled = true;
+
+  try {
+    await postJson(`${prefix}api/configuracoes/salvar.php`, payload);
+    await loadSettings();
+    closeModal();
+    showToast('Configuração salva');
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function downloadCSV() {
@@ -943,6 +1012,9 @@ function bindEvents() {
     const setting = e.target.closest('[data-setting]');
     if (setting) openSetting(setting.dataset.setting);
 
+    const saveSettingBtn = e.target.closest('[data-save-setting]');
+    if (saveSettingBtn) saveSetting(saveSettingBtn.dataset.saveSetting, saveSettingBtn);
+
     if (e.target.closest('[data-download-report-pdf]')) downloadPdf('Relatório Comercial');
     if (e.target.closest('[data-export-csv]')) downloadCSV();
     if (e.target.closest('[data-share-report]')) showToast('Compartilhamento preparado');
@@ -1017,7 +1089,25 @@ function registerPWA() {
   }
 }
 
+async function loadSettings() {
+  const res = await fetch(`${prefix}api/configuracoes/listar.php`, { headers: { 'Accept': 'application/json' } });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Falha ao carregar configurações.');
+  }
+
+  window.AppData.settings = { ...window.AppData.settings, ...json.data.settings };
+  window.AppData.users = Array.isArray(json.data.users) ? json.data.users : window.AppData.users;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await loadSettings();
+  } catch (e) {
+    console.error('Falha ao carregar configurações:', e);
+  }
+
   try {
     const res = await fetch(`${prefix}api/produtos/listar.php`);
     const json = await res.json();

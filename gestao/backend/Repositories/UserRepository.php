@@ -40,6 +40,19 @@ final class UserRepository
         $stmt->execute([':id' => $id]);
     }
 
+    public function findByCompany(int $empresaId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, nome, email, nivel, ativo
+             FROM usuarios
+             WHERE empresa_id = :empresa_id
+             ORDER BY nome ASC'
+        );
+        $stmt->execute([':empresa_id' => $empresaId]);
+
+        return $stmt->fetchAll();
+    }
+
     public function auditLogin(?int $usuarioId, string $email, bool $success, string $reason): void
     {
         $stmt = $this->db->prepare(
