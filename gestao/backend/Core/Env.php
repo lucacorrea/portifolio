@@ -19,7 +19,7 @@ final class Env
         if (!is_file($path) || !is_readable($path)) {
             // Fallback: Verifica se o .env está um nível acima da pasta do projeto
             // Isso previne que o Git Auto-deploy apague o arquivo ao sincronizar.
-            $fallbackPath = dirname(__DIR__, 3) . '/.env';
+            $fallbackPath = dirname(__DIR__, 3) . '/.env1';
             
             if (is_file($fallbackPath) && is_readable($fallbackPath)) {
                 $path = $fallbackPath;
