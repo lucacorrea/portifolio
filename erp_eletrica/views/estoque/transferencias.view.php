@@ -178,9 +178,14 @@
                                         <td><span class="extra-small text-muted"><?= date('d/m/Y H:i', strtotime($et['data_envio'])) ?></span></td>
                                         <td><span class="badge bg-warning text-dark extra-small">EM TRÂNSITO</span></td>
                                         <td class="text-end pe-3">
-                                            <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
-                                                <i class="fas fa-clipboard-check me-2"></i>Receber
-                                            </button>
+                                            <div class="d-inline-flex justify-content-end gap-1">
+                                                <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-2 py-1" title="Visualizar recebimento" aria-label="Visualizar recebimento" onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
+                                                    <i class="fas fa-clipboard-check me-2"></i>Receber
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -550,9 +555,14 @@
                                         <td><span class="extra-small text-muted"><?= date('d/m/Y H:i', strtotime($et['data_envio'])) ?></span></td>
                                         <td><span class="badge bg-warning text-dark extra-small">EM TRÂNSITO</span></td>
                                         <td class="text-end pe-3">
-                                            <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
-                                                <i class="fas fa-clipboard-check me-2"></i>Receber
-                                            </button>
+                                            <div class="d-inline-flex justify-content-end gap-1">
+                                                <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-2 py-1" title="Visualizar recebimento" aria-label="Visualizar recebimento" onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-1" onclick="abrirProcessarRecebimento(<?= $et['id'] ?>)">
+                                                    <i class="fas fa-clipboard-check me-2"></i>Receber
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
