@@ -45,9 +45,9 @@ require_once __DIR__ . '/layout/header.php';
       <div>
         <label class="file-btn">
           Escolher imagem
-          <input id="productImageInput" type="file" accept="image/*">
+          <input id="productImageInput" type="file" accept="image/*" capture="environment">
         </label>
-        <button type="button" class="file-btn" data-toast="Câmera preparada para produção">Tirar foto</button>
+        <button type="button" class="file-btn" data-select-product-image>Tirar foto</button>
       </div>
     </div>
 

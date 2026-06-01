@@ -1,4 +1,4 @@
-# L&J Caixa — Base PHP OOP + .env + SQL
+# L&J Caixa - Sistema PHP/MySQL
 
 Projeto com:
 
@@ -12,23 +12,14 @@ Projeto com:
 - Rate limit básico de login;
 - PDO;
 - SQL completo;
-- Estrutura preparada para API real.
+- APIs reais com autenticação por sessão.
 
 ## Instalação
 
 1. Importe `database/schema.sql`.
-2. Importe `database/seed.sql`.
-3. Configure o `.env` com os dados reais do banco.
+2. Configure o `.env` existente com os dados reais do banco.
+3. Crie a empresa e o usuário administrador reais conforme o processo de implantação.
 4. Acesse `login.php`.
-
-## Acesso inicial
-
-```txt
-E-mail: admin@ljsolucoestech.com.br
-Senha: Admin@123
-```
-
-Troque a senha depois do primeiro acesso.
 
 ## Estrutura principal
 
@@ -54,4 +45,4 @@ storage/
 - Na Hostinger, mantenha `.htaccess`.
 - Use HTTPS.
 - Troque a senha inicial.
-- Integre os endpoints API com regras reais antes de produção.
+- Mantenha `APP_DEBUG=false` em produção.

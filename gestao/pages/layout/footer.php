@@ -30,7 +30,6 @@ $activeMenu = $activeMenu ?? '';
     <div class="toast" id="toast"></div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="<?= $prefix ?>assets/js/data.js"></script>
   <script src="<?= $prefix ?>assets/js/app.js"></script>
 </body>
 </html>

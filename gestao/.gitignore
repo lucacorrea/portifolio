@@ -1,6 +1,9 @@
 
 # Banco de dados / dumps
 *.sql
+!database/schema.sql
+!database/migrations/
+!database/migrations/*.sql
 *.sqlite
 *.sqlite3
 *.db
@@ -13,6 +16,7 @@ storage/logs/*
 !storage/logs/.gitkeep
 
 # Cache / temporários
+.codex-context.md
 storage/cache/*
 storage/temp/*
 !storage/cache/.gitkeep

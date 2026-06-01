@@ -20,4 +20,30 @@ final class Validator
     {
         return mb_strlen($value) <= $length;
     }
+
+    public static function intId(mixed $value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false;
+    }
+
+    public static function date(?string $value): bool
+    {
+        if ($value === null || $value === '') {
+            return true;
+        }
+
+        $date = \DateTimeImmutable::createFromFormat('Y-m-d', $value);
+
+        return $date !== false && $date->format('Y-m-d') === $value;
+    }
+
+    public static function money(mixed $value, float $min = 0.0): bool
+    {
+        return is_numeric($value) && (float) $value >= $min;
+    }
+
+    public static function decimal(mixed $value, float $min = 0.0): bool
+    {
+        return is_numeric($value) && (float) $value >= $min;
+    }
 }

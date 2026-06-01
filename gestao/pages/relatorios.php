@@ -45,10 +45,10 @@ require_once __DIR__ . '/layout/header.php';
 
   <div id="customReportFilter" hidden class="form-card section-gap-small">
     <div class="form-grid">
-      <div class="field"><label>Data inicial</label><input type="date"></div>
-      <div class="field"><label>Data final</label><input type="date"></div>
+      <div class="field"><label>Data inicial</label><input id="reportStartDate" type="date"></div>
+      <div class="field"><label>Data final</label><input id="reportEndDate" type="date"></div>
     </div>
-    <button class="secondary-btn section-gap-small" data-toast="Filtro aplicado">Aplicar filtro</button>
+    <button class="secondary-btn section-gap-small" data-apply-report-filter>Aplicar filtro</button>
   </div>
 
   <div class="button-row three section-gap-small">

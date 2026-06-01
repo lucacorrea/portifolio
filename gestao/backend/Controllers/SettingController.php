@@ -35,17 +35,14 @@ final class SettingController
         $company = $this->companies->findById($empresaId);
 
         if (!$company) {
-            Response::json(['success' => false, 'message' => 'Empresa não encontrada.'], 404);
+            Response::fail('Empresa não encontrada.', [], 404);
         }
 
         $settings = $this->settings->getAll($empresaId);
 
-        Response::json([
-            'success' => true,
-            'data' => [
+        Response::success([
                 'settings' => $this->formatSettings($company, $settings),
                 'users' => array_map([$this, 'formatUser'], $this->users->findByCompany($empresaId)),
-            ],
         ]);
     }
 
@@ -56,17 +53,17 @@ final class SettingController
         $user = Auth::user();
 
         if (!Permission::canManageSettings($user)) {
-            Response::json(['success' => false, 'message' => 'Usuário sem permissão para alterar configurações.'], 403);
+            Response::fail('Usuário sem permissão para alterar configurações.', [], 403);
         }
 
         if (!Csrf::validate((string)($payload['csrf_token'] ?? $request->post('csrf_token', '')))) {
-            Response::json(['success' => false, 'message' => 'Sessão expirada. Atualize a página e tente novamente.'], 419);
+            Response::fail('Sessão expirada. Atualize a página e tente novamente.', [], 419);
         }
 
         $section = (string)($payload['section'] ?? $request->post('section', ''));
 
         if (!in_array($section, ['company', 'users', 'receipt', 'due', 'stock', 'payments', 'cash', 'security'], true)) {
-            Response::json(['success' => false, 'message' => 'Configuração inválida.'], 422);
+            Response::fail('Configuração inválida.', [], 422);
         }
 
         $empresaId = (int)$user['empresa_id'];
@@ -92,10 +89,10 @@ final class SettingController
                 $db->rollBack();
             }
 
-            Response::json(['success' => false, 'message' => 'Não foi possível salvar a configuração.'], 500);
+            Response::fail('Não foi possível salvar a configuração.', [], 500);
         }
 
-        Response::json(['success' => true, 'message' => 'Configuração salva com sucesso.']);
+        Response::success([], 'Configuração salva com sucesso.');
     }
 
     private function saveCompany(int $empresaId, array $payload): void
@@ -105,11 +102,11 @@ final class SettingController
         $endereco = trim((string)($payload['companyAddress'] ?? ''));
 
         if (!Validator::required($nome) || !Validator::max($nome, 180)) {
-            Response::json(['success' => false, 'message' => 'Informe um nome de empresa válido.'], 422);
+            Response::fail('Informe um nome de empresa válido.', [], 422);
         }
 
         if (!Validator::max($telefone, 30) || !Validator::max($endereco, 255)) {
-            Response::json(['success' => false, 'message' => 'Telefone ou endereço acima do limite permitido.'], 422);
+            Response::fail('Telefone ou endereço acima do limite permitido.', [], 422);
         }
 
         $this->companies->updateProfile($empresaId, [
@@ -127,7 +124,7 @@ final class SettingController
         $allowedTemplates = ['detalhado', 'simples'];
 
         if (!in_array($mode, $allowedModes, true) || !in_array($template, $allowedTemplates, true)) {
-            Response::json(['success' => false, 'message' => 'Opção de comprovante inválida.'], 422);
+            Response::fail('Opção de comprovante inválida.', [], 422);
         }
 
         $this->settings->upsertMany($empresaId, [
@@ -145,23 +142,23 @@ final class SettingController
         $allowedRoles = ['admin', 'gerente', 'operador', 'estoquista', 'leitor'];
 
         if (!Validator::required($name) || !Validator::max($name, 140)) {
-            Response::json(['success' => false, 'message' => 'Informe um nome de usuário válido.'], 422);
+            Response::fail('Informe um nome de usuário válido.', [], 422);
         }
 
         if (!Validator::email($email) || !Validator::max($email, 180)) {
-            Response::json(['success' => false, 'message' => 'Informe um e-mail válido.'], 422);
+            Response::fail('Informe um e-mail válido.', [], 422);
         }
 
         if (mb_strlen($password) < 8) {
-            Response::json(['success' => false, 'message' => 'A senha deve ter pelo menos 8 caracteres.'], 422);
+            Response::fail('A senha deve ter pelo menos 8 caracteres.', [], 422);
         }
 
         if (!in_array($role, $allowedRoles, true)) {
-            Response::json(['success' => false, 'message' => 'Perfil de usuário inválido.'], 422);
+            Response::fail('Perfil de usuário inválido.', [], 422);
         }
 
         if ($this->users->findByEmail($email)) {
-            Response::json(['success' => false, 'message' => 'Já existe usuário com este e-mail.'], 422);
+            Response::fail('Já existe usuário com este e-mail.', [], 422);
         }
 
         $this->users->create($empresaId, [
@@ -179,7 +176,7 @@ final class SettingController
         $debtDays = (int)($payload['debtDueDays'] ?? 0);
 
         if ($expirationDays < 0 || $expirationDays > 365 || $debtDays < 1 || $debtDays > 365) {
-            Response::json(['success' => false, 'message' => 'Prazos devem estar entre 0 e 365 dias.'], 422);
+            Response::fail('Prazos devem estar entre 0 e 365 dias.', [], 422);
         }
 
         $this->settings->upsertMany($empresaId, [
@@ -193,7 +190,7 @@ final class SettingController
         $defaultMinStock = (int)($payload['defaultMinStock'] ?? 0);
 
         if ($defaultMinStock < 0 || $defaultMinStock > 999999) {
-            Response::json(['success' => false, 'message' => 'Estoque mínimo padrão inválido.'], 422);
+            Response::fail('Estoque mínimo padrão inválido.', [], 422);
         }
 
         $this->settings->upsertMany($empresaId, [
@@ -216,7 +213,7 @@ final class SettingController
         ];
 
         if (!array_filter($payments, fn (mixed $value): bool => $this->toBool($value))) {
-            Response::json(['success' => false, 'message' => 'Mantenha pelo menos uma forma de pagamento ativa.'], 422);
+            Response::fail('Mantenha pelo menos uma forma de pagamento ativa.', [], 422);
         }
 
         $this->settings->upsertMany($empresaId, array_map([$this, 'boolValue'], $payments));
@@ -227,7 +224,7 @@ final class SettingController
         $discountLimit = (int)($payload['discountLimitPercent'] ?? 0);
 
         if ($discountLimit < 0 || $discountLimit > 100) {
-            Response::json(['success' => false, 'message' => 'Limite de desconto deve estar entre 0 e 100%.'], 422);
+            Response::fail('Limite de desconto deve estar entre 0 e 100%.', [], 422);
         }
 
         $this->settings->upsertMany($empresaId, [

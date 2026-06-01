@@ -4,15 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../backend/bootstrap.php';
 
-use App\Core\Response;
-use App\Repositories\ClientRepository;
-use App\Security\Auth;
+use App\Controllers\ClientController;
+use App\Core\Request;
 
-Auth::requireLogin();
-
-$repo = new ClientRepository();
-
-Response::json([
-    'success' => true,
-    'data' => $repo->findAll((int)Auth::user()['empresa_id']),
-]);
+(new ClientController())->list(new Request());
