@@ -276,7 +276,6 @@ $diferenca = (float)$troca['diferenca_valor'];
             </div>
             <div class="hr"></div>
             <div class="center"><span class="badge-nf">COMPROVANTE DE TROCA</span></div>
-            <div class="center small" style="margin-top: 4px; font-weight: bold;">DOCUMENTO NÃO FISCAL</div>
             <div class="hr"></div>
         </header>
 
@@ -359,34 +358,13 @@ $diferenca = (float)$troca['diferenca_valor'];
                     <td class="right">R$ <?= number_format($totalNovo,2,',','.') ?></td>
                 </tr>
                 <tr style="border-top:1px dashed #000">
-                    <td class="left" style="font-size:14px;padding-top:4px"><b>AJUSTE / DIFERENÇA</b></td>
+                    <td class="left" style="font-size:14px;padding-top:4px"><b>DIFERENÇA</b></td>
                     <td class="right" style="font-size:14px;padding-top:4px">
                         <b>R$ <?= number_format(abs($diferenca),2,',','.') ?></b>
                     </td>
                 </tr>
-                <tr>
-                    <td colspan="2" class="center" style="font-size: 10px; font-weight: bold; padding-top: 4px;">
-                        <?php if ($diferenca > 0): ?>
-                            <span class="badge-nf">VALOR A RECEBER / DIFERENÇA A PAGAR</span>
-                        <?php elseif ($diferenca < 0): ?>
-                            <span class="badge-success-label">VALOR A DEVOLVER / CRÉDITO</span>
-                        <?php else: ?>
-                            <span>SEM DIFERENÇA DE VALORES</span>
-                        <?php endif; ?>
-                    </td>
-                </tr>
             </tbody>
         </table>
-
-        <div class="hr"></div>
-
-        <div class="small"><b>CLIENTE</b></div>
-        <div class="small">
-            <?= htmlspecialchars($troca['cliente_nome']) ?><br>
-            <?php if (!empty($troca['cliente_cpf'])): ?>CPF/CNPJ: <?= htmlspecialchars($troca['cliente_cpf']) ?><?php endif; ?>
-        </div>
-
-        <div class="hr"></div>
 
         <div class="center small" style="color:#111; font-weight: bold; margin-bottom: 5px;">
             "Dai graças ao Senhor sempre, Amém"

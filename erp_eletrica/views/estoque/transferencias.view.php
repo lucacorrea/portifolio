@@ -655,6 +655,15 @@
 </div><!-- /.card -->
 
 <script>
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
 /**
  * Inicializa busca + paginação para uma tabela de produtos B2B.
  * @param {string} tbodyId     - ID do <tbody>
@@ -1170,11 +1179,44 @@ function abrirDetalhesTransferencia(id) {
                     </div>
                 `).join('');
             } else {
-                secaoOc.classList.add('d-none');
+                const relatoProblema = (t.relato_problema || '').trim();
+                if (t.tem_problema == 1 && relatoProblema) {
+                    secaoOc.classList.remove('d-none');
+                    document.getElementById('det_lista_ocorrencias').innerHTML = `
+                        <div class="border rounded-3 p-3 mb-3 bg-white shadow-sm border-danger-subtle">
+                            <div class="d-flex align-items-center mb-2 border-bottom pb-2">
+                                <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px; font-size: 10px;">
+                                    <i class="fas fa-exclamation"></i>
+                                </div>
+                                <strong class="text-dark small">Relato geral do recebimento</strong>
+                            </div>
+                            <div class="extra-small text-muted text-uppercase fw-bold mb-1">Problema relatado</div>
+                            <div class="small text-dark bg-light p-2 rounded border-start border-3 border-danger">
+                                ${escapeHtml(relatoProblema)}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    secaoOc.classList.add('d-none');
+                    document.getElementById('det_lista_ocorrencias').innerHTML = '';
+                }
             }
 
             // Obs
-            document.getElementById('det_observacao').innerText = t.observacoes || 'Nenhuma observação registrada.';
+            const observacoes = (t.observacoes || '').trim();
+            const relatoProblemaObs = (t.relato_problema || '').trim();
+            const obsEl = document.getElementById('det_observacao');
+            if (relatoProblemaObs) {
+                obsEl.innerHTML = `
+                    ${observacoes ? `<div class="mb-3">${escapeHtml(observacoes)}</div>` : ''}
+                    <div class="p-2 rounded bg-danger bg-opacity-10 border-start border-3 border-danger">
+                        <div class="extra-small text-danger text-uppercase fw-bold mb-1">Problema relatado</div>
+                        ${escapeHtml(relatoProblemaObs)}
+                    </div>
+                `;
+            } else {
+                obsEl.innerText = observacoes || 'Nenhuma observação registrada.';
+            }
 
             // Ações Matriz
             if (res.isMatriz && t.tem_problema == 1 && t.problema_resolvido == 0) {
