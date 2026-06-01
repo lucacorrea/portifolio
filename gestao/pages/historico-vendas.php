@@ -47,15 +47,15 @@ require_once __DIR__ . '/layout/header.php';
     <button class="active" data-sales-filter="Hoje">Hoje</button>
     <button data-sales-filter="Semana">Semana</button>
     <button data-sales-filter="Mês">Mês</button>
-    <button data-sales-filter="Personalizado">Personalizado</button>
+    <button data-sales-filter="Todos">Todos</button>
   </div>
 
-  <div class="filter-pills">
-    <button data-toast="Filtro aplicado">Todos</button>
-    <button data-toast="Filtro PIX aplicado">PIX</button>
-    <button data-toast="Filtro Cartão aplicado">Cartão</button>
-    <button data-toast="Filtro Dinheiro aplicado">Dinheiro</button>
-    <button data-toast="Filtro Fiado aplicado">Fiado</button>
+  <div class="filter-pills" id="salesPaymentFilters">
+    <button class="active" data-sales-payment-filter="Todos">Todos</button>
+    <button data-sales-payment-filter="PIX">PIX</button>
+    <button data-sales-payment-filter="Cartão">Cartão</button>
+    <button data-sales-payment-filter="Dinheiro">Dinheiro</button>
+    <button data-sales-payment-filter="Fiado">Fiado</button>
   </div>
 
   <div id="salesHistoryList"></div>

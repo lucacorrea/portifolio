@@ -20,15 +20,47 @@ final class DashboardRepository
     {
         $stmt = $this->db->prepare('
             SELECT 
-                COUNT(*) as sales_count,
-                COALESCE(SUM(total), 0) as total_sales
-            FROM vendas
-            WHERE empresa_id = :empresa_id 
-              AND status = "finalizada"
-              AND DATE(criado_em) = CURDATE()
+                (SELECT COUNT(*)
+                 FROM vendas v
+                 WHERE v.empresa_id = :empresa_id_count
+                   AND v.status = "finalizada"
+                   AND DATE(v.criado_em) = CURDATE()) as sales_count,
+                (SELECT COALESCE(SUM(v.total), 0)
+                 FROM vendas v
+                 WHERE v.empresa_id = :empresa_id_total
+                   AND v.status = "finalizada"
+                   AND DATE(v.criado_em) = CURDATE()) as total_sales,
+                (SELECT COALESCE(SUM((vi.preco_unitario - COALESCE(p.preco_custo, 0)) * vi.quantidade), 0)
+                 FROM venda_itens vi
+                 INNER JOIN vendas v ON v.id = vi.venda_id
+                 LEFT JOIN produtos p ON p.id = vi.produto_id
+                 WHERE v.empresa_id = :empresa_id_profit
+                   AND v.status = "finalizada"
+                   AND DATE(v.criado_em) = CURDATE()) as estimated_profit
         ');
-        $stmt->execute(['empresa_id' => $empresaId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['sales_count' => 0, 'total_sales' => 0.00];
+        $stmt->execute([
+            ':empresa_id_count' => $empresaId,
+            ':empresa_id_total' => $empresaId,
+            ':empresa_id_profit' => $empresaId,
+        ]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['sales_count' => 0, 'total_sales' => 0.00, 'estimated_profit' => 0.00];
+    }
+
+    public function getPaymentMethodsToday(int $empresaId): array
+    {
+        $stmt = $this->db->prepare('
+            SELECT p.metodo, COUNT(*) as total_count, COALESCE(SUM(p.valor), 0) as total_value
+            FROM pagamentos p
+            INNER JOIN vendas v ON v.id = p.venda_id
+            WHERE v.empresa_id = :empresa_id
+              AND DATE(v.criado_em) = CURDATE()
+              AND v.status <> "cancelada"
+            GROUP BY p.metodo
+            ORDER BY total_value DESC
+        ');
+        $stmt->execute([':empresa_id' => $empresaId]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getExpiringProducts(int $empresaId, int $days = 7): array
@@ -87,6 +119,24 @@ final class DashboardRepository
         $stmt->bindValue(':empresa_id', $empresaId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getLowStockProducts(int $empresaId, int $limit = 5): array
+    {
+        $stmt = $this->db->prepare('
+            SELECT id, nome, quantidade, estoque_minimo
+            FROM produtos
+            WHERE empresa_id = :empresa_id
+              AND ativo = 1
+              AND quantidade <= estoque_minimo
+            ORDER BY quantidade ASC, nome ASC
+            LIMIT :limit
+        ');
+        $stmt->bindValue(':empresa_id', $empresaId, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

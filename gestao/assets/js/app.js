@@ -1,6 +1,70 @@
 const prefix = document.body.dataset.prefix || '';
 const page = document.body.dataset.page || 'dashboard';
-const data = window.AppData;
+const data = {
+  settings: {
+    companyName: '',
+    companyPhone: '',
+    companyAddress: '',
+    receiptMode: 'perguntar',
+    receiptTemplate: 'detalhado',
+    expirationAlertDays: 7,
+    debtDueDays: 30,
+    defaultMinStock: 0,
+    blockExpiredProducts: true,
+    blockNegativeStock: true,
+    lowStockAlert: true,
+    paymentPix: true,
+    paymentCash: true,
+    paymentCredit: true,
+    paymentDebit: true,
+    paymentAccount: true,
+    paymentMixed: true,
+    allowDiscount: true,
+    discountLimitPercent: 0,
+    requireCustomerForAccount: true,
+    requireCancellationReason: true,
+    auditLogEnabled: true,
+    confirmDeletes: true,
+    operatorPinEnabled: false,
+    notificationsEnabled: true
+  },
+  products: [],
+  clients: [],
+  sales: [],
+  users: [],
+  dashboard: {
+    summary: {
+      sales_count: 0,
+      total_sales: 0,
+      estimated_profit: 0
+    },
+    paymentMethods: [],
+    latestSales: [],
+    topProducts: [],
+    lowStock: [],
+    expiringProducts: []
+  },
+  report: {
+    summary: {
+      sales_count: 0,
+      total_sales: 0,
+      average_ticket: 0
+    },
+    paymentMethods: [],
+    sales: [],
+    products: {
+      sold: [],
+      lowStock: []
+    },
+    validity: []
+  },
+  currentSale: null,
+  dashboardInfo: {
+    sales_count: 0,
+    total_sales: 0,
+    estimated_profit: 0
+  }
+};
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -20,11 +84,23 @@ let saleStep = Number(localStorage.getItem('saleStep') || 1);
 let cart = JSON.parse(localStorage.getItem('cart') || '[]');
 let currentPayment = localStorage.getItem('payment') || 'PIX';
 let receivedAmount = Number(localStorage.getItem('receivedAmount') || 0);
+let saleClientId = Number(localStorage.getItem('saleClientId') || 0);
+let saleDueDate = localStorage.getItem('saleDueDate') || '';
+let reportPeriod = 'dia';
+let reportStartDate = '';
+let reportEndDate = '';
+let salesPeriodFilter = 'Hoje';
+let salesPaymentFilter = 'Todos';
 let scannerStream = null;
 
 function $(sel, parent = document) { return parent.querySelector(sel); }
 function $all(sel, parent = document) { return [...parent.querySelectorAll(sel)]; }
-function img(name) { return `${prefix}assets/img/${name || 'prod-placeholder.svg'}`; }
+function img(name) {
+  if (!name) return `${prefix}assets/img/prod-placeholder.svg`;
+  if (/^(https?:|data:)/.test(name)) return name;
+  if (name.startsWith('uploads/') || name.startsWith('assets/')) return `${prefix}${name}`;
+  return `${prefix}assets/img/${name}`;
+}
 function qs(name) { return new URLSearchParams(location.search).get(name); }
 
 function escapeHtml(value) {
@@ -55,6 +131,33 @@ async function postJson(url, payload) {
   return json;
 }
 
+async function postForm(url, formData) {
+  formData.append('csrf_token', csrfToken);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+    body: formData
+  });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Não foi possível concluir a operação.');
+  }
+
+  return json;
+}
+
+async function fetchJson(url) {
+  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Não foi possível carregar os dados.');
+  }
+
+  return json.data;
+}
+
 function updateTime() {
   const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   $all('[data-time]').forEach(el => el.textContent = time);
@@ -64,6 +167,37 @@ function formatDate(date) {
   if (!date) return '-';
   const [y, m, d] = date.split('-');
   return `${d}/${m}/${y}`;
+}
+
+function isoLocalDate(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
+function defaultDueDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + Number(data.settings.debtDueDays || 30));
+  return isoLocalDate(date);
+}
+
+function dateTimeParts(value) {
+  if (!value) return { date: '', time: '' };
+  const [date, time = ''] = String(value).replace('T', ' ').split(' ');
+  return { date, time: time.slice(0, 5) };
+}
+
+function paymentLabel(method) {
+  return {
+    pix: 'PIX',
+    credito: 'Crédito',
+    debito: 'Débito',
+    dinheiro: 'Dinheiro',
+    conta_cliente: 'Conta do cliente',
+    misto: 'Misto'
+  }[method] || method || 'Não informado';
 }
 
 function daysTo(date) {
@@ -167,6 +301,8 @@ function saveCart() {
   localStorage.setItem('saleStep', String(saleStep));
   localStorage.setItem('payment', currentPayment);
   localStorage.setItem('receivedAmount', String(receivedAmount));
+  localStorage.setItem('saleClientId', String(saleClientId));
+  localStorage.setItem('saleDueDate', saleDueDate);
 }
 
 function addToCart(id) {
@@ -205,20 +341,27 @@ function initIcons() {
 }
 
 function initDashboard() {
-  const info = data.dashboardInfo || { sales_count: 0, total_sales: 0 };
+  const dashboard = data.dashboard || {};
+  const info = dashboard.summary || data.dashboardInfo || { sales_count: 0, total_sales: 0, estimated_profit: 0 };
   const total = Number(info.total_sales);
   const count = Number(info.sales_count);
-  const expiringProducts = data.products
-    .filter(p => daysTo(p.expiry) <= data.settings.expirationAlertDays)
-    .slice(0, 3);
-  const latestSales = data.sales.slice(0, 3);
+  const profit = Number(info.estimated_profit || 0);
+  const expiringProducts = Array.isArray(dashboard.expiringProducts) && dashboard.expiringProducts.length
+    ? dashboard.expiringProducts
+    : data.products.filter(p => daysTo(p.expiry) <= data.settings.expirationAlertDays).slice(0, 3);
+  const latestSales = Array.isArray(dashboard.latestSales) && dashboard.latestSales.length
+    ? dashboard.latestSales
+    : data.sales.slice(0, 3);
+  const topProducts = Array.isArray(dashboard.topProducts) && dashboard.topProducts.length
+    ? dashboard.topProducts
+    : data.products.slice(0, 3);
   
   $('#todayTotal').textContent = brl.format(total);
   $('#todaySalesCount').textContent = count;
 
   $('#dashboardFinance').innerHTML = [
     financeCard('Total vendido', total, `${count} vendas`),
-    financeCard('Lucro estimado', total * 0.32, 'Margem 32%')
+    financeCard('Lucro estimado', profit, 'Preço de venda - custo')
   ].join('');
 
   $('#dailyReport').innerHTML = [
@@ -227,29 +370,34 @@ function initDashboard() {
   ].join('');
 
   $('#expiringProducts').innerHTML = expiringProducts.map(p => rowItem({
-      title: p.name,
-      subtitle: `Lote ${p.lot} • Validade ${formatDate(p.expiry)}`,
-      status: `${Math.max(daysTo(p.expiry), 0)} dias`,
-      image: img(p.image),
-      type: daysTo(p.expiry) <= 3 ? 'negative' : 'warning',
+      title: p.name || p.nome,
+      subtitle: `Lote ${p.lot || p.lote || '-'} • Validade ${formatDate(p.expiry || p.validade)}`,
+      status: `${Math.max(daysTo(p.expiry || p.validade), 0)} dias`,
+      image: p.image ? img(p.image) : '',
+      icon: 'product',
+      type: daysTo(p.expiry || p.validade) <= 3 ? 'negative' : 'warning',
       href: 'pages/produtos.php'
     })).join('') || emptyState('Nenhum produto próximo da validade.');
 
-  $('#latestSales').innerHTML = latestSales.map(s => rowItem({
+  $('#latestSales').innerHTML = latestSales.map(s => {
+    const parts = dateTimeParts(s.criado_em);
+    return rowItem({
     title: `Venda nº ${String(s.id).padStart(6, '0')}`,
-    subtitle: `${s.payment} • ${s.time} • ${s.seller}`,
-    amount: s.total,
-    status: s.status,
+    subtitle: `${paymentLabel(s.payment || s.metodo)} • ${s.time || parts.time || '-'} • ${s.seller || s.vendedor || '-'}`,
+    amount: Number(s.total),
+    status: s.status || 'Finalizada',
     icon: 'receipt',
     href: `pages/venda-detalhes.php?id=${s.id}`
-  })).join('') || emptyState('Nenhuma venda registrada ainda.');
+  });
+  }).join('') || emptyState('Nenhuma venda registrada ainda.');
 
-  $('#featuredProducts').innerHTML = data.products.slice(0, 3).map((p, index) => rowItem({
-    title: p.name,
-    subtitle: p.category,
-    amount: p.price,
-    status: 'Cadastrado',
-    image: img(p.image),
+  $('#featuredProducts').innerHTML = topProducts.map(p => rowItem({
+    title: p.name || p.nome || p.produto,
+    subtitle: p.category || p.categoria || 'Produto vendido',
+    amount: p.price !== undefined ? Number(p.price) : undefined,
+    status: p.total_vendido !== undefined ? `${Number(p.total_vendido)} vendidos` : 'Cadastrado',
+    image: p.image ? img(p.image) : '',
+    icon: 'product',
     href: 'pages/produtos.php'
   })).join('') || emptyState('Cadastre produtos para começar.', '<a class="primary-btn section-gap-small" href="pages/produto-form.php">Cadastrar produto</a>');
 }
@@ -371,9 +519,37 @@ function saleStepPayment() {
       ${methods.map(m => `<button class="${currentPayment === m ? 'active' : ''}" data-payment="${m}">${m}</button>`).join('') || emptyState('Nenhuma forma de pagamento ativa. Ajuste em Configurações.')}
     </div>
 
+    ${currentPayment === 'Conta do cliente' ? saleAccountFields() : ''}
+
     <div class="button-row section-gap-small">
       <button class="ghost-btn" data-sale-step="2">Voltar</button>
       <button class="primary-btn" data-finish-sale>Finalizar venda</button>
+    </div>
+  `;
+}
+
+function saleAccountFields() {
+  if (!saleDueDate) {
+    saleDueDate = defaultDueDate();
+    saveCart();
+  }
+
+  return `
+    <div class="form-card section-gap-small">
+      <div class="form-grid">
+        <div class="field">
+          <label>Cliente</label>
+          <select id="saleClientId">
+            <option value="">Selecione o cliente</option>
+            ${data.clients.map(c => `<option value="${c.id}" ${Number(c.id) === saleClientId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Vencimento</label>
+          <input id="saleDueDate" type="date" value="${saleDueDate}">
+        </div>
+      </div>
+      ${data.clients.length ? '' : '<a class="secondary-btn section-gap-small" href="clientes.php">Cadastrar cliente</a>'}
     </div>
   `;
 }
@@ -407,14 +583,43 @@ function cartFooter() {
   `;
 }
 
-function finishSale() {
-  openModal(`
-    <h2>Finalização em integração</h2>
-    <p>A venda ainda precisa ser gravada no banco antes de gerar comprovante.</p>
-    <div class="button-row">
-      <button class="primary-btn" data-close-modal>Entendi</button>
-    </div>
-  `);
+async function finishSale() {
+  if (!cartItems().length) {
+    showToast('Adicione produtos antes de finalizar');
+    return;
+  }
+
+  const payload = {
+    items: cart.map(item => ({ productId: item.productId, qty: item.qty })),
+    payment: currentPayment
+  };
+
+  if (currentPayment === 'Conta do cliente') {
+    if (saleClientId <= 0) {
+      showToast('Selecione o cliente');
+      return;
+    }
+
+    if (!saleDueDate) {
+      showToast('Informe o vencimento');
+      return;
+    }
+
+    payload.clientId = saleClientId;
+    payload.dueDate = saleDueDate;
+  }
+
+  try {
+    const json = await postJson(`${prefix}api/vendas/finalizar.php`, payload);
+    cart = [];
+    saleStep = 1;
+    saleClientId = 0;
+    saleDueDate = '';
+    saveCart();
+    location.href = `comprovante.php?id=${json.data.id}`;
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function initProducts() {
@@ -484,27 +689,116 @@ function initProductForm() {
   }
 }
 
-function initReports() {
-  const total = data.sales.reduce((sum, s) => sum + s.total, 0);
-  const count = data.sales.length;
-  const byPayment = data.sales.reduce((acc, sale) => {
-    acc[sale.payment] = (acc[sale.payment] || 0) + sale.total;
-    return acc;
-  }, {});
+async function saveProductForm(form) {
+  const id = Number(qs('id') || 0);
+  const preview = $('#productPreview')?.getAttribute('src') || '';
+  const image = preview.includes('data:') ? '' : preview.replace(prefix, '');
+  const formData = new FormData();
+
+  formData.append('id', String(id));
+  formData.append('name', $('#productName')?.value.trim() || '');
+  formData.append('sku', $('#productSku')?.value.trim() || '');
+  formData.append('barcode', $('#productBarcode')?.value.trim() || '');
+  formData.append('category', $('#productCategory')?.value.trim() || '');
+  formData.append('cost', String(Number($('#productCost')?.value || 0)));
+  formData.append('price', String(Number($('#productPrice')?.value || 0)));
+  formData.append('stock', String(Number($('#productStock')?.value || 0)));
+  formData.append('minStock', String(Number($('#productMinStock')?.value || 0)));
+  formData.append('lot', $('#productLot')?.value.trim() || '');
+  formData.append('expiry', $('#productExpiry')?.value || '');
+  formData.append('image', image);
+
+  const imageFile = $('#productImageInput')?.files?.[0];
+  if (imageFile) {
+    formData.append('imageFile', imageFile);
+  }
+
+  try {
+    await postForm(`${prefix}api/produtos/salvar.php`, formData);
+    showToast('Produto salvo');
+    setTimeout(() => location.href = 'produtos.php', 500);
+  } catch (error) {
+    showToast(error.message);
+    form.querySelector('button[type="submit"]')?.removeAttribute('disabled');
+  }
+}
+
+async function deleteProduct(id) {
+  try {
+    await postJson(`${prefix}api/produtos/excluir.php`, { id });
+    await loadProducts();
+    closeModal();
+    if (page === 'produtos') renderProducts();
+    showToast('Produto inativado');
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function initReports() {
+  $('#reportFinance').innerHTML = emptyState('Carregando relatório...');
+  $('#weeklyBars').innerHTML = emptyState('Carregando vendas...');
+  $('#reportTables').innerHTML = '';
+
+  try {
+    await loadReport();
+    renderReports();
+  } catch (error) {
+    $('#reportFinance').innerHTML = emptyState(error.message);
+    $('#weeklyBars').innerHTML = emptyState('Não foi possível montar o gráfico.');
+  }
+}
+
+function reportQueryString() {
+  const params = new URLSearchParams({ period: reportPeriod });
+
+  if (reportPeriod === 'periodo') {
+    params.set('start', reportStartDate);
+    params.set('end', reportEndDate);
+  }
+
+  return params.toString();
+}
+
+async function loadReport() {
+  const query = reportQueryString();
+  const [summary, sales, products, validity] = await Promise.all([
+    fetchJson(`${prefix}api/relatorios/resumo.php?${query}`),
+    fetchJson(`${prefix}api/relatorios/vendas.php?${query}`),
+    fetchJson(`${prefix}api/relatorios/produtos.php?${query}`),
+    fetchJson(`${prefix}api/relatorios/validade.php`)
+  ]);
+
+  data.report = {
+    summary: summary.summary || {},
+    paymentMethods: summary.paymentMethods || [],
+    sales: Array.isArray(sales) ? sales : [],
+    products: products || { sold: [], lowStock: [] },
+    validity: Array.isArray(validity) ? validity : []
+  };
+}
+
+function renderReports() {
+  const summary = data.report.summary || {};
+  const paymentMethodsData = data.report.paymentMethods || [];
+  const total = Number(summary.total_sales || 0);
+  const count = Number(summary.sales_count || 0);
 
   $('#reportFinance').innerHTML = [
     financeCard('Faturamento', total, 'Período'),
-    financeCard('Lucro', 0, 'Configure custos e margens'),
-    financeCard('Ticket médio', count > 0 ? total / count : 0, 'Média'),
+    financeCard('Ticket médio', Number(summary.average_ticket || 0), 'Média'),
+    financeCard('Métodos', String(paymentMethodsData.length), 'Formas usadas'),
     financeCard('Total de vendas', String(count), 'Movimentos')
   ].join('');
 
-  $('#weeklyBars').innerHTML = data.sales.length
-    ? buildWeeklyBars()
+  $('#weeklyBars').innerHTML = data.report.sales.length
+    ? buildWeeklyBars(data.report.sales)
     : emptyState('Sem vendas no período para montar o gráfico.');
 
-  const paymentTotal = Object.values(byPayment).reduce((sum, value) => sum + value, 0);
-  const paymentLines = Object.entries(byPayment).map(([method, value]) => {
+  const paymentTotal = paymentMethodsData.reduce((sum, item) => sum + Number(item.total_value || 0), 0);
+  const paymentLines = paymentMethodsData.map(item => {
+    const method = paymentLabel(item.metodo);
+    const value = Number(item.total_value || 0);
     const percent = paymentTotal > 0 ? Math.round((value / paymentTotal) * 100) : 0;
     return `<p><span><span class="dot pix"></span>${escapeHtml(method)}</span><strong>${percent}%</strong></p>`;
   }).join('') || '<p><span>Nenhum pagamento registrado</span><strong>0%</strong></p>';
@@ -513,19 +807,22 @@ function initReports() {
   if (paymentCard) paymentCard.innerHTML = paymentLines;
 
   $('#reportTables').innerHTML = [
-    reportTable('Produtos mais vendidos', ['Produto', 'Qtde', 'Receita'], []),
-    reportTable('Produtos próximos da validade', ['Produto', 'Lote', 'Validade'], data.products.filter(p => daysTo(p.expiry) <= data.settings.expirationAlertDays).map(p => [p.name, p.lot, formatDate(p.expiry)])),
-    reportTable('Estoque baixo', ['Produto', 'Atual', 'Mínimo'], data.products.filter(p => p.stock <= p.minStock).map(p => [p.name, p.stock, p.minStock]))
+    reportTable('Produtos mais vendidos', ['Produto', 'Qtde', 'Receita'], (data.report.products.sold || []).map(p => [p.produto, Number(p.quantidade || 0), brl.format(Number(p.receita || 0))])),
+    reportTable('Produtos próximos da validade', ['Produto', 'Lote', 'Validade'], data.report.validity.map(p => [p.nome, p.lote || '-', formatDate(p.validade)])),
+    reportTable('Estoque baixo', ['Produto', 'Atual', 'Mínimo'], (data.report.products.lowStock || []).map(p => [p.nome, Number(p.quantidade || 0), Number(p.estoque_minimo || 0)]))
   ].join('');
 }
 
-function buildWeeklyBars() {
+function buildWeeklyBars(sales = data.sales) {
   const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   const totals = days.map((day, index) => ({
     day,
-    total: data.sales
-      .filter(s => new Date(`${s.date}T00:00:00`).getDay() === index)
-      .reduce((sum, s) => sum + s.total, 0)
+    total: sales
+      .filter(s => {
+        const date = s.date || dateTimeParts(s.criado_em).date;
+        return new Date(`${date}T00:00:00`).getDay() === index;
+      })
+      .reduce((sum, s) => sum + Number(s.total || 0), 0)
   }));
   const max = Math.max(...totals.map(item => item.total), 1);
 
@@ -578,6 +875,7 @@ function clientCard(c) {
       </div>
       <div class="client-actions">
         <a href="cliente-detalhes.php?id=${c.id}">Visualizar</a>
+        <button data-edit-client="${c.id}">Editar</button>
         <button data-client-actions="${c.id}">Mais ações</button>
       </div>
     </article>
@@ -585,7 +883,17 @@ function clientCard(c) {
 }
 
 function initClientDetail() {
-  const c = data.clients.find(x => x.id === Number(qs('id') || 1)) || data.clients[0];
+  const id = Number(qs('id') || 0);
+  $('#clientNameTitle').textContent = 'Cliente';
+  $('#clientDetailContent').innerHTML = emptyState('Carregando cliente...');
+  loadClientDetails(id)
+    .then(renderClientDetail)
+    .catch(() => {
+      $('#clientDetailContent').innerHTML = emptyState('Cliente não encontrado.');
+    });
+}
+
+function renderClientDetail(c) {
   if (!c) {
     $('#clientNameTitle').textContent = 'Cliente';
     $('#clientDetailContent').innerHTML = emptyState('Cliente não encontrado.');
@@ -615,7 +923,7 @@ function initClientDetail() {
 
     <div class="sheet-title section-gap"><div><h2>Compras pendentes</h2><p>Valores em aberto</p></div></div>
     <div class="list-card">
-      ${c.debt > 0 ? rowItem({ title: 'Saldo em aberto', subtitle: `Vencimento ${c.due ? formatDate(c.due) : '-'}`, amount: c.debt, status: c.status, icon: 'receipt', type: c.status === 'Atrasado' ? 'negative' : 'warning' }) : emptyState('Nenhuma compra pendente.')}
+      ${c.accounts?.length ? c.accounts.map(account => rowItem({ title: `Conta nº ${String(account.id).padStart(6, '0')}`, subtitle: `Vencimento ${account.due ? formatDate(account.due) : '-'}`, amount: account.balance, status: account.status, icon: 'receipt', type: account.status === 'atrasado' ? 'negative' : 'warning' })).join('') : emptyState('Nenhuma compra pendente.')}
     </div>
 
     <div class="sheet-title section-gap"><div><h2>Histórico financeiro</h2><p>Auditoria da conta</p></div></div>
@@ -634,8 +942,31 @@ function renderSalesHistory() {
 
   $('#salesHistoryList').innerHTML = data.sales.filter(s => {
     const text = `${s.id} ${s.customer} ${s.seller} ${s.payment} ${s.items.map(i => i.name).join(' ')}`.toLowerCase();
-    return text.includes(query);
+    if (!text.includes(query)) return false;
+    if (!saleMatchesPeriod(s, salesPeriodFilter)) return false;
+    if (salesPaymentFilter === 'PIX') return s.payment === 'PIX';
+    if (salesPaymentFilter === 'Cartão') return ['Crédito', 'Débito'].includes(s.payment);
+    if (salesPaymentFilter === 'Dinheiro') return s.payment === 'Dinheiro';
+    if (salesPaymentFilter === 'Fiado') return s.payment === 'Conta do cliente';
+    return true;
   }).map(saleCard).join('') || emptyState('Nenhuma venda registrada.');
+}
+
+function saleMatchesPeriod(sale, filter) {
+  const date = new Date(`${sale.date}T00:00:00`);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (Number.isNaN(date.getTime())) return true;
+  if (filter === 'Hoje') return date.getTime() === today.getTime();
+  if (filter === 'Semana') {
+    const start = new Date(today);
+    start.setDate(today.getDate() - today.getDay());
+    return date >= start && date <= today;
+  }
+  if (filter === 'Mês') return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth();
+
+  return true;
 }
 
 function saleCard(s) {
@@ -661,13 +992,21 @@ function saleCard(s) {
 }
 
 function initSaleDetail() {
-  const s = data.sales.find(x => x.id === Number(qs('id') || 0)) || data.sales[0];
-  if (!s) {
-    $('#saleTitle').textContent = 'Venda';
-    $('#saleDetailContent').innerHTML = emptyState('Venda não encontrada.');
-    return;
-  }
+  const id = Number(qs('id') || 0);
+  $('#saleTitle').textContent = 'Venda';
+  $('#saleDetailContent').innerHTML = emptyState('Carregando venda...');
 
+  loadSaleDetails(id)
+    .then(s => {
+      data.currentSale = s;
+      renderSaleDetail(s);
+    })
+    .catch(() => {
+      $('#saleDetailContent').innerHTML = emptyState('Venda não encontrada.');
+    });
+}
+
+function renderSaleDetail(s) {
   $('#saleTitle').textContent = `Venda nº ${String(s.id).padStart(6, '0')}`;
   $('#saleDetailContent').innerHTML = `
     <article class="summary-card">
@@ -716,13 +1055,21 @@ function initSaleDetail() {
 }
 
 function initReceipt() {
-  const s = data.sales.find(x => x.id === Number(qs('id') || 0)) || data.sales[0];
-  if (!s) {
-    $('#receiptTitle').textContent = 'Comprovante';
-    $('#receiptContentWrap').innerHTML = emptyState('Venda não encontrada para gerar comprovante.');
-    return;
-  }
+  const id = Number(qs('id') || 0);
+  $('#receiptTitle').textContent = 'Comprovante';
+  $('#receiptContentWrap').innerHTML = emptyState('Carregando comprovante...');
 
+  loadReceipt(id)
+    .then(s => {
+      data.currentSale = s;
+      renderReceipt(s);
+    })
+    .catch(() => {
+      $('#receiptContentWrap').innerHTML = emptyState('Venda não encontrada para gerar comprovante.');
+    });
+}
+
+function renderReceipt(s) {
   $('#receiptTitle').textContent = `Venda nº ${String(s.id).padStart(6, '0')}`;
   $('#receiptContentWrap').innerHTML = `
     <article class="receipt-card" id="receiptContent">
@@ -855,7 +1202,6 @@ function openClientActions(id) {
     <div class="settings-list list-card">
       <button data-open-payment="${c.id}"><span>Registrar pagamento</span><strong>›</strong></button>
       <button data-send-warning="${c.id}"><span>Enviar aviso da conta</span><strong>›</strong></button>
-      <button data-toast="Vencimento renegociado"><span>Renegociar vencimento</span><strong>›</strong></button>
       <a href="cliente-detalhes.php?id=${c.id}"><span>Ver histórico</span><strong>›</strong></a>
     </div>
     <button class="ghost-btn section-gap-small" data-close-modal>Fechar</button>
@@ -863,20 +1209,77 @@ function openClientActions(id) {
 }
 
 function openPaymentModal(id) {
-  const c = data.clients.find(x => x.id === id);
+  loadClientDetails(id)
+    .then(c => {
+      const account = c.accounts?.[0];
+      if (!account) {
+        openModal(`<h2>Registrar pagamento</h2><p>Cliente sem conta em aberto.</p><button class="primary-btn section-gap-small" data-close-modal>Fechar</button>`);
+        return;
+      }
+
+      openModal(`
+        <h2>Registrar pagamento</h2>
+        <p>Saldo atual: <strong>${brl.format(account.balance)}</strong></p>
+        <div class="form-grid">
+          <div class="field"><label>Valor pago agora</label><input id="partialAmount" type="number" min="0.01" step="0.01" value="${account.balance}"></div>
+          <div class="field"><label>Novo vencimento do restante</label><input id="newDueDate" type="date"></div>
+          <div class="field"><label>Forma de pagamento</label><select id="partialMethod">${paymentMethods().filter(m => m !== 'Conta do cliente' && m !== 'Misto').map(m => `<option>${m}</option>`).join('')}</select></div>
+          <div class="button-row">
+            <button class="ghost-btn" data-close-modal>Cancelar</button>
+            <button class="primary-btn" data-save-client-payment="${account.id}">Confirmar</button>
+          </div>
+        </div>
+      `);
+    })
+    .catch(error => showToast(error.message));
+}
+
+function openClientForm(client = {}) {
   openModal(`
-    <h2>Registrar pagamento</h2>
-    <p>Saldo atual: <strong>${brl.format(c.debt)}</strong></p>
-    <div class="form-grid">
-      <div class="field"><label>Valor pago agora</label><input id="partialAmount" type="number" min="0" step="0.01" value="100"></div>
-      <div class="field"><label>Novo vencimento do restante</label><input id="newDueDate" type="date"></div>
-      <div class="field"><label>Forma de pagamento</label><select><option>PIX</option><option>Dinheiro</option><option>Cartão</option></select></div>
-      <div class="button-row">
-        <button class="ghost-btn" data-close-modal>Cancelar</button>
-        <button class="primary-btn" data-toast="Pagamento registrado">Confirmar</button>
-      </div>
+    <h2>${client.id ? 'Editar cliente' : 'Cadastrar cliente'}</h2>
+    <div class="form-grid section-gap-small">
+      <div class="field"><label>Nome</label><input id="clientFormName" maxlength="180" value="${escapeHtml(client.name || '')}"></div>
+      <div class="field"><label>Telefone</label><input id="clientFormPhone" maxlength="30" value="${escapeHtml(client.phone || '')}"></div>
+      <div class="field"><label>CPF/CNPJ</label><input id="clientFormCpf" maxlength="20" value="${escapeHtml(client.cpf || '')}"></div>
+      <div class="field"><label>Endereço</label><input id="clientFormAddress" maxlength="255" value="${escapeHtml(client.address || '')}"></div>
+      <button class="primary-btn" data-save-client="${client.id || 0}">Salvar</button>
     </div>
   `);
+}
+
+async function saveClient(id) {
+  try {
+    await postJson(`${prefix}api/clientes/salvar.php`, {
+      id,
+      name: $('#clientFormName')?.value.trim() || '',
+      phone: $('#clientFormPhone')?.value.trim() || '',
+      cpf: $('#clientFormCpf')?.value.trim() || '',
+      address: $('#clientFormAddress')?.value.trim() || ''
+    });
+    await loadClients();
+    closeModal();
+    if (page === 'clientes') renderClients();
+    showToast('Cliente salvo');
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function saveClientPayment(accountId) {
+  try {
+    await postJson(`${prefix}api/clientes/pagamento.php`, {
+      accountId,
+      amount: Number($('#partialAmount')?.value || 0),
+      method: $('#partialMethod')?.value || 'PIX',
+      newDueDate: $('#newDueDate')?.value || ''
+    });
+    await loadClients();
+    closeModal();
+    if (page === 'clientes') renderClients();
+    showToast('Pagamento registrado');
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function sendWarning(id) {
@@ -1003,7 +1406,18 @@ async function saveSetting(section, button) {
 }
 
 function downloadCSV() {
-  const rows = [['Venda', 'Data', 'Hora', 'Cliente', 'Pagamento', 'Total'], ...data.sales.map(s => [s.id, formatDate(s.date), s.time, s.customer, s.payment, s.total])];
+  const sales = page === 'relatorios' ? data.report.sales : data.sales;
+  const rows = [['Venda', 'Data', 'Hora', 'Cliente', 'Pagamento', 'Total'], ...sales.map(s => {
+    const parts = dateTimeParts(s.criado_em);
+    return [
+      s.id,
+      formatDate(s.date || parts.date),
+      s.time || parts.time,
+      s.customer || s.cliente || 'Venda balcão',
+      paymentLabel(s.payment || s.metodo),
+      Number(s.total || 0)
+    ];
+  })];
   const csv = rows.map(row => row.join(';')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -1024,17 +1438,22 @@ function downloadPdf(title = 'Relatório Comercial') {
   doc.text(data.settings.companyName, 14, 18);
   doc.setFontSize(11);
   doc.text(title, 14, 28);
-  doc.text('Gerado em 28/05/2026', 14, 36);
+  doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 36);
   let y = 50;
-  data.sales.forEach(s => {
-    doc.text(`Venda ${String(s.id).padStart(6, '0')} - ${s.customer} - ${brl.format(s.total)}`, 14, y);
+  const sales = title === 'Venda' && data.currentSale
+    ? [data.currentSale]
+    : (page === 'relatorios' ? data.report.sales : data.sales);
+
+  sales.forEach(s => {
+    doc.text(`Venda ${String(s.id).padStart(6, '0')} - ${s.customer || s.cliente || 'Venda balcão'} - ${brl.format(Number(s.total || 0))}`, 14, y);
     y += 8;
   });
   doc.save(`${title.toLowerCase().replace(/\s+/g, '-')}.pdf`);
 }
 
 function shareReceipt() {
-  const s = data.sales.find(x => x.id === Number(qs('id') || 0)) || data.sales[0];
+  const id = Number(qs('id') || 0);
+  const s = data.currentSale || data.sales.find(x => x.id === id);
   if (!s) {
     showToast('Venda não encontrada');
     return;
@@ -1044,6 +1463,49 @@ function shareReceipt() {
   else {
     navigator.clipboard?.writeText(message);
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  }
+}
+
+function shareReport() {
+  const summary = data.report.summary || {};
+  const message = [
+    data.settings.companyName || 'Relatório',
+    `Vendas: ${Number(summary.sales_count || 0)}`,
+    `Faturamento: ${brl.format(Number(summary.total_sales || 0))}`,
+    `Ticket médio: ${brl.format(Number(summary.average_ticket || 0))}`
+  ].join('\n');
+
+  if (navigator.share) {
+    navigator.share({ title: 'Relatório comercial', text: message }).catch(() => {});
+    return;
+  }
+
+  navigator.clipboard?.writeText(message);
+  showToast('Relatório copiado');
+}
+
+async function submitCancelSale(id) {
+  const reason = $('#cancelReason')?.value.trim() || (data.settings.requireCancellationReason ? '' : 'Cancelamento realizado pelo operador.');
+
+  if (!reason) {
+    showToast('Informe o motivo do cancelamento');
+    return;
+  }
+
+  try {
+    await postJson(`${prefix}api/vendas/cancelar.php`, { id, reason });
+    closeModal();
+    await Promise.all([loadSales(), loadProducts()]);
+
+    if (page === 'venda-detalhes') {
+      const sale = await loadSaleDetails(id);
+      data.currentSale = sale;
+      renderSaleDetail(sale);
+    }
+
+    showToast('Venda cancelada');
+  } catch (error) {
+    showToast(error.message);
   }
 }
 
@@ -1092,6 +1554,8 @@ function bindEvents() {
     if (e.target.closest('[data-reset-sale]')) {
       cart = [];
       saleStep = 1;
+      saleClientId = 0;
+      saleDueDate = '';
       saveCart();
       if (page === 'nova-venda') renderSale();
       showToast('Nova venda iniciada');
@@ -1099,6 +1563,7 @@ function bindEvents() {
 
     if (e.target.closest('[data-open-scanner]')) openScanner();
     if (e.target.closest('[data-use-barcode]')) useBarcode($('#manualBarcode').value.trim());
+    if (e.target.closest('[data-select-product-image]')) $('#productImageInput')?.click();
 
     const productFilter = e.target.closest('[data-filter]');
     if (productFilter) {
@@ -1114,11 +1579,41 @@ function bindEvents() {
       renderClients();
     }
 
+    const salesFilter = e.target.closest('[data-sales-filter]');
+    if (salesFilter) {
+      $all('#salesFilters button').forEach(b => b.classList.remove('active'));
+      salesFilter.classList.add('active');
+      salesPeriodFilter = salesFilter.dataset.salesFilter;
+      renderSalesHistory();
+    }
+
+    const salesPaymentFilterBtn = e.target.closest('[data-sales-payment-filter]');
+    if (salesPaymentFilterBtn) {
+      $all('#salesPaymentFilters button').forEach(b => b.classList.remove('active'));
+      salesPaymentFilterBtn.classList.add('active');
+      salesPaymentFilter = salesPaymentFilterBtn.dataset.salesPaymentFilter;
+      renderSalesHistory();
+    }
+
     const clientActions = e.target.closest('[data-client-actions]');
     if (clientActions) openClientActions(Number(clientActions.dataset.clientActions));
 
     const openPayment = e.target.closest('[data-open-payment]');
     if (openPayment) openPaymentModal(Number(openPayment.dataset.openPayment));
+
+    if (e.target.closest('[data-new-client]')) openClientForm();
+
+    const editClient = e.target.closest('[data-edit-client]');
+    if (editClient) {
+      const client = data.clients.find(c => c.id === Number(editClient.dataset.editClient));
+      if (client) openClientForm(client);
+    }
+
+    const saveClientBtn = e.target.closest('[data-save-client]');
+    if (saveClientBtn) saveClient(Number(saveClientBtn.dataset.saveClient));
+
+    const savePaymentBtn = e.target.closest('[data-save-client-payment]');
+    if (savePaymentBtn) saveClientPayment(Number(savePaymentBtn.dataset.saveClientPayment));
 
     const sendWarningBtn = e.target.closest('[data-send-warning]');
     if (sendWarningBtn) sendWarning(Number(sendWarningBtn.dataset.sendWarning));
@@ -1127,19 +1622,25 @@ function bindEvents() {
     if (del) {
       const p = data.products.find(x => x.id === Number(del.dataset.deleteProduct));
       if (data.settings.confirmDeletes) {
-        openModal(`<h2>Excluir produto?</h2><p>${escapeHtml(p.name)}<br>O produto deve ser inativado para preservar relatórios antigos.</p><div class="button-row"><button class="ghost-btn" data-close-modal>Cancelar</button><button class="danger-btn" data-close-modal data-toast="Exclusão será conectada ao banco na etapa de produtos">Confirmar</button></div>`);
+        openModal(`<h2>Excluir produto?</h2><p>${escapeHtml(p.name)}<br>O produto será inativado para preservar relatórios antigos.</p><div class="button-row"><button class="ghost-btn" data-close-modal>Cancelar</button><button class="danger-btn" data-confirm-delete-product="${p.id}">Confirmar</button></div>`);
       } else {
-        showToast('Exclusão será conectada ao banco na etapa de produtos');
+        deleteProduct(Number(del.dataset.deleteProduct));
       }
     }
 
-    const cancelSale = e.target.closest('[data-cancel-sale]');
-    if (cancelSale) {
+    const confirmDelete = e.target.closest('[data-confirm-delete-product]');
+    if (confirmDelete) deleteProduct(Number(confirmDelete.dataset.confirmDeleteProduct));
+
+    const cancelSaleBtn = e.target.closest('[data-cancel-sale]');
+    if (cancelSaleBtn) {
       const reasonField = data.settings.requireCancellationReason
-        ? '<div class="field"><label>Motivo</label><textarea placeholder="Descreva o motivo do cancelamento"></textarea></div>'
+        ? '<div class="field"><label>Motivo</label><textarea id="cancelReason" placeholder="Descreva o motivo do cancelamento"></textarea></div>'
         : '';
-      openModal(`<h2>Cancelar venda?</h2><p>${data.settings.auditLogEnabled ? 'A ação ficará registrada na auditoria.' : 'Auditoria desativada nas configurações.'}</p>${reasonField}<div class="button-row section-gap-small"><button class="ghost-btn" data-close-modal>Voltar</button><button class="danger-btn" data-close-modal data-toast="Cancelamento será conectado ao banco na etapa de vendas">Confirmar</button></div>`);
+      openModal(`<h2>Cancelar venda?</h2><p>${data.settings.auditLogEnabled ? 'A ação ficará registrada na auditoria.' : 'Auditoria desativada nas configurações.'}</p>${reasonField}<div class="button-row section-gap-small"><button class="ghost-btn" data-close-modal>Voltar</button><button class="danger-btn" data-confirm-cancel-sale="${cancelSaleBtn.dataset.cancelSale}">Confirmar</button></div>`);
     }
+
+    const confirmCancelSale = e.target.closest('[data-confirm-cancel-sale]');
+    if (confirmCancelSale) submitCancelSale(Number(confirmCancelSale.dataset.confirmCancelSale));
 
     const setting = e.target.closest('[data-setting]');
     if (setting) openSetting(setting.dataset.setting);
@@ -1149,10 +1650,31 @@ function bindEvents() {
 
     if (e.target.closest('[data-download-report-pdf]')) downloadPdf('Relatório Comercial');
     if (e.target.closest('[data-export-csv]')) downloadCSV();
-    if (e.target.closest('[data-share-report]')) showToast('Compartilhamento preparado');
+    if (e.target.closest('[data-share-report]')) shareReport();
     if (e.target.closest('[data-download-sale-pdf]')) downloadPdf('Venda');
     if (e.target.closest('[data-print-receipt]')) window.print();
     if (e.target.closest('[data-share-receipt]')) shareReceipt();
+
+    const reportFilter = e.target.closest('[data-report-filter]');
+    if (reportFilter) {
+      $all('#reportFilters button').forEach(b => b.classList.remove('active'));
+      reportFilter.classList.add('active');
+      reportPeriod = {
+        Hoje: 'dia',
+        Semana: 'semana',
+        Mês: 'mes',
+        Personalizado: 'periodo'
+      }[reportFilter.dataset.reportFilter] || 'dia';
+      const custom = $('#customReportFilter');
+      if (custom) custom.hidden = reportPeriod !== 'periodo';
+      if (reportPeriod !== 'periodo') initReports();
+    }
+
+    if (e.target.closest('[data-apply-report-filter]')) {
+      reportStartDate = $('#reportStartDate')?.value || '';
+      reportEndDate = $('#reportEndDate')?.value || '';
+      initReports();
+    }
   });
 
   document.body.addEventListener('input', e => {
@@ -1165,9 +1687,18 @@ function bindEvents() {
       saveCart();
       renderSale();
     }
+    if (e.target.id === 'saleDueDate') {
+      saleDueDate = e.target.value;
+      saveCart();
+    }
   });
 
   document.body.addEventListener('change', e => {
+    if (e.target.id === 'saleClientId') {
+      saleClientId = Number(e.target.value || 0);
+      saveCart();
+    }
+
     if (e.target.id === 'productImageInput') {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -1180,8 +1711,8 @@ function bindEvents() {
   document.body.addEventListener('submit', e => {
     if (e.target.id === 'productForm') {
       e.preventDefault();
-      showToast('Produto salvo');
-      setTimeout(() => location.href = 'produtos.php', 500);
+      e.target.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled');
+      saveProductForm(e.target);
     }
   });
 
@@ -1222,37 +1753,47 @@ function registerPWA() {
 }
 
 async function loadSettings() {
-  const res = await fetch(`${prefix}api/configuracoes/listar.php`, { headers: { 'Accept': 'application/json' } });
-  const json = await res.json();
-
-  if (!res.ok || !json.success) {
-    throw new Error(json.message || 'Falha ao carregar configurações.');
-  }
-
-  window.AppData.settings = { ...window.AppData.settings, ...json.data.settings };
-  window.AppData.users = Array.isArray(json.data.users) ? json.data.users : window.AppData.users;
+  const response = await fetchJson(`${prefix}api/configuracoes/listar.php`);
+  data.settings = { ...data.settings, ...response.settings };
+  data.users = Array.isArray(response.users) ? response.users : data.users;
 }
 
 async function loadClients() {
-  const res = await fetch(`${prefix}api/clientes/listar.php`, { headers: { 'Accept': 'application/json' } });
-  const json = await res.json();
+  const response = await fetchJson(`${prefix}api/clientes/listar.php`);
+  data.clients = Array.isArray(response) ? response : [];
+}
 
-  if (!res.ok || !json.success) {
-    throw new Error(json.message || 'Falha ao carregar clientes.');
-  }
-
-  window.AppData.clients = Array.isArray(json.data) ? json.data : [];
+async function loadClientDetails(id) {
+  return fetchJson(`${prefix}api/clientes/detalhes.php?id=${encodeURIComponent(id)}`);
 }
 
 async function loadSales() {
-  const res = await fetch(`${prefix}api/vendas/listar.php`, { headers: { 'Accept': 'application/json' } });
-  const json = await res.json();
+  const response = await fetchJson(`${prefix}api/vendas/listar.php`);
+  data.sales = Array.isArray(response) ? response : [];
+}
 
-  if (!res.ok || !json.success) {
-    throw new Error(json.message || 'Falha ao carregar vendas.');
-  }
+async function loadProducts() {
+  const response = await fetchJson(`${prefix}api/produtos/listar.php`);
+  data.products = Array.isArray(response) ? response : [];
+  syncCartWithProducts();
+}
 
-  window.AppData.sales = Array.isArray(json.data) ? json.data : [];
+async function loadDashboard() {
+  const response = await fetchJson(`${prefix}api/dashboard/resumo.php`);
+  data.dashboard = {
+    ...data.dashboard,
+    ...response,
+    summary: response.summary || data.dashboard.summary
+  };
+  data.dashboardInfo = data.dashboard.summary;
+}
+
+async function loadSaleDetails(id) {
+  return fetchJson(`${prefix}api/vendas/detalhes.php?id=${encodeURIComponent(id)}`);
+}
+
+async function loadReceipt(id) {
+  return fetchJson(`${prefix}api/vendas/comprovante.php?id=${encodeURIComponent(id)}`);
 }
 
 function syncCartWithProducts() {
@@ -1269,12 +1810,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    const res = await fetch(`${prefix}api/produtos/listar.php`);
-    const json = await res.json();
-    if (json.success) {
-      window.AppData.products = json.data;
-      syncCartWithProducts();
-    }
+    await loadProducts();
   } catch (e) {
     console.error('Falha ao carregar produtos:', e);
   }
@@ -1287,11 +1823,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (page === 'dashboard') {
     try {
-      const res = await fetch(`${prefix}api/dashboard/resumo.php`);
-      const json = await res.json();
-      if (json.success) {
-        window.AppData.dashboardInfo = json.data;
-      }
+      await loadDashboard();
     } catch (e) {
       console.error('Falha ao carregar dashboard:', e);
     }

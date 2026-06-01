@@ -1,7 +1,7 @@
 {
   "name": "L&J Caixa Premium",
   "short_name": "L&J Caixa",
-  "description": "Demonstração mobile premium com páginas separadas.",
+  "description": "Sistema PHP/MySQL de vendas, estoque, clientes e relatórios.",
   "start_url": "./login.php",
   "scope": "./",
   "display": "standalone",
