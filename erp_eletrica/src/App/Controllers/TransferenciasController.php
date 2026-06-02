@@ -150,6 +150,7 @@ class TransferenciasController extends BaseController {
         $fInicio = $_GET['filtro_inicio'] ?? '';
         $fFim    = $_GET['filtro_fim']    ?? '';
 
+        $unidadeRecebimento = $this->isMatriz ? $mid : (int)$this->filialLogada;
         $stmt = $this->pdo->prepare(
             "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial, COALESCE(u.nome, 'Sistema') as usuario_nome
              FROM erp_transferencias t
@@ -158,7 +159,7 @@ class TransferenciasController extends BaseController {
              WHERE t.destino_filial_id = ? AND t.status = 'em_transito'
              ORDER BY t.data_envio DESC"
         );
-        $stmt->execute([$this->filialLogada]);
+        $stmt->execute([$unidadeRecebimento]);
         $em_transito = $stmt->fetchAll();
 
         if ($this->isMatriz) {
@@ -173,23 +174,44 @@ class TransferenciasController extends BaseController {
             )->fetchAll();
 
             // Histórico de tudo que a Matriz já enviou (COM FILTRO)
-            $sqlH = "SELECT t.*, f.nome as nome_filial, COALESCE(u.nome, 'Sistema') as usuario_nome FROM erp_transferencias t LEFT JOIN filiais f ON t.destino_filial_id = f.id LEFT JOIN usuarios u ON u.id = t.usuario_id WHERE t.origem_filial_id = $mid AND t.status IN ('em_transito', 'concluida')";
-            $paramsH = [];
+            $sqlH = "
+                SELECT
+                    t.*,
+                    CASE
+                        WHEN t.origem_filial_id = ? THEN COALESCE(f_destino.nome, 'Matriz')
+                        ELSE COALESCE(f_origem.nome, 'Matriz')
+                    END as nome_filial,
+                    CASE
+                        WHEN t.tipo = 'solicitacao' AND t.status = 'pendente' THEN 'Solicitacao'
+                        WHEN t.origem_filial_id = ? THEN 'Enviado para'
+                        ELSE 'Recebido de'
+                    END as tipo_movimento,
+                    COALESCE(t.data_envio, t.data_solicitacao, t.data_recebimento) as data_movimento,
+                    COALESCE(u.nome, 'Sistema') as usuario_nome
+                FROM erp_transferencias t
+                LEFT JOIN filiais f_origem ON t.origem_filial_id = f_origem.id
+                LEFT JOIN filiais f_destino ON t.destino_filial_id = f_destino.id
+                LEFT JOIN usuarios u ON u.id = t.usuario_id
+                WHERE (t.origem_filial_id = ? OR t.destino_filial_id = ?)
+            ";
+            $paramsH = [$mid, $mid, $mid, $mid];
 
             if ($fCodigo) { $sqlH .= " AND t.codigo_transferencia LIKE ?"; $paramsH[] = "%$fCodigo%"; }
             if ($fStatus) { $sqlH .= " AND t.status = ?"; $paramsH[] = $fStatus; }
-            if ($fInicio) { $sqlH .= " AND DATE(t.data_envio) >= ?"; $paramsH[] = $fInicio; }
-            if ($fFim)    { $sqlH .= " AND DATE(t.data_envio) <= ?"; $paramsH[] = $fFim; }
+            if ($fInicio) { $sqlH .= " AND DATE(COALESCE(t.data_envio, t.data_solicitacao, t.data_recebimento)) >= ?"; $paramsH[] = $fInicio; }
+            if ($fFim)    { $sqlH .= " AND DATE(COALESCE(t.data_envio, t.data_solicitacao, t.data_recebimento)) <= ?"; $paramsH[] = $fFim; }
 
-            $sqlH .= " ORDER BY t.data_envio DESC LIMIT 100";
+            $sqlH .= " ORDER BY COALESCE(t.data_envio, t.data_solicitacao, t.data_recebimento) DESC LIMIT 100";
             $stmtH = $this->pdo->prepare($sqlH);
             $stmtH->execute($paramsH);
             $historico_envios = $stmtH->fetchAll();
 
             // Conta problemas pendentes
-            $problemas_pendentes = $this->pdo->query(
-                "SELECT COUNT(*) FROM erp_transferencias WHERE origem_filial_id = $mid AND tem_problema = 1 AND problema_resolvido = 0"
-            )->fetchColumn();
+            $stmtProblemas = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM erp_transferencias WHERE (origem_filial_id = ? OR destino_filial_id = ?) AND tem_problema = 1 AND problema_resolvido = 0"
+            );
+            $stmtProblemas->execute([$mid, $mid]);
+            $problemas_pendentes = $stmtProblemas->fetchColumn();
 
         } else {
             // Em Trânsito: o que foi despachado pela Matriz para ESTA filial

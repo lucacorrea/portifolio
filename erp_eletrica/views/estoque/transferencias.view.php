@@ -290,6 +290,7 @@
                             <div class="col-md-2">
                                 <select name="filtro_status" class="form-select form-select-sm fw-bold shadow-none" onchange="this.form.submit()">
                                     <option value="">Todos os Status</option>
+                                    <option value="pendente" <?= ($_GET['filtro_status'] ?? '') == 'pendente' ? 'selected' : '' ?>>Pendente</option>
                                     <option value="em_transito" <?= ($_GET['filtro_status'] ?? '') == 'em_transito' ? 'selected' : '' ?>>Em Trânsito</option>
                                     <option value="concluida" <?= ($_GET['filtro_status'] ?? '') == 'concluida' ? 'selected' : '' ?>>Concluída</option>
                                 </select>
@@ -322,9 +323,10 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Código</th>
-                                <th>Destino</th>
+                                <th>Movimento</th>
+                                <th>Unidade</th>
                                 <th>Enviado por</th>
-                                <th>Data Envio</th>
+                                <th>Data</th>
                                 <th>Status</th>
                                 <th class="text-end">Ação</th>
                             </tr>
@@ -340,11 +342,12 @@
                                         <i class="fas fa-exclamation-triangle text-danger ms-1" title="Problema reportado"></i>
                                     <?php endif; ?>
                                 </td>
+                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($he['tipo_movimento'] ?? 'Movimento') ?></span></td>
                                 <td><?= htmlspecialchars($he['nome_filial']) ?></td>
                                 <td><?= htmlspecialchars($he['usuario_nome'] ?? 'Sistema') ?></td>
-                                <td><?= $he['data_envio'] ? date('d/m/Y H:i', strtotime($he['data_envio'])) : '---' ?></td>
+                                <td><?= $he['data_movimento'] ? date('d/m/Y H:i', strtotime($he['data_movimento'])) : '---' ?></td>
                                 <td>
-                                    <span class="badge bg-<?= $he['status'] == 'concluida' ? 'success' : 'warning text-dark' ?>">
+                                    <span class="badge bg-<?= $he['status'] == 'concluida' ? 'success' : ($he['status'] == 'pendente' ? 'primary' : 'warning text-dark') ?>">
                                         <?= strtoupper(str_replace('_', ' ', $he['status'])) ?>
                                     </span>
                                 </td>
