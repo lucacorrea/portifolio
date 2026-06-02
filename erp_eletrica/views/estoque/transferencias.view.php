@@ -210,7 +210,7 @@
                             </select>
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label fw-bold small">Observações do Envio</label>
+                            <label class="form-label fw-bold small">Observações</label>
                             <input type="text" name="observacoes" class="form-control" placeholder="Ex: Reforço de estoque para promoção...">
                         </div>
                     </div>
@@ -465,7 +465,7 @@
                             </select>
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label fw-bold small">Observações do Envio</label>
+                            <label class="form-label fw-bold small">Observações</label>
                             <input type="text" name="observacoes" class="form-control" placeholder="Ex: Devolução, excesso de estoque, remanejamento...">
                         </div>
                     </div>

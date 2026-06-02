@@ -382,9 +382,12 @@ class TransferenciasController extends BaseController {
                 $stmtItem->execute([$transf_id, $pid, $qtd, $qtd, $custo]);
                 try {
                     $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = ?")->execute([$qtd, $pid, $origem_id]);
+                    if ((int)$origem_id === (int)$this->matrizId) {
+                        $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
+                    }
                 } catch (\Exception $ex) {
                     if ($this->isMatriz) {
-                        $stmtDecGlob->execute([$qtd, $pid]);
+                        $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
                     } else {
                         throw $ex;
                     }
@@ -455,10 +458,11 @@ class TransferenciasController extends BaseController {
                         throw new \Exception("Estoque insuficiente na Matriz para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
                     }
 
-                    // 2. Processamento
+                    // 2. Processamento (Atualiza estoque_filiais E produtos, pois a origem é a Matriz)
                     $stmtItem->execute([$qtd, $transf_id, $produto_id]);
                     try {
                         $stmtDec->execute([$qtd, $produto_id]);
+                        $stmtDecGlob->execute([$qtd, $produto_id]);
                     } catch (\Exception $ex) {
                         $stmtDecGlob->execute([$qtd, $produto_id]);
                     }
@@ -473,7 +477,7 @@ class TransferenciasController extends BaseController {
             }
 
             $this->pdo->commit();
-            setFlash('success', 'Solicitação aprovada e despachada com sucesso!');
+            setFlash('success', 'Solicitação aprovada and despachada com sucesso!');
             $this->redirect('transferencias.php?aba=recebidas');
         } catch (\Exception $e) {
             $this->pdo->rollBack();
@@ -526,6 +530,9 @@ class TransferenciasController extends BaseController {
                     if ($qtdFinal > 0) {
                         try {
                             $stmtInc->execute([$this->filialLogada, $qtdFinal, $pid, $qtdFinal]);
+                            if ((int)$this->filialLogada === (int)$this->matrizId) {
+                                $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade + ? WHERE id = ?")->execute([$qtdFinal, $pid]);
+                            }
                         } catch (\Exception $ex) {
                             error_log("Erro ao atualizar estoque_filiais: " . $ex->getMessage());
                             throw new \Exception("Erro ao internalizar produto ID $pid: " . $ex->getMessage());
@@ -752,6 +759,7 @@ class TransferenciasController extends BaseController {
                         
                         try {
                             $stmtDec->execute([$qtd, $pid]);
+                            $stmtDecGlob->execute([$qtd, $pid]);
                         } catch (\Exception $ex) {
                             $stmtDecGlob->execute([$qtd, $pid]);
                         }
