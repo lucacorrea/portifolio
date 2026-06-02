@@ -962,7 +962,36 @@ function payRowTpl(method = "pix", value = "") {
 
 function addPayRow(method = "pix", value = "") {
     const paysWrap = document.getElementById('paysWrap');
+    
+    if (value === "" || value === null || value === undefined) {
+        const finalTotalText = document.getElementById('finalTotal').innerText.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
+        const total = parseFloat(finalTotalText) || 0;
+        
+        let sum = 0;
+        document.querySelectorAll('.pay-split-row').forEach(row => {
+            const val = parseFloat(row.querySelector('.mValue').value) || 0;
+            sum += val;
+        });
+        
+        const remaining = total - sum;
+        if (remaining > 0) {
+            value = remaining.toFixed(2);
+        }
+    }
+    
     paysWrap.insertAdjacentHTML('beforeend', payRowTpl(method, value));
+    
+    // Auto-foco e seleção no input da nova linha
+    const rows = paysWrap.querySelectorAll('.pay-split-row');
+    if (rows.length > 0) {
+        const lastRow = rows[rows.length - 1];
+        const input = lastRow.querySelector('.mValue');
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    }
+    
     calculateMultiPay();
 }
 
@@ -1552,8 +1581,10 @@ function renderCart() {
         }
     }
 
-    // checkDiscountAuth(); // Removed: Auth now happens on Checkout click
     calculateChange();
+    if (payment === 'multiplo') {
+        calculateMultiPay();
+    }
     updateCheckoutButtonState();
 }
 
