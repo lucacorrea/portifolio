@@ -960,7 +960,7 @@ function payRowTpl(method = "pix", value = "") {
     `;
 }
 
-function addPayRow(method = "pix", value = "") {
+function addPayRow(method = "dinheiro", value = "") {
     const paysWrap = document.getElementById('paysWrap');
     
     if (value === "" || value === null || value === undefined) {
@@ -1007,7 +1007,7 @@ function removePayRow(btn) {
 function ensureOnePayRow() {
     const paysWrap = document.getElementById('paysWrap');
     if (!paysWrap.querySelector('.pay-split-row')) {
-        addPayRow("pix", "");
+        addPayRow("dinheiro", "");
     }
 }
 
@@ -3344,6 +3344,38 @@ async function issueNFCe(saleId) {
 
 // Keyboard Hotkeys
 document.addEventListener('keydown', (e) => {
+    // Enter inteligente no campo de valor do pagamento múltiplo
+    if (e.key === 'Enter' && document.activeElement && document.activeElement.classList.contains('mValue')) {
+        e.preventDefault();
+        
+        const okMsg = document.getElementById('multi_ok_msg');
+        const isComplete = okMsg && !okMsg.classList.contains('d-none');
+        
+        if (isComplete) {
+            if (!btnCheckout.disabled) {
+                btnCheckout.click();
+            }
+        } else {
+            const currentRowsCount = document.querySelectorAll('.pay-split-row').length;
+            let nextMethod = "dinheiro";
+            
+            if (currentRowsCount === 1) {
+                nextMethod = "pix";
+            } else if (currentRowsCount === 2) {
+                nextMethod = "debito";
+            } else if (currentRowsCount === 3) {
+                nextMethod = "credito";
+            } else if (currentRowsCount === 4) {
+                nextMethod = "boleto";
+            } else {
+                nextMethod = "dinheiro";
+            }
+            
+            addPayRow(nextMethod, "");
+        }
+        return;
+    }
+
     // F2 ou Enter (fora da busca): Finalizar Venda
     if (e.key === 'F2' || (e.key === 'Enter' && document.activeElement.id !== 'pdvSearch' && document.activeElement.id !== 'pdvQty')) {
         if (!btnCheckout.disabled) {
