@@ -669,6 +669,9 @@ class TransferenciasController extends BaseController {
         ");
         $stmtO->execute([$transf_id]);
         $ocorrencias = $stmtO->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Apenas o remetente pode resolver
+        $canResolve = ((int)$this->filialLogada === (int)$transfer['origem_filial_id']);
         
         header('Content-Type: application/json');
         echo json_encode([
@@ -676,18 +679,30 @@ class TransferenciasController extends BaseController {
             'transfer' => $transfer,
             'items' => $items,
             'ocorrencias' => $ocorrencias,
-            'isMatriz' => $this->isMatriz
+            'isMatriz' => $this->isMatriz,
+            'canResolve' => $canResolve
         ]);
         exit;
     }
 
     public function resolverProblema() {
-        if (!$this->isMatriz) {
-            $this->redirect('transferencias.php?erro=Acesso negado.');
-        }
-
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
         $fluxo     = $_POST['fluxo'] ?? 'resolver'; // 'resolver' ou 'repor'
+
+        // 1. Busca dados da transferência original
+        $orig = $this->pdo->prepare("SELECT origem_filial_id, destino_filial_id, observacoes FROM erp_transferencias WHERE id = ?");
+        $orig->execute([$transf_id]);
+        $dadosOrig = $orig->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$dadosOrig) {
+            $this->redirect('transferencias.php?erro=' . urlencode('Transferência não encontrada.'));
+        }
+
+        // Apenas a filial de origem (quem enviou) pode resolver o problema!
+        if ((int)$this->filialLogada !== (int)$dadosOrig['origem_filial_id']) {
+            $redirectTab = $this->isMatriz ? 'historico_envios' : 'historico_recebimentos';
+            $this->redirect('transferencias.php?aba=' . $redirectTab . '&erro=' . urlencode('Apenas a unidade que enviou os produtos pode resolver esta ocorrência.'));
+        }
 
         try {
             $this->pdo->beginTransaction();
@@ -696,15 +711,10 @@ class TransferenciasController extends BaseController {
             $stmt = $this->pdo->prepare(
                 "UPDATE erp_transferencias SET problema_resolvido = 1 WHERE id = ? AND origem_filial_id = ?"
             );
-            $stmt->execute([$transf_id, $this->matrizId]);
+            $stmt->execute([$transf_id, $dadosOrig['origem_filial_id']]);
 
             // 2. Se for para repor, cria uma nova transferência
             if ($fluxo === 'repor') {
-                // Busca dados da transferência original para saber o destino
-                $orig = $this->pdo->prepare("SELECT destino_filial_id, observacoes FROM erp_transferencias WHERE id = ?");
-                $orig->execute([$transf_id]);
-                $dadosOrig = $orig->fetch(\PDO::FETCH_ASSOC);
-
                 // Busca as ocorrências registradas
                 $ocs = $this->pdo->prepare("SELECT * FROM erp_transferencias_ocorrencias WHERE transferencia_id = ?");
                 $ocs->execute([$transf_id]);
@@ -713,22 +723,21 @@ class TransferenciasController extends BaseController {
                 if (!empty($itensComProblema)) {
                     $codigo = 'REP-' . date('YmdHis') . '-' . rand(100, 999);
                     $mid = $this->matrizId;
+                    $origem_id = $dadosOrig['origem_filial_id'];
 
                     $stmtNew = $this->pdo->prepare(
                         "INSERT INTO erp_transferencias (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio)
                          VALUES (?, 'transferencia', ?, ?, 'em_transito', ?, ?, NOW())"
                     );
                     $obsNovo = "Reposição automática do pedido #" . $transf_id;
-                    $stmtNew->execute([$codigo, $mid, $dadosOrig['destino_filial_id'], $obsNovo, $_SESSION['usuario_id'] ?? 0]);
+                    $stmtNew->execute([$codigo, $origem_id, $dadosOrig['destino_filial_id'], $obsNovo, $_SESSION['usuario_id'] ?? 0]);
                     $new_id = $this->pdo->lastInsertId();
 
-                    $stmtItem    = $this->pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
-                    $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
-                    $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
+                    $stmtItem = $this->pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
 
                     // Query para verificar estoque atual
                     $stmtCheck = $this->pdo->prepare("
-                        SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
+                        SELECT p.nome, COALESCE(ef.quantidade, CASE WHEN ? = 1 THEN p.quantidade ELSE 0 END) as estoque_atual
                         FROM produtos p
                         LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                         WHERE p.id = ?
@@ -742,13 +751,14 @@ class TransferenciasController extends BaseController {
                         if ($qtd <= 0) continue;
 
                         // 1. Validação de Estoque (Servidor)
-                        $stmtCheck->execute([$mid, $pid]);
+                        $isOrigMatriz = ((int)$origem_id === (int)$mid) ? 1 : 0;
+                        $stmtCheck->execute([$isOrigMatriz, $origem_id, $pid]);
                         $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
                         
                         if (!$estoque || $estoque['estoque_atual'] < $qtd) {
                             $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $pid";
                             $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
-                            throw new \Exception("Estoque insuficiente na Matriz para repor '{$nomeProd}'. Disponível: {$disponivel}, Necessário: {$qtd}");
+                            throw new \Exception("Estoque insuficiente para repor '{$nomeProd}'. Disponível: {$disponivel}, Necessário: {$qtd}");
                         }
 
                         $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
@@ -758,10 +768,16 @@ class TransferenciasController extends BaseController {
                         $stmtItem->execute([$new_id, $pid, $qtd, $qtd, $custo]);
                         
                         try {
-                            $stmtDec->execute([$qtd, $pid]);
-                            $stmtDecGlob->execute([$qtd, $pid]);
+                            $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = ?")->execute([$qtd, $pid, $origem_id]);
+                            if ((int)$origem_id === (int)$mid) {
+                                $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
+                            }
                         } catch (\Exception $ex) {
-                            $stmtDecGlob->execute([$qtd, $pid]);
+                            if ((int)$origem_id === (int)$mid) {
+                                $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
+                            } else {
+                                throw $ex;
+                            }
                         }
                         $countReposto++;
                     }
@@ -773,11 +789,13 @@ class TransferenciasController extends BaseController {
             }
 
             $this->pdo->commit();
-            setFlash('success', ($fluxo === 'repor') ? 'Problema resolvido e nova reposição despacho com sucesso!' : 'Ocorrência marcada como resolvida.');
-            $this->redirect('transferencias.php?aba=historico_envios');
+            setFlash('success', ($fluxo === 'repor') ? 'Problema resolvido e nova reposição despachada com sucesso!' : 'Ocorrência marcada como resolvida.');
+            $redirectTab = $this->isMatriz ? 'historico_envios' : 'historico_recebimentos';
+            $this->redirect('transferencias.php?aba=' . $redirectTab);
         } catch (\Exception $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
-            $this->redirect('transferencias.php?aba=historico_envios&erro=' . urlencode($e->getMessage()));
+            $redirectTab = $this->isMatriz ? 'historico_envios' : 'historico_recebimentos';
+            $this->redirect('transferencias.php?aba=' . $redirectTab . '&erro=' . urlencode($e->getMessage()));
         }
     }
 }

@@ -1232,7 +1232,7 @@ function abrirDetalhesTransferencia(id) {
             }
 
             // Ações Matriz
-            if (res.isMatriz && t.tem_problema == 1 && t.problema_resolvido == 0) {
+            if (res.canResolve && t.tem_problema == 1 && t.problema_resolvido == 0) {
                 document.getElementById('det_footer_acoes').innerHTML = `
                     <button type="button" class="btn btn-success btn-sm fw-bold px-4" 
                             onclick="detalhesModalInstance.hide(); abrirModalResolucao(${t.id}, '${t.codigo_transferencia}')">
@@ -1471,8 +1471,7 @@ function abrirProcessarRecebimento(id) {
 </div>
 <?php endif; ?>
 
-<?php if ($isMatriz): ?>
-<!-- Modal Decisão de Resolução (Apenas Matriz) -->
+<!-- Modal Decisão de Resolução -->
 <div class="modal fade" id="modalConfirmarResolucao" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
@@ -1507,7 +1506,6 @@ function abrirProcessarRecebimento(id) {
         </div>
     </div>
 </div>
-<?php endif; ?>
 
 <!-- Modal Detalhes do Pedido (Novo) -->
 <div class="modal fade" id="modalDetalhesPedido" tabindex="-1" aria-hidden="true">
