@@ -488,19 +488,25 @@ class TransferenciasController extends BaseController {
     public function confirmarRecebimento() {
 
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
+        $unidadeRecebimento = $this->isMatriz ? (int)$this->matrizId : (int)$this->filialLogada;
 
         try {
             $this->pdo->beginTransaction();
 
             $check = $this->pdo->prepare(
-                "SELECT * FROM erp_transferencias WHERE id = ? AND destino_filial_id = ? AND status = 'em_transito'"
+                "SELECT * FROM erp_transferencias WHERE id = ? AND destino_filial_id = ? AND status = 'em_transito' FOR UPDATE"
             );
-            $check->execute([$transf_id, $this->filialLogada]);
+            $check->execute([$transf_id, $unidadeRecebimento]);
             if (!$check->fetch()) throw new \Exception("Requisição inválida ou já processada.");
 
-            $this->pdo->prepare(
-                "UPDATE erp_transferencias SET status = 'concluida', data_recebimento = NOW() WHERE id = ?"
-            )->execute([$transf_id]);
+            $stmtConcluir = $this->pdo->prepare(
+                "UPDATE erp_transferencias SET status = 'concluida', data_recebimento = NOW() WHERE id = ? AND destino_filial_id = ? AND status = 'em_transito'"
+            );
+            $stmtConcluir->execute([$transf_id, $unidadeRecebimento]);
+
+            if ($stmtConcluir->rowCount() === 0) {
+                throw new \Exception("Requisicao ja processada por outra operacao.");
+            }
 
             $itens = $this->pdo->prepare("SELECT produto_id, quantidade_enviada FROM erp_transferencias_itens WHERE transferencia_id = ?");
             $itens->execute([$transf_id]);
@@ -529,8 +535,8 @@ class TransferenciasController extends BaseController {
                     $stmtUpdItem->execute([$qtdFinal, $transf_id, $pid]);
                     if ($qtdFinal > 0) {
                         try {
-                            $stmtInc->execute([$this->filialLogada, $qtdFinal, $pid, $qtdFinal]);
-                            if ((int)$this->filialLogada === (int)$this->matrizId) {
+                            $stmtInc->execute([$unidadeRecebimento, $qtdFinal, $pid, $qtdFinal]);
+                            if ($unidadeRecebimento === (int)$this->matrizId) {
                                 $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade + ? WHERE id = ?")->execute([$qtdFinal, $pid]);
                             }
                         } catch (\Exception $ex) {
@@ -555,6 +561,7 @@ class TransferenciasController extends BaseController {
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
         $mensagem  = trim($_POST['mensagem'] ?? '');
         $itens_problema = $_POST['ocorrencias'] ?? [];
+        $unidadeRecebimento = $this->isMatriz ? (int)$this->matrizId : (int)$this->filialLogada;
 
         if (empty($itens_problema) && empty($mensagem)) {
             $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode('Informe ao menos um item com problema ou uma mensagem descritiva.'));
@@ -569,7 +576,7 @@ class TransferenciasController extends BaseController {
                  SET tem_problema = 1, relato_problema = ?, data_relato = NOW(), problema_resolvido = 0
                  WHERE id = ? AND destino_filial_id = ?"
             );
-            $stmt->execute([$mensagem, $transf_id, $this->filialLogada]);
+            $stmt->execute([$mensagem, $transf_id, $unidadeRecebimento]);
 
             // 2. Registra ocorrências por item
             $stmtOc = $this->pdo->prepare(
