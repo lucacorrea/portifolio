@@ -137,7 +137,22 @@ class InventoryController extends BaseController {
             }
 
             $isEdit = isset($data['id']) && !empty($data['id']);
-            $model->save($data);
+            try {
+                $savedId = $model->save($data);
+                if (!$isEdit && $savedId) {
+                    $savedProduct = $model->find($savedId);
+                    if ($savedProduct) {
+                        $data['codigo'] = $savedProduct['codigo'] ?? ($data['codigo'] ?? '');
+                    }
+                }
+            } catch (\PDOException $e) {
+                if ($e->getCode() === '23000' && stripos($e->getMessage(), 'codigo') !== false) {
+                    $this->redirect('estoque.php?error=' . urlencode('Este codigo acabou de ser usado por outro usuario. Atualize a pagina e tente salvar novamente.'));
+                }
+                throw $e;
+            } catch (\Exception $e) {
+                $this->redirect('estoque.php?error=' . urlencode('Nao foi possivel salvar o produto: ' . $e->getMessage()));
+            }
             
             $codigo = $data['codigo'] ?? '';
             $nome = $data['nome'] ?? '';

@@ -4,6 +4,11 @@ namespace App\Models;
 class Product extends BaseModel {
     protected $table = 'produtos';
 
+    private function shouldUseAutomaticCode($code): bool {
+        $code = trim((string)$code);
+        return $code === '' || (ctype_digit($code) && (int)$code > 0 && (int)$code < 10000);
+    }
+
     public function all($order = "nome ASC") {
         $filialId = $_SESSION['filial_id'] ?? 1;
         // Só a Matriz (ID 1) vê o catálogo global completo. Filiais veem apenas seu estoque local.
@@ -356,6 +361,22 @@ class Product extends BaseModel {
 
         } else {
             // --- INSERT ---
+            $autoCode = $this->shouldUseAutomaticCode($data['codigo'] ?? '');
+            $lockAcquired = false;
+
+            try {
+                $this->db->beginTransaction();
+
+                if ($autoCode) {
+                    $stmtLock = $this->db->query("SELECT GET_LOCK('erp_produtos_codigo_seq', 10)");
+                    $lockAcquired = ((int)$stmtLock->fetchColumn() === 1);
+                    if (!$lockAcquired) {
+                        throw new \Exception("Nao foi possivel reservar o proximo codigo do produto. Tente novamente.");
+                    }
+
+                    $data['codigo'] = (string)$this->getNextCode();
+                }
+
             $cols   = ['codigo', 'ncm', 'nome', 'unidade', 'categoria',
                        'preco_custo', 'preco_venda', 'quantidade', 'estoque_minimo', 'filial_id'];
             $params = [
@@ -393,6 +414,18 @@ class Product extends BaseModel {
             $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo) 
                           VALUES (?, ?, ?, ?)", 
                           [$newId, $filialId, $data['quantidade'] ?? 0, $data['estoque_minimo']]);
+
+                $this->db->commit();
+            } catch (\Throwable $e) {
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                throw $e;
+            } finally {
+                if ($lockAcquired) {
+                    try { $this->db->query("SELECT RELEASE_LOCK('erp_produtos_codigo_seq')"); } catch (\Throwable $e) {}
+                }
+            }
 
             return $newId;
         }
