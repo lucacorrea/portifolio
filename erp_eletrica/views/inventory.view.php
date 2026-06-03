@@ -830,7 +830,7 @@ function editProduct(product) {
     const modal = new bootstrap.Modal(document.getElementById('newProductModal'));
     document.getElementById('edit_id').value = product.id;
     document.getElementById('edit_codigo').value = product.codigo;
-    document.getElementById('edit_ncm').value = product.ncm || '';
+    document.getElementById('edit_ncm').value = cleanNcmCode(product.ncm || '');
     document.getElementById('edit_nome').value = product.nome;
     document.getElementById('edit_unidade').value = product.unidade;
     document.getElementById('edit_categoria').value = product.categoria;
@@ -942,6 +942,23 @@ if (window.location.search.includes('q=')) {
 // NCM Search Logic with Inline Dropdown Autocomplete
 let ncmDebounceTimer;
 
+function cleanNcmCode(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 8);
+}
+
+document.getElementById('edit_ncm').addEventListener('input', function(e) {
+    const clean = cleanNcmCode(e.target.value);
+    if (e.target.value !== clean) {
+        e.target.value = clean;
+    }
+});
+
+document.querySelectorAll('#newProductModal input[type="number"]').forEach(input => {
+    input.addEventListener('focus', function() {
+        this.select();
+    });
+});
+
 // Handle manual code entry for Preço Variável toggle
 document.getElementById('edit_codigo').addEventListener('input', function(e) {
     const divPrecoVariavel = document.getElementById('div_preco_variavel');
@@ -1000,7 +1017,7 @@ function searchNcmInline(term, force = false) {
 }
 
 function selectNcm(code) {
-    document.getElementById('edit_ncm').value = code;
+    document.getElementById('edit_ncm').value = cleanNcmCode(code);
     document.getElementById('ncmDropdown').style.display = 'none';
 }
 

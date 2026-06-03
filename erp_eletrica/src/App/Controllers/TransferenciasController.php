@@ -150,6 +150,7 @@ class TransferenciasController extends BaseController {
         $fInicio = $_GET['filtro_inicio'] ?? '';
         $fFim    = $_GET['filtro_fim']    ?? '';
 
+        $unidadeRecebimento = $this->isMatriz ? $mid : (int)$this->filialLogada;
         $stmt = $this->pdo->prepare(
             "SELECT t.*, COALESCE(f.nome, 'Matriz') as nome_filial, COALESCE(u.nome, 'Sistema') as usuario_nome
              FROM erp_transferencias t
@@ -158,7 +159,7 @@ class TransferenciasController extends BaseController {
              WHERE t.destino_filial_id = ? AND t.status = 'em_transito'
              ORDER BY t.data_envio DESC"
         );
-        $stmt->execute([$this->filialLogada]);
+        $stmt->execute([$unidadeRecebimento]);
         $em_transito = $stmt->fetchAll();
 
         if ($this->isMatriz) {
@@ -173,23 +174,44 @@ class TransferenciasController extends BaseController {
             )->fetchAll();
 
             // Histórico de tudo que a Matriz já enviou (COM FILTRO)
-            $sqlH = "SELECT t.*, f.nome as nome_filial, COALESCE(u.nome, 'Sistema') as usuario_nome FROM erp_transferencias t LEFT JOIN filiais f ON t.destino_filial_id = f.id LEFT JOIN usuarios u ON u.id = t.usuario_id WHERE t.origem_filial_id = $mid AND t.status IN ('em_transito', 'concluida')";
-            $paramsH = [];
+            $sqlH = "
+                SELECT
+                    t.*,
+                    CASE
+                        WHEN t.origem_filial_id = ? THEN COALESCE(f_destino.nome, 'Matriz')
+                        ELSE COALESCE(f_origem.nome, 'Matriz')
+                    END as nome_filial,
+                    CASE
+                        WHEN t.tipo = 'solicitacao' AND t.status = 'pendente' THEN 'Solicitacao'
+                        WHEN t.origem_filial_id = ? THEN 'Enviado para'
+                        ELSE 'Recebido de'
+                    END as tipo_movimento,
+                    COALESCE(t.data_envio, t.data_solicitacao, t.data_recebimento) as data_movimento,
+                    COALESCE(u.nome, 'Sistema') as usuario_nome
+                FROM erp_transferencias t
+                LEFT JOIN filiais f_origem ON t.origem_filial_id = f_origem.id
+                LEFT JOIN filiais f_destino ON t.destino_filial_id = f_destino.id
+                LEFT JOIN usuarios u ON u.id = t.usuario_id
+                WHERE (t.origem_filial_id = ? OR t.destino_filial_id = ?)
+            ";
+            $paramsH = [$mid, $mid, $mid, $mid];
 
             if ($fCodigo) { $sqlH .= " AND t.codigo_transferencia LIKE ?"; $paramsH[] = "%$fCodigo%"; }
             if ($fStatus) { $sqlH .= " AND t.status = ?"; $paramsH[] = $fStatus; }
-            if ($fInicio) { $sqlH .= " AND DATE(t.data_envio) >= ?"; $paramsH[] = $fInicio; }
-            if ($fFim)    { $sqlH .= " AND DATE(t.data_envio) <= ?"; $paramsH[] = $fFim; }
+            if ($fInicio) { $sqlH .= " AND DATE(COALESCE(t.data_envio, t.data_solicitacao, t.data_recebimento)) >= ?"; $paramsH[] = $fInicio; }
+            if ($fFim)    { $sqlH .= " AND DATE(COALESCE(t.data_envio, t.data_solicitacao, t.data_recebimento)) <= ?"; $paramsH[] = $fFim; }
 
-            $sqlH .= " ORDER BY t.data_envio DESC LIMIT 100";
+            $sqlH .= " ORDER BY COALESCE(t.data_envio, t.data_solicitacao, t.data_recebimento) DESC LIMIT 100";
             $stmtH = $this->pdo->prepare($sqlH);
             $stmtH->execute($paramsH);
             $historico_envios = $stmtH->fetchAll();
 
             // Conta problemas pendentes
-            $problemas_pendentes = $this->pdo->query(
-                "SELECT COUNT(*) FROM erp_transferencias WHERE origem_filial_id = $mid AND tem_problema = 1 AND problema_resolvido = 0"
-            )->fetchColumn();
+            $stmtProblemas = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM erp_transferencias WHERE (origem_filial_id = ? OR destino_filial_id = ?) AND tem_problema = 1 AND problema_resolvido = 0"
+            );
+            $stmtProblemas->execute([$mid, $mid]);
+            $problemas_pendentes = $stmtProblemas->fetchColumn();
 
         } else {
             // Em Trânsito: o que foi despachado pela Matriz para ESTA filial
@@ -360,9 +382,12 @@ class TransferenciasController extends BaseController {
                 $stmtItem->execute([$transf_id, $pid, $qtd, $qtd, $custo]);
                 try {
                     $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = ?")->execute([$qtd, $pid, $origem_id]);
+                    if ((int)$origem_id === (int)$this->matrizId) {
+                        $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
+                    }
                 } catch (\Exception $ex) {
                     if ($this->isMatriz) {
-                        $stmtDecGlob->execute([$qtd, $pid]);
+                        $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
                     } else {
                         throw $ex;
                     }
@@ -433,10 +458,11 @@ class TransferenciasController extends BaseController {
                         throw new \Exception("Estoque insuficiente na Matriz para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
                     }
 
-                    // 2. Processamento
+                    // 2. Processamento (Atualiza estoque_filiais E produtos, pois a origem é a Matriz)
                     $stmtItem->execute([$qtd, $transf_id, $produto_id]);
                     try {
                         $stmtDec->execute([$qtd, $produto_id]);
+                        $stmtDecGlob->execute([$qtd, $produto_id]);
                     } catch (\Exception $ex) {
                         $stmtDecGlob->execute([$qtd, $produto_id]);
                     }
@@ -451,7 +477,7 @@ class TransferenciasController extends BaseController {
             }
 
             $this->pdo->commit();
-            setFlash('success', 'Solicitação aprovada e despachada com sucesso!');
+            setFlash('success', 'Solicitação aprovada and despachada com sucesso!');
             $this->redirect('transferencias.php?aba=recebidas');
         } catch (\Exception $e) {
             $this->pdo->rollBack();
@@ -462,19 +488,25 @@ class TransferenciasController extends BaseController {
     public function confirmarRecebimento() {
 
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
+        $unidadeRecebimento = $this->isMatriz ? (int)$this->matrizId : (int)$this->filialLogada;
 
         try {
             $this->pdo->beginTransaction();
 
             $check = $this->pdo->prepare(
-                "SELECT * FROM erp_transferencias WHERE id = ? AND destino_filial_id = ? AND status = 'em_transito'"
+                "SELECT * FROM erp_transferencias WHERE id = ? AND destino_filial_id = ? AND status = 'em_transito' FOR UPDATE"
             );
-            $check->execute([$transf_id, $this->filialLogada]);
+            $check->execute([$transf_id, $unidadeRecebimento]);
             if (!$check->fetch()) throw new \Exception("Requisição inválida ou já processada.");
 
-            $this->pdo->prepare(
-                "UPDATE erp_transferencias SET status = 'concluida', data_recebimento = NOW() WHERE id = ?"
-            )->execute([$transf_id]);
+            $stmtConcluir = $this->pdo->prepare(
+                "UPDATE erp_transferencias SET status = 'concluida', data_recebimento = NOW() WHERE id = ? AND destino_filial_id = ? AND status = 'em_transito'"
+            );
+            $stmtConcluir->execute([$transf_id, $unidadeRecebimento]);
+
+            if ($stmtConcluir->rowCount() === 0) {
+                throw new \Exception("Requisicao ja processada por outra operacao.");
+            }
 
             $itens = $this->pdo->prepare("SELECT produto_id, quantidade_enviada FROM erp_transferencias_itens WHERE transferencia_id = ?");
             $itens->execute([$transf_id]);
@@ -503,7 +535,10 @@ class TransferenciasController extends BaseController {
                     $stmtUpdItem->execute([$qtdFinal, $transf_id, $pid]);
                     if ($qtdFinal > 0) {
                         try {
-                            $stmtInc->execute([$this->filialLogada, $qtdFinal, $pid, $qtdFinal]);
+                            $stmtInc->execute([$unidadeRecebimento, $qtdFinal, $pid, $qtdFinal]);
+                            if ($unidadeRecebimento === (int)$this->matrizId) {
+                                $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade + ? WHERE id = ?")->execute([$qtdFinal, $pid]);
+                            }
                         } catch (\Exception $ex) {
                             error_log("Erro ao atualizar estoque_filiais: " . $ex->getMessage());
                             throw new \Exception("Erro ao internalizar produto ID $pid: " . $ex->getMessage());
@@ -526,6 +561,7 @@ class TransferenciasController extends BaseController {
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
         $mensagem  = trim($_POST['mensagem'] ?? '');
         $itens_problema = $_POST['ocorrencias'] ?? [];
+        $unidadeRecebimento = $this->isMatriz ? (int)$this->matrizId : (int)$this->filialLogada;
 
         if (empty($itens_problema) && empty($mensagem)) {
             $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode('Informe ao menos um item com problema ou uma mensagem descritiva.'));
@@ -540,7 +576,7 @@ class TransferenciasController extends BaseController {
                  SET tem_problema = 1, relato_problema = ?, data_relato = NOW(), problema_resolvido = 0
                  WHERE id = ? AND destino_filial_id = ?"
             );
-            $stmt->execute([$mensagem, $transf_id, $this->filialLogada]);
+            $stmt->execute([$mensagem, $transf_id, $unidadeRecebimento]);
 
             // 2. Registra ocorrências por item
             $stmtOc = $this->pdo->prepare(
@@ -618,7 +654,7 @@ class TransferenciasController extends BaseController {
         }
 
         // 2. Itens
-        $sqlItems = "SELECT ti.*, p.nome, p.codigo, 
+        $sqlItems = "SELECT ti.*, p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade,
                 COALESCE(ef.quantidade, p.quantidade) as disp_matriz,
                 (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
                 FROM erp_transferencias_itens ti 
@@ -633,13 +669,16 @@ class TransferenciasController extends BaseController {
 
         // 3. Ocorrências detalhadas
         $stmtO = $this->pdo->prepare("
-            SELECT oc.*, p.nome, p.codigo
+            SELECT oc.*, p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade
             FROM erp_transferencias_ocorrencias oc
             JOIN produtos p ON oc.produto_id = p.id
             WHERE oc.transferencia_id = ?
         ");
         $stmtO->execute([$transf_id]);
         $ocorrencias = $stmtO->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Apenas o remetente pode resolver
+        $canResolve = ((int)$this->filialLogada === (int)$transfer['origem_filial_id']);
         
         header('Content-Type: application/json');
         echo json_encode([
@@ -647,18 +686,30 @@ class TransferenciasController extends BaseController {
             'transfer' => $transfer,
             'items' => $items,
             'ocorrencias' => $ocorrencias,
-            'isMatriz' => $this->isMatriz
+            'isMatriz' => $this->isMatriz,
+            'canResolve' => $canResolve
         ]);
         exit;
     }
 
     public function resolverProblema() {
-        if (!$this->isMatriz) {
-            $this->redirect('transferencias.php?erro=Acesso negado.');
-        }
-
         $transf_id = (int)($_POST['transferencia_id'] ?? 0);
         $fluxo     = $_POST['fluxo'] ?? 'resolver'; // 'resolver' ou 'repor'
+
+        // 1. Busca dados da transferência original
+        $orig = $this->pdo->prepare("SELECT origem_filial_id, destino_filial_id, observacoes FROM erp_transferencias WHERE id = ?");
+        $orig->execute([$transf_id]);
+        $dadosOrig = $orig->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$dadosOrig) {
+            $this->redirect('transferencias.php?erro=' . urlencode('Transferência não encontrada.'));
+        }
+
+        // Apenas a filial de origem (quem enviou) pode resolver o problema!
+        if ((int)$this->filialLogada !== (int)$dadosOrig['origem_filial_id']) {
+            $redirectTab = $this->isMatriz ? 'historico_envios' : 'historico_recebimentos';
+            $this->redirect('transferencias.php?aba=' . $redirectTab . '&erro=' . urlencode('Apenas a unidade que enviou os produtos pode resolver esta ocorrência.'));
+        }
 
         try {
             $this->pdo->beginTransaction();
@@ -667,15 +718,10 @@ class TransferenciasController extends BaseController {
             $stmt = $this->pdo->prepare(
                 "UPDATE erp_transferencias SET problema_resolvido = 1 WHERE id = ? AND origem_filial_id = ?"
             );
-            $stmt->execute([$transf_id, $this->matrizId]);
+            $stmt->execute([$transf_id, $dadosOrig['origem_filial_id']]);
 
             // 2. Se for para repor, cria uma nova transferência
             if ($fluxo === 'repor') {
-                // Busca dados da transferência original para saber o destino
-                $orig = $this->pdo->prepare("SELECT destino_filial_id, observacoes FROM erp_transferencias WHERE id = ?");
-                $orig->execute([$transf_id]);
-                $dadosOrig = $orig->fetch(\PDO::FETCH_ASSOC);
-
                 // Busca as ocorrências registradas
                 $ocs = $this->pdo->prepare("SELECT * FROM erp_transferencias_ocorrencias WHERE transferencia_id = ?");
                 $ocs->execute([$transf_id]);
@@ -684,22 +730,21 @@ class TransferenciasController extends BaseController {
                 if (!empty($itensComProblema)) {
                     $codigo = 'REP-' . date('YmdHis') . '-' . rand(100, 999);
                     $mid = $this->matrizId;
+                    $origem_id = $dadosOrig['origem_filial_id'];
 
                     $stmtNew = $this->pdo->prepare(
                         "INSERT INTO erp_transferencias (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio)
                          VALUES (?, 'transferencia', ?, ?, 'em_transito', ?, ?, NOW())"
                     );
                     $obsNovo = "Reposição automática do pedido #" . $transf_id;
-                    $stmtNew->execute([$codigo, $mid, $dadosOrig['destino_filial_id'], $obsNovo, $_SESSION['usuario_id'] ?? 0]);
+                    $stmtNew->execute([$codigo, $origem_id, $dadosOrig['destino_filial_id'], $obsNovo, $_SESSION['usuario_id'] ?? 0]);
                     $new_id = $this->pdo->lastInsertId();
 
-                    $stmtItem    = $this->pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
-                    $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
-                    $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
+                    $stmtItem = $this->pdo->prepare("INSERT INTO erp_transferencias_itens (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario) VALUES (?, ?, ?, ?, ?)");
 
                     // Query para verificar estoque atual
                     $stmtCheck = $this->pdo->prepare("
-                        SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
+                        SELECT p.nome, COALESCE(ef.quantidade, CASE WHEN ? = 1 THEN p.quantidade ELSE 0 END) as estoque_atual
                         FROM produtos p
                         LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                         WHERE p.id = ?
@@ -713,13 +758,14 @@ class TransferenciasController extends BaseController {
                         if ($qtd <= 0) continue;
 
                         // 1. Validação de Estoque (Servidor)
-                        $stmtCheck->execute([$mid, $pid]);
+                        $isOrigMatriz = ((int)$origem_id === (int)$mid) ? 1 : 0;
+                        $stmtCheck->execute([$isOrigMatriz, $origem_id, $pid]);
                         $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
                         
                         if (!$estoque || $estoque['estoque_atual'] < $qtd) {
                             $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $pid";
                             $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
-                            throw new \Exception("Estoque insuficiente na Matriz para repor '{$nomeProd}'. Disponível: {$disponivel}, Necessário: {$qtd}");
+                            throw new \Exception("Estoque insuficiente para repor '{$nomeProd}'. Disponível: {$disponivel}, Necessário: {$qtd}");
                         }
 
                         $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
@@ -729,9 +775,16 @@ class TransferenciasController extends BaseController {
                         $stmtItem->execute([$new_id, $pid, $qtd, $qtd, $custo]);
                         
                         try {
-                            $stmtDec->execute([$qtd, $pid]);
+                            $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = ?")->execute([$qtd, $pid, $origem_id]);
+                            if ((int)$origem_id === (int)$mid) {
+                                $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
+                            }
                         } catch (\Exception $ex) {
-                            $stmtDecGlob->execute([$qtd, $pid]);
+                            if ((int)$origem_id === (int)$mid) {
+                                $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
+                            } else {
+                                throw $ex;
+                            }
                         }
                         $countReposto++;
                     }
@@ -743,11 +796,13 @@ class TransferenciasController extends BaseController {
             }
 
             $this->pdo->commit();
-            setFlash('success', ($fluxo === 'repor') ? 'Problema resolvido e nova reposição despacho com sucesso!' : 'Ocorrência marcada como resolvida.');
-            $this->redirect('transferencias.php?aba=historico_envios');
+            setFlash('success', ($fluxo === 'repor') ? 'Problema resolvido e nova reposição despachada com sucesso!' : 'Ocorrência marcada como resolvida.');
+            $redirectTab = $this->isMatriz ? 'historico_envios' : 'historico_recebimentos';
+            $this->redirect('transferencias.php?aba=' . $redirectTab);
         } catch (\Exception $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
-            $this->redirect('transferencias.php?aba=historico_envios&erro=' . urlencode($e->getMessage()));
+            $redirectTab = $this->isMatriz ? 'historico_envios' : 'historico_recebimentos';
+            $this->redirect('transferencias.php?aba=' . $redirectTab . '&erro=' . urlencode($e->getMessage()));
         }
     }
 }

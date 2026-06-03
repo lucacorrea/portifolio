@@ -99,7 +99,7 @@ class SalesController extends BaseController {
                         $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                         WHERE (" . implode(' OR ', $whereParts) . ")";
             
-            $sqlProd .= " ORDER BY ($orderCase), p.nome ASC LIMIT 15";
+            $sqlProd .= " ORDER BY ($orderCase), p.nome ASC";
             
             $stmtProd = $db->prepare($sqlProd);
             $stmtProd->execute(array_merge([$filialId], $paramsProd, $orderParams));
@@ -159,7 +159,7 @@ class SalesController extends BaseController {
         });
 
         header('Content-Type: application/json');
-        echo json_encode(array_slice($results, 0, 15));
+        echo json_encode($results);
         exit;
     }
 

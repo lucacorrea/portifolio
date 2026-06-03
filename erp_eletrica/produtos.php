@@ -50,6 +50,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 isset($_POST['preco_variavel']) ? 1 : 0
             ]);
             
+            // Inicializa estoque na filial logada (Matriz)
+            $newId = $pdo->lastInsertId();
+            $filialId = $_SESSION['filial_id'] ?? 1;
+            $stmtEstoque = $pdo->prepare("
+                INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE quantidade = ?, estoque_minimo = ?
+            ");
+            $stmtEstoque->execute([
+                $newId, $filialId, $_POST['quantidade'], $_POST['estoque_minimo'],
+                $_POST['quantidade'], $_POST['estoque_minimo']
+            ]);
+            
             $codigo = $_POST['codigo'] ?? '';
             $nome = $_POST['nome'] ?? '';
             header('Location: produtos.php?msg=' . urlencode("O produto \"$codigo - $nome\" foi cadastrado com sucesso!"));
@@ -90,6 +103,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_POST['tipo_produto'],
                 isset($_POST['preco_variavel']) ? 1 : 0,
                 $_POST['id']
+            ]);
+            
+            // Atualiza estoque na filial logada (Matriz)
+            $filialId = $_SESSION['filial_id'] ?? 1;
+            $stmtEstoque = $pdo->prepare("
+                INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE quantidade = ?, estoque_minimo = ?
+            ");
+            $stmtEstoque->execute([
+                $_POST['id'], $filialId, $_POST['quantidade'], $_POST['estoque_minimo'],
+                $_POST['quantidade'], $_POST['estoque_minimo']
             ]);
             
             $codigo = $_POST['codigo'] ?? '';

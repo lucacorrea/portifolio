@@ -226,7 +226,7 @@ pvSearchInput.addEventListener('input', async (e) => {
         return;
     }
 
-    const response = await fetch(`vendas.php?action=search&term=${term}`);
+    const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(term)}`);
     const products = await response.json();
     
     renderPVSearchResults(products);
@@ -305,7 +305,7 @@ function renderPVSearchResults(products) {
         let icon = 'fa-box text-primary';
         let badge = '';
         let titleHtml = `<div class="fw-bold text-primary">${p.nome}</div>`;
-        let subTextHtml = `<small class="text-muted">Cód: ${p.id} | Un: ${p.unidade}</small>`;
+        let subTextHtml = `<small class="text-muted">Cód: ${p.codigo || p.id} | Un: ${p.unidade}</small>`;
         let actionText = '';
         let clickHandler = () => selectForPVQty(p);
 

@@ -232,24 +232,31 @@ class Product extends BaseModel {
         $operator = ($type == 'entrada') ? '+' : '-';
         
         // Atualiza estoque específico da filial
-        $sql = "INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) 
-                VALUES (?, ?, ?) 
-                ON DUPLICATE KEY UPDATE quantidade = quantidade $operator ?";
-        
-        $value = ($type == 'entrada') ? (float)$qty : 0; // Se for entrada e novo, começa com qty. Se for saída e novo, vai dar erro ou negativo? 
-        // Na verdade, o ON DUPLICATE deve lidar com isso.
-        
         if ($type == 'saida') {
-            return $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) 
+            $res = $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) 
                                  VALUES (?, ?, ?) 
                                  ON DUPLICATE KEY UPDATE quantidade = quantidade - ?", 
                                  [$id, $filialId, -(float)$qty, $qty]);
         } else {
-            return $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) 
+            $res = $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade) 
                                  VALUES (?, ?, ?) 
                                  ON DUPLICATE KEY UPDATE quantidade = quantidade + ?", 
                                  [$id, $filialId, (float)$qty, $qty]);
         }
+
+        // Sincroniza com a tabela 'produtos' se for a Matriz (filial principal = 1)
+        try {
+            $m = $this->db->query("SELECT id FROM filiais WHERE principal = 1 LIMIT 1")->fetch();
+            $matrizId = $m ? (int)$m['id'] : 1;
+            
+            if ((int)$filialId === $matrizId) {
+                $this->query("UPDATE produtos SET quantidade = quantidade $operator ? WHERE id = ?", [$qty, $id]);
+            }
+        } catch (\Exception $e) {
+            error_log("Erro ao sincronizar estoque na tabela produtos: " . $e->getMessage());
+        }
+
+        return $res;
     }
 
     public function hasEnoughStock($id, $requiredQty, $filialId = null) {
