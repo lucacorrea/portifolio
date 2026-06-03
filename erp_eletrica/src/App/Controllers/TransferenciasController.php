@@ -654,7 +654,7 @@ class TransferenciasController extends BaseController {
         }
 
         // 2. Itens
-        $sqlItems = "SELECT ti.*, p.nome, p.codigo, 
+        $sqlItems = "SELECT ti.*, p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade,
                 COALESCE(ef.quantidade, p.quantidade) as disp_matriz,
                 (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
                 FROM erp_transferencias_itens ti 
@@ -669,7 +669,7 @@ class TransferenciasController extends BaseController {
 
         // 3. Ocorrências detalhadas
         $stmtO = $this->pdo->prepare("
-            SELECT oc.*, p.nome, p.codigo
+            SELECT oc.*, p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade
             FROM erp_transferencias_ocorrencias oc
             JOIN produtos p ON oc.produto_id = p.id
             WHERE oc.transferencia_id = ?

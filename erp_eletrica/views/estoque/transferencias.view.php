@@ -240,6 +240,7 @@
                         </thead>
                         <tbody id="tbodyTransf">
                             <?php foreach ($produtosMatriz as $pm): ?>
+                            <?php $unidadeProduto = $pm['unidade'] ?: 'UN'; ?>
                             <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
@@ -247,11 +248,11 @@
                                 </td>
                                 <td>
                                     <div class="fw-bold small"><?= htmlspecialchars($pm['nome']) ?></div>
-                                    <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?></div>
+                                    <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?> | Unidade: <?= htmlspecialchars($unidadeProduto) ?></div>
                                 </td>
-                                <td><span class="badge bg-secondary"><?= formatarQuantidade($pm['qtd_matriz']) ?> UN</span></td>
+                                <td><span class="badge bg-secondary"><?= formatarQuantidade($pm['qtd_matriz']) ?> <?= htmlspecialchars($unidadeProduto) ?></span></td>
                                 <td>
-                                    <input type="number" step="1" min="0" max="<?= $pm['qtd_matriz'] ?>"
+                                    <input type="number" step="0.001" min="0" max="<?= $pm['qtd_matriz'] ?>"
                                         name="itens[<?= $pm['id'] ?>][quantidade]"
                                         class="qty-input form-control-sm" placeholder="0" disabled>
                                 </td>
@@ -414,6 +415,7 @@
                         </thead>
                         <tbody id="tbodyReq">
                             <?php foreach ($produtosMatriz as $pm): ?>
+                            <?php $unidadeProduto = $pm['unidade'] ?: 'UN'; ?>
                             <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
@@ -421,10 +423,10 @@
                                 </td>
                                 <td>
                                     <div class="fw-bold small"><?= htmlspecialchars($pm['nome']) ?></div>
-                                    <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?></div>
+                                    <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?> | Unidade: <?= htmlspecialchars($unidadeProduto) ?></div>
                                 </td>
                                 <td>
-                                    <input type="number" step="1" min="0"
+                                    <input type="number" step="0.001" min="0"
                                         name="itens[<?= $pm['id'] ?>][quantidade]"
                                         class="qty-input form-control-sm" placeholder="0" disabled>
                                 </td>
@@ -507,9 +509,9 @@
                                     <div class="fw-bold small"><?= htmlspecialchars($pm['nome']) ?></div>
                                     <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?></div>
                                 </td>
-                                <td><span class="badge bg-secondary"><?= formatarQuantidade($pm['qtd_matriz']) ?> UN</span></td>
+                                <td><span class="badge bg-secondary"><?= formatarQuantidade($pm['qtd_matriz']) ?> <?= htmlspecialchars($unidadeProduto) ?></span></td>
                                 <td>
-                                    <input type="number" step="1" min="0" max="<?= $pm['qtd_matriz'] ?>"
+                                    <input type="number" step="0.001" min="0" max="<?= $pm['qtd_matriz'] ?>"
                                         name="itens[<?= $pm['id'] ?>][quantidade]"
                                         class="qty-input form-control-sm" placeholder="0" disabled>
                                 </td>
@@ -863,7 +865,7 @@ function abrirCarrinho(formId) {
                     <div class="extra-small text-muted">${sku ? `SKU: ${sku}` : ''}</div>
                 </td>
                 <td class="text-center" style="width:130px">
-                    <input type="number" step="1" min="0" ${maxAttr} value="${item.qty.value}" class="form-control form-control-sm text-center cart-edit-qty">
+                    <input type="number" step="0.001" min="0" ${maxAttr} value="${item.qty.value}" class="form-control form-control-sm text-center cart-edit-qty">
                 </td>
                 <td class="text-end" style="width:70px">
                     <button type="button" class="btn btn-outline-danger btn-sm" title="Remover" onclick="removerItemCarrinho(${index})">
@@ -939,20 +941,21 @@ function abrirModalRelato(id, codigo) {
             if (data.success) {
                 container.innerHTML = '';
                 data.items.forEach(item => {
+                    const unidade = item.unidade || 'UN';
                     const html = `
                         <div class="item-relato-row selectable-row border-bottom py-2 mb-2 px-2 rounded">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input chkItem" name="ocorrencias[${item.produto_id}][selecionado]" value="1" id="chk_${item.produto_id}" onchange="toggleItemRelato(this, ${item.produto_id})">
                                     <label class="form-check-label fw-bold small" for="chk_${item.produto_id}">${item.nome}</label>
-                                    <div class="extra-small text-muted">SKU: ${item.codigo} | Enviado: ${parseFloat(item.quantidade_enviada).toFixed(2)} UN</div>
+                                    <div class="extra-small text-muted">SKU: ${item.codigo} | Enviado: ${parseFloat(item.quantidade_enviada).toFixed(3)} ${unidade}</div>
                                 </div>
                             </div>
                             <div id="campos_oc_${item.produto_id}" class="d-none ps-4">
                                 <div class="row g-2 align-items-center">
                                     <div class="col-4">
                                         <label class="extra-small text-muted">Qtd Defeito</label>
-                                        <input type="number" step="1" min="0" max="${item.quantidade_enviada}" name="ocorrencias[${item.produto_id}][quantidade]" class="form-control form-control-sm" placeholder="0.00">
+                                        <input type="number" step="0.001" min="0" max="${item.quantidade_enviada}" name="ocorrencias[${item.produto_id}][quantidade]" class="form-control form-control-sm" placeholder="0.000">
                                     </div>
                                     <div class="col-8">
                                         <label class="extra-small text-muted">Motivo</label>
@@ -1042,6 +1045,7 @@ function abrirResumoRecebimento(id, codigo, temProblema) {
                 `;
                 
                 data.items.forEach(item => {
+                    const unidade = item.unidade || 'UN';
                     const enviada = parseFloat(item.quantidade_enviada);
                     const problema = parseFloat(item.quantidade_problema || 0);
                     const final = Math.max(0, enviada - problema);
@@ -1049,9 +1053,9 @@ function abrirResumoRecebimento(id, codigo, temProblema) {
                     html += `
                         <tr>
                             <td>${item.nome}</td>
-                            <td class="text-center">${enviada.toFixed(2)}</td>
-                            <td class="text-center ${problema > 0 ? 'text-danger fw-bold' : 'text-muted'}">${problema.toFixed(2)}</td>
-                            <td class="text-center fw-bold text-success bg-success bg-opacity-10">${final.toFixed(2)}</td>
+                            <td class="text-center">${enviada.toFixed(3)} ${unidade}</td>
+                            <td class="text-center ${problema > 0 ? 'text-danger fw-bold' : 'text-muted'}">${problema.toFixed(3)} ${unidade}</td>
+                            <td class="text-center fw-bold text-success bg-success bg-opacity-10">${final.toFixed(3)} ${unidade}</td>
                         </tr>
                     `;
                 });
@@ -1127,11 +1131,11 @@ function abrirDetalhesTransferencia(id) {
                         <div class="fw-bold">${it.nome}</div>
                         <div class="extra-small text-muted">SKU: ${it.codigo}</div>
                     </td>
-                    <td class="text-center">${parseFloat(it.quantidade_solicitada)}</td>
-                    <td class="text-center">${parseFloat(it.quantidade_enviada || 0)}</td>
-                    <td class="text-center">${parseFloat(it.quantidade_recebida || 0)}</td>
+                    <td class="text-center">${parseFloat(it.quantidade_solicitada)} ${it.unidade || 'UN'}</td>
+                    <td class="text-center">${parseFloat(it.quantidade_enviada || 0)} ${it.unidade || 'UN'}</td>
+                    <td class="text-center">${parseFloat(it.quantidade_recebida || 0)} ${it.unidade || 'UN'}</td>
                     <td class="text-center">
-                        ${it.quantidade_problema > 0 ? `<span class="badge bg-danger">${parseFloat(it.quantidade_problema)}</span>` : '<span class="text-muted opacity-25">---</span>'}
+                        ${it.quantidade_problema > 0 ? `<span class="badge bg-danger">${parseFloat(it.quantidade_problema)} ${it.unidade || 'UN'}</span>` : '<span class="text-muted opacity-25">---</span>'}
                     </td>
                 </tr>
             `).join('');
@@ -1149,7 +1153,7 @@ function abrirDetalhesTransferencia(id) {
                                 </div>
                                 <strong class="text-dark small">${oc.nome}</strong>
                             </div>
-                            <span class="badge bg-danger rounded-pill px-3">${parseFloat(oc.quantidade_problema)} UN</span>
+                            <span class="badge bg-danger rounded-pill px-3">${parseFloat(oc.quantidade_problema)} ${oc.unidade || 'UN'}</span>
                         </div>
                         
                         <div class="row g-2">
@@ -1294,10 +1298,10 @@ function abrirProcessarSolicitacao(id) {
                             <div class="fw-bold small">${it.nome}</div>
                             <div class="extra-small text-muted">SKU: ${it.codigo}</div>
                         </td>
-                        <td class="text-center small">${solicitada}</td>
-                        <td class="text-center fw-bold ${corDisp} small">${disp}</td>
+                        <td class="text-center small">${solicitada} ${it.unidade || 'UN'}</td>
+                        <td class="text-center fw-bold ${corDisp} small">${disp} ${it.unidade || 'UN'}</td>
                         <td class="p-2">
-                            <input type="number" step="1" min="0" max="${disp}"
+                            <input type="number" step="0.001" min="0" max="${disp}"
                                 name="qtd_enviada[${it.produto_id}]"
                                 value="${padrao}"
                                 class="form-control form-control-sm text-center fw-bold border-primary-subtle"
@@ -1341,7 +1345,7 @@ function abrirProcessarRecebimento(id) {
             tbody.innerHTML = res.items.filter(it => it.quantidade_enviada > 0).map(it => `
                 <li class="list-group-item d-flex justify-content-between align-items-center small py-2">
                     <div class="fw-bold text-dark">${it.nome}</div>
-                    <span class="badge bg-primary rounded-pill px-3">${parseFloat(it.quantidade_enviada)} UN</span>
+                    <span class="badge bg-primary rounded-pill px-3">${parseFloat(it.quantidade_enviada)} ${it.unidade || 'UN'}</span>
                 </li>
             `).join('');
 
