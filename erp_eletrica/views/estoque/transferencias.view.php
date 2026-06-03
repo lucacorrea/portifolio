@@ -1344,7 +1344,10 @@ function abrirProcessarRecebimento(id) {
             const tbody = document.getElementById('receb_tbody_items');
             tbody.innerHTML = res.items.filter(it => it.quantidade_enviada > 0).map(it => `
                 <li class="list-group-item d-flex justify-content-between align-items-center small py-2">
-                    <div class="fw-bold text-dark">${it.nome}</div>
+                    <div>
+                        <div class="fw-bold text-dark">${it.nome}</div>
+                        <div class="extra-small text-muted">Código: ${it.codigo || it.produto_id}</div>
+                    </div>
                     <span class="badge bg-primary rounded-pill px-3">${parseFloat(it.quantidade_enviada)} ${it.unidade || 'UN'}</span>
                 </li>
             `).join('');
