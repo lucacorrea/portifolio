@@ -193,7 +193,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <?php if ($is_pdf_export): ?>
             @page {
                 size: A4 landscape;
-                margin: 8mm;
+                margin: 5mm;
             }
             <?php endif; ?>
 
@@ -273,7 +273,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
             body.pdf-export {
                 color: #001228;
-                font-size: 11px;
+                font-size: 9.2px;
             }
 
             .pdf-wrap {
@@ -282,7 +282,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             }
 
             .pdf-page {
-                width: 281mm;
+                width: 287mm;
                 max-width: none;
                 background: #ffffff;
                 margin: 0 auto;
@@ -306,7 +306,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             body.pdf-export .sheet th {
                 border-color: #7f8daa;
                 color: #001228;
-                padding: 2px 8px;
+                padding: 1px 5px;
                 vertical-align: middle;
             }
 
@@ -314,58 +314,58 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 background: #d9e3f4;
                 border: 2px solid #16814c;
                 color: #001228;
-                font-size: 12px;
+                font-size: 10.5px;
                 line-height: 1.1;
-                padding: 4px 8px;
+                padding: 3px 5px;
                 text-transform: uppercase;
             }
 
             body.pdf-export .sub-info {
                 background: #ffffff;
-                font-size: 11px;
-                line-height: 1.15;
+                font-size: 9.2px;
+                line-height: 1.08;
                 padding-top: 1px;
                 padding-bottom: 1px;
             }
 
             body.pdf-export .summary-label {
                 background: #ffffff;
-                font-size: 11px;
+                font-size: 9.5px;
                 line-height: 1.1;
-                padding: 3px 8px;
+                padding: 2px 5px;
             }
 
             body.pdf-export .summary-value {
                 background: #ffffff;
-                font-size: 9px;
+                font-size: 8.5px;
                 line-height: 1.1;
-                padding: 3px 8px;
+                padding: 2px 5px;
             }
 
             body.pdf-export .section-title {
                 background: #2251d6;
                 color: #ffffff;
-                font-size: 11px;
+                font-size: 10px;
                 line-height: 1.1;
-                padding: 3px 8px;
+                padding: 2px 5px;
             }
 
             body.pdf-export .thead th {
                 background: #d9dde4;
                 color: #001228;
-                font-size: 10.5px;
+                font-size: 9.5px;
                 line-height: 1.1;
-                padding: 3px 8px;
+                padding: 2px 5px;
             }
 
             body.pdf-export .total-row td {
                 background: #eef2ff;
-                font-size: 11px;
-                padding: 2px 8px;
+                font-size: 9.5px;
+                padding: 1px 5px;
             }
 
             body.pdf-export .spacer td {
-                height: 6px;
+                height: 5px;
             }
 
             .sheet tr {
@@ -509,7 +509,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                     try {
                         await window.html2pdf().set({
-                            margin: [8, 8, 8, 8],
+                            margin: [5, 5, 5, 5],
                             filename: <?php echo json_encode($filename . '.pdf'); ?>,
                             image: { type: 'jpeg', quality: 0.98 },
                             html2canvas: {
