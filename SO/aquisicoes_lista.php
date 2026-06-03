@@ -193,7 +193,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <?php if ($is_pdf_export): ?>
             @page {
                 size: A4 landscape;
-                margin: 8mm;
+                margin: 5mm;
             }
             <?php endif; ?>
 
@@ -271,16 +271,28 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 color: #ffffff;
             }
 
+            body.pdf-export {
+                color: #001228;
+                font-size: 9.2px;
+            }
+
             .pdf-wrap {
-                padding: 14px;
+                padding: 10px;
+                overflow-x: auto;
             }
 
             .pdf-page {
-                width: 281mm;
-                max-width: 100%;
+                width: 287mm;
+                max-width: none;
                 background: #ffffff;
                 margin: 0 auto;
                 padding: 0;
+            }
+
+            body.pdf-export .sheet {
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
             }
 
             .sheet td,
@@ -288,6 +300,72 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 line-height: 1.15;
                 print-color-adjust: exact;
                 -webkit-print-color-adjust: exact;
+            }
+
+            body.pdf-export .sheet td,
+            body.pdf-export .sheet th {
+                border-color: #7f8daa;
+                color: #001228;
+                padding: 1px 5px;
+                vertical-align: middle;
+            }
+
+            body.pdf-export .title-main {
+                background: #d9e3f4;
+                border: 2px solid #16814c;
+                color: #001228;
+                font-size: 10.5px;
+                line-height: 1.1;
+                padding: 3px 5px;
+                text-transform: uppercase;
+            }
+
+            body.pdf-export .sub-info {
+                background: #ffffff;
+                font-size: 9.2px;
+                line-height: 1.08;
+                padding-top: 1px;
+                padding-bottom: 1px;
+            }
+
+            body.pdf-export .summary-label {
+                background: #ffffff;
+                font-size: 9.5px;
+                line-height: 1.1;
+                padding: 2px 5px;
+            }
+
+            body.pdf-export .summary-value {
+                background: #ffffff;
+                font-size: 8.5px;
+                line-height: 1.1;
+                padding: 2px 5px;
+            }
+
+            body.pdf-export .section-title {
+                background: #2251d6;
+                color: #ffffff;
+                font-size: 10px;
+                line-height: 1.1;
+                padding: 2px 5px;
+            }
+
+            body.pdf-export .thead th {
+                background: #d9dde4;
+                color: #001228;
+                font-size: 9.5px;
+                line-height: 1.1;
+                padding: 2px 5px;
+            }
+
+            body.pdf-export .total-row td {
+                background: #eef2ff;
+                font-size: 9.5px;
+                padding: 1px 5px;
+            }
+
+            body.pdf-export .spacer td {
+                height: 5px;
             }
 
             .sheet tr {
@@ -316,7 +394,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <?php endif; ?>
         </style>
     </head>
-    <body>
+    <body class="<?php echo $is_pdf_export ? 'pdf-export' : ''; ?>">
         <?php if ($is_pdf_export): ?>
             <div class="print-toolbar no-print">
                 <div class="toolbar-title">Relatório de Aquisições - PDF em paisagem</div>
@@ -338,12 +416,12 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
         <table class="sheet">
             <colgroup>
-                <col style="width: 14%;">
-                <col style="width: 14%;">
-                <col style="width: 24%;">
-                <col style="width: 24%;">
                 <col style="width: 12%;">
+                <col style="width: 26%;">
+                <col style="width: 26%;">
                 <col style="width: 12%;">
+                <col style="width: 14%;">
+                <col style="width: 10%;">
             </colgroup>
 
             <tr>
@@ -431,13 +509,14 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                     try {
                         await window.html2pdf().set({
-                            margin: [8, 8, 8, 8],
+                            margin: [5, 5, 5, 5],
                             filename: <?php echo json_encode($filename . '.pdf'); ?>,
                             image: { type: 'jpeg', quality: 0.98 },
                             html2canvas: {
                                 scale: 2,
                                 useCORS: true,
-                                backgroundColor: '#ffffff'
+                                backgroundColor: '#ffffff',
+                                windowWidth: report.scrollWidth
                             },
                             jsPDF: {
                                 unit: 'mm',
