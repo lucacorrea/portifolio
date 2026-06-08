@@ -333,10 +333,61 @@ include 'views/layout/header.php';
 <style>
     .filtros-grid {
         display: grid;
-        grid-row-gap: 1rem;
-        grid-column-gap: 1.5rem;
-        grid-template-columns: minmax(180px, 1.5fr) minmax(140px, 1fr) minmax(180px, 1.2fr) minmax(180px, 1.2fr) minmax(145px, .9fr) minmax(145px, .9fr) minmax(92px, auto);
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 1rem;
         align-items: end;
+    }
+
+    .filtro-busca {
+        grid-column: span 3;
+    }
+
+    .filtro-status {
+        grid-column: span 2;
+    }
+
+    .filtro-secretaria {
+        grid-column: span 3;
+    }
+
+    .filtro-fornecedor {
+        grid-column: span 4;
+    }
+
+    .filtro-data {
+        grid-column: span 2;
+    }
+
+    .filtros-acoes {
+        display: flex;
+        gap: .5rem;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+        grid-column: span 8;
+    }
+
+    .filtros-acoes .btn {
+        min-height: 40px;
+        justify-content: center;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 1200px) {
+        .filtro-busca,
+        .filtro-fornecedor {
+            grid-column: span 6;
+        }
+
+        .filtro-status,
+        .filtro-secretaria,
+        .filtro-data {
+            grid-column: span 3;
+        }
+
+        .filtros-acoes {
+            grid-column: span 6;
+        }
     }
 
     .lista-header {
@@ -493,22 +544,20 @@ include 'views/layout/header.php';
         width: 100%;
     }
 
-    .filtros-acoes {
-        display: flex;
-        gap: 0.5rem;
-        align-items: center;
-    }
-
-    .filtros-acoes .btn-icon {
-        width: 42px;
-        height: 40px;
-        padding: 0;
-        display: inline-flex;
-        justify-content: center;
-        align-items: center;
-    }
-
     @media (max-width: 768px) {
+        .filtros-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filtro-busca,
+        .filtro-status,
+        .filtro-secretaria,
+        .filtro-fornecedor,
+        .filtro-data,
+        .filtros-acoes {
+            grid-column: span 1;
+        }
+
         .lista-header {
             flex-direction: column;
             align-items: stretch;
@@ -519,15 +568,10 @@ include 'views/layout/header.php';
             justify-content: center;
         }
 
-        .filtros-grid {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-
         .filtros-acoes {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 0.75rem;
+            gap: .75rem;
         }
 
         .filtros-acoes .btn {
@@ -553,12 +597,12 @@ include 'views/layout/header.php';
         </h3>
 
         <form action="" method="GET" class="filtros-grid">
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-busca" style="margin-bottom: 0;">
                 <label class="form-label">Termo de busca</label>
                 <input type="text" name="busca" class="form-control" placeholder="Número, secretaria, fornecedor ou valor..." value="<?php echo htmlspecialchars($busca_texto, ENT_QUOTES, 'UTF-8'); ?>">
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-status" style="margin-bottom: 0;">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-control">
                     <option value="">Todos Status</option>
@@ -571,7 +615,7 @@ include 'views/layout/header.php';
                 </select>
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-secretaria" style="margin-bottom: 0;">
                 <label class="form-label">Secretaria</label>
                 <select name="secretaria_id" class="form-control">
                     <option value="">Todas as Secretarias</option>
@@ -583,7 +627,7 @@ include 'views/layout/header.php';
                 </select>
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-fornecedor" style="margin-bottom: 0;">
                 <label class="form-label">Fornecedor</label>
                 <select name="fornecedor_id" class="form-control">
                     <option value="">Todos os Fornecedores</option>
@@ -598,7 +642,7 @@ include 'views/layout/header.php';
                 </select>
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-data" style="margin-bottom: 0;">
                 <label class="form-label">Data inicial</label>
                 <input
                     type="date"
@@ -607,7 +651,7 @@ include 'views/layout/header.php';
                     value="<?php echo htmlspecialchars($data_inicio_valida ? $data_inicio_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
             </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group filtro-data" style="margin-bottom: 0;">
                 <label class="form-label">Data final</label>
                 <input
                     type="date"
@@ -617,11 +661,11 @@ include 'views/layout/header.php';
             </div>
 
             <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <button type="submit" class="btn btn-primary btn-icon" title="Filtrar">
-                    <i class="fas fa-search" style="margin: 0;"></i>
+                <button type="submit" class="btn btn-outline btn-sm" title="Filtrar">
+                    <i class="fas fa-search"></i> Filtrar
                 </button>
-                <a href="oficios_lista.php" class="btn btn-icon" style="border: 1px solid #cbd5e1; border-radius: 6px; color: #64748b; background: white;" title="Limpar Filtros">
-                    <i class="fas fa-eraser" style="margin: 0;"></i>
+                <a href="oficios_lista.php" class="btn btn-outline btn-sm" title="Limpar Filtros">
+                    <i class="fas fa-eraser"></i> Limpar
                 </a>
             </div>
         </form>
