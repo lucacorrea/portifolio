@@ -268,7 +268,6 @@ if ($data_fim_valida) {
 }
 
 $where = implode(' AND ', $where_parts);
-$where_relatorio = $where . ' AND ' . reportable_aquisicoes_condition();
 
 $secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
 $fornecedores_list = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
@@ -335,7 +334,7 @@ $sql_select_export = "
         FROM itens_aquisicao
         GROUP BY aquisicao_id
     ) itens_relatorio ON itens_relatorio.aquisicao_id = a.id
-    WHERE $where_relatorio
+    WHERE $where
 ";
 
 $sql_order = "
