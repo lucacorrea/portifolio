@@ -432,10 +432,31 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             .report-row.group-color-3 td { background: #fce4d6; }
             .report-row.group-color-4 td { background: #fff2cc; }
             .report-row.group-color-5 td { background: #eadcf8; }
-            .group-total-row td {
-                background: #e7e6e6;
+            .secretaria-card-title td {
+                color: #0f172a;
                 font-weight: bold;
-                border-top: 1px solid #7c8aa5;
+                text-transform: uppercase;
+                border-top: 2px solid #475569;
+                border-bottom: 1px solid #7c8aa5;
+                padding-top: 9px;
+                padding-bottom: 9px;
+            }
+            .secretaria-card-title.group-color-1 td { background: #b7cde8; }
+            .secretaria-card-title.group-color-2 td { background: #c6e0b4; }
+            .secretaria-card-title.group-color-3 td { background: #f8cbad; }
+            .secretaria-card-title.group-color-4 td { background: #ffe699; }
+            .secretaria-card-title.group-color-5 td { background: #d9c2e9; }
+            .secretaria-card-head th {
+                background: #f3f4f6;
+                color: #111827;
+                font-weight: bold;
+                text-align: center;
+            }
+            .group-total-row td {
+                background: #d9dde4;
+                font-weight: bold;
+                border-top: 2px solid #64748b;
+                border-bottom: 2px solid #64748b;
             }
             .supplier-section td {
                 background: #eef2ff;
@@ -595,14 +616,25 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             }
 
             body.pdf-export .group-total-row td {
-                background: #e7e6e6;
-                font-size: 9px;
-                padding: 1px 5px;
+                background: #d9dde4;
+                font-size: 9.5px;
+                padding: 2px 5px;
             }
 
             body.pdf-export .supplier-section td,
             body.pdf-export .supplier-total-row td {
                 font-size: 9px;
+                padding: 2px 5px;
+            }
+
+            body.pdf-export .secretaria-card-title td {
+                font-size: 9.5px;
+                line-height: 1.12;
+                padding: 4px 5px;
+            }
+
+            body.pdf-export .secretaria-card-head th {
+                font-size: 8.8px;
                 padding: 2px 5px;
             }
 
@@ -707,14 +739,6 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <tr>
                 <td colspan="6" class="section-title">AQUISIÇÕES INDIVIDUAIS</td>
             </tr>
-            <tr class="thead">
-                <th>Nº Aquisição</th>
-                <th>Nº Ofício</th>
-                <th>Secretaria</th>
-                <th>DESCRIÇÃO</th>
-                <th>Data</th>
-                <th>Valor</th>
-            </tr>
 
             <?php if (empty($dadosPorFornecedor)): ?>
                 <tr>
@@ -737,6 +761,20 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                         <?php
                         $grupo_classe = $secretaria_color_map[$secretaria['nome']] ?? $report_group_colors[0];
                         ?>
+                        <tr class="spacer"><td colspan="6"></td></tr>
+                        <tr class="secretaria-card-title <?php echo h($grupo_classe); ?>">
+                            <td colspan="4" class="left">SECRETARIA: <?php echo h($secretaria['nome']); ?></td>
+                            <td class="center"><?php echo (int)$secretaria['quantidade']; ?> AQ</td>
+                            <td class="right money-cell"><?php echo formatarMoedaBR($secretaria['total']); ?></td>
+                        </tr>
+                        <tr class="secretaria-card-head">
+                            <th>Nº Aquisição</th>
+                            <th>Nº Ofício</th>
+                            <th>Secretaria</th>
+                            <th>DESCRIÇÃO</th>
+                            <th>Data</th>
+                            <th>Valor</th>
+                        </tr>
                         <?php foreach ($secretaria['items'] as $aq): ?>
                             <?php
                             $descricaoCompleta = limparDescricaoItens($aq['descricao_relatorio'] ?? '');
@@ -754,7 +792,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             </tr>
                         <?php endforeach; ?>
                         <tr class="group-total-row">
-                            <td colspan="4" class="right">TOTAL - <?php echo h($secretaria['nome']); ?></td>
+                            <td colspan="4" class="right">TOTAL DA SECRETARIA</td>
                             <td class="center"><?php echo (int)$secretaria['quantidade']; ?> AQ</td>
                             <td class="right money-cell"><?php echo formatarMoedaBR($secretaria['total']); ?></td>
                         </tr>
