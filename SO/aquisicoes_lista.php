@@ -92,6 +92,17 @@ function formatarDescricaoRelatorio($descricao, int $limite = 180): string
     return formatarTextoCaixaAlta(resumirItensDescricao($descricao, $limite));
 }
 
+function corRelatorioSecretaria($cor): string
+{
+    $cor = strtoupper(trim((string)$cor));
+
+    if (preg_match('/^#[0-9A-F]{6}$/', $cor)) {
+        return $cor;
+    }
+
+    return '#D9E3F4';
+}
+
 function nomeRelatorio($valor, string $fallback): string
 {
     $nome = formatarTextoCaixaAlta($valor);
@@ -107,6 +118,7 @@ function agruparAquisicoesPorFornecedor(array $aquisicoes): array
     foreach ($aquisicoes as $aq) {
         $fornecedor = nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO');
         $secretaria = nomeRelatorio($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA');
+        $secretariaCor = corRelatorioSecretaria($aq['secretaria_cor'] ?? '');
         $valor = (float)($aq['valor_total'] ?? 0);
 
         if (!isset($grupos[$fornecedor])) {
@@ -121,6 +133,7 @@ function agruparAquisicoesPorFornecedor(array $aquisicoes): array
         if (!isset($grupos[$fornecedor]['secretarias'][$secretaria])) {
             $grupos[$fornecedor]['secretarias'][$secretaria] = [
                 'nome' => $secretaria,
+                'cor' => $secretariaCor,
                 'quantidade' => 0,
                 'total' => 0.0,
                 'items' => [],
@@ -164,6 +177,7 @@ function gerarResumoSecretarias(array $aquisicoes): array
         if (!isset($resumo[$secretaria])) {
             $resumo[$secretaria] = [
                 'nome' => $secretaria,
+                'cor' => corRelatorioSecretaria($aq['secretaria_cor'] ?? ''),
                 'quantidade' => 0,
                 'total' => 0.0,
             ];
@@ -287,6 +301,7 @@ $sql_select = "
         a.criado_em,
         o.numero as oficio_num,
         s.nome as secretaria,
+        s.cor_relatorio as secretaria_cor,
         f.nome as fornecedor
     FROM aquisicoes a
     LEFT JOIN oficios o ON a.oficio_id = o.id
@@ -305,6 +320,7 @@ $sql_select_export = "
         o.numero as oficio_num,
         o.resumo_itens,
         s.nome as secretaria,
+        s.cor_relatorio as secretaria_cor,
         f.nome as fornecedor,
         COALESCE(NULLIF(TRIM(o.resumo_itens), ''), itens_relatorio.descricao, '') as descricao_relatorio
     FROM aquisicoes a
@@ -348,10 +364,9 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     $total_export = (float)$agrupamento_fornecedores['total'];
     $quantidade_export = (int)$agrupamento_fornecedores['quantidade'];
     $resumoSecretarias = gerarResumoSecretarias($aquisicoes_export);
-    $report_group_colors = ['group-color-1', 'group-color-2', 'group-color-3', 'group-color-4', 'group-color-5'];
     $secretaria_color_map = [];
-    foreach ($resumoSecretarias as $index => $secretariaResumo) {
-        $secretaria_color_map[$secretariaResumo['nome']] = $report_group_colors[$index % count($report_group_colors)];
+    foreach ($resumoSecretarias as $secretariaResumo) {
+        $secretaria_color_map[$secretariaResumo['nome']] = corRelatorioSecretaria($secretariaResumo['cor'] ?? '');
     }
 
     $periodo_texto = 'Todos';
@@ -427,11 +442,6 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 overflow-wrap: anywhere;
                 word-wrap: break-word;
             }
-            .report-row.group-color-1 td { background: #d9e3f4; }
-            .report-row.group-color-2 td { background: #e2f0d9; }
-            .report-row.group-color-3 td { background: #fce4d6; }
-            .report-row.group-color-4 td { background: #fff2cc; }
-            .report-row.group-color-5 td { background: #eadcf8; }
             .secretaria-card-title td {
                 color: #0f172a;
                 font-weight: bold;
@@ -441,11 +451,6 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 padding-top: 9px;
                 padding-bottom: 9px;
             }
-            .secretaria-card-title.group-color-1 td { background: #b7cde8; }
-            .secretaria-card-title.group-color-2 td { background: #c6e0b4; }
-            .secretaria-card-title.group-color-3 td { background: #f8cbad; }
-            .secretaria-card-title.group-color-4 td { background: #ffe699; }
-            .secretaria-card-title.group-color-5 td { background: #d9c2e9; }
             .secretaria-card-head th {
                 background: #f3f4f6;
                 color: #111827;
@@ -759,13 +764,14 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                     <?php foreach ($fornecedor['secretarias'] as $secretaria): ?>
                         <?php
-                        $grupo_classe = $secretaria_color_map[$secretaria['nome']] ?? $report_group_colors[0];
+                        $cor_secretaria = corRelatorioSecretaria($secretaria_color_map[$secretaria['nome']] ?? ($secretaria['cor'] ?? ''));
+                        $cor_attr = h($cor_secretaria);
                         ?>
                         <tr class="spacer"><td colspan="6"></td></tr>
-                        <tr class="secretaria-card-title <?php echo h($grupo_classe); ?>">
-                            <td colspan="4" class="left">SECRETARIA: <?php echo h($secretaria['nome']); ?></td>
-                            <td class="center"><?php echo (int)$secretaria['quantidade']; ?> AQ</td>
-                            <td class="right money-cell"><?php echo formatarMoedaBR($secretaria['total']); ?></td>
+                        <tr class="secretaria-card-title">
+                            <td colspan="4" class="left" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;">SECRETARIA: <?php echo h($secretaria['nome']); ?></td>
+                            <td class="center" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo (int)$secretaria['quantidade']; ?> AQ</td>
+                            <td class="right money-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo formatarMoedaBR($secretaria['total']); ?></td>
                         </tr>
                         <tr class="secretaria-card-head">
                             <th>Nº Aquisição</th>
@@ -782,13 +788,13 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                                 ? formatarTextoCaixaAlta($descricaoCompleta !== '' ? $descricaoCompleta : '-')
                                 : formatarDescricaoRelatorio($descricaoCompleta, $descricao_limite);
                             ?>
-                            <tr class="report-row <?php echo h($grupo_classe); ?>">
-                                <td class="center text-cell"><?php echo h($aq['numero_aq']); ?></td>
-                                <td class="center text-cell"><?php echo h($aq['oficio_num']); ?></td>
-                                <td class="left text-cell"><?php echo h(nomeRelatorio($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA')); ?></td>
-                                <td class="left text-cell desc-cell"><?php echo h($descricaoRelatorio); ?></td>
-                                <td class="center"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
-                                <td class="right money-cell"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
+                            <tr class="report-row">
+                                <td class="center text-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
+                                <td class="center text-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
+                                <td class="left text-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h(nomeRelatorio($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA')); ?></td>
+                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h($descricaoRelatorio); ?></td>
+                                <td class="center" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
+                                <td class="right money-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
                             </tr>
                         <?php endforeach; ?>
                         <tr class="group-total-row">

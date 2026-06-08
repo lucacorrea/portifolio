@@ -10,6 +10,11 @@ try {
     $pdo->exec("ALTER TABLE usuarios MODIFY COLUMN nivel ENUM('ADMIN', 'SUPORTE', 'SECRETARIO', 'CASA_CIVIL', 'SEFAZ', 'FUNCIONARIO') NOT NULL");
     echo "Nivel ENUM em usuarios atualizado com sucesso.<br>";
 
+    if (function_exists('db_sync_secretarias_relatorio')) {
+        db_sync_secretarias_relatorio($pdo);
+        echo "Secretarias, codigos de acesso e cores de relatorio sincronizados.<br>";
+    }
+
     // Adiciona as novas colunas SE elas ainda não existirem
     
     // Tabela oficios

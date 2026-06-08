@@ -5,11 +5,163 @@ login_check();
 
 $page_title = "Lista de Solicitações";
 $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
+$status_options = ['PENDENTE_ITENS', 'ENVIADO', 'EM_ANALISE', 'APROVADO', 'REPROVADO', 'ARQUIVADO'];
+
+function oficios_lista_return_url(array $source, array $status_options): string {
+    $safe = [];
+
+    if (isset($source['busca']) && is_scalar($source['busca'])) {
+        $safe['busca'] = substr(trim((string)$source['busca']), 0, 120);
+    }
+
+    if (isset($source['status']) && is_scalar($source['status']) && in_array((string)$source['status'], $status_options, true)) {
+        $safe['status'] = (string)$source['status'];
+    }
+
+    if (isset($source['secretaria_id']) && is_numeric($source['secretaria_id']) && (int)$source['secretaria_id'] > 0) {
+        $safe['secretaria_id'] = (int)$source['secretaria_id'];
+    }
+
+    if (isset($source['page']) && is_numeric($source['page']) && (int)$source['page'] > 1) {
+        $safe['page'] = (int)$source['page'];
+    }
+
+    $query = http_build_query($safe);
+    return 'oficios_lista.php' . ($query !== '' ? '?' . $query : '');
+}
+
+function oficios_lista_local_upload_path(?string $path): ?string {
+    $path = trim((string)$path);
+
+    if ($path === '') {
+        return null;
+    }
+
+    $urlPath = parse_url($path, PHP_URL_PATH);
+    $path = str_replace('\\', '/', $urlPath !== false && $urlPath !== null ? $urlPath : $path);
+    $path = ltrim($path, '/');
+
+    $uploadsRoot = realpath(__DIR__ . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'uploads');
+    $candidate = realpath(__DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path));
+
+    if ($uploadsRoot === false || $candidate === false || !is_file($candidate)) {
+        return null;
+    }
+
+    $uploadsRoot = rtrim($uploadsRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    if (strncmp($candidate, $uploadsRoot, strlen($uploadsRoot)) !== 0) {
+        return null;
+    }
+
+    return $candidate;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_oficio'])) {
+    $return_source = [];
+    parse_str((string)($_POST['return_query'] ?? ''), $return_source);
+    $return_url = oficios_lista_return_url($return_source, $status_options);
+
+    if ($nivel_user !== 'SUPORTE') {
+        flash_message('danger', 'Apenas usuário suporte pode excluir ofícios e aquisições vinculadas.');
+        header("Location: {$return_url}");
+        exit();
+    }
+
+    $oficio_id = (int)($_POST['oficio_id'] ?? 0);
+    $senha_suporte = (string)($_POST['senha_suporte'] ?? '');
+
+    if ($oficio_id <= 0 || $senha_suporte === '') {
+        flash_message('danger', 'Informe a senha do suporte para confirmar a exclusão.');
+        header("Location: {$return_url}");
+        exit();
+    }
+
+    $stmt_user = $pdo->prepare("SELECT senha, nivel FROM usuarios WHERE id = ?");
+    $stmt_user->execute([(int)($_SESSION['user_id'] ?? 0)]);
+    $support_user = $stmt_user->fetch(PDO::FETCH_ASSOC);
+
+    if (!$support_user || strtoupper((string)$support_user['nivel']) !== 'SUPORTE' || !password_verify($senha_suporte, (string)$support_user['senha'])) {
+        flash_message('danger', 'Senha do suporte inválida. Nenhum registro foi excluído.');
+        header("Location: {$return_url}");
+        exit();
+    }
+
+    $local_files_to_remove = [];
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmt_oficio = $pdo->prepare("
+            SELECT id, numero, arquivo_orcamento, arquivo_oficio
+            FROM oficios
+            WHERE id = ?
+            FOR UPDATE
+        ");
+        $stmt_oficio->execute([$oficio_id]);
+        $oficio_delete = $stmt_oficio->fetch(PDO::FETCH_ASSOC);
+
+        if (!$oficio_delete) {
+            $pdo->rollBack();
+            flash_message('danger', 'Ofício não encontrado ou já excluído.');
+            header("Location: {$return_url}");
+            exit();
+        }
+
+        $stmt_anexos = $pdo->prepare("SELECT caminho FROM oficio_anexos WHERE oficio_id = ?");
+        $stmt_anexos->execute([$oficio_id]);
+        foreach ($stmt_anexos->fetchAll(PDO::FETCH_COLUMN) as $anexo_path) {
+            $local_files_to_remove[] = $anexo_path;
+        }
+        $local_files_to_remove[] = $oficio_delete['arquivo_orcamento'] ?? null;
+        $local_files_to_remove[] = $oficio_delete['arquivo_oficio'] ?? null;
+
+        $stmt_count_aq = $pdo->prepare("SELECT COUNT(*) FROM aquisicoes WHERE oficio_id = ?");
+        $stmt_count_aq->execute([$oficio_id]);
+        $aquisicoes_count = (int)$stmt_count_aq->fetchColumn();
+
+        $pdo->prepare("
+            DELETE ia
+            FROM itens_aquisicao ia
+            INNER JOIN aquisicoes a ON a.id = ia.aquisicao_id
+            WHERE a.oficio_id = ?
+        ")->execute([$oficio_id]);
+
+        $pdo->prepare("DELETE FROM aquisicoes WHERE oficio_id = ?")->execute([$oficio_id]);
+        $pdo->prepare("DELETE FROM oficios WHERE id = ?")->execute([$oficio_id]);
+
+        log_action(
+            $pdo,
+            'EXCLUSAO_OFICIO_AQUISICAO',
+            'Ofício ' . $oficio_delete['numero'] . ' removido com ' . $aquisicoes_count . ' aquisição(ões) vinculada(s).'
+        );
+
+        $pdo->commit();
+
+        $removed_files = [];
+        foreach (array_unique(array_filter($local_files_to_remove)) as $file_path) {
+            $local_file = oficios_lista_local_upload_path($file_path);
+            if ($local_file !== null && !isset($removed_files[$local_file])) {
+                @unlink($local_file);
+                $removed_files[$local_file] = true;
+            }
+        }
+
+        flash_message('success', 'Ofício e aquisição(ões) vinculada(s) excluídos com sucesso.');
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        flash_message('danger', 'Erro ao excluir o ofício. Verifique vínculos existentes e tente novamente.');
+    }
+
+    header("Location: {$return_url}");
+    exit();
+}
 
 // Filtros simples
 $where_clauses = ["TRUE"];
 $params = [];
-$status_options = ['PENDENTE_ITENS', 'ENVIADO', 'EM_ANALISE', 'APROVADO', 'REPROVADO', 'ARQUIVADO'];
 
 function parse_money_filter_value($valor): ?float {
     $valor = trim((string)$valor);
@@ -160,6 +312,99 @@ include 'views/layout/header.php';
         gap: 8px;
         flex-wrap: nowrap;
         align-items: center;
+    }
+
+    .btn-delete-oficio {
+        color: #b91c1c;
+        border-color: #fecaca;
+    }
+
+    .btn-delete-oficio:hover {
+        color: #991b1b;
+        border-color: #ef4444;
+        background: #fef2f2;
+    }
+
+    .modal-backdrop-oficio {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(15, 23, 42, 0.55);
+    }
+
+    .modal-backdrop-oficio.is-open {
+        display: flex;
+    }
+
+    .modal-oficio {
+        width: 100%;
+        max-width: 460px;
+        background: var(--white);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+    }
+
+    .modal-oficio-header,
+    .modal-oficio-body,
+    .modal-oficio-footer {
+        padding: 1rem 1.25rem;
+    }
+
+    .modal-oficio-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-oficio-title {
+        margin: 0;
+        color: var(--text-dark);
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .modal-oficio-close {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .modal-oficio-alert {
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        background: #fef2f2;
+        color: #991b1b;
+        font-size: 0.825rem;
+        line-height: 1.45;
+    }
+
+    .modal-oficio-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        border-top: 1px solid var(--border-color);
+        flex-wrap: wrap;
+    }
+
+    .btn-danger-action {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: var(--white);
+    }
+
+    .btn-danger-action:hover {
+        background: #b91c1c;
+        border-color: #b91c1c;
     }
 
     .paginacao-box {
@@ -354,6 +599,19 @@ include 'views/layout/header.php';
                                             <i class="fas fa-shopping-cart"></i> Gerar
                                         </a>
                                     <?php endif; ?>
+
+                                    <?php if ($nivel_user === 'SUPORTE'): ?>
+                                        <button
+                                            type="button"
+                                            class="btn btn-outline btn-sm btn-delete-oficio"
+                                            title="Excluir ofício e aquisições vinculadas"
+                                            data-delete-oficio
+                                            data-oficio-id="<?php echo (int)$o['id']; ?>"
+                                            data-oficio-numero="<?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>"
+                                        >
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -389,5 +647,92 @@ include 'views/layout/header.php';
         <?php endif; ?>
     </div>
 </div>
+
+<?php if ($nivel_user === 'SUPORTE'): ?>
+    <div class="modal-backdrop-oficio" id="delete-oficio-modal" aria-hidden="true">
+        <div class="modal-oficio" role="dialog" aria-modal="true" aria-labelledby="delete-oficio-title">
+            <form method="POST" id="delete-oficio-form" autocomplete="off">
+                <input type="hidden" name="delete_oficio" value="1">
+                <input type="hidden" name="oficio_id" id="delete-oficio-id" value="">
+                <input type="hidden" name="return_query" value="<?php echo htmlspecialchars($_SERVER['QUERY_STRING'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+
+                <div class="modal-oficio-header">
+                    <h3 class="modal-oficio-title" id="delete-oficio-title">Confirmar exclusão</h3>
+                    <button type="button" class="btn btn-outline btn-sm modal-oficio-close" data-close-delete-modal aria-label="Fechar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="modal-oficio-body">
+                    <div class="modal-oficio-alert">
+                        Esta ação removerá o ofício <strong id="delete-oficio-numero"></strong>, suas aquisições vinculadas e os itens/anexos relacionados. A operação não pode ser desfeita.
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="senha-suporte" class="form-label">Senha do suporte</label>
+                        <input type="password" name="senha_suporte" id="senha-suporte" class="form-control" required autocomplete="current-password">
+                    </div>
+                </div>
+
+                <div class="modal-oficio-footer">
+                    <button type="button" class="btn btn-outline btn-sm" data-close-delete-modal>Cancelar</button>
+                    <button type="submit" class="btn btn-danger-action btn-sm">
+                        <i class="fas fa-trash"></i> Excluir definitivamente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('delete-oficio-modal');
+        const form = document.getElementById('delete-oficio-form');
+        const oficioId = document.getElementById('delete-oficio-id');
+        const oficioNumero = document.getElementById('delete-oficio-numero');
+        const senhaInput = document.getElementById('senha-suporte');
+
+        if (!modal || !form || !oficioId || !oficioNumero || !senhaInput) {
+            return;
+        }
+
+        function closeModal() {
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+            form.reset();
+            oficioId.value = '';
+            oficioNumero.textContent = '';
+        }
+
+        document.querySelectorAll('[data-delete-oficio]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                oficioId.value = button.getAttribute('data-oficio-id') || '';
+                oficioNumero.textContent = button.getAttribute('data-oficio-numero') || '';
+                modal.classList.add('is-open');
+                modal.setAttribute('aria-hidden', 'false');
+                setTimeout(function () {
+                    senhaInput.focus();
+                }, 50);
+            });
+        });
+
+        document.querySelectorAll('[data-close-delete-modal]').forEach(function (button) {
+            button.addEventListener('click', closeModal);
+        });
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+                closeModal();
+            }
+        });
+    });
+    </script>
+<?php endif; ?>
 
 <?php include 'views/layout/footer.php'; ?>
