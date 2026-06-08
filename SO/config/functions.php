@@ -87,6 +87,16 @@ function format_money($val) {
     return "R$ " . number_format((float)$val, 2, ',', '.');
 }
 
+function reportable_aquisicoes_condition(string $oficioAlias = 'o', string $aquisicaoAlias = 'a'): string {
+    foreach ([$oficioAlias, $aquisicaoAlias] as $alias) {
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $alias)) {
+            throw new InvalidArgumentException('Alias SQL invalido para filtro de relatorio.');
+        }
+    }
+
+    return "{$oficioAlias}.status = 'APROVADO' AND {$aquisicaoAlias}.status = 'FINALIZADO'";
+}
+
 function format_date($date) {
     if (empty($date)) {
         return '';

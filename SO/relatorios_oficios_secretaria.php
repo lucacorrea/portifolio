@@ -43,6 +43,7 @@ $params = [];
 
 $where[] = "o.secretaria_id = :sec_id";
 $params[':sec_id'] = $sec_id;
+$where[] = reportable_aquisicoes_condition();
 
 if ($forn_id !== '') {
     $where[] = "a.fornecedor_id = :forn_id";
