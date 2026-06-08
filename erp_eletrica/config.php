@@ -1,7 +1,7 @@
 <?php
 // ERP Elétrica - Core Configuration
 date_default_timezone_set('America/Sao_Paulo');
-define('DEBUG', true);
+define('DEBUG', getenv('ERP_DEBUG') === '1');
 require_once 'autoloader.php';
 require_once __DIR__ . '/src/App/Config/Helpers.php';
 if (session_status() === PHP_SESSION_NONE) {
@@ -82,23 +82,11 @@ set_exception_handler(function($e) {
         echo json_encode([
             'success' => false,
             'message' => 'Erro interno do servidor. Por favor, tente novamente.',
-            'error'   => (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Internal Server Error',
-            'trace'   => (defined('DEBUG') && DEBUG) ? $e->getTraceAsString() : null
+            'error'   => (defined('DEBUG') && DEBUG) ? $e->getMessage() : 'Internal Server Error'
         ]);
         exit;
     }
-
-    if (defined('DEBUG') && DEBUG) {
-        echo "<div style='padding: 20px; font-family: sans-serif; background: #fff5f5; border: 1px solid #feb2b2; border-radius: 8px; margin: 20px;'>
-                <h1 style='color: #c53030; margin-top: 0;'>Erro Crítico (DEBUG)</h1>
-                <p><strong>Mensagem:</strong> " . $e->getMessage() . "</p>
-                <p><strong>Arquivo:</strong> " . $e->getFile() . " (Linha " . $e->getLine() . ")</p>
-                <pre style='background: #fff; padding: 10px; border-radius: 4px; overflow: auto;'>" . $e->getTraceAsString() . "</pre>
-              </div>";
-    } else {
-        // Friendly Error Page
-        include_once __DIR__ . '/views/errors/fatal.view.php';
-    }
+    include_once __DIR__ . '/views/errors/fatal.view.php';
 });
 
 // Session Timeout Logic
