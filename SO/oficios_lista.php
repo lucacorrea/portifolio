@@ -22,6 +22,16 @@ function oficios_lista_return_url(array $source, array $status_options): string 
         $safe['secretaria_id'] = (int)$source['secretaria_id'];
     }
 
+    if (isset($source['fornecedor_id']) && is_numeric($source['fornecedor_id']) && (int)$source['fornecedor_id'] > 0) {
+        $safe['fornecedor_id'] = (int)$source['fornecedor_id'];
+    }
+
+    foreach (['data_inicio', 'data_fim'] as $dateKey) {
+        if (isset($source[$dateKey]) && is_scalar($source[$dateKey]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$source[$dateKey])) {
+            $safe[$dateKey] = (string)$source[$dateKey];
+        }
+    }
+
     if (isset($source['page']) && is_numeric($source['page']) && (int)$source['page'] > 1) {
         $safe['page'] = (int)$source['page'];
     }
@@ -162,6 +172,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_oficio'])) {
 // Filtros simples
 $where_clauses = ["TRUE"];
 $params = [];
+$busca_texto = trim((string)($_GET['busca'] ?? ''));
+$status_filtro = trim((string)($_GET['status'] ?? ''));
+$secretaria_id_filtro = trim((string)($_GET['secretaria_id'] ?? ''));
+$fornecedor_id_filtro = trim((string)($_GET['fornecedor_id'] ?? ''));
+$data_inicio_filtro = trim((string)($_GET['data_inicio'] ?? ''));
+$data_fim_filtro = trim((string)($_GET['data_fim'] ?? ''));
+$data_inicio_valida = $data_inicio_filtro !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio_filtro);
+$data_fim_valida = $data_fim_filtro !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim_filtro);
 
 function parse_money_filter_value($valor): ?float {
     $valor = trim((string)$valor);
@@ -201,36 +219,64 @@ function secretaria_sigla_label($nome): string {
     return $nome;
 }
 
-if (isset($_GET['status']) && $_GET['status'] != '' && in_array($_GET['status'], $status_options, true)) {
+if ($status_filtro !== '' && in_array($status_filtro, $status_options, true)) {
     $where_clauses[] = "o.status = ?";
-    $params[] = $_GET['status'];
+    $params[] = $status_filtro;
 }
-if (isset($_GET['busca']) && $_GET['busca'] != '') {
-    $busca_texto = trim((string)$_GET['busca']);
+if ($busca_texto !== '') {
     $busca = '%' . $busca_texto . '%';
     $valor_busca = parse_money_filter_value($busca_texto);
 
     $valor_clauses = ["CAST(o.valor_orcamento AS CHAR) LIKE ?"];
-    $params_busca = [$busca, $busca, $busca];
+    $params_busca = [$busca, $busca, $busca, $busca];
 
     if ($valor_busca !== null) {
         $valor_clauses[] = "ABS(COALESCE(o.valor_orcamento, 0) - ?) < 0.01";
         $params_busca[] = $valor_busca;
     }
 
-    $where_clauses[] = "(o.numero LIKE ? OR s.nome LIKE ? OR " . implode(' OR ', $valor_clauses) . ")";
+    $where_clauses[] = "(
+        o.numero LIKE ?
+        OR s.nome LIKE ?
+        OR EXISTS (
+            SELECT 1
+            FROM aquisicoes aq_busca
+            INNER JOIN fornecedores f_busca ON f_busca.id = aq_busca.fornecedor_id
+            WHERE aq_busca.oficio_id = o.id
+              AND f_busca.nome LIKE ?
+        )
+        OR " . implode(' OR ', $valor_clauses) . "
+    )";
     foreach ($params_busca as $param_busca) {
         $params[] = $param_busca;
     }
 }
-if (isset($_GET['secretaria_id']) && $_GET['secretaria_id'] != '') {
+if ($secretaria_id_filtro !== '' && ctype_digit($secretaria_id_filtro) && (int)$secretaria_id_filtro > 0) {
     $where_clauses[] = "o.secretaria_id = ?";
-    $params[] = (int)$_GET['secretaria_id'];
+    $params[] = (int)$secretaria_id_filtro;
+}
+if ($fornecedor_id_filtro !== '' && ctype_digit($fornecedor_id_filtro) && (int)$fornecedor_id_filtro > 0) {
+    $where_clauses[] = "EXISTS (
+        SELECT 1
+        FROM aquisicoes aq_filtro
+        WHERE aq_filtro.oficio_id = o.id
+          AND aq_filtro.fornecedor_id = ?
+    )";
+    $params[] = (int)$fornecedor_id_filtro;
+}
+if ($data_inicio_valida) {
+    $where_clauses[] = "o.criado_em >= ?";
+    $params[] = $data_inicio_filtro . ' 00:00:00';
+}
+if ($data_fim_valida) {
+    $where_clauses[] = "o.criado_em <= ?";
+    $params[] = $data_fim_filtro . ' 23:59:59';
 }
 
 $where = implode(' AND ', $where_clauses);
 
 $secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll();
+$fornecedores_list = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll();
 
 // Configurações de Paginação
 $itens_por_pagina = 6;
@@ -251,10 +297,22 @@ if ($pagina_atual > $total_paginas) {
 
 // Query principal com LIMIT
 $stmt = $pdo->prepare("
-    SELECT o.*, s.nome as secretaria, u.nome as usuario
+    SELECT
+        o.*,
+        s.nome as secretaria,
+        u.nome as usuario,
+        fornecedores_oficio.fornecedores
     FROM oficios o
     JOIN secretarias s ON o.secretaria_id = s.id
     JOIN usuarios u ON o.usuario_id = u.id
+    LEFT JOIN (
+        SELECT
+            aq.oficio_id,
+            GROUP_CONCAT(DISTINCT f.nome ORDER BY f.nome ASC SEPARATOR ', ') AS fornecedores
+        FROM aquisicoes aq
+        INNER JOIN fornecedores f ON f.id = aq.fornecedor_id
+        GROUP BY aq.oficio_id
+    ) fornecedores_oficio ON fornecedores_oficio.oficio_id = o.id
     WHERE $where
     ORDER BY o.criado_em DESC
     LIMIT $itens_por_pagina OFFSET $offset
@@ -277,7 +335,7 @@ include 'views/layout/header.php';
         display: grid;
         grid-row-gap: 1rem;
         grid-column-gap: 1.5rem;
-        grid-template-columns: 1fr 1fr 1fr 42px;
+        grid-template-columns: minmax(180px, 1.5fr) minmax(140px, 1fr) minmax(180px, 1.2fr) minmax(180px, 1.2fr) minmax(145px, .9fr) minmax(145px, .9fr) minmax(92px, auto);
         align-items: end;
     }
 
@@ -304,7 +362,15 @@ include 'views/layout/header.php';
     }
 
     .lista-table {
-        min-width: 1080px;
+        min-width: 1240px;
+    }
+
+    .fornecedor-lista {
+        display: inline-block;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom;
     }
 
     .acoes-wrap {
@@ -427,6 +493,21 @@ include 'views/layout/header.php';
         width: 100%;
     }
 
+    .filtros-acoes {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .filtros-acoes .btn-icon {
+        width: 42px;
+        height: 40px;
+        padding: 0;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+    }
+
     @media (max-width: 768px) {
         .lista-header {
             flex-direction: column;
@@ -474,19 +555,19 @@ include 'views/layout/header.php';
         <form action="" method="GET" class="filtros-grid">
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">Termo de busca</label>
-                <input type="text" name="busca" class="form-control" placeholder="Número, secretaria ou valor..." value="<?php echo htmlspecialchars($_GET['busca'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="text" name="busca" class="form-control" placeholder="Número, secretaria, fornecedor ou valor..." value="<?php echo htmlspecialchars($busca_texto, ENT_QUOTES, 'UTF-8'); ?>">
             </div>
 
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-control">
                     <option value="">Todos Status</option>
-                    <option value="PENDENTE_ITENS" <?php echo ($_GET['status'] ?? '') == 'PENDENTE_ITENS' ? 'selected' : ''; ?>>PENDENTE_ITENS</option>
-                    <option value="ENVIADO" <?php echo ($_GET['status'] ?? '') == 'ENVIADO' ? 'selected' : ''; ?>>ENVIADO</option>
-                    <option value="EM_ANALISE" <?php echo ($_GET['status'] ?? '') == 'EM_ANALISE' ? 'selected' : ''; ?>>EM_ANALISE</option>
-                    <option value="APROVADO" <?php echo ($_GET['status'] ?? '') == 'APROVADO' ? 'selected' : ''; ?>>APROVADO</option>
-                    <option value="REPROVADO" <?php echo ($_GET['status'] ?? '') == 'REPROVADO' ? 'selected' : ''; ?>>REPROVADO</option>
-                    <option value="ARQUIVADO" <?php echo ($_GET['status'] ?? '') == 'ARQUIVADO' ? 'selected' : ''; ?>>ARQUIVADO</option>
+                    <option value="PENDENTE_ITENS" <?php echo $status_filtro === 'PENDENTE_ITENS' ? 'selected' : ''; ?>>PENDENTE_ITENS</option>
+                    <option value="ENVIADO" <?php echo $status_filtro === 'ENVIADO' ? 'selected' : ''; ?>>ENVIADO</option>
+                    <option value="EM_ANALISE" <?php echo $status_filtro === 'EM_ANALISE' ? 'selected' : ''; ?>>EM_ANALISE</option>
+                    <option value="APROVADO" <?php echo $status_filtro === 'APROVADO' ? 'selected' : ''; ?>>APROVADO</option>
+                    <option value="REPROVADO" <?php echo $status_filtro === 'REPROVADO' ? 'selected' : ''; ?>>REPROVADO</option>
+                    <option value="ARQUIVADO" <?php echo $status_filtro === 'ARQUIVADO' ? 'selected' : ''; ?>>ARQUIVADO</option>
                 </select>
             </div>
 
@@ -495,15 +576,51 @@ include 'views/layout/header.php';
                 <select name="secretaria_id" class="form-control">
                     <option value="">Todas as Secretarias</option>
                     <?php foreach ($secretarias_list as $sec): ?>
-                        <option value="<?php echo $sec['id']; ?>" <?php echo ($_GET['secretaria_id'] ?? '') == $sec['id'] ? 'selected' : ''; ?>>
+                        <option value="<?php echo $sec['id']; ?>" <?php echo $secretaria_id_filtro == $sec['id'] ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($sec['nome'], ENT_QUOTES, 'UTF-8'); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Fornecedor</label>
+                <select name="fornecedor_id" class="form-control">
+                    <option value="">Todos os Fornecedores</option>
+                    <?php foreach ($fornecedores_list as $fornecedor): ?>
+                        <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id_filtro == $fornecedor['id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                            <?php if (!empty($fornecedor['cnpj'])): ?>
+                                (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
+                            <?php endif; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Data inicial</label>
+                <input
+                    type="date"
+                    name="data_inicio"
+                    class="form-control"
+                    value="<?php echo htmlspecialchars($data_inicio_valida ? $data_inicio_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Data final</label>
+                <input
+                    type="date"
+                    name="data_fim"
+                    class="form-control"
+                    value="<?php echo htmlspecialchars($data_fim_valida ? $data_fim_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
+            </div>
+
             <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <a href="oficios_lista.php" class="btn" style="width: 42px; height: 40px; padding: 0; display: flex; justify-content: center; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; color: #64748b; background: white;" title="Limpar Filtros">
+                <button type="submit" class="btn btn-primary btn-icon" title="Filtrar">
+                    <i class="fas fa-search" style="margin: 0;"></i>
+                </button>
+                <a href="oficios_lista.php" class="btn btn-icon" style="border: 1px solid #cbd5e1; border-radius: 6px; color: #64748b; background: white;" title="Limpar Filtros">
                     <i class="fas fa-eraser" style="margin: 0;"></i>
                 </a>
             </div>
@@ -532,6 +649,7 @@ include 'views/layout/header.php';
                     <tr>
                         <th>Número</th>
                         <th>Secretaria</th>
+                        <th>Fornecedor</th>
                         <th>Data</th>
                         <th style="text-align: right;">Valor</th>
                         <th>Status</th>
@@ -548,6 +666,12 @@ include 'views/layout/header.php';
                             <td>
                                 <span class="text-muted" title="<?php echo htmlspecialchars($o['secretaria'], ENT_QUOTES, 'UTF-8'); ?>">
                                     <?php echo htmlspecialchars(secretaria_sigla_label($o['secretaria']), ENT_QUOTES, 'UTF-8'); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <?php $fornecedores_oficio = trim((string)($o['fornecedores'] ?? '')); ?>
+                                <span class="text-muted fornecedor-lista" title="<?php echo htmlspecialchars($fornecedores_oficio !== '' ? $fornecedores_oficio : 'Sem aquisição vinculada', ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php echo htmlspecialchars($fornecedores_oficio !== '' ? $fornecedores_oficio : '---', ENT_QUOTES, 'UTF-8'); ?>
                                 </span>
                             </td>
                             <td><?php echo format_date($o['criado_em']); ?></td>
@@ -619,7 +743,7 @@ include 'views/layout/header.php';
 
                     <?php if (empty($oficios)): ?>
                         <tr>
-                            <td colspan="7" style="text-align:center; padding: 2rem; color: var(--text-muted);">
+                            <td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-muted);">
                                 Nenhuma solicitação encontrada.
                             </td>
                         </tr>

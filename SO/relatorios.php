@@ -151,7 +151,6 @@ $whereParts = [];
 $params = [];
 
 $whereParts[] = "1=1";
-$whereParts[] = reportable_aquisicoes_condition();
 
 if ($sec_id !== '') {
     $whereParts[] = "o.secretaria_id = :sec_id";
