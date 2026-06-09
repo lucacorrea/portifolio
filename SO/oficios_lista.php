@@ -66,6 +66,13 @@ function oficios_lista_local_upload_path(?string $path): ?string {
     return $candidate;
 }
 
+if (!function_exists('h')) {
+    function h($value)
+    {
+        return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_oficio'])) {
     $return_source = [];
     parse_str((string)($_POST['return_query'] ?? ''), $return_source);
@@ -178,6 +185,7 @@ $secretaria_id_filtro = trim((string)($_GET['secretaria_id'] ?? ''));
 $fornecedor_id_filtro = trim((string)($_GET['fornecedor_id'] ?? ''));
 $data_inicio_filtro = trim((string)($_GET['data_inicio'] ?? ''));
 $data_fim_filtro = trim((string)($_GET['data_fim'] ?? ''));
+$export = trim((string)($_GET['export'] ?? ''));
 $data_inicio_valida = $data_inicio_filtro !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio_filtro);
 $data_fim_valida = $data_fim_filtro !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim_filtro);
 
@@ -277,6 +285,398 @@ $where = implode(' AND ', $where_clauses);
 
 $secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll();
 $fornecedores_list = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll();
+
+$nome_secretaria_filtro = 'Todas';
+if ($secretaria_id_filtro !== '') {
+    foreach ($secretarias_list as $sec) {
+        if ((string)$sec['id'] === (string)$secretaria_id_filtro) {
+            $nome_secretaria_filtro = (string)$sec['nome'];
+            break;
+        }
+    }
+}
+
+$nome_fornecedor_filtro = 'Todos';
+if ($fornecedor_id_filtro !== '') {
+    foreach ($fornecedores_list as $fornecedor) {
+        if ((string)$fornecedor['id'] === (string)$fornecedor_id_filtro) {
+            $nome_fornecedor_filtro = (string)$fornecedor['nome'];
+            break;
+        }
+    }
+}
+
+$periodo_texto = 'Todos';
+if ($data_inicio_valida || $data_fim_valida) {
+    $inicio_txt = $data_inicio_valida ? date('d/m/Y', strtotime($data_inicio_filtro)) : '...';
+    $fim_txt = $data_fim_valida ? date('d/m/Y', strtotime($data_fim_filtro)) : '...';
+    $periodo_texto = $inicio_txt . ' até ' . $fim_txt;
+}
+
+if ($export === 'pdf_fornecedores') {
+    if ($secretaria_id_filtro === '' || !ctype_digit($secretaria_id_filtro) || (int)$secretaria_id_filtro <= 0) {
+        flash_message('warning', 'Selecione uma secretaria para gerar o PDF por fornecedor.');
+        $redirect_params = $_GET;
+        unset($redirect_params['export']);
+        $redirect_url = 'oficios_lista.php' . (!empty($redirect_params) ? '?' . http_build_query($redirect_params) : '');
+        header("Location: {$redirect_url}");
+        exit();
+    }
+
+    $params_export = $params;
+    $fornecedor_export_condition = '';
+    if ($fornecedor_id_filtro !== '' && ctype_digit($fornecedor_id_filtro) && (int)$fornecedor_id_filtro > 0) {
+        $fornecedor_export_condition = ' AND aq_rel.fornecedor_id = ?';
+        $params_export[] = (int)$fornecedor_id_filtro;
+    }
+
+    $stmt_export = $pdo->prepare("
+        SELECT
+            o.id,
+            o.numero,
+            o.criado_em,
+            o.valor_orcamento,
+            o.status,
+            s.nome AS secretaria,
+            u.nome AS usuario,
+            COALESCE(f_rel.nome, 'SEM FORNECEDOR') AS fornecedor
+        FROM oficios o
+        JOIN secretarias s ON o.secretaria_id = s.id
+        JOIN usuarios u ON o.usuario_id = u.id
+        LEFT JOIN aquisicoes aq_rel ON aq_rel.oficio_id = o.id
+        LEFT JOIN fornecedores f_rel ON f_rel.id = aq_rel.fornecedor_id
+        WHERE $where{$fornecedor_export_condition}
+        GROUP BY
+            o.id,
+            o.numero,
+            o.criado_em,
+            o.valor_orcamento,
+            o.status,
+            s.nome,
+            u.nome,
+            f_rel.id,
+            f_rel.nome
+        ORDER BY
+            COALESCE(f_rel.nome, 'SEM FORNECEDOR') ASC,
+            o.criado_em DESC,
+            o.id DESC
+    ");
+    $stmt_export->execute($params_export);
+    $oficios_export = $stmt_export->fetchAll(PDO::FETCH_ASSOC);
+
+    $fornecedores_relatorio = [];
+    foreach ($oficios_export as $oficio_export) {
+        $fornecedor_nome = trim((string)($oficio_export['fornecedor'] ?? ''));
+        if ($fornecedor_nome === '') {
+            $fornecedor_nome = 'SEM FORNECEDOR';
+        }
+
+        if (!isset($fornecedores_relatorio[$fornecedor_nome])) {
+            $fornecedores_relatorio[$fornecedor_nome] = [
+                'nome' => $fornecedor_nome,
+                'quantidade' => 0,
+                'total' => 0.0,
+                'items' => [],
+            ];
+        }
+
+        $fornecedores_relatorio[$fornecedor_nome]['quantidade']++;
+        $fornecedores_relatorio[$fornecedor_nome]['total'] += (float)($oficio_export['valor_orcamento'] ?? 0);
+        $fornecedores_relatorio[$fornecedor_nome]['items'][] = $oficio_export;
+    }
+
+    header('Content-Type: text/html; charset=UTF-8');
+    ?>
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Relatório de Ofícios por Fornecedor</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            @page {
+                size: A4 landscape;
+                margin: 8mm;
+            }
+
+            * { box-sizing: border-box; }
+
+            body {
+                margin: 0;
+                background: #eef2f7;
+                color: #111827;
+                font-family: Arial, sans-serif;
+                font-size: 9px;
+            }
+
+            .print-toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+                padding: 14px 18px;
+                background: #ffffff;
+                border-bottom: 1px solid #dbe2ea;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }
+
+            .toolbar-title {
+                font-size: 14px;
+                font-weight: 800;
+            }
+
+            .toolbar-actions {
+                display: flex;
+                gap: .6rem;
+                flex-wrap: wrap;
+            }
+
+            .pdf-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: .45rem;
+                border: 1px solid #dbe2ea;
+                border-radius: 8px;
+                padding: .62rem .9rem;
+                background: #ffffff;
+                color: #334155;
+                text-decoration: none;
+                font-weight: 800;
+                cursor: pointer;
+            }
+
+            .pdf-btn-primary {
+                background: #1f4e78;
+                border-color: #1f4e78;
+                color: #ffffff;
+            }
+
+            .pdf-wrap {
+                padding: 10px;
+            }
+
+            .folha-fornecedor {
+                width: 281mm;
+                min-height: 194mm;
+                margin: 0 auto 10px;
+                padding: 0;
+                background: #ffffff;
+                page-break-after: always;
+            }
+
+            .folha-fornecedor:last-child {
+                page-break-after: auto;
+            }
+
+            .titulo-relatorio {
+                background: #1f4e78;
+                border: 1px solid #1f4e78;
+                color: #ffffff;
+                text-align: center;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 6px;
+                text-transform: uppercase;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+
+            .filtros,
+            .resumo {
+                margin-top: 6px;
+            }
+
+            .filtros td,
+            .resumo th,
+            .resumo td,
+            .dados th,
+            .dados td {
+                border: 1px solid #7f8fa6;
+                padding: 4px 5px;
+                vertical-align: middle;
+                line-height: 1.18;
+                word-wrap: break-word;
+                overflow-wrap: anywhere;
+            }
+
+            .filtros td {
+                font-size: 8.5px;
+            }
+
+            .resumo th {
+                background: #e5e7eb;
+                font-size: 8.5px;
+                text-align: center;
+            }
+
+            .resumo td {
+                font-size: 8.5px;
+                text-align: center;
+                font-weight: bold;
+            }
+
+            .cabecalho-fornecedor {
+                background: #dbeafe;
+                border: 1px solid #7f8fa6;
+                margin-top: 7px;
+                padding: 5px;
+                font-size: 10px;
+                font-weight: bold;
+                text-transform: uppercase;
+            }
+
+            .dados {
+                margin-top: 5px;
+            }
+
+            .dados th {
+                background: #2f5597;
+                color: #ffffff;
+                font-size: 8px;
+                text-align: center;
+            }
+
+            .dados td {
+                font-size: 8px;
+            }
+
+            .col-numero { width: 16%; }
+            .col-data { width: 12%; }
+            .col-valor { width: 12%; }
+            .col-status { width: 15%; }
+            .col-usuario { width: 20%; }
+            .col-secretaria { width: 25%; }
+
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .total-fornecedor td {
+                background: #e5e7eb;
+                font-weight: bold;
+            }
+
+            @media print {
+                body { background: #ffffff !important; }
+                .no-print { display: none !important; }
+                .pdf-wrap { padding: 0 !important; }
+                .folha-fornecedor {
+                    width: 100% !important;
+                    min-height: auto !important;
+                    margin: 0 !important;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="print-toolbar no-print">
+            <div class="toolbar-title">Relatório de Ofícios por Fornecedor</div>
+            <div class="toolbar-actions">
+                <a href="<?php echo h(oficios_lista_return_url($_GET, $status_options)); ?>" class="pdf-btn">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <button type="button" class="pdf-btn pdf-btn-primary" onclick="window.print()">
+                    <i class="fas fa-file-pdf"></i> Imprimir / Salvar PDF
+                </button>
+            </div>
+        </div>
+
+        <div class="pdf-wrap">
+            <?php if (empty($fornecedores_relatorio)): ?>
+                <section class="folha-fornecedor">
+                    <div class="titulo-relatorio">RELATÓRIO DE OFÍCIOS</div>
+                    <table class="filtros">
+                        <tr>
+                            <td><strong>Secretaria:</strong> <?php echo h($nome_secretaria_filtro); ?></td>
+                            <td><strong>Fornecedor:</strong> <?php echo h($nome_fornecedor_filtro); ?></td>
+                            <td><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
+                        </tr>
+                    </table>
+                    <table class="dados">
+                        <tr>
+                            <td class="text-center">Nenhum ofício encontrado para os filtros selecionados.</td>
+                        </tr>
+                    </table>
+                </section>
+            <?php else: ?>
+                <?php foreach ($fornecedores_relatorio as $fornecedor): ?>
+                    <section class="folha-fornecedor">
+                        <div class="titulo-relatorio">RELATÓRIO DE OFÍCIOS</div>
+                        <table class="filtros">
+                            <tr>
+                                <td><strong>Secretaria:</strong> <?php echo h($nome_secretaria_filtro); ?></td>
+                                <td><strong>Fornecedor:</strong> <?php echo h($fornecedor['nome']); ?></td>
+                                <td><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong> <?php echo $status_filtro !== '' ? h($status_filtro) : 'Todos'; ?></td>
+                                <td><strong>Busca:</strong> <?php echo $busca_texto !== '' ? h($busca_texto) : 'Todos'; ?></td>
+                                <td><strong>Emitido em:</strong> <?php echo date('d/m/Y H:i:s'); ?></td>
+                            </tr>
+                        </table>
+                        <table class="resumo">
+                            <tr>
+                                <th>Total de Ofícios</th>
+                                <th>Valor Total</th>
+                                <th>Secretaria</th>
+                                <th>Fornecedor</th>
+                            </tr>
+                            <tr>
+                                <td><?php echo (int)$fornecedor['quantidade']; ?></td>
+                                <td><?php echo format_money($fornecedor['total']); ?></td>
+                                <td><?php echo h(secretaria_sigla_label($nome_secretaria_filtro)); ?></td>
+                                <td><?php echo h($fornecedor['nome']); ?></td>
+                            </tr>
+                        </table>
+                        <div class="cabecalho-fornecedor">FORNECEDOR: <?php echo h($fornecedor['nome']); ?></div>
+                        <table class="dados">
+                            <colgroup>
+                                <col class="col-numero">
+                                <col class="col-secretaria">
+                                <col class="col-data">
+                                <col class="col-valor">
+                                <col class="col-status">
+                                <col class="col-usuario">
+                            </colgroup>
+                            <tr>
+                                <th>Número</th>
+                                <th>Secretaria</th>
+                                <th>Data</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Cadastrado por</th>
+                            </tr>
+                            <?php foreach ($fornecedor['items'] as $oficio_export): ?>
+                                <tr>
+                                    <td class="text-center"><?php echo h($oficio_export['numero']); ?></td>
+                                    <td><?php echo h(secretaria_sigla_label($oficio_export['secretaria'])); ?></td>
+                                    <td class="text-center"><?php echo h(format_date($oficio_export['criado_em'])); ?></td>
+                                    <td class="text-right"><?php echo $oficio_export['valor_orcamento'] !== null && $oficio_export['valor_orcamento'] !== '' ? format_money($oficio_export['valor_orcamento']) : '---'; ?></td>
+                                    <td class="text-center"><?php echo h($oficio_export['status']); ?></td>
+                                    <td><?php echo h($oficio_export['usuario']); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            <tr class="total-fornecedor">
+                                <td colspan="3" class="text-right">TOTAL DO FORNECEDOR</td>
+                                <td class="text-right"><?php echo format_money($fornecedor['total']); ?></td>
+                                <td class="text-center"><?php echo (int)$fornecedor['quantidade']; ?> OF</td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </section>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit();
+}
 
 // Configurações de Paginação
 $itens_por_pagina = 6;
@@ -664,6 +1064,14 @@ include 'views/layout/header.php';
                 <button type="submit" class="btn btn-outline btn-sm" title="Filtrar">
                     <i class="fas fa-search"></i> Filtrar
                 </button>
+                <?php
+                $pdf_query = $_GET;
+                unset($pdf_query['page']);
+                $pdf_query['export'] = 'pdf_fornecedores';
+                ?>
+                <a href="oficios_lista.php?<?php echo h(http_build_query($pdf_query)); ?>" class="btn btn-outline btn-sm" title="PDF por fornecedor">
+                    <i class="fas fa-file-pdf"></i> PDF Fornecedores
+                </a>
                 <a href="oficios_lista.php" class="btn btn-outline btn-sm" title="Limpar Filtros">
                     <i class="fas fa-eraser"></i> Limpar
                 </a>
