@@ -137,6 +137,14 @@ $produto         = isset($_GET['produto']) ? trim((string)$_GET['produto']) : ''
 $periodo_inicio  = isset($_GET['inicio']) ? trim((string)$_GET['inicio']) : '';
 $periodo_fim     = isset($_GET['fim']) ? trim((string)$_GET['fim']) : '';
 $export          = isset($_GET['export']) ? trim((string)$_GET['export']) : '';
+$tipo_agrupamento = isset($_GET['tipo_agrupamento']) ? trim((string)$_GET['tipo_agrupamento']) : 'fornecedor';
+if ($export === 'pdf_fornecedor') {
+    $tipo_agrupamento = 'fornecedor';
+} elseif ($export === 'pdf_secretaria') {
+    $tipo_agrupamento = 'secretaria';
+} elseif (!in_array($tipo_agrupamento, ['fornecedor', 'secretaria', 'geral'], true)) {
+    $tipo_agrupamento = 'fornecedor';
+}
 $page            = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 
 $whereParts = [];
@@ -269,97 +277,262 @@ if ($periodo_inicio !== '' || $periodo_fim !== '') {
     $periodo_texto = $inicioTxt . ' até ' . $fimTxt;
 }
 
-function get_grouped_pdf_report(PDO $pdo, string $where, array $params, string $mode): array
+function relatorio_cor_secretaria($cor): string
 {
-    if ($mode === 'fornecedor') {
-        $sql = "
-            SELECT
-                f.id AS grupo_id,
-                f.nome AS grupo_nome,
-                s.nome AS linha_nome,
-                MAX(a.criado_em) AS data_referencia,
-                COALESCE(SUM(ia.quantidade), 0) AS total_qtd,
-                COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS total_valor
-            FROM itens_aquisicao ia
-            INNER JOIN aquisicoes a ON ia.aquisicao_id = a.id
-            INNER JOIN oficios o ON a.oficio_id = o.id
-            INNER JOIN secretarias s ON o.secretaria_id = s.id
-            INNER JOIN fornecedores f ON a.fornecedor_id = f.id
-            WHERE $where
-            GROUP BY f.id, f.nome, s.id, s.nome
-            ORDER BY f.nome ASC, data_referencia ASC, s.nome ASC
-        ";
-    } else {
-        $sql = "
-            SELECT
-                s.id AS grupo_id,
-                s.nome AS grupo_nome,
-                f.nome AS linha_nome,
-                MAX(a.criado_em) AS data_referencia,
-                COALESCE(SUM(ia.quantidade), 0) AS total_qtd,
-                COALESCE(SUM(ia.quantidade * ia.valor_unitario), 0) AS total_valor
-            FROM itens_aquisicao ia
-            INNER JOIN aquisicoes a ON ia.aquisicao_id = a.id
-            INNER JOIN oficios o ON a.oficio_id = o.id
-            INNER JOIN secretarias s ON o.secretaria_id = s.id
-            INNER JOIN fornecedores f ON a.fornecedor_id = f.id
-            WHERE $where
-            GROUP BY s.id, s.nome, f.id, f.nome
-            ORDER BY s.nome ASC, data_referencia ASC, f.nome ASC
-        ";
+    $cor = strtoupper(trim((string)$cor));
+
+    if (preg_match('/^#[0-9A-F]{6}$/', $cor)) {
+        return $cor;
     }
+
+    return '#D9E3F4';
+}
+
+function relatorio_texto_caixa_alta($texto): string
+{
+    $texto = normalize_spaces(strip_tags((string)$texto));
+
+    if ($texto === '') {
+        return '';
+    }
+
+    if (function_exists('mb_strtoupper')) {
+        return mb_strtoupper($texto, 'UTF-8');
+    }
+
+    return strtoupper($texto);
+}
+
+function relatorio_resumir_descricao($descricao, int $limite = 180): string
+{
+    $texto = relatorio_texto_caixa_alta($descricao);
+
+    if ($texto === '') {
+        return 'DESCRIÇÃO NÃO INFORMADA';
+    }
+
+    if ($limite <= 0) {
+        return $texto;
+    }
+
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($texto, 'UTF-8') <= $limite) {
+            return $texto;
+        }
+
+        return rtrim(mb_substr($texto, 0, $limite - 3, 'UTF-8')) . '...';
+    }
+
+    if (strlen($texto) <= $limite) {
+        return $texto;
+    }
+
+    return rtrim(substr($texto, 0, $limite - 3)) . '...';
+}
+
+function relatorio_nome($valor, string $fallback): string
+{
+    $nome = relatorio_texto_caixa_alta($valor);
+
+    return $nome !== '' ? $nome : $fallback;
+}
+
+function get_relatorio_geral_aquisicoes(PDO $pdo, string $where, array $params): array
+{
+    $sql = "
+        SELECT
+            a.id,
+            a.numero_aq,
+            a.valor_total,
+            a.status,
+            a.criado_em,
+            o.numero AS oficio_num,
+            o.resumo_itens,
+            s.nome AS secretaria,
+            s.cor_relatorio AS secretaria_cor,
+            f.nome AS fornecedor,
+            COALESCE(NULLIF(TRIM(o.resumo_itens), ''), GROUP_CONCAT(ia.produto ORDER BY ia.id ASC SEPARATOR '; '), '') AS descricao_relatorio
+        FROM itens_aquisicao ia
+        INNER JOIN aquisicoes a ON ia.aquisicao_id = a.id
+        INNER JOIN oficios o ON a.oficio_id = o.id
+        INNER JOIN secretarias s ON o.secretaria_id = s.id
+        INNER JOIN fornecedores f ON a.fornecedor_id = f.id
+        WHERE $where
+        GROUP BY
+            a.id,
+            a.numero_aq,
+            a.valor_total,
+            a.status,
+            a.criado_em,
+            o.numero,
+            o.resumo_itens,
+            s.nome,
+            s.cor_relatorio,
+            f.nome
+        ORDER BY
+            f.nome ASC,
+            s.nome ASC,
+            a.criado_em ASC,
+            a.id ASC
+    ";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
 
-    $groups = [];
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $key = (string)$row['grupo_id'];
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
-        if (!isset($groups[$key])) {
-            $groups[$key] = [
-                'nome' => $row['grupo_nome'],
-                'rows' => [],
-                'total_qtd' => 0,
-                'total_valor' => 0,
+function agrupar_relatorio_geral_por_fornecedor(array $aquisicoes): array
+{
+    $grupos = [];
+    $total = 0.0;
+
+    foreach ($aquisicoes as $aquisicao) {
+        $fornecedor = relatorio_nome($aquisicao['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO');
+        $secretaria = relatorio_nome($aquisicao['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA');
+        $cor = relatorio_cor_secretaria($aquisicao['secretaria_cor'] ?? '');
+        $valor = (float)($aquisicao['valor_total'] ?? 0);
+
+        if (!isset($grupos[$fornecedor])) {
+            $grupos[$fornecedor] = [
+                'nome' => $fornecedor,
+                'quantidade' => 0,
+                'total' => 0.0,
+                'secretarias' => [],
             ];
         }
 
-        $qtd = (float)$row['total_qtd'];
-        $valor = (float)$row['total_valor'];
+        if (!isset($grupos[$fornecedor]['secretarias'][$secretaria])) {
+            $grupos[$fornecedor]['secretarias'][$secretaria] = [
+                'nome' => $secretaria,
+                'cor' => $cor,
+                'quantidade' => 0,
+                'total' => 0.0,
+                'items' => [],
+            ];
+        }
 
-        $groups[$key]['rows'][] = [
-            'nome' => $row['linha_nome'],
-            'data' => $row['data_referencia'],
-            'qtd' => $qtd,
-            'valor' => $valor,
-        ];
-        $groups[$key]['total_qtd'] += $qtd;
-        $groups[$key]['total_valor'] += $valor;
+        $grupos[$fornecedor]['quantidade']++;
+        $grupos[$fornecedor]['total'] += $valor;
+        $grupos[$fornecedor]['secretarias'][$secretaria]['quantidade']++;
+        $grupos[$fornecedor]['secretarias'][$secretaria]['total'] += $valor;
+        $grupos[$fornecedor]['secretarias'][$secretaria]['items'][] = $aquisicao;
+        $total += $valor;
     }
 
-    return array_values($groups);
+    uasort($grupos, static function ($a, $b) {
+        return strcmp((string)$a['nome'], (string)$b['nome']);
+    });
+
+    foreach ($grupos as &$grupo) {
+        uasort($grupo['secretarias'], static function ($a, $b) {
+            return strcmp((string)$a['nome'], (string)$b['nome']);
+        });
+    }
+    unset($grupo);
+
+    return [
+        'grupos' => $grupos,
+        'quantidade' => count($aquisicoes),
+        'total' => $total,
+    ];
+}
+
+function agrupar_relatorio_geral_por_secretaria(array $aquisicoes): array
+{
+    $grupos = [];
+    $total = 0.0;
+
+    foreach ($aquisicoes as $aquisicao) {
+        $secretaria = relatorio_nome($aquisicao['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA');
+        $fornecedor = relatorio_nome($aquisicao['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO');
+        $valor = (float)($aquisicao['valor_total'] ?? 0);
+
+        if (!isset($grupos[$secretaria])) {
+            $grupos[$secretaria] = [
+                'nome' => $secretaria,
+                'quantidade' => 0,
+                'total' => 0.0,
+                'fornecedores' => [],
+            ];
+        }
+
+        if (!isset($grupos[$secretaria]['fornecedores'][$fornecedor])) {
+            $grupos[$secretaria]['fornecedores'][$fornecedor] = [
+                'nome' => $fornecedor,
+                'quantidade' => 0,
+                'total' => 0.0,
+                'items' => [],
+            ];
+        }
+
+        $grupos[$secretaria]['quantidade']++;
+        $grupos[$secretaria]['total'] += $valor;
+        $grupos[$secretaria]['fornecedores'][$fornecedor]['quantidade']++;
+        $grupos[$secretaria]['fornecedores'][$fornecedor]['total'] += $valor;
+        $grupos[$secretaria]['fornecedores'][$fornecedor]['items'][] = $aquisicao;
+        $total += $valor;
+    }
+
+    uasort($grupos, static function ($a, $b) {
+        return strcmp((string)$a['nome'], (string)$b['nome']);
+    });
+
+    foreach ($grupos as &$grupo) {
+        uasort($grupo['fornecedores'], static function ($a, $b) {
+            return strcmp((string)$a['nome'], (string)$b['nome']);
+        });
+    }
+    unset($grupo);
+
+    return [
+        'grupos' => $grupos,
+        'quantidade' => count($aquisicoes),
+        'total' => $total,
+    ];
 }
 
 /* =========================
-   EXPORTAÇÃO PDF
+   EXPORTAÇÃO GERAL PDF / EXCEL
 ========================= */
-if (in_array($export, ['pdf_fornecedor', 'pdf_secretaria'], true)) {
-    $pdf_mode = $export === 'pdf_fornecedor' ? 'fornecedor' : 'secretaria';
-    $pdf_groups = get_grouped_pdf_report($pdo, $where, $params, $pdf_mode);
-    $pdf_title = $pdf_mode === 'fornecedor'
-        ? 'RELATÓRIO DE AQUISIÇÕES POR SECRETARIA'
-        : 'RELATÓRIO DE AQUISIÇÕES POR FORNECEDOR';
-    $pdf_details = $pdf_mode === 'fornecedor'
-        ? 'Totais por secretaria'
-        : 'Totais por fornecedor';
-    $pdf_section_title = $pdf_mode === 'fornecedor'
-        ? 'RESUMO POR SECRETARIA'
-        : 'RESUMO POR FORNECEDOR';
-    $pdf_first_column = $pdf_mode === 'fornecedor' ? 'Secretaria' : 'Fornecedor';
-    $pdf_toolbar_title = $pdf_mode === 'fornecedor'
-        ? 'PDF por fornecedor'
-        : 'PDF por secretaria';
+if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true)) {
+    $is_pdf_export = in_array($export, ['pdf', 'pdf_fornecedor', 'pdf_secretaria'], true);
+    $aquisicoes_export = get_relatorio_geral_aquisicoes($pdo, $where, $params);
+    $agrupamento_geral = agrupar_relatorio_geral_por_fornecedor($aquisicoes_export);
+    $agrupamento_secretarias = agrupar_relatorio_geral_por_secretaria($aquisicoes_export);
+    $dados_por_fornecedor = $agrupamento_geral['grupos'];
+    $dados_por_secretaria = $agrupamento_secretarias['grupos'];
+    $quantidade_export = (int)$agrupamento_geral['quantidade'];
+    $total_export = (float)$agrupamento_geral['total'];
+    $descricao_limite = 180;
+    $filename = 'relatorio_geral_aquisicoes_' . date('Ymd_His');
+    $back_query = [
+        'sec_id' => $sec_id,
+        'forn_id' => $forn_id,
+        'produto' => $produto,
+        'inicio' => $periodo_inicio,
+        'fim' => $periodo_fim,
+    ];
+    $back_url = 'relatorios.php?' . http_build_query($back_query);
+
+    if ($is_pdf_export) {
+        header('Content-Type: text/html; charset=UTF-8');
+    } else {
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '.xls"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        echo "\xEF\xBB\xBF";
+    }
+
+    if ($is_pdf_export) {
+        $tipo_agrupamento_label = [
+            'fornecedor' => 'Por Fornecedor',
+            'secretaria' => 'Por Secretaria',
+            'geral' => 'Geral',
+        ][$tipo_agrupamento] ?? 'Por Fornecedor';
+        $descricao_limite_pdf = 220;
 ?>
     <!DOCTYPE html>
     <html lang="pt-br">
@@ -367,12 +540,12 @@ if (in_array($export, ['pdf_fornecedor', 'pdf_secretaria'], true)) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?php echo h($pdf_toolbar_title); ?></title>
+        <title>Relatório Geral de Aquisições</title>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>
             @page {
                 size: A4 landscape;
-                margin: 8mm;
+                margin: 6mm;
             }
 
             * {
@@ -382,9 +555,9 @@ if (in_array($export, ['pdf_fornecedor', 'pdf_secretaria'], true)) {
             body {
                 margin: 0;
                 background: #eef2f7;
-                color: #0f172a;
-                font-family: Arial, sans-serif;
-                font-size: 12px;
+                color: #1f2937;
+                font-family: Arial, DejaVu Sans, sans-serif;
+                font-size: 8px;
             }
 
             .print-toolbar {
@@ -393,7 +566,7 @@ if (in_array($export, ['pdf_fornecedor', 'pdf_secretaria'], true)) {
                 align-items: center;
                 gap: 1rem;
                 padding: 14px 18px;
-                background: #fff;
+                background: #ffffff;
                 border-bottom: 1px solid #dbe2ea;
                 position: sticky;
                 top: 0;
@@ -401,152 +574,204 @@ if (in_array($export, ['pdf_fornecedor', 'pdf_secretaria'], true)) {
             }
 
             .toolbar-title {
-                font-weight: 800;
+                color: #0f172a;
                 font-size: 14px;
+                font-weight: 800;
             }
 
             .toolbar-actions {
                 display: flex;
-                gap: .6rem;
                 flex-wrap: wrap;
+                gap: .6rem;
             }
 
-            .btn {
+            .pdf-btn {
                 display: inline-flex;
                 align-items: center;
                 gap: .45rem;
                 border: 1px solid #dbe2ea;
-                border-radius: 10px;
+                border-radius: 8px;
                 padding: .62rem .9rem;
-                background: #fff;
+                background: #ffffff;
                 color: #334155;
                 text-decoration: none;
                 font-weight: 800;
                 cursor: pointer;
             }
 
-            .btn-primary {
-                background: #1d4ed8;
-                border-color: #1d4ed8;
-                color: #fff;
+            .pdf-btn-primary {
+                background: #1f4e78;
+                border-color: #1f4e78;
+                color: #ffffff;
             }
 
             .pdf-wrap {
-                padding: 14px;
+                padding: 10px;
+                overflow-x: auto;
             }
 
             .pdf-page {
+                width: 287mm;
+                max-width: none;
+                background: #ffffff;
+                margin: 0 auto;
+                padding: 5mm;
+            }
+
+            .titulo-relatorio {
+                background: #1f4e78;
+                border: 1px solid #1f4e78;
+                color: #ffffff;
+                text-align: center;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 6px;
+                text-transform: uppercase;
+            }
+
+            .bloco-filtros,
+            .resumo,
+            .tabela-aquisicoes {
                 width: 100%;
-                background: #fff;
-                margin: 0 auto 14px;
-                padding: 0;
-                page-break-after: always;
-                break-after: page;
-            }
-
-            .pdf-page:last-child {
-                page-break-after: auto;
-                break-after: auto;
-            }
-
-            table.sheet {
                 border-collapse: collapse;
-                width: 100%;
                 table-layout: fixed;
             }
 
-            .sheet td,
-            .sheet th {
-                border: 1px solid #7c8aa5;
-                padding: 4px 8px;
-                vertical-align: middle;
-                word-wrap: break-word;
-                line-height: 1.15;
+            .bloco-filtros {
+                margin-top: 6px;
+                margin-bottom: 8px;
             }
 
-            .title-main {
-                background: #dbeafe;
-                color: #0f172a;
-                font-size: 15px;
-                font-weight: 800;
-                text-align: center;
-                padding: 6px 8px;
+            .bloco-filtros td {
+                border: 1px solid #aab2bd;
+                padding: 4px;
+                font-size: 8px;
+                vertical-align: top;
             }
 
-            .sub-info {
-                background: #f8fafc;
-                font-size: 12px;
+            .resumo {
+                margin-bottom: 8px;
             }
 
-            .section-title {
-                background: #1d4ed8;
-                color: #fff;
-                font-weight: 800;
-                text-transform: uppercase;
-                text-align: center;
-                font-size: 14px;
-            }
-
-            .thead th {
+            .resumo th {
                 background: #e5e7eb;
-                color: #0f172a;
-                font-weight: 800;
+                border: 1px solid #aab2bd;
+                padding: 5px;
                 text-align: center;
-                font-size: 12px;
+                font-size: 8px;
             }
 
-            .summary-label {
-                background: #f8fafc;
-                font-weight: 800;
+            .resumo td {
+                border: 1px solid #aab2bd;
+                padding: 5px;
                 text-align: center;
-                font-size: 13px;
+                font-weight: bold;
+                font-size: 8px;
             }
 
-            .summary-value {
+            .grupo-fornecedor,
+            .grupo-secretaria {
+                page-break-after: always;
+                margin-bottom: 12px;
+            }
+
+            .grupo-fornecedor:last-child,
+            .grupo-secretaria:last-child {
+                page-break-after: auto;
+            }
+
+            .cabecalho-fornecedor {
+                background: #d9eaf7;
+                border: 1px solid #7fa6c9;
+                padding: 6px;
+                font-size: 10px;
+                font-weight: bold;
+                color: #1f2937;
+                margin-top: 8px;
+                page-break-after: avoid;
+            }
+
+            .cabecalho-secretaria {
+                background: #eaf4ea;
+                border: 1px solid #a7c7a7;
+                padding: 5px;
+                font-size: 9px;
+                font-weight: bold;
+                color: #1f2937;
+                margin-top: 6px;
+                page-break-after: avoid;
+            }
+
+            .tabela-aquisicoes {
+                margin-top: 4px;
+                page-break-inside: auto;
+            }
+
+            .tabela-aquisicoes th {
+                background: #2f5597;
+                color: #ffffff;
+                border: 1px solid #7f8fa6;
+                padding: 4px;
+                font-size: 7.5px;
                 text-align: center;
-                font-weight: 700;
-                background: #fff;
             }
 
-            .left {
-                text-align: left;
+            .tabela-aquisicoes td {
+                border: 1px solid #b6c2d1;
+                padding: 4px;
+                font-size: 7.5px;
+                vertical-align: top;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
             }
 
-            .center {
-                text-align: center;
+            .tabela-aquisicoes tr:nth-child(even) td {
+                background: #f7f9fc;
             }
 
-            .right {
+            .col-numero { width: 12%; }
+            .col-oficio { width: 14%; }
+            .col-fornecedor { width: 20%; }
+            .col-secretaria { width: 20%; }
+            .col-descricao { width: 42%; }
+            .col-data { width: 12%; text-align: center; }
+            .col-valor { width: 12%; text-align: right; }
+
+            .subtotal td,
+            .subtotal {
+                background: #e5e7eb !important;
+                font-weight: bold;
+            }
+
+            .total-grupo {
+                background: #d9e2f3;
+                border: 1px solid #7f8fa6;
+                font-weight: bold;
+                padding: 6px;
                 text-align: right;
+                margin-top: 5px;
             }
 
-            .total-row td {
-                background: #eef2ff;
-                font-weight: 800;
+            .total-geral {
+                background: #1f4e78;
+                color: #ffffff;
+                font-weight: bold;
+                padding: 7px;
+                text-align: right;
+                margin-top: 8px;
             }
 
-            .spacer td {
-                border: none !important;
-                height: 8px;
-                padding: 0;
-                background: #fff;
-            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .descricao-cell { line-height: 1.25; }
 
-            .empty-sheet {
-                max-width: 900px;
-                margin: 40px auto;
-                background: #fff;
-                border: 1px solid #dbe2ea;
-                border-radius: 12px;
-                padding: 28px;
-                text-align: center;
-                font-weight: 800;
-                color: #64748b;
+            tr {
+                page-break-inside: avoid;
             }
 
             @media print {
                 body {
-                    background: #fff !important;
+                    background: #ffffff !important;
                 }
 
                 .no-print {
@@ -560,7 +785,7 @@ if (in_array($export, ['pdf_fornecedor', 'pdf_secretaria'], true)) {
                 .pdf-page {
                     margin: 0 !important;
                     width: 100% !important;
-                    box-shadow: none !important;
+                    padding: 0 !important;
                 }
             }
         </style>
@@ -568,131 +793,253 @@ if (in_array($export, ['pdf_fornecedor', 'pdf_secretaria'], true)) {
 
     <body>
         <div class="print-toolbar no-print">
-            <div class="toolbar-title"><?php echo h($pdf_toolbar_title); ?> - modo paisagem</div>
+            <div class="toolbar-title">Relatório Geral - <?php echo h($tipo_agrupamento_label); ?></div>
             <div class="toolbar-actions">
-                <a href="relatorios.php?<?php echo h(http_build_query(['sec_id' => $sec_id, 'forn_id' => $forn_id, 'produto' => $produto, 'inicio' => $periodo_inicio, 'fim' => $periodo_fim])); ?>" class="btn">
+                <a href="<?php echo h($back_url); ?>" class="pdf-btn">
                     <i class="fas fa-arrow-left"></i> Voltar
                 </a>
-                <button type="button" class="btn btn-primary" onclick="window.print()">
+                <button type="button" class="pdf-btn pdf-btn-primary" onclick="window.print()">
                     <i class="fas fa-file-pdf"></i> Imprimir / Salvar PDF
                 </button>
             </div>
         </div>
 
-        <?php if (empty($pdf_groups)): ?>
-            <div class="empty-sheet">
-                Nenhum dado encontrado para os filtros selecionados.
-            </div>
-        <?php else: ?>
-            <div class="pdf-wrap">
-                <?php foreach ($pdf_groups as $group): ?>
-                    <?php
-                    $header_secretaria = $pdf_mode === 'secretaria' ? $group['nome'] : $nome_secretaria_filtro;
-                    $header_fornecedor = $pdf_mode === 'fornecedor' ? $group['nome'] : $nome_fornecedor_filtro;
-                    ?>
-                    <div class="pdf-page">
-                        <table class="sheet">
-                            <colgroup>
-                                <col style="width: 42%;">
-                                <col style="width: 16%;">
-                                <col style="width: 19%;">
-                                <col style="width: 23%;">
-                            </colgroup>
+        <div class="pdf-wrap">
+            <div class="pdf-page">
+                <div class="titulo-relatorio">RELATÓRIO DE AQUISIÇÕES</div>
 
-                            <tr>
-                                <td colspan="4" class="title-main"><?php echo h($pdf_title); ?></td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="sub-info left"><strong>Gerado em:</strong> <?php echo date('d/m/Y H:i:s'); ?></td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="sub-info left"><strong>Detalhes:</strong> <?php echo h($pdf_details); ?></td>
-                            </tr>
-                            <tr>
-                                <td colspan="2" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($header_secretaria); ?></td>
-                                <td colspan="2" class="sub-info left"><strong>Fornecedor:</strong> <?php echo h($header_fornecedor); ?></td>
-                            </tr>
-                            <tr>
-                                <td colspan="2" class="sub-info left"><strong>Produto:</strong> <?php echo $produto !== '' ? h($produto) : 'Todos'; ?></td>
-                                <td colspan="2" class="sub-info left"><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
-                            </tr>
+                <table class="bloco-filtros">
+                    <tr>
+                        <td><strong>Agrupamento:</strong> <?php echo h($tipo_agrupamento_label); ?></td>
+                        <td><strong>Produto:</strong> <?php echo $produto !== '' ? h($produto) : 'Todos'; ?></td>
+                        <td><strong>Emitido em:</strong> <?php echo date('d/m/Y H:i:s'); ?></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Secretaria:</strong> <?php echo h($nome_secretaria_filtro); ?></td>
+                        <td><strong>Fornecedor:</strong> <?php echo h($nome_fornecedor_filtro); ?></td>
+                        <td><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
+                    </tr>
+                </table>
 
-                            <tr class="spacer">
-                                <td colspan="4"></td>
-                            </tr>
+                <table class="resumo">
+                    <tr>
+                        <th>Total de Aquisições</th>
+                        <th>Valor Total Geral</th>
+                        <th>Fornecedores</th>
+                        <th>Secretarias</th>
+                    </tr>
+                    <tr>
+                        <td><?php echo $quantidade_export; ?></td>
+                        <td><?php echo format_money($total_export); ?></td>
+                        <td><?php echo count($dados_por_fornecedor); ?></td>
+                        <td><?php echo count($dados_por_secretaria); ?></td>
+                    </tr>
+                </table>
 
-                            <tr>
-                                <td colspan="2" class="summary-label">TOTAL GERAL FINANCEIRO</td>
-                                <td colspan="2" class="summary-label">TOTAL GERAL DE QUANTIDADE</td>
-                            </tr>
-                            <tr>
-                                <td colspan="2" class="summary-value"><?php echo format_money($group['total_valor']); ?></td>
-                                <td colspan="2" class="summary-value"><?php echo number_format((float)$group['total_qtd'], 2, ',', '.'); ?></td>
-                            </tr>
-
-                            <tr class="spacer">
-                                <td colspan="4"></td>
-                            </tr>
-
-                            <tr>
-                                <td colspan="4" class="section-title"><?php echo h($pdf_section_title); ?></td>
-                            </tr>
-                            <tr class="thead">
-                                <th><?php echo h($pdf_first_column); ?></th>
-                                <th>Data</th>
-                                <th>Qtd Itens</th>
-                                <th>Valor Total</th>
-                            </tr>
-
-                            <?php foreach ($group['rows'] as $row): ?>
+                <?php if (empty($aquisicoes_export)): ?>
+                    <table class="tabela-aquisicoes">
+                        <tr>
+                            <td class="text-center">Nenhuma aquisição encontrada para os filtros selecionados.</td>
+                        </tr>
+                    </table>
+                <?php elseif ($tipo_agrupamento === 'secretaria'): ?>
+                    <?php foreach ($dados_por_secretaria as $secretaria): ?>
+                        <div class="grupo-secretaria">
+                            <div class="cabecalho-secretaria">SECRETARIA: <?php echo h($secretaria['nome']); ?></div>
+                            <table class="resumo">
                                 <tr>
-                                    <td class="left"><?php echo h($row['nome']); ?></td>
-                                    <td class="center"><?php echo format_date_br($row['data']); ?></td>
-                                    <td class="center"><?php echo number_format((float)$row['qtd'], 2, ',', '.'); ?></td>
-                                    <td class="right"><?php echo format_money($row['valor']); ?></td>
+                                    <th>Total de Aquisições</th>
+                                    <th>Valor Total da Secretaria</th>
+                                    <th>Fornecedores Envolvidos</th>
+                                    <th>Período</th>
                                 </tr>
+                                <tr>
+                                    <td><?php echo (int)$secretaria['quantidade']; ?></td>
+                                    <td><?php echo format_money($secretaria['total']); ?></td>
+                                    <td><?php echo count($secretaria['fornecedores']); ?></td>
+                                    <td><?php echo h($periodo_texto); ?></td>
+                                </tr>
+                            </table>
+
+                            <?php foreach ($secretaria['fornecedores'] as $fornecedor): ?>
+                                <div class="cabecalho-fornecedor">FORNECEDOR: <?php echo h($fornecedor['nome']); ?></div>
+                                <table class="tabela-aquisicoes">
+                                    <colgroup>
+                                        <col class="col-numero">
+                                        <col class="col-oficio">
+                                        <col class="col-descricao">
+                                        <col class="col-data">
+                                        <col class="col-valor">
+                                    </colgroup>
+                                    <tr>
+                                        <th>Nº Aquisição</th>
+                                        <th>Nº Ofício</th>
+                                        <th>Descrição</th>
+                                        <th>Data</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                    <?php foreach ($fornecedor['items'] as $aq): ?>
+                                        <?php $descricao = relatorio_resumir_descricao($aq['descricao_relatorio'] ?? '', $descricao_limite_pdf); ?>
+                                        <tr>
+                                            <td class="text-center"><?php echo h($aq['numero_aq']); ?></td>
+                                            <td class="text-center"><?php echo h($aq['oficio_num']); ?></td>
+                                            <td class="descricao-cell"><?php echo h($descricao); ?></td>
+                                            <td class="text-center"><?php echo h(format_date_br($aq['criado_em'])); ?></td>
+                                            <td class="text-right"><?php echo format_money($aq['valor_total']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    <tr class="subtotal">
+                                        <td colspan="3" class="text-right">Subtotal do fornecedor</td>
+                                        <td class="text-center"><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
+                                        <td class="text-right"><?php echo format_money($fornecedor['total']); ?></td>
+                                    </tr>
+                                </table>
                             <?php endforeach; ?>
 
-                            <tr class="total-row">
-                                <td colspan="2" class="left">TOTAL GERAL</td>
-                                <td class="center"><?php echo number_format((float)$group['total_qtd'], 2, ',', '.'); ?></td>
-                                <td class="right"><?php echo format_money($group['total_valor']); ?></td>
+                            <div class="total-grupo">
+                                TOTAL DA SECRETARIA: <?php echo format_money($secretaria['total']); ?>
+                                &nbsp;|&nbsp; AQUISIÇÕES: <?php echo (int)$secretaria['quantidade']; ?>
+                                &nbsp;|&nbsp; FORNECEDORES: <?php echo count($secretaria['fornecedores']); ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php elseif ($tipo_agrupamento === 'geral'): ?>
+                    <table class="tabela-aquisicoes">
+                        <colgroup>
+                            <col class="col-numero">
+                            <col class="col-oficio">
+                            <col class="col-fornecedor">
+                            <col class="col-secretaria">
+                            <col class="col-descricao">
+                            <col class="col-data">
+                            <col class="col-valor">
+                        </colgroup>
+                        <tr>
+                            <th>Nº Aquisição</th>
+                            <th>Nº Ofício</th>
+                            <th>Fornecedor</th>
+                            <th>Secretaria</th>
+                            <th>Descrição</th>
+                            <th>Data</th>
+                            <th>Valor</th>
+                        </tr>
+                        <?php foreach ($aquisicoes_export as $aq): ?>
+                            <?php $descricao = relatorio_resumir_descricao($aq['descricao_relatorio'] ?? '', $descricao_limite_pdf); ?>
+                            <tr>
+                                <td class="text-center"><?php echo h($aq['numero_aq']); ?></td>
+                                <td class="text-center"><?php echo h($aq['oficio_num']); ?></td>
+                                <td><?php echo h(relatorio_nome($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO')); ?></td>
+                                <td><?php echo h(relatorio_nome($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA')); ?></td>
+                                <td class="descricao-cell"><?php echo h($descricao); ?></td>
+                                <td class="text-center"><?php echo h(format_date_br($aq['criado_em'])); ?></td>
+                                <td class="text-right"><?php echo format_money($aq['valor_total']); ?></td>
                             </tr>
-                        </table>
-                    </div>
-                <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </table>
+                    <div class="total-geral">TOTAL GERAL: <?php echo format_money($total_export); ?> | AQUISIÇÕES: <?php echo $quantidade_export; ?></div>
+                <?php else: ?>
+                    <?php foreach ($dados_por_fornecedor as $fornecedor): ?>
+                        <div class="grupo-fornecedor">
+                            <div class="cabecalho-fornecedor">FORNECEDOR: <?php echo h($fornecedor['nome']); ?></div>
+                            <table class="resumo">
+                                <tr>
+                                    <th>Total de Aquisições</th>
+                                    <th>Valor Total Fornecido</th>
+                                    <th>Secretarias Atendidas</th>
+                                    <th>Período</th>
+                                </tr>
+                                <tr>
+                                    <td><?php echo (int)$fornecedor['quantidade']; ?></td>
+                                    <td><?php echo format_money($fornecedor['total']); ?></td>
+                                    <td><?php echo count($fornecedor['secretarias']); ?></td>
+                                    <td><?php echo h($periodo_texto); ?></td>
+                                </tr>
+                            </table>
+
+                            <?php foreach ($fornecedor['secretarias'] as $secretaria): ?>
+                                <div class="cabecalho-secretaria">SECRETARIA: <?php echo h($secretaria['nome']); ?></div>
+                                <table class="tabela-aquisicoes">
+                                    <colgroup>
+                                        <col class="col-numero">
+                                        <col class="col-oficio">
+                                        <col class="col-descricao">
+                                        <col class="col-data">
+                                        <col class="col-valor">
+                                    </colgroup>
+                                    <tr>
+                                        <th>Nº Aquisição</th>
+                                        <th>Nº Ofício</th>
+                                        <th>Descrição</th>
+                                        <th>Data</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                    <?php foreach ($secretaria['items'] as $aq): ?>
+                                        <?php $descricao = relatorio_resumir_descricao($aq['descricao_relatorio'] ?? '', $descricao_limite_pdf); ?>
+                                        <tr>
+                                            <td class="text-center"><?php echo h($aq['numero_aq']); ?></td>
+                                            <td class="text-center"><?php echo h($aq['oficio_num']); ?></td>
+                                            <td class="descricao-cell"><?php echo h($descricao); ?></td>
+                                            <td class="text-center"><?php echo h(format_date_br($aq['criado_em'])); ?></td>
+                                            <td class="text-right"><?php echo format_money($aq['valor_total']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    <tr class="subtotal">
+                                        <td colspan="3" class="text-right">Subtotal da secretaria</td>
+                                        <td class="text-center"><?php echo (int)$secretaria['quantidade']; ?> AQ</td>
+                                        <td class="text-right"><?php echo format_money($secretaria['total']); ?></td>
+                                    </tr>
+                                </table>
+                            <?php endforeach; ?>
+
+                            <div class="total-grupo">
+                                TOTAL DO FORNECEDOR: <?php echo format_money($fornecedor['total']); ?>
+                                &nbsp;|&nbsp; AQUISIÇÕES: <?php echo (int)$fornecedor['quantidade']; ?>
+                                &nbsp;|&nbsp; SECRETARIAS ATENDIDAS: <?php echo count($fornecedor['secretarias']); ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+
+                <?php if (!empty($aquisicoes_export) && $tipo_agrupamento !== 'geral'): ?>
+                    <div class="total-geral">TOTAL GERAL: <?php echo format_money($total_export); ?> | AQUISIÇÕES: <?php echo $quantidade_export; ?></div>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
+        </div>
     </body>
 
     </html>
 <?php
-    exit;
-}
-
-/* =========================
-   EXPORTAÇÃO EXCEL
-========================= */
-if ($export === 'excel') {
-    $filename = 'relatorio_secretarias_' . date('Ymd_His') . '.xls';
-
-    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Pragma: no-cache');
-    header('Expires: 0');
-
-    echo "\xEF\xBB\xBF";
+        exit;
+    }
 ?>
-    <html>
+    <!DOCTYPE html>
+    <html lang="pt-br">
 
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Relatório Geral de Aquisições</title>
+        <?php if ($is_pdf_export): ?>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <?php endif; ?>
         <style>
+            <?php if ($is_pdf_export): ?>
+            @page {
+                size: A4 landscape;
+                margin: 6mm;
+            }
+            <?php endif; ?>
+
+            * {
+                box-sizing: border-box;
+            }
+
             body {
-                font-family: Arial, sans-serif;
-                font-size: 12px;
+                margin: <?php echo $is_pdf_export ? '0' : '18px'; ?>;
+                background: <?php echo $is_pdf_export ? '#eef2f7' : '#ffffff'; ?>;
                 color: #1f2937;
-                margin: 18px;
+                font-family: Arial, sans-serif;
+                font-size: <?php echo $is_pdf_export ? '9px' : '12px'; ?>;
             }
 
             table {
@@ -701,47 +1048,30 @@ if ($export === 'excel') {
                 table-layout: fixed;
             }
 
-            .sheet {
-                width: 100%;
-                max-width: 1100px;
-            }
-
             .sheet td,
             .sheet th {
                 border: 1px solid #7c8aa5;
-                padding: 7px 8px;
+                padding: <?php echo $is_pdf_export ? '3px 5px' : '7px 8px'; ?>;
                 vertical-align: middle;
                 word-wrap: break-word;
+                overflow-wrap: anywhere;
+                line-height: 1.15;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
             }
 
             .title-main {
                 background: #dbeafe;
                 color: #0f172a;
-                font-size: 18px;
+                font-size: <?php echo $is_pdf_export ? '13px' : '18px'; ?>;
                 font-weight: bold;
                 text-align: center;
-                border: 1px solid #7c8aa5;
-                padding: 12px;
+                padding: <?php echo $is_pdf_export ? '5px' : '12px'; ?>;
             }
 
             .sub-info {
                 background: #f8fafc;
-                font-size: 11px;
-            }
-
-            .section-title {
-                background: #1d4ed8;
-                color: #fff;
-                font-weight: bold;
-                text-transform: uppercase;
-                letter-spacing: .3px;
-                text-align: center;
-            }
-
-            .thead {
-                background: #e5e7eb;
-                font-weight: bold;
-                text-align: center;
+                font-size: <?php echo $is_pdf_export ? '9px' : '11px'; ?>;
             }
 
             .summary-label {
@@ -753,8 +1083,64 @@ if ($export === 'excel') {
             .summary-value {
                 text-align: center;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: <?php echo $is_pdf_export ? '10px' : '14px'; ?>;
                 background: #ffffff;
+            }
+
+            .section-title {
+                background: #1d4ed8;
+                color: #ffffff;
+                font-weight: bold;
+                text-transform: uppercase;
+                text-align: center;
+            }
+
+            .supplier-section td {
+                background: #eef2ff;
+                color: #0f172a;
+                font-weight: bold;
+                text-transform: uppercase;
+            }
+
+            .secretaria-card-title td {
+                color: #0f172a;
+                font-weight: bold;
+                text-transform: uppercase;
+                border-top: 2px solid #475569;
+                border-bottom: 1px solid #7c8aa5;
+            }
+
+            .secretaria-card-head th {
+                background: #f3f4f6;
+                color: #111827;
+                font-weight: bold;
+                text-align: center;
+            }
+
+            .group-total-row td {
+                background: #d9dde4;
+                font-weight: bold;
+                border-top: 2px solid #64748b;
+                border-bottom: 2px solid #64748b;
+            }
+
+            .supplier-total-row td {
+                background: #dbeafe;
+                font-weight: bold;
+                border-top: 2px solid #3b82f6;
+            }
+
+            .total-row td {
+                background: #eef2ff;
+                font-weight: bold;
+                border-top: 2px solid #334155;
+            }
+
+            .spacer td {
+                border: none !important;
+                height: <?php echo $is_pdf_export ? '5px' : '8px'; ?>;
+                padding: 0;
+                background: transparent;
             }
 
             .left {
@@ -769,95 +1155,241 @@ if ($export === 'excel') {
                 text-align: right;
             }
 
-            .total-row {
-                background: #eef2ff;
-                font-weight: bold;
+            .text-cell {
+                mso-number-format: "\@";
             }
 
-            .spacer td {
-                border: none !important;
-                height: 8px;
-                padding: 0;
-                background: transparent;
+            .desc-cell {
+                font-weight: 600;
+                text-transform: uppercase;
+            }
+
+            .money-cell {
+                white-space: nowrap;
+            }
+
+            .print-toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+                padding: 14px 18px;
+                background: #ffffff;
+                border-bottom: 1px solid #dbe2ea;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }
+
+            .toolbar-title {
+                color: #0f172a;
+                font-size: 14px;
+                font-weight: 800;
+            }
+
+            .toolbar-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: .6rem;
+            }
+
+            .pdf-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: .45rem;
+                border: 1px solid #dbe2ea;
+                border-radius: 8px;
+                padding: .62rem .9rem;
+                background: #ffffff;
+                color: #334155;
+                text-decoration: none;
+                font-weight: 800;
+                cursor: pointer;
+            }
+
+            .pdf-btn-primary {
+                background: #1d4ed8;
+                border-color: #1d4ed8;
+                color: #ffffff;
+            }
+
+            .pdf-wrap {
+                padding: 10px;
+                overflow-x: auto;
+            }
+
+            .pdf-page {
+                width: 287mm;
+                max-width: none;
+                background: #ffffff;
+                margin: 0 auto;
+                padding: 5mm;
+            }
+
+            .sheet tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            @media print {
+                body {
+                    background: #ffffff !important;
+                }
+
+                .no-print {
+                    display: none !important;
+                }
+
+                .pdf-wrap {
+                    padding: 0 !important;
+                }
+
+                .pdf-page {
+                    margin: 0 !important;
+                    width: 100% !important;
+                    padding: 0 !important;
+                }
             }
         </style>
     </head>
 
     <body>
+        <?php if ($is_pdf_export): ?>
+            <div class="print-toolbar no-print">
+                <div class="toolbar-title">Relatório Geral - PDF em paisagem</div>
+                <div class="toolbar-actions">
+                    <a href="<?php echo h($back_url); ?>" class="pdf-btn">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                    <button type="button" class="pdf-btn pdf-btn-primary" onclick="window.print()">
+                        <i class="fas fa-file-pdf"></i> Imprimir / Salvar PDF
+                    </button>
+                </div>
+            </div>
+            <div class="pdf-wrap">
+                <div class="pdf-page">
+        <?php endif; ?>
+
         <table class="sheet">
             <colgroup>
-                <col style="width: 40%;">
-                <col style="width: 20%;">
-                <col style="width: 15%;">
+                <col style="width: 13%;">
+                <col style="width: 16%;">
                 <col style="width: 25%;">
+                <col style="width: 28%;">
+                <col style="width: 9%;">
+                <col style="width: 9%;">
             </colgroup>
 
             <tr>
-                <td colspan="4" class="title-main">RELATÓRIO DE AQUISIÇÕES POR SECRETARIA</td>
+                <td colspan="6" class="title-main">RELATÓRIO GERAL DE AQUISIÇÕES</td>
             </tr>
             <tr>
-                <td colspan="4" class="sub-info left"><strong>Gerado em:</strong> <?php echo date('d/m/Y H:i:s'); ?></td>
+                <td colspan="6" class="sub-info left"><strong>Gerado em:</strong> <?php echo date('d/m/Y H:i:s'); ?></td>
             </tr>
             <tr>
-                <td colspan="4" class="sub-info left"><strong>Detalhes:</strong> Totais por secretaria</td>
+                <td colspan="3" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($nome_secretaria_filtro); ?></td>
+                <td colspan="3" class="sub-info left"><strong>Fornecedor:</strong> <?php echo h($nome_fornecedor_filtro); ?></td>
             </tr>
             <tr>
-                <td colspan="2" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($nome_secretaria_filtro); ?></td>
-                <td colspan="2" class="sub-info left"><strong>Fornecedor:</strong> <?php echo h($nome_fornecedor_filtro); ?></td>
+                <td colspan="3" class="sub-info left"><strong>Produto:</strong> <?php echo $produto !== '' ? h($produto) : 'Todos'; ?></td>
+                <td colspan="3" class="sub-info left"><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
             </tr>
             <tr>
-                <td colspan="2" class="sub-info left"><strong>Produto:</strong> <?php echo $produto !== '' ? h($produto) : 'Todos'; ?></td>
-                <td colspan="2" class="sub-info left"><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
+                <td colspan="3" class="summary-label">TOTAL DE AQUISIÇÕES</td>
+                <td colspan="3" class="summary-label">VALOR TOTAL</td>
+            </tr>
+            <tr>
+                <td colspan="3" class="summary-value"><?php echo $quantidade_export; ?></td>
+                <td colspan="3" class="summary-value"><?php echo format_money($total_export); ?></td>
             </tr>
 
             <tr class="spacer">
-                <td colspan="4"></td>
+                <td colspan="6"></td>
             </tr>
 
             <tr>
-                <td colspan="2" class="summary-label">TOTAL GERAL FINANCEIRO</td>
-                <td colspan="2" class="summary-label">TOTAL GERAL DE QUANTIDADE</td>
-            </tr>
-            <tr>
-                <td colspan="2" class="summary-value"><?php echo format_money($total_geral); ?></td>
-                <td colspan="2" class="summary-value"><?php echo number_format($total_qtd_geral, 2, ',', '.'); ?></td>
+                <td colspan="6" class="section-title">AQUISIÇÕES INDIVIDUAIS POR FORNECEDOR E SECRETARIA</td>
             </tr>
 
-            <tr class="spacer">
-                <td colspan="4"></td>
-            </tr>
+            <?php if (empty($dados_por_fornecedor)): ?>
+                <tr>
+                    <td colspan="6" class="center">Nenhuma aquisição encontrada para os filtros selecionados.</td>
+                </tr>
+            <?php else: ?>
+                <?php $fornecedor_index = 0; ?>
+                <?php foreach ($dados_por_fornecedor as $fornecedor): ?>
+                    <?php if ($fornecedor_index > 0): ?>
+                        <tr class="spacer">
+                            <td colspan="6"></td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php $fornecedor_index++; ?>
+                    <tr class="supplier-section">
+                        <td colspan="4" class="left">FORNECEDOR: <?php echo h($fornecedor['nome']); ?></td>
+                        <td class="center"><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
+                        <td class="right money-cell"><?php echo format_money($fornecedor['total']); ?></td>
+                    </tr>
 
-            <tr>
-                <td colspan="4" class="section-title">RESUMO POR SECRETARIA</td>
-            </tr>
-            <tr class="thead">
-                <th>Secretaria</th>
-                <th>Data</th>
-                <th>Qtd Itens</th>
-                <th>Valor Total</th>
-            </tr>
+                    <?php foreach ($fornecedor['secretarias'] as $secretaria): ?>
+                        <?php
+                        $cor_secretaria = relatorio_cor_secretaria($secretaria['cor'] ?? '');
+                        $cor_attr = h($cor_secretaria);
+                        ?>
+                        <tr class="spacer">
+                            <td colspan="6"></td>
+                        </tr>
+                        <tr class="secretaria-card-title">
+                            <td colspan="4" class="left" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;">SECRETARIA: <?php echo h($secretaria['nome']); ?></td>
+                            <td class="center" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo (int)$secretaria['quantidade']; ?> AQ</td>
+                            <td class="right money-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo format_money($secretaria['total']); ?></td>
+                        </tr>
+                        <tr class="secretaria-card-head">
+                            <th>Nº Aquisição</th>
+                            <th>Nº Ofício</th>
+                            <th>Secretaria</th>
+                            <th>Descrição</th>
+                            <th>Data</th>
+                            <th>Valor</th>
+                        </tr>
+                        <?php foreach ($secretaria['items'] as $aq): ?>
+                            <?php $descricao = relatorio_resumir_descricao($aq['descricao_relatorio'] ?? '', $descricao_limite); ?>
+                            <tr>
+                                <td class="center text-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
+                                <td class="center text-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
+                                <td class="left text-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h(relatorio_nome($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA')); ?></td>
+                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h($descricao); ?></td>
+                                <td class="center" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h(format_date_br($aq['criado_em'])); ?></td>
+                                <td class="right money-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo format_money($aq['valor_total']); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <tr class="group-total-row">
+                            <td colspan="4" class="right">TOTAL DA SECRETARIA</td>
+                            <td class="center"><?php echo (int)$secretaria['quantidade']; ?> AQ</td>
+                            <td class="right money-cell"><?php echo format_money($secretaria['total']); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
 
-            <?php if (!empty($relatorio_secretarias)): ?>
-                <?php foreach ($relatorio_secretarias as $row): ?>
-                    <tr>
-                        <td class="left"><?php echo h($row['secretaria_nome']); ?></td>
-                        <td class="center"><?php echo format_date_br($row['data_referencia']); ?></td>
-                        <td class="center"><?php echo number_format((float)$row['total_qtd'], 2, ',', '.'); ?></td>
-                        <td class="right"><?php echo format_money($row['total_valor']); ?></td>
+                    <tr class="supplier-total-row">
+                        <td colspan="4" class="right">TOTAL DO FORNECEDOR</td>
+                        <td class="center"><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
+                        <td class="right money-cell"><?php echo format_money($fornecedor['total']); ?></td>
                     </tr>
                 <?php endforeach; ?>
 
-                <tr class="total-row">
-                    <td colspan="2" class="left">TOTAL GERAL</td>
-                    <td class="center"><?php echo number_format($total_qtd_geral, 2, ',', '.'); ?></td>
-                    <td class="right"><?php echo format_money($total_geral); ?></td>
+                <tr class="spacer">
+                    <td colspan="6"></td>
                 </tr>
-            <?php else: ?>
-                <tr>
-                    <td colspan="4" class="center">Nenhum dado encontrado para os filtros selecionados.</td>
+                <tr class="total-row">
+                    <td colspan="5" class="right">TOTAL GERAL</td>
+                    <td class="right money-cell"><?php echo format_money($total_export); ?></td>
                 </tr>
             <?php endif; ?>
         </table>
+
+        <?php if ($is_pdf_export): ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </body>
 
     </html>
@@ -1483,6 +2015,13 @@ include 'views/layout/header.php';
                         target="_blank"
                         class="btn btn-outline btn-sm">
                         <i class="fas fa-file-pdf"></i> PDF Secretarias
+                    </a>
+
+                    <a
+                        href="?<?php echo h(http_build_query(array_merge($query_base, ['export' => 'pdf', 'tipo_agrupamento' => 'geral']))); ?>"
+                        target="_blank"
+                        class="btn btn-outline btn-sm">
+                        <i class="fas fa-file-pdf"></i> PDF Geral
                     </a>
                 </div>
             </div>

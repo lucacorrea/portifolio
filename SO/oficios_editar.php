@@ -73,6 +73,30 @@ function format_datetime_local_input($valor): string {
     return date('Y-m-d\TH:i', $timestamp);
 }
 
+$oficio_status_options = [
+    'PENDENTE_ITENS' => 'PENDENTE_ITENS',
+    'ENVIADO' => 'ENVIADO',
+    'EM_ANALISE' => 'EM_ANALISE',
+    'APROVADO' => 'APROVADO',
+    'REPROVADO' => 'REPROVADO',
+    'ARQUIVADO' => 'ARQUIVADO',
+];
+
+$aquisicao_status_options = [
+    'AGUARDANDO ENTREGA' => 'AGUARDANDO ENTREGA',
+    'FINALIZADO' => 'FINALIZADO',
+];
+
+function oficio_edit_current_user_id(): ?int {
+    foreach (['usuario_id', 'user_id', 'id'] as $key) {
+        if (isset($_SESSION[$key]) && is_numeric($_SESSION[$key])) {
+            return (int)$_SESSION[$key];
+        }
+    }
+
+    return null;
+}
+
 $stmt = $pdo->prepare("
     SELECT o.*, s.nome as secretaria
     FROM oficios o
@@ -118,8 +142,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $criado_em = parse_oficio_datetime($_POST['criado_em'] ?? '');
         $valor_orcamento = parse_oficio_money($_POST['valor_orcamento'] ?? '');
         $produtos = $_POST['produtos'] ?? [];
+        $status_oficio = trim((string)($_POST['status_oficio'] ?? ($oficio['status'] ?? 'PENDENTE_ITENS')));
         $aquisicoes_datas = $_POST['aquisicoes_datas'] ?? [];
         $aquisicoes_fornecedores = $_POST['aquisicoes_fornecedores'] ?? [];
+        $aquisicoes_status = $_POST['aquisicoes_status'] ?? [];
 
         if ($numero_manual === '') {
             throw new Exception("O número do ofício é obrigatório.");
@@ -135,8 +161,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Informe o local do ofício.");
         }
 
+        if (!array_key_exists($status_oficio, $oficio_status_options)) {
+            throw new Exception("Selecione um status válido para o ofício.");
+        }
+
         $aquisicoes_datas_sanitizadas = [];
         $aquisicoes_fornecedores_sanitizados = [];
+        $aquisicoes_status_sanitizados = [];
         foreach ($aquisicoes_vinculadas as $aq) {
             $aq_id = (int)$aq['id'];
 
@@ -159,6 +190,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $aquisicoes_fornecedores_sanitizados[$aq_id] = $fornecedor_id_aquisicao;
+
+            if (!array_key_exists($aq_id, $aquisicoes_status)) {
+                $aquisicoes_status[$aq_id] = $aq['status'] ?? 'AGUARDANDO ENTREGA';
+            }
+
+            $status_aquisicao = trim((string)$aquisicoes_status[$aq_id]);
+            if (!array_key_exists($status_aquisicao, $aquisicao_status_options)) {
+                throw new Exception("Selecione um status válido para a aquisição {$aq['numero_aq']}.");
+            }
+
+            $aquisicoes_status_sanitizados[$aq_id] = $status_aquisicao;
         }
 
         $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ? AND id <> ?");
@@ -224,8 +266,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pdo->beginTransaction();
 
-        $novo_status = $oficio['status'] === 'PENDENTE_ITENS' ? 'ENVIADO' : $oficio['status'];
-
         $stmt_update = $pdo->prepare("
             UPDATE oficios
             SET numero = ?, secretaria_id = ?, local = ?, resumo_itens = ?, criado_em = ?, valor_orcamento = ?, status = ?
@@ -238,21 +278,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $resumo_itens !== '' ? $resumo_itens : null,
             $criado_em,
             $valor_orcamento,
-            $novo_status,
+            $status_oficio,
             $id
         ]);
 
-        if (!empty($aquisicoes_datas_sanitizadas) || !empty($aquisicoes_fornecedores_sanitizados)) {
+        if (!empty($aquisicoes_datas_sanitizadas) || !empty($aquisicoes_fornecedores_sanitizados) || !empty($aquisicoes_status_sanitizados)) {
             $stmt_update_aquisicao_dados = $pdo->prepare("
                 UPDATE aquisicoes
-                SET criado_em = ?, fornecedor_id = ?
+                SET
+                    criado_em = ?,
+                    fornecedor_id = ?,
+                    status = ?,
+                    data_finalizacao = CASE
+                        WHEN ? = 'FINALIZADO' THEN COALESCE(data_finalizacao, CURRENT_TIMESTAMP)
+                        ELSE NULL
+                    END,
+                    usuario_id_finalizou = CASE
+                        WHEN ? = 'FINALIZADO' THEN COALESCE(usuario_id_finalizou, ?)
+                        ELSE NULL
+                    END
                 WHERE id = ? AND oficio_id = ?
             ");
 
             foreach ($aquisicoes_datas_sanitizadas as $aquisicao_id => $data_aquisicao) {
+                $status_aquisicao = $aquisicoes_status_sanitizados[$aquisicao_id] ?? 'AGUARDANDO ENTREGA';
                 $stmt_update_aquisicao_dados->execute([
                     $data_aquisicao,
                     (int)$aquisicoes_fornecedores_sanitizados[$aquisicao_id],
+                    $status_aquisicao,
+                    $status_aquisicao,
+                    $status_aquisicao,
+                    oficio_edit_current_user_id(),
                     (int)$aquisicao_id,
                     $id,
                 ]);
@@ -441,6 +497,10 @@ $resumo_itens_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['resumo_itens'] ?? '')
     : ($oficio['resumo_itens'] ?? '');
 
+$oficio_status_value = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? ($_POST['status_oficio'] ?? ($oficio['status'] ?? 'PENDENTE_ITENS'))
+    : ($oficio['status'] ?? 'PENDENTE_ITENS');
+
 $criado_em_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['criado_em'] ?? '')
     : format_datetime_local_input($oficio['criado_em'] ?? '');
@@ -461,6 +521,7 @@ if ($criado_em_timestamp !== false) {
 
 $aquisicoes_datas_values = [];
 $aquisicoes_fornecedores_values = [];
+$aquisicoes_status_values = [];
 foreach ($aquisicoes_vinculadas as $aq) {
     $aq_id = (int)$aq['id'];
     $aquisicoes_datas_values[$aq_id] = $_SERVER['REQUEST_METHOD'] === 'POST'
@@ -470,6 +531,10 @@ foreach ($aquisicoes_vinculadas as $aq) {
     $aquisicoes_fornecedores_values[$aq_id] = $_SERVER['REQUEST_METHOD'] === 'POST'
         ? (int)($_POST['aquisicoes_fornecedores'][$aq_id] ?? ($aq['fornecedor_id'] ?? 0))
         : (int)($aq['fornecedor_id'] ?? 0);
+
+    $aquisicoes_status_values[$aq_id] = $_SERVER['REQUEST_METHOD'] === 'POST'
+        ? ($_POST['aquisicoes_status'][$aq_id] ?? ($aq['status'] ?? 'AGUARDANDO ENTREGA'))
+        : ($aq['status'] ?? 'AGUARDANDO ENTREGA');
 }
 
 $orcamento_value = $_SERVER['REQUEST_METHOD'] === 'POST'
@@ -773,6 +838,19 @@ include 'views/layout/header.php';
                         value="<?php echo htmlspecialchars($orcamento_value, ENT_QUOTES, 'UTF-8'); ?>">
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label">Status do Ofício <span style="color:red">*</span></label>
+                    <select name="status_oficio" class="form-control" required>
+                        <?php foreach ($oficio_status_options as $status_value => $status_label): ?>
+                            <option
+                                value="<?php echo htmlspecialchars($status_value, ENT_QUOTES, 'UTF-8'); ?>"
+                                <?php echo $oficio_status_value === $status_value ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($status_label, ENT_QUOTES, 'UTF-8'); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
                 <div class="form-group oficio-edit-span-2">
                     <label class="form-label">Resumo dos Itens a Cadastrar</label>
                     <textarea
@@ -840,9 +918,18 @@ include 'views/layout/header.php';
 
                                 <div class="form-group" style="margin:0;">
                                     <label class="form-label">Status</label>
-                                    <div class="aquisicao-status-pill">
-                                        <?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?>
-                                    </div>
+                                    <select
+                                        name="aquisicoes_status[<?php echo $aq_id; ?>]"
+                                        class="form-control"
+                                        required>
+                                        <?php foreach ($aquisicao_status_options as $status_value => $status_label): ?>
+                                            <option
+                                                value="<?php echo htmlspecialchars($status_value, ENT_QUOTES, 'UTF-8'); ?>"
+                                                <?php echo ($aquisicoes_status_values[$aq_id] ?? '') === $status_value ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($status_label, ENT_QUOTES, 'UTF-8'); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -862,7 +949,7 @@ include 'views/layout/header.php';
                     <strong><?php echo htmlspecialchars($local_value !== '' ? $local_value : '-', ENT_QUOTES, 'UTF-8'); ?></strong><br>
 
                     <span class="text-muted">Status atual:</span>
-                    <strong><?php echo htmlspecialchars($oficio['status'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <strong><?php echo htmlspecialchars((string)$oficio_status_value, ENT_QUOTES, 'UTF-8'); ?></strong>
                 </div>
 
                 <div style="text-align: right;">
