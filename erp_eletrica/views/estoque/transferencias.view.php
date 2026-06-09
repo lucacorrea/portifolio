@@ -917,7 +917,28 @@ function removerItemCarrinho(index) {
 function enviarCarrinho() {
     aplicarCarrinho();
     const form = document.getElementById(carrinhoFormId);
-    if (form) form.requestSubmit();
+    if (!form) return;
+
+    if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+        if (typeof form.reportValidity === 'function') form.reportValidity();
+        return;
+    }
+
+    const modalEl = document.getElementById('modalEditarCarrinho');
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if (modalInstance) modalInstance.hide();
+
+    const btn = document.getElementById('btnEnviarCarrinho');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando...';
+    }
+
+    if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+    } else {
+        form.submit();
+    }
 }
 
 let reportModalInstance = null;
@@ -1402,7 +1423,7 @@ function abrirProcessarRecebimento(id) {
             <div class="modal-footer border-0 p-3 pt-0">
                 <button type="button" class="btn btn-light btn-sm fw-bold px-3" data-bs-dismiss="modal">Continuar editando</button>
                 <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-3" onclick="aplicarCarrinho()" data-bs-dismiss="modal">Aplicar ajustes</button>
-                <button type="button" class="btn btn-primary btn-sm fw-bold px-4" onclick="enviarCarrinho()">
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-4" id="btnEnviarCarrinho" onclick="enviarCarrinho()">
                     <i class="fas fa-paper-plane me-2"></i>Enviar Pedido
                 </button>
             </div>
