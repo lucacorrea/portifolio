@@ -446,11 +446,13 @@ function agrupar_relatorio_geral_por_secretaria(array $aquisicoes): array
     foreach ($aquisicoes as $aquisicao) {
         $secretaria = relatorio_nome($aquisicao['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA');
         $fornecedor = relatorio_nome($aquisicao['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO');
+        $cor = relatorio_cor_secretaria($aquisicao['secretaria_cor'] ?? '');
         $valor = (float)($aquisicao['valor_total'] ?? 0);
 
         if (!isset($grupos[$secretaria])) {
             $grupos[$secretaria] = [
                 'nome' => $secretaria,
+                'cor' => $cor,
                 'quantidade' => 0,
                 'total' => 0.0,
                 'fornecedores' => [],
@@ -845,7 +847,8 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                 <?php elseif ($tipo_agrupamento === 'secretaria'): ?>
                     <?php foreach ($dados_por_secretaria as $secretaria): ?>
                         <div class="grupo-secretaria">
-                            <div class="cabecalho-secretaria">SECRETARIA: <?php echo h($secretaria['nome']); ?></div>
+                            <?php $cor_secretaria = h(relatorio_cor_secretaria($secretaria['cor'] ?? '')); ?>
+                            <div class="cabecalho-secretaria" bgcolor="<?php echo $cor_secretaria; ?>" style="background-color: <?php echo $cor_secretaria; ?>;">SECRETARIA: <?php echo h($secretaria['nome']); ?></div>
                             <table class="resumo">
                                 <tr>
                                     <th>Total de Aquisições</th>
@@ -957,7 +960,8 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                             </table>
 
                             <?php foreach ($fornecedor['secretarias'] as $secretaria): ?>
-                                <div class="cabecalho-secretaria">SECRETARIA: <?php echo h($secretaria['nome']); ?></div>
+                                <?php $cor_secretaria = h(relatorio_cor_secretaria($secretaria['cor'] ?? '')); ?>
+                                <div class="cabecalho-secretaria" bgcolor="<?php echo $cor_secretaria; ?>" style="background-color: <?php echo $cor_secretaria; ?>;">SECRETARIA: <?php echo h($secretaria['nome']); ?></div>
                                 <table class="tabela-aquisicoes">
                                     <colgroup>
                                         <col class="col-numero">
