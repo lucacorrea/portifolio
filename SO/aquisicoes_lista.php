@@ -226,7 +226,7 @@ function renderizarCabecalhoRelatorioAquisicoes(
     $classeLinhaTitulo = $quebrarPagina ? ' class="supplier-page-break"' : '';
     ?>
             <tr<?php echo $classeLinhaTitulo; ?>>
-                <td colspan="6" class="title-main">RELATÓRIO DE AQUISIÇÕES</td>
+                <td colspan="6" class="title-main" style="margin-top: 30px !important;">RELATÓRIO DE AQUISIÇÕES</td>
             </tr>
             <tr>
                 <td colspan="6" class="sub-info left"><strong>Gerado em:</strong> <?php echo h($geradoEm); ?></td>
