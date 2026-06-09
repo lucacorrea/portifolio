@@ -103,6 +103,24 @@ function corRelatorioSecretaria($cor): string
     return '#D9E3F4';
 }
 
+function corRelatorioFornecedor(int $indice): string
+{
+    $cores = [
+        '#FDE68A',
+        '#BBF7D0',
+        '#BFDBFE',
+        '#FBCFE8',
+        '#DDD6FE',
+        '#FED7AA',
+        '#CFFAFE',
+        '#E9D5FF',
+        '#D9F99D',
+        '#FECACA',
+    ];
+
+    return $cores[$indice % count($cores)];
+}
+
 function nomeRelatorio($valor, string $fallback): string
 {
     $nome = formatarTextoCaixaAlta($valor);
@@ -368,6 +386,15 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     foreach ($resumoSecretarias as $secretariaResumo) {
         $secretaria_color_map[$secretariaResumo['nome']] = corRelatorioSecretaria($secretariaResumo['cor'] ?? '');
     }
+    $usar_cores_fornecedor = count($resumoSecretarias) === 1 && count($dadosPorFornecedor) > 1;
+    $fornecedor_color_map = [];
+    if ($usar_cores_fornecedor) {
+        $fornecedor_cor_index = 0;
+        foreach (array_keys($dadosPorFornecedor) as $nomeFornecedor) {
+            $fornecedor_color_map[$nomeFornecedor] = corRelatorioFornecedor($fornecedor_cor_index);
+            $fornecedor_cor_index++;
+        }
+    }
 
     $periodo_texto = 'Todos';
     if ($data_inicio_valida || $data_fim_valida) {
@@ -410,7 +437,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <?php if ($is_pdf_export): ?>
             @page {
                 size: A4 landscape;
-                margin: 5mm;
+                margin: 0;
             }
             <?php endif; ?>
 
@@ -529,17 +556,19 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             }
 
             body.pdf-export {
+                background: #ffffff;
                 color: #001228;
                 font-size: 8.5px;
             }
 
             .pdf-wrap {
-                padding: 10px;
+                padding: 0;
                 overflow-x: auto;
             }
 
             .pdf-page {
-                width: 287mm;
+                width: 297mm;
+                min-height: 210mm;
                 max-width: none;
                 background: #ffffff;
                 margin: 0 auto;
@@ -673,7 +702,8 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                 .pdf-page {
                     margin: 0 !important;
-                    width: 100% !important;
+                    width: 297mm !important;
+                    min-height: 210mm !important;
                 }
             }
             <?php endif; ?>
@@ -755,17 +785,26 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                     <?php if ($fornecedor_index > 0): ?>
                         <tr class="spacer"><td colspan="6"></td></tr>
                     <?php endif; ?>
-                    <?php $fornecedor_index++; ?>
+                    <?php
+                    $fornecedor_cor = $usar_cores_fornecedor
+                        ? h($fornecedor_color_map[$fornecedor['nome']] ?? corRelatorioFornecedor($fornecedor_index))
+                        : '';
+                    $fornecedor_bg_attr = $fornecedor_cor !== ''
+                        ? ' bgcolor="' . $fornecedor_cor . '" style="background-color: ' . $fornecedor_cor . ';"'
+                        : '';
+                    $fornecedor_index++;
+                    ?>
                     <tr class="supplier-section">
-                        <td colspan="4" class="left">FORNECEDOR: <?php echo h($fornecedor['nome']); ?></td>
-                        <td class="center"><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
-                        <td class="right money-cell"><?php echo formatarMoedaBR($fornecedor['total']); ?></td>
+                        <td colspan="4" class="left"<?php echo $fornecedor_bg_attr; ?>>FORNECEDOR: <?php echo h($fornecedor['nome']); ?></td>
+                        <td class="center"<?php echo $fornecedor_bg_attr; ?>><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
+                        <td class="right money-cell"<?php echo $fornecedor_bg_attr; ?>><?php echo formatarMoedaBR($fornecedor['total']); ?></td>
                     </tr>
 
                     <?php foreach ($fornecedor['secretarias'] as $secretaria): ?>
                         <?php
                         $cor_secretaria = corRelatorioSecretaria($secretaria_color_map[$secretaria['nome']] ?? ($secretaria['cor'] ?? ''));
                         $cor_attr = h($cor_secretaria);
+                        $cor_item_attr = $fornecedor_cor !== '' ? $fornecedor_cor : $cor_attr;
                         ?>
                         <tr class="spacer"><td colspan="6"></td></tr>
                         <tr class="secretaria-card-title">
@@ -789,12 +828,12 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                                 : formatarDescricaoRelatorio($descricaoCompleta, $descricao_limite);
                             ?>
                             <tr class="report-row">
-                                <td class="center text-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
-                                <td class="center text-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
-                                <td class="left text-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h(nomeRelatorio($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA')); ?></td>
-                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h($descricaoRelatorio); ?></td>
-                                <td class="center" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
-                                <td class="right money-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
+                                <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
+                                <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
+                                <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(nomeRelatorio($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA')); ?></td>
+                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($descricaoRelatorio); ?></td>
+                                <td class="center" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
+                                <td class="right money-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
                             </tr>
                         <?php endforeach; ?>
                         <tr class="group-total-row">
@@ -805,9 +844,9 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                     <?php endforeach; ?>
 
                     <tr class="supplier-total-row">
-                        <td colspan="4" class="right">TOTAL DO FORNECEDOR</td>
-                        <td class="center"><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
-                        <td class="right money-cell"><?php echo formatarMoedaBR($fornecedor['total']); ?></td>
+                        <td colspan="4" class="right"<?php echo $fornecedor_bg_attr; ?>>TOTAL DO FORNECEDOR</td>
+                        <td class="center"<?php echo $fornecedor_bg_attr; ?>><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
+                        <td class="right money-cell"<?php echo $fornecedor_bg_attr; ?>><?php echo formatarMoedaBR($fornecedor['total']); ?></td>
                     </tr>
                 <?php endforeach; ?>
 
@@ -838,7 +877,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                     try {
                         const worker = window.html2pdf().set({
-                            margin: [5, 5, 5, 5],
+                            margin: [0, 0, 0, 0],
                             filename: <?php echo json_encode($filename . '.pdf'); ?>,
                             image: { type: 'jpeg', quality: 0.98 },
                             html2canvas: {
