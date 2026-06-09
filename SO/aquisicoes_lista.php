@@ -661,6 +661,11 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 padding: 2px 5px;
             }
 
+            body.pdf-export .supplier-page-break {
+                break-before: page;
+                page-break-before: always;
+            }
+
             body.pdf-export .secretaria-card-title td {
                 font-size: 9.5px;
                 line-height: 1.12;
@@ -792,9 +797,10 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                     $fornecedor_bg_attr = $fornecedor_cor !== ''
                         ? ' bgcolor="' . $fornecedor_cor . '" style="background-color: ' . $fornecedor_cor . ';"'
                         : '';
+                    $fornecedor_quebra_pagina = $fornecedor_index > 0;
                     $fornecedor_index++;
                     ?>
-                    <tr class="supplier-section">
+                    <tr class="supplier-section<?php echo $fornecedor_quebra_pagina ? ' supplier-page-break' : ''; ?>">
                         <td colspan="4" class="left"<?php echo $fornecedor_bg_attr; ?>>FORNECEDOR: <?php echo h($fornecedor['nome']); ?></td>
                         <td class="center"<?php echo $fornecedor_bg_attr; ?>><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
                         <td class="right money-cell"<?php echo $fornecedor_bg_attr; ?>><?php echo formatarMoedaBR($fornecedor['total']); ?></td>
@@ -893,6 +899,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             },
                             pagebreak: {
                                 mode: ['css', 'legacy'],
+                                before: ['.supplier-page-break'],
                                 avoid: ['tr']
                             }
                         }).from(report).toPdf();
