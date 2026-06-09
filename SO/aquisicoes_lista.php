@@ -395,6 +395,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             $fornecedor_cor_index++;
         }
     }
+    $usar_coluna_fornecedor = $secretaria_id !== '' && $fornecedor_id === '';
 
     $periodo_texto = 'Todos';
     if ($data_inicio_valida || $data_fim_valida) {
@@ -815,7 +816,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                         <tr class="secretaria-card-head">
                             <th>Nº Aquisição</th>
                             <th>Nº Ofício</th>
-                            <th>Secretaria</th>
+                            <th><?php echo $usar_coluna_fornecedor ? 'Fornecedor' : 'Secretaria'; ?></th>
                             <th>DESCRIÇÃO</th>
                             <th>Data</th>
                             <th>Valor</th>
@@ -830,7 +831,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             <tr class="report-row">
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
-                                <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(nomeRelatorio($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA')); ?></td>
+                                <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($usar_coluna_fornecedor ? nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO') : nomeRelatorio($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA')); ?></td>
                                 <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($descricaoRelatorio); ?></td>
                                 <td class="center" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
                                 <td class="right money-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
