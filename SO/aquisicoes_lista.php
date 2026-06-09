@@ -212,6 +212,57 @@ function gerarResumoSecretarias(array $aquisicoes): array
     return array_values($resumo);
 }
 
+function renderizarCabecalhoRelatorioAquisicoes(
+    string $geradoEm,
+    string $busca,
+    string $status,
+    string $periodoTexto,
+    string $secretaria,
+    string $fornecedor,
+    int $quantidade,
+    float $total,
+    bool $quebrarPagina = false
+): void {
+    $classeLinhaTitulo = $quebrarPagina ? ' class="supplier-page-break"' : '';
+    ?>
+            <tr<?php echo $classeLinhaTitulo; ?>>
+                <td colspan="6" class="title-main">RELATÓRIO DE AQUISIÇÕES</td>
+            </tr>
+            <tr>
+                <td colspan="6" class="sub-info left"><strong>Gerado em:</strong> <?php echo h($geradoEm); ?></td>
+            </tr>
+            <tr>
+                <td colspan="3" class="sub-info left"><strong>Busca:</strong> <?php echo $busca !== '' ? h($busca) : 'Todos'; ?></td>
+                <td colspan="3" class="sub-info left"><strong>Status:</strong> <?php echo $status !== '' ? h($status) : 'Todos'; ?></td>
+            </tr>
+            <tr>
+                <td colspan="3" class="sub-info left"><strong>Período:</strong> <?php echo h($periodoTexto); ?></td>
+                <td colspan="3" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($secretaria); ?></td>
+            </tr>
+            <tr>
+                <td colspan="3" class="sub-info left"><strong>Fornecedor:</strong> <?php echo h($fornecedor); ?></td>
+                <td colspan="3" class="sub-info left"><strong>Registros:</strong> <?php echo $quantidade; ?></td>
+            </tr>
+
+            <tr class="spacer"><td colspan="6"></td></tr>
+
+            <tr>
+                <td colspan="3" class="summary-label">TOTAL DE AQUISIÇÕES</td>
+                <td colspan="3" class="summary-label">VALOR TOTAL</td>
+            </tr>
+            <tr>
+                <td colspan="3" class="summary-value"><?php echo $quantidade; ?></td>
+                <td colspan="3" class="summary-value"><?php echo formatarMoedaBR($total); ?></td>
+            </tr>
+
+            <tr class="spacer"><td colspan="6"></td></tr>
+
+            <tr>
+                <td colspan="6" class="section-title">AQUISIÇÕES INDIVIDUAIS</td>
+            </tr>
+    <?php
+}
+
 $busca = trim((string)($_GET['busca'] ?? ''));
 $status = trim((string)($_GET['status'] ?? ''));
 $secretaria_id = trim((string)($_GET['secretaria_id'] ?? ''));
@@ -744,52 +795,26 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 <col style="width: 8%;">
             </colgroup>
 
-            <tr>
-                <td colspan="6" class="title-main">RELATÓRIO DE AQUISIÇÕES</td>
-            </tr>
-            <tr>
-                <td colspan="6" class="sub-info left"><strong>Gerado em:</strong> <?php echo date('d/m/Y H:i:s'); ?></td>
-            </tr>
-            <tr>
-                <td colspan="3" class="sub-info left"><strong>Busca:</strong> <?php echo $busca !== '' ? h($busca) : 'Todos'; ?></td>
-                <td colspan="3" class="sub-info left"><strong>Status:</strong> <?php echo $status !== '' ? h($status) : 'Todos'; ?></td>
-            </tr>
-            <tr>
-                <td colspan="3" class="sub-info left"><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
-                <td colspan="3" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($nome_secretaria_filtro); ?></td>
-            </tr>
-            <tr>
-                <td colspan="3" class="sub-info left"><strong>Fornecedor:</strong> <?php echo h($nome_fornecedor_filtro); ?></td>
-                <td colspan="3" class="sub-info left"><strong>Registros:</strong> <?php echo $quantidade_export; ?></td>
-            </tr>
-
-            <tr class="spacer"><td colspan="6"></td></tr>
-
-            <tr>
-                <td colspan="3" class="summary-label">TOTAL DE AQUISIÇÕES</td>
-                <td colspan="3" class="summary-label">VALOR TOTAL</td>
-            </tr>
-            <tr>
-                <td colspan="3" class="summary-value"><?php echo $quantidade_export; ?></td>
-                <td colspan="3" class="summary-value"><?php echo formatarMoedaBR($total_export); ?></td>
-            </tr>
-
-            <tr class="spacer"><td colspan="6"></td></tr>
-
-            <tr>
-                <td colspan="6" class="section-title">AQUISIÇÕES INDIVIDUAIS</td>
-            </tr>
-
             <?php if (empty($dadosPorFornecedor)): ?>
+                <?php
+                renderizarCabecalhoRelatorioAquisicoes(
+                    date('d/m/Y H:i:s'),
+                    $busca,
+                    $status,
+                    $periodo_texto,
+                    $nome_secretaria_filtro,
+                    $nome_fornecedor_filtro,
+                    $quantidade_export,
+                    $total_export
+                );
+                ?>
                 <tr>
                     <td colspan="6" class="center">Nenhuma aquisição encontrada para os filtros selecionados.</td>
                 </tr>
             <?php else: ?>
+                <?php $gerado_em_relatorio = date('d/m/Y H:i:s'); ?>
                 <?php $fornecedor_index = 0; ?>
                 <?php foreach ($dadosPorFornecedor as $fornecedor): ?>
-                    <?php if ($fornecedor_index > 0): ?>
-                        <tr class="spacer"><td colspan="6"></td></tr>
-                    <?php endif; ?>
                     <?php
                     $fornecedor_cor = $usar_cores_fornecedor
                         ? h($fornecedor_color_map[$fornecedor['nome']] ?? corRelatorioFornecedor($fornecedor_index))
@@ -800,7 +825,20 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                     $fornecedor_quebra_pagina = $fornecedor_index > 0;
                     $fornecedor_index++;
                     ?>
-                    <tr class="supplier-section<?php echo $fornecedor_quebra_pagina ? ' supplier-page-break' : ''; ?>">
+                    <?php
+                    renderizarCabecalhoRelatorioAquisicoes(
+                        $gerado_em_relatorio,
+                        $busca,
+                        $status,
+                        $periodo_texto,
+                        $nome_secretaria_filtro,
+                        (string)$fornecedor['nome'],
+                        (int)$fornecedor['quantidade'],
+                        (float)$fornecedor['total'],
+                        $fornecedor_quebra_pagina
+                    );
+                    ?>
+                    <tr class="supplier-section">
                         <td colspan="4" class="left"<?php echo $fornecedor_bg_attr; ?>>FORNECEDOR: <?php echo h($fornecedor['nome']); ?></td>
                         <td class="center"<?php echo $fornecedor_bg_attr; ?>><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
                         <td class="right money-cell"<?php echo $fornecedor_bg_attr; ?>><?php echo formatarMoedaBR($fornecedor['total']); ?></td>
