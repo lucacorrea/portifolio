@@ -502,7 +502,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             }
             table { border-collapse: collapse; width: 100%; table-layout: fixed; }
             .sheet td, .sheet th { border: 1px solid #7c8aa5; padding: 7px 8px; vertical-align: middle; word-wrap: break-word; }
-            .title-main { background: #dbeafe; color: #0f172a; font-size: 18px; font-weight: bold; text-align: center; padding: 12px; }
+            .title-main { background: #dbeafe; color: #0f172a; font-size: 18px; font-weight: bold; text-align: center; padding: 12px; margin-top: 30px !important;}
             .sub-info { background: #f8fafc; font-size: 11px; }
             .thead { background: #e5e7eb; font-weight: bold; text-align: center; }
             .thead th { background: #e5e7eb; }
