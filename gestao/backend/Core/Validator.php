@@ -46,4 +46,29 @@ final class Validator
     {
         return is_numeric($value) && (float) $value >= $min;
     }
+
+    public static function brazilWhatsapp(string $value): bool
+    {
+        return $value === '' || self::normalizeBrazilWhatsapp($value) !== '';
+    }
+
+    public static function normalizeBrazilWhatsapp(string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+        if (str_starts_with($digits, '55') && strlen($digits) === 12) {
+            $digits = substr($digits, 2);
+        }
+
+        if (strlen($digits) !== 10) {
+            return '';
+        }
+
+        return sprintf(
+            '+55 (%s) %s-%s',
+            substr($digits, 0, 2),
+            substr($digits, 2, 4),
+            substr($digits, 6, 4)
+        );
+    }
 }

@@ -47,9 +47,16 @@ final class ClientService
             throw new InvalidArgumentException('Informe um nome de cliente válido.');
         }
 
+        $phone = trim((string)($payload['phone'] ?? $payload['telefone'] ?? ''));
+        $phone = Validator::normalizeBrazilWhatsapp($phone);
+
+        if ($phone === '' && trim((string)($payload['phone'] ?? $payload['telefone'] ?? '')) !== '') {
+            throw new InvalidArgumentException('Informe o WhatsApp no padrão (92) 9151-5710.');
+        }
+
         $data = [
             'nome' => $name,
-            'telefone' => trim((string)($payload['phone'] ?? $payload['telefone'] ?? '')),
+            'telefone' => $phone,
             'cpf_cnpj' => trim((string)($payload['cpf'] ?? $payload['cpf_cnpj'] ?? '')),
             'endereco' => trim((string)($payload['address'] ?? $payload['endereco'] ?? '')),
             'observacao' => trim((string)($payload['note'] ?? $payload['observacao'] ?? '')),

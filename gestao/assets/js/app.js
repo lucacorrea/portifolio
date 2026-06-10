@@ -113,6 +113,33 @@ function escapeHtml(value) {
   }[char]));
 }
 
+function whatsappNationalDigits(value) {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  const national = digits.startsWith('55') && digits.length === 12 ? digits.slice(2) : digits;
+
+  return national.slice(0, 10);
+}
+
+function formatWhatsappInput(value) {
+  const digits = whatsappNationalDigits(value);
+
+  if (!digits) return '';
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6, 10)}`;
+}
+
+function whatsappDigitsWithCountry(value) {
+  const national = whatsappNationalDigits(value);
+
+  return national.length === 10 ? `55${national}` : '';
+}
+
+function isWhatsappComplete(value) {
+  return whatsappNationalDigits(value).length === 10;
+}
+
 async function postJson(url, payload) {
   const res = await fetch(url, {
     method: 'POST',
@@ -1235,11 +1262,13 @@ function openPaymentModal(id) {
 }
 
 function openClientForm(client = {}) {
+  const clientPhone = formatWhatsappInput(client.phone || '');
+
   openModal(`
     <h2>${client.id ? 'Editar cliente' : 'Cadastrar cliente'}</h2>
     <div class="form-grid section-gap-small">
       <div class="field"><label>Nome</label><input id="clientFormName" maxlength="180" value="${escapeHtml(client.name || '')}"></div>
-      <div class="field"><label>Telefone</label><input id="clientFormPhone" maxlength="30" value="${escapeHtml(client.phone || '')}"></div>
+      <div class="field"><label>WhatsApp</label><input id="clientFormPhone" inputmode="numeric" autocomplete="tel-national" maxlength="14" placeholder="(92) 9151-5710" value="${escapeHtml(clientPhone)}"></div>
       <div class="field"><label>CPF/CNPJ</label><input id="clientFormCpf" maxlength="20" value="${escapeHtml(client.cpf || '')}"></div>
       <div class="field"><label>Endereço</label><input id="clientFormAddress" maxlength="255" value="${escapeHtml(client.address || '')}"></div>
       <button class="primary-btn" data-save-client="${client.id || 0}">Salvar</button>
@@ -1249,10 +1278,17 @@ function openClientForm(client = {}) {
 
 async function saveClient(id) {
   try {
+    const phone = $('#clientFormPhone')?.value.trim() || '';
+
+    if (phone && !isWhatsappComplete(phone)) {
+      showToast('Use o padrão (92) 9151-5710');
+      return;
+    }
+
     await postJson(`${prefix}api/clientes/salvar.php`, {
       id,
       name: $('#clientFormName')?.value.trim() || '',
-      phone: $('#clientFormPhone')?.value.trim() || '',
+      phone,
       cpf: $('#clientFormCpf')?.value.trim() || '',
       address: $('#clientFormAddress')?.value.trim() || ''
     });
@@ -1284,9 +1320,16 @@ async function saveClientPayment(accountId) {
 
 function sendWarning(id) {
   const c = data.clients.find(x => x.id === id);
+  const phone = whatsappDigitsWithCountry(c.phone);
+
+  if (!phone) {
+    showToast('Cadastre o WhatsApp no padrão (92) 9151-5710');
+    return;
+  }
+
   const msg = `Olá, ${c.name}. Consta um saldo em aberto de ${brl.format(c.debt)} com vencimento em ${formatDate(c.due)}. Você pode pagar por PIX, dinheiro ou cartão.`;
   navigator.clipboard?.writeText(msg);
-  window.open(`https://wa.me/55${c.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function checked(value) {
@@ -1313,7 +1356,7 @@ function paymentMethods() {
 function openSetting(key) {
   const settings = data.settings;
   const companyName = escapeHtml(settings.companyName);
-  const companyPhone = escapeHtml(settings.companyPhone);
+  const companyPhone = escapeHtml(formatWhatsappInput(settings.companyPhone));
   const companyAddress = escapeHtml(settings.companyAddress);
   const receiptMode = settings.receiptMode || 'perguntar';
   const receiptTemplate = settings.receiptTemplate || 'detalhado';
@@ -1322,7 +1365,7 @@ function openSetting(key) {
     : emptyState('Nenhum usuário cadastrado.');
 
   const html = {
-    company: `<h2>Empresa</h2><div class="form-grid section-gap-small"><div class="field"><label>Nome da empresa</label><input id="settingCompanyName" maxlength="180" value="${companyName}"></div><div class="field"><label>Telefone</label><input id="settingCompanyPhone" maxlength="30" value="${companyPhone}"></div><div class="field"><label>Endereço</label><input id="settingCompanyAddress" maxlength="255" value="${companyAddress}"></div><button class="primary-btn" data-save-setting="company">Salvar</button></div>`,
+    company: `<h2>Empresa</h2><div class="form-grid section-gap-small"><div class="field"><label>Nome da empresa</label><input id="settingCompanyName" maxlength="180" value="${companyName}"></div><div class="field"><label>WhatsApp</label><input id="settingCompanyPhone" inputmode="numeric" autocomplete="tel-national" maxlength="14" placeholder="(92) 9151-5710" value="${companyPhone}"></div><div class="field"><label>Endereço</label><input id="settingCompanyAddress" maxlength="255" value="${companyAddress}"></div><button class="primary-btn" data-save-setting="company">Salvar</button></div>`,
     users: `<h2>Usuários e permissões</h2><div class="list-card section-gap-small">${usersList}</div><div class="form-grid section-gap-small"><div class="field"><label>Nome</label><input id="settingUserName" maxlength="140"></div><div class="field"><label>E-mail</label><input id="settingUserEmail" type="email" maxlength="180"></div><div class="field"><label>Senha inicial</label><input id="settingUserPassword" type="password" minlength="8"></div><div class="field"><label>Perfil</label><select id="settingUserRole"><option value="operador">Operador</option><option value="gerente">Gerente</option><option value="estoquista">Estoquista</option><option value="leitor">Leitor</option><option value="admin">Administrador</option></select></div><button class="primary-btn" data-save-setting="users">Adicionar usuário</button></div>`,
     receipt: `<h2>Comprovantes</h2><div class="form-grid section-gap-small"><div class="field"><label>Ao finalizar venda</label><select id="settingReceiptMode"><option value="perguntar" ${receiptMode === 'perguntar' ? 'selected' : ''}>Sempre perguntar</option><option value="sempre" ${receiptMode === 'sempre' ? 'selected' : ''}>Sempre gerar</option><option value="nunca" ${receiptMode === 'nunca' ? 'selected' : ''}>Nunca gerar</option></select></div><div class="field"><label>Modelo</label><select id="settingReceiptTemplate"><option value="detalhado" ${receiptTemplate === 'detalhado' ? 'selected' : ''}>Detalhado</option><option value="simples" ${receiptTemplate === 'simples' ? 'selected' : ''}>Simples</option></select></div><button class="primary-btn" data-save-setting="receipt">Salvar</button></div>`,
     due: `<h2>Regras de vencimento</h2><div class="form-grid section-gap-small"><div class="field"><label>Alerta de validade</label><input id="settingExpirationAlertDays" type="number" min="0" max="365" value="${Number(settings.expirationAlertDays || 0)}"></div><div class="field"><label>Prazo padrão de dívida</label><input id="settingDebtDueDays" type="number" min="1" max="365" value="${Number(settings.debtDueDays || 30)}"></div><button class="primary-btn" data-save-setting="due">Salvar</button></div>`,
@@ -1339,8 +1382,16 @@ async function saveSetting(section, button) {
   const payload = { section };
 
   if (section === 'company') {
+    const companyPhone = $('#settingCompanyPhone')?.value.trim() || '';
+
+    if (companyPhone && !isWhatsappComplete(companyPhone)) {
+      showToast('Use o padrão (92) 9151-5710');
+      button.disabled = false;
+      return;
+    }
+
     payload.companyName = $('#settingCompanyName')?.value.trim() || '';
-    payload.companyPhone = $('#settingCompanyPhone')?.value.trim() || '';
+    payload.companyPhone = companyPhone;
     payload.companyAddress = $('#settingCompanyAddress')?.value.trim() || '';
   }
 
@@ -1678,6 +1729,10 @@ function bindEvents() {
   });
 
   document.body.addEventListener('input', e => {
+    if (e.target.id === 'clientFormPhone' || e.target.id === 'settingCompanyPhone') {
+      e.target.value = formatWhatsappInput(e.target.value);
+    }
+
     if (e.target.id === 'saleProductSearch') renderSaleProducts(e.target.value);
     if (e.target.id === 'productSearch') renderProducts();
     if (e.target.id === 'clientSearch') renderClients();

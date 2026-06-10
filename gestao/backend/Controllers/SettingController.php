@@ -98,11 +98,16 @@ final class SettingController
     private function saveCompany(int $empresaId, array $payload): void
     {
         $nome = trim((string)($payload['companyName'] ?? ''));
-        $telefone = trim((string)($payload['companyPhone'] ?? ''));
+        $telefoneOriginal = trim((string)($payload['companyPhone'] ?? ''));
+        $telefone = Validator::normalizeBrazilWhatsapp($telefoneOriginal);
         $endereco = trim((string)($payload['companyAddress'] ?? ''));
 
         if (!Validator::required($nome) || !Validator::max($nome, 180)) {
             Response::fail('Informe um nome de empresa válido.', [], 422);
+        }
+
+        if ($telefone === '' && $telefoneOriginal !== '') {
+            Response::fail('Informe o WhatsApp no padrão (92) 9151-5710.', [], 422);
         }
 
         if (!Validator::max($telefone, 30) || !Validator::max($endereco, 255)) {
