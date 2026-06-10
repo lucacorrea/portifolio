@@ -7,10 +7,10 @@ namespace App\Models;
 final class Company
 {
     public function __construct(
-        public readonly int $id,
-        public readonly string $nome,
-        public readonly ?string $telefone = null,
-        public readonly ?string $endereco = null
+        public int $id,
+        public string $nome,
+        public ?string $telefone = null,
+        public ?string $endereco = null
     ) {
     }
 }

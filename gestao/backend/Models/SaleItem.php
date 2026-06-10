@@ -7,10 +7,10 @@ namespace App\Models;
 final class SaleItem
 {
     public function __construct(
-        public readonly int $produtoId,
-        public readonly string $produtoNome,
-        public readonly float $quantidade,
-        public readonly float $precoUnitario
+        public int $produtoId,
+        public string $produtoNome,
+        public float $quantidade,
+        public float $precoUnitario
     ) {
     }
 }

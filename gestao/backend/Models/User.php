@@ -7,12 +7,12 @@ namespace App\Models;
 final class User
 {
     public function __construct(
-        public readonly int $id,
-        public readonly int $empresaId,
-        public readonly string $nome,
-        public readonly string $email,
-        public readonly string $nivel,
-        public readonly bool $ativo
+        public int $id,
+        public int $empresaId,
+        public string $nome,
+        public string $email,
+        public string $nivel,
+        public bool $ativo
     ) {
     }
 }

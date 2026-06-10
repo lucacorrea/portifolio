@@ -7,11 +7,11 @@ namespace App\Models;
 final class Sale
 {
     public function __construct(
-        public readonly int $id,
-        public readonly int $empresaId,
-        public readonly string $numeroVenda,
-        public readonly float $total,
-        public readonly string $status
+        public int $id,
+        public int $empresaId,
+        public string $numeroVenda,
+        public float $total,
+        public string $status
     ) {
     }
 }

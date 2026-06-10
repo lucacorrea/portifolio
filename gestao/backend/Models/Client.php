@@ -7,10 +7,10 @@ namespace App\Models;
 final class Client
 {
     public function __construct(
-        public readonly int $id,
-        public readonly int $empresaId,
-        public readonly string $nome,
-        public readonly ?string $telefone = null
+        public int $id,
+        public int $empresaId,
+        public string $nome,
+        public ?string $telefone = null
     ) {
     }
 }

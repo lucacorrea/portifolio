@@ -7,6 +7,7 @@ namespace App\Core;
 final class Env
 {
     private static bool $loaded = false;
+    private static ?string $loadedPath = null;
 
     public static function load(?string $path = null): void
     {
@@ -14,15 +15,24 @@ final class Env
             return;
         }
 
-        $path ??= dirname(__DIR__, 2) . '/.env1';
+        $path ??= dirname(__DIR__, 2) . '/.env';
 
         if (!is_file($path) || !is_readable($path)) {
-            // Fallback: Verifica se o .env está um nível acima da pasta do projeto
-            // Isso previne que o Git Auto-deploy apague o arquivo ao sincronizar.
-            $fallbackPath = dirname(__DIR__, 3) . '/.env1';
-            
-            if (is_file($fallbackPath) && is_readable($fallbackPath)) {
-                $path = $fallbackPath;
+            $candidates = [
+                dirname(__DIR__, 2) . '/.env',
+                dirname(__DIR__, 3) . '/.env',
+            ];
+
+            $foundPath = null;
+            foreach ($candidates as $candidate) {
+                if (is_file($candidate) && is_readable($candidate)) {
+                    $foundPath = $candidate;
+                    break;
+                }
+            }
+
+            if ($foundPath !== null) {
+                $path = $foundPath;
             } else {
                 self::$loaded = true;
                 return;
@@ -55,9 +65,11 @@ final class Env
             $value = self::normalizeValue($value);
 
             $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
             putenv($key . '=' . $value);
         }
 
+        self::$loadedPath = $path;
         self::$loaded = true;
     }
 
@@ -74,6 +86,19 @@ final class Env
         return $value;
     }
 
+    public static function first(array $keys, mixed $default = null): mixed
+    {
+        foreach ($keys as $key) {
+            $value = self::get((string) $key);
+
+            if ($value !== null && $value !== '') {
+                return $value;
+            }
+        }
+
+        return $default;
+    }
+
     public static function bool(string $key, bool $default = false): bool
     {
         $value = self::get($key, $default);
@@ -88,6 +113,11 @@ final class Env
     public static function int(string $key, int $default = 0): int
     {
         return (int) self::get($key, $default);
+    }
+
+    public static function loadedPath(): ?string
+    {
+        return self::$loadedPath;
     }
 
     private static function normalizeValue(string $value): string

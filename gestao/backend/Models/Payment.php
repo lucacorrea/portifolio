@@ -7,10 +7,10 @@ namespace App\Models;
 final class Payment
 {
     public function __construct(
-        public readonly int $id,
-        public readonly int $vendaId,
-        public readonly string $metodo,
-        public readonly float $valor
+        public int $id,
+        public int $vendaId,
+        public string $metodo,
+        public float $valor
     ) {
     }
 }

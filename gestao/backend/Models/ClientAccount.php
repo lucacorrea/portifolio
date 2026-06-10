@@ -7,11 +7,11 @@ namespace App\Models;
 final class ClientAccount
 {
     public function __construct(
-        public readonly int $id,
-        public readonly int $clienteId,
-        public readonly float $saldoAberto,
-        public readonly string $vencimento,
-        public readonly string $status
+        public int $id,
+        public int $clienteId,
+        public float $saldoAberto,
+        public string $vencimento,
+        public string $status
     ) {
     }
 }

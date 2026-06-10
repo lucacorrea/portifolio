@@ -7,9 +7,9 @@ namespace App\Models;
 final class Category
 {
     public function __construct(
-        public readonly int $id,
-        public readonly int $empresaId,
-        public readonly string $nome
+        public int $id,
+        public int $empresaId,
+        public string $nome
     ) {
     }
 }

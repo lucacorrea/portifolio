@@ -48,7 +48,7 @@ $token = Csrf::token();
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#1657A7" />
   <title>Login | L&J Caixa</title>
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/main.css" />
   <style>
     body {
       display: grid;
