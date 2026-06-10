@@ -463,7 +463,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
 <body class="login-page">
   <main class="login-card" aria-labelledby="loginTitle">
     <header class="login-brand">
-      <img src="assets/icons/icon.svg" alt="L&J" />
+      
       <div>
         <h1 id="loginTitle">L&J Caixa</h1>
         <p>Gestão comercial premium</p>
