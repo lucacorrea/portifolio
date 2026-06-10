@@ -17,14 +17,6 @@ require_once __DIR__ . '/layout/header.php';
       
 <header class="plain-header">
   
-    <div class="statusbar dark">
-      <strong data-time>09:41</strong>
-      <div class="device-icons" aria-hidden="true">
-        <span class="signal"></span>
-        <span class="wifi"></span>
-        <span class="battery"></span>
-      </div>
-    </div>
     
   <div class="page-title-row">
     <div>
