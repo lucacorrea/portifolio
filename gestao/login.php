@@ -11,7 +11,7 @@ use App\Security\Auth;
 use App\Security\Csrf;
 
 if (Auth::check()) {
-    Response::redirect('index.php');
+  Response::redirect('index.php');
 }
 
 $request = new Request();
@@ -20,24 +20,24 @@ $email = '';
 $next = (string)$request->query('next', 'index.php');
 
 if ($request->isPost()) {
-    $email = trim((string)$request->post('email', ''));
-    $senha = (string)$request->post('senha', '');
-    $next = (string)$request->post('next', 'index.php');
+  $email = trim((string)$request->post('email', ''));
+  $senha = (string)$request->post('senha', '');
+  $next = (string)$request->post('next', 'index.php');
 
-    if (!Csrf::validate((string)$request->post('csrf_token', ''))) {
-        $error = 'Sessão expirada. Atualize a página e tente novamente.';
-    } else {
-        [$ok, $message, $user] = Auth::attempt($email, $senha);
+  if (!Csrf::validate((string)$request->post('csrf_token', ''))) {
+    $error = 'Sessão expirada. Atualize a página e tente novamente.';
+  } else {
+    [$ok, $message, $user] = Auth::attempt($email, $senha);
 
-        if ($ok && $user) {
-            Auth::login($user);
+    if ($ok && $user) {
+      Auth::login($user);
 
-            $safeNext = str_starts_with($next, '/') || str_contains($next, '://') ? 'index.php' : $next;
-            Response::redirect($safeNext);
-        }
-
-        $error = $message;
+      $safeNext = str_starts_with($next, '/') || str_contains($next, '://') ? 'index.php' : $next;
+      Response::redirect($safeNext);
     }
+
+    $error = $message;
+  }
 }
 
 $token = Csrf::token();
@@ -46,6 +46,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -109,12 +110,10 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
       transform: translate(-50%, -50%);
       border-radius: 50%;
       background:
-        linear-gradient(
-          145deg,
+        linear-gradient(145deg,
           rgba(23, 63, 95, 0.88) 0%,
           rgba(31, 95, 139, 0.58) 48%,
-          rgba(136, 184, 204, 0.28) 100%
-        );
+          rgba(136, 184, 204, 0.28) 100%);
       z-index: 0;
       pointer-events: none;
     }
@@ -432,6 +431,43 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
         font-size: 1.78rem;
       }
     }
+    .login-footer {
+  margin-top: auto;
+  padding-top: 24px;
+  text-align: center;
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.login-footer a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 900;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.login-footer a:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+.login-footer a:focus-visible {
+  outline: 4px solid rgba(31, 95, 139, 0.18);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.login-footer small {
+  display: block;
+  color: #a0abba;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
   </style>
 </head>
 
@@ -459,8 +495,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
           required
           value="<?= e($email) ?>"
           placeholder="admin@ljsolucoestech.com.br"
-          autocomplete="email"
-        >
+          autocomplete="email">
       </div>
 
       <div class="field">
@@ -475,18 +510,23 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
           type="password"
           required
           placeholder="Digite sua senha"
-          autocomplete="current-password"
-        >
+          autocomplete="current-password">
       </div>
 
       <button class="primary-btn" type="submit">Entrar no sistema</button>
     </form>
 
-   
 
     <footer class="login-footer">
-      <span><strong><a href="https://ljsolucoestech.com.br">JL</a></strong> · Gestão comercial premium</span>
+      <span>
+        Desenvolvido por
+        <a href="https://ljsolucoestech.com.br" target="_blank" rel="noopener noreferrer">
+          L&amp;J Soluções Tech
+        </a>
+      </span>
+      <small>Gestão comercial premium</small>
     </footer>
   </main>
 </body>
+
 </html>
