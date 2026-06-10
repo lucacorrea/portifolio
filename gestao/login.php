@@ -168,7 +168,6 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
   }
 
   .login-card::before {
-    content: "9:41";
     position: absolute;
     top: 22px;
     left: 28px;
@@ -185,10 +184,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
     right: 28px;
     width: 46px;
     height: 10px;
-    background:
-      linear-gradient(var(--text), var(--text)) 0 5px / 14px 5px no-repeat,
-      linear-gradient(var(--text), var(--text)) 19px 3px / 10px 7px no-repeat,
-      linear-gradient(var(--text), var(--text)) 33px 1px / 13px 9px no-repeat;
+   
     border-radius: 4px;
     opacity: 0.72;
   }
