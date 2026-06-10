@@ -71,11 +71,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
       --danger-border: #ffccc7;
 
       --radius-xl: 34px;
-      --radius-lg: 24px;
-      --radius-md: 16px;
-
       --shadow-card: 0 30px 80px rgba(23, 63, 95, 0.18);
-      --shadow-soft: 0 16px 42px rgba(23, 63, 95, 0.10);
     }
 
     * {
@@ -144,10 +140,10 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
     .login-card {
       position: relative;
       z-index: 1;
-      width: min(100%, 420px);
-      min-height: 585px;
-      padding: 36px 32px 30px;
-      background: rgba(255, 255, 255, 0.96);
+      width: min(100%, 430px);
+      min-height: 520px;
+      padding: 42px 34px 30px;
+      background: rgba(255, 255, 255, 0.97);
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
       box-shadow: var(--shadow-card);
@@ -168,120 +164,16 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
       }
     }
 
-    .login-topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      min-height: 18px;
-      margin-bottom: 34px;
-      color: var(--text);
-      opacity: 0.72;
-      font-size: 0.72rem;
-      font-weight: 800;
-    }
-
-    .status-icons {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .status-icons span {
-      display: block;
-      background: var(--text);
-      opacity: 0.9;
-    }
-
-    .signal {
-      width: 16px;
-      height: 9px;
-      border-radius: 2px;
-      background:
-        linear-gradient(var(--text), var(--text)) 0 5px / 3px 4px no-repeat,
-        linear-gradient(var(--text), var(--text)) 5px 3px / 3px 6px no-repeat,
-        linear-gradient(var(--text), var(--text)) 10px 1px / 3px 8px no-repeat;
-    }
-
-    .wifi {
-      width: 13px;
-      height: 9px;
-      border-radius: 50% 50% 0 0;
-      background: transparent !important;
-      border-top: 2px solid var(--text);
-      border-left: 2px solid transparent;
-      border-right: 2px solid transparent;
-      position: relative;
-    }
-
-    .wifi::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: 0;
-      width: 4px;
-      height: 4px;
-      transform: translateX(-50%);
-      border-radius: 50%;
-      background: var(--text);
-    }
-
-    .battery {
-      width: 18px;
-      height: 9px;
-      border: 1.7px solid var(--text);
-      border-radius: 3px;
-      background: transparent !important;
-      position: relative;
-    }
-
-    .battery::before {
-      content: "";
-      position: absolute;
-      left: 2px;
-      top: 2px;
-      width: 10px;
-      height: 3px;
-      border-radius: 2px;
-      background: var(--text);
-    }
-
-    .battery::after {
-      content: "";
-      position: absolute;
-      right: -4px;
-      top: 2px;
-      width: 2px;
-      height: 4px;
-      border-radius: 0 2px 2px 0;
-      background: var(--text);
-    }
-
     .login-brand {
-      margin: 0 0 28px;
+      margin: 0 0 30px;
       display: grid;
-      gap: 9px;
-    }
-
-    .brand-mark {
-      width: 62px;
-      height: 62px;
-      border-radius: 22px;
-      display: grid;
-      place-items: center;
-      color: #ffffff;
-      font-size: 1.25rem;
-      font-weight: 950;
-      letter-spacing: -0.07em;
-      background:
-        radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.34), transparent 32%),
-        linear-gradient(145deg, var(--primary-2), var(--primary-dark));
-      box-shadow: 0 18px 36px rgba(23, 63, 95, 0.24);
+      gap: 10px;
     }
 
     .login-brand h1 {
-      margin: 8px 0 0;
+      margin: 0;
       color: var(--text);
-      font-size: 2.1rem;
+      font-size: 2.35rem;
       line-height: 1;
       letter-spacing: -0.06em;
       font-weight: 950;
@@ -289,10 +181,11 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
 
     .login-brand p {
       margin: 0;
+      max-width: 310px;
       color: var(--muted);
-      font-size: 0.93rem;
-      font-weight: 750;
-      line-height: 1.35;
+      font-size: 0.96rem;
+      font-weight: 700;
+      line-height: 1.45;
     }
 
     .login-error {
@@ -370,7 +263,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
       font-size: 0.78rem;
       font-weight: 850;
       white-space: nowrap;
-      transition: color 0.2s ease, opacity 0.2s ease;
+      transition: color 0.2s ease;
     }
 
     .forgot-link:hover {
@@ -378,36 +271,10 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
       text-decoration: underline;
     }
 
-    .login-options {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      margin-top: -2px;
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    .remember {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .remember input {
-      width: 15px;
-      height: 15px;
-      accent-color: var(--primary);
-      cursor: pointer;
-    }
-
     .primary-btn {
       width: 100%;
       height: 54px;
-      margin-top: 4px;
+      margin-top: 6px;
       border: none;
       border-radius: 999px;
       background: linear-gradient(135deg, var(--primary-dark), var(--primary));
@@ -466,7 +333,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
 
     .login-footer {
       margin-top: auto;
-      padding-top: 18px;
+      padding-top: 22px;
       text-align: center;
       color: var(--muted);
       font-size: 0.78rem;
@@ -503,7 +370,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
       .login-card {
         width: min(100%, 390px);
         min-height: auto;
-        padding: 32px 28px 28px;
+        padding: 36px 28px 28px;
         border-radius: 30px;
       }
     }
@@ -528,26 +395,20 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
 
       .login-card {
         width: min(100%, 360px);
-        padding: 28px 22px 24px;
+        padding: 32px 22px 24px;
         border-radius: 28px;
       }
 
-      .login-topbar {
-        margin-bottom: 28px;
-      }
-
-      .brand-mark {
-        width: 56px;
-        height: 56px;
-        border-radius: 20px;
+      .login-brand {
+        margin-bottom: 26px;
       }
 
       .login-brand h1 {
-        font-size: 1.82rem;
+        font-size: 2rem;
       }
 
       .login-brand p {
-        font-size: 0.84rem;
+        font-size: 0.86rem;
       }
 
       .field input,
@@ -555,10 +416,10 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
         height: 50px;
       }
 
-      .login-options {
+      .field-row {
         align-items: flex-start;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
       }
     }
 
@@ -568,7 +429,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
       }
 
       .login-brand h1 {
-        font-size: 1.64rem;
+        font-size: 1.78rem;
       }
     }
   </style>
@@ -576,24 +437,9 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
 
 <body class="login-page">
   <main class="login-card" aria-labelledby="loginTitle">
-
-    <div class="login-topbar" aria-hidden="true">
-      <span>9:41</span>
-
-      <div class="status-icons">
-        <span class="signal"></span>
-        <span class="wifi"></span>
-        <span class="battery"></span>
-      </div>
-    </div>
-
     <header class="login-brand">
-      <div class="brand-mark" aria-hidden="true">LJ</div>
-
-      <div>
-        <h1 id="loginTitle">Login</h1>
-        <p>Acesse o L&amp;J Caixa para gerenciar vendas, caixa e operações.</p>
-      </div>
+      <h1 id="loginTitle">Login</h1>
+      <p>Acesse o L&amp;J Caixa para gerenciar vendas, caixa e operações.</p>
     </header>
 
     <?php if ($error): ?>
@@ -633,26 +479,13 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
         >
       </div>
 
-      <div class="login-options">
-        <label class="remember">
-          <input type="checkbox" name="remember" value="1">
-          <span>Lembrar meu acesso</span>
-        </label>
-      </div>
-
       <button class="primary-btn" type="submit">Entrar no sistema</button>
     </form>
 
-    <?php if ($showInitialAccess): ?>
-      <aside class="login-help" aria-label="Acesso inicial de desenvolvimento">
-        <strong>Acesso inicial após importar o SQL</strong>
-        <span>E-mail: admin@ljsolucoestech.com.br</span>
-        <span>Senha: Admin@123</span>
-      </aside>
-    <?php endif; ?>
+   
 
     <footer class="login-footer">
-      <span><strong>L&amp;J Caixa</strong> · Gestão comercial premium</span>
+      <span><strong><a href="https://ljsolucoestech.com.br">JL</a></strong> · Gestão comercial premium</span>
     </footer>
   </main>
 </body>
