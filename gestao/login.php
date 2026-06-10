@@ -49,420 +49,550 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#1657A7" />
+  <meta name="theme-color" content="#173F5F" />
   <title>Login | L&J Caixa</title>
-  <link rel="stylesheet" href="assets/css/main.css" />
+
   <style>
-  :root {
-    --primary: #173f5f;
-    --primary-2: #1f5f8b;
-    --primary-dark: #102f48;
-    --accent: #88b8cc;
+    :root {
+      --primary: #173f5f;
+      --primary-2: #1f5f8b;
+      --primary-dark: #102f48;
+      --accent: #88b8cc;
 
-    --bg: #f7f8fa;
-    --card: #ffffff;
-    --input: #f3f5fa;
-    --text: #17324d;
-    --muted: #8a98a8;
-    --border: rgba(23, 63, 95, 0.08);
+      --bg: #f7f8fa;
+      --card: #ffffff;
+      --input: #f3f5fa;
+      --text: #17324d;
+      --muted: #8999aa;
+      --border: rgba(23, 63, 95, 0.08);
 
-    --danger: #b42318;
-    --danger-bg: #fff1f0;
-    --danger-border: #ffccc7;
+      --danger: #b42318;
+      --danger-bg: #fff1f0;
+      --danger-border: #ffccc7;
 
-    --radius-xl: 34px;
-    --radius-lg: 24px;
-    --radius-md: 16px;
+      --radius-xl: 34px;
+      --radius-lg: 24px;
+      --radius-md: 16px;
 
-    --shadow-card: 0 28px 70px rgba(23, 63, 95, 0.16);
-    --shadow-soft: 0 16px 42px rgba(23, 63, 95, 0.10);
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  html,
-  body {
-    min-height: 100%;
-  }
-
-  body {
-    margin: 0;
-    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    color: var(--text);
-    background: var(--bg);
-  }
-
-  body.login-page {
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
-    padding: 32px 18px;
-    overflow: hidden;
-    position: relative;
-  }
-
-  body.login-page::before {
-    content: "";
-    position: fixed;
-    width: min(58vw, 620px);
-    height: min(58vw, 620px);
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background:
-      linear-gradient(
-        145deg,
-        rgba(23, 63, 95, 0.88) 0%,
-        rgba(31, 95, 139, 0.58) 48%,
-        rgba(136, 184, 204, 0.28) 100%
-      );
-    z-index: 0;
-  }
-
-  body.login-page::after {
-    content: "";
-    position: fixed;
-    width: 42px;
-    height: 42px;
-    left: 8%;
-    top: 12%;
-    border-radius: 50%;
-    background: var(--primary-2);
-    opacity: 0.9;
-    box-shadow:
-      68vw 58vh 0 -8px rgba(136, 184, 204, 0.9),
-      78vw 11vh 0 -15px rgba(23, 63, 95, 0.26),
-      15vw 72vh 0 -17px rgba(23, 63, 95, 0.20);
-    z-index: 0;
-  }
-
-  .login-card {
-    position: relative;
-    z-index: 1;
-    width: min(100%, 420px);
-    min-height: 560px;
-    padding: 34px 32px 30px;
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-card);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    animation: cardIn 0.45s ease both;
-  }
-
-  @keyframes cardIn {
-    from {
-      opacity: 0;
-      transform: translateY(18px) scale(0.98);
+      --shadow-card: 0 30px 80px rgba(23, 63, 95, 0.18);
+      --shadow-soft: 0 16px 42px rgba(23, 63, 95, 0.10);
     }
 
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-
-  .login-card::before {
-    position: absolute;
-    top: 22px;
-    left: 28px;
-    color: var(--text);
-    font-size: 0.72rem;
-    font-weight: 800;
-    opacity: 0.82;
-  }
-
-  .login-card::after {
-    content: "";
-    position: absolute;
-    top: 24px;
-    right: 28px;
-    width: 46px;
-    height: 10px;
-   
-    border-radius: 4px;
-    opacity: 0.72;
-  }
-
-  .login-brand {
-    margin: 38px 0 28px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .login-brand img {
-    width: 58px;
-    height: 58px;
-    flex: 0 0 58px;
-    border-radius: 20px;
-    display: block;
-    box-shadow: 0 14px 34px rgba(23, 63, 95, 0.18);
-  }
-
-  .login-brand h1 {
-    margin: 0;
-    color: var(--text);
-    font-size: 2rem;
-    line-height: 1;
-    letter-spacing: -0.055em;
-    font-weight: 900;
-  }
-
-  .login-brand p {
-    margin: 8px 0 0;
-    color: var(--muted);
-    font-size: 0.92rem;
-    font-weight: 700;
-  }
-
-  .login-error {
-    margin: 0 0 18px;
-    padding: 12px 14px;
-    color: var(--danger);
-    background: var(--danger-bg);
-    border: 1px solid var(--danger-border);
-    border-radius: 14px;
-    font-size: 0.88rem;
-    font-weight: 700;
-    line-height: 1.4;
-  }
-
-  .login-form {
-    display: grid;
-    gap: 15px;
-    width: 100%;
-  }
-
-  .field {
-    display: grid;
-    gap: 7px;
-  }
-
-  .field label {
-    color: var(--text);
-    font-size: 0.8rem;
-    font-weight: 850;
-    padding-left: 4px;
-  }
-
-  .field input {
-    width: 100%;
-    height: 52px;
-    padding: 0 17px;
-    border: 1px solid transparent;
-    border-radius: 999px;
-    outline: none;
-    color: var(--text);
-    background: var(--input);
-    font-size: 0.94rem;
-    font-weight: 700;
-    transition:
-      background-color 0.2s ease,
-      border-color 0.2s ease,
-      box-shadow 0.2s ease,
-      transform 0.2s ease;
-  }
-
-  .field input::placeholder {
-    color: #a1acb8;
-    font-weight: 600;
-  }
-
-  .field input:hover {
-    background: #edf1f7;
-  }
-
-  .field input:focus {
-    background: #ffffff;
-    border-color: rgba(31, 95, 139, 0.36);
-    box-shadow: 0 0 0 5px rgba(31, 95, 139, 0.10);
-  }
-
-  .primary-btn {
-    width: 100%;
-    height: 54px;
-    margin-top: 6px;
-    border: none;
-    border-radius: 999px;
-    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-    color: #ffffff;
-    cursor: pointer;
-    font-size: 0.92rem;
-    font-weight: 900;
-    letter-spacing: -0.01em;
-    box-shadow: 0 16px 32px rgba(23, 63, 95, 0.24);
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease,
-      filter 0.2s ease;
-  }
-
-  .primary-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 20px 38px rgba(23, 63, 95, 0.30);
-    filter: brightness(1.05);
-  }
-
-  .primary-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 10px 22px rgba(23, 63, 95, 0.22);
-  }
-
-  .primary-btn:focus-visible {
-    outline: 4px solid rgba(31, 95, 139, 0.18);
-    outline-offset: 3px;
-  }
-
-  .login-help {
-    margin-top: 18px;
-    padding: 14px 16px;
-    display: grid;
-    gap: 5px;
-    border-radius: 18px;
-    background: rgba(243, 245, 250, 0.82);
-    border: 1px solid rgba(23, 63, 95, 0.06);
-    color: var(--muted);
-  }
-
-  .login-help strong {
-    color: var(--text);
-    font-size: 0.82rem;
-    font-weight: 900;
-  }
-
-  .login-help span {
-    font-size: 0.8rem;
-    font-weight: 700;
-    line-height: 1.35;
-  }
-
-  @media (min-width: 980px) {
-    .login-card {
-      transform: translateX(-80px);
+    * {
+      box-sizing: border-box;
     }
 
-    body.login-page::before {
-      transform: translate(-50%, -50%) translateX(20px);
+    html,
+    body {
+      min-height: 100%;
     }
-  }
 
-  @media (max-width: 768px) {
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
     body.login-page {
-      overflow-y: auto;
-      padding: 28px 16px;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px 18px;
+      overflow-x: hidden;
+      position: relative;
     }
 
     body.login-page::before {
-      width: 520px;
-      height: 520px;
-      top: 44%;
-    }
-
-    .login-card {
-      width: min(100%, 390px);
-      min-height: auto;
-      padding: 32px 28px 28px;
-      border-radius: 30px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    body.login-page {
-      padding: 18px 12px;
-    }
-
-    body.login-page::before {
-      width: 420px;
-      height: 420px;
-      top: 43%;
+      content: "";
+      position: fixed;
+      width: min(60vw, 640px);
+      height: min(60vw, 640px);
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background:
+        linear-gradient(
+          145deg,
+          rgba(23, 63, 95, 0.88) 0%,
+          rgba(31, 95, 139, 0.58) 48%,
+          rgba(136, 184, 204, 0.28) 100%
+        );
+      z-index: 0;
+      pointer-events: none;
     }
 
     body.login-page::after {
-      width: 32px;
-      height: 32px;
-      left: 7%;
-      top: 8%;
+      content: "";
+      position: fixed;
+      width: 42px;
+      height: 42px;
+      left: 8%;
+      top: 12%;
+      border-radius: 50%;
+      background: var(--primary-2);
+      opacity: 0.9;
+      box-shadow:
+        68vw 58vh 0 -8px rgba(136, 184, 204, 0.9),
+        78vw 11vh 0 -15px rgba(23, 63, 95, 0.26),
+        15vw 72vh 0 -17px rgba(23, 63, 95, 0.20);
+      z-index: 0;
+      pointer-events: none;
     }
 
     .login-card {
-      width: min(100%, 360px);
-      padding: 30px 22px 24px;
-      border-radius: 28px;
+      position: relative;
+      z-index: 1;
+      width: min(100%, 420px);
+      min-height: 585px;
+      padding: 36px 32px 30px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      animation: cardIn 0.45s ease both;
     }
 
-    .login-card::before {
-      top: 18px;
-      left: 24px;
+    @keyframes cardIn {
+      from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
 
-    .login-card::after {
-      top: 21px;
-      right: 24px;
-      transform: scale(0.86);
-      transform-origin: right center;
+    .login-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 18px;
+      margin-bottom: 34px;
+      color: var(--text);
+      opacity: 0.72;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .status-icons {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-icons span {
+      display: block;
+      background: var(--text);
+      opacity: 0.9;
+    }
+
+    .signal {
+      width: 16px;
+      height: 9px;
+      border-radius: 2px;
+      background:
+        linear-gradient(var(--text), var(--text)) 0 5px / 3px 4px no-repeat,
+        linear-gradient(var(--text), var(--text)) 5px 3px / 3px 6px no-repeat,
+        linear-gradient(var(--text), var(--text)) 10px 1px / 3px 8px no-repeat;
+    }
+
+    .wifi {
+      width: 13px;
+      height: 9px;
+      border-radius: 50% 50% 0 0;
+      background: transparent !important;
+      border-top: 2px solid var(--text);
+      border-left: 2px solid transparent;
+      border-right: 2px solid transparent;
+      position: relative;
+    }
+
+    .wifi::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: 4px;
+      height: 4px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: var(--text);
+    }
+
+    .battery {
+      width: 18px;
+      height: 9px;
+      border: 1.7px solid var(--text);
+      border-radius: 3px;
+      background: transparent !important;
+      position: relative;
+    }
+
+    .battery::before {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      width: 10px;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--text);
+    }
+
+    .battery::after {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 2px;
+      width: 2px;
+      height: 4px;
+      border-radius: 0 2px 2px 0;
+      background: var(--text);
     }
 
     .login-brand {
-      margin-top: 34px;
-      margin-bottom: 24px;
+      margin: 0 0 28px;
+      display: grid;
+      gap: 9px;
     }
 
-    .login-brand img {
-      width: 52px;
-      height: 52px;
-      flex-basis: 52px;
-      border-radius: 18px;
+    .brand-mark {
+      width: 62px;
+      height: 62px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      font-size: 1.25rem;
+      font-weight: 950;
+      letter-spacing: -0.07em;
+      background:
+        radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.34), transparent 32%),
+        linear-gradient(145deg, var(--primary-2), var(--primary-dark));
+      box-shadow: 0 18px 36px rgba(23, 63, 95, 0.24);
     }
 
     .login-brand h1 {
-      font-size: 1.72rem;
+      margin: 8px 0 0;
+      color: var(--text);
+      font-size: 2.1rem;
+      line-height: 1;
+      letter-spacing: -0.06em;
+      font-weight: 950;
     }
 
     .login-brand p {
-      font-size: 0.84rem;
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+      font-weight: 750;
+      line-height: 1.35;
     }
 
-    .field input,
+    .login-error {
+      margin: 0 0 18px;
+      padding: 12px 14px;
+      color: var(--danger);
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      border-radius: 14px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .login-form {
+      display: grid;
+      gap: 15px;
+      width: 100%;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .field label {
+      color: var(--text);
+      font-size: 0.8rem;
+      font-weight: 850;
+      padding-left: 4px;
+    }
+
+    .field input {
+      width: 100%;
+      height: 52px;
+      padding: 0 17px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      outline: none;
+      color: var(--text);
+      background: var(--input);
+      font-size: 0.94rem;
+      font-weight: 700;
+      transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+
+    .field input::placeholder {
+      color: #a1acb8;
+      font-weight: 600;
+    }
+
+    .field input:hover {
+      background: #edf1f7;
+    }
+
+    .field input:focus {
+      background: #ffffff;
+      border-color: rgba(31, 95, 139, 0.36);
+      box-shadow: 0 0 0 5px rgba(31, 95, 139, 0.10);
+    }
+
+    .forgot-link {
+      color: var(--primary-2);
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: 850;
+      white-space: nowrap;
+      transition: color 0.2s ease, opacity 0.2s ease;
+    }
+
+    .forgot-link:hover {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
+
+    .login-options {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: -2px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .remember {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .remember input {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
     .primary-btn {
-      height: 50px;
+      width: 100%;
+      height: 54px;
+      margin-top: 4px;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      color: #ffffff;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 900;
+      letter-spacing: -0.01em;
+      box-shadow: 0 16px 32px rgba(23, 63, 95, 0.24);
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        filter 0.2s ease;
     }
-  }
 
-  @media (max-width: 360px) {
-    .login-card {
-      padding-inline: 18px;
+    .primary-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 20px 38px rgba(23, 63, 95, 0.30);
+      filter: brightness(1.05);
     }
 
-    .login-brand {
-      gap: 11px;
+    .primary-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 10px 22px rgba(23, 63, 95, 0.22);
     }
 
-    .login-brand img {
-      width: 48px;
-      height: 48px;
-      flex-basis: 48px;
+    .primary-btn:focus-visible,
+    .forgot-link:focus-visible {
+      outline: 4px solid rgba(31, 95, 139, 0.18);
+      outline-offset: 3px;
+      border-radius: 10px;
     }
 
-    .login-brand h1 {
-      font-size: 1.54rem;
+    .login-help {
+      margin-top: 18px;
+      padding: 14px 16px;
+      display: grid;
+      gap: 5px;
+      border-radius: 18px;
+      background: rgba(243, 245, 250, 0.82);
+      border: 1px solid rgba(23, 63, 95, 0.06);
+      color: var(--muted);
     }
-  }
-</style>
+
+    .login-help strong {
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 900;
+    }
+
+    .login-help span {
+      font-size: 0.8rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .login-footer {
+      margin-top: auto;
+      padding-top: 18px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .login-footer strong {
+      color: var(--text);
+      font-weight: 900;
+    }
+
+    @media (min-width: 980px) {
+      .login-card {
+        transform: translateX(-72px);
+      }
+
+      body.login-page::before {
+        transform: translate(-50%, -50%) translateX(28px);
+      }
+    }
+
+    @media (max-width: 768px) {
+      body.login-page {
+        overflow-y: auto;
+        padding: 28px 16px;
+      }
+
+      body.login-page::before {
+        width: 520px;
+        height: 520px;
+        top: 44%;
+      }
+
+      .login-card {
+        width: min(100%, 390px);
+        min-height: auto;
+        padding: 32px 28px 28px;
+        border-radius: 30px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body.login-page {
+        padding: 18px 12px;
+      }
+
+      body.login-page::before {
+        width: 420px;
+        height: 420px;
+        top: 43%;
+      }
+
+      body.login-page::after {
+        width: 32px;
+        height: 32px;
+        left: 7%;
+        top: 8%;
+      }
+
+      .login-card {
+        width: min(100%, 360px);
+        padding: 28px 22px 24px;
+        border-radius: 28px;
+      }
+
+      .login-topbar {
+        margin-bottom: 28px;
+      }
+
+      .brand-mark {
+        width: 56px;
+        height: 56px;
+        border-radius: 20px;
+      }
+
+      .login-brand h1 {
+        font-size: 1.82rem;
+      }
+
+      .login-brand p {
+        font-size: 0.84rem;
+      }
+
+      .field input,
+      .primary-btn {
+        height: 50px;
+      }
+
+      .login-options {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .login-card {
+        padding-inline: 18px;
+      }
+
+      .login-brand h1 {
+        font-size: 1.64rem;
+      }
+    }
+  </style>
 </head>
 
 <body class="login-page">
   <main class="login-card" aria-labelledby="loginTitle">
+
+    <div class="login-topbar" aria-hidden="true">
+      <span>9:41</span>
+
+      <div class="status-icons">
+        <span class="signal"></span>
+        <span class="wifi"></span>
+        <span class="battery"></span>
+      </div>
+    </div>
+
     <header class="login-brand">
-      
+      <div class="brand-mark" aria-hidden="true">LJ</div>
+
       <div>
-        <h1 id="loginTitle">L&J Caixa</h1>
-        <p>Gestão comercial premium</p>
+        <h1 id="loginTitle">Login</h1>
+        <p>Acesse o L&amp;J Caixa para gerenciar vendas, caixa e operações.</p>
       </div>
     </header>
 
@@ -476,12 +606,38 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
 
       <div class="field">
         <label for="email">E-mail</label>
-        <input id="email" name="email" type="email" required value="<?= e($email) ?>" placeholder="admin@ljsolucoestech.com.br">
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          value="<?= e($email) ?>"
+          placeholder="admin@ljsolucoestech.com.br"
+          autocomplete="email"
+        >
       </div>
 
       <div class="field">
-        <label for="senha">Senha</label>
-        <input id="senha" name="senha" type="password" required placeholder="Digite sua senha">
+        <div class="field-row">
+          <label for="senha">Senha</label>
+          <a class="forgot-link" href="forgot-password.php">Esqueci minha senha</a>
+        </div>
+
+        <input
+          id="senha"
+          name="senha"
+          type="password"
+          required
+          placeholder="Digite sua senha"
+          autocomplete="current-password"
+        >
+      </div>
+
+      <div class="login-options">
+        <label class="remember">
+          <input type="checkbox" name="remember" value="1">
+          <span>Lembrar meu acesso</span>
+        </label>
       </div>
 
       <button class="primary-btn" type="submit">Entrar no sistema</button>
@@ -494,6 +650,10 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
         <span>Senha: Admin@123</span>
       </aside>
     <?php endif; ?>
+
+    <footer class="login-footer">
+      <span><strong>L&amp;J Caixa</strong> · Gestão comercial premium</span>
+    </footer>
   </main>
 </body>
 </html>
