@@ -22,10 +22,14 @@ $data_inicio_valida = $data_inicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/',
 $data_fim_valida = $data_fim !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim);
 $status_options = ['AGUARDANDO ENTREGA', 'FINALIZADO'];
 
-$where_parts = ['1=1'];
+$where_parts = [reportable_aquisicoes_condition()];
 $params = [];
 
-if ($status !== '' && in_array($status, $status_options, true)) {
+if ($status !== '' && !in_array($status, $status_options, true)) {
+    $status = '';
+}
+
+if ($status !== '') {
     $where_parts[] = 'a.status = :status';
     $params[':status'] = $status;
 }
