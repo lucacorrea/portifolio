@@ -94,7 +94,7 @@ function reportable_aquisicoes_condition(string $oficioAlias = 'o', string $aqui
         }
     }
 
-    return "{$oficioAlias}.status = 'APROVADO' AND {$aquisicaoAlias}.status = 'FINALIZADO'";
+    return "{$oficioAlias}.status = 'APROVADO' AND {$aquisicaoAlias}.status IN ('AGUARDANDO ENTREGA', 'FINALIZADO')";
 }
 
 function format_date($date) {
