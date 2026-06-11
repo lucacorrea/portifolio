@@ -277,11 +277,15 @@ if (!in_array($tipo_relatorio, ['sintetico', 'analitico'], true)) {
 $data_inicio_valida = $data_inicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio);
 $data_fim_valida = $data_fim !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim);
 
-$where_parts = ["1=1"];
+$where_parts = [reportable_aquisicoes_condition()];
 $params = [];
-$status_options = ['AGUARDANDO ENTREGA', 'FINALIZADO'];
+$status_options = ['FINALIZADO'];
 
-if ($status !== '' && in_array($status, $status_options, true)) {
+if ($status !== '' && !in_array($status, $status_options, true)) {
+    $status = '';
+}
+
+if ($status !== '') {
     $where_parts[] = "a.status = :status";
     $params[':status'] = $status;
 }
@@ -1328,7 +1332,6 @@ include 'views/layout/header.php';
                 <label class="form-label">Status</label>
                 <select name="status" class="form-control">
                     <option value="">Todos Status</option>
-                    <option value="AGUARDANDO ENTREGA" <?php echo $status === 'AGUARDANDO ENTREGA' ? 'selected' : ''; ?>>AGUARDANDO ENTREGA</option>
                     <option value="FINALIZADO" <?php echo $status === 'FINALIZADO' ? 'selected' : ''; ?>>FINALIZADO</option>
                 </select>
             </div>

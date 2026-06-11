@@ -150,7 +150,7 @@ $page            = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $whereParts = [];
 $params = [];
 
-$whereParts[] = "1=1";
+$whereParts[] = reportable_aquisicoes_condition();
 
 if ($sec_id !== '') {
     $whereParts[] = "o.secretaria_id = :sec_id";
