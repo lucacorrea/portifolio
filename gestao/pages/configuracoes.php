@@ -28,6 +28,31 @@ $empresaId = (int)$user['empresa_id'];
 $currentUserId = (int)$user['id'];
 $currentNivel = (string)$user['nivel'];
 
+$CONFIG_PERMISSIONS = [
+    'usuarios' => ['admin'],
+    'empresa' => ['admin', 'gerente'],
+    'comprovantes' => ['admin', 'gerente', 'operador'],
+    'vencimentos' => ['admin', 'gerente', 'estoquista'],
+    'estoque' => ['admin', 'gerente', 'estoquista'],
+    'pagamentos' => ['admin', 'gerente'],
+    'caixa' => ['admin', 'gerente'],
+    'seguranca' => ['admin'],
+];
+
+$ACTION_PERMISSIONS = [
+    'salvar_empresa' => 'empresa',
+    'salvar_comprovante' => 'comprovantes',
+    'salvar_vencimento' => 'vencimentos',
+    'salvar_estoque' => 'estoque',
+    'salvar_pagamento' => 'pagamentos',
+    'salvar_caixa' => 'caixa',
+    'salvar_seguranca' => 'seguranca',
+    'criar_usuario' => 'usuarios',
+    'editar_usuario' => 'usuarios',
+    'ativar_usuario' => 'usuarios',
+    'inativar_usuario' => 'usuarios',
+];
+
 $pageId = 'configuracoes';
 $pageTitle = 'Configurações';
 $activeMenu = 'mais';
@@ -70,17 +95,29 @@ function redirectConfig(string $type, string $message): void
     exit;
 }
 
-function requireAdminForConfig(string $nivel): void
+function canAccessConfig(array $permissions, string $module, string $nivel): bool
 {
-    if ($nivel !== 'admin') {
-        throw new RuntimeException('Apenas administradores podem alterar configurações.');
+    return in_array($nivel, $permissions[$module] ?? [], true);
+}
+
+function requireConfigPermission(array $permissions, string $module, string $nivel): void
+{
+    if (!canAccessConfig($permissions, $module, $nivel)) {
+        throw new RuntimeException('Você não tem permissão para executar esta ação.');
     }
+}
+
+function moduleForAction(array $actions, string $acao): string
+{
+    if (!isset($actions[$acao])) {
+        throw new RuntimeException('Ação inválida.');
+    }
+
+    return $actions[$acao];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        requireAdminForConfig($currentNivel);
-
         $token = (string)($_POST['csrf_token'] ?? '');
 
         if (!hash_equals((string)$_SESSION['csrf_configuracoes'], $token)) {
@@ -88,6 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $acao = (string)($_POST['acao'] ?? '');
+        $module = moduleForAction($ACTION_PERMISSIONS, $acao);
+        requireConfigPermission($CONFIG_PERMISSIONS, $module, $currentNivel);
 
         match ($acao) {
             'salvar_empresa' => $settingsService->saveEmpresa($empresaId, $_POST),
@@ -128,6 +167,10 @@ $flash = $_SESSION['config_flash'] ?? null;
 unset($_SESSION['config_flash']);
 
 $csrfToken = (string)$_SESSION['csrf_configuracoes'];
+$visibleConfigModules = array_filter(
+    array_keys($CONFIG_PERMISSIONS),
+    fn (string $module): bool => canAccessConfig($CONFIG_PERMISSIONS, $module, $currentNivel)
+);
 
 require_once __DIR__ . '/layout/header.php';
 ?>
@@ -863,7 +906,7 @@ require_once __DIR__ . '/layout/header.php';
 
     <?php if ($currentNivel !== 'admin'): ?>
         <div class="readonly-note">
-            Você está acessando como <strong><?= h($currentNivel) ?></strong>. Apenas administradores podem alterar configurações.
+            Você está acessando como <strong><?= h($currentNivel) ?></strong>. Apenas as configurações permitidas para seu nível serão exibidas.
         </div>
     <?php endif; ?>
 
@@ -874,6 +917,13 @@ require_once __DIR__ . '/layout/header.php';
         </div>
 
         <div class="settings-launch-grid">
+            <?php if (!$visibleConfigModules): ?>
+                <div class="readonly-note" style="grid-column: 1 / -1;">
+                    Seu nível de acesso não possui permissões para alterar configurações.
+                </div>
+            <?php endif; ?>
+
+            <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'usuarios', $currentNivel)): ?>
             <button class="settings-launch-card" type="button" data-open-modal="modalUsuarios">
                 <span class="settings-launch-icon">👥</span>
                 <span>
@@ -882,7 +932,9 @@ require_once __DIR__ . '/layout/header.php';
                 </span>
                 <span class="settings-launch-arrow">→</span>
             </button>
+            <?php endif; ?>
 
+            <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'empresa', $currentNivel)): ?>
             <button class="settings-launch-card" type="button" data-open-modal="modalEmpresa">
                 <span class="settings-launch-icon">🏪</span>
                 <span>
@@ -891,7 +943,9 @@ require_once __DIR__ . '/layout/header.php';
                 </span>
                 <span class="settings-launch-arrow">→</span>
             </button>
+            <?php endif; ?>
 
+            <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'comprovantes', $currentNivel)): ?>
             <button class="settings-launch-card" type="button" data-open-modal="modalComprovantes">
                 <span class="settings-launch-icon">🧾</span>
                 <span>
@@ -900,7 +954,9 @@ require_once __DIR__ . '/layout/header.php';
                 </span>
                 <span class="settings-launch-arrow">→</span>
             </button>
+            <?php endif; ?>
 
+            <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'vencimentos', $currentNivel)): ?>
             <button class="settings-launch-card" type="button" data-open-modal="modalVencimentos">
                 <span class="settings-launch-icon">📅</span>
                 <span>
@@ -909,7 +965,9 @@ require_once __DIR__ . '/layout/header.php';
                 </span>
                 <span class="settings-launch-arrow">→</span>
             </button>
+            <?php endif; ?>
 
+            <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'estoque', $currentNivel)): ?>
             <button class="settings-launch-card" type="button" data-open-modal="modalEstoque">
                 <span class="settings-launch-icon">📦</span>
                 <span>
@@ -918,7 +976,9 @@ require_once __DIR__ . '/layout/header.php';
                 </span>
                 <span class="settings-launch-arrow">→</span>
             </button>
+            <?php endif; ?>
 
+            <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'pagamentos', $currentNivel)): ?>
             <button class="settings-launch-card" type="button" data-open-modal="modalPagamentos">
                 <span class="settings-launch-icon">💳</span>
                 <span>
@@ -927,7 +987,9 @@ require_once __DIR__ . '/layout/header.php';
                 </span>
                 <span class="settings-launch-arrow">→</span>
             </button>
+            <?php endif; ?>
 
+            <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'caixa', $currentNivel)): ?>
             <button class="settings-launch-card" type="button" data-open-modal="modalCaixa">
                 <span class="settings-launch-icon">💰</span>
                 <span>
@@ -936,7 +998,9 @@ require_once __DIR__ . '/layout/header.php';
                 </span>
                 <span class="settings-launch-arrow">→</span>
             </button>
+            <?php endif; ?>
 
+            <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'seguranca', $currentNivel)): ?>
             <button class="settings-launch-card" type="button" data-open-modal="modalSeguranca">
                 <span class="settings-launch-icon">🔐</span>
                 <span>
@@ -945,12 +1009,14 @@ require_once __DIR__ . '/layout/header.php';
                 </span>
                 <span class="settings-launch-arrow">→</span>
             </button>
+            <?php endif; ?>
         </div>
 
         <a class="danger-btn section-gap" href="../logout.php">Sair do sistema</a>
     </div>
 </section>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'usuarios', $currentNivel)): ?>
 <div class="settings-modal" id="modalUsuarios" aria-hidden="true">
     <div class="settings-modal-panel large" role="dialog" aria-modal="true" aria-labelledby="modalUsuariosTitle">
         <div class="settings-modal-header">
@@ -1051,7 +1117,9 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'empresa', $currentNivel)): ?>
 <div class="settings-modal" id="modalEmpresa" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalEmpresaTitle">
         <div class="settings-modal-header">
@@ -1102,7 +1170,9 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'comprovantes', $currentNivel)): ?>
 <div class="settings-modal" id="modalComprovantes" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalComprovantesTitle">
         <div class="settings-modal-header">
@@ -1145,7 +1215,9 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'vencimentos', $currentNivel)): ?>
 <div class="settings-modal" id="modalVencimentos" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalVencimentosTitle">
         <div class="settings-modal-header">
@@ -1181,7 +1253,9 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'estoque', $currentNivel)): ?>
 <div class="settings-modal" id="modalEstoque" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalEstoqueTitle">
         <div class="settings-modal-header">
@@ -1232,7 +1306,9 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'pagamentos', $currentNivel)): ?>
 <div class="settings-modal" id="modalPagamentos" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalPagamentosTitle">
         <div class="settings-modal-header">
@@ -1265,7 +1341,9 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'caixa', $currentNivel)): ?>
 <div class="settings-modal" id="modalCaixa" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalCaixaTitle">
         <div class="settings-modal-header">
@@ -1305,7 +1383,9 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'seguranca', $currentNivel)): ?>
 <div class="settings-modal" id="modalSeguranca" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalSegurancaTitle">
         <div class="settings-modal-header">
@@ -1336,7 +1416,9 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'usuarios', $currentNivel)): ?>
 <div class="settings-modal" id="modalCreateUser" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalCreateUserTitle">
         <div class="settings-modal-header">
@@ -1401,7 +1483,9 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'usuarios', $currentNivel)): ?>
 <div class="settings-modal" id="modalEditUser" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalEditUserTitle">
         <div class="settings-modal-header">
@@ -1467,6 +1551,7 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <script>
     (() => {
