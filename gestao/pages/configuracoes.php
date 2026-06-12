@@ -131,37 +131,82 @@ $csrfToken = (string)$_SESSION['csrf_configuracoes'];
 
 require_once __DIR__ . '/layout/header.php';
 ?>
-
 <style>
+    :root {
+        --settings-bg: #f8fafc;
+        --settings-card: #ffffff;
+        --settings-border: rgba(15, 23, 42, .08);
+        --settings-text: #111827;
+        --settings-muted: #64748b;
+        --settings-soft: #f1f5f9;
+        --settings-primary: #111827;
+        --settings-danger: #dc2626;
+        --settings-success: #16a34a;
+    }
+
+    .content-pad {
+        width: 100%;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding-left: clamp(12px, 3vw, 24px);
+        padding-right: clamp(12px, 3vw, 24px);
+        padding-bottom: 90px;
+        box-sizing: border-box;
+    }
+
+    .plain-header {
+        width: 100%;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding-left: clamp(12px, 3vw, 24px);
+        padding-right: clamp(12px, 3vw, 24px);
+        box-sizing: border-box;
+    }
+
+    .page-title-row {
+        gap: 14px;
+        align-items: center;
+    }
+
     .settings-wrapper {
         display: grid;
         gap: 18px;
+        width: 100%;
+        min-width: 0;
     }
 
     .settings-card {
-        background: #fff;
-        border: 1px solid rgba(15, 23, 42, .08);
+        background: var(--settings-card);
+        border: 1px solid var(--settings-border);
         border-radius: 20px;
-        padding: 20px;
+        padding: clamp(14px, 2.5vw, 20px);
         box-shadow: 0 10px 30px rgba(15, 23, 42, .06);
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        overflow: hidden;
     }
 
     .settings-card h2 {
-        font-size: 1.05rem;
+        font-size: clamp(1rem, 2.2vw, 1.08rem);
         margin: 0 0 4px;
-        color: #111827;
+        color: var(--settings-text);
+        line-height: 1.25;
     }
 
     .settings-card p {
         margin: 0 0 16px;
-        color: #64748b;
+        color: var(--settings-muted);
         font-size: .9rem;
+        line-height: 1.45;
     }
 
     .settings-form-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
+        width: 100%;
+        min-width: 0;
     }
 
     .settings-form-grid.three {
@@ -172,6 +217,7 @@ require_once __DIR__ . '/layout/header.php';
         display: flex;
         flex-direction: column;
         gap: 6px;
+        min-width: 0;
     }
 
     .settings-field.full {
@@ -182,22 +228,28 @@ require_once __DIR__ . '/layout/header.php';
         font-size: .82rem;
         font-weight: 700;
         color: #334155;
+        line-height: 1.3;
     }
 
     .settings-field input,
     .settings-field select {
         width: 100%;
+        max-width: 100%;
         border: 1px solid #dbe3ef;
         border-radius: 12px;
-        min-height: 42px;
-        padding: 9px 12px;
+        min-height: 44px;
+        padding: 10px 12px;
         outline: none;
         background: #fff;
+        color: var(--settings-text);
+        box-sizing: border-box;
+        font-size: 16px;
     }
 
     .settings-field input:focus,
     .settings-field select:focus {
-        border-color: #111827;
+        border-color: var(--settings-primary);
+        box-shadow: 0 0 0 3px rgba(17, 24, 39, .08);
     }
 
     .settings-actions {
@@ -211,29 +263,40 @@ require_once __DIR__ . '/layout/header.php';
     .settings-btn {
         border: 0;
         border-radius: 12px;
+        min-height: 42px;
         padding: 10px 16px;
         font-weight: 800;
         cursor: pointer;
-        background: #111827;
+        background: var(--settings-primary);
         color: #fff;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        white-space: nowrap;
+        transition: transform .15s ease, opacity .15s ease;
+    }
+
+    .settings-btn:hover {
+        opacity: .94;
+    }
+
+    .settings-btn:active {
+        transform: scale(.98);
     }
 
     .settings-btn.secondary {
         background: #e5e7eb;
-        color: #111827;
+        color: var(--settings-text);
     }
 
     .settings-btn.danger {
-        background: #dc2626;
+        background: var(--settings-danger);
         color: #fff;
     }
 
     .settings-btn.success {
-        background: #16a34a;
+        background: var(--settings-success);
         color: #fff;
     }
 
@@ -241,6 +304,8 @@ require_once __DIR__ . '/layout/header.php';
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
+        width: 100%;
+        min-width: 0;
     }
 
     .settings-check {
@@ -253,15 +318,22 @@ require_once __DIR__ . '/layout/header.php';
         color: #334155;
         font-weight: 700;
         font-size: .88rem;
+        line-height: 1.35;
+        min-width: 0;
+        background: #fff;
     }
 
     .settings-check input {
         width: 18px;
+        min-width: 18px;
         height: 18px;
     }
 
     .settings-table-wrap {
+        width: 100%;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 16px;
     }
 
     .settings-table {
@@ -284,6 +356,15 @@ require_once __DIR__ . '/layout/header.php';
         font-size: .78rem;
         text-transform: uppercase;
         letter-spacing: .04em;
+        white-space: nowrap;
+    }
+
+    .settings-table td {
+        color: #1f2937;
+    }
+
+    .settings-table td form {
+        margin: 0;
     }
 
     .status-badge {
@@ -292,6 +373,7 @@ require_once __DIR__ . '/layout/header.php';
         padding: 4px 10px;
         font-size: .75rem;
         font-weight: 800;
+        white-space: nowrap;
     }
 
     .status-badge.on {
@@ -309,6 +391,7 @@ require_once __DIR__ . '/layout/header.php';
         padding: 13px 15px;
         margin-bottom: 16px;
         font-weight: 700;
+        line-height: 1.4;
     }
 
     .config-alert.success {
@@ -330,14 +413,46 @@ require_once __DIR__ . '/layout/header.php';
         padding: 12px;
         border-radius: 14px;
         font-size: .9rem;
+        line-height: 1.45;
         margin-bottom: 16px;
     }
 
+    @media (max-width: 1024px) {
+        .settings-form-grid.three {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
     @media (max-width: 760px) {
+        .plain-header,
+        .content-pad {
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        .page-title-row {
+            align-items: flex-start;
+        }
+
+        .plain-header h1 {
+            font-size: 1.45rem;
+            line-height: 1.15;
+        }
+
+        .settings-wrapper {
+            gap: 14px;
+        }
+
+        .settings-card {
+            border-radius: 18px;
+            padding: 14px;
+        }
+
         .settings-form-grid,
         .settings-form-grid.three,
         .settings-switches {
             grid-template-columns: 1fr;
+            gap: 12px;
         }
 
         .settings-actions {
@@ -346,6 +461,163 @@ require_once __DIR__ . '/layout/header.php';
 
         .settings-btn {
             width: 100%;
+            min-height: 46px;
+        }
+
+        .settings-check {
+            align-items: flex-start;
+            padding: 12px;
+        }
+
+        .settings-check input {
+            margin-top: 1px;
+        }
+
+        .settings-table-wrap {
+            overflow: visible;
+        }
+
+        .settings-table {
+            min-width: 0;
+            display: block;
+            width: 100%;
+        }
+
+        .settings-table thead {
+            display: none;
+        }
+
+        .settings-table tbody,
+        .settings-table tr,
+        .settings-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .settings-table tr {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .settings-table tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .settings-table td {
+            border-bottom: 0;
+            padding: 8px 4px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            text-align: right;
+            font-size: .88rem;
+            word-break: break-word;
+        }
+
+        .settings-table td::before {
+            content: '';
+            font-weight: 800;
+            color: #475569;
+            text-align: left;
+            min-width: 105px;
+        }
+
+        .settings-table tr:not(:has(td[colspan])) td:nth-child(1)::before {
+            content: 'Usuário';
+        }
+
+        .settings-table tr:not(:has(td[colspan])) td:nth-child(2)::before {
+            content: 'E-mail';
+        }
+
+        .settings-table tr:not(:has(td[colspan])) td:nth-child(3)::before {
+            content: 'Telefone';
+        }
+
+        .settings-table tr:not(:has(td[colspan])) td:nth-child(4)::before {
+            content: 'Nível';
+        }
+
+        .settings-table tr:not(:has(td[colspan])) td:nth-child(5)::before {
+            content: 'Status';
+        }
+
+        .settings-table tr:not(:has(td[colspan])) td:nth-child(6)::before {
+            content: 'Último login';
+        }
+
+        .settings-table tr:not(:has(td[colspan])) td:nth-child(7)::before {
+            content: 'Ações';
+        }
+
+        .settings-table td[colspan] {
+            display: block;
+            text-align: left;
+            padding: 4px;
+        }
+
+        .settings-table td[colspan]::before {
+            content: none;
+        }
+
+        .settings-table td form[style*="display:inline"] {
+            width: 100%;
+            display: block !important;
+        }
+
+        .settings-table td .settings-btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .plain-header,
+        .content-pad {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        .settings-card {
+            border-radius: 16px;
+            padding: 12px;
+        }
+
+        .settings-card h2 {
+            font-size: 1rem;
+        }
+
+        .settings-card p {
+            font-size: .84rem;
+        }
+
+        .settings-field label {
+            font-size: .8rem;
+        }
+
+        .settings-field input,
+        .settings-field select {
+            min-height: 46px;
+            border-radius: 11px;
+        }
+
+        .settings-table tr {
+            padding: 8px;
+            border-radius: 14px;
+        }
+
+        .settings-table td {
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+            gap: 4px;
+        }
+
+        .settings-table td::before {
+            min-width: 0;
         }
     }
 </style>
