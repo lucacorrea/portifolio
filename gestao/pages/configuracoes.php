@@ -134,20 +134,20 @@ require_once __DIR__ . '/layout/header.php';
 
 <style>
     :root {
-        --settings-card: #ffffff;
-        --settings-border: rgba(15, 23, 42, .09);
-        --settings-text: #111827;
-        --settings-muted: #64748b;
-        --settings-soft: #f8fafc;
-        --settings-soft-2: #eef2f7;
-        --settings-primary: #111827;
-        --settings-danger: #dc2626;
-        --settings-success: #16a34a;
-        --settings-warning: #f59e0b;
+        --cfg-bg: #f6f8fb;
+        --cfg-card: #ffffff;
+        --cfg-border: rgba(15, 23, 42, .08);
+        --cfg-text: #111827;
+        --cfg-muted: #64748b;
+        --cfg-soft: #f1f5f9;
+        --cfg-primary: #111827;
+        --cfg-danger: #dc2626;
+        --cfg-success: #16a34a;
+        --cfg-shadow: 0 14px 35px rgba(15, 23, 42, .08);
     }
 
-    .content-pad,
-    .plain-header {
+    .plain-header,
+    .content-pad {
         width: 100%;
         max-width: 1180px;
         margin: 0 auto;
@@ -165,57 +165,231 @@ require_once __DIR__ . '/layout/header.php';
         align-items: center;
     }
 
-    .settings-wrapper {
-        display: grid;
-        gap: 18px;
-        width: 100%;
-        min-width: 0;
+    .config-alert {
+        border-radius: 16px;
+        padding: 13px 15px;
+        margin-bottom: 16px;
+        font-weight: 800;
+        line-height: 1.4;
     }
 
-    .settings-grid-cards {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 18px;
-        width: 100%;
-        min-width: 0;
+    .config-alert.success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
     }
 
-    .settings-card {
-        background: var(--settings-card);
-        border: 1px solid var(--settings-border);
-        border-radius: 22px;
-        padding: clamp(14px, 2.5vw, 20px);
-        box-shadow: 0 10px 30px rgba(15, 23, 42, .06);
-        width: 100%;
-        min-width: 0;
-        box-sizing: border-box;
+    .config-alert.danger {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .readonly-note {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        padding: 12px;
+        border-radius: 16px;
+        font-size: .9rem;
+        line-height: 1.45;
+        margin-bottom: 16px;
+    }
+
+    .settings-home {
+        display: grid;
+        gap: 18px;
+    }
+
+    .settings-intro {
+        background: linear-gradient(135deg, #111827, #334155);
+        color: #fff;
+        border-radius: 26px;
+        padding: clamp(18px, 4vw, 28px);
+        box-shadow: var(--cfg-shadow);
         overflow: hidden;
+        position: relative;
     }
 
-    .settings-card.full {
-        grid-column: 1 / -1;
+    .settings-intro::after {
+        content: '';
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        right: -60px;
+        top: -60px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .10);
     }
 
-    .settings-card-header {
+    .settings-intro p {
+        margin: 0 0 8px;
+        font-size: .82rem;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        opacity: .75;
+        font-weight: 900;
+    }
+
+    .settings-intro h2 {
+        margin: 0;
+        font-size: clamp(1.25rem, 4vw, 2rem);
+        line-height: 1.15;
+        max-width: 680px;
+    }
+
+    .settings-launch-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .settings-launch-card {
+        min-height: 168px;
+        border: 1px solid var(--cfg-border);
+        background: rgba(255, 255, 255, .92);
+        border-radius: 26px;
+        padding: 18px;
+        box-shadow: var(--cfg-shadow);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-start;
+        cursor: pointer;
+        text-align: left;
+        width: 100%;
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .settings-launch-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 18px 44px rgba(15, 23, 42, .12);
+        border-color: rgba(17, 24, 39, .18);
+    }
+
+    .settings-launch-card:active {
+        transform: scale(.98);
+    }
+
+    .settings-launch-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 17px;
+        background: radial-gradient(circle at 35% 30%, #ffffff, #eef2ff 45%, #dbeafe 100%);
+        box-shadow: inset 0 -8px 16px rgba(15, 23, 42, .08), 0 8px 18px rgba(15, 23, 42, .08);
+        display: grid;
+        place-items: center;
+        color: #111827;
+        font-size: 1.35rem;
+        margin-bottom: 16px;
+    }
+
+    .settings-launch-card h3 {
+        margin: 0 0 5px;
+        color: var(--cfg-text);
+        font-size: 1rem;
+        line-height: 1.2;
+        font-weight: 950;
+    }
+
+    .settings-launch-card p {
+        margin: 0;
+        color: var(--cfg-muted);
+        font-size: .82rem;
+        line-height: 1.35;
+    }
+
+    .settings-launch-arrow {
+        margin-top: 14px;
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        background: #f8fafc;
+        color: #111827;
+        display: grid;
+        place-items: center;
+        font-size: 1.2rem;
+        font-weight: 900;
+    }
+
+    .settings-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        background: rgba(15, 23, 42, .58);
+        backdrop-filter: blur(7px);
+    }
+
+    .settings-modal.is-open {
+        display: flex;
+    }
+
+    .settings-modal-panel {
+        width: min(820px, 100%);
+        max-height: min(90vh, 860px);
+        overflow-y: auto;
+        background: #fff;
+        border-radius: 28px;
+        box-shadow: 0 30px 90px rgba(15, 23, 42, .34);
+        border: 1px solid rgba(255, 255, 255, .22);
+    }
+
+    .settings-modal-panel.large {
+        width: min(1080px, 100%);
+    }
+
+    .settings-modal-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #fff;
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         gap: 14px;
-        margin-bottom: 16px;
+        padding: 22px 22px 14px;
+        border-bottom: 1px solid #eef2f7;
+        border-radius: 28px 28px 0 0;
     }
 
-    .settings-card h2 {
-        font-size: clamp(1rem, 2.2vw, 1.12rem);
-        margin: 0 0 4px;
-        color: var(--settings-text);
-        line-height: 1.25;
+    .settings-modal-header h3 {
+        margin: 0 0 5px;
+        color: #111827;
+        font-size: 1.18rem;
+        line-height: 1.2;
     }
 
-    .settings-card p {
+    .settings-modal-header p {
         margin: 0;
-        color: var(--settings-muted);
-        font-size: .9rem;
-        line-height: 1.45;
+        color: #64748b;
+        font-size: .88rem;
+        line-height: 1.4;
+    }
+
+    .settings-modal-close {
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        border: 0;
+        background: #f1f5f9;
+        color: #111827;
+        font-size: 1.45rem;
+        line-height: 1;
+        cursor: pointer;
+        font-weight: 900;
+    }
+
+    .settings-modal-body {
+        padding: 20px 22px 22px;
+    }
+
+    body.modal-open {
+        overflow: hidden;
     }
 
     .settings-form-grid {
@@ -243,7 +417,7 @@ require_once __DIR__ . '/layout/header.php';
 
     .settings-field label {
         font-size: .82rem;
-        font-weight: 800;
+        font-weight: 850;
         color: #334155;
         line-height: 1.3;
     }
@@ -253,19 +427,19 @@ require_once __DIR__ . '/layout/header.php';
         width: 100%;
         max-width: 100%;
         border: 1px solid #dbe3ef;
-        border-radius: 13px;
-        min-height: 44px;
+        border-radius: 14px;
+        min-height: 46px;
         padding: 10px 12px;
         outline: none;
         background: #fff;
-        color: var(--settings-text);
+        color: var(--cfg-text);
         box-sizing: border-box;
         font-size: 16px;
     }
 
     .settings-field input:focus,
     .settings-field select:focus {
-        border-color: var(--settings-primary);
+        border-color: var(--cfg-primary);
         box-shadow: 0 0 0 3px rgba(17, 24, 39, .08);
     }
 
@@ -273,18 +447,18 @@ require_once __DIR__ . '/layout/header.php';
         display: flex;
         justify-content: flex-end;
         gap: 10px;
-        margin-top: 16px;
+        margin-top: 18px;
         flex-wrap: wrap;
     }
 
     .settings-btn {
         border: 0;
-        border-radius: 13px;
-        min-height: 42px;
+        border-radius: 14px;
+        min-height: 44px;
         padding: 10px 16px;
-        font-weight: 900;
+        font-weight: 950;
         cursor: pointer;
-        background: var(--settings-primary);
+        background: var(--cfg-primary);
         color: #fff;
         text-decoration: none;
         display: inline-flex;
@@ -304,23 +478,23 @@ require_once __DIR__ . '/layout/header.php';
 
     .settings-btn.secondary {
         background: #e5e7eb;
-        color: var(--settings-text);
+        color: var(--cfg-text);
+    }
+
+    .settings-btn.ghost {
+        background: #f8fafc;
+        color: #111827;
+        border: 1px solid #e2e8f0;
     }
 
     .settings-btn.danger {
-        background: var(--settings-danger);
+        background: var(--cfg-danger);
         color: #fff;
     }
 
     .settings-btn.success {
-        background: var(--settings-success);
+        background: var(--cfg-success);
         color: #fff;
-    }
-
-    .settings-btn.ghost {
-        background: #f1f5f9;
-        color: #111827;
-        border: 1px solid #e2e8f0;
     }
 
     .settings-switches {
@@ -333,13 +507,13 @@ require_once __DIR__ . '/layout/header.php';
 
     .settings-check {
         border: 1px solid #e5e7eb;
-        border-radius: 14px;
+        border-radius: 15px;
         padding: 12px;
         display: flex;
         gap: 10px;
         align-items: center;
         color: #334155;
-        font-weight: 800;
+        font-weight: 850;
         font-size: .88rem;
         line-height: 1.35;
         min-width: 0;
@@ -363,14 +537,14 @@ require_once __DIR__ . '/layout/header.php';
 
     .settings-users-toolbar strong {
         display: block;
+        color: #111827;
         font-size: 1rem;
-        color: var(--settings-text);
     }
 
     .settings-users-toolbar span {
         display: block;
+        color: #64748b;
         font-size: .84rem;
-        color: var(--settings-muted);
         margin-top: 2px;
     }
 
@@ -378,7 +552,7 @@ require_once __DIR__ . '/layout/header.php';
         width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        border-radius: 16px;
+        border-radius: 18px;
         border: 1px solid #e5e7eb;
     }
 
@@ -411,12 +585,8 @@ require_once __DIR__ . '/layout/header.php';
         background: #f8fafc;
     }
 
-    .settings-table td {
-        color: #1f2937;
-    }
-
     .user-main {
-        font-weight: 900;
+        font-weight: 950;
         color: #111827;
     }
 
@@ -432,7 +602,7 @@ require_once __DIR__ . '/layout/header.php';
         border-radius: 999px;
         padding: 4px 10px;
         font-size: .75rem;
-        font-weight: 900;
+        font-weight: 950;
         white-space: nowrap;
     }
 
@@ -446,37 +616,6 @@ require_once __DIR__ . '/layout/header.php';
         color: #991b1b;
     }
 
-    .config-alert {
-        border-radius: 14px;
-        padding: 13px 15px;
-        margin-bottom: 16px;
-        font-weight: 800;
-        line-height: 1.4;
-    }
-
-    .config-alert.success {
-        background: #dcfce7;
-        color: #166534;
-        border: 1px solid #bbf7d0;
-    }
-
-    .config-alert.danger {
-        background: #fee2e2;
-        color: #991b1b;
-        border: 1px solid #fecaca;
-    }
-
-    .readonly-note {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        color: #475569;
-        padding: 12px;
-        border-radius: 14px;
-        font-size: .9rem;
-        line-height: 1.45;
-        margin-bottom: 16px;
-    }
-
     .table-actions {
         display: flex;
         gap: 8px;
@@ -488,83 +627,15 @@ require_once __DIR__ . '/layout/header.php';
         margin: 0;
     }
 
-    .settings-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 18px;
-        background: rgba(15, 23, 42, .55);
-        backdrop-filter: blur(6px);
+    @media (max-width: 1100px) {
+        .settings-launch-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
 
-    .settings-modal.is-open {
-        display: flex;
-    }
-
-    .settings-modal-panel {
-        width: min(760px, 100%);
-        max-height: min(88vh, 820px);
-        overflow-y: auto;
-        background: #fff;
-        border-radius: 24px;
-        box-shadow: 0 25px 80px rgba(15, 23, 42, .32);
-        border: 1px solid rgba(255, 255, 255, .2);
-    }
-
-    .settings-modal-header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        background: #fff;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 14px;
-        padding: 20px 20px 12px;
-        border-bottom: 1px solid #eef2f7;
-        border-radius: 24px 24px 0 0;
-    }
-
-    .settings-modal-header h3 {
-        margin: 0 0 4px;
-        color: #111827;
-        font-size: 1.12rem;
-    }
-
-    .settings-modal-header p {
-        margin: 0;
-        color: #64748b;
-        font-size: .88rem;
-        line-height: 1.4;
-    }
-
-    .settings-modal-close {
-        width: 38px;
-        height: 38px;
-        border-radius: 999px;
-        border: 0;
-        background: #f1f5f9;
-        color: #111827;
-        font-size: 1.4rem;
-        line-height: 1;
-        cursor: pointer;
-        font-weight: 800;
-    }
-
-    .settings-modal-body {
-        padding: 18px 20px 20px;
-    }
-
-    body.modal-open {
-        overflow: hidden;
-    }
-
-    @media (max-width: 1024px) {
-        .settings-grid-cards {
-            grid-template-columns: 1fr;
+    @media (max-width: 860px) {
+        .settings-launch-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .settings-form-grid.three {
@@ -584,20 +655,33 @@ require_once __DIR__ . '/layout/header.php';
             line-height: 1.15;
         }
 
-        .settings-wrapper,
-        .settings-grid-cards {
-            gap: 14px;
+        .settings-intro {
+            border-radius: 22px;
         }
 
-        .settings-card {
-            border-radius: 18px;
+        .settings-launch-grid {
+            gap: 12px;
+        }
+
+        .settings-launch-card {
+            min-height: 154px;
+            border-radius: 22px;
             padding: 14px;
         }
 
-        .settings-card-header,
-        .settings-users-toolbar {
-            flex-direction: column;
-            align-items: stretch;
+        .settings-launch-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 15px;
+            margin-bottom: 12px;
+        }
+
+        .settings-launch-card h3 {
+            font-size: .94rem;
+        }
+
+        .settings-launch-card p {
+            font-size: .78rem;
         }
 
         .settings-form-grid,
@@ -616,13 +700,38 @@ require_once __DIR__ . '/layout/header.php';
             min-height: 46px;
         }
 
+        .settings-modal {
+            align-items: flex-end;
+            padding: 0;
+        }
+
+        .settings-modal-panel,
+        .settings-modal-panel.large {
+            width: 100%;
+            max-height: 92vh;
+            border-radius: 26px 26px 0 0;
+        }
+
+        .settings-modal-header {
+            border-radius: 26px 26px 0 0;
+            padding: 16px 14px 12px;
+        }
+
+        .settings-modal-body {
+            padding: 14px;
+        }
+
         .settings-check {
             align-items: flex-start;
-            padding: 12px;
         }
 
         .settings-check input {
             margin-top: 1px;
+        }
+
+        .settings-users-toolbar {
+            flex-direction: column;
+            align-items: stretch;
         }
 
         .settings-table-wrap {
@@ -652,7 +761,7 @@ require_once __DIR__ . '/layout/header.php';
         .settings-table tr {
             background: #fff;
             border: 1px solid #e5e7eb;
-            border-radius: 16px;
+            border-radius: 18px;
             margin-bottom: 12px;
             padding: 12px;
             box-shadow: 0 6px 18px rgba(15, 23, 42, .04);
@@ -669,7 +778,7 @@ require_once __DIR__ . '/layout/header.php';
         .settings-table td::before {
             content: attr(data-label);
             display: block;
-            font-weight: 900;
+            font-weight: 950;
             color: #475569;
             font-size: .74rem;
             text-transform: uppercase;
@@ -687,26 +796,6 @@ require_once __DIR__ . '/layout/header.php';
         .table-actions button {
             width: 100%;
         }
-
-        .settings-modal {
-            align-items: flex-end;
-            padding: 0;
-        }
-
-        .settings-modal-panel {
-            width: 100%;
-            max-height: 92vh;
-            border-radius: 24px 24px 0 0;
-        }
-
-        .settings-modal-header {
-            border-radius: 24px 24px 0 0;
-            padding: 16px 14px 12px;
-        }
-
-        .settings-modal-body {
-            padding: 14px;
-        }
     }
 
     @media (max-width: 480px) {
@@ -716,19 +805,41 @@ require_once __DIR__ . '/layout/header.php';
             padding-right: 10px;
         }
 
-        .settings-card {
-            border-radius: 16px;
+        .settings-launch-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .settings-launch-card {
+            min-height: 145px;
+            border-radius: 20px;
             padding: 12px;
         }
 
-        .settings-card p {
-            font-size: .84rem;
+        .settings-launch-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            font-size: 1.12rem;
+        }
+
+        .settings-launch-card h3 {
+            font-size: .88rem;
+        }
+
+        .settings-launch-card p {
+            font-size: .73rem;
+        }
+
+        .settings-launch-arrow {
+            width: 30px;
+            height: 30px;
         }
 
         .settings-field input,
         .settings-field select {
             min-height: 46px;
-            border-radius: 11px;
+            border-radius: 12px;
         }
     }
 </style>
@@ -756,18 +867,108 @@ require_once __DIR__ . '/layout/header.php';
         </div>
     <?php endif; ?>
 
-    <div class="settings-wrapper">
+    <div class="settings-home">
+        <div class="settings-intro">
+            <p>Gestão comercial premium</p>
+            <h2>Configure empresa, usuários, vendas, estoque, pagamentos e segurança.</h2>
+        </div>
 
-        <div class="settings-card full">
+        <div class="settings-launch-grid">
+            <button class="settings-launch-card" type="button" data-open-modal="modalUsuarios">
+                <span class="settings-launch-icon">👥</span>
+                <span>
+                    <h3>Usuários</h3>
+                    <p>Permissões, acessos e operadores.</p>
+                </span>
+                <span class="settings-launch-arrow">→</span>
+            </button>
+
+            <button class="settings-launch-card" type="button" data-open-modal="modalEmpresa">
+                <span class="settings-launch-icon">🏪</span>
+                <span>
+                    <h3>Empresa</h3>
+                    <p>Dados principais do negócio.</p>
+                </span>
+                <span class="settings-launch-arrow">→</span>
+            </button>
+
+            <button class="settings-launch-card" type="button" data-open-modal="modalComprovantes">
+                <span class="settings-launch-icon">🧾</span>
+                <span>
+                    <h3>Comprovantes</h3>
+                    <p>Modelo e emissão de recibos.</p>
+                </span>
+                <span class="settings-launch-arrow">→</span>
+            </button>
+
+            <button class="settings-launch-card" type="button" data-open-modal="modalVencimentos">
+                <span class="settings-launch-icon">📅</span>
+                <span>
+                    <h3>Vencimentos</h3>
+                    <p>Alertas e prazos do sistema.</p>
+                </span>
+                <span class="settings-launch-arrow">→</span>
+            </button>
+
+            <button class="settings-launch-card" type="button" data-open-modal="modalEstoque">
+                <span class="settings-launch-icon">📦</span>
+                <span>
+                    <h3>Estoque</h3>
+                    <p>Bloqueios e estoque mínimo.</p>
+                </span>
+                <span class="settings-launch-arrow">→</span>
+            </button>
+
+            <button class="settings-launch-card" type="button" data-open-modal="modalPagamentos">
+                <span class="settings-launch-icon">💳</span>
+                <span>
+                    <h3>Pagamentos</h3>
+                    <p>Pix, dinheiro, cartão e fiado.</p>
+                </span>
+                <span class="settings-launch-arrow">→</span>
+            </button>
+
+            <button class="settings-launch-card" type="button" data-open-modal="modalCaixa">
+                <span class="settings-launch-icon">💰</span>
+                <span>
+                    <h3>Vendas</h3>
+                    <p>Descontos, caixa e regras.</p>
+                </span>
+                <span class="settings-launch-arrow">→</span>
+            </button>
+
+            <button class="settings-launch-card" type="button" data-open-modal="modalSeguranca">
+                <span class="settings-launch-icon">🔐</span>
+                <span>
+                    <h3>Segurança</h3>
+                    <p>Auditoria, PIN e notificações.</p>
+                </span>
+                <span class="settings-launch-arrow">→</span>
+            </button>
+        </div>
+
+        <a class="danger-btn section-gap" href="../logout.php">Sair do sistema</a>
+    </div>
+</section>
+
+<div class="settings-modal" id="modalUsuarios" aria-hidden="true">
+    <div class="settings-modal-panel large" role="dialog" aria-modal="true" aria-labelledby="modalUsuariosTitle">
+        <div class="settings-modal-header">
+            <div>
+                <h3 id="modalUsuariosTitle">Usuários e permissões</h3>
+                <p>Listagem completa dos usuários vinculados à empresa atual.</p>
+            </div>
+            <button class="settings-modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        </div>
+
+        <div class="settings-modal-body">
             <div class="settings-users-toolbar">
                 <div>
-                    <strong>Usuários e permissões</strong>
-                    <span>Gerencie operadores, gerentes, estoquistas, leitores e administradores.</span>
+                    <strong>Usuários cadastrados</strong>
+                    <span><?= count($usuarios) ?> usuário(s) encontrado(s).</span>
                 </div>
 
-                <button class="settings-btn" type="button" data-open-modal="modalCreateUser">
-                    Novo usuário
-                </button>
+                <button class="settings-btn" type="button" data-open-modal="modalCreateUser">Novo usuário</button>
             </div>
 
             <div class="settings-table-wrap">
@@ -797,7 +998,6 @@ require_once __DIR__ . '/layout/header.php';
                             </td>
 
                             <td data-label="Telefone"><?= h($usuario['telefone'] ?? '-') ?></td>
-
                             <td data-label="Nível"><?= h($usuario['nivel']) ?></td>
 
                             <td data-label="Status">
@@ -849,304 +1049,293 @@ require_once __DIR__ . '/layout/header.php';
                 </table>
             </div>
         </div>
+    </div>
+</div>
 
-        <div class="settings-grid-cards">
-            <div class="settings-card">
-                <div class="settings-card-header">
-                    <div>
-                        <h2>Dados da empresa</h2>
-                        <p>Informações principais usadas no sistema e nos comprovantes.</p>
-                    </div>
-                </div>
-
-                <form method="post">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-                    <input type="hidden" name="acao" value="salvar_empresa">
-
-                    <div class="settings-form-grid">
-                        <div class="settings-field">
-                            <label for="nome">Razão social / Nome</label>
-                            <input type="text" id="nome" name="nome" maxlength="180" required value="<?= h($empresa['nome'] ?? '') ?>">
-                        </div>
-
-                        <div class="settings-field">
-                            <label for="nome_fantasia">Nome fantasia</label>
-                            <input type="text" id="nome_fantasia" name="nome_fantasia" maxlength="180" value="<?= h($empresa['nome_fantasia'] ?? '') ?>">
-                        </div>
-
-                        <div class="settings-field">
-                            <label for="cpf_cnpj">CPF/CNPJ</label>
-                            <input type="text" id="cpf_cnpj" name="cpf_cnpj" maxlength="20" value="<?= h($empresa['cpf_cnpj'] ?? '') ?>">
-                        </div>
-
-                        <div class="settings-field">
-                            <label for="telefone">Telefone</label>
-                            <input type="text" id="telefone" name="telefone" maxlength="30" value="<?= h($empresa['telefone'] ?? '') ?>">
-                        </div>
-
-                        <div class="settings-field full">
-                            <label for="endereco">Endereço</label>
-                            <input type="text" id="endereco" name="endereco" maxlength="255" value="<?= h($empresa['endereco'] ?? '') ?>">
-                        </div>
-                    </div>
-
-                    <div class="settings-actions">
-                        <button class="settings-btn" type="submit">Salvar empresa</button>
-                    </div>
-                </form>
+<div class="settings-modal" id="modalEmpresa" aria-hidden="true">
+    <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalEmpresaTitle">
+        <div class="settings-modal-header">
+            <div>
+                <h3 id="modalEmpresaTitle">Dados da empresa</h3>
+                <p>Informações principais usadas no sistema e nos comprovantes.</p>
             </div>
-
-            <div class="settings-card">
-                <div class="settings-card-header">
-                    <div>
-                        <h2>Comprovantes</h2>
-                        <p>Define quando emitir comprovante e qual modelo usar.</p>
-                    </div>
-                </div>
-
-                <form method="post">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-                    <input type="hidden" name="acao" value="salvar_comprovante">
-
-                    <div class="settings-form-grid">
-                        <div class="settings-field">
-                            <label for="receipt_mode">Emissão</label>
-                            <select id="receipt_mode" name="receipt_mode">
-                                <option value="perguntar" <?= selected($config['receipt_mode'] ?? 'perguntar', 'perguntar') ?>>Perguntar ao finalizar</option>
-                                <option value="sempre" <?= selected($config['receipt_mode'] ?? 'perguntar', 'sempre') ?>>Sempre emitir</option>
-                                <option value="nunca" <?= selected($config['receipt_mode'] ?? 'perguntar', 'nunca') ?>>Nunca emitir automaticamente</option>
-                            </select>
-                        </div>
-
-                        <div class="settings-field">
-                            <label for="receipt_template">Modelo</label>
-                            <select id="receipt_template" name="receipt_template">
-                                <option value="detalhado" <?= selected($config['receipt_template'] ?? 'detalhado', 'detalhado') ?>>Detalhado</option>
-                                <option value="simples" <?= selected($config['receipt_template'] ?? 'detalhado', 'simples') ?>>Simples</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="settings-actions">
-                        <button class="settings-btn" type="submit">Salvar comprovantes</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="settings-card">
-                <div class="settings-card-header">
-                    <div>
-                        <h2>Vencimentos</h2>
-                        <p>Regras para alertas de produtos vencendo e contas pendentes.</p>
-                    </div>
-                </div>
-
-                <form method="post">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-                    <input type="hidden" name="acao" value="salvar_vencimento">
-
-                    <div class="settings-form-grid">
-                        <div class="settings-field">
-                            <label for="expiration_alert_days">Dias para alerta de vencimento</label>
-                            <input type="number" id="expiration_alert_days" name="expiration_alert_days" min="0" max="365" value="<?= h($config['expiration_alert_days'] ?? 7) ?>">
-                        </div>
-
-                        <div class="settings-field">
-                            <label for="debt_due_days">Dias para vencimento de dívida</label>
-                            <input type="number" id="debt_due_days" name="debt_due_days" min="0" max="365" value="<?= h($config['debt_due_days'] ?? 30) ?>">
-                        </div>
-                    </div>
-
-                    <div class="settings-actions">
-                        <button class="settings-btn" type="submit">Salvar vencimentos</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="settings-card">
-                <div class="settings-card-header">
-                    <div>
-                        <h2>Produtos e estoque</h2>
-                        <p>Regras de bloqueio, alerta e estoque mínimo.</p>
-                    </div>
-                </div>
-
-                <form method="post">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-                    <input type="hidden" name="acao" value="salvar_estoque">
-
-                    <div class="settings-form-grid">
-                        <div class="settings-field">
-                            <label for="default_min_stock">Estoque mínimo padrão</label>
-                            <input type="number" id="default_min_stock" name="default_min_stock" min="0" max="999999" value="<?= h($config['default_min_stock'] ?? 0) ?>">
-                        </div>
-
-                        <div class="settings-field">
-                            <label>Regras ativas</label>
-                            <div class="settings-switches">
-                                <label class="settings-check">
-                                    <input type="checkbox" name="block_expired_products" <?= checked($config['block_expired_products'] ?? 1) ?>>
-                                    Bloquear produto vencido
-                                </label>
-
-                                <label class="settings-check">
-                                    <input type="checkbox" name="block_negative_stock" <?= checked($config['block_negative_stock'] ?? 1) ?>>
-                                    Bloquear estoque negativo
-                                </label>
-
-                                <label class="settings-check">
-                                    <input type="checkbox" name="low_stock_alert" <?= checked($config['low_stock_alert'] ?? 1) ?>>
-                                    Alertar estoque baixo
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-actions">
-                        <button class="settings-btn" type="submit">Salvar estoque</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="settings-card">
-                <div class="settings-card-header">
-                    <div>
-                        <h2>Formas de pagamento</h2>
-                        <p>Controle quais formas de pagamento ficam disponíveis nas vendas.</p>
-                    </div>
-                </div>
-
-                <form method="post">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-                    <input type="hidden" name="acao" value="salvar_pagamento">
-
-                    <div class="settings-switches">
-                        <label class="settings-check">
-                            <input type="checkbox" name="payment_pix" <?= checked($config['payment_pix'] ?? 1) ?>>
-                            Pix
-                        </label>
-
-                        <label class="settings-check">
-                            <input type="checkbox" name="payment_cash" <?= checked($config['payment_cash'] ?? 1) ?>>
-                            Dinheiro
-                        </label>
-
-                        <label class="settings-check">
-                            <input type="checkbox" name="payment_credit" <?= checked($config['payment_credit'] ?? 1) ?>>
-                            Cartão de crédito
-                        </label>
-
-                        <label class="settings-check">
-                            <input type="checkbox" name="payment_debit" <?= checked($config['payment_debit'] ?? 1) ?>>
-                            Cartão de débito
-                        </label>
-
-                        <label class="settings-check">
-                            <input type="checkbox" name="payment_account" <?= checked($config['payment_account'] ?? 1) ?>>
-                            Conta/fiado
-                        </label>
-
-                        <label class="settings-check">
-                            <input type="checkbox" name="payment_mixed" <?= checked($config['payment_mixed'] ?? 1) ?>>
-                            Pagamento misto
-                        </label>
-                    </div>
-
-                    <div class="settings-actions">
-                        <button class="settings-btn" type="submit">Salvar pagamentos</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="settings-card">
-                <div class="settings-card-header">
-                    <div>
-                        <h2>Vendas e caixa</h2>
-                        <p>Regras comerciais aplicadas no fechamento das vendas.</p>
-                    </div>
-                </div>
-
-                <form method="post">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-                    <input type="hidden" name="acao" value="salvar_caixa">
-
-                    <div class="settings-form-grid">
-                        <div class="settings-field">
-                            <label for="discount_limit_percent">Limite de desconto (%)</label>
-                            <input type="number" step="0.01" min="0" max="100" id="discount_limit_percent" name="discount_limit_percent" value="<?= h($config['discount_limit_percent'] ?? 0) ?>">
-                        </div>
-
-                        <div class="settings-field">
-                            <label>Regras</label>
-                            <div class="settings-switches">
-                                <label class="settings-check">
-                                    <input type="checkbox" name="allow_discount" <?= checked($config['allow_discount'] ?? 1) ?>>
-                                    Permitir desconto
-                                </label>
-
-                                <label class="settings-check">
-                                    <input type="checkbox" name="require_customer_for_account" <?= checked($config['require_customer_for_account'] ?? 1) ?>>
-                                    Exigir cliente no fiado
-                                </label>
-
-                                <label class="settings-check">
-                                    <input type="checkbox" name="require_cancellation_reason" <?= checked($config['require_cancellation_reason'] ?? 1) ?>>
-                                    Exigir motivo no cancelamento
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-actions">
-                        <button class="settings-btn" type="submit">Salvar vendas e caixa</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="settings-card full">
-                <div class="settings-card-header">
-                    <div>
-                        <h2>Segurança e notificações</h2>
-                        <p>Auditoria, confirmação de exclusões, PIN de operador e avisos internos.</p>
-                    </div>
-                </div>
-
-                <form method="post">
-                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-                    <input type="hidden" name="acao" value="salvar_seguranca">
-
-                    <div class="settings-switches">
-                        <label class="settings-check">
-                            <input type="checkbox" name="audit_log_enabled" <?= checked($config['audit_log_enabled'] ?? 1) ?>>
-                            Auditoria ativa
-                        </label>
-
-                        <label class="settings-check">
-                            <input type="checkbox" name="confirm_deletes" <?= checked($config['confirm_deletes'] ?? 1) ?>>
-                            Confirmar exclusões
-                        </label>
-
-                        <label class="settings-check">
-                            <input type="checkbox" name="operator_pin_enabled" <?= checked($config['operator_pin_enabled'] ?? 0) ?>>
-                            Exigir PIN do operador
-                        </label>
-
-                        <label class="settings-check">
-                            <input type="checkbox" name="notifications_enabled" <?= checked($config['notifications_enabled'] ?? 1) ?>>
-                            Notificações ativas
-                        </label>
-                    </div>
-
-                    <div class="settings-actions">
-                        <button class="settings-btn" type="submit">Salvar segurança</button>
-                    </div>
-                </form>
-            </div>
+            <button class="settings-modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
         </div>
 
-        <a class="danger-btn section-gap" href="../logout.php">Sair do sistema</a>
+        <div class="settings-modal-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <input type="hidden" name="acao" value="salvar_empresa">
+
+                <div class="settings-form-grid">
+                    <div class="settings-field">
+                        <label for="nome">Razão social / Nome</label>
+                        <input type="text" id="nome" name="nome" maxlength="180" required value="<?= h($empresa['nome'] ?? '') ?>">
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="nome_fantasia">Nome fantasia</label>
+                        <input type="text" id="nome_fantasia" name="nome_fantasia" maxlength="180" value="<?= h($empresa['nome_fantasia'] ?? '') ?>">
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="cpf_cnpj">CPF/CNPJ</label>
+                        <input type="text" id="cpf_cnpj" name="cpf_cnpj" maxlength="20" value="<?= h($empresa['cpf_cnpj'] ?? '') ?>">
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="telefone">Telefone</label>
+                        <input type="text" id="telefone" name="telefone" maxlength="30" value="<?= h($empresa['telefone'] ?? '') ?>">
+                    </div>
+
+                    <div class="settings-field full">
+                        <label for="endereco">Endereço</label>
+                        <input type="text" id="endereco" name="endereco" maxlength="255" value="<?= h($empresa['endereco'] ?? '') ?>">
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="settings-btn ghost" type="button" data-close-modal>Cancelar</button>
+                    <button class="settings-btn" type="submit">Salvar empresa</button>
+                </div>
+            </form>
+        </div>
     </div>
-</section>
+</div>
+
+<div class="settings-modal" id="modalComprovantes" aria-hidden="true">
+    <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalComprovantesTitle">
+        <div class="settings-modal-header">
+            <div>
+                <h3 id="modalComprovantesTitle">Comprovantes</h3>
+                <p>Defina emissão automática e modelo do comprovante.</p>
+            </div>
+            <button class="settings-modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        </div>
+
+        <div class="settings-modal-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <input type="hidden" name="acao" value="salvar_comprovante">
+
+                <div class="settings-form-grid">
+                    <div class="settings-field">
+                        <label for="receipt_mode">Emissão</label>
+                        <select id="receipt_mode" name="receipt_mode">
+                            <option value="perguntar" <?= selected($config['receipt_mode'] ?? 'perguntar', 'perguntar') ?>>Perguntar ao finalizar</option>
+                            <option value="sempre" <?= selected($config['receipt_mode'] ?? 'perguntar', 'sempre') ?>>Sempre emitir</option>
+                            <option value="nunca" <?= selected($config['receipt_mode'] ?? 'perguntar', 'nunca') ?>>Nunca emitir automaticamente</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="receipt_template">Modelo</label>
+                        <select id="receipt_template" name="receipt_template">
+                            <option value="detalhado" <?= selected($config['receipt_template'] ?? 'detalhado', 'detalhado') ?>>Detalhado</option>
+                            <option value="simples" <?= selected($config['receipt_template'] ?? 'detalhado', 'simples') ?>>Simples</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="settings-btn ghost" type="button" data-close-modal>Cancelar</button>
+                    <button class="settings-btn" type="submit">Salvar comprovantes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="settings-modal" id="modalVencimentos" aria-hidden="true">
+    <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalVencimentosTitle">
+        <div class="settings-modal-header">
+            <div>
+                <h3 id="modalVencimentosTitle">Vencimentos</h3>
+                <p>Regras para alertas de produtos vencendo e contas pendentes.</p>
+            </div>
+            <button class="settings-modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        </div>
+
+        <div class="settings-modal-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <input type="hidden" name="acao" value="salvar_vencimento">
+
+                <div class="settings-form-grid">
+                    <div class="settings-field">
+                        <label for="expiration_alert_days">Dias para alerta de vencimento</label>
+                        <input type="number" id="expiration_alert_days" name="expiration_alert_days" min="0" max="365" value="<?= h($config['expiration_alert_days'] ?? 7) ?>">
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="debt_due_days">Dias para vencimento de dívida</label>
+                        <input type="number" id="debt_due_days" name="debt_due_days" min="0" max="365" value="<?= h($config['debt_due_days'] ?? 30) ?>">
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="settings-btn ghost" type="button" data-close-modal>Cancelar</button>
+                    <button class="settings-btn" type="submit">Salvar vencimentos</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="settings-modal" id="modalEstoque" aria-hidden="true">
+    <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalEstoqueTitle">
+        <div class="settings-modal-header">
+            <div>
+                <h3 id="modalEstoqueTitle">Produtos e estoque</h3>
+                <p>Regras de bloqueio, alerta e estoque mínimo.</p>
+            </div>
+            <button class="settings-modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        </div>
+
+        <div class="settings-modal-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <input type="hidden" name="acao" value="salvar_estoque">
+
+                <div class="settings-form-grid">
+                    <div class="settings-field">
+                        <label for="default_min_stock">Estoque mínimo padrão</label>
+                        <input type="number" id="default_min_stock" name="default_min_stock" min="0" max="999999" value="<?= h($config['default_min_stock'] ?? 0) ?>">
+                    </div>
+
+                    <div class="settings-field">
+                        <label>Regras ativas</label>
+                        <div class="settings-switches">
+                            <label class="settings-check">
+                                <input type="checkbox" name="block_expired_products" <?= checked($config['block_expired_products'] ?? 1) ?>>
+                                Bloquear produto vencido
+                            </label>
+
+                            <label class="settings-check">
+                                <input type="checkbox" name="block_negative_stock" <?= checked($config['block_negative_stock'] ?? 1) ?>>
+                                Bloquear estoque negativo
+                            </label>
+
+                            <label class="settings-check">
+                                <input type="checkbox" name="low_stock_alert" <?= checked($config['low_stock_alert'] ?? 1) ?>>
+                                Alertar estoque baixo
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="settings-btn ghost" type="button" data-close-modal>Cancelar</button>
+                    <button class="settings-btn" type="submit">Salvar estoque</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="settings-modal" id="modalPagamentos" aria-hidden="true">
+    <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalPagamentosTitle">
+        <div class="settings-modal-header">
+            <div>
+                <h3 id="modalPagamentosTitle">Formas de pagamento</h3>
+                <p>Controle quais formas de pagamento ficam disponíveis nas vendas.</p>
+            </div>
+            <button class="settings-modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        </div>
+
+        <div class="settings-modal-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <input type="hidden" name="acao" value="salvar_pagamento">
+
+                <div class="settings-switches">
+                    <label class="settings-check"><input type="checkbox" name="payment_pix" <?= checked($config['payment_pix'] ?? 1) ?>> Pix</label>
+                    <label class="settings-check"><input type="checkbox" name="payment_cash" <?= checked($config['payment_cash'] ?? 1) ?>> Dinheiro</label>
+                    <label class="settings-check"><input type="checkbox" name="payment_credit" <?= checked($config['payment_credit'] ?? 1) ?>> Cartão de crédito</label>
+                    <label class="settings-check"><input type="checkbox" name="payment_debit" <?= checked($config['payment_debit'] ?? 1) ?>> Cartão de débito</label>
+                    <label class="settings-check"><input type="checkbox" name="payment_account" <?= checked($config['payment_account'] ?? 1) ?>> Conta/fiado</label>
+                    <label class="settings-check"><input type="checkbox" name="payment_mixed" <?= checked($config['payment_mixed'] ?? 1) ?>> Pagamento misto</label>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="settings-btn ghost" type="button" data-close-modal>Cancelar</button>
+                    <button class="settings-btn" type="submit">Salvar pagamentos</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="settings-modal" id="modalCaixa" aria-hidden="true">
+    <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalCaixaTitle">
+        <div class="settings-modal-header">
+            <div>
+                <h3 id="modalCaixaTitle">Vendas e caixa</h3>
+                <p>Regras comerciais aplicadas no fechamento das vendas.</p>
+            </div>
+            <button class="settings-modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        </div>
+
+        <div class="settings-modal-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <input type="hidden" name="acao" value="salvar_caixa">
+
+                <div class="settings-form-grid">
+                    <div class="settings-field">
+                        <label for="discount_limit_percent">Limite de desconto (%)</label>
+                        <input type="number" step="0.01" min="0" max="100" id="discount_limit_percent" name="discount_limit_percent" value="<?= h($config['discount_limit_percent'] ?? 0) ?>">
+                    </div>
+
+                    <div class="settings-field">
+                        <label>Regras</label>
+                        <div class="settings-switches">
+                            <label class="settings-check"><input type="checkbox" name="allow_discount" <?= checked($config['allow_discount'] ?? 1) ?>> Permitir desconto</label>
+                            <label class="settings-check"><input type="checkbox" name="require_customer_for_account" <?= checked($config['require_customer_for_account'] ?? 1) ?>> Exigir cliente no fiado</label>
+                            <label class="settings-check"><input type="checkbox" name="require_cancellation_reason" <?= checked($config['require_cancellation_reason'] ?? 1) ?>> Exigir motivo no cancelamento</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="settings-btn ghost" type="button" data-close-modal>Cancelar</button>
+                    <button class="settings-btn" type="submit">Salvar vendas e caixa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="settings-modal" id="modalSeguranca" aria-hidden="true">
+    <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalSegurancaTitle">
+        <div class="settings-modal-header">
+            <div>
+                <h3 id="modalSegurancaTitle">Segurança e notificações</h3>
+                <p>Auditoria, confirmação de exclusões, PIN de operador e avisos internos.</p>
+            </div>
+            <button class="settings-modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        </div>
+
+        <div class="settings-modal-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <input type="hidden" name="acao" value="salvar_seguranca">
+
+                <div class="settings-switches">
+                    <label class="settings-check"><input type="checkbox" name="audit_log_enabled" <?= checked($config['audit_log_enabled'] ?? 1) ?>> Auditoria ativa</label>
+                    <label class="settings-check"><input type="checkbox" name="confirm_deletes" <?= checked($config['confirm_deletes'] ?? 1) ?>> Confirmar exclusões</label>
+                    <label class="settings-check"><input type="checkbox" name="operator_pin_enabled" <?= checked($config['operator_pin_enabled'] ?? 0) ?>> Exigir PIN do operador</label>
+                    <label class="settings-check"><input type="checkbox" name="notifications_enabled" <?= checked($config['notifications_enabled'] ?? 1) ?>> Notificações ativas</label>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="settings-btn ghost" type="button" data-close-modal>Cancelar</button>
+                    <button class="settings-btn" type="submit">Salvar segurança</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <div class="settings-modal" id="modalCreateUser" aria-hidden="true">
     <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalCreateUserTitle">
@@ -1287,6 +1476,13 @@ require_once __DIR__ . '/layout/header.php';
             const modal = document.getElementById(id);
             if (!modal) return;
 
+            document.querySelectorAll('.settings-modal.is-open').forEach((opened) => {
+                if (opened.id !== id) {
+                    opened.classList.remove('is-open');
+                    opened.setAttribute('aria-hidden', 'true');
+                }
+            });
+
             modal.classList.add('is-open');
             modal.setAttribute('aria-hidden', 'false');
             body.classList.add('modal-open');
@@ -1302,7 +1498,10 @@ require_once __DIR__ . '/layout/header.php';
 
             modal.classList.remove('is-open');
             modal.setAttribute('aria-hidden', 'true');
-            body.classList.remove('modal-open');
+
+            if (!document.querySelector('.settings-modal.is-open')) {
+                body.classList.remove('modal-open');
+            }
         }
 
         document.querySelectorAll('[data-open-modal]').forEach((button) => {
