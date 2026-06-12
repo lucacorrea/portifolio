@@ -1,0 +1,178 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>OCR test</title>
+<pre id="status">loading</pre>
+<pre id="output"></pre>
+<script src="../assets/js/vendor/pdfjs/pdf.min.js"></script>
+<script src="../assets/js/vendor/tesseract/tesseract.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = '../assets/js/vendor/pdfjs/pdf.worker.min.js';
+const statusEl = document.querySelector('#status');
+const outputEl = document.querySelector('#output');
+const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+const lines = value => String(value || '').normalize('NFC').split(/\r?\n/).map(x => x.replace(/[|_[\]{}]+/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+function preparedCanvas(source, crop, removeLines, targetLongSide = 2800) {
+  const sx = Math.round(source.width * crop.x);
+  const sy = Math.round(source.height * crop.y);
+  const sw = Math.round(source.width * crop.width);
+  const sh = Math.round(source.height * crop.height);
+  const scale = targetLongSide / Math.max(sw, sh);
+  const out = document.createElement('canvas');
+  out.width = Math.round(sw * scale);
+  out.height = Math.round(sh * scale);
+  const ctx = out.getContext('2d', {willReadFrequently:true});
+  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  const data = ctx.getImageData(0, 0, out.width, out.height);
+  const px = data.data;
+  for (let i=0;i<px.length;i+=4) {
+    const gray=px[i]*.299+px[i+1]*.587+px[i+2]*.114;
+    const a=Math.max(0,Math.min(255,((gray-128)*1.35)+128));
+    px[i]=px[i+1]=px[i+2]=a;
+  }
+  if (removeLines) {
+    const rs=new Set(), cs=new Set(), w=out.width, h=out.height;
+    for(let y=0;y<h;y++) {let d=0; for(let x=0;x<w;x++) if(px[((y*w)+x)*4]<115)d++; if(d>w*.42) for(let o=-1;o<=1;o++) if(y+o>=0&&y+o<h)rs.add(y+o);}
+    for(let x=0;x<w;x++) {let d=0; for(let y=0;y<h;y++) if(px[((y*w)+x)*4]<115)d++; if(d>h*.35) for(let o=-1;o<=1;o++) if(x+o>=0&&x+o<w)cs.add(x+o);}
+    rs.forEach(y=>{for(let x=0;x<w;x++){const i=((y*w)+x)*4;px[i]=px[i+1]=px[i+2]=255;}});
+    cs.forEach(x=>{for(let y=0;y<h;y++){const i=((y*w)+x)*4;px[i]=px[i+1]=px[i+2]=255;}});
+  }
+  ctx.putImageData(data,0,0);
+  return out;
+}
+
+function detectTableBoundaries(source) {
+  const ctx=source.getContext('2d',{willReadFrequently:true});
+  const {data}=ctx.getImageData(0,0,source.width,source.height);
+  const x0=Math.round(source.width*.055), x1=Math.round(source.width*.935);
+  const y0=Math.round(source.height*.15), y1=Math.round(source.height*.80);
+  const candidates=[];
+  for(let y=y0;y<y1;y++) {
+    let dark=0;
+    for(let x=x0;x<x1;x++) {
+      const i=((y*source.width)+x)*4;
+      const gray=data[i]*.299+data[i+1]*.587+data[i+2]*.114;
+      if(gray<180) dark++;
+    }
+    if(dark/(x1-x0)>.42) candidates.push({y,ratio:dark/(x1-x0)});
+  }
+  const clusters=[];
+  for(const candidate of candidates) {
+    const cluster=clusters[clusters.length-1];
+    if(!cluster || candidate.y-cluster[cluster.length-1].y>4) clusters.push([candidate]);
+    else cluster.push(candidate);
+  }
+  const centers=clusters.map(cluster=>cluster.reduce((best,item)=>item.ratio>best.ratio?item:best).y);
+  let best=[];
+  for(let start=0;start<centers.length;start++) {
+    if(centers[start]/source.height<.16 || centers[start]/source.height>.23) continue;
+    const run=[centers[start]];
+    for(let i=start+1;i<centers.length;i++) {
+      const gap=(centers[i]-run[run.length-1])/source.height;
+      if(gap>=.012 && gap<=.021) run.push(centers[i]);
+      else if(gap>.021) break;
+    }
+    if(run.length>best.length) best=run;
+  }
+  if(best.length<4) throw new Error('grade não encontrada '+JSON.stringify(centers.map(y=>y/source.height)));
+  return best;
+}
+
+function makeStrip(source,bounds,column) {
+  const rows=bounds.length-2, rowHeight=80, padding=20;
+  const sx=Math.round(source.width*column.x), sw=Math.round(source.width*column.width);
+  const sampleHeight=Math.max(1,(bounds[2]-bounds[1])*.64);
+  const scale=(rowHeight-14)/sampleHeight, contentWidth=Math.round(sw*scale);
+  const out=document.createElement('canvas'); out.width=contentWidth+(padding*2); out.height=rows*rowHeight;
+  const ctx=out.getContext('2d',{willReadFrequently:true}); ctx.fillStyle='#fff';ctx.fillRect(0,0,out.width,out.height);
+  for(let i=0;i<rows;i++) {
+    const top=bounds[i+1], bottom=bounds[i+2], inset=Math.max(3,Math.round((bottom-top)*.18));
+    const y1=top+inset, y2=bottom-inset, sh=Math.max(1,y2-y1), dh=rowHeight-14, dy=(i*rowHeight)+7;
+    ctx.drawImage(source,sx,y1,sw,sh,padding,dy,contentWidth,dh);
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0, i*rowHeight, padding+Math.round(contentWidth*(column.edgeClear || .02)), rowHeight);
+    ctx.fillRect(out.width-padding-Math.round(contentWidth*(column.edgeClear || .02)), i*rowHeight, padding+Math.round(contentWidth*(column.edgeClear || .02)), rowHeight);
+  }
+  const image=ctx.getImageData(0,0,out.width,out.height), px=image.data;
+  for(let i=0;i<px.length;i+=4) {
+    const gray=px[i]*.299+px[i+1]*.587+px[i+2]*.114;
+    const value=gray<205?0:255; px[i]=px[i+1]=px[i+2]=value;
+  }
+  if(column.removeHorizontalLines) {
+    const clearRows=new Set();
+    for(let y=0;y<out.height;y++) {
+      let dark=0;
+      for(let x=padding;x<out.width-padding;x++) if(px[((y*out.width)+x)*4]<128) dark++;
+      if(dark>(out.width-(padding*2))*.32) {
+        for(let offset=-2;offset<=2;offset++) if(y+offset>=0&&y+offset<out.height) clearRows.add(y+offset);
+      }
+    }
+    clearRows.forEach(y=>{for(let x=0;x<out.width;x++){const i=((y*out.width)+x)*4;px[i]=px[i+1]=px[i+2]=255;}});
+  }
+  ctx.putImageData(image,0,0); return out;
+}
+
+function indexed(value) {
+  const result={};
+  for(const line of lines(value)) {
+    const m=line.match(/^[O0]*(\d{1,3})\s*[:.)-]?\s*(.+)$/i);
+    if(m) result[Number(m[1])]=m[2].trim();
+  }
+  return result;
+}
+
+(async()=>{
+  const data = new Uint8Array(await (await fetch('test.pdf')).arrayBuffer());
+  const pdf = await pdfjsLib.getDocument({data}).promise;
+  const worker = await Tesseract.createWorker('por', 1, {
+    workerPath:'../assets/js/vendor/tesseract/worker.min.js',
+    corePath:'../assets/js/vendor/tesseract-core',
+    langPath:'../assets/js/vendor/tessdata',gzip:true,
+    logger:m=>statusEl.textContent=`${m.status||''} ${Math.round((m.progress||0)*100)}%`
+  });
+  const all=[];
+  async function rec(source,label,crop,whitelist='',removeLines=false,target=2800){
+    statusEl.textContent=label;
+    await worker.setParameters({preserve_interword_spaces:'1',tessedit_pageseg_mode:'6',tessedit_char_whitelist:whitelist});
+    const result=await worker.recognize(preparedCanvas(source,crop,removeLines,target));
+    return result.data.text||'';
+  }
+  for(let n=1;n<=pdf.numPages;n++){
+    const page=await pdf.getPage(n), viewport=page.getViewport({scale:2});
+    const canvas=document.createElement('canvas'); canvas.width=Math.round(viewport.width);canvas.height=Math.round(viewport.height);
+    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+    const sig=await rec(canvas,`p${n} sig`,{x:.055,y:.035,width:.88,height:.18},'',false,3000);
+    const bounds=detectTableBoundaries(canvas);
+    async function recStrip(label,column,whitelist='') {
+      statusEl.textContent=label;
+      await worker.setParameters({preserve_interword_spaces:'1',tessedit_pageseg_mode:'6',tessedit_char_whitelist:whitelist});
+      return (await worker.recognize(makeStrip(canvas,bounds,column))).data.text||'';
+    }
+    async function recRows(label,column,whitelist='') {
+      await worker.setParameters({preserve_interword_spaces:'1',tessedit_pageseg_mode:'7',tessedit_char_whitelist:whitelist});
+      const values=[];
+      for(let row=0;row<bounds.length-2;row++) {
+        statusEl.textContent=`${label} ${row+1}/${bounds.length-2}`;
+        const result=await worker.recognize(preparedCanvas(canvas,{
+          x:column.x,
+          y:bounds[row+1]/canvas.height,
+          width:column.width,
+          height:(bounds[row+2]-bounds[row+1])/canvas.height
+        },true,1000));
+        values.push((result.data.text||'').trim());
+      }
+      return values;
+    }
+    const desc=await recStrip(`p${n} desc`,{x:.158,width:.546,edgeClear:.008});
+    const unit=await recStrip(`p${n} unit`,{x:.708,width:.092,edgeClear:.025},'ABCDEFGHIJKLMNOPQRSTUVWXYZ.');
+    statusEl.textContent=`p${n} qty detailed`;
+    await worker.setParameters({preserve_interword_spaces:'1',tessedit_pageseg_mode:'6',tessedit_char_whitelist:'0123456789,.'});
+    const qtyResult=await worker.recognize(makeStrip(canvas,bounds,{x:.804,width:.122,edgeClear:.025,removeHorizontalLines:true}));
+    const qty=qtyResult.data.text||'';
+    const qtyWords=(qtyResult.data.words||[]).map(word=>({text:word.text,bbox:word.bbox,confidence:word.confidence}));
+    all.push({page:n,bounds:bounds.map(y=>y/canvas.height),rowCount:bounds.length-2,sig,desc,unit,qty,qtyDataKeys:Object.keys(qtyResult.data),qtyWords,signature:norm(sig),descIndexed:indexed(desc),unitIndexed:indexed(unit),qtyIndexed:indexed(qty)});
+    outputEl.textContent=JSON.stringify(all,null,2);
+  }
+  await worker.terminate(); statusEl.textContent='done';
+})().catch(e=>{statusEl.textContent='ERROR '+e.stack;});
+</script>

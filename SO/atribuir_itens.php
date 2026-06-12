@@ -528,13 +528,13 @@ include 'views/layout/header.php';
 
         <div class="planilha-import">
             <div>
-                <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar orçamento ou ofício</h4>
-                <p class="planilha-import-text">Aceita um ou vários PDF, DOCX, TXT, CSV e imagens. Cada importação adiciona itens à lista atual.</p>
+                <h4 class="planilha-import-title"><i class="fas fa-file-import"></i> Importar relação de materiais da SEMOB</h4>
+                <p class="planilha-import-text">Aceita somente PDF no padrão Estado do Amazonas / SEMOB, com colunas ORDEM, DESCRIÇÃO, UNID. e QUANT.</p>
             </div>
             <div>
-                <input type="file" id="planilha-pdf-input" accept=".pdf,.docx,.txt,.csv,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,image/*" multiple hidden>
+                <input type="file" id="planilha-pdf-input" accept=".pdf,application/pdf" multiple hidden>
                 <button type="button" class="btn btn-outline" id="planilha-pdf-btn">
-                    <i class="fas fa-upload"></i> Selecionar arquivo
+                    <i class="fas fa-upload"></i> Selecionar PDF SEMOB
                 </button>
             </div>
             <div id="planilha-import-status" class="planilha-import-status" aria-live="polite"></div>
@@ -777,6 +777,8 @@ document.addEventListener('DOMContentLoaded', function() {
             PACOTE: 'PCT',
             CX: 'CX',
             CAIXA: 'CX',
+            KIT: 'KIT',
+            FORMA: 'FORMA',
             KG: 'Kg',
             KILO: 'Kg',
             QUILO: 'Kg',
@@ -1943,40 +1945,277 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function parsePlanilhaPdfText(input) {
         const text = typeof input === 'string' ? input : String(input?.text || '');
-        const rows = typeof input === 'string' ? [] : (input?.rows || []);
-        const source = typeof input === 'string' ? '' : String(input?.source || '');
-        const normalized = String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim();
-        const qtyWarningMatch = text.match(/@@OCR_QTY_WARNING:(\d+)@@/u);
+        const marker = '@@ESTADO_AMAZONAS_SEMOB_MATERIAIS@@';
 
-        const parsers = [
-            () => parseSiahPositionedBudget(rows),
-            () => parseDelimitedBudget(text),
-            () => parseSingleLineBudgetSummary(text),
-            () => parsePricedServiceBudgetText(text),
-            () => parseOfficeItemsTableText(text),
-            () => parseCurrencyColumnsBudget(normalized),
-            () => parseSiahVisualLinesBudget(text),
-            () => parseSiahBudget(text),
-            () => parseGenericTextBudget(text)
-        ];
-
-        for (const parser of parsers) {
-            const result = parser();
-            if (result && result.items.length) {
-                const hasValues = result.items.some(item => Number(item.valor_unitario || 0) > 0 || Number(item.valor_total || 0) > 0);
-                if (source === 'image' && result.items.length === 1 && !hasValues) {
-                    throw new Error('O OCR da imagem não encontrou uma lista de itens confiável. Tire a foto mais próxima da tabela, com a folha reta e boa iluminação, e tente novamente.');
-                }
-
-                if (qtyWarningMatch) {
-                    result.warning = `${qtyWarningMatch[1]} quantidades não foram lidas com segurança e foram preenchidas com 1 para conferência.`;
-                }
-
-                return result;
-            }
+        if (!text.includes(marker)) {
+            throw new Error('Padrão não reconhecido. Use somente o PDF da SEMOB com cabeçalho Estado do Amazonas e tabela ORDEM, DESCRIÇÃO, UNID. e QUANT.');
         }
 
-        throw new Error('Não encontrei itens no arquivo. Use um orçamento com quantidade, unidade e valores ou um ofício/lista de materiais com descrição e quantidade legíveis.');
+        const items = [];
+        const rowPattern = /^\s*(\d{1,3})\s*\|\s*(.+?)\s*\|\s*([\p{L}.]{1,15})\s*\|\s*(\d+(?:[,.]\d+)?)\s*$/gmu;
+
+        for (const match of text.matchAll(rowPattern)) {
+            const produto = String(match[2] || '').replace(/\s+/g, ' ').trim();
+            const quantidade = parseImportedQuantity(match[4]);
+
+            if (!produto || quantidade <= 0) {
+                continue;
+            }
+
+            items.push({
+                produto,
+                unidade: normalizeUnitLabel(match[3] || 'UN'),
+                quantidade,
+                valor_unitario: 0,
+                valor_total: 0,
+                preservar_nome_importado: true
+            });
+        }
+
+        const result = buildBudgetParseResult(items);
+        if (!result || !result.items.length) {
+            throw new Error('O PDF possui o cabeçalho esperado, mas nenhuma linha válida foi encontrada nas colunas ORDEM, DESCRIÇÃO, UNID. e QUANT.');
+        }
+
+        result.warning = 'Padrão SEMOB importado sem valores. Confira os itens e informe os valores unitários.';
+        return result;
+    }
+
+    function normalizeEstadoAmazonasSignature(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^A-Z0-9]/gi, '')
+            .toUpperCase();
+    }
+
+    function validateEstadoAmazonasSemobSignature(value) {
+        const signature = normalizeEstadoAmazonasSignature(value);
+        const institutionOk = (
+            signature.includes('ESTADODOAMAZONAS')
+            && signature.includes('PREFEITURAMUNICIPALDECOARI')
+        ) || (
+            signature.includes('PREFEITURAMUNICIPALDECOARI')
+            && (signature.includes('SEMOB') || signature.includes('SECRETARIAMUNICIPALDEOBRAS'))
+        );
+        const documentOk = signature.includes('COMUNIDADE') && signature.includes('RELACAODEMATERIAIS');
+        const tableOk = signature.includes('ORDEM')
+            && signature.includes('DESCRICAO')
+            && (signature.includes('UNID') || signature.includes('UND'))
+            && (signature.includes('QUANT') || signature.includes('QTD'));
+
+        return institutionOk && documentOk && tableOk;
+    }
+
+    function cleanEstadoAmazonasOcrLines(value) {
+        return String(value || '')
+            .normalize('NFC')
+            .split(/\r?\n/)
+            .map(line => line
+                .replace(/[|_[\]{}]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim())
+            .filter(Boolean);
+    }
+
+    function parseEstadoAmazonasOrderColumn(value) {
+        return cleanEstadoAmazonasOcrLines(value)
+            .flatMap(line => line.match(/\b\d{1,3}\b/g) || [])
+            .map(Number)
+            .filter(number => Number.isInteger(number) && number > 0 && number <= 200);
+    }
+
+    function parseEstadoAmazonasDescriptionColumn(value) {
+        return cleanEstadoAmazonasOcrLines(value)
+            .map(line => line.replace(/^\d{1,3}[.)-]?\s*/, '').trim())
+            .filter(line => {
+                const key = normalizeToken(line);
+                return line.length >= 2
+                    && key !== 'DESCRICAO'
+                    && key !== 'ORDEM'
+                    && !key.includes('RELACAODEMATERIAIS')
+                    && !key.includes('COMUNIDADE')
+                    && !/^\d+$/u.test(line);
+            });
+    }
+
+    function parseEstadoAmazonasUnitColumn(value) {
+        const allowed = new Set(['UN', 'UND', 'UNID', 'UNIDADE', 'KG', 'PCT', 'PACOTE', 'CX', 'CAIXA', 'KIT', 'FORMA', 'L', 'LT', 'M', 'MT', 'PAR', 'PC']);
+        const units = [];
+
+        cleanEstadoAmazonasOcrLines(value).forEach(line => {
+            const tokens = line.split(/\s+/).map(normalizeToken).filter(Boolean);
+            const token = tokens.find(candidate => allowed.has(candidate));
+            if (token) {
+                units.push(normalizeUnitLabel(token));
+            }
+        });
+
+        return units;
+    }
+
+    function parseEstadoAmazonasQuantityColumn(value) {
+        return cleanEstadoAmazonasOcrLines(value)
+            .flatMap(line => line.match(/\b\d{1,4}(?:[,.]\d+)?\b/g) || [])
+            .map(parseImportedQuantity)
+            .filter(quantity => quantity > 0 && quantity <= 9999);
+    }
+
+    function validateEstadoAmazonasPageColumns(pageNumber, orders, descriptions, units, quantities) {
+        if (!orders.length) {
+            throw new Error(`Página ${pageNumber}: não foi possível ler a coluna ORDEM.`);
+        }
+
+        const sequential = orders.every((order, index) => order === index + 1);
+        if (!sequential) {
+            throw new Error(`Página ${pageNumber}: a coluna ORDEM não está sequencial a partir de 1.`);
+        }
+
+        const expected = orders.length;
+        if (descriptions.length < expected || units.length < expected || quantities.length < expected) {
+            throw new Error(
+                `Página ${pageNumber}: leitura incompleta da tabela. `
+                + `Esperado ${expected}; descrição ${descriptions.length}, unidade ${units.length}, quantidade ${quantities.length}.`
+            );
+        }
+
+        return orders.map((order, index) => ({
+            ordem: order,
+            produto: descriptions[index],
+            unidade: units[index],
+            quantidade: quantities[index]
+        }));
+    }
+
+    async function extractEstadoAmazonasSemobPdf(pdf) {
+        if (!window.Tesseract?.createWorker) {
+            throw new Error('OCR local não está disponível neste navegador.');
+        }
+
+        const worker = await window.Tesseract.createWorker('por', 1, {
+            workerPath: 'assets/js/vendor/tesseract/worker.min.js',
+            corePath: 'assets/js/vendor/tesseract-core',
+            langPath: 'assets/js/vendor/tessdata',
+            gzip: true,
+            logger: message => {
+                if (!message?.status) return;
+                const progress = message.progress ? ` ${Math.round(message.progress * 100)}%` : '';
+                setPlanilhaStatus(`OCR SEMOB: ${message.status}${progress}`, 'warning');
+            }
+        });
+
+        async function recognizeRegion(pageBlob, label, crop, options = {}) {
+            setPlanilhaStatus(`Página ${options.pageNumber}: lendo ${label}...`, 'warning');
+
+            if (worker.setParameters) {
+                await worker.setParameters({
+                    preserve_interword_spaces: '1',
+                    tessedit_pageseg_mode: String(options.psm || 6),
+                    tessedit_char_whitelist: options.whitelist || ''
+                });
+            }
+
+            const prepared = await prepareImageForOcr(pageBlob, {
+                crop,
+                rotate: 0,
+                removeLines: Boolean(options.removeLines),
+                targetLongSide: options.targetLongSide || 2800,
+                maxScale: 5
+            });
+            const result = await worker.recognize(prepared);
+            return result?.data?.text || '';
+        }
+
+        const importedRows = [];
+
+        try {
+            for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+                const page = await pdf.getPage(pageNumber);
+                const viewport = page.getViewport({ scale: 2 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+
+                if (!context) {
+                    throw new Error(`Página ${pageNumber}: não foi possível preparar a imagem para OCR.`);
+                }
+
+                canvas.width = Math.round(viewport.width);
+                canvas.height = Math.round(viewport.height);
+                await page.render({ canvasContext: context, viewport }).promise;
+
+                const pageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                if (!pageBlob) {
+                    throw new Error(`Página ${pageNumber}: não foi possível gerar a imagem para OCR.`);
+                }
+
+                const signatureText = await recognizeRegion(pageBlob, 'cabeçalho e assinatura do padrão', {
+                    x: 0.055,
+                    y: 0.035,
+                    width: 0.88,
+                    height: 0.18
+                }, { pageNumber, psm: 6, targetLongSide: 3000 });
+
+                if (!validateEstadoAmazonasSemobSignature(signatureText)) {
+                    throw new Error(
+                        `Página ${pageNumber}: padrão inválido. O PDF deve conter Estado do Amazonas, Prefeitura Municipal de Coari, SEMOB, `
+                        + 'COMUNIDADE, RELAÇÃO DE MATERIAIS e as colunas ORDEM, DESCRIÇÃO, UNID. e QUANT.'
+                    );
+                }
+
+                const commonCrop = { y: 0.195, height: 0.55 };
+                const descriptionText = await recognizeRegion(pageBlob, 'coluna DESCRIÇÃO', {
+                    x: 0.158,
+                    y: commonCrop.y,
+                    width: 0.548,
+                    height: commonCrop.height
+                }, { pageNumber, psm: 6, removeLines: true, targetLongSide: 3200 });
+                const unitText = await recognizeRegion(pageBlob, 'coluna UNID.', {
+                    x: 0.708,
+                    y: commonCrop.y,
+                    width: 0.09,
+                    height: commonCrop.height
+                }, { pageNumber, psm: 6, removeLines: true, targetLongSide: 2600, whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ.' });
+                const quantityText = await recognizeRegion(pageBlob, 'coluna QUANT.', {
+                    x: 0.802,
+                    y: commonCrop.y,
+                    width: 0.122,
+                    height: commonCrop.height
+                }, { pageNumber, psm: 6, removeLines: true, targetLongSide: 2600, whitelist: '0123456789,.' });
+                const orderText = await recognizeRegion(pageBlob, 'coluna ORDEM', {
+                    x: 0.072,
+                    y: commonCrop.y,
+                    width: 0.084,
+                    height: commonCrop.height
+                }, { pageNumber, psm: 6, removeLines: true, targetLongSide: 2600, whitelist: '0123456789' });
+
+                const rows = validateEstadoAmazonasPageColumns(
+                    pageNumber,
+                    parseEstadoAmazonasOrderColumn(orderText),
+                    parseEstadoAmazonasDescriptionColumn(descriptionText),
+                    parseEstadoAmazonasUnitColumn(unitText),
+                    parseEstadoAmazonasQuantityColumn(quantityText)
+                );
+
+                importedRows.push(...rows);
+            }
+        } finally {
+            await worker.terminate();
+        }
+
+        if (!importedRows.length) {
+            throw new Error('Nenhum item foi encontrado no PDF padrão da SEMOB.');
+        }
+
+        const text = [
+            '@@ESTADO_AMAZONAS_SEMOB_MATERIAIS@@',
+            ...importedRows.map(row => `${row.ordem} | ${row.produto} | ${row.unidade} | ${row.quantidade}`)
+        ].join('\n');
+
+        return {
+            text,
+            rows: [],
+            source: 'estado-amazonas-sem-obras'
+        };
     }
 
     async function extractPdfText(file) {
@@ -1986,99 +2225,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const buffer = await file.arrayBuffer();
         const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
-        const pages = [];
-        const rows = [];
-
-        function groupPageItemsByRow(items, pageNumber) {
-            const groupedRows = [];
-
-            items
-                .slice()
-                .sort((a, b) => Math.abs(b.y - a.y) > 2 ? b.y - a.y : a.x - b.x)
-                .forEach(item => {
-                    let row = groupedRows.find(candidate => Math.abs(candidate.y - item.y) <= 3);
-
-                    if (!row) {
-                        row = { page: pageNumber, y: item.y, items: [] };
-                        groupedRows.push(row);
-                    }
-
-                    row.items.push(item);
-                    row.y = row.items.reduce((sum, rowItem) => sum + rowItem.y, 0) / row.items.length;
-                });
-
-            return groupedRows.map(row => ({
-                page: row.page,
-                y: row.y,
-                items: row.items
-                    .slice()
-                    .sort((a, b) => a.x - b.x)
-                    .map(item => ({
-                        text: item.text,
-                        x: item.x,
-                        y: item.y
-                    }))
-            }));
-        }
-
-        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-            const page = await pdf.getPage(pageNumber);
-            const content = await page.getTextContent();
-            const pageItems = content.items
-                .map(item => ({
-                    text: String(item.str || '').trim(),
-                    x: Number(item.transform?.[4] || 0),
-                    y: Number(item.transform?.[5] || 0),
-                    hasEOL: Boolean(item.hasEOL)
-                }))
-                .filter(item => item.text !== '');
-            const pageText = content.items.map(item => `${item.str || ''}${item.hasEOL ? '\n' : ' '}`).join('');
-
-            pages.push(pageText);
-            rows.push(...groupPageItemsByRow(pageItems, pageNumber));
-        }
-
-        if (!pages.join(' ').replace(/\s+/g, '') && !rows.length) {
-            const ocrPages = [];
-
-            for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-                const page = await pdf.getPage(pageNumber);
-                const viewport = page.getViewport({ scale: 2 });
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d', { willReadFrequently: true });
-
-                if (!context) {
-                    continue;
-                }
-
-                setPlanilhaStatus(`PDF escaneado: aplicando OCR local na página ${pageNumber} de ${pdf.numPages}...`, 'warning');
-                canvas.width = Math.round(viewport.width);
-                canvas.height = Math.round(viewport.height);
-                await page.render({ canvasContext: context, viewport }).promise;
-
-                const blob = await new Promise(resolve => {
-                    canvas.toBlob(imageBlob => resolve(imageBlob), 'image/png');
-                });
-
-                if (!blob) {
-                    continue;
-                }
-
-                const pageText = await extractImageText(blob);
-                ocrPages.push(pageText?.text || '');
-            }
-
-            return {
-                text: ocrPages.join('\n'),
-                rows: [],
-                source: 'image'
-            };
-        }
-
-        return {
-            text: pages.join(' '),
-            rows
-        };
+        return extractEstadoAmazonasSemobPdf(pdf);
     }
 
     async function extractDocxText(file) {
@@ -2564,22 +2711,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return extractPdfText(file);
         }
 
-        if (extension === 'docx' || mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-            return extractDocxText(file);
-        }
-
-        if (['txt', 'csv'].includes(extension) || mime.startsWith('text/')) {
-            return {
-                text: await file.text(),
-                rows: []
-            };
-        }
-
-        if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(extension)) {
-            return extractImageText(file);
-        }
-
-        throw new Error('Formato não suportado. Use PDF, DOCX, TXT, CSV, JPG, PNG ou WEBP.');
+        throw new Error('Formato não suportado. Use somente PDF no padrão Estado do Amazonas / SEMOB.');
     }
 
     function getSuggestionPanel(input) {
