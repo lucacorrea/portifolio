@@ -31,15 +31,7 @@ $qtdVendas = (int) $resumo['sales_count'];
 require_once __DIR__ . '/pages/layout/header.php';
 ?>
 <header class="blue-area">
-  
-    <div class="statusbar ">
-      <strong data-time>09:41</strong>
-      <div class="device-icons" aria-hidden="true">
-        <span class="signal"></span>
-        <span class="wifi"></span>
-        <span class="battery"></span>
-      </div>
-    </div>
+ 
     
   <div class="balance-row">
     <div>
