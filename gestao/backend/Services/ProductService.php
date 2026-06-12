@@ -42,6 +42,9 @@ final class ProductService
         $category = trim((string)($payload['category'] ?? $payload['categoria'] ?? ''));
         $expiry = trim((string)($payload['expiry'] ?? $payload['validade'] ?? ''));
         $image = trim((string)($payload['image'] ?? ''));
+        $sku = trim((string)($payload['sku'] ?? ''));
+        $barcode = trim((string)($payload['barcode'] ?? $payload['codigo_barras'] ?? ''));
+        $lot = trim((string)($payload['lot'] ?? $payload['lote'] ?? ''));
 
         if (!Validator::required($name) || !Validator::max($name, 180)) {
             throw new InvalidArgumentException('Informe um nome de produto válido.');
@@ -51,7 +54,19 @@ final class ProductService
             throw new InvalidArgumentException('Informe uma categoria válida.');
         }
 
-        if (!Validator::date($expiry)) {
+        if (!Validator::required($sku) || !Validator::max($sku, 80)) {
+            throw new InvalidArgumentException('Informe um SKU válido.');
+        }
+
+        if ($barcode !== '' && !Validator::max($barcode, 80)) {
+            throw new InvalidArgumentException('O código de barras deve ter no máximo 80 caracteres.');
+        }
+
+        if (!Validator::required($lot) || !Validator::max($lot, 80)) {
+            throw new InvalidArgumentException('Informe um lote válido.');
+        }
+
+        if (!Validator::required($expiry) || !Validator::date($expiry)) {
             throw new InvalidArgumentException('Informe uma validade válida.');
         }
 
@@ -69,9 +84,9 @@ final class ProductService
         $data = [
             'categoria_id' => $categoryId,
             'nome' => $name,
-            'sku' => trim((string)($payload['sku'] ?? '')),
-            'codigo_barras' => trim((string)($payload['barcode'] ?? $payload['codigo_barras'] ?? '')),
-            'lote' => trim((string)($payload['lot'] ?? $payload['lote'] ?? '')),
+            'sku' => $sku,
+            'codigo_barras' => $barcode,
+            'lote' => $lot,
             'validade' => $expiry,
             'quantidade' => (float)($payload['stock'] ?? 0),
             'estoque_minimo' => (float)($payload['minStock'] ?? 0),
