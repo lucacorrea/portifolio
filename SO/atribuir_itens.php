@@ -328,7 +328,6 @@ include 'views/layout/header.php';
     }
 
     .item-total {
-        background: #f8fafc;
         font-weight: 800;
         color: #198754;
         text-align: right;
@@ -601,7 +600,7 @@ include 'views/layout/header.php';
                     $valor_value = isset($it['valor_input']) ? (string)$it['valor_input'] : number_format($valor_unit_item, 2, ',', '.');
                     $valor_total_item = $qtd_item * $valor_unit_item;
                 ?>
-                    <div class="item-row">
+                    <div class="item-row" data-calculation-source="unit">
                         <div class="form-group" style="margin:0;">
                             <label class="form-label">Nº</label>
                             <input type="text" class="form-control item-seq" value="<?php echo $idx + 1; ?>" readonly>
@@ -652,12 +651,14 @@ include 'views/layout/header.php';
                         </div>
 
                         <div class="form-group" style="margin:0;">
-                            <label class="form-label">Total do Item</label>
+                            <label class="form-label">Valor Total</label>
                             <input
                                 type="text"
                                 class="form-control item-total"
-                                value="R$ <?php echo number_format($valor_total_item, 2, ',', '.'); ?>"
-                                readonly>
+                                inputmode="decimal"
+                                placeholder="0,00"
+                                title="Digite o total para calcular automaticamente o valor unitário"
+                                value="<?php echo number_format($valor_total_item, 2, ',', '.'); ?>">
                         </div>
 
                         <div style="margin-bottom: 5px;">
@@ -705,6 +706,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function parseValorBR(valor) {
         if (!valor) return 0;
         let v = String(valor).trim();
+        v = v.replace(/R\$/gi, '');
         v = v.replace(/\s/g, '');
         v = v.replace(/\./g, '');
         v = v.replace(',', '.');
@@ -2870,6 +2872,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (valorInput && Number(item.valor_unitario || 0) > 0) {
             valorInput.value = formatInputMoneyBR(item.valor_unitario);
+            row.dataset.calculationSource = 'unit';
+            updateRowFromUnitValue(row);
         }
 
         hideSuggestions(input);
@@ -2892,6 +2896,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('div');
 
         row.className = 'item-row';
+        row.dataset.calculationSource = 'unit';
         row.innerHTML = `
             <div class="form-group" style="margin:0;">
                 <label class="form-label">Nº</label>
@@ -2920,8 +2925,8 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
 
             <div class="form-group" style="margin:0;">
-                <label class="form-label">Total do Item</label>
-                <input type="text" class="form-control item-total" value="${escapeHtml(formatMoneyBR(totalItem))}" readonly>
+                <label class="form-label">Valor Total</label>
+                <input type="text" class="form-control item-total" inputmode="decimal" placeholder="0,00" title="Digite o total para calcular automaticamente o valor unitário" value="${escapeHtml(formatInputMoneyBR(totalItem))}">
             </div>
 
             <div style="margin-bottom: 5px;">
@@ -2968,26 +2973,49 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function updateItemTotals() {
-        container.querySelectorAll('.item-row').forEach(row => {
-            const qtd = parseFloat(row.querySelector('.item-qtd')?.value) || 0;
-            const valorUnit = parseValorBR(row.querySelector('.item-valor')?.value);
-            const totalItem = qtd * valorUnit;
+    function getItemQuantity(row) {
+        return parseFloat(String(row.querySelector('.item-qtd')?.value || '').replace(',', '.')) || 0;
+    }
 
-            const totalField = row.querySelector('.item-total');
-            if (totalField) {
-                totalField.value = formatMoneyBR(totalItem);
-            }
-        });
+    function updateRowFromUnitValue(row) {
+        const qtd = getItemQuantity(row);
+        const valorUnit = parseValorBR(row.querySelector('.item-valor')?.value);
+        const totalField = row.querySelector('.item-total');
+
+        if (totalField) {
+            totalField.value = formatInputMoneyBR(qtd * valorUnit);
+        }
+    }
+
+    function updateRowFromTotalValue(row, normalizeTotal = false) {
+        const qtd = getItemQuantity(row);
+        const totalItem = parseValorBR(row.querySelector('.item-total')?.value);
+        const valorField = row.querySelector('.item-valor');
+        const totalField = row.querySelector('.item-total');
+
+        if (valorField) {
+            valorField.value = formatInputMoneyBR(qtd > 0 ? totalItem / qtd : 0);
+        }
+
+        if (normalizeTotal && totalField && qtd > 0) {
+            totalField.value = formatInputMoneyBR(qtd * parseValorBR(valorField?.value));
+        }
+    }
+
+    function updateRowByCalculationSource(row, normalizeTotal = false) {
+        if (row.dataset.calculationSource === 'total') {
+            updateRowFromTotalValue(row, normalizeTotal);
+            return;
+        }
+
+        updateRowFromUnitValue(row);
     }
 
     function calculateTotal() {
         let total = 0;
 
         container.querySelectorAll('.item-row').forEach(row => {
-            const qtd = parseFloat(row.querySelector('.item-qtd')?.value) || 0;
-            const valorUnit = parseValorBR(row.querySelector('.item-valor')?.value);
-            total += (qtd * valorUnit);
+            total += parseValorBR(row.querySelector('.item-total')?.value);
         });
 
         totalDisplay.textContent = formatMoneyBR(total);
@@ -3002,16 +3030,44 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        updateItemTotals();
     }
 
     container.addEventListener('input', function(e) {
-        if (e.target.classList.contains('item-valor')) {
+        const row = e.target.closest('.item-row');
+
+        if (e.target.classList.contains('item-valor') || e.target.classList.contains('item-total')) {
             e.target.value = e.target.value.replace(/[^\d,.\s]/g, '');
+        }
+
+        if (row && e.target.classList.contains('item-valor')) {
+            row.dataset.calculationSource = 'unit';
+            updateRowFromUnitValue(row);
+        } else if (row && e.target.classList.contains('item-total')) {
+            row.dataset.calculationSource = 'total';
+            updateRowFromTotalValue(row);
+        } else if (row && e.target.classList.contains('item-qtd')) {
+            updateRowByCalculationSource(row, true);
         }
 
         if (e.target.classList.contains('item-name')) {
             searchItemSuggestions(e.target);
+        }
+
+        calculateTotal();
+    });
+
+    container.addEventListener('focusout', function(e) {
+        if (!e.target.classList.contains('item-valor') && !e.target.classList.contains('item-total')) {
+            return;
+        }
+
+        const row = e.target.closest('.item-row');
+        e.target.value = formatInputMoneyBR(parseValorBR(e.target.value));
+
+        if (row && e.target.classList.contains('item-total')) {
+            updateRowFromTotalValue(row, true);
+        } else if (row) {
+            updateRowFromUnitValue(row);
         }
 
         calculateTotal();
@@ -3182,6 +3238,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('items-form').addEventListener('submit', function(e) {
         renumberItems();
+
+        container.querySelectorAll('.item-row').forEach(row => {
+            updateRowByCalculationSource(row, true);
+        });
+        calculateTotal();
 
         if (orcamentoPrevisto > 0) {
             let total = 0;
