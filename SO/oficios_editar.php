@@ -124,6 +124,29 @@ $stmt_aquisicao->execute([$id]);
 $aquisicoes_vinculadas = $stmt_aquisicao->fetchAll(PDO::FETCH_ASSOC);
 $total_aquisicoes_vinculadas = count($aquisicoes_vinculadas);
 
+$aquisicoes_by_id = [];
+foreach ($aquisicoes_vinculadas as $aquisicao_vinculada) {
+    $aquisicoes_by_id[(int)$aquisicao_vinculada['id']] = $aquisicao_vinculada;
+}
+
+$itens_por_aquisicao = [];
+if ($total_aquisicoes_vinculadas > 0) {
+    $stmt_itens_aquisicao = $pdo->prepare("
+        SELECT ia.aquisicao_id, ia.oficio_item_id
+        FROM itens_aquisicao ia
+        JOIN aquisicoes a ON a.id = ia.aquisicao_id
+        WHERE a.oficio_id = ?
+          AND ia.oficio_item_id IS NOT NULL
+        ORDER BY ia.id ASC
+    ");
+    $stmt_itens_aquisicao->execute([$id]);
+
+    foreach ($stmt_itens_aquisicao->fetchAll(PDO::FETCH_ASSOC) as $item_aquisicao) {
+        $aquisicao_id = (int)$item_aquisicao['aquisicao_id'];
+        $itens_por_aquisicao[$aquisicao_id][] = 'item-' . (int)$item_aquisicao['oficio_item_id'];
+    }
+}
+
 $stmt_items = $pdo->prepare("SELECT * FROM itens_oficio WHERE oficio_id = ? ORDER BY id ASC");
 $stmt_items->execute([$id]);
 $items_existentes = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
@@ -143,9 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $valor_orcamento = parse_oficio_money($_POST['valor_orcamento'] ?? '');
         $produtos = $_POST['produtos'] ?? [];
         $status_oficio = trim((string)($_POST['status_oficio'] ?? ($oficio['status'] ?? 'PENDENTE_ITENS')));
-        $aquisicoes_datas = $_POST['aquisicoes_datas'] ?? [];
-        $aquisicoes_fornecedores = $_POST['aquisicoes_fornecedores'] ?? [];
-        $aquisicoes_status = $_POST['aquisicoes_status'] ?? [];
+        $empresas = $_POST['empresas'] ?? [];
 
         if ($numero_manual === '') {
             throw new Exception("O número do ofício é obrigatório.");
@@ -165,44 +186,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Selecione um status válido para o ofício.");
         }
 
-        $aquisicoes_datas_sanitizadas = [];
-        $aquisicoes_fornecedores_sanitizados = [];
-        $aquisicoes_status_sanitizados = [];
-        foreach ($aquisicoes_vinculadas as $aq) {
-            $aq_id = (int)$aq['id'];
-
-            if (!array_key_exists($aq_id, $aquisicoes_datas)) {
-                $aquisicoes_datas[$aq_id] = format_datetime_local_input($aq['criado_em'] ?? '');
-            }
-
-            $aquisicoes_datas_sanitizadas[$aq_id] = parse_datetime_local_required(
-                $aquisicoes_datas[$aq_id],
-                "a data da aquisição {$aq['numero_aq']}"
-            );
-
-            if (!array_key_exists($aq_id, $aquisicoes_fornecedores)) {
-                $aquisicoes_fornecedores[$aq_id] = (int)($aq['fornecedor_id'] ?? 0);
-            }
-
-            $fornecedor_id_aquisicao = (int)$aquisicoes_fornecedores[$aq_id];
-            if ($fornecedor_id_aquisicao <= 0 || !in_array($fornecedor_id_aquisicao, $fornecedores_validos, true)) {
-                throw new Exception("Selecione um fornecedor válido para a aquisição {$aq['numero_aq']}.");
-            }
-
-            $aquisicoes_fornecedores_sanitizados[$aq_id] = $fornecedor_id_aquisicao;
-
-            if (!array_key_exists($aq_id, $aquisicoes_status)) {
-                $aquisicoes_status[$aq_id] = $aq['status'] ?? 'AGUARDANDO ENTREGA';
-            }
-
-            $status_aquisicao = trim((string)$aquisicoes_status[$aq_id]);
-            if (!array_key_exists($status_aquisicao, $aquisicao_status_options)) {
-                throw new Exception("Selecione um status válido para a aquisição {$aq['numero_aq']}.");
-            }
-
-            $aquisicoes_status_sanitizados[$aq_id] = $status_aquisicao;
-        }
-
         $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ? AND id <> ?");
         $stmt_check->execute([$numero_manual, $id]);
         if ($stmt_check->fetch()) {
@@ -212,8 +195,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $itens_sanitizados = [];
         $total_calculado = 0;
 
+        $itens_sanitizados_by_key = [];
         foreach ($produtos as $idx => $p) {
             $item_id_original = (int)($p['id'] ?? 0);
+            $item_key = trim((string)($p['key'] ?? ''));
             $nome = trim((string)($p['nome'] ?? ''));
 
             if ($nome === '') {
@@ -222,6 +207,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($item_id_original > 0 && !isset($items_existentes_by_id[$item_id_original])) {
                 throw new Exception("Um dos itens enviados não pertence a esta solicitação.");
+            }
+
+            if (!preg_match('/^(item-\d+|new-[a-zA-Z0-9_-]+)$/', $item_key) || isset($itens_sanitizados_by_key[$item_key])) {
+                throw new Exception("A identificação de um dos itens é inválida. Recarregue a página e tente novamente.");
             }
 
             $qtd = (float)str_replace(',', '.', (string)($p['qtd'] ?? 0));
@@ -239,13 +228,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $total_calculado += ($qtd * $valor_unitario);
 
-            $itens_sanitizados[] = [
+            $item_sanitizado = [
+                'key' => $item_key,
                 'id_original' => $item_id_original,
                 'produto' => $nome,
                 'quantidade' => $qtd,
                 'unidade' => $unidade,
                 'valor_unitario' => $valor_unitario,
             ];
+            $itens_sanitizados[] = $item_sanitizado;
+            $itens_sanitizados_by_key[$item_key] = $item_sanitizado;
         }
 
         if (empty($itens_sanitizados)) {
@@ -256,11 +248,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("O valor total dos itens deve ser exatamente igual ao orçamento previsto de R$ " . number_format($valor_orcamento, 2, ',', '.'));
         }
 
-        if ($total_aquisicoes_vinculadas > 1) {
-            foreach ($itens_sanitizados as $item) {
-                if ((int)$item['id_original'] <= 0) {
-                    throw new Exception("Este ofício possui múltiplas aquisições. Para adicionar item novo, ajuste a aquisição específica para definir qual fornecedor irá atendê-lo.");
+        $empresas_sanitizadas = [];
+        if ($total_aquisicoes_vinculadas > 0) {
+            if (count($empresas) < $total_aquisicoes_vinculadas) {
+                throw new Exception("As aquisições existentes não podem ser removidas nesta edição.");
+            }
+
+            if (count($empresas) > count($fornecedores)) {
+                throw new Exception("A quantidade de empresas não pode ser maior que a quantidade de fornecedores cadastrados.");
+            }
+
+            $aquisicoes_informadas = [];
+            $fornecedores_usados = [];
+            $itens_atribuidos = [];
+
+            foreach (array_values($empresas) as $empresa_idx => $empresa) {
+                $aquisicao_id = (int)($empresa['aquisicao_id'] ?? 0);
+                $fornecedor_id = (int)($empresa['fornecedor_id'] ?? 0);
+                $status_aquisicao = trim((string)($empresa['status'] ?? 'AGUARDANDO ENTREGA'));
+                $numero_referencia = $aquisicao_id > 0 && isset($aquisicoes_by_id[$aquisicao_id])
+                    ? $aquisicoes_by_id[$aquisicao_id]['numero_aq']
+                    : 'nova aquisição ' . ($empresa_idx + 1);
+
+                if ($aquisicao_id > 0) {
+                    if (!isset($aquisicoes_by_id[$aquisicao_id]) || isset($aquisicoes_informadas[$aquisicao_id])) {
+                        throw new Exception("Uma das aquisições informadas é inválida.");
+                    }
+                    $aquisicoes_informadas[$aquisicao_id] = true;
                 }
+
+                if ($fornecedor_id <= 0 || !in_array($fornecedor_id, $fornecedores_validos, true)) {
+                    throw new Exception("Selecione um fornecedor válido para {$numero_referencia}.");
+                }
+                if (isset($fornecedores_usados[$fornecedor_id])) {
+                    throw new Exception("O mesmo fornecedor não pode ser usado em mais de uma aquisição.");
+                }
+                $fornecedores_usados[$fornecedor_id] = true;
+
+                if (!array_key_exists($status_aquisicao, $aquisicao_status_options)) {
+                    throw new Exception("Selecione um status válido para {$numero_referencia}.");
+                }
+
+                $data_aquisicao = parse_datetime_local_required(
+                    $empresa['criado_em'] ?? '',
+                    "a data de {$numero_referencia}"
+                );
+
+                $item_keys = array_values(array_unique(array_map('strval', $empresa['itens'] ?? [])));
+                if (empty($item_keys)) {
+                    throw new Exception("Selecione pelo menos um item para {$numero_referencia}.");
+                }
+
+                $itens_empresa = [];
+                $valor_total_empresa = 0;
+                foreach ($item_keys as $item_key) {
+                    if (!isset($itens_sanitizados_by_key[$item_key])) {
+                        throw new Exception("Um item inválido foi atribuído a {$numero_referencia}.");
+                    }
+                    if (isset($itens_atribuidos[$item_key])) {
+                        throw new Exception("O item '{$itens_sanitizados_by_key[$item_key]['produto']}' foi atribuído a mais de um fornecedor.");
+                    }
+
+                    $itens_atribuidos[$item_key] = true;
+                    $item_empresa = $itens_sanitizados_by_key[$item_key];
+                    $valor_total_empresa += $item_empresa['quantidade'] * $item_empresa['valor_unitario'];
+                    $itens_empresa[] = $item_empresa;
+                }
+
+                $empresas_sanitizadas[] = [
+                    'aquisicao_id' => $aquisicao_id,
+                    'fornecedor_id' => $fornecedor_id,
+                    'criado_em' => $data_aquisicao,
+                    'status' => $status_aquisicao,
+                    'itens' => $itens_empresa,
+                    'valor_total' => $valor_total_empresa,
+                ];
+            }
+
+            if (count($aquisicoes_informadas) !== $total_aquisicoes_vinculadas) {
+                throw new Exception("Todas as aquisições existentes devem permanecer na distribuição.");
+            }
+
+            if (count($itens_atribuidos) !== count($itens_sanitizados_by_key)) {
+                $pendentes = [];
+                foreach ($itens_sanitizados_by_key as $item_key => $item) {
+                    if (!isset($itens_atribuidos[$item_key])) {
+                        $pendentes[] = $item['produto'];
+                    }
+                }
+                throw new Exception("Distribua todos os itens entre os fornecedores. Pendentes: " . implode(', ', $pendentes) . ".");
             }
         }
 
@@ -282,39 +358,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id
         ]);
 
-        if (!empty($aquisicoes_datas_sanitizadas) || !empty($aquisicoes_fornecedores_sanitizados) || !empty($aquisicoes_status_sanitizados)) {
-            $stmt_update_aquisicao_dados = $pdo->prepare("
-                UPDATE aquisicoes
-                SET
-                    criado_em = ?,
-                    fornecedor_id = ?,
-                    status = ?,
-                    data_finalizacao = CASE
-                        WHEN ? = 'FINALIZADO' THEN COALESCE(data_finalizacao, CURRENT_TIMESTAMP)
-                        ELSE NULL
-                    END,
-                    usuario_id_finalizou = CASE
-                        WHEN ? = 'FINALIZADO' THEN COALESCE(usuario_id_finalizou, ?)
-                        ELSE NULL
-                    END
-                WHERE id = ? AND oficio_id = ?
-            ");
-
-            foreach ($aquisicoes_datas_sanitizadas as $aquisicao_id => $data_aquisicao) {
-                $status_aquisicao = $aquisicoes_status_sanitizados[$aquisicao_id] ?? 'AGUARDANDO ENTREGA';
-                $stmt_update_aquisicao_dados->execute([
-                    $data_aquisicao,
-                    (int)$aquisicoes_fornecedores_sanitizados[$aquisicao_id],
-                    $status_aquisicao,
-                    $status_aquisicao,
-                    $status_aquisicao,
-                    oficio_edit_current_user_id(),
-                    (int)$aquisicao_id,
-                    $id,
-                ]);
-            }
-        }
-
         $pdo->prepare("DELETE FROM itens_oficio WHERE oficio_id = ?")->execute([$id]);
 
         $stmt_item = $pdo->prepare("
@@ -322,7 +365,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             VALUES (?, ?, ?, ?, ?)
         ");
 
-        $item_id_map = [];
         $itens_reinseridos = [];
 
         foreach ($itens_sanitizados as $item) {
@@ -338,92 +380,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $item['id_novo'] = $novo_item_id;
             $itens_reinseridos[] = $item;
 
-            if ((int)$item['id_original'] > 0) {
-                $item_id_map[(int)$item['id_original']] = $novo_item_id;
-            }
         }
 
-        if ($total_aquisicoes_vinculadas === 1) {
-            $aquisicao_id = (int)$aquisicoes_vinculadas[0]['id'];
+        if ($total_aquisicoes_vinculadas > 0) {
+            $itens_reinseridos_by_key = [];
+            foreach ($itens_reinseridos as $item_reinserido) {
+                $itens_reinseridos_by_key[$item_reinserido['key']] = $item_reinserido;
+            }
 
-            $pdo->prepare("DELETE FROM itens_aquisicao WHERE aquisicao_id = ?")->execute([$aquisicao_id]);
-
-            $stmt_item_aquisicao = $pdo->prepare("
+            $stmt_update_aquisicao = $pdo->prepare("
+                UPDATE aquisicoes
+                SET criado_em = ?, fornecedor_id = ?, valor_total = ?, status = ?,
+                    data_finalizacao = CASE
+                        WHEN ? = 'FINALIZADO' THEN COALESCE(data_finalizacao, CURRENT_TIMESTAMP)
+                        ELSE NULL
+                    END,
+                    usuario_id_finalizou = CASE
+                        WHEN ? = 'FINALIZADO' THEN COALESCE(usuario_id_finalizou, ?)
+                        ELSE NULL
+                    END
+                WHERE id = ? AND oficio_id = ?
+            ");
+            $stmt_insert_aquisicao = $pdo->prepare("
+                INSERT INTO aquisicoes (
+                    numero_aq, codigo_entrega, oficio_id, fornecedor_id, valor_total,
+                    status, criado_em, data_finalizacao, usuario_id_finalizou
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt_delete_itens_aquisicao = $pdo->prepare("DELETE FROM itens_aquisicao WHERE aquisicao_id = ?");
+            $stmt_insert_item_aquisicao = $pdo->prepare("
                 INSERT INTO itens_aquisicao (aquisicao_id, oficio_item_id, produto, quantidade, valor_unitario)
                 VALUES (?, ?, ?, ?, ?)
             ");
 
-            foreach ($itens_reinseridos as $item) {
-                $stmt_item_aquisicao->execute([
-                    $aquisicao_id,
-                    (int)$item['id_novo'],
-                    $item['produto'],
-                    $item['quantidade'],
-                    $item['valor_unitario'],
-                ]);
-            }
+            $novas_aquisicoes = 0;
+            foreach ($empresas_sanitizadas as $empresa) {
+                $aquisicao_id = (int)$empresa['aquisicao_id'];
+                $status_aquisicao = $empresa['status'];
+                $usuario_finalizou = $status_aquisicao === 'FINALIZADO' ? oficio_edit_current_user_id() : null;
+                $data_finalizacao = $status_aquisicao === 'FINALIZADO' ? date('Y-m-d H:i:s') : null;
 
-            $pdo->prepare("UPDATE aquisicoes SET valor_total = ? WHERE id = ?")
-                ->execute([$total_calculado, $aquisicao_id]);
-        } elseif ($total_aquisicoes_vinculadas > 1) {
-            $stmt_aq_items = $pdo->prepare("
-                SELECT ia.*
-                FROM itens_aquisicao ia
-                JOIN aquisicoes a ON a.id = ia.aquisicao_id
-                WHERE a.oficio_id = ?
-                ORDER BY ia.id ASC
-            ");
-            $stmt_aq_items->execute([$id]);
-            $itens_aquisicao = $stmt_aq_items->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach ($itens_aquisicao as $item_aq) {
-                if (empty($item_aq['oficio_item_id'])) {
-                    throw new Exception("As aquisições deste ofício não possuem vínculo técnico com os itens originais. Edite cada aquisição individualmente para evitar inconsistência entre fornecedores.");
-                }
-            }
-
-            $itens_por_original = [];
-            foreach ($itens_reinseridos as $item) {
-                $itens_por_original[(int)$item['id_original']] = $item;
-            }
-
-            $stmt_update_item_aq = $pdo->prepare("
-                UPDATE itens_aquisicao
-                SET oficio_item_id = ?, produto = ?, quantidade = ?, valor_unitario = ?
-                WHERE id = ?
-            ");
-            $stmt_delete_item_aq = $pdo->prepare("DELETE FROM itens_aquisicao WHERE id = ?");
-
-            foreach ($itens_aquisicao as $item_aq) {
-                $old_item_id = (int)$item_aq['oficio_item_id'];
-
-                if (!isset($itens_por_original[$old_item_id], $item_id_map[$old_item_id])) {
-                    $stmt_delete_item_aq->execute([(int)$item_aq['id']]);
-                    continue;
+                if ($aquisicao_id > 0) {
+                    $stmt_update_aquisicao->execute([
+                        $empresa['criado_em'],
+                        $empresa['fornecedor_id'],
+                        $empresa['valor_total'],
+                        $status_aquisicao,
+                        $status_aquisicao,
+                        $status_aquisicao,
+                        oficio_edit_current_user_id(),
+                        $aquisicao_id,
+                        $id,
+                    ]);
+                    $stmt_delete_itens_aquisicao->execute([$aquisicao_id]);
+                } else {
+                    $stmt_insert_aquisicao->execute([
+                        generate_aquisicao_number($pdo),
+                        generate_unique_code($pdo),
+                        $id,
+                        $empresa['fornecedor_id'],
+                        $empresa['valor_total'],
+                        $status_aquisicao,
+                        $empresa['criado_em'],
+                        $data_finalizacao,
+                        $usuario_finalizou,
+                    ]);
+                    $aquisicao_id = (int)$pdo->lastInsertId();
+                    $novas_aquisicoes++;
                 }
 
-                $item = $itens_por_original[$old_item_id];
-                $stmt_update_item_aq->execute([
-                    (int)$item_id_map[$old_item_id],
-                    $item['produto'],
-                    $item['quantidade'],
-                    $item['valor_unitario'],
-                    (int)$item_aq['id'],
-                ]);
-            }
-
-            $stmt_recalc_aq = $pdo->prepare("
-                UPDATE aquisicoes
-                SET valor_total = (
-                    SELECT COALESCE(SUM(quantidade * valor_unitario), 0)
-                    FROM itens_aquisicao
-                    WHERE aquisicao_id = ?
-                )
-                WHERE id = ?
-            ");
-
-            foreach ($aquisicoes_vinculadas as $aq) {
-                $stmt_recalc_aq->execute([(int)$aq['id'], (int)$aq['id']]);
+                foreach ($empresa['itens'] as $item_empresa) {
+                    $item_reinserido = $itens_reinseridos_by_key[$item_empresa['key']];
+                    $stmt_insert_item_aquisicao->execute([
+                        $aquisicao_id,
+                        (int)$item_reinserido['id_novo'],
+                        $item_reinserido['produto'],
+                        $item_reinserido['quantidade'],
+                        $item_reinserido['valor_unitario'],
+                    ]);
+                }
             }
         }
 
@@ -431,10 +466,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
 
         $msg = "Solicitação {$numero_manual} atualizada com sucesso.";
-        if ($total_aquisicoes_vinculadas === 1) {
-            $msg .= " A aquisição " . $aquisicoes_vinculadas[0]['numero_aq'] . " também foi sincronizada.";
-        } elseif ($total_aquisicoes_vinculadas > 1) {
-            $msg .= " As aquisições vinculadas também foram sincronizadas.";
+        if ($total_aquisicoes_vinculadas > 0) {
+            $msg .= " As aquisições e a distribuição por fornecedor também foram sincronizadas.";
+            if (!empty($novas_aquisicoes)) {
+                $msg .= " {$novas_aquisicoes} nova(s) aquisição(ões) criada(s).";
+            }
         }
 
         flash_message('success', $msg);
@@ -469,6 +505,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach (($_POST['produtos'] ?? []) as $p) {
         $items_form[] = [
             'id' => (int)($p['id'] ?? 0),
+            'key' => (string)($p['key'] ?? ''),
             'produto' => $p['nome'] ?? '',
             'quantidade_input' => $p['qtd'] ?? '1',
             'unidade' => $p['unidade'] ?? 'UN',
@@ -478,7 +515,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else {
     $items_form = !empty($items_existentes)
         ? $items_existentes
-        : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]];
+        : [['id' => 0, 'key' => 'new-initial-0', 'produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]];
 }
 
 $numero_value = $_SERVER['REQUEST_METHOD'] === 'POST'
@@ -519,23 +556,41 @@ if ($criado_em_timestamp !== false) {
     $criado_em_label = date('d/m/Y H:i', $criado_em_timestamp);
 }
 
-$aquisicoes_datas_values = [];
-$aquisicoes_fornecedores_values = [];
-$aquisicoes_status_values = [];
-foreach ($aquisicoes_vinculadas as $aq) {
-    $aq_id = (int)$aq['id'];
-    $aquisicoes_datas_values[$aq_id] = $_SERVER['REQUEST_METHOD'] === 'POST'
-        ? ($_POST['aquisicoes_datas'][$aq_id] ?? format_datetime_local_input($aq['criado_em'] ?? ''))
-        : format_datetime_local_input($aq['criado_em'] ?? '');
+$empresas_form = [];
+if ($total_aquisicoes_vinculadas > 0) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $empresas_form = array_values($_POST['empresas'] ?? []);
+    } else {
+        $itens_atribuidos_iniciais = [];
+        foreach ($aquisicoes_vinculadas as $aq) {
+            $aq_id = (int)$aq['id'];
+            $item_keys = array_values(array_unique($itens_por_aquisicao[$aq_id] ?? []));
+            foreach ($item_keys as $item_key) {
+                $itens_atribuidos_iniciais[$item_key] = true;
+            }
 
-    $aquisicoes_fornecedores_values[$aq_id] = $_SERVER['REQUEST_METHOD'] === 'POST'
-        ? (int)($_POST['aquisicoes_fornecedores'][$aq_id] ?? ($aq['fornecedor_id'] ?? 0))
-        : (int)($aq['fornecedor_id'] ?? 0);
+            $empresas_form[] = [
+                'aquisicao_id' => $aq_id,
+                'numero_aq' => $aq['numero_aq'],
+                'fornecedor_id' => (int)($aq['fornecedor_id'] ?? 0),
+                'criado_em' => format_datetime_local_input($aq['criado_em'] ?? ''),
+                'status' => $aq['status'] ?? 'AGUARDANDO ENTREGA',
+                'itens' => $item_keys,
+            ];
+        }
 
-    $aquisicoes_status_values[$aq_id] = $_SERVER['REQUEST_METHOD'] === 'POST'
-        ? ($_POST['aquisicoes_status'][$aq_id] ?? ($aq['status'] ?? 'AGUARDANDO ENTREGA'))
-        : ($aq['status'] ?? 'AGUARDANDO ENTREGA');
+        if (!empty($empresas_form)) {
+            foreach ($items_existentes as $item_existente) {
+                $item_key = 'item-' . (int)$item_existente['id'];
+                if (!isset($itens_atribuidos_iniciais[$item_key])) {
+                    $empresas_form[0]['itens'][] = $item_key;
+                }
+            }
+        }
+    }
 }
+
+$qtd_empresas_form = max($total_aquisicoes_vinculadas, count($empresas_form));
 
 $orcamento_value = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? ($_POST['valor_orcamento'] ?? '')
@@ -657,6 +712,111 @@ include 'views/layout/header.php';
         white-space: nowrap;
     }
 
+    .distribuicao-status {
+        margin-bottom: 1rem;
+        padding: .75rem 1rem;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        background: #eff6ff;
+        color: #1e40af;
+        font-size: .88rem;
+        font-weight: 800;
+    }
+
+    #empresas-container {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .empresa-card {
+        overflow: hidden;
+        border: 1px solid #dbe2ea;
+        border-radius: 14px;
+        background: #fff;
+    }
+
+    .empresa-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .9rem 1rem;
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .empresa-card-title {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        margin: 0;
+        color: #0f172a;
+        font-size: .95rem;
+    }
+
+    .empresa-card-title small {
+        color: #64748b;
+        font-size: .75rem;
+        font-weight: 700;
+    }
+
+    .empresa-total {
+        color: #166534;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .empresa-fields {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr .8fr;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .empresa-items {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .65rem;
+        padding: 0 1rem 1rem;
+    }
+
+    .item-choice {
+        display: flex;
+        align-items: flex-start;
+        gap: .65rem;
+        padding: .75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .item-choice.is-disabled {
+        opacity: .5;
+        cursor: not-allowed;
+    }
+
+    .item-choice span {
+        min-width: 0;
+    }
+
+    .item-choice-name,
+    .item-choice-meta {
+        display: block;
+    }
+
+    .item-choice-name {
+        color: #0f172a;
+        overflow-wrap: anywhere;
+    }
+
+    .item-choice-meta {
+        margin-top: .2rem;
+        color: #64748b;
+        font-size: .76rem;
+        font-weight: 700;
+    }
+
     .item-row {
         display: grid;
         grid-template-columns: 80px 2fr 1fr 1fr 1fr 1.2fr auto;
@@ -736,6 +896,11 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr;
         }
 
+        .empresa-fields,
+        .empresa-items {
+            grid-template-columns: 1fr;
+        }
+
         .budget-info {
             align-items: flex-start;
             flex-direction: column;
@@ -765,13 +930,13 @@ include 'views/layout/header.php';
             <div class="alert alert-warning">
                 Esta solicitação já possui a aquisição
                 <strong><?php echo htmlspecialchars($aquisicoes_vinculadas[0]['numero_aq'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                gerada. Ao salvar, dados da aquisição, itens e valor total serão atualizados junto com o ofício.
+                gerada. Você pode aumentar a quantidade de empresas e distribuir os itens entre fornecedores diferentes.
             </div>
         <?php elseif ($total_aquisicoes_vinculadas > 1): ?>
             <div class="alert alert-warning">
                 Esta solicitação já possui
                 <strong><?php echo (int)$total_aquisicoes_vinculadas; ?> aquisições</strong>
-                geradas. Ao salvar, fornecedor/data e itens já vinculados serão atualizados nas respectivas aquisições. Itens novos devem ser incluídos na aquisição específica do fornecedor.
+                geradas. Você pode redistribuir os itens e acrescentar novos fornecedores sem excluir as aquisições existentes.
             </div>
         <?php endif; ?>
 
@@ -866,70 +1031,106 @@ include 'views/layout/header.php';
                 <div class="aquisicoes-date-panel">
                     <div class="aquisicoes-section-head">
                         <h4 class="aquisicoes-date-title">
-                            <i class="fas fa-shopping-bag"></i> Aquisições Vinculadas
+                            <i class="fas fa-building"></i> Distribuição por Fornecedor
                         </h4>
-                        <span class="aquisicoes-count">
-                            <?php echo (int)$total_aquisicoes_vinculadas; ?> aquisição(ões)
-                        </span>
+                        <div class="form-group" style="margin:0; min-width:240px;">
+                            <label class="form-label" for="qtd-empresas">Quantidade de empresas participantes</label>
+                            <input
+                                type="number"
+                                id="qtd-empresas"
+                                class="form-control"
+                                min="<?php echo (int)$total_aquisicoes_vinculadas; ?>"
+                                max="<?php echo count($fornecedores); ?>"
+                                value="<?php echo (int)$qtd_empresas_form; ?>"
+                                required>
+                        </div>
                     </div>
 
-                    <div class="aquisicoes-date-grid">
-                        <?php foreach ($aquisicoes_vinculadas as $aq): ?>
-                            <?php $aq_id = (int)$aq['id']; ?>
-                            <div class="aquisicao-date-card">
-                                <div class="form-group" style="margin:0;">
-                                    <label class="form-label">Nº Aquisição</label>
-                                    <input
-                                        type="text"
-                                        class="form-control aquisicao-readonly"
-                                        value="<?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?>"
-                                        readonly>
+                    <div id="distribuicao-status" class="distribuicao-status" aria-live="polite"></div>
+
+                    <div id="empresas-container">
+                        <?php foreach ($empresas_form as $empresa_idx => $empresa): ?>
+                            <?php
+                            $empresa_aquisicao_id = (int)($empresa['aquisicao_id'] ?? 0);
+                            $empresa_numero = $empresa_aquisicao_id > 0 && isset($aquisicoes_by_id[$empresa_aquisicao_id])
+                                ? $aquisicoes_by_id[$empresa_aquisicao_id]['numero_aq']
+                                : 'Nova aquisição';
+                            $empresa_itens = array_map('strval', $empresa['itens'] ?? []);
+                            ?>
+                            <div
+                                class="empresa-card"
+                                data-company-index="<?php echo (int)$empresa_idx; ?>"
+                                data-acquisition-number="<?php echo htmlspecialchars($empresa_numero, ENT_QUOTES, 'UTF-8'); ?>">
+                                <input type="hidden" name="empresas[<?php echo (int)$empresa_idx; ?>][aquisicao_id]" value="<?php echo $empresa_aquisicao_id; ?>">
+
+                                <div class="empresa-card-header">
+                                    <h5 class="empresa-card-title">
+                                        <i class="fas fa-building"></i>
+                                        Empresa <?php echo (int)$empresa_idx + 1; ?>
+                                        <small><?php echo htmlspecialchars($empresa_numero, ENT_QUOTES, 'UTF-8'); ?></small>
+                                    </h5>
+                                    <span class="empresa-total">Total: R$ 0,00</span>
                                 </div>
 
-                                <div class="form-group" style="margin:0;">
-                                    <label class="form-label">Fornecedor</label>
-                                    <select
-                                        name="aquisicoes_fornecedores[<?php echo $aq_id; ?>]"
-                                        class="form-control"
-                                        required>
-                                        <option value="">Selecione o fornecedor</option>
-                                        <?php foreach ($fornecedores as $fornecedor): ?>
-                                            <option
-                                                value="<?php echo (int)$fornecedor['id']; ?>"
-                                                <?php echo (int)($aquisicoes_fornecedores_values[$aq_id] ?? 0) === (int)$fornecedor['id'] ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
-                                                <?php if (!empty($fornecedor['cnpj'])): ?>
-                                                    (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
-                                                <?php endif; ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                <div class="empresa-fields">
+                                    <div class="form-group" style="margin:0;">
+                                        <label class="form-label">Fornecedor</label>
+                                        <select name="empresas[<?php echo (int)$empresa_idx; ?>][fornecedor_id]" class="form-control fornecedor-select" required>
+                                            <option value="">Selecione o fornecedor...</option>
+                                            <?php foreach ($fornecedores as $fornecedor): ?>
+                                                <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo (int)($empresa['fornecedor_id'] ?? 0) === (int)$fornecedor['id'] ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                                                    <?php if (!empty($fornecedor['cnpj'])): ?>(<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)<?php endif; ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group" style="margin:0;">
+                                        <label class="form-label">Data da Aquisição</label>
+                                        <input type="datetime-local" name="empresas[<?php echo (int)$empresa_idx; ?>][criado_em]" class="form-control" value="<?php echo htmlspecialchars($empresa['criado_em'] ?? $criado_em_value, ENT_QUOTES, 'UTF-8'); ?>" required>
+                                    </div>
+
+                                    <div class="form-group" style="margin:0;">
+                                        <label class="form-label">Status</label>
+                                        <select name="empresas[<?php echo (int)$empresa_idx; ?>][status]" class="form-control" required>
+                                            <?php foreach ($aquisicao_status_options as $status_value => $status_label): ?>
+                                                <option value="<?php echo htmlspecialchars($status_value, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($empresa['status'] ?? 'AGUARDANDO ENTREGA') === $status_value ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($status_label, ENT_QUOTES, 'UTF-8'); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
                                 </div>
 
-                                <div class="form-group" style="margin:0;">
-                                    <label class="form-label">Data da Aquisição</label>
-                                    <input
-                                        type="datetime-local"
-                                        name="aquisicoes_datas[<?php echo $aq_id; ?>]"
-                                        class="form-control"
-                                        value="<?php echo htmlspecialchars($aquisicoes_datas_values[$aq_id] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
-                                        required>
-                                </div>
-
-                                <div class="form-group" style="margin:0;">
-                                    <label class="form-label">Status</label>
-                                    <select
-                                        name="aquisicoes_status[<?php echo $aq_id; ?>]"
-                                        class="form-control"
-                                        required>
-                                        <?php foreach ($aquisicao_status_options as $status_value => $status_label): ?>
-                                            <option
-                                                value="<?php echo htmlspecialchars($status_value, ENT_QUOTES, 'UTF-8'); ?>"
-                                                <?php echo ($aquisicoes_status_values[$aq_id] ?? '') === $status_value ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($status_label, ENT_QUOTES, 'UTF-8'); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                <div class="empresa-items">
+                                    <?php foreach ($items_form as $item_form_idx => $item_form): ?>
+                                        <?php
+                                        $item_form_id = (int)($item_form['id'] ?? 0);
+                                        $item_form_key = (string)($item_form['key'] ?? ($item_form_id > 0 ? 'item-' . $item_form_id : 'new-initial-' . $item_form_idx));
+                                        $item_form_qtd = (float)str_replace(',', '.', (string)($item_form['quantidade_input'] ?? ($item_form['quantidade'] ?? 1)));
+                                        try {
+                                            $item_form_valor = parse_oficio_money($item_form['valor_input'] ?? ($item_form['valor_unitario'] ?? 0)) ?? 0;
+                                        } catch (Exception $e) {
+                                            $item_form_valor = 0;
+                                        }
+                                        $item_form_total = $item_form_qtd * $item_form_valor;
+                                        ?>
+                                        <label class="item-choice" data-item-key="<?php echo htmlspecialchars($item_form_key, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input
+                                                type="checkbox"
+                                                class="item-check"
+                                                name="empresas[<?php echo (int)$empresa_idx; ?>][itens][]"
+                                                value="<?php echo htmlspecialchars($item_form_key, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-item-key="<?php echo htmlspecialchars($item_form_key, ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-total="<?php echo htmlspecialchars((string)$item_form_total, ENT_QUOTES, 'UTF-8'); ?>"
+                                                <?php echo in_array($item_form_key, $empresa_itens, true) ? 'checked' : ''; ?>>
+                                            <span>
+                                                <strong class="item-choice-name"><?php echo htmlspecialchars($item_form['produto'] ?? 'Item sem nome', ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                <small class="item-choice-meta">Subtotal <?php echo format_money($item_form_total); ?></small>
+                                            </span>
+                                        </label>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -1019,9 +1220,12 @@ include 'views/layout/header.php';
                         $valor_unit_item = 0;
                     }
                     $valor_total_item = $qtd_item * $valor_unit_item;
+                    $item_id_form = (int)($it['id'] ?? 0);
+                    $item_key_form = (string)($it['key'] ?? ($item_id_form > 0 ? 'item-' . $item_id_form : 'new-initial-' . $idx));
                     ?>
-                    <div class="item-row">
-                        <input type="hidden" name="produtos[<?php echo $idx; ?>][id]" value="<?php echo (int)($it['id'] ?? 0); ?>">
+                    <div class="item-row" data-item-key="<?php echo htmlspecialchars($item_key_form, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="produtos[<?php echo $idx; ?>][id]" value="<?php echo $item_id_form; ?>">
+                        <input type="hidden" name="produtos[<?php echo $idx; ?>][key]" value="<?php echo htmlspecialchars($item_key_form, ENT_QUOTES, 'UTF-8'); ?>">
 
                         <div class="form-group" style="margin:0;">
                             <label class="form-label">Nº</label>
@@ -1033,7 +1237,7 @@ include 'views/layout/header.php';
                             <input
                                 type="text"
                                 name="produtos[<?php echo $idx; ?>][nome]"
-                                class="form-control"
+                                class="form-control item-name"
                                 required
                                 placeholder="Ex: Papel A4"
                                 value="<?php echo htmlspecialchars($it['produto'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
@@ -1118,6 +1322,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const budgetInput = document.getElementById('valor-orcamento');
     const addButton = document.getElementById('add-item');
     const form = document.getElementById('items-form');
+    const empresasContainer = document.getElementById('empresas-container');
+    const empresasCountInput = document.getElementById('qtd-empresas');
+    const distribuicaoStatus = document.getElementById('distribuicao-status');
+    const fornecedores = <?php echo json_encode($fornecedores, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+    const aquisicaoStatusOptions = <?php echo json_encode($aquisicao_status_options, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+    const minEmpresas = <?php echo (int)$total_aquisicoes_vinculadas; ?>;
+    let newItemSequence = Date.now();
 
     function parseValorBR(valor) {
         if (!valor) return 0;
@@ -1133,6 +1344,178 @@ document.addEventListener('DOMContentLoaded', function() {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function getItemsState() {
+        return Array.from(container.querySelectorAll('.item-row')).map((row, index) => {
+            const key = row.dataset.itemKey || `new-${index}`;
+            const quantidade = parseFloat(String(row.querySelector('.item-qtd')?.value || '').replace(',', '.')) || 0;
+            const valorUnitario = parseValorBR(row.querySelector('.item-valor')?.value);
+
+            return {
+                key,
+                nome: row.querySelector('.item-name')?.value.trim() || `Item ${index + 1}`,
+                quantidade,
+                unidade: row.querySelector('input[name$="[unidade]"]')?.value.trim() || 'UN',
+                valorUnitario,
+                total: quantidade * valorUnitario
+            };
+        });
+    }
+
+    function getEmpresasState() {
+        if (!empresasContainer) return [];
+
+        return Array.from(empresasContainer.querySelectorAll('.empresa-card')).map(card => ({
+            aquisicao_id: card.querySelector('input[name$="[aquisicao_id]"]')?.value || '0',
+            numero: card.dataset.acquisitionNumber || 'Nova aquisição',
+            fornecedor_id: card.querySelector('.fornecedor-select')?.value || '',
+            criado_em: card.querySelector('input[type="datetime-local"]')?.value || '',
+            status: card.querySelector('select[name$="[status]"]')?.value || 'AGUARDANDO ENTREGA',
+            itens: Array.from(card.querySelectorAll('.item-check:checked')).map(input => input.dataset.itemKey)
+        }));
+    }
+
+    function buildFornecedorOptions(selectedId) {
+        let options = '<option value="">Selecione o fornecedor...</option>';
+        fornecedores.forEach(fornecedor => {
+            const selected = String(fornecedor.id) === String(selectedId) ? 'selected' : '';
+            const cnpj = fornecedor.cnpj ? ` (${escapeHtml(fornecedor.cnpj)})` : '';
+            options += `<option value="${fornecedor.id}" ${selected}>${escapeHtml(fornecedor.nome)}${cnpj}</option>`;
+        });
+        return options;
+    }
+
+    function buildStatusOptions(selectedStatus) {
+        return Object.entries(aquisicaoStatusOptions).map(([value, label]) => {
+            const selected = value === selectedStatus ? 'selected' : '';
+            return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)}</option>`;
+        }).join('');
+    }
+
+    function buildItemChoices(companyIndex, selectedKeys) {
+        const selected = new Set((selectedKeys || []).map(String));
+        return getItemsState().map(item => `
+            <label class="item-choice" data-item-key="${escapeHtml(item.key)}">
+                <input
+                    type="checkbox"
+                    class="item-check"
+                    name="empresas[${companyIndex}][itens][]"
+                    value="${escapeHtml(item.key)}"
+                    data-item-key="${escapeHtml(item.key)}"
+                    data-total="${item.total}"
+                    ${selected.has(String(item.key)) ? 'checked' : ''}>
+                <span>
+                    <strong class="item-choice-name">${escapeHtml(item.nome)}</strong>
+                    <small class="item-choice-meta">${item.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${escapeHtml(item.unidade)} | Subtotal ${formatMoneyBR(item.total)}</small>
+                </span>
+            </label>
+        `).join('');
+    }
+
+    function renderEmpresas(nextCount) {
+        if (!empresasContainer || !empresasCountInput) return;
+
+        const previous = getEmpresasState();
+        const maxEmpresas = fornecedores.length;
+        const count = Math.max(minEmpresas, Math.min(maxEmpresas, parseInt(nextCount, 10) || minEmpresas));
+        empresasCountInput.value = count;
+
+        let html = '';
+        for (let index = 0; index < count; index++) {
+            const state = previous[index] || {
+                aquisicao_id: '0',
+                numero: 'Nova aquisição',
+                fornecedor_id: '',
+                criado_em: document.querySelector('input[name="criado_em"]')?.value || '',
+                status: 'AGUARDANDO ENTREGA',
+                itens: []
+            };
+
+            html += `
+                <div class="empresa-card" data-company-index="${index}" data-acquisition-number="${escapeHtml(state.numero)}">
+                    <input type="hidden" name="empresas[${index}][aquisicao_id]" value="${escapeHtml(state.aquisicao_id)}">
+                    <div class="empresa-card-header">
+                        <h5 class="empresa-card-title"><i class="fas fa-building"></i> Empresa ${index + 1} <small>${escapeHtml(state.numero)}</small></h5>
+                        <span class="empresa-total">Total: R$ 0,00</span>
+                    </div>
+                    <div class="empresa-fields">
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Fornecedor</label>
+                            <select name="empresas[${index}][fornecedor_id]" class="form-control fornecedor-select" required>${buildFornecedorOptions(state.fornecedor_id)}</select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Data da Aquisição</label>
+                            <input type="datetime-local" name="empresas[${index}][criado_em]" class="form-control" value="${escapeHtml(state.criado_em)}" required>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Status</label>
+                            <select name="empresas[${index}][status]" class="form-control" required>${buildStatusOptions(state.status)}</select>
+                        </div>
+                    </div>
+                    <div class="empresa-items">${buildItemChoices(index, state.itens)}</div>
+                </div>
+            `;
+        }
+
+        empresasContainer.innerHTML = html;
+        updateDistribution();
+    }
+
+    function syncCompanyItems() {
+        if (!empresasContainer) return;
+
+        getEmpresasState().forEach((state, index) => {
+            const card = empresasContainer.querySelectorAll('.empresa-card')[index];
+            const itemsArea = card?.querySelector('.empresa-items');
+            if (itemsArea) {
+                itemsArea.innerHTML = buildItemChoices(index, state.itens);
+            }
+        });
+        updateDistribution();
+    }
+
+    function updateDistribution() {
+        if (!empresasContainer || !distribuicaoStatus) return;
+
+        const selectedByItem = {};
+        empresasContainer.querySelectorAll('.item-check:checked').forEach(input => {
+            const key = input.dataset.itemKey;
+            selectedByItem[key] = selectedByItem[key] || [];
+            selectedByItem[key].push(input);
+        });
+
+        empresasContainer.querySelectorAll('.item-check').forEach(input => {
+            const selectedElsewhere = selectedByItem[input.dataset.itemKey]?.some(selected => selected !== input);
+            input.disabled = Boolean(selectedElsewhere);
+            input.closest('.item-choice')?.classList.toggle('is-disabled', Boolean(selectedElsewhere));
+        });
+
+        empresasContainer.querySelectorAll('.empresa-card').forEach(card => {
+            let total = 0;
+            card.querySelectorAll('.item-check:checked').forEach(input => {
+                total += Number(input.dataset.total || 0);
+            });
+            const totalElement = card.querySelector('.empresa-total');
+            if (totalElement) totalElement.textContent = 'Total: ' + formatMoneyBR(total);
+        });
+
+        const totalItems = getItemsState().length;
+        const assignedCount = Object.keys(selectedByItem).length;
+        distribuicaoStatus.textContent = `Itens distribuídos: ${assignedCount} de ${totalItems}`;
+        const complete = assignedCount === totalItems;
+        distribuicaoStatus.style.background = complete ? '#ecfdf5' : '#eff6ff';
+        distribuicaoStatus.style.borderColor = complete ? '#bbf7d0' : '#bfdbfe';
+        distribuicaoStatus.style.color = complete ? '#166534' : '#1e40af';
     }
 
     function renumberItems() {
@@ -1194,7 +1577,22 @@ document.addEventListener('DOMContentLoaded', function() {
             e.target.value = e.target.value.replace(/[^\d,.\s]/g, '');
         }
         calculateTotal();
+        syncCompanyItems();
     });
+
+    if (empresasCountInput) {
+        empresasCountInput.addEventListener('change', function() {
+            renderEmpresas(this.value);
+        });
+    }
+
+    if (empresasContainer) {
+        empresasContainer.addEventListener('change', function(e) {
+            if (e.target.classList.contains('item-check') || e.target.classList.contains('fornecedor-select')) {
+                updateDistribution();
+            }
+        });
+    }
 
     if (budgetInput) {
         budgetInput.addEventListener('input', function(e) {
@@ -1206,10 +1604,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (addButton) {
         addButton.addEventListener('click', function() {
             const index = container.querySelectorAll('.item-row').length;
+            const itemKey = `new-${newItemSequence++}`;
             const row = document.createElement('div');
             row.className = 'item-row';
+            row.dataset.itemKey = itemKey;
             row.innerHTML = `
                 <input type="hidden" name="produtos[${index}][id]" value="0">
+                <input type="hidden" name="produtos[${index}][key]" value="${itemKey}">
 
                 <div class="form-group" style="margin:0;">
                     <label class="form-label">Nº</label>
@@ -1218,7 +1619,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 <div class="form-group" style="margin:0;">
                     <label class="form-label">Nome do Item</label>
-                    <input type="text" name="produtos[${index}][nome]" class="form-control" required placeholder="Ex: Papel A4">
+                    <input type="text" name="produtos[${index}][nome]" class="form-control item-name" required placeholder="Ex: Papel A4">
                 </div>
 
                 <div class="form-group" style="margin:0;">
@@ -1251,6 +1652,7 @@ document.addEventListener('DOMContentLoaded', function() {
             container.appendChild(row);
             renumberItems();
             calculateTotal();
+            syncCompanyItems();
         });
     }
 
@@ -1261,12 +1663,49 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.target.closest('.item-row').remove();
                 renumberItems();
                 calculateTotal();
+                syncCompanyItems();
             }
         }
     });
 
     form.addEventListener('submit', function(e) {
         renumberItems();
+
+        if (empresasContainer) {
+            updateDistribution();
+            const suppliers = new Set();
+            const selectedItems = new Set();
+            let distributionError = '';
+
+            empresasContainer.querySelectorAll('.empresa-card').forEach((card, index) => {
+                const supplier = card.querySelector('.fornecedor-select')?.value || '';
+                const checkedItems = card.querySelectorAll('.item-check:checked');
+
+                if (!distributionError && !supplier) {
+                    distributionError = `Selecione o fornecedor da empresa ${index + 1}.`;
+                } else if (!distributionError && suppliers.has(supplier)) {
+                    distributionError = 'O mesmo fornecedor não pode ser usado em mais de uma aquisição.';
+                }
+
+                if (supplier) suppliers.add(supplier);
+
+                if (!distributionError && checkedItems.length === 0) {
+                    distributionError = `Selecione pelo menos um item para a empresa ${index + 1}.`;
+                }
+
+                checkedItems.forEach(input => selectedItems.add(input.dataset.itemKey));
+            });
+
+            if (!distributionError && selectedItems.size !== getItemsState().length) {
+                distributionError = 'Distribua todos os itens entre os fornecedores antes de salvar.';
+            }
+
+            if (distributionError) {
+                e.preventDefault();
+                alert(distributionError);
+                return false;
+            }
+        }
 
         const orcamentoPrevisto = parseValorBR(budgetInput?.value || '');
         if (orcamentoPrevisto > 0) {
@@ -1288,6 +1727,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     renumberItems();
     calculateTotal();
+    updateDistribution();
 });
 </script>
 
