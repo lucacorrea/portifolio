@@ -1614,7 +1614,17 @@ function bindEvents() {
 
     if (e.target.closest('[data-open-scanner]')) openScanner();
     if (e.target.closest('[data-use-barcode]')) useBarcode($('#manualBarcode').value.trim());
-    if (e.target.closest('[data-select-product-image]')) $('#productImageInput')?.click();
+    if (e.target.closest('[data-select-product-image]')) {
+      const galleryInput = $('#productImageInput');
+      const cameraInput = $('#productCameraInput');
+      if (galleryInput && cameraInput) {
+        galleryInput.removeAttribute('name');
+        cameraInput.setAttribute('name', 'imageFile');
+        cameraInput.click();
+      } else {
+        galleryInput?.click();
+      }
+    }
 
     const productFilter = e.target.closest('[data-filter]');
     if (productFilter) {
@@ -1754,7 +1764,11 @@ function bindEvents() {
       saveCart();
     }
 
-    if (e.target.id === 'productImageInput') {
+    if (e.target.id === 'productImageInput' || e.target.id === 'productCameraInput') {
+      if (e.target.id === 'productImageInput') {
+        e.target.setAttribute('name', 'imageFile');
+        $('#productCameraInput')?.removeAttribute('name');
+      }
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();

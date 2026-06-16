@@ -305,8 +305,9 @@ require_once __DIR__ . '/layout/header.php';
         <div>
           <label class="file-btn">
             Escolher imagem
-            <input id="productImageInput" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment">
+            <input id="productImageInput" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
           </label>
+          <input id="productCameraInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" hidden>
           <button type="button" class="file-btn" data-select-product-image>Tirar foto</button>
         </div>
       </div>
