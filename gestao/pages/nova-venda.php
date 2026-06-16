@@ -218,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $cart = addProductToSaleCart($product, $cart, $settings, 1.0);
             saveSaleCart($cart);
-            redirectSale('success', 'Produto adicionado ao carrinho.');
+            redirectSale('success', 'Produto adicionado. Continue adicionando itens ou avance para Cliente.');
         }
 
         if ($action === 'add' || $action === 'add_product') {
@@ -236,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $cart = addProductToSaleCart($product, $cart, $settings, $quantity);
             saveSaleCart($cart);
-            redirectSale('success', 'Produto adicionado ao carrinho.', $query);
+            redirectSale('success', 'Produto adicionado. Continue adicionando itens ou avance para Cliente.', $query);
         }
 
         if ($action === 'update_cart' || $action === 'update_quantity') {
@@ -391,6 +391,7 @@ require_once __DIR__ . '/layout/header.php';
   .sale-step { min-height: 58px; display: flex; align-items: center; gap: 9px; padding: 9px 11px; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 14px; text-align: left; font-size: 11px; font-weight: 850; }
   .sale-step span { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 10px; }
   .sale-step strong { display: block; color: var(--ink); font-size: 13px; }
+  .sale-step small { display: block; margin-top: 2px; color: inherit; font-size: 10px; line-height: 1.2; }
   .sale-step.active { color: var(--blue); border-color: var(--blue-line); background: var(--blue-soft); }
   .sale-panel { padding: 15px; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 22px rgba(29,55,95,.055); }
   .sale-layout.sale-js .sale-panel { display: none; }
@@ -413,6 +414,7 @@ require_once __DIR__ . '/layout/header.php';
   .sale-camera-video { width: 100%; max-height: 58vh; object-fit: cover; background: #111827; border-radius: 14px; }
   .sale-camera-feedback { min-height: 18px; margin: 10px 0 0; color: var(--muted); font-size: 12px; font-weight: 800; }
   .sale-camera-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 12px; }
+  .sale-clear-header-btn { min-height: 40px; width: auto; padding: 0 14px; }
   .sale-product-list { display: grid; gap: 10px; margin-top: 12px; }
   .sale-product-card { display: grid; gap: 11px; padding: 13px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
   .sale-product-card.warning { border-color: rgba(230,83,103,.25); background: rgba(230,83,103,.04); }
@@ -428,6 +430,15 @@ require_once __DIR__ . '/layout/header.php';
   .sale-product-row .field input { min-height: 44px; }
   .sale-cart-card { padding: 15px; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 22px rgba(29,55,95,.065); }
   .sale-cart-card h2 { margin: 0; font-size: 18px; letter-spacing: 0; }
+  .sale-cart-compact { display: grid; gap: 12px; margin-top: 14px; }
+  .sale-cart-summary-card { padding: 14px; background: #F8FBFF; border: 1px solid var(--blue-line); border-radius: 16px; }
+  .sale-cart-summary-card h3 { margin: 0; color: var(--ink); font-size: 16px; letter-spacing: 0; }
+  .sale-cart-summary-card p { margin: 6px 0 0; color: var(--muted); font-size: 12px; font-weight: 800; }
+  .sale-cart-summary-card strong { color: var(--ink); }
+  .sale-cart-summary-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; margin-top: 12px; align-items: center; }
+  .sale-cart-summary-actions form { margin: 0; }
+  .sale-cart-summary-actions .secondary-btn, .sale-cart-summary-actions .primary-btn { width: 100%; min-height: 42px; }
+  .sale-cart-compact h3 { margin: 0; font-size: 16px; letter-spacing: 0; }
   .sale-cart-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
   .sale-cart-item:last-of-type { border-bottom: 0; }
   .sale-cart-item strong { display: block; font-size: 13px; }
@@ -447,22 +458,32 @@ require_once __DIR__ . '/layout/header.php';
   .sale-fiado-alert { margin-top: 10px; padding: 10px 12px; color: #8A4A00; background: rgba(255,181,71,.14); border: 1px solid rgba(255,181,71,.3); border-radius: 12px; font-size: 12px; font-weight: 800; }
   .sale-summary-lines { display: grid; gap: 8px; margin-top: 12px; }
   .sale-summary-lines div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; font-weight: 750; }
+  .sale-summary-lines div[hidden], [data-payment-field][hidden] { display: none !important; }
   .sale-summary-lines strong { color: var(--ink); }
   .sale-summary-total { margin-top: 14px; padding: 13px; color: #fff; background: var(--blue); border-radius: 14px; }
   .sale-summary-total span { display: block; font-size: 11px; font-weight: 800; opacity: .86; }
   .sale-summary-total strong { display: block; margin-top: 3px; font-size: 24px; letter-spacing: 0; }
   .sale-review-list { display: grid; gap: 8px; }
   .sale-review-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .sale-review-row[hidden] { display: none !important; }
   .sale-review-row:last-child { border-bottom: 0; }
   .sale-panel-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 14px; }
+  .sale-panel-actions.single { justify-content: stretch; }
   .sale-panel-actions button { min-height: 42px; padding: 0 14px; }
+  .sale-payment-validation { margin: 10px 0 0; }
   .sale-step-warning { display: none; margin-top: 10px; }
   .sale-step-warning.visible { display: block; }
-  .sale-mobile-total { position: fixed; left: 12px; right: 12px; bottom: max(82px, var(--safe-bottom)); z-index: 19; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 12px 28px rgba(29,55,95,.16); }
-  .sale-mobile-total span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; }
-  .sale-mobile-total strong { display: block; color: var(--ink); font-size: 18px; }
-  .sale-mobile-total button { min-height: 42px; padding: 0 14px; }
   .sale-submit-btn[disabled], .secondary-btn[disabled] { opacity: .55; cursor: not-allowed; }
+  @media (max-width: 819px) {
+    .sale-layout { display: block; padding-bottom: 118px; }
+    .sale-summary-sticky { display: none !important; }
+    .sale-panel { display: none; }
+    .sale-panel.active { display: block; }
+    .sale-steps { position: sticky; top: 86px; z-index: 5; background: var(--bg); padding: 8px 0 10px; margin: 0 -2px; }
+    .sale-panel-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .sale-panel-actions.single { grid-template-columns: 1fr; }
+    .sale-panel-actions .primary-btn, .sale-panel-actions .secondary-btn { width: 100%; }
+  }
   @media (max-width: 560px) {
     .sale-search-form, .sale-product-row { grid-template-columns: 1fr; }
     .sale-search-form .secondary-btn, .sale-search-form .sale-camera-btn, .sale-product-row .secondary-btn { width: 100%; }
@@ -476,14 +497,15 @@ require_once __DIR__ . '/layout/header.php';
     .sale-payment-grid { grid-template-columns: 1fr; }
     .sale-panel-actions { justify-content: stretch; }
     .sale-panel-actions button { flex: 1; }
+    .sale-cart-summary-actions { grid-template-columns: 1fr; }
   }
   @media (min-width: 820px) {
     .sale-layout { grid-template-columns: minmax(0, 1fr) minmax(340px, 390px); align-items: start; padding-bottom: 0; }
-    .sale-summary-sticky { position: sticky; top: 90px; }
+    .sale-summary-sticky { display: block; position: sticky; top: 90px; }
+    .sale-summary-sticky .sale-submit-btn { display: none !important; }
     .form-grid.sale-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .field.full { grid-column: 1 / -1; }
     .sale-payment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .sale-mobile-total { display: none; }
   }
 </style>
 
@@ -493,10 +515,10 @@ require_once __DIR__ . '/layout/header.php';
       <p class="micro-label dark-text">Frente de caixa</p>
       <h1>Nova venda</h1>
     </div>
-    <form method="post" onsubmit="return confirm('Limpar o carrinho?');">
+    <form method="post" data-sale-remember-step="products" onsubmit="return confirm('Limpar o carrinho?');">
       <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
       <input type="hidden" name="action" value="clear">
-      <button class="round-btn" type="submit" aria-label="Limpar carrinho">+</button>
+      <button class="secondary-btn sale-clear-header-btn" type="submit" aria-label="Limpar carrinho">Limpar</button>
     </form>
   </div>
 </header>
@@ -513,11 +535,36 @@ require_once __DIR__ . '/layout/header.php';
   <div class="sale-layout" data-sale-layout>
     <main class="sale-workspace">
       <nav class="sale-steps" aria-label="Etapas da venda">
-        <button class="sale-step active" type="button" data-sale-step="products"><span>1</span><div><strong>Produtos</strong>Itens da venda</div></button>
-        <button class="sale-step" type="button" data-sale-step="client"><span>2</span><div><strong>Cliente</strong>Identificação</div></button>
-        <button class="sale-step" type="button" data-sale-step="payment"><span>3</span><div><strong>Pagamento</strong>Forma e desconto</div></button>
-        <button class="sale-step" type="button" data-sale-step="review"><span>4</span><div><strong>Revisão</strong>Conferência final</div></button>
+        <button class="sale-step active" type="button" data-sale-step="products">
+          <span>1</span>
+          <div>
+            <strong>Produto</strong>
+            <small>Adicionar itens</small>
+          </div>
+        </button>
+        <button class="sale-step" type="button" data-sale-step="client">
+          <span>2</span>
+          <div>
+            <strong>Cliente</strong>
+            <small>Identificação</small>
+          </div>
+        </button>
+        <button class="sale-step" type="button" data-sale-step="payment">
+          <span>3</span>
+          <div>
+            <strong>Pagamento</strong>
+            <small>Forma e valores</small>
+          </div>
+        </button>
+        <button class="sale-step" type="button" data-sale-step="review">
+          <span>4</span>
+          <div>
+            <strong>Revisão</strong>
+            <small>Finalizar</small>
+          </div>
+        </button>
       </nav>
+      <div id="saleStepMessage" class="sale-alert warning sale-step-warning" role="alert"></div>
 
       <section class="sale-panel active" data-sale-panel="products">
         <div class="sale-panel-head">
@@ -526,7 +573,7 @@ require_once __DIR__ . '/layout/header.php';
             <p>Busque, confira estoque e adicione itens ao carrinho.</p>
           </div>
         </div>
-        <form class="sale-search-form" method="post" action="nova-venda.php" autocomplete="off">
+        <form class="sale-search-form" method="post" action="nova-venda.php" autocomplete="off" data-sale-remember-step="products">
           <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
           <input id="barcodeInput" type="hidden" name="barcode" value="">
           <label class="search-box">
@@ -576,7 +623,7 @@ require_once __DIR__ . '/layout/header.php';
                 <?php if ($isNoStock): ?><em class="sale-mini-badge red">Sem estoque</em><?php endif; ?>
                 <?php if ($isLowStock): ?><em class="sale-mini-badge orange">Estoque baixo</em><?php endif; ?>
               </div>
-              <form class="sale-product-row section-gap-small" method="post">
+              <form class="sale-product-row section-gap-small" method="post" data-sale-remember-step="products">
                 <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
                 <input type="hidden" name="action" value="add">
                 <input type="hidden" name="product_id" value="<?= (int)$product['id'] ?>">
@@ -590,7 +637,57 @@ require_once __DIR__ . '/layout/header.php';
           <?php endforeach; ?>
         </div>
         <div id="saleStepWarning" class="sale-alert warning sale-step-warning" role="alert">Adicione pelo menos um produto para continuar.</div>
-        <div class="sale-panel-actions"><button class="secondary-btn" type="button" data-sale-step="client" data-require-cart="1">Continuar</button></div>
+        <?php if ($cartProducts): ?>
+          <section class="sale-cart-compact" aria-label="Itens adicionados">
+            <div class="sale-cart-summary-card">
+              <h3>Resumo da venda</h3>
+              <p><?= count($cartProducts) ?> item(ns) adicionados</p>
+              <p>Subtotal: <strong><?= e(saleMoney($cartSubtotal)) ?></strong></p>
+              <div class="sale-cart-summary-actions">
+                <button class="primary-btn" type="button" data-sale-step="client">Continuar para Cliente</button>
+                <form method="post" data-sale-remember-step="products" onsubmit="return confirm('Limpar o carrinho?');">
+                  <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+                  <input type="hidden" name="action" value="clear">
+                  <button class="secondary-btn" type="submit">Limpar carrinho</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="sale-cart-card">
+              <div class="sale-panel-head">
+                <div>
+                  <h3>Itens adicionados</h3>
+                  <p>Altere quantidades ou remova itens antes de avançar.</p>
+                </div>
+              </div>
+              <form method="post" data-sale-remember-step="products">
+                <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+                <input type="hidden" name="action" value="update_cart">
+                <?php foreach ($cartProducts as $item): ?>
+                  <?php $product = $item['product']; ?>
+                  <div class="sale-cart-item">
+                    <div>
+                      <strong><?= e((string)$product['name']) ?></strong>
+                      <p><?= e(saleMoney($product['price'])) ?> cada · subtotal <?= e(saleMoney($item['lineTotal'])) ?></p>
+                    </div>
+                    <div>
+                      <div class="sale-qty-tools">
+                        <button type="button" data-qty-step="-1" aria-label="Diminuir quantidade">-</button>
+                        <input name="quantities[<?= (int)$product['id'] ?>]" type="number" min="0" step="0.001" value="<?= e((string)$item['quantity']) ?>">
+                        <button type="button" data-qty-step="1" aria-label="Aumentar quantidade">+</button>
+                      </div>
+                      <button class="sale-cart-remove" name="remove_id" value="<?= (int)$product['id'] ?>" type="submit">Remover</button>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
+                <button class="secondary-btn section-gap-small" type="submit">Atualizar itens</button>
+              </form>
+            </div>
+          </section>
+        <?php endif; ?>
+        <div class="sale-panel-actions single">
+          <button class="primary-btn" type="button" data-sale-step="client" data-require-cart="1" <?= !$cartProducts ? 'disabled' : '' ?>>Continuar para Cliente</button>
+        </div>
       </section>
 
       <div id="saleCameraPanel" class="sale-camera-panel" aria-hidden="true">
@@ -670,26 +767,29 @@ require_once __DIR__ . '/layout/header.php';
               <input id="saleDiscount" name="discount" type="number" min="0" step="0.01" value="0" <?= saleEnabled($settings, 'allow_discount', true) ? '' : 'readonly' ?>>
             </div>
 
-            <div class="field">
+            <div class="field" data-payment-field="received">
               <label for="saleReceived">Valor recebido em dinheiro</label>
               <input id="saleReceived" name="received" type="number" min="0" step="0.01" placeholder="<?= e(saleMoney($cartSubtotal)) ?>">
             </div>
 
             <div class="summary-card full">
               <div class="sale-summary-lines">
+                <div><span>Subtotal</span><strong id="salePaymentSubtotal"><?= e(saleMoney($cartSubtotal)) ?></strong></div>
+                <div><span>Desconto</span><strong id="salePaymentDiscount">R$ 0,00</strong></div>
+                <div><span>Total final</span><strong id="salePaymentTotal"><?= e(saleMoney($cartSubtotal)) ?></strong></div>
                 <div><span>Desconto equivalente</span><strong id="saleDiscountPercent">0,00%</strong></div>
                 <div><span>Limite permitido</span><strong><?= e(number_format((float)($settings['discount_limit_percent'] ?? 0), 2, ',', '.')) ?>%</strong></div>
-                <div><span>Troco estimado</span><strong id="saleChangeValue">R$ 0,00</strong></div>
+                <div data-payment-field="received"><span>Troco estimado</span><strong id="saleChangeValue">R$ 0,00</strong></div>
               </div>
             </div>
 
-            <div class="field">
+            <div class="field" data-payment-field="due-date">
               <label for="saleDueDate">Vencimento da conta</label>
               <input id="saleDueDate" name="due_date" type="date" value="<?= e((new DateTimeImmutable('today'))->modify('+' . max(0, (int)($settings['debt_due_days'] ?? 30)) . ' days')->format('Y-m-d')) ?>">
             </div>
 
             <?php if (isset($enabledPayments['misto'])): ?>
-              <div class="field full">
+              <div class="field full" data-payment-field="mixed">
                 <label>Composição do pagamento misto</label>
                 <div class="form-grid sale-two">
                   <?php foreach (['pix' => 'PIX', 'dinheiro' => 'Dinheiro', 'credito' => 'Crédito', 'debito' => 'Débito'] as $method => $label): ?>
@@ -701,6 +801,13 @@ require_once __DIR__ . '/layout/header.php';
                     <?php endif; ?>
                   <?php endforeach; ?>
                 </div>
+                <div class="summary-card section-gap-small">
+                  <div class="sale-summary-lines">
+                    <div><span>Total da venda</span><strong id="saleMixedSaleTotal"><?= e(saleMoney($cartSubtotal)) ?></strong></div>
+                    <div><span>Total informado</span><strong id="saleMixedTotal">R$ 0,00</strong></div>
+                    <div><span>Diferença</span><strong id="saleMixedDifference"><?= e(saleMoney($cartSubtotal)) ?></strong></div>
+                  </div>
+                </div>
               </div>
             <?php endif; ?>
 
@@ -709,9 +816,10 @@ require_once __DIR__ . '/layout/header.php';
               <textarea id="saleObservation" name="observacao"></textarea>
             </div>
           </div>
+          <div id="salePaymentValidation" class="sale-alert warning sale-step-warning sale-payment-validation" role="alert"></div>
           <div class="sale-panel-actions">
             <button class="secondary-btn" type="button" data-sale-step="client">Voltar</button>
-            <button class="primary-btn" type="button" data-sale-step="review">Revisar</button>
+            <button id="saleReviewButton" class="primary-btn" type="button" data-sale-step="review">Revisar venda</button>
           </div>
         </section>
 
@@ -736,11 +844,15 @@ require_once __DIR__ . '/layout/header.php';
             <div class="sale-review-row"><span>Cliente</span><strong id="saleReviewClient">Venda balcão</strong></div>
             <div class="sale-review-row"><span>Pagamento</span><strong id="saleReviewPayment"><?= e((string)(reset($enabledPayments) ?: 'Não habilitado')) ?></strong></div>
             <div class="sale-review-row"><span>Desconto</span><strong id="saleReviewDiscount">R$ 0,00</strong></div>
+            <div class="sale-review-row" data-review-field="change"><span>Troco</span><strong id="saleReviewChange">R$ 0,00</strong></div>
+            <div class="sale-review-row" data-review-field="due-date"><span>Vencimento</span><strong id="saleReviewDueDate">Não informado</strong></div>
+            <div class="sale-review-row" data-review-field="mixed"><span>Composição</span><strong id="saleReviewMixed">Não informado</strong></div>
+            <div class="sale-review-row" data-review-field="observation"><span>Observação</span><strong id="saleReviewObservation">Sem observação</strong></div>
             <div class="sale-review-row"><span>Total final</span><strong id="saleReviewTotal"><?= e(saleMoney($cartSubtotal)) ?></strong></div>
           </div>
           <div class="sale-panel-actions">
             <button class="secondary-btn" type="button" data-sale-step="payment">Voltar para editar</button>
-            <button class="primary-btn sale-submit-btn" type="submit" <?= !$cartProducts || !$enabledPayments ? 'disabled' : '' ?>>Finalizar venda</button>
+            <button class="primary-btn sale-submit-btn" type="submit" form="saleFinishForm" <?= !$cartProducts || !$enabledPayments ? 'disabled' : '' ?>>Finalizar venda</button>
           </div>
         </section>
       </form>
@@ -750,35 +862,12 @@ require_once __DIR__ . '/layout/header.php';
       <section class="sale-cart-card">
         <div class="sale-panel-head">
           <div>
-            <h2>Carrinho</h2>
+            <h2>Resumo</h2>
             <p><?= count($cartProducts) ?> item(ns) adicionados</p>
           </div>
         </div>
         <?php if (!$cartProducts): ?>
-          <article class="summary-card">Nenhum produto no carrinho.</article>
-        <?php else: ?>
-          <form method="post">
-            <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
-            <input type="hidden" name="action" value="update_cart">
-            <?php foreach ($cartProducts as $item): ?>
-              <?php $product = $item['product']; ?>
-              <div class="sale-cart-item">
-                <div>
-                  <strong><?= e((string)$product['name']) ?></strong>
-                  <p><?= e(saleMoney($product['price'])) ?> cada · subtotal <?= e(saleMoney($item['lineTotal'])) ?></p>
-                </div>
-                <div>
-                  <div class="sale-qty-tools">
-                    <button type="button" data-qty-step="-1" aria-label="Diminuir quantidade">-</button>
-                    <input name="quantities[<?= (int)$product['id'] ?>]" type="number" min="0" step="0.001" value="<?= e((string)$item['quantity']) ?>">
-                    <button type="button" data-qty-step="1" aria-label="Aumentar quantidade">+</button>
-                  </div>
-                  <button class="sale-cart-remove" name="remove_id" value="<?= (int)$product['id'] ?>" type="submit">Remover</button>
-                </div>
-              </div>
-            <?php endforeach; ?>
-            <button class="secondary-btn section-gap-small" type="submit">Atualizar carrinho</button>
-          </form>
+          <article class="summary-card">Nenhum item adicionado.</article>
         <?php endif; ?>
 
         <div class="sale-summary-lines">
@@ -790,17 +879,8 @@ require_once __DIR__ . '/layout/header.php';
           <span>Total da venda</span>
           <strong id="saleSummaryTotal"><?= e(saleMoney($cartSubtotal)) ?></strong>
         </div>
-        <button class="primary-btn section-gap-small sale-submit-btn" type="submit" form="saleFinishForm" <?= !$cartProducts || !$enabledPayments ? 'disabled' : '' ?>>Finalizar Venda</button>
       </section>
     </aside>
-  </div>
-
-  <div class="sale-mobile-total">
-    <div>
-      <span>Total</span>
-      <strong id="saleMobileTotal"><?= e(saleMoney($cartSubtotal)) ?></strong>
-    </div>
-    <button class="primary-btn sale-submit-btn" type="button" data-sale-step="review" <?= !$cartProducts ? 'disabled' : '' ?>>Revisar</button>
   </div>
 </section>
 
@@ -818,34 +898,236 @@ require_once __DIR__ . '/layout/header.php';
   const scanSubmit = document.getElementById('saleScanSubmit');
   const searchForm = productSearch?.closest('form');
   const searchButton = searchForm?.querySelector('button[name="action"][value="search_product"]');
+  const finishForm = document.getElementById('saleFinishForm');
   const cameraButton = document.getElementById('saleCameraButton');
   const cameraPanel = document.getElementById('saleCameraPanel');
   const cameraCancel = document.getElementById('saleCameraCancel');
   const cameraVideo = document.getElementById('saleCameraVideo');
   const cameraFeedback = document.getElementById('saleCameraFeedback');
   const cameraMessage = document.getElementById('saleCameraMessage');
-  const stepWarning = document.getElementById('saleStepWarning');
-  const initialSearch = <?= json_encode($query) ?>;
-  let searchTimer = 0;
+  const stepMessage = document.getElementById('saleStepMessage');
+  const paymentValidation = document.getElementById('salePaymentValidation');
+  const reviewButton = document.getElementById('saleReviewButton');
+  const allowedSteps = ['products', 'client', 'payment', 'review'];
+  let currentStep = 'products';
   let cameraStream = null;
   let cameraLoop = 0;
   let zxingControls = null;
 
+  function numericValue(selector) {
+    const element = document.querySelector(selector);
+    return Math.max(0, Number(String(element?.value || '0').replace(',', '.')) || 0);
+  }
+
+  function paymentMethod() {
+    return document.querySelector('input[name="payment"]:checked')?.value || '';
+  }
+
+  function mixedInputs() {
+    return Array.from(document.querySelectorAll('input[name^="mixed["]'));
+  }
+
+  function mixedTotalValue() {
+    return mixedInputs().reduce((sum, input) => sum + Math.max(0, Number(String(input.value || '0').replace(',', '.')) || 0), 0);
+  }
+
+  function getSaleState() {
+    const discount = numericValue('#saleDiscount');
+    const total = Math.max(0, subtotal - discount);
+    const received = numericValue('#saleReceived');
+
+    return {
+      cartItems,
+      subtotal,
+      discount,
+      total,
+      received,
+      change: Math.max(0, received - total),
+      payment: paymentMethod(),
+      clientId: Number(document.getElementById('saleClient')?.value || 0),
+      mixedTotal: mixedTotalValue(),
+      dueDate: document.getElementById('saleDueDate')?.value || '',
+    };
+  }
+
+  function showStepMessage(message, type = 'warning') {
+    if (!stepMessage) return;
+    stepMessage.textContent = message;
+    stepMessage.className = `sale-alert ${type} sale-step-warning visible`;
+  }
+
+  function hideStepMessage() {
+    if (!stepMessage) return;
+    stepMessage.textContent = '';
+    stepMessage.classList.remove('visible');
+  }
+
+  function showPaymentValidation(message) {
+    if (!paymentValidation) return;
+    paymentValidation.textContent = message;
+    paymentValidation.classList.add('visible');
+  }
+
+  function hidePaymentValidation() {
+    if (!paymentValidation) return;
+    paymentValidation.textContent = '';
+    paymentValidation.classList.remove('visible');
+  }
+
+  function showPaymentField(name) {
+    document.querySelectorAll(`[data-payment-field="${name}"]`).forEach((field) => {
+      field.hidden = false;
+    });
+  }
+
+  function updatePaymentVisibility() {
+    const payment = paymentMethod();
+
+    document.querySelectorAll('[data-payment-field]').forEach((field) => {
+      field.hidden = true;
+    });
+
+    if (payment === 'dinheiro') {
+      showPaymentField('received');
+    }
+
+    if (payment === 'conta_cliente') {
+      showPaymentField('due-date');
+    }
+
+    if (payment === 'misto') {
+      showPaymentField('mixed');
+    }
+  }
+
+  function validateMixedPayment() {
+    const state = getSaleState();
+    if (state.payment !== 'misto') return true;
+
+    return Math.abs(state.mixedTotal - state.total) <= 0.01;
+  }
+
+  function validateAccountCustomer() {
+    const state = getSaleState();
+    if (state.payment !== 'conta_cliente') return true;
+
+    return state.clientId > 0;
+  }
+
+  function paymentBlockReason() {
+    const state = getSaleState();
+
+    if (state.cartItems < 1) {
+      return 'Adicione pelo menos um produto para continuar.';
+    }
+
+    if (!state.payment) {
+      return 'Selecione uma forma de pagamento.';
+    }
+
+    if (state.discount > state.subtotal) {
+      return 'O desconto não pode ser maior que o subtotal.';
+    }
+
+    if (!validateAccountCustomer()) {
+      return 'Para vender fiado, selecione um cliente.';
+    }
+
+    if (!validateMixedPayment()) {
+      return 'A soma do pagamento misto precisa bater com o total final.';
+    }
+
+    return '';
+  }
+
+  function validatePaymentStep() {
+    const reason = paymentBlockReason();
+    const valid = reason === '';
+
+    if (reviewButton) {
+      reviewButton.disabled = !valid;
+    }
+
+    document.querySelectorAll('.sale-submit-btn').forEach((button) => {
+      button.disabled = !valid;
+    });
+
+    if (!valid && currentStep === 'payment') {
+      showPaymentValidation(reason);
+    } else {
+      hidePaymentValidation();
+    }
+
+    return valid;
+  }
+
+  function canEnterStep(step) {
+    const state = getSaleState();
+
+    if (step === 'products') return true;
+    if (step === 'client' || step === 'payment') return state.cartItems > 0;
+    if (step === 'review') return validatePaymentStep();
+
+    return false;
+  }
+
+  function blockedStepMessage(step) {
+    if (cartItems < 1 && step !== 'products') {
+      return 'Adicione pelo menos um produto para continuar.';
+    }
+
+    if (step === 'review') {
+      return paymentBlockReason() || 'Revise os dados de pagamento antes de finalizar.';
+    }
+
+    return 'Conclua a etapa anterior antes de continuar.';
+  }
+
   function showStep(step) {
-    layout.querySelectorAll('[data-sale-step]').forEach((button) => {
-      button.classList.toggle('active', button.dataset.saleStep === step);
+    const target = allowedSteps.includes(step) ? step : 'products';
+    currentStep = target;
+    layout.querySelectorAll('.sale-step[data-sale-step]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.saleStep === target);
     });
     layout.querySelectorAll('[data-sale-panel]').forEach((panel) => {
-      panel.classList.toggle('active', panel.dataset.salePanel === step);
+      panel.classList.toggle('active', panel.dataset.salePanel === target);
     });
+    updatePaymentVisibility();
+    updateTotals();
+    validatePaymentStep();
     if (window.matchMedia('(max-width: 819px)').matches) {
       layout.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }
 
+  function setStep(step) {
+    const target = allowedSteps.includes(step) ? step : 'products';
+
+    if (!canEnterStep(target)) {
+      showStepMessage(blockedStepMessage(target));
+      if (target === 'review' && cartItems > 0) {
+        showStep('payment');
+        sessionStorage.setItem('saleCurrentStep', 'payment');
+      }
+      return;
+    }
+
+    hideStepMessage();
+    sessionStorage.setItem('saleCurrentStep', target);
+    showStep(target);
+  }
+
   function selectedPaymentLabel() {
     const selected = document.querySelector('input[name="payment"]:checked');
     return selected?.dataset.paymentLabel || 'Não informado';
+  }
+
+  function formatDate(value) {
+    if (!value) return 'Não informado';
+    const [year, month, day] = value.split('-');
+    if (!year || !month || !day) return value;
+
+    return `${day}/${month}/${year}`;
   }
 
   function updateClient() {
@@ -868,30 +1150,80 @@ require_once __DIR__ . '/layout/header.php';
     if (review) review.textContent = name;
   }
 
+  function updateReviewDetails(state) {
+    const reviewChange = document.querySelector('[data-review-field="change"]');
+    const reviewDueDate = document.querySelector('[data-review-field="due-date"]');
+    const reviewMixed = document.querySelector('[data-review-field="mixed"]');
+    const reviewObservation = document.querySelector('[data-review-field="observation"]');
+    const observation = String(document.getElementById('saleObservation')?.value || '').trim();
+
+    if (reviewChange) {
+      reviewChange.hidden = state.payment !== 'dinheiro';
+      document.getElementById('saleReviewChange')?.replaceChildren(document.createTextNode(money.format(state.change)));
+    }
+
+    if (reviewDueDate) {
+      reviewDueDate.hidden = state.payment !== 'conta_cliente';
+      document.getElementById('saleReviewDueDate')?.replaceChildren(document.createTextNode(formatDate(state.dueDate)));
+    }
+
+    if (reviewMixed) {
+      reviewMixed.hidden = state.payment !== 'misto';
+      const composition = mixedInputs()
+        .map((input) => {
+          const label = input.closest('.field')?.querySelector('label')?.textContent?.trim() || input.name;
+          const value = Math.max(0, Number(String(input.value || '0').replace(',', '.')) || 0);
+          return value > 0 ? `${label}: ${money.format(value)}` : '';
+        })
+        .filter(Boolean)
+        .join(' · ') || 'Não informado';
+      document.getElementById('saleReviewMixed')?.replaceChildren(document.createTextNode(composition));
+    }
+
+    if (reviewObservation) {
+      reviewObservation.hidden = observation === '';
+      document.getElementById('saleReviewObservation')?.replaceChildren(document.createTextNode(observation || 'Sem observação'));
+    }
+  }
+
   function updateTotals() {
-    const discount = Math.max(0, Number(document.getElementById('saleDiscount')?.value || 0));
-    const received = Math.max(0, Number(document.getElementById('saleReceived')?.value || 0));
-    const total = Math.max(0, subtotal - discount);
-    const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
-    const change = Math.max(0, received - total);
-    document.getElementById('saleSummaryDiscount')?.replaceChildren(document.createTextNode(money.format(discount)));
-    document.getElementById('saleReviewDiscount')?.replaceChildren(document.createTextNode(money.format(discount)));
-    document.getElementById('saleSummaryTotal')?.replaceChildren(document.createTextNode(money.format(total)));
-    document.getElementById('saleReviewTotal')?.replaceChildren(document.createTextNode(money.format(total)));
-    document.getElementById('saleMobileTotal')?.replaceChildren(document.createTextNode(money.format(total)));
+    const state = getSaleState();
+    const discountPercent = state.subtotal > 0 ? (state.discount / state.subtotal) * 100 : 0;
+    const mixedDifference = state.total - state.mixedTotal;
+
+    document.getElementById('salePaymentSubtotal')?.replaceChildren(document.createTextNode(money.format(state.subtotal)));
+    document.getElementById('salePaymentDiscount')?.replaceChildren(document.createTextNode(money.format(state.discount)));
+    document.getElementById('salePaymentTotal')?.replaceChildren(document.createTextNode(money.format(state.total)));
+    document.getElementById('saleSummaryDiscount')?.replaceChildren(document.createTextNode(money.format(state.discount)));
+    document.getElementById('saleReviewDiscount')?.replaceChildren(document.createTextNode(money.format(state.discount)));
+    document.getElementById('saleSummaryTotal')?.replaceChildren(document.createTextNode(money.format(state.total)));
+    document.getElementById('saleReviewTotal')?.replaceChildren(document.createTextNode(money.format(state.total)));
     document.getElementById('saleDiscountPercent')?.replaceChildren(document.createTextNode(`${discountPercent.toFixed(2).replace('.', ',')}%`));
-    document.getElementById('saleChangeValue')?.replaceChildren(document.createTextNode(money.format(change)));
+    document.getElementById('saleChangeValue')?.replaceChildren(document.createTextNode(money.format(state.change)));
+    document.getElementById('saleMixedSaleTotal')?.replaceChildren(document.createTextNode(money.format(state.total)));
+    document.getElementById('saleMixedTotal')?.replaceChildren(document.createTextNode(money.format(state.mixedTotal)));
+    document.getElementById('saleMixedDifference')?.replaceChildren(document.createTextNode(money.format(Math.abs(mixedDifference))));
     document.getElementById('saleSummaryPayment')?.replaceChildren(document.createTextNode(selectedPaymentLabel()));
     document.getElementById('saleReviewPayment')?.replaceChildren(document.createTextNode(selectedPaymentLabel()));
+    updateReviewDetails(state);
+    validatePaymentStep();
   }
 
   function submitBarcode(code) {
     const value = String(code || '').trim();
     if (!value || !searchForm || !productSearch || !scanSubmit) return;
-    window.clearTimeout(searchTimer);
     productSearch.value = value;
     if (barcodeInput) barcodeInput.value = value;
+    sessionStorage.setItem('saleCurrentStep', 'products');
     searchForm.requestSubmit(scanSubmit);
+  }
+
+  function bindSubmitStepMemory() {
+    document.querySelectorAll('form[data-sale-remember-step]').forEach((form) => {
+      form.addEventListener('submit', () => {
+        sessionStorage.setItem('saleCurrentStep', form.dataset.saleRememberStep || 'products');
+      });
+    });
   }
 
   function showCameraMessage(message) {
@@ -1002,13 +1334,7 @@ require_once __DIR__ . '/layout/header.php';
   document.addEventListener('click', (event) => {
     const stepButton = event.target.closest('[data-sale-step]');
     if (stepButton) {
-      if (stepButton.dataset.requireCart === '1' && cartItems < 1) {
-        stepWarning?.classList.add('visible');
-        productSearch?.focus({ preventScroll: true });
-        return;
-      }
-      stepWarning?.classList.remove('visible');
-      showStep(stepButton.dataset.saleStep);
+      setStep(stepButton.dataset.saleStep);
     }
 
     const qtyButton = event.target.closest('[data-qty-step]');
@@ -1022,28 +1348,39 @@ require_once __DIR__ . '/layout/header.php';
   });
 
   document.addEventListener('input', (event) => {
-    if (event.target.matches('#saleDiscount, #saleReceived')) updateTotals();
+    if (event.target.matches('#saleDiscount, #saleReceived, #saleObservation, #saleDueDate, input[name^="mixed["]')) {
+      updateTotals();
+    }
     if (event.target.matches('#productSearchInput')) {
       if (barcodeInput) barcodeInput.value = '';
-      window.clearTimeout(searchTimer);
-      const value = productSearch.value.trim();
-      if (value.length >= 2 && value !== initialSearch) {
-        searchTimer = window.setTimeout(() => searchForm?.requestSubmit(searchButton), 650);
-      }
-      if (value.length === 0 && initialSearch !== '') {
-        searchTimer = window.setTimeout(() => searchForm?.requestSubmit(searchButton), 650);
-      }
     }
   });
   document.addEventListener('change', (event) => {
-    if (event.target.matches('#saleClient')) updateClient();
-    if (event.target.matches('input[name="payment"]')) updateTotals();
+    if (event.target.matches('#saleClient')) {
+      updateClient();
+      updateTotals();
+    }
+    if (event.target.matches('input[name="payment"]')) {
+      updatePaymentVisibility();
+      updateTotals();
+    }
   });
   productSearch?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
-      window.clearTimeout(searchTimer);
-      if (barcodeInput) barcodeInput.value = productSearch.value.trim();
+      event.preventDefault();
+      if (barcodeInput) barcodeInput.value = '';
+      sessionStorage.setItem('saleCurrentStep', 'products');
+      searchForm?.requestSubmit(searchButton);
     }
+  });
+  finishForm?.addEventListener('submit', (event) => {
+    if (currentStep !== 'review' || !canEnterStep('review')) {
+      event.preventDefault();
+      showStepMessage(blockedStepMessage('review'));
+      showStep(canEnterStep('payment') ? 'payment' : 'products');
+      return;
+    }
+    sessionStorage.removeItem('saleCurrentStep');
   });
   cameraButton?.addEventListener('click', openCamera);
   cameraCancel?.addEventListener('click', stopCamera);
@@ -1056,8 +1393,20 @@ require_once __DIR__ . '/layout/header.php';
     }
   });
 
+  bindSubmitStepMemory();
   updateClient();
+  updatePaymentVisibility();
   updateTotals();
+  const savedStep = sessionStorage.getItem('saleCurrentStep') || 'products';
+  if (savedStep === 'review' && !canEnterStep('review')) {
+    showStep(canEnterStep('payment') ? 'payment' : 'products');
+    sessionStorage.setItem('saleCurrentStep', canEnterStep('payment') ? 'payment' : 'products');
+  } else if (canEnterStep(savedStep)) {
+    showStep(savedStep);
+  } else {
+    showStep('products');
+    sessionStorage.setItem('saleCurrentStep', 'products');
+  }
   productSearch?.focus({ preventScroll: true });
   productSearch?.select();
 })();
