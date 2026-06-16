@@ -394,20 +394,26 @@ final class SaleService
     private function decreaseStock(int $empresaId, int $productId, float $quantity, bool $blockNegativeStock): void
     {
         $sql = 'UPDATE produtos
-                SET quantidade = quantidade - :quantidade
+                SET quantidade = quantidade - :quantidade_baixa
                 WHERE empresa_id = :empresa_id
                   AND id = :id';
 
         if ($blockNegativeStock) {
-            $sql .= ' AND quantidade >= :quantidade';
+            $sql .= ' AND quantidade >= :quantidade_minima';
         }
 
         $stmt = $this->products->connection()->prepare($sql);
-        $stmt->execute([
+        $params = [
             ':empresa_id' => $empresaId,
             ':id' => $productId,
-            ':quantidade' => $quantity,
-        ]);
+            ':quantidade_baixa' => $quantity,
+        ];
+
+        if ($blockNegativeStock) {
+            $params[':quantidade_minima'] = $quantity;
+        }
+
+        $stmt->execute($params);
 
         if ($blockNegativeStock && $stmt->rowCount() < 1) {
             throw new InvalidArgumentException('Estoque insuficiente para finalizar a venda.');
