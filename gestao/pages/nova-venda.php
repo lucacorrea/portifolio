@@ -57,6 +57,11 @@ function redirectSaleSearch(string $query): void
     exit;
 }
 
+function saleSearchLength(string $term): int
+{
+    return function_exists('mb_strlen') ? mb_strlen($term) : strlen($term);
+}
+
 function saleCart(): array
 {
     return is_array($_SESSION['sale_cart'] ?? null) ? $_SESSION['sale_cart'] : [];
@@ -193,8 +198,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirectSaleSearch((string)($_POST['product_search'] ?? ''));
         }
 
-        if ($action === 'add_by_code') {
-            $code = trim((string)($_POST['product_search'] ?? ''));
+        if ($action === 'add_by_code' || $action === 'add_product_by_code') {
+            $code = trim((string)($_POST['barcode'] ?? $_POST['product_search'] ?? ''));
 
             if ($code === '') {
                 throw new InvalidArgumentException('Informe um código, SKU ou nome de produto.');
@@ -203,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $product = $productRepository->findByCode($empresaId, $code);
 
             if (!$product) {
-                $matches = $productRepository->findAll($empresaId, $code);
+                $matches = saleSearchLength($code) >= 2 ? $productRepository->findAll($empresaId, $code) : [];
                 if (!$matches) {
                     redirectSale('danger', 'Produto não encontrado.', $code);
                 }
@@ -306,9 +311,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $products = [];
 $clients = [];
 try {
-    $products = $productRepository->findAll($empresaId, $query);
-    if ($query === '') {
-        $products = array_slice($products, 0, 30);
+    if (saleSearchLength($query) >= 2) {
+        $products = $productRepository->findAll($empresaId, $query);
     }
     $clients = $clientRepository->findAll($empresaId);
 } catch (Throwable $e) {
@@ -398,8 +402,17 @@ require_once __DIR__ . '/layout/header.php';
   .sale-search-form .search-box { min-width: 0; }
   .sale-search-form input { min-height: 56px; font-size: 15px; }
   .sale-search-form .secondary-btn { width: auto; min-height: 54px; padding: 0 18px; }
+  .sale-camera-btn { min-height: 54px; padding: 0 18px; border: 1px solid var(--blue-line); border-radius: 14px; color: var(--blue); background: var(--blue-soft); font-weight: 900; }
   .sale-scan-submit { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .sale-search-help { margin: 8px 0 0; color: var(--muted); font-size: 12px; font-weight: 750; }
+  .sale-camera-panel { position: fixed; inset: 0; z-index: 80; display: none; place-items: center; padding: 16px; background: rgba(18,32,54,.62); }
+  .sale-camera-panel.open { display: grid; }
+  .sale-camera-box { width: min(520px, 100%); padding: 14px; background: #fff; border-radius: 18px; box-shadow: 0 24px 60px rgba(18,32,54,.28); }
+  .sale-camera-box h3 { margin: 0; font-size: 17px; letter-spacing: 0; }
+  .sale-camera-box p { margin: 5px 0 12px; color: var(--muted); font-size: 12px; font-weight: 750; }
+  .sale-camera-video { width: 100%; max-height: 58vh; object-fit: cover; background: #111827; border-radius: 14px; }
+  .sale-camera-feedback { min-height: 18px; margin: 10px 0 0; color: var(--muted); font-size: 12px; font-weight: 800; }
+  .sale-camera-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 12px; }
   .sale-product-list { display: grid; gap: 10px; margin-top: 12px; }
   .sale-product-card { display: grid; gap: 11px; padding: 13px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
   .sale-product-card.warning { border-color: rgba(230,83,103,.25); background: rgba(230,83,103,.04); }
@@ -452,7 +465,10 @@ require_once __DIR__ . '/layout/header.php';
   .sale-submit-btn[disabled], .secondary-btn[disabled] { opacity: .55; cursor: not-allowed; }
   @media (max-width: 560px) {
     .sale-search-form, .sale-product-row { grid-template-columns: 1fr; }
-    .sale-search-form .secondary-btn, .sale-product-row .secondary-btn { width: 100%; }
+    .sale-search-form .secondary-btn, .sale-search-form .sale-camera-btn, .sale-product-row .secondary-btn { width: 100%; }
+    .sale-camera-panel { padding: 10px; align-items: start; }
+    .sale-camera-box { margin-top: 18px; border-radius: 16px; }
+    .sale-camera-video { max-height: 56vh; }
     .sale-panel { padding: 13px; border-radius: 14px; }
     .sale-product-top, .sale-cart-item { grid-template-columns: 1fr; }
     .sale-product-price { white-space: normal; }
@@ -512,18 +528,25 @@ require_once __DIR__ . '/layout/header.php';
         </div>
         <form class="sale-search-form" method="post" action="nova-venda.php" autocomplete="off">
           <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+          <input id="barcodeInput" type="hidden" name="barcode" value="">
           <label class="search-box">
             <span data-icon="search"></span>
-            <input id="productSearchInput" type="search" name="product_search" value="<?= e($query) ?>" placeholder="Buscar ou escanear código de barras" autofocus inputmode="search">
+            <input id="productSearchInput" type="search" name="product_search" value="<?= e($query) ?>" placeholder="Digite nome, SKU ou código de barras" autofocus inputmode="search">
           </label>
-          <button class="sale-scan-submit" type="submit" name="action" value="add_by_code" tabindex="-1">Adicionar por código</button>
+          <button id="saleScanSubmit" class="sale-scan-submit" type="submit" name="action" value="add_product_by_code" tabindex="-1">Adicionar por código</button>
           <button class="secondary-btn" type="submit" name="action" value="search_product">Buscar</button>
+          <button id="saleCameraButton" class="sale-camera-btn" type="button">Ler código de barras</button>
         </form>
-        <p class="sale-search-help">Enter tenta adicionar por SKU/código exato. O botão Buscar lista por nome, SKU ou código de barras.</p>
+        <p class="sale-search-help">Digite para buscar um produto ou use a câmera para ler o código.</p>
+        <div id="saleCameraMessage" class="sale-alert danger sale-step-warning" role="alert">Não foi possível acessar a câmera. Digite ou use o leitor físico.</div>
 
         <div class="sale-product-list" id="saleProducts">
-          <?php if (!$products): ?>
-            <article class="summary-card"><?= $query !== '' ? 'Nenhum produto encontrado para esta busca.' : 'Nenhum produto encontrado.' ?></article>
+          <?php if ($query === ''): ?>
+            <article class="summary-card">Digite o nome, SKU ou código de barras para localizar o produto.</article>
+          <?php elseif (saleSearchLength($query) < 2): ?>
+            <article class="summary-card">Digite pelo menos 2 caracteres para buscar.</article>
+          <?php elseif (!$products): ?>
+            <article class="summary-card">Nenhum produto encontrado.</article>
           <?php endif; ?>
 
           <?php foreach ($products as $product): ?>
@@ -569,6 +592,18 @@ require_once __DIR__ . '/layout/header.php';
         <div id="saleStepWarning" class="sale-alert warning sale-step-warning" role="alert">Adicione pelo menos um produto para continuar.</div>
         <div class="sale-panel-actions"><button class="secondary-btn" type="button" data-sale-step="client" data-require-cart="1">Continuar</button></div>
       </section>
+
+      <div id="saleCameraPanel" class="sale-camera-panel" aria-hidden="true">
+        <div class="sale-camera-box" role="dialog" aria-modal="true" aria-labelledby="saleCameraTitle">
+          <h3 id="saleCameraTitle">Ler código de barras</h3>
+          <p>Aponte a câmera para o código. A leitura fecha automaticamente quando detectar.</p>
+          <video id="saleCameraVideo" class="sale-camera-video" playsinline muted></video>
+          <div id="saleCameraFeedback" class="sale-camera-feedback">Aguardando câmera...</div>
+          <div class="sale-camera-actions">
+            <button id="saleCameraCancel" class="secondary-btn" type="button">Cancelar leitura</button>
+          </div>
+        </div>
+      </div>
 
       <form id="saleFinishForm" method="post">
         <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
@@ -779,7 +814,22 @@ require_once __DIR__ . '/layout/header.php';
   const cartItems = Number(<?= json_encode(count($cartProducts)) ?>);
   const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   const productSearch = document.getElementById('productSearchInput');
+  const barcodeInput = document.getElementById('barcodeInput');
+  const scanSubmit = document.getElementById('saleScanSubmit');
+  const searchForm = productSearch?.closest('form');
+  const searchButton = searchForm?.querySelector('button[name="action"][value="search_product"]');
+  const cameraButton = document.getElementById('saleCameraButton');
+  const cameraPanel = document.getElementById('saleCameraPanel');
+  const cameraCancel = document.getElementById('saleCameraCancel');
+  const cameraVideo = document.getElementById('saleCameraVideo');
+  const cameraFeedback = document.getElementById('saleCameraFeedback');
+  const cameraMessage = document.getElementById('saleCameraMessage');
   const stepWarning = document.getElementById('saleStepWarning');
+  const initialSearch = <?= json_encode($query) ?>;
+  let searchTimer = 0;
+  let cameraStream = null;
+  let cameraLoop = 0;
+  let zxingControls = null;
 
   function showStep(step) {
     layout.querySelectorAll('[data-sale-step]').forEach((button) => {
@@ -835,6 +885,120 @@ require_once __DIR__ . '/layout/header.php';
     document.getElementById('saleReviewPayment')?.replaceChildren(document.createTextNode(selectedPaymentLabel()));
   }
 
+  function submitBarcode(code) {
+    const value = String(code || '').trim();
+    if (!value || !searchForm || !productSearch || !scanSubmit) return;
+    window.clearTimeout(searchTimer);
+    productSearch.value = value;
+    if (barcodeInput) barcodeInput.value = value;
+    searchForm.requestSubmit(scanSubmit);
+  }
+
+  function showCameraMessage(message) {
+    if (cameraMessage) {
+      cameraMessage.textContent = message;
+      cameraMessage.classList.add('visible');
+    }
+  }
+
+  function stopCamera() {
+    if (cameraLoop) {
+      cancelAnimationFrame(cameraLoop);
+      cameraLoop = 0;
+    }
+    if (zxingControls?.stop) {
+      zxingControls.stop();
+      zxingControls = null;
+    }
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      cameraStream = null;
+    }
+    if (cameraVideo) cameraVideo.srcObject = null;
+    cameraPanel?.classList.remove('open');
+    cameraPanel?.setAttribute('aria-hidden', 'true');
+    productSearch?.focus({ preventScroll: true });
+  }
+
+  async function loadZxing() {
+    if (window.ZXingBrowser) return window.ZXingBrowser;
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/@zxing/browser@latest/umd/index.min.js';
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    return window.ZXingBrowser;
+  }
+
+  async function startNativeBarcodeReader() {
+    const detector = new BarcodeDetector({
+      formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'qr_code'],
+    });
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+    cameraVideo.srcObject = cameraStream;
+    await cameraVideo.play();
+
+    const scanFrame = async () => {
+      if (!cameraStream) return;
+      try {
+        const codes = await detector.detect(cameraVideo);
+        if (codes.length > 0) {
+          const value = codes[0].rawValue || '';
+          stopCamera();
+          submitBarcode(value);
+          return;
+        }
+      } catch (error) {
+        stopCamera();
+        showCameraMessage('Não foi possível ler pela câmera. Digite ou use o leitor físico.');
+        return;
+      }
+      cameraLoop = requestAnimationFrame(scanFrame);
+    };
+
+    cameraLoop = requestAnimationFrame(scanFrame);
+  }
+
+  async function startZxingBarcodeReader() {
+    const zxing = await loadZxing();
+    const reader = new zxing.BrowserMultiFormatReader();
+    zxingControls = await reader.decodeFromVideoDevice(null, cameraVideo, (result) => {
+      if (!result) return;
+      const value = typeof result.getText === 'function' ? result.getText() : String(result.text || '');
+      stopCamera();
+      submitBarcode(value);
+    });
+  }
+
+  async function openCamera() {
+    if (!cameraPanel || !cameraVideo || !navigator.mediaDevices?.getUserMedia) {
+      showCameraMessage('Não foi possível acessar a câmera. Digite ou use o leitor físico.');
+      return;
+    }
+
+    cameraMessage?.classList.remove('visible');
+    cameraPanel.classList.add('open');
+    cameraPanel.setAttribute('aria-hidden', 'false');
+    if (cameraFeedback) cameraFeedback.textContent = 'Aponte a câmera para o código.';
+
+    try {
+      if ('BarcodeDetector' in window) {
+        await startNativeBarcodeReader();
+      } else {
+        await startZxingBarcodeReader();
+      }
+    } catch (error) {
+      stopCamera();
+      showCameraMessage('Não foi possível acessar a câmera. Digite ou use o leitor físico.');
+    }
+  }
+
   document.addEventListener('click', (event) => {
     const stepButton = event.target.closest('[data-sale-step]');
     if (stepButton) {
@@ -859,10 +1023,37 @@ require_once __DIR__ . '/layout/header.php';
 
   document.addEventListener('input', (event) => {
     if (event.target.matches('#saleDiscount, #saleReceived')) updateTotals();
+    if (event.target.matches('#productSearchInput')) {
+      if (barcodeInput) barcodeInput.value = '';
+      window.clearTimeout(searchTimer);
+      const value = productSearch.value.trim();
+      if (value.length >= 2 && value !== initialSearch) {
+        searchTimer = window.setTimeout(() => searchForm?.requestSubmit(searchButton), 650);
+      }
+      if (value.length === 0 && initialSearch !== '') {
+        searchTimer = window.setTimeout(() => searchForm?.requestSubmit(searchButton), 650);
+      }
+    }
   });
   document.addEventListener('change', (event) => {
     if (event.target.matches('#saleClient')) updateClient();
     if (event.target.matches('input[name="payment"]')) updateTotals();
+  });
+  productSearch?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      window.clearTimeout(searchTimer);
+      if (barcodeInput) barcodeInput.value = productSearch.value.trim();
+    }
+  });
+  cameraButton?.addEventListener('click', openCamera);
+  cameraCancel?.addEventListener('click', stopCamera);
+  cameraPanel?.addEventListener('click', (event) => {
+    if (event.target === cameraPanel) stopCamera();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && cameraPanel?.classList.contains('open')) {
+      stopCamera();
+    }
   });
 
   updateClient();
