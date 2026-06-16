@@ -1,0 +1,484 @@
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../backend/bootstrap.php';
+
+use App\Security\Auth;
+use App\Security\Csrf;
+use App\Services\ClientAccountService;
+
+Auth::requireLogin();
+
+$user = Auth::user();
+$empresaId = (int)($user['empresa_id'] ?? 0);
+$currentUserId = (int)($user['id'] ?? 0);
+$currentNivel = (string)($user['nivel'] ?? '');
+$accountService = new ClientAccountService();
+
+function canClientAccountAccess(string $action, string $nivel): bool
+{
+    $permissions = [
+        'view' => ['admin', 'gerente', 'operador', 'leitor'],
+        'pay' => ['admin', 'gerente', 'operador'],
+        'settle' => ['admin', 'gerente', 'operador'],
+        'print' => ['admin', 'gerente', 'operador', 'leitor'],
+    ];
+
+    return in_array($nivel, $permissions[$action] ?? [], true);
+}
+
+function requireClientAccountAccess(string $action, string $nivel): void
+{
+    if (!canClientAccountAccess($action, $nivel)) {
+        throw new RuntimeException('Você não tem permissão para executar esta ação.');
+    }
+}
+
+function accountMoney(mixed $value): string
+{
+    return 'R$ ' . number_format((float)$value, 2, ',', '.');
+}
+
+function accountDate(mixed $value): string
+{
+    $value = trim((string)$value);
+    if ($value === '') {
+        return 'Sem data';
+    }
+
+    $timestamp = strtotime($value);
+    return $timestamp ? date('d/m/Y', $timestamp) : 'Sem data';
+}
+
+function accountDateTime(mixed $value): string
+{
+    $value = trim((string)$value);
+    if ($value === '') {
+        return 'Sem data';
+    }
+
+    $timestamp = strtotime($value);
+    return $timestamp ? date('d/m/Y H:i', $timestamp) : 'Sem data';
+}
+
+function accountStatusLabel(string $status): string
+{
+    return [
+        'em_aberto' => 'Em aberto',
+        'parcial' => 'Parcial',
+        'pago' => 'Pago',
+        'atrasado' => 'Atrasado',
+        'cancelado' => 'Cancelado',
+    ][$status] ?? ucfirst(str_replace('_', ' ', $status));
+}
+
+function accountStatusClass(string $status): string
+{
+    return match ($status) {
+        'pago' => 'green',
+        'atrasado' => 'red',
+        'parcial' => 'orange',
+        'cancelado' => 'muted',
+        default => 'blue',
+    };
+}
+
+function accountPaymentLabel(string $method): string
+{
+    return [
+        'pix' => 'PIX',
+        'dinheiro' => 'Dinheiro',
+        'credito' => 'Crédito',
+        'debito' => 'Débito',
+        'transferencia' => 'Transferência',
+        'outro' => 'Outro',
+    ][$method] ?? ucfirst($method);
+}
+
+function redirectAccounts(string $type, string $message, array $receipt = []): void
+{
+    $_SESSION['account_flash'] = [
+        'type' => $type,
+        'message' => $message,
+        'receipt' => $receipt,
+    ];
+
+    $params = $_GET;
+    foreach ($params as $key => $value) {
+        if ($value === '' || $value === null) {
+            unset($params[$key]);
+        }
+    }
+
+    header('Location: contas-clientes.php' . ($params ? '?' . http_build_query($params) : ''));
+    exit;
+}
+
+function accountFilterUrl(array $overrides = []): string
+{
+    $params = array_merge($_GET, $overrides);
+    foreach ($params as $key => $value) {
+        if ($value === '' || $value === null || $value === 'todas') {
+            unset($params[$key]);
+        }
+    }
+
+    return 'contas-clientes.php' . ($params ? '?' . http_build_query($params) : '');
+}
+
+try {
+    requireClientAccountAccess('view', $currentNivel);
+} catch (RuntimeException $e) {
+    http_response_code(403);
+    exit('Acesso negado.');
+}
+
+$allowedStatus = ['todas', 'em_aberto', 'parcial', 'pago', 'atrasado', 'cancelado'];
+$status = (string)($_GET['status'] ?? 'todas');
+$status = in_array($status, $allowedStatus, true) ? $status : 'todas';
+
+$filters = [
+    'status' => $status,
+    'q' => trim((string)($_GET['q'] ?? '')),
+    'cliente_id' => trim((string)($_GET['cliente_id'] ?? '')),
+    'inicio' => trim((string)($_GET['inicio'] ?? '')),
+    'fim' => trim((string)($_GET['fim'] ?? '')),
+];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        if (!Csrf::validate((string)($_POST['csrf_token'] ?? ''))) {
+            throw new RuntimeException('Sessão expirada. Recarregue a página e tente novamente.');
+        }
+
+        $action = (string)($_POST['action'] ?? '');
+        $contaId = filter_var($_POST['conta_id'] ?? null, FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1],
+        ]);
+
+        if ($contaId === false || $contaId === null) {
+            throw new InvalidArgumentException('Conta inválida.');
+        }
+
+        if ($action === 'pay') {
+            requireClientAccountAccess('pay', $currentNivel);
+
+            $valorPagoRaw = (string)($_POST['valor_pago'] ?? '0');
+            $formaPagamento = (string)($_POST['forma_pagamento'] ?? '');
+            $observacao = trim((string)($_POST['observacao'] ?? ''));
+
+            $before = $accountService->details($empresaId, (int)$contaId)['account'];
+
+            $accountService->pay($empresaId, $currentUserId, (int)$contaId, [
+                'valor_pago' => $valorPagoRaw,
+                'forma_pagamento' => $formaPagamento,
+                'observacao' => $observacao,
+            ]);
+
+            $valorPago = str_contains($valorPagoRaw, ',')
+                ? (float)str_replace(',', '.', str_replace('.', '', $valorPagoRaw))
+                : (float)$valorPagoRaw;
+            $saldoRestante = max(((float)$before['saldo_aberto']) - $valorPago, 0);
+
+            redirectAccounts('success', 'Pagamento registrado com sucesso.', [
+                'cliente' => (string)$before['cliente_nome'],
+                'conta_id' => (int)$before['id'],
+                'venda_id' => $before['venda_id'],
+                'valor_pago' => $valorPago,
+                'forma_pagamento' => $formaPagamento,
+                'saldo_restante' => $saldoRestante,
+                'operador' => (string)($user['nome'] ?? $user['usuario'] ?? $user['email'] ?? 'Operador'),
+                'data' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        if ($action === 'settle') {
+            requireClientAccountAccess('settle', $currentNivel);
+
+            $formaPagamento = (string)($_POST['forma_pagamento'] ?? 'dinheiro');
+            $before = $accountService->details($empresaId, (int)$contaId)['account'];
+            $saldo = (float)$before['saldo_aberto'];
+
+            $accountService->settle($empresaId, $currentUserId, (int)$contaId, $formaPagamento);
+
+            redirectAccounts('success', 'Conta quitada com sucesso.', [
+                'cliente' => (string)$before['cliente_nome'],
+                'conta_id' => (int)$before['id'],
+                'venda_id' => $before['venda_id'],
+                'valor_pago' => $saldo,
+                'forma_pagamento' => $formaPagamento,
+                'saldo_restante' => 0,
+                'operador' => (string)($user['nome'] ?? $user['usuario'] ?? $user['email'] ?? 'Operador'),
+                'data' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        throw new InvalidArgumentException('Ação inválida.');
+    } catch (InvalidArgumentException | RuntimeException $e) {
+        redirectAccounts('danger', $e->getMessage());
+    } catch (Throwable $e) {
+        log_app_exception($e);
+        redirectAccounts('danger', 'Não foi possível processar esta conta agora.');
+    }
+}
+
+$accounts = [];
+$summary = [
+    'total_aberto' => 0,
+    'total_vencido' => 0,
+    'total_pago' => 0,
+    'contas_abertas' => 0,
+    'contas_vencidas' => 0,
+    'clientes_com_divida' => 0,
+];
+$loadError = null;
+
+try {
+    $summary = $accountService->summary($empresaId, $filters);
+    $accounts = $accountService->list($empresaId, $filters);
+} catch (Throwable $e) {
+    log_app_exception($e);
+    $loadError = 'Não foi possível carregar as contas de clientes agora.';
+}
+
+$flash = $_SESSION['account_flash'] ?? null;
+unset($_SESSION['account_flash']);
+$receipt = is_array($flash['receipt'] ?? null) ? $flash['receipt'] : [];
+
+$pageId = 'contas-clientes-server';
+$pageTitle = 'Contas de Clientes';
+$activeMenu = 'clientes';
+require_once __DIR__ . '/layout/header.php';
+?>
+
+<style>
+  .account-alert { margin-bottom: 14px; padding: 13px 15px; border-radius: 14px; border: 1px solid var(--line); font-size: 13px; font-weight: 800; }
+  .account-alert.success { color: var(--green); background: rgba(37,196,132,.10); border-color: rgba(37,196,132,.25); }
+  .account-alert.danger { color: var(--red); background: rgba(230,83,103,.10); border-color: rgba(230,83,103,.25); }
+  .account-filter-card, .account-card, .account-summary-card, .account-receipt-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 22px rgba(29,55,95,.055); }
+  .account-filter-card { padding: 14px; }
+  .account-filter-grid { display: grid; gap: 10px; }
+  .account-status-pills { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+  .account-status-pills::-webkit-scrollbar { display: none; }
+  .account-status-pills a { white-space: nowrap; min-height: 36px; display: inline-flex; align-items: center; padding: 0 12px; color: var(--muted); background: #F7FAFE; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 850; text-decoration: none; }
+  .account-status-pills a.active { color: var(--blue); background: var(--blue-soft); border-color: var(--blue-line); }
+  .account-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .account-summary-card { padding: 14px; }
+  .account-summary-card span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; }
+  .account-summary-card strong { display: block; margin-top: 5px; color: var(--ink); font-size: 20px; }
+  .account-list { display: grid; gap: 12px; }
+  .account-card { padding: 14px; }
+  .account-card-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .account-card h3 { margin: 0; color: var(--ink); font-size: 17px; }
+  .account-card p { margin: 5px 0 0; color: var(--muted); font-size: 12px; font-weight: 700; line-height: 1.45; }
+  .account-values { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+  .account-values div { padding: 10px; border-radius: 13px; background: #F8FBFF; border: 1px solid var(--line); min-width: 0; }
+  .account-values span { display: block; color: var(--muted); font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .02em; }
+  .account-values strong { display: block; margin-top: 4px; color: var(--ink); font-size: 14px; }
+  .account-actions { display: grid; gap: 8px; margin-top: 12px; }
+  .account-actions details { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+  .account-actions summary { cursor: pointer; min-height: 42px; display: flex; align-items: center; padding: 0 12px; color: var(--blue); font-size: 12px; font-weight: 900; list-style: none; }
+  .account-actions summary::-webkit-details-marker { display: none; }
+  .account-pay-form { padding: 12px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+  .account-pay-grid { display: grid; gap: 10px; }
+  .account-button-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .account-button-row .primary-btn, .account-button-row .secondary-btn { flex: 1 1 130px; min-height: 42px; }
+  .account-receipt-card { padding: 14px; }
+  .receipt-print-area { background: #fff; color: #111; border-radius: 14px; border: 1px dashed var(--line); padding: 14px; }
+  .receipt-print-area h2 { margin: 0 0 6px; font-size: 18px; text-align: center; }
+  .receipt-print-area p { margin: 4px 0; font-size: 12px; }
+  .receipt-line { display: flex; justify-content: space-between; gap: 10px; border-top: 1px dashed #bbb; padding-top: 7px; margin-top: 7px; }
+  .badge.muted { color: var(--muted); background: #F3F5F8; border-color: var(--line); }
+  @media (min-width: 720px) {
+    .account-filter-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; }
+    .account-filter-grid .wide { grid-column: span 2; }
+    .account-summary-grid { grid-template-columns: repeat(6, minmax(0,1fr)); }
+    .account-pay-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 520px) {
+    .account-summary-grid, .account-values { grid-template-columns: 1fr; }
+    .account-card-top { flex-direction: column; }
+    .account-button-row { flex-direction: column; }
+  }
+  @media print {
+    body * { visibility: hidden; }
+    .receipt-print-area, .receipt-print-area * { visibility: visible; }
+    .receipt-print-area { position: absolute; left: 0; top: 0; width: 100%; border: 0; border-radius: 0; padding: 0; margin: 0; }
+    .no-print { display: none !important; }
+  }
+</style>
+
+<header class="plain-header">
+  <div class="page-title-row">
+    <div>
+      <p class="micro-label dark-text">Fiado e pagamentos</p>
+      <h1>Contas de Clientes</h1>
+    </div>
+    <a class="icon-btn light no-print" href="clientes.php" aria-label="Voltar para clientes">‹</a>
+  </div>
+</header>
+
+<section class="content-pad">
+  <?php if (is_array($flash)): ?>
+    <div class="account-alert <?= e((string)($flash['type'] ?? 'danger')) ?>" role="status">
+      <?= e((string)($flash['message'] ?? '')) ?>
+    </div>
+  <?php endif; ?>
+
+  <?php if ($loadError !== null): ?>
+    <div class="account-alert danger" role="alert"><?= e($loadError) ?></div>
+  <?php endif; ?>
+
+  <?php if ($receipt): ?>
+    <article class="account-receipt-card section-gap-small no-print">
+      <div class="receipt-print-area">
+        <h2>Recibo de Pagamento</h2>
+        <p><strong>Cliente:</strong> <?= e((string)$receipt['cliente']) ?></p>
+        <p><strong>Conta:</strong> #<?= (int)$receipt['conta_id'] ?><?= !empty($receipt['venda_id']) ? ' · Venda #' . (int)$receipt['venda_id'] : '' ?></p>
+        <p><strong>Data:</strong> <?= e(accountDateTime($receipt['data'] ?? '')) ?></p>
+        <p><strong>Operador:</strong> <?= e((string)$receipt['operador']) ?></p>
+        <div class="receipt-line"><span>Valor pago</span><strong><?= e(accountMoney($receipt['valor_pago'] ?? 0)) ?></strong></div>
+        <div class="receipt-line"><span>Forma</span><strong><?= e(accountPaymentLabel((string)($receipt['forma_pagamento'] ?? ''))) ?></strong></div>
+        <div class="receipt-line"><span>Saldo restante</span><strong><?= e(accountMoney($receipt['saldo_restante'] ?? 0)) ?></strong></div>
+        <p style="text-align:center;margin-top:12px;">Obrigado pela preferência.</p>
+      </div>
+      <div class="account-button-row section-gap-small">
+        <button class="secondary-btn" type="button" onclick="window.print()">Imprimir recibo</button>
+      </div>
+    </article>
+  <?php endif; ?>
+
+  <form class="account-filter-card no-print" method="get" action="contas-clientes.php">
+    <nav class="account-status-pills" aria-label="Status das contas">
+      <?php foreach (['todas' => 'Todas', 'em_aberto' => 'Em aberto', 'parcial' => 'Parcial', 'atrasado' => 'Atrasadas', 'pago' => 'Pagas', 'cancelado' => 'Canceladas'] as $key => $label): ?>
+        <a class="<?= $status === $key ? 'active' : '' ?>" href="<?= e(accountFilterUrl(['status' => $key])) ?>"><?= e($label) ?></a>
+      <?php endforeach; ?>
+    </nav>
+
+    <input type="hidden" name="status" value="<?= e($status) ?>">
+    <div class="account-filter-grid section-gap-small">
+      <label class="field wide">
+        <span>Buscar cliente</span>
+        <input type="search" name="q" value="<?= e((string)$filters['q']) ?>" placeholder="Nome, telefone ou CPF/CNPJ">
+      </label>
+      <label class="field">
+        <span>Início vencimento</span>
+        <input type="date" name="inicio" value="<?= e((string)$filters['inicio']) ?>">
+      </label>
+      <label class="field">
+        <span>Fim vencimento</span>
+        <input type="date" name="fim" value="<?= e((string)$filters['fim']) ?>">
+      </label>
+      <button class="secondary-btn" type="submit">Filtrar</button>
+    </div>
+  </form>
+
+  <div class="account-summary-grid section-gap-small">
+    <article class="account-summary-card"><span>Total em aberto</span><strong><?= e(accountMoney($summary['total_aberto'] ?? 0)) ?></strong></article>
+    <article class="account-summary-card"><span>Total vencido</span><strong><?= e(accountMoney($summary['total_vencido'] ?? 0)) ?></strong></article>
+    <article class="account-summary-card"><span>Total pago</span><strong><?= e(accountMoney($summary['total_pago'] ?? 0)) ?></strong></article>
+    <article class="account-summary-card"><span>Contas abertas</span><strong><?= (int)($summary['contas_abertas'] ?? 0) ?></strong></article>
+    <article class="account-summary-card"><span>Contas vencidas</span><strong><?= (int)($summary['contas_vencidas'] ?? 0) ?></strong></article>
+    <article class="account-summary-card"><span>Clientes com dívida</span><strong><?= (int)($summary['clientes_com_divida'] ?? 0) ?></strong></article>
+  </div>
+
+  <div class="account-list section-gap-small">
+    <?php if (!$accounts && $loadError === null): ?>
+      <article class="account-card">Nenhuma conta encontrada.</article>
+    <?php endif; ?>
+
+    <?php foreach ($accounts as $account): ?>
+      <?php
+        $visualStatus = (string)($account['status_visual'] ?? $account['status']);
+        $canReceive = canClientAccountAccess('pay', $currentNivel)
+          && !in_array($account['status'], ['pago', 'cancelado'], true)
+          && (float)$account['saldo_aberto'] > 0;
+      ?>
+      <article class="account-card">
+        <div class="account-card-top">
+          <div>
+            <h3><?= e((string)$account['cliente_nome']) ?></h3>
+            <p><?= e((string)($account['cliente_telefone'] ?: 'Sem telefone')) ?> · <?= e((string)($account['cliente_documento'] ?: 'Sem CPF/CNPJ')) ?></p>
+            <p>Conta #<?= (int)$account['id'] ?><?= $account['venda_id'] ? ' · Venda #' . (int)$account['venda_id'] : '' ?> · Vencimento <?= e(accountDate($account['vencimento'])) ?></p>
+          </div>
+          <span class="badge <?= e(accountStatusClass($visualStatus)) ?>"><?= e(accountStatusLabel($visualStatus)) ?></span>
+        </div>
+
+        <div class="account-values">
+          <div><span>Valor original</span><strong><?= e(accountMoney($account['valor_original'])) ?></strong></div>
+          <div><span>Valor pago</span><strong><?= e(accountMoney($account['valor_pago'])) ?></strong></div>
+          <div><span>Saldo aberto</span><strong><?= e(accountMoney($account['saldo_aberto'])) ?></strong></div>
+        </div>
+
+        <div class="account-actions no-print">
+          <?php if ($account['venda_id']): ?>
+            <a class="secondary-btn" href="venda-detalhes.php?id=<?= (int)$account['venda_id'] ?>">Ver venda</a>
+          <?php endif; ?>
+
+          <?php if ($canReceive): ?>
+            <details>
+              <summary>Registrar pagamento</summary>
+              <form class="account-pay-form" method="post" action="contas-clientes.php?<?= e(http_build_query(array_filter($_GET, static fn ($value): bool => $value !== ''))) ?>">
+                <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+                <input type="hidden" name="action" value="pay">
+                <input type="hidden" name="conta_id" value="<?= (int)$account['id'] ?>">
+                <div class="account-pay-grid">
+                  <label class="field">
+                    <span>Valor pago</span>
+                    <input type="text" name="valor_pago" inputmode="decimal" placeholder="0,00" required>
+                  </label>
+                  <label class="field">
+                    <span>Forma de pagamento</span>
+                    <select name="forma_pagamento" required>
+                      <option value="pix">PIX</option>
+                      <option value="dinheiro">Dinheiro</option>
+                      <option value="credito">Crédito</option>
+                      <option value="debito">Débito</option>
+                      <option value="transferencia">Transferência</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="field">
+                  <span>Observação</span>
+                  <input type="text" name="observacao" maxlength="255" placeholder="Opcional">
+                </label>
+                <div class="account-button-row">
+                  <button class="primary-btn" type="submit">Salvar pagamento</button>
+                </div>
+              </form>
+            </details>
+
+            <?php if (canClientAccountAccess('settle', $currentNivel)): ?>
+              <details>
+                <summary>Quitar conta</summary>
+                <form class="account-pay-form" method="post" action="contas-clientes.php?<?= e(http_build_query(array_filter($_GET, static fn ($value): bool => $value !== ''))) ?>" onsubmit="return confirm('Quitar esta conta?');">
+                  <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+                  <input type="hidden" name="action" value="settle">
+                  <input type="hidden" name="conta_id" value="<?= (int)$account['id'] ?>">
+                  <label class="field">
+                    <span>Forma de pagamento</span>
+                    <select name="forma_pagamento" required>
+                      <option value="pix">PIX</option>
+                      <option value="dinheiro">Dinheiro</option>
+                      <option value="credito">Crédito</option>
+                      <option value="debito">Débito</option>
+                      <option value="transferencia">Transferência</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </label>
+                  <div class="account-button-row">
+                    <button class="primary-btn" type="submit">Quitar <?= e(accountMoney($account['saldo_aberto'])) ?></button>
+                  </div>
+                </form>
+              </details>
+            <?php endif; ?>
+          <?php endif; ?>
+        </div>
+      </article>
+    <?php endforeach; ?>
+  </div>
+</section>
+
+<?php require_once __DIR__ . '/layout/footer.php'; ?>

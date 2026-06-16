@@ -212,4 +212,19 @@ CREATE TABLE IF NOT EXISTS configuracoes (
     CONSTRAINT fk_config_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS cliente_conta_pagamentos (
+  id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  empresa_id BIGINT(20) UNSIGNED NOT NULL,
+  conta_id BIGINT(20) UNSIGNED NOT NULL,
+  cliente_id BIGINT(20) UNSIGNED NOT NULL,
+  usuario_id BIGINT(20) UNSIGNED NULL,
+  valor_pago DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  forma_pagamento VARCHAR(40) NOT NULL,
+  observacao VARCHAR(255) NULL,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_pagamentos_empresa_conta (empresa_id, conta_id),
+  KEY idx_pagamentos_empresa_cliente (empresa_id, cliente_id),
+  KEY idx_pagamentos_criado_em (criado_em)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SET FOREIGN_KEY_CHECKS = 1;
