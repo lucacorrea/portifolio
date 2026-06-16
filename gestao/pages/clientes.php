@@ -153,7 +153,7 @@ unset($_SESSION['client_flash']);
 
 $pageId = 'clientes-server';
 $pageTitle = 'Clientes';
-$activeMenu = 'mais';
+$activeMenu = 'clientes';
 require_once __DIR__ . '/layout/header.php';
 ?>
 

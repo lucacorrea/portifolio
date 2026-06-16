@@ -1464,6 +1464,10 @@ svg {
   box-shadow: 0 8px 18px rgba(22, 87, 167, .24);
 }
 
+.bottom-nav .side-nav-only {
+  display: none;
+}
+
 .center-action strong {
   font-size: 28px;
   line-height: 1;
@@ -2226,6 +2230,10 @@ svg {
     gap: 12px;
     padding: 0 14px;
     border-radius: 16px;
+  }
+
+  .bottom-nav .side-nav-only {
+    display: flex;
   }
 
   .bottom-nav a span,

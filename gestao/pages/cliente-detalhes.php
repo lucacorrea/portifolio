@@ -13,7 +13,7 @@ $user = Auth::user();
 
 $pageId = 'cliente-detalhes';
 $pageTitle = 'Cliente';
-$activeMenu = '';
+$activeMenu = 'clientes';
 require_once __DIR__ . '/layout/header.php';
 ?>
       

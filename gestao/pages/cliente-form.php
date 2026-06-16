@@ -144,7 +144,7 @@ if (!$canRenderForm) {
 
 $pageId = 'cliente-form-server';
 $pageTitle = $isEditing ? 'Editar cliente' : 'Novo cliente';
-$activeMenu = 'mais';
+$activeMenu = 'clientes';
 require_once __DIR__ . '/layout/header.php';
 ?>
 

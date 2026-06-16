@@ -19,6 +19,10 @@ $activeMenu = $activeMenu ?? '';
         <svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg>
         <span>Produtos</span>
       </a>
+      <a class="side-nav-only <?= $activeMenu === 'clientes' ? 'active' : '' ?>" href="<?= $prefix ?>pages/clientes.php">
+        <svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-8 0"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+        <span>Clientes</span>
+      </a>
       <a class="<?= $activeMenu === 'mais' ? 'active' : '' ?>" href="<?= $prefix ?>pages/configuracoes.php">
         <svg viewBox="0 0 24 24"><path d="M12 5v.01"/><path d="M12 12v.01"/><path d="M12 19v.01"/></svg>
         <span>Mais</span>
