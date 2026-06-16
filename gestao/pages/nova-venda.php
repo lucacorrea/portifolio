@@ -375,7 +375,7 @@ unset($_SESSION['sale_flash']);
 
 $pageId = 'nova-venda-server';
 $pageTitle = 'Nova Venda';
-$activeMenu = 'vendas';
+$activeMenu = 'nova-venda';
 require_once __DIR__ . '/layout/header.php';
 ?>
 

@@ -165,7 +165,7 @@ $canceledTotal = (float)($summary['canceled_total'] ?? 0);
 
 $pageId = 'historico-vendas';
 $pageTitle = 'Histórico de Vendas';
-$activeMenu = 'vendas';
+$activeMenu = 'historico';
 
 require_once __DIR__ . '/layout/header.php';
 ?>

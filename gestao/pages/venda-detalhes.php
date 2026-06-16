@@ -148,7 +148,7 @@ $companyAddress = (string)($company['endereco'] ?? '');
 
 $pageId = 'venda-detalhes-server';
 $pageTitle = $sale ? 'Venda #' . (string)$sale['numero_venda'] : 'Venda';
-$activeMenu = 'vendas';
+$activeMenu = 'historico';
 require_once __DIR__ . '/layout/header.php';
 ?>
 

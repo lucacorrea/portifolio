@@ -274,7 +274,7 @@ $qtdClientesDivida = (int)($summary['clientes_com_divida'] ?? 0);
 
 $pageId = 'contas-clientes-server';
 $pageTitle = 'Contas de Clientes';
-$activeMenu = 'clientes';
+$activeMenu = 'contas';
 
 require_once __DIR__ . '/layout/header.php';
 ?>

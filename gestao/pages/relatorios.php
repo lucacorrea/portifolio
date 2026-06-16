@@ -186,7 +186,7 @@ foreach ($paymentMethods as $row) {
 
 $pageId = 'relatorios-server';
 $pageTitle = 'Relatórios';
-$activeMenu = '';
+$activeMenu = 'relatorios';
 
 require_once __DIR__ . '/layout/header.php';
 ?>
