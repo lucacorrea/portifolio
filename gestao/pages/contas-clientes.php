@@ -1100,9 +1100,7 @@ require_once __DIR__ . '/layout/header.php';
       <h1>Contas de Clientes</h1>
     </div>
 
-```
-<a class="icon-btn light no-print" href="clientes.php" aria-label="Voltar para clientes">‹</a>
-```
+
 
   </div>
 </header>
@@ -1113,7 +1111,6 @@ require_once __DIR__ . '/layout/header.php';
       <div class="account-alert success no-print" role="status">
         <?= e((string)($flash['message'] ?? 'Pagamento registrado com sucesso.')) ?>
 
-```
     <div class="alert-actions">
       <button type="button" class="secondary-btn" id="openReceiptModalBtn">Ver recibo</button>
     </div>
@@ -1392,7 +1389,6 @@ require_once __DIR__ . '/layout/header.php';
     </article>
   <?php endforeach; ?>
 </section>
-```
 
   </div>
 </section>
@@ -1407,7 +1403,6 @@ require_once __DIR__ . '/layout/header.php';
         <h2 id="paymentModalTitle">Registrar pagamento</h2>
       </div>
 
-```
   <button type="button" class="icon-btn light" data-close-modal aria-label="Fechar">×</button>
 </div>
 
@@ -1453,7 +1448,6 @@ require_once __DIR__ . '/layout/header.php';
     </div>
   </form>
 </div>
-```
 
   </div>
 </div>
@@ -1468,7 +1462,6 @@ require_once __DIR__ . '/layout/header.php';
         <h2 id="settleModalTitle">Quitar conta</h2>
       </div>
 
-```
   <button type="button" class="icon-btn light" data-close-modal aria-label="Fechar">×</button>
 </div>
 
@@ -1502,7 +1495,6 @@ require_once __DIR__ . '/layout/header.php';
     </div>
   </form>
 </div>
-```
 
   </div>
 </div>
@@ -1512,7 +1504,6 @@ require_once __DIR__ . '/layout/header.php';
   <div class="account-modal" id="receiptModal" hidden>
     <div class="account-modal-backdrop" data-close-modal></div>
 
-```
 <div class="account-modal-dialog small" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle">
   <div class="account-modal-header no-print">
     <div>
@@ -1556,7 +1547,6 @@ require_once __DIR__ . '/layout/header.php';
     </div>
   </div>
 </div>
-```
 
   </div>
 <?php endif; ?>
