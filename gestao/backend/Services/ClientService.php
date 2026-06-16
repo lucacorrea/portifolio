@@ -38,6 +38,15 @@ final class ClientService
         return $client;
     }
 
+    public function find(int $empresaId, int $id): ?array
+    {
+        if ($id <= 0) {
+            throw new InvalidArgumentException('Cliente inválido.');
+        }
+
+        return $this->clients->findById($empresaId, $id);
+    }
+
     public function save(int $empresaId, array $payload): array
     {
         $id = (int)($payload['id'] ?? 0);
@@ -48,18 +57,26 @@ final class ClientService
         }
 
         $phone = trim((string)($payload['phone'] ?? $payload['telefone'] ?? ''));
-        $phone = Validator::normalizeBrazilWhatsapp($phone);
+        if (!Validator::max($phone, 30)) {
+            throw new InvalidArgumentException('O telefone deve ter no máximo 30 caracteres.');
+        }
 
-        if ($phone === '' && trim((string)($payload['phone'] ?? $payload['telefone'] ?? '')) !== '') {
-            throw new InvalidArgumentException('Informe o WhatsApp no padrão (92) 9151-5710.');
+        $cpfCnpj = trim((string)($payload['cpf'] ?? $payload['cpf_cnpj'] ?? ''));
+        if (!Validator::max($cpfCnpj, 20)) {
+            throw new InvalidArgumentException('O CPF/CNPJ deve ter no máximo 20 caracteres.');
+        }
+
+        $address = trim((string)($payload['address'] ?? $payload['endereco'] ?? ''));
+        if (!Validator::max($address, 255)) {
+            throw new InvalidArgumentException('O endereço deve ter no máximo 255 caracteres.');
         }
 
         $data = [
             'nome' => $name,
             'telefone' => $phone,
-            'cpf_cnpj' => trim((string)($payload['cpf'] ?? $payload['cpf_cnpj'] ?? '')),
-            'endereco' => trim((string)($payload['address'] ?? $payload['endereco'] ?? '')),
-            'observacao' => trim((string)($payload['note'] ?? $payload['observacao'] ?? '')),
+            'cpf_cnpj' => $cpfCnpj,
+            'endereco' => $address,
+            'observacao' => trim((string)($payload['note'] ?? $payload['observacao'] ?? $payload['observation'] ?? '')),
         ];
 
         if ($id > 0) {
@@ -68,7 +85,16 @@ final class ClientService
             $id = $this->clients->create($empresaId, $data);
         }
 
-        return $this->details($empresaId, $id) ?? [];
+        return $this->find($empresaId, $id) ?? [];
+    }
+
+    public function inactivate(int $empresaId, int $id): void
+    {
+        if ($id <= 0) {
+            throw new InvalidArgumentException('Cliente inválido.');
+        }
+
+        $this->clients->inactivate($empresaId, $id);
     }
 
     public function registerPayment(int $empresaId, int $usuarioId, array $payload): void
