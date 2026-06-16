@@ -748,9 +748,9 @@ require_once __DIR__ . '/layout/header.php';
       <h1>Vendas</h1>
     </div>
 
-```
+
 <a class="round-btn no-print" href="nova-venda.php" aria-label="Nova venda">+</a>
-```
+
 
   </div>
 </header>
@@ -761,7 +761,7 @@ require_once __DIR__ . '/layout/header.php';
       <div class="sales-alert" role="alert"><?= e($loadError) ?></div>
     <?php endif; ?>
 
-```
+
 <section class="sales-hero-card">
   <div>
     <h2>Histórico de vendas</h2>
@@ -987,7 +987,7 @@ require_once __DIR__ . '/layout/header.php';
     </article>
   <?php endforeach; ?>
 </section>
-```
+
 
   </div>
 </section>
