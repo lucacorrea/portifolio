@@ -193,7 +193,12 @@ try {
     $products = $productService->list($empresaId, $query);
 } catch (Throwable $e) {
     log_app_exception($e);
-    $loadError = 'Não foi possível carregar os produtos agora.';
+
+    if ($currentNivel === 'admin') {
+        $loadError = 'Erro técnico ao carregar produtos: ' . $e->getMessage();
+    } else {
+        $loadError = 'Não foi possível carregar os produtos agora.';
+    }
 }
 
 $today = new DateTimeImmutable('today');
