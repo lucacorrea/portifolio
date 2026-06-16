@@ -45,7 +45,15 @@ function redirectSale(string $type, string $message, string $query = ''): void
         'message' => $message,
     ];
 
-    header('Location: nova-venda.php' . ($query !== '' ? '?' . http_build_query(['q' => $query]) : ''));
+    header('Location: nova-venda.php' . ($query !== '' ? '?' . http_build_query(['product_search' => $query]) : ''));
+    exit;
+}
+
+function redirectSaleSearch(string $query): void
+{
+    $query = trim($query);
+
+    header('Location: nova-venda.php' . ($query !== '' ? '?' . http_build_query(['product_search' => $query]) : ''));
     exit;
 }
 
@@ -110,6 +118,42 @@ function salePaymentIcon(string $method): string
     ][$method] ?? 'OK';
 }
 
+function saleProductExpired(array $product): bool
+{
+    $expiry = trim((string)($product['expiry'] ?? ''));
+
+    return $expiry !== '' && $expiry < date('Y-m-d');
+}
+
+function assertSaleProductCanEnterCart(array $product, float $quantity, array $cart, array $settings): void
+{
+    if ($quantity <= 0) {
+        throw new InvalidArgumentException('Produto ou quantidade inválida.');
+    }
+
+    if (saleEnabled($settings, 'block_expired_products', true) && saleProductExpired($product)) {
+        throw new InvalidArgumentException('Produto vencido não pode ser vendido.');
+    }
+
+    $productId = (int)($product['id'] ?? 0);
+    $currentQuantity = (float)($cart[$productId] ?? 0);
+    $requestedQuantity = round($currentQuantity + $quantity, 3);
+
+    if (saleEnabled($settings, 'block_negative_stock', true) && $requestedQuantity > (float)($product['stock'] ?? 0)) {
+        throw new InvalidArgumentException('Produto sem estoque.');
+    }
+}
+
+function addProductToSaleCart(array $product, array $cart, array $settings, float $quantity = 1.0): array
+{
+    assertSaleProductCanEnterCart($product, $quantity, $cart, $settings);
+
+    $productId = (int)$product['id'];
+    $cart[$productId] = round(((float)($cart[$productId] ?? 0)) + $quantity, 3);
+
+    return $cart;
+}
+
 try {
     requireSaleAccess('create', $currentNivel);
 } catch (RuntimeException $e) {
@@ -122,7 +166,7 @@ $clientRepository = new ClientRepository();
 $settingsRepository = new SettingsRepository();
 $saleService = new SaleService();
 
-$query = trim((string)($_GET['q'] ?? ''));
+$query = trim((string)($_GET['product_search'] ?? $_GET['q'] ?? ''));
 $formError = null;
 
 try {
@@ -145,7 +189,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $cart = saleCart();
 
-        if ($action === 'add') {
+        if ($action === 'search_product') {
+            redirectSaleSearch((string)($_POST['product_search'] ?? ''));
+        }
+
+        if ($action === 'add_by_code') {
+            $code = trim((string)($_POST['product_search'] ?? ''));
+
+            if ($code === '') {
+                throw new InvalidArgumentException('Informe um código, SKU ou nome de produto.');
+            }
+
+            $product = $productRepository->findByCode($empresaId, $code);
+
+            if (!$product) {
+                $matches = $productRepository->findAll($empresaId, $code);
+                if (!$matches) {
+                    redirectSale('danger', 'Produto não encontrado.', $code);
+                }
+
+                redirectSale('warning', 'Nenhum código exato encontrado. Exibindo produtos encontrados.', $code);
+            }
+
+            $cart = addProductToSaleCart($product, $cart, $settings, 1.0);
+            saveSaleCart($cart);
+            redirectSale('success', 'Produto adicionado ao carrinho.');
+        }
+
+        if ($action === 'add' || $action === 'add_product') {
             $productId = filter_var($_POST['product_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $quantity = (float)str_replace(',', '.', (string)($_POST['quantity'] ?? '1'));
 
@@ -153,16 +224,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new InvalidArgumentException('Produto ou quantidade inválida.');
             }
 
-            if (!$productRepository->findById($empresaId, (int)$productId)) {
+            $product = $productRepository->findById($empresaId, (int)$productId);
+            if (!$product) {
                 throw new InvalidArgumentException('Produto não encontrado.');
             }
 
-            $cart[(int)$productId] = round(($cart[(int)$productId] ?? 0) + $quantity, 3);
+            $cart = addProductToSaleCart($product, $cart, $settings, $quantity);
             saveSaleCart($cart);
             redirectSale('success', 'Produto adicionado ao carrinho.', $query);
         }
 
-        if ($action === 'update_cart') {
+        if ($action === 'update_cart' || $action === 'update_quantity') {
             $quantities = is_array($_POST['quantities'] ?? null) ? $_POST['quantities'] : [];
             $cart = [];
             $removeId = filter_var($_POST['remove_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -176,6 +248,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $quantity = (float)str_replace(',', '.', (string)$quantity);
 
                 if ($productId > 0 && $quantity > 0) {
+                    $product = $productRepository->findById($empresaId, $productId);
+                    if (!$product) {
+                        throw new InvalidArgumentException('Produto não encontrado.');
+                    }
+
+                    assertSaleProductCanEnterCart($product, $quantity, [], $settings);
                     $cart[$productId] = round($quantity, 3);
                 }
             }
@@ -184,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirectSale('success', 'Carrinho atualizado.', $query);
         }
 
-        if ($action === 'remove') {
+        if ($action === 'remove' || $action === 'remove_item') {
             $productId = filter_var($_POST['product_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             if ($productId !== false) {
                 unset($cart[(int)$productId]);
@@ -194,12 +272,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirectSale('success', 'Produto removido do carrinho.', $query);
         }
 
-        if ($action === 'clear') {
+        if ($action === 'clear' || $action === 'clear_cart') {
             unset($_SESSION['sale_cart']);
             redirectSale('success', 'Carrinho limpo.', $query);
         }
 
-        if ($action === 'finish') {
+        if ($action === 'finish' || $action === 'finish_sale') {
             $sale = $saleService->finalize($empresaId, $currentUserId, [
                 'items' => $cart,
                 'cliente_id' => $_POST['cliente_id'] ?? 0,
@@ -229,6 +307,9 @@ $products = [];
 $clients = [];
 try {
     $products = $productRepository->findAll($empresaId, $query);
+    if ($query === '') {
+        $products = array_slice($products, 0, 30);
+    }
     $clients = $clientRepository->findAll($empresaId);
 } catch (Throwable $e) {
     log_app_exception($e);
@@ -298,6 +379,7 @@ require_once __DIR__ . '/layout/header.php';
   .sale-alert { margin-bottom: 14px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 14px; font-size: 13px; font-weight: 750; }
   .sale-alert.success { color: var(--green); background: rgba(37,196,132,.1); border-color: rgba(37,196,132,.25); }
   .sale-alert.danger { color: var(--red); background: rgba(230,83,103,.1); border-color: rgba(230,83,103,.25); }
+  .sale-alert.warning { color: #8A4A00; background: rgba(255,181,71,.14); border-color: rgba(255,181,71,.3); }
   .sale-layout { display: grid; gap: 14px; padding-bottom: 88px; }
   .sale-workspace { display: grid; gap: 14px; min-width: 0; }
   .sale-steps { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(132px, 1fr); gap: 8px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
@@ -314,7 +396,10 @@ require_once __DIR__ . '/layout/header.php';
   .sale-panel-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; font-weight: 700; }
   .sale-search-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
   .sale-search-form .search-box { min-width: 0; }
+  .sale-search-form input { min-height: 56px; font-size: 15px; }
   .sale-search-form .secondary-btn { width: auto; min-height: 54px; padding: 0 18px; }
+  .sale-scan-submit { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .sale-search-help { margin: 8px 0 0; color: var(--muted); font-size: 12px; font-weight: 750; }
   .sale-product-list { display: grid; gap: 10px; margin-top: 12px; }
   .sale-product-card { display: grid; gap: 11px; padding: 13px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
   .sale-product-card.warning { border-color: rgba(230,83,103,.25); background: rgba(230,83,103,.04); }
@@ -358,6 +443,8 @@ require_once __DIR__ . '/layout/header.php';
   .sale-review-row:last-child { border-bottom: 0; }
   .sale-panel-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 14px; }
   .sale-panel-actions button { min-height: 42px; padding: 0 14px; }
+  .sale-step-warning { display: none; margin-top: 10px; }
+  .sale-step-warning.visible { display: block; }
   .sale-mobile-total { position: fixed; left: 12px; right: 12px; bottom: max(82px, var(--safe-bottom)); z-index: 19; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 12px 28px rgba(29,55,95,.16); }
   .sale-mobile-total span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; }
   .sale-mobile-total strong { display: block; color: var(--ink); font-size: 18px; }
@@ -365,6 +452,7 @@ require_once __DIR__ . '/layout/header.php';
   .sale-submit-btn[disabled], .secondary-btn[disabled] { opacity: .55; cursor: not-allowed; }
   @media (max-width: 560px) {
     .sale-search-form, .sale-product-row { grid-template-columns: 1fr; }
+    .sale-search-form .secondary-btn, .sale-product-row .secondary-btn { width: 100%; }
     .sale-panel { padding: 13px; border-radius: 14px; }
     .sale-product-top, .sale-cart-item { grid-template-columns: 1fr; }
     .sale-product-price { white-space: normal; }
@@ -422,17 +510,20 @@ require_once __DIR__ . '/layout/header.php';
             <p>Busque, confira estoque e adicione itens ao carrinho.</p>
           </div>
         </div>
-        <form class="sale-search-form" method="get" action="nova-venda.php">
+        <form class="sale-search-form" method="post" action="nova-venda.php" autocomplete="off">
+          <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
           <label class="search-box">
             <span data-icon="search"></span>
-            <input type="search" name="q" value="<?= e($query) ?>" placeholder="Buscar produto por nome, SKU, lote ou código">
+            <input id="productSearchInput" type="search" name="product_search" value="<?= e($query) ?>" placeholder="Buscar ou escanear código de barras" autofocus inputmode="search">
           </label>
-          <button class="secondary-btn" type="submit">Buscar</button>
+          <button class="sale-scan-submit" type="submit" name="action" value="add_by_code" tabindex="-1">Adicionar por código</button>
+          <button class="secondary-btn" type="submit" name="action" value="search_product">Buscar</button>
         </form>
+        <p class="sale-search-help">Enter tenta adicionar por SKU/código exato. O botão Buscar lista por nome, SKU ou código de barras.</p>
 
         <div class="sale-product-list" id="saleProducts">
           <?php if (!$products): ?>
-            <article class="summary-card">Nenhum produto encontrado.</article>
+            <article class="summary-card"><?= $query !== '' ? 'Nenhum produto encontrado para esta busca.' : 'Nenhum produto encontrado.' ?></article>
           <?php endif; ?>
 
           <?php foreach ($products as $product): ?>
@@ -455,6 +546,7 @@ require_once __DIR__ . '/layout/header.php';
                 <strong class="sale-product-price"><?= e(saleMoney($product['price'])) ?></strong>
               </div>
               <div class="sale-product-meta">
+                <span>Código <?= e((string)($product['barcode'] ?: 'sem código')) ?></span>
                 <span>Estoque <?= e(saleNumber($stock)) ?></span>
                 <span>Validade <?= e($expiry !== '' ? date('d/m/Y', strtotime($expiry)) : 'sem data') ?></span>
                 <?php if ($isExpired): ?><em class="sale-mini-badge red">Vencido</em><?php endif; ?>
@@ -474,7 +566,8 @@ require_once __DIR__ . '/layout/header.php';
             </article>
           <?php endforeach; ?>
         </div>
-        <div class="sale-panel-actions"><button class="secondary-btn" type="button" data-sale-step="client">Continuar</button></div>
+        <div id="saleStepWarning" class="sale-alert warning sale-step-warning" role="alert">Adicione pelo menos um produto para continuar.</div>
+        <div class="sale-panel-actions"><button class="secondary-btn" type="button" data-sale-step="client" data-require-cart="1">Continuar</button></div>
       </section>
 
       <form id="saleFinishForm" method="post">
@@ -683,7 +776,10 @@ require_once __DIR__ . '/layout/header.php';
 
   layout.classList.add('sale-js');
   const subtotal = Number(<?= json_encode(round($cartSubtotal, 2)) ?>);
+  const cartItems = Number(<?= json_encode(count($cartProducts)) ?>);
   const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const productSearch = document.getElementById('productSearchInput');
+  const stepWarning = document.getElementById('saleStepWarning');
 
   function showStep(step) {
     layout.querySelectorAll('[data-sale-step]').forEach((button) => {
@@ -741,7 +837,15 @@ require_once __DIR__ . '/layout/header.php';
 
   document.addEventListener('click', (event) => {
     const stepButton = event.target.closest('[data-sale-step]');
-    if (stepButton) showStep(stepButton.dataset.saleStep);
+    if (stepButton) {
+      if (stepButton.dataset.requireCart === '1' && cartItems < 1) {
+        stepWarning?.classList.add('visible');
+        productSearch?.focus({ preventScroll: true });
+        return;
+      }
+      stepWarning?.classList.remove('visible');
+      showStep(stepButton.dataset.saleStep);
+    }
 
     const qtyButton = event.target.closest('[data-qty-step]');
     if (qtyButton) {
@@ -763,6 +867,8 @@ require_once __DIR__ . '/layout/header.php';
 
   updateClient();
   updateTotals();
+  productSearch?.focus({ preventScroll: true });
+  productSearch?.select();
 })();
 </script>
 
