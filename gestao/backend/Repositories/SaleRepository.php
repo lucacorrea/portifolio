@@ -57,6 +57,86 @@ final class SaleRepository
         return $mapped;
     }
 
+    public function findSaleById(int $empresaId, int $vendaId): ?array
+    {
+        $stmt = $this->db->prepare('
+            SELECT
+                v.id,
+                v.empresa_id,
+                v.cliente_id,
+                v.usuario_id,
+                v.numero_venda,
+                v.status,
+                v.subtotal,
+                v.desconto,
+                v.acrescimo,
+                v.total,
+                v.motivo_cancelamento,
+                v.cancelada_em,
+                v.criado_em,
+                v.atualizado_em,
+                COALESCE(p.metodo, \'\') AS forma_pagamento,
+                COALESCE(p.valor_recebido, 0) AS valor_recebido,
+                COALESCE(p.troco, 0) AS troco,
+                COALESCE(p.valor, 0) AS valor_pago,
+                COALESCE(p.status, \'\') AS pagamento_status,
+                COALESCE(c.nome, \'Cliente não informado\') AS cliente_nome,
+                COALESCE(c.telefone, \'\') AS cliente_telefone,
+                COALESCE(c.cpf_cnpj, \'\') AS cliente_cpf_cnpj,
+                COALESCE(c.endereco, \'\') AS cliente_endereco,
+                COALESCE(u.nome, CONCAT(\'Usuário #\', v.usuario_id)) AS operador_nome,
+                COALESCE(u.email, \'\') AS operador_email,
+                \'\' AS observacao
+            FROM vendas v
+            LEFT JOIN pagamentos p ON p.venda_id = v.id
+            LEFT JOIN clientes c
+                   ON c.id = v.cliente_id
+                  AND c.empresa_id = v.empresa_id
+            LEFT JOIN usuarios u
+                   ON u.id = v.usuario_id
+                  AND u.empresa_id = v.empresa_id
+            WHERE v.empresa_id = :empresa_id
+              AND v.id = :venda_id
+            LIMIT 1
+        ');
+        $stmt->execute([
+            ':empresa_id' => $empresaId,
+            ':venda_id' => $vendaId,
+        ]);
+
+        $sale = $stmt->fetch();
+
+        return $sale ?: null;
+    }
+
+    public function findSaleItems(int $empresaId, int $vendaId): array
+    {
+        $stmt = $this->db->prepare('
+            SELECT
+                vi.id,
+                vi.venda_id,
+                vi.produto_id,
+                vi.produto_nome,
+                vi.lote,
+                DATE_FORMAT(vi.validade, \'%Y-%m-%d\') AS validade,
+                vi.quantidade,
+                vi.preco_unitario,
+                vi.subtotal
+            FROM venda_itens vi
+            INNER JOIN vendas v
+                    ON v.id = vi.venda_id
+                   AND v.empresa_id = :empresa_id
+            WHERE vi.venda_id = :venda_id
+            ORDER BY vi.id ASC
+        ');
+        $stmt->execute([
+            ':empresa_id' => $empresaId,
+            ':venda_id' => $vendaId,
+        ]);
+
+        return $stmt->fetchAll();
+    }
+
     public function create(int $empresaId, int $usuarioId, array $data): int
     {
         $stmt = $this->db->prepare(

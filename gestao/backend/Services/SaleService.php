@@ -49,6 +49,24 @@ final class SaleService
         return $this->sales->findById($empresaId, $id);
     }
 
+    public function fullDetails(int $empresaId, int $vendaId): array
+    {
+        if ($vendaId <= 0) {
+            throw new InvalidArgumentException('Venda inválida.');
+        }
+
+        $sale = $this->sales->findSaleById($empresaId, $vendaId);
+
+        if (!$sale) {
+            throw new InvalidArgumentException('Venda não encontrada.');
+        }
+
+        return [
+            'sale' => $sale,
+            'items' => $this->sales->findSaleItems($empresaId, $vendaId),
+        ];
+    }
+
     public function create(int $empresaId, int $usuarioId, array $payload): int
     {
         $sale = $this->finalize($empresaId, $usuarioId, $payload);
