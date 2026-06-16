@@ -29,20 +29,22 @@ final class ProductRepository
                 p.nome AS name,
                 p.sku,
                 p.codigo_barras AS barcode,
-                COALESCE(c.nome, "Sem categoria") AS category,
+                COALESCE(c.nome, \'Sem categoria\') AS category,
                 p.lote AS lot,
-                DATE_FORMAT(p.validade, "%Y-%m-%d") AS expiry,
+                DATE_FORMAT(p.validade, \'%Y-%m-%d\') AS expiry,
                 p.quantidade AS stock,
                 p.estoque_minimo AS minStock,
                 p.preco_custo AS cost,
                 p.preco_venda AS price,
-                COALESCE(NULLIF(p.imagem, ""), "prod-placeholder.svg") AS image
+                COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image
             FROM produtos p
-            LEFT JOIN categorias c ON p.categoria_id = c.id
+            LEFT JOIN categorias c
+                   ON p.categoria_id = c.id
+                  AND c.empresa_id = p.empresa_id
             WHERE p.empresa_id = :empresa_id
               AND p.ativo = 1
               AND (
-                  :query = ""
+                  :query = \'\'
                   OR p.nome LIKE :like_nome
                   OR p.sku LIKE :like_sku
                   OR p.codigo_barras LIKE :like_codigo
@@ -74,16 +76,18 @@ final class ProductRepository
                 p.nome AS name,
                 p.sku,
                 p.codigo_barras AS barcode,
-                COALESCE(c.nome, "Sem categoria") AS category,
+                COALESCE(c.nome, \'Sem categoria\') AS category,
                 p.lote AS lot,
-                DATE_FORMAT(p.validade, "%Y-%m-%d") AS expiry,
+                DATE_FORMAT(p.validade, \'%Y-%m-%d\') AS expiry,
                 p.quantidade AS stock,
                 p.estoque_minimo AS minStock,
                 p.preco_custo AS cost,
                 p.preco_venda AS price,
-                COALESCE(NULLIF(p.imagem, ""), "prod-placeholder.svg") AS image
+                COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image
             FROM produtos p
-            LEFT JOIN categorias c ON p.categoria_id = c.id
+            LEFT JOIN categorias c
+                   ON p.categoria_id = c.id
+                  AND c.empresa_id = p.empresa_id
             WHERE p.empresa_id = :empresa_id
               AND p.id = :id
               AND p.ativo = 1
@@ -107,16 +111,18 @@ final class ProductRepository
                 p.nome AS name,
                 p.sku,
                 p.codigo_barras AS barcode,
-                COALESCE(c.nome, "Sem categoria") AS category,
+                COALESCE(c.nome, \'Sem categoria\') AS category,
                 p.lote AS lot,
-                DATE_FORMAT(p.validade, "%Y-%m-%d") AS expiry,
+                DATE_FORMAT(p.validade, \'%Y-%m-%d\') AS expiry,
                 p.quantidade AS stock,
                 p.estoque_minimo AS minStock,
                 p.preco_custo AS cost,
                 p.preco_venda AS price,
-                COALESCE(NULLIF(p.imagem, ""), "prod-placeholder.svg") AS image
+                COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image
             FROM produtos p
-            LEFT JOIN categorias c ON p.categoria_id = c.id
+            LEFT JOIN categorias c
+                   ON p.categoria_id = c.id
+                  AND c.empresa_id = p.empresa_id
             WHERE p.empresa_id = :empresa_id
               AND p.ativo = 1
               AND (p.codigo_barras = :code_barcode OR p.sku = :code_sku)
