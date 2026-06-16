@@ -112,11 +112,11 @@ final class SaleRepository
     {
         $stmt = $this->db->prepare(
             'UPDATE vendas
-             SET status = "cancelada",
+             SET status = \'cancelada\',
                  motivo_cancelamento = :motivo,
                  cancelada_por = :usuario_id,
                  cancelada_em = NOW()
-             WHERE empresa_id = :empresa_id AND id = :id AND status <> "cancelada"'
+             WHERE empresa_id = :empresa_id AND id = :id AND status <> \'cancelada\''
         );
         $stmt->execute([
             ':empresa_id' => $empresaId,
@@ -157,16 +157,18 @@ final class SaleRepository
                 v.criado_em,
                 v.atualizado_em,
                 u.nome AS seller,
-                COALESCE(c.nome, "Venda balcão") AS customer,
-                COALESCE(c.telefone, "") AS customerPhone,
-                COALESCE(p.metodo, "") AS payment,
+                COALESCE(c.nome, \'Venda balcão\') AS customer,
+                COALESCE(c.telefone, \'\') AS customerPhone,
+                COALESCE(p.metodo, \'\') AS payment,
                 COALESCE(p.valor, 0) AS paid,
                 COALESCE(p.valor_recebido, 0) AS received,
                 COALESCE(p.troco, 0) AS changeValue,
                 cc.vencimento AS due
              FROM vendas v
              INNER JOIN usuarios u ON u.id = v.usuario_id
-             LEFT JOIN clientes c ON c.id = v.cliente_id
+             LEFT JOIN clientes c
+                    ON c.id = v.cliente_id
+                   AND c.empresa_id = v.empresa_id
              LEFT JOIN pagamentos p ON p.venda_id = v.id
              LEFT JOIN cliente_contas cc ON cc.venda_id = v.id';
     }
