@@ -23,46 +23,59 @@ final class ProductRepository
 
     public function findAll(int $empresaId, string $query = ''): array
     {
-        $stmt = $this->db->prepare('
-            SELECT
-                p.id,
-                p.nome AS name,
-                p.sku,
-                p.codigo_barras AS barcode,
-                COALESCE(c.nome, \'Sem categoria\') AS category,
-                p.lote AS lot,
-                DATE_FORMAT(p.validade, \'%Y-%m-%d\') AS expiry,
-                p.quantidade AS stock,
-                p.estoque_minimo AS minStock,
-                p.preco_custo AS cost,
-                p.preco_venda AS price,
-                COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image
-            FROM produtos p
-            LEFT JOIN categorias c
-                   ON p.categoria_id = c.id
-                  AND c.empresa_id = p.empresa_id
-            WHERE p.empresa_id = :empresa_id
-              AND p.ativo = 1
-              AND (
-                  :query = \'\'
-                  OR p.nome LIKE :like_nome
-                  OR p.sku LIKE :like_sku
-                  OR p.codigo_barras LIKE :like_codigo
-                  OR p.lote LIKE :like_lote
-                  OR c.nome LIKE :like_categoria
-              )
-            ORDER BY p.nome ASC
-        ');
-        $like = '%' . trim($query) . '%';
-        $stmt->execute([
+        $query = trim($query);
+
+        $sql = '
+        SELECT
+            p.id,
+            p.nome AS name,
+            p.sku,
+            p.codigo_barras AS barcode,
+            COALESCE(c.nome, \'Sem categoria\') AS category,
+            p.lote AS lot,
+            DATE_FORMAT(p.validade, \'%Y-%m-%d\') AS expiry,
+            p.quantidade AS stock,
+            p.estoque_minimo AS minStock,
+            p.preco_custo AS cost,
+            p.preco_venda AS price,
+            COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image
+        FROM produtos p
+        LEFT JOIN categorias c
+               ON p.categoria_id = c.id
+              AND c.empresa_id = p.empresa_id
+        WHERE p.empresa_id = :empresa_id
+          AND p.ativo = 1
+    ';
+
+        $params = [
             ':empresa_id' => $empresaId,
-            ':query' => trim($query),
-            ':like_nome' => $like,
-            ':like_sku' => $like,
-            ':like_codigo' => $like,
-            ':like_lote' => $like,
-            ':like_categoria' => $like,
-        ]);
+        ];
+
+        if ($query !== '') {
+            $sql .= '
+          AND (
+              p.nome LIKE :like_nome
+              OR p.sku LIKE :like_sku
+              OR p.codigo_barras LIKE :like_codigo
+              OR p.lote LIKE :like_lote
+              OR c.nome LIKE :like_categoria
+          )
+        ';
+
+            $like = '%' . $query . '%';
+
+            $params[':like_nome'] = $like;
+            $params[':like_sku'] = $like;
+            $params[':like_codigo'] = $like;
+            $params[':like_lote'] = $like;
+            $params[':like_categoria'] = $like;
+        }
+
+        $sql .= ' ORDER BY p.nome ASC';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
         $products = $stmt->fetchAll();
 
         return array_map([$this, 'mapProduct'], $products);
