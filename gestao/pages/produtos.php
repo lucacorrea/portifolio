@@ -193,14 +193,8 @@ try {
     $products = $productService->list($empresaId, $query);
 } catch (Throwable $e) {
     log_app_exception($e);
-
-    if ($currentNivel === 'admin') {
-        $loadError = 'Erro técnico ao carregar produtos: ' . $e->getMessage();
-    } else {
-        $loadError = 'Não foi possível carregar os produtos agora.';
-    }
+    $loadError = 'Não foi possível carregar os produtos agora.';
 }
-
 $today = new DateTimeImmutable('today');
 $products = array_values(array_filter(
     $products,
@@ -219,115 +213,188 @@ require_once __DIR__ . '/layout/header.php';
 ?>
 
 <style>
-  .product-alert { margin-bottom: 14px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 16px; font-size: 13px; font-weight: 750; }
-  .product-alert.success { color: var(--green); background: rgba(37,196,132,.1); border-color: rgba(37,196,132,.25); }
-  .product-alert.danger { color: var(--red); background: rgba(230,83,103,.1); border-color: rgba(230,83,103,.25); }
-  .product-search-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
-  .product-search-form .search-box { min-width: 0; }
-  .product-search-form .secondary-btn { width: auto; min-height: 54px; padding: 0 16px; }
-  .filter-pills a { height: 31px; flex: 0 0 auto; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; color: var(--muted); background: #fff; border: 1px solid var(--line); font-size: 12px; font-weight: 800; }
-  .filter-pills a.active { color: var(--blue); background: var(--blue-soft); border-color: var(--blue-line); }
-  .product-card .card-actions form { margin: 0; }
-  .product-card .card-actions button { min-height: 34px; }
-  .product-card .card-actions { align-items: stretch; }
-  .product-card .card-actions > * { flex: 1; }
-  .product-card .card-actions a { display: grid; place-items: center; }
-  @media (max-width: 430px) { .product-search-form { grid-template-columns: 1fr; } .product-search-form .secondary-btn { width: 100%; } }
+    .product-alert {
+        margin-bottom: 14px;
+        padding: 13px 15px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        font-size: 13px;
+        font-weight: 750;
+    }
+
+    .product-alert.success {
+        color: var(--green);
+        background: rgba(37, 196, 132, .1);
+        border-color: rgba(37, 196, 132, .25);
+    }
+
+    .product-alert.danger {
+        color: var(--red);
+        background: rgba(230, 83, 103, .1);
+        border-color: rgba(230, 83, 103, .25);
+    }
+
+    .product-search-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 9px;
+    }
+
+    .product-search-form .search-box {
+        min-width: 0;
+    }
+
+    .product-search-form .secondary-btn {
+        width: auto;
+        min-height: 54px;
+        padding: 0 16px;
+    }
+
+    .filter-pills a {
+        height: 31px;
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 14px;
+        border-radius: 999px;
+        color: var(--muted);
+        background: #fff;
+        border: 1px solid var(--line);
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .filter-pills a.active {
+        color: var(--blue);
+        background: var(--blue-soft);
+        border-color: var(--blue-line);
+    }
+
+    .product-card .card-actions form {
+        margin: 0;
+    }
+
+    .product-card .card-actions button {
+        min-height: 34px;
+    }
+
+    .product-card .card-actions {
+        align-items: stretch;
+    }
+
+    .product-card .card-actions>* {
+        flex: 1;
+    }
+
+    .product-card .card-actions a {
+        display: grid;
+        place-items: center;
+    }
+
+    @media (max-width: 430px) {
+        .product-search-form {
+            grid-template-columns: 1fr;
+        }
+
+        .product-search-form .secondary-btn {
+            width: 100%;
+        }
+    }
 </style>
 
 <header class="plain-header">
-  <div class="page-title-row">
-    <div>
-      <p class="micro-label dark-text">Produtos e estoque</p>
-      <h1>Produtos</h1>
+    <div class="page-title-row">
+        <div>
+            <p class="micro-label dark-text">Produtos e estoque</p>
+            <h1>Produtos</h1>
+        </div>
+        <?php if (canProductAccess('create', $currentNivel)): ?>
+            <a class="round-btn" href="produto-form.php" aria-label="Cadastrar produto">+</a>
+        <?php endif; ?>
     </div>
-    <?php if (canProductAccess('create', $currentNivel)): ?>
-      <a class="round-btn" href="produto-form.php" aria-label="Cadastrar produto">+</a>
-    <?php endif; ?>
-  </div>
 </header>
 
 <section class="content-pad">
-  <?php if (is_array($flash)): ?>
-    <div class="product-alert <?= e((string)($flash['type'] ?? 'danger')) ?>" role="status">
-      <?= e((string)($flash['message'] ?? '')) ?>
-    </div>
-  <?php endif; ?>
-
-  <?php if ($loadError !== null): ?>
-    <div class="product-alert danger" role="alert"><?= e($loadError) ?></div>
-  <?php endif; ?>
-
-  <form class="product-search-form" method="get" action="produtos.php">
-    <label class="search-box">
-      <span data-icon="search"></span>
-      <input type="search" name="q" value="<?= e($query) ?>" placeholder="Buscar por nome, SKU, lote ou categoria">
-    </label>
-    <input type="hidden" name="filtro" value="<?= e($filter) ?>">
-    <button class="secondary-btn" type="submit">Buscar</button>
-  </form>
-
-  <?php
-  $filterLabels = [
-      'todos' => 'Todos',
-      'estoque_baixo' => 'Estoque baixo',
-      'perto_validade' => 'Perto da validade',
-      'vencidos' => 'Vencidos',
-  ];
-  ?>
-  <nav class="filter-pills" aria-label="Filtros de produtos">
-    <?php foreach ($filterLabels as $filterKey => $filterLabel): ?>
-      <?php $filterQuery = array_filter(['q' => $query, 'filtro' => $filterKey], static fn ($value): bool => $value !== ''); ?>
-      <a class="<?= $filter === $filterKey ? 'active' : '' ?>" href="produtos.php?<?= e(http_build_query($filterQuery)) ?>">
-        <?= e($filterLabel) ?>
-      </a>
-    <?php endforeach; ?>
-  </nav>
-
-  <div id="productsList">
-    <?php if (!$products && $loadError === null): ?>
-      <article class="summary-card">Nenhum produto encontrado.</article>
+    <?php if (is_array($flash)): ?>
+        <div class="product-alert <?= e((string)($flash['type'] ?? 'danger')) ?>" role="status">
+            <?= e((string)($flash['message'] ?? '')) ?>
+        </div>
     <?php endif; ?>
 
-    <?php foreach ($products as $product): ?>
-      <?php
-      $status = productStatus($product, $today, $expirationAlertDays);
-      $expiry = trim((string)($product['expiry'] ?? ''));
-      $expiryLabel = $expiry !== '' ? date('d/m/Y', strtotime($expiry)) : 'Sem validade';
-      ?>
-      <article class="product-card">
-        <img src="<?= e(productImageUrl($product['image'] ?? '')) ?>" alt="Imagem de <?= e((string)$product['name']) ?>">
-        <div class="product-info">
-          <h3><?= e((string)$product['name']) ?></h3>
-          <p><?= e((string)$product['category']) ?> · <?= e((string)($product['sku'] ?: 'Sem SKU')) ?></p>
-          <div class="product-meta">
-            <span>Lote <?= e((string)($product['lot'] ?: 'não informado')) ?></span>
-            <span>Val. <?= e($expiryLabel) ?></span>
-            <span>Qtd. <?= e(formatProductNumber($product['stock'])) ?></span>
-            <span>Mín. <?= e(formatProductNumber($product['minStock'])) ?></span>
-            <span>R$ <?= e(number_format((float)$product['price'], 2, ',', '.')) ?></span>
-          </div>
-          <div class="badge-row">
-            <span class="badge <?= e($status['class']) ?>"><?= e($status['label']) ?></span>
-          </div>
-          <?php if (canProductAccess('edit', $currentNivel) || canProductAccess('delete', $currentNivel)): ?>
-            <div class="card-actions">
-              <?php if (canProductAccess('edit', $currentNivel)): ?>
-                <a href="produto-form.php?id=<?= (int)$product['id'] ?>">Editar</a>
-              <?php endif; ?>
-              <?php if (canProductAccess('delete', $currentNivel)): ?>
-                <form method="post" action="produtos.php?<?= e(http_build_query(array_filter(['q' => $query, 'filtro' => $filter]))) ?>" onsubmit="return confirm('Inativar este produto?');">
-                  <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
-                  <input type="hidden" name="id" value="<?= (int)$product['id'] ?>">
-                  <button class="danger-mini" type="submit">Inativar</button>
-                </form>
-              <?php endif; ?>
-            </div>
-          <?php endif; ?>
-        </div>
-      </article>
-    <?php endforeach; ?>
-  </div>
+    <?php if ($loadError !== null): ?>
+        <div class="product-alert danger" role="alert"><?= e($loadError) ?></div>
+    <?php endif; ?>
+
+    <form class="product-search-form" method="get" action="produtos.php">
+        <label class="search-box">
+            <span data-icon="search"></span>
+            <input type="search" name="q" value="<?= e($query) ?>" placeholder="Buscar por nome, SKU, lote ou categoria">
+        </label>
+        <input type="hidden" name="filtro" value="<?= e($filter) ?>">
+        <button class="secondary-btn" type="submit">Buscar</button>
+    </form>
+
+    <?php
+    $filterLabels = [
+        'todos' => 'Todos',
+        'estoque_baixo' => 'Estoque baixo',
+        'perto_validade' => 'Perto da validade',
+        'vencidos' => 'Vencidos',
+    ];
+    ?>
+    <nav class="filter-pills" aria-label="Filtros de produtos">
+        <?php foreach ($filterLabels as $filterKey => $filterLabel): ?>
+            <?php $filterQuery = array_filter(['q' => $query, 'filtro' => $filterKey], static fn($value): bool => $value !== ''); ?>
+            <a class="<?= $filter === $filterKey ? 'active' : '' ?>" href="produtos.php?<?= e(http_build_query($filterQuery)) ?>">
+                <?= e($filterLabel) ?>
+            </a>
+        <?php endforeach; ?>
+    </nav>
+
+    <div id="productsList">
+        <?php if (!$products && $loadError === null): ?>
+            <article class="summary-card">Nenhum produto encontrado.</article>
+        <?php endif; ?>
+
+        <?php foreach ($products as $product): ?>
+            <?php
+            $status = productStatus($product, $today, $expirationAlertDays);
+            $expiry = trim((string)($product['expiry'] ?? ''));
+            $expiryLabel = $expiry !== '' ? date('d/m/Y', strtotime($expiry)) : 'Sem validade';
+            ?>
+            <article class="product-card">
+                <img src="<?= e(productImageUrl($product['image'] ?? '')) ?>" alt="Imagem de <?= e((string)$product['name']) ?>">
+                <div class="product-info">
+                    <h3><?= e((string)$product['name']) ?></h3>
+                    <p><?= e((string)$product['category']) ?> · <?= e((string)($product['sku'] ?: 'Sem SKU')) ?></p>
+                    <div class="product-meta">
+                        <span>Lote <?= e((string)($product['lot'] ?: 'não informado')) ?></span>
+                        <span>Val. <?= e($expiryLabel) ?></span>
+                        <span>Qtd. <?= e(formatProductNumber($product['stock'])) ?></span>
+                        <span>Mín. <?= e(formatProductNumber($product['minStock'])) ?></span>
+                        <span>R$ <?= e(number_format((float)$product['price'], 2, ',', '.')) ?></span>
+                    </div>
+                    <div class="badge-row">
+                        <span class="badge <?= e($status['class']) ?>"><?= e($status['label']) ?></span>
+                    </div>
+                    <?php if (canProductAccess('edit', $currentNivel) || canProductAccess('delete', $currentNivel)): ?>
+                        <div class="card-actions">
+                            <?php if (canProductAccess('edit', $currentNivel)): ?>
+                                <a href="produto-form.php?id=<?= (int)$product['id'] ?>">Editar</a>
+                            <?php endif; ?>
+                            <?php if (canProductAccess('delete', $currentNivel)): ?>
+                                <form method="post" action="produtos.php?<?= e(http_build_query(array_filter(['q' => $query, 'filtro' => $filter]))) ?>" onsubmit="return confirm('Inativar este produto?');">
+                                    <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+                                    <input type="hidden" name="id" value="<?= (int)$product['id'] ?>">
+                                    <button class="danger-mini" type="submit">Inativar</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    </div>
 </section>
 
 <?php require_once __DIR__ . '/layout/footer.php'; ?>
