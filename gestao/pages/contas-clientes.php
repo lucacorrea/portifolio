@@ -282,7 +282,8 @@ require_once __DIR__ . '/layout/header.php';
 <style>
   .account-page {
     display: grid;
-    gap: 18px;
+    gap: 16px;
+    padding-bottom: 118px;
   }
 
   .account-alert {
@@ -494,6 +495,7 @@ require_once __DIR__ . '/layout/header.php';
     color: var(--muted);
     font-size: 11px;
     font-weight: 750;
+    line-height: 1.25;
   }
 
   .account-section-header {
@@ -913,7 +915,27 @@ require_once __DIR__ . '/layout/header.php';
   }
 
   @media (max-width: 760px) {
-    .account-summary-grid,
+    .account-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .account-summary-card {
+      min-height: 92px;
+      padding: 14px;
+      border-radius: 20px;
+    }
+
+    .account-summary-card strong {
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .account-summary-card small {
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
     .account-values,
     .modal-account-summary,
     .account-modal-grid {
@@ -933,7 +955,25 @@ require_once __DIR__ . '/layout/header.php';
     }
 
     .account-card-actions {
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .account-card-actions .primary-btn,
+    .account-card-actions .secondary-btn {
+      width: 100%;
+      min-width: 0;
+      min-height: 42px;
+      padding: 10px 12px;
+      font-size: 13px;
+      border-radius: 14px;
+      flex: unset;
+    }
+
+    .account-card-actions > *:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
     }
 
     .account-modal {
@@ -958,11 +998,16 @@ require_once __DIR__ . '/layout/header.php';
       width: 100%;
       min-width: 0;
     }
+
+    .content-pad {
+      padding-bottom: 130px;
+    }
   }
 
   @media (max-width: 430px) {
     .account-page {
       gap: 14px;
+      padding-bottom: 135px;
     }
 
     .account-hero-card,
@@ -975,12 +1020,49 @@ require_once __DIR__ . '/layout/header.php';
       font-size: 20px;
     }
 
+    .account-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .account-summary-card {
+      min-height: 84px;
+      padding: 12px;
+      border-radius: 18px;
+    }
+
+    .account-summary-card span {
+      font-size: 9px;
+    }
+
     .account-summary-card strong {
-      font-size: 20px;
+      font-size: 16px;
+    }
+
+    .account-summary-card small {
+      font-size: 10px;
+      line-height: 1.25;
     }
 
     .account-card {
       padding: 15px;
+    }
+
+    .account-card-actions .primary-btn,
+    .account-card-actions .secondary-btn {
+      min-height: 40px;
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+  }
+
+  @media (max-width: 340px) {
+    .account-summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .account-card-actions {
+      grid-template-columns: 1fr;
     }
   }
 
@@ -1018,7 +1100,10 @@ require_once __DIR__ . '/layout/header.php';
       <h1>Contas de Clientes</h1>
     </div>
 
-    <a class="icon-btn light no-print" href="clientes.php" aria-label="Voltar para clientes">‹</a>
+```
+<a class="icon-btn light no-print" href="clientes.php" aria-label="Voltar para clientes">‹</a>
+```
+
   </div>
 </header>
 
@@ -1028,284 +1113,287 @@ require_once __DIR__ . '/layout/header.php';
       <div class="account-alert success no-print" role="status">
         <?= e((string)($flash['message'] ?? 'Pagamento registrado com sucesso.')) ?>
 
-        <div class="alert-actions">
-          <button type="button" class="secondary-btn" id="openReceiptModalBtn">Ver recibo</button>
-        </div>
-      </div>
-    <?php elseif (is_array($flash)): ?>
-      <div class="account-alert <?= e((string)($flash['type'] ?? 'danger')) ?>" role="status">
-        <?= e((string)($flash['message'] ?? '')) ?>
+```
+    <div class="alert-actions">
+      <button type="button" class="secondary-btn" id="openReceiptModalBtn">Ver recibo</button>
+    </div>
+  </div>
+<?php elseif (is_array($flash)): ?>
+  <div class="account-alert <?= e((string)($flash['type'] ?? 'danger')) ?>" role="status">
+    <?= e((string)($flash['message'] ?? '')) ?>
+  </div>
+<?php endif; ?>
+
+<?php if ($loadError !== null): ?>
+  <div class="account-alert danger" role="alert"><?= e($loadError) ?></div>
+<?php endif; ?>
+
+<section class="account-hero">
+  <article class="account-hero-card">
+    <div>
+      <h2>Gestão de contas e fiado</h2>
+      <p>Controle pagamentos parciais, quitações, vencimentos e recibos de clientes.</p>
+    </div>
+
+    <div class="account-hero-actions no-print">
+      <a class="secondary-btn" href="clientes.php">Ver clientes</a>
+    </div>
+  </article>
+</section>
+
+<section class="account-summary-grid">
+  <article class="account-summary-card warning">
+    <span>Total em aberto</span>
+    <strong><?= e(accountMoney($totalAberto)) ?></strong>
+    <small><?= $qtdAbertas ?> conta<?= $qtdAbertas === 1 ? '' : 's' ?> em aberto</small>
+  </article>
+
+  <article class="account-summary-card <?= $totalVencido > 0 ? 'danger' : 'success' ?>">
+    <span>Total vencido</span>
+    <strong><?= e(accountMoney($totalVencido)) ?></strong>
+    <small><?= $qtdVencidas ?> conta<?= $qtdVencidas === 1 ? '' : 's' ?> vencida<?= $qtdVencidas === 1 ? '' : 's' ?></small>
+  </article>
+
+  <article class="account-summary-card success">
+    <span>Total pago</span>
+    <strong><?= e(accountMoney($totalPago)) ?></strong>
+    <small>Recebimentos registrados</small>
+  </article>
+
+  <article class="account-summary-card">
+    <span>Contas abertas</span>
+    <strong><?= $qtdAbertas ?></strong>
+    <small>Não quitadas</small>
+  </article>
+
+  <article class="account-summary-card <?= $qtdVencidas > 0 ? 'danger' : '' ?>">
+    <span>Contas vencidas</span>
+    <strong><?= $qtdVencidas ?></strong>
+    <small>Exigem atenção</small>
+  </article>
+
+  <article class="account-summary-card">
+    <span>Clientes com dívida</span>
+    <strong><?= $qtdClientesDivida ?></strong>
+    <small>Com saldo pendente</small>
+  </article>
+</section>
+
+<form class="account-filter-panel no-print" method="get" action="contas-clientes.php">
+  <div class="account-filter-header">
+    <h3>Filtros</h3>
+    <p>Busque por cliente, status ou período de vencimento.</p>
+  </div>
+
+  <div class="account-filter-body">
+    <nav class="account-status-pills" aria-label="Status das contas">
+      <?php foreach (['todas' => 'Todas', 'em_aberto' => 'Em aberto', 'parcial' => 'Parcial', 'atrasado' => 'Atrasadas', 'pago' => 'Pagas', 'cancelado' => 'Canceladas'] as $key => $label): ?>
+        <a class="<?= $status === $key ? 'active' : '' ?>" href="<?= e(accountFilterUrl(['status' => $key])) ?>">
+          <?= e($label) ?>
+        </a>
+      <?php endforeach; ?>
+    </nav>
+
+    <input type="hidden" name="status" value="<?= e($status) ?>">
+
+    <div class="account-filter-grid">
+      <label class="field">
+        <span>Buscar cliente</span>
+        <input type="search" name="q" value="<?= e((string)$filters['q']) ?>" placeholder="Nome, telefone ou CPF/CNPJ">
+      </label>
+
+      <label class="field">
+        <span>Início vencimento</span>
+        <input type="date" name="inicio" value="<?= e((string)$filters['inicio']) ?>">
+      </label>
+
+      <label class="field">
+        <span>Fim vencimento</span>
+        <input type="date" name="fim" value="<?= e((string)$filters['fim']) ?>">
+      </label>
+
+      <button class="secondary-btn filter-button" type="submit">Filtrar</button>
+    </div>
+  </div>
+</form>
+
+<section>
+  <div class="account-section-header">
+    <div>
+      <h2>Contas encontradas</h2>
+      <p><?= count($accounts) ?> registro<?= count($accounts) === 1 ? '' : 's' ?> no filtro atual.</p>
+    </div>
+  </div>
+</section>
+
+<section class="account-desktop-table">
+  <div class="account-table-card">
+    <?php if (!$accounts && $loadError === null): ?>
+      <div class="account-empty">Nenhuma conta encontrada.</div>
+    <?php else: ?>
+      <div class="account-table-wrap">
+        <table class="account-table">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Conta</th>
+              <th>Vencimento</th>
+              <th>Status</th>
+              <th>Valor original</th>
+              <th>Valor pago</th>
+              <th>Saldo</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <?php foreach ($accounts as $account): ?>
+              <?php
+                $visualStatus = (string)($account['status_visual'] ?? $account['status']);
+                $canReceive = canClientAccountAccess('pay', $currentNivel)
+                  && !in_array($account['status'], ['pago', 'cancelado'], true)
+                  && (float)$account['saldo_aberto'] > 0;
+
+                $contaId = (int)$account['id'];
+                $vendaId = (int)($account['venda_id'] ?? 0);
+                $saldoNumber = number_format((float)$account['saldo_aberto'], 2, '.', '');
+              ?>
+              <tr>
+                <td class="account-client-cell">
+                  <strong><?= e((string)$account['cliente_nome']) ?></strong>
+                  <span><?= e((string)($account['cliente_telefone'] ?: 'Sem telefone')) ?> · <?= e((string)($account['cliente_documento'] ?: 'Sem CPF/CNPJ')) ?></span>
+                </td>
+
+                <td class="account-ref-cell">
+                  <strong>#<?= $contaId ?></strong>
+                  <span><?= $vendaId > 0 ? 'Venda #' . $vendaId : 'Sem venda vinculada' ?></span>
+                </td>
+
+                <td><?= e(accountDate($account['vencimento'])) ?></td>
+
+                <td>
+                  <span class="badge <?= e(accountStatusClass($visualStatus)) ?>">
+                    <?= e(accountStatusLabel($visualStatus)) ?>
+                  </span>
+                </td>
+
+                <td class="account-money-cell"><?= e(accountMoney($account['valor_original'])) ?></td>
+                <td class="account-money-cell"><?= e(accountMoney($account['valor_pago'])) ?></td>
+                <td class="account-money-cell"><?= e(accountMoney($account['saldo_aberto'])) ?></td>
+
+                <td class="account-actions-cell no-print">
+                  <div class="account-inline-actions">
+                    <?php if ($vendaId > 0): ?>
+                      <a class="secondary-btn" href="venda-detalhes.php?id=<?= $vendaId ?>">Venda</a>
+                    <?php endif; ?>
+
+                    <?php if ($canReceive): ?>
+                      <button
+                        type="button"
+                        class="secondary-btn open-payment-modal"
+                        data-conta-id="<?= $contaId ?>"
+                        data-cliente="<?= e((string)$account['cliente_nome']) ?>"
+                        data-venda-id="<?= $vendaId ?>"
+                        data-saldo="<?= e($saldoNumber) ?>"
+                        data-saldo-formatado="<?= e(accountMoney($account['saldo_aberto'])) ?>"
+                      >Pagar</button>
+
+                      <?php if (canClientAccountAccess('settle', $currentNivel)): ?>
+                        <button
+                          type="button"
+                          class="primary-btn open-settle-modal"
+                          data-conta-id="<?= $contaId ?>"
+                          data-cliente="<?= e((string)$account['cliente_nome']) ?>"
+                          data-venda-id="<?= $vendaId ?>"
+                          data-saldo="<?= e($saldoNumber) ?>"
+                          data-saldo-formatado="<?= e(accountMoney($account['saldo_aberto'])) ?>"
+                        >Quitar</button>
+                      <?php endif; ?>
+                    <?php elseif (in_array($account['status'], ['pago'], true) || (float)$account['saldo_aberto'] <= 0): ?>
+                      <button type="button" class="secondary-btn" disabled>Paga</button>
+                    <?php endif; ?>
+                  </div>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
       </div>
     <?php endif; ?>
+  </div>
+</section>
 
-    <?php if ($loadError !== null): ?>
-      <div class="account-alert danger" role="alert"><?= e($loadError) ?></div>
-    <?php endif; ?>
+<section class="account-mobile-list">
+  <?php if (!$accounts && $loadError === null): ?>
+    <article class="account-card account-empty">Nenhuma conta encontrada.</article>
+  <?php endif; ?>
 
-    <section class="account-hero">
-      <article class="account-hero-card">
-        <div>
-          <h2>Gestão de contas e fiado</h2>
-          <p>Controle pagamentos parciais, quitações, vencimentos e recibos de clientes.</p>
+  <?php foreach ($accounts as $account): ?>
+    <?php
+      $visualStatus = (string)($account['status_visual'] ?? $account['status']);
+      $canReceive = canClientAccountAccess('pay', $currentNivel)
+        && !in_array($account['status'], ['pago', 'cancelado'], true)
+        && (float)$account['saldo_aberto'] > 0;
+
+      $contaId = (int)$account['id'];
+      $vendaId = (int)($account['venda_id'] ?? 0);
+      $saldoNumber = number_format((float)$account['saldo_aberto'], 2, '.', '');
+    ?>
+    <article class="account-card">
+      <div class="account-card-header">
+        <div class="account-card-meta">
+          <h3><?= e((string)$account['cliente_nome']) ?></h3>
+          <p><?= e((string)($account['cliente_telefone'] ?: 'Sem telefone')) ?> · <?= e((string)($account['cliente_documento'] ?: 'Sem CPF/CNPJ')) ?></p>
+          <p class="account-reference">Conta #<?= $contaId ?><?= $vendaId > 0 ? ' · Venda #' . $vendaId : '' ?> · Vencimento <?= e(accountDate($account['vencimento'])) ?></p>
         </div>
 
-        <div class="account-hero-actions no-print">
-          <a class="secondary-btn" href="clientes.php">Ver clientes</a>
-        </div>
-      </article>
-    </section>
-
-    <section class="account-summary-grid">
-      <article class="account-summary-card warning">
-        <span>Total em aberto</span>
-        <strong><?= e(accountMoney($totalAberto)) ?></strong>
-        <small><?= $qtdAbertas ?> conta<?= $qtdAbertas === 1 ? '' : 's' ?> em aberto</small>
-      </article>
-
-      <article class="account-summary-card <?= $totalVencido > 0 ? 'danger' : 'success' ?>">
-        <span>Total vencido</span>
-        <strong><?= e(accountMoney($totalVencido)) ?></strong>
-        <small><?= $qtdVencidas ?> conta<?= $qtdVencidas === 1 ? '' : 's' ?> vencida<?= $qtdVencidas === 1 ? '' : 's' ?></small>
-      </article>
-
-      <article class="account-summary-card success">
-        <span>Total pago</span>
-        <strong><?= e(accountMoney($totalPago)) ?></strong>
-        <small>Recebimentos registrados</small>
-      </article>
-
-      <article class="account-summary-card">
-        <span>Contas abertas</span>
-        <strong><?= $qtdAbertas ?></strong>
-        <small>Não quitadas</small>
-      </article>
-
-      <article class="account-summary-card <?= $qtdVencidas > 0 ? 'danger' : '' ?>">
-        <span>Contas vencidas</span>
-        <strong><?= $qtdVencidas ?></strong>
-        <small>Exigem atenção</small>
-      </article>
-
-      <article class="account-summary-card">
-        <span>Clientes com dívida</span>
-        <strong><?= $qtdClientesDivida ?></strong>
-        <small>Com saldo pendente</small>
-      </article>
-    </section>
-
-    <form class="account-filter-panel no-print" method="get" action="contas-clientes.php">
-      <div class="account-filter-header">
-        <h3>Filtros</h3>
-        <p>Busque por cliente, status ou período de vencimento.</p>
+        <span class="badge <?= e(accountStatusClass($visualStatus)) ?>">
+          <?= e(accountStatusLabel($visualStatus)) ?>
+        </span>
       </div>
 
-      <div class="account-filter-body">
-        <nav class="account-status-pills" aria-label="Status das contas">
-          <?php foreach (['todas' => 'Todas', 'em_aberto' => 'Em aberto', 'parcial' => 'Parcial', 'atrasado' => 'Atrasadas', 'pago' => 'Pagas', 'cancelado' => 'Canceladas'] as $key => $label): ?>
-            <a class="<?= $status === $key ? 'active' : '' ?>" href="<?= e(accountFilterUrl(['status' => $key])) ?>">
-              <?= e($label) ?>
-            </a>
-          <?php endforeach; ?>
-        </nav>
-
-        <input type="hidden" name="status" value="<?= e($status) ?>">
-
-        <div class="account-filter-grid">
-          <label class="field">
-            <span>Buscar cliente</span>
-            <input type="search" name="q" value="<?= e((string)$filters['q']) ?>" placeholder="Nome, telefone ou CPF/CNPJ">
-          </label>
-
-          <label class="field">
-            <span>Início vencimento</span>
-            <input type="date" name="inicio" value="<?= e((string)$filters['inicio']) ?>">
-          </label>
-
-          <label class="field">
-            <span>Fim vencimento</span>
-            <input type="date" name="fim" value="<?= e((string)$filters['fim']) ?>">
-          </label>
-
-          <button class="secondary-btn filter-button" type="submit">Filtrar</button>
-        </div>
+      <div class="account-values">
+        <div><span>Valor original</span><strong><?= e(accountMoney($account['valor_original'])) ?></strong></div>
+        <div><span>Valor pago</span><strong><?= e(accountMoney($account['valor_pago'])) ?></strong></div>
+        <div><span>Saldo aberto</span><strong><?= e(accountMoney($account['saldo_aberto'])) ?></strong></div>
       </div>
-    </form>
 
-    <section>
-      <div class="account-section-header">
-        <div>
-          <h2>Contas encontradas</h2>
-          <p><?= count($accounts) ?> registro<?= count($accounts) === 1 ? '' : 's' ?> no filtro atual.</p>
-        </div>
-      </div>
-    </section>
+      <div class="account-card-actions no-print">
+        <?php if ($vendaId > 0): ?>
+          <a class="secondary-btn" href="venda-detalhes.php?id=<?= $vendaId ?>">Ver venda</a>
+        <?php endif; ?>
 
-    <section class="account-desktop-table">
-      <div class="account-table-card">
-        <?php if (!$accounts && $loadError === null): ?>
-          <div class="account-empty">Nenhuma conta encontrada.</div>
-        <?php else: ?>
-          <div class="account-table-wrap">
-            <table class="account-table">
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Conta</th>
-                  <th>Vencimento</th>
-                  <th>Status</th>
-                  <th>Valor original</th>
-                  <th>Valor pago</th>
-                  <th>Saldo</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
+        <?php if ($canReceive): ?>
+          <button
+            type="button"
+            class="secondary-btn open-payment-modal"
+            data-conta-id="<?= $contaId ?>"
+            data-cliente="<?= e((string)$account['cliente_nome']) ?>"
+            data-venda-id="<?= $vendaId ?>"
+            data-saldo="<?= e($saldoNumber) ?>"
+            data-saldo-formatado="<?= e(accountMoney($account['saldo_aberto'])) ?>"
+          >Registrar pagamento</button>
 
-              <tbody>
-                <?php foreach ($accounts as $account): ?>
-                  <?php
-                    $visualStatus = (string)($account['status_visual'] ?? $account['status']);
-                    $canReceive = canClientAccountAccess('pay', $currentNivel)
-                      && !in_array($account['status'], ['pago', 'cancelado'], true)
-                      && (float)$account['saldo_aberto'] > 0;
-
-                    $contaId = (int)$account['id'];
-                    $vendaId = (int)($account['venda_id'] ?? 0);
-                    $saldoNumber = number_format((float)$account['saldo_aberto'], 2, '.', '');
-                  ?>
-                  <tr>
-                    <td class="account-client-cell">
-                      <strong><?= e((string)$account['cliente_nome']) ?></strong>
-                      <span><?= e((string)($account['cliente_telefone'] ?: 'Sem telefone')) ?> · <?= e((string)($account['cliente_documento'] ?: 'Sem CPF/CNPJ')) ?></span>
-                    </td>
-
-                    <td class="account-ref-cell">
-                      <strong>#<?= $contaId ?></strong>
-                      <span><?= $vendaId > 0 ? 'Venda #' . $vendaId : 'Sem venda vinculada' ?></span>
-                    </td>
-
-                    <td><?= e(accountDate($account['vencimento'])) ?></td>
-
-                    <td>
-                      <span class="badge <?= e(accountStatusClass($visualStatus)) ?>">
-                        <?= e(accountStatusLabel($visualStatus)) ?>
-                      </span>
-                    </td>
-
-                    <td class="account-money-cell"><?= e(accountMoney($account['valor_original'])) ?></td>
-                    <td class="account-money-cell"><?= e(accountMoney($account['valor_pago'])) ?></td>
-                    <td class="account-money-cell"><?= e(accountMoney($account['saldo_aberto'])) ?></td>
-
-                    <td class="account-actions-cell no-print">
-                      <div class="account-inline-actions">
-                        <?php if ($vendaId > 0): ?>
-                          <a class="secondary-btn" href="venda-detalhes.php?id=<?= $vendaId ?>">Venda</a>
-                        <?php endif; ?>
-
-                        <?php if ($canReceive): ?>
-                          <button
-                            type="button"
-                            class="secondary-btn open-payment-modal"
-                            data-conta-id="<?= $contaId ?>"
-                            data-cliente="<?= e((string)$account['cliente_nome']) ?>"
-                            data-venda-id="<?= $vendaId ?>"
-                            data-saldo="<?= e($saldoNumber) ?>"
-                            data-saldo-formatado="<?= e(accountMoney($account['saldo_aberto'])) ?>"
-                          >Pagar</button>
-
-                          <?php if (canClientAccountAccess('settle', $currentNivel)): ?>
-                            <button
-                              type="button"
-                              class="primary-btn open-settle-modal"
-                              data-conta-id="<?= $contaId ?>"
-                              data-cliente="<?= e((string)$account['cliente_nome']) ?>"
-                              data-venda-id="<?= $vendaId ?>"
-                              data-saldo="<?= e($saldoNumber) ?>"
-                              data-saldo-formatado="<?= e(accountMoney($account['saldo_aberto'])) ?>"
-                            >Quitar</button>
-                          <?php endif; ?>
-                        <?php elseif (in_array($account['status'], ['pago'], true) || (float)$account['saldo_aberto'] <= 0): ?>
-                          <button type="button" class="secondary-btn" disabled>Paga</button>
-                        <?php endif; ?>
-                      </div>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
+          <?php if (canClientAccountAccess('settle', $currentNivel)): ?>
+            <button
+              type="button"
+              class="primary-btn open-settle-modal"
+              data-conta-id="<?= $contaId ?>"
+              data-cliente="<?= e((string)$account['cliente_nome']) ?>"
+              data-venda-id="<?= $vendaId ?>"
+              data-saldo="<?= e($saldoNumber) ?>"
+              data-saldo-formatado="<?= e(accountMoney($account['saldo_aberto'])) ?>"
+            >Quitar conta</button>
+          <?php endif; ?>
+        <?php elseif (in_array($account['status'], ['pago'], true) || (float)$account['saldo_aberto'] <= 0): ?>
+          <button type="button" class="secondary-btn" disabled>Conta paga</button>
         <?php endif; ?>
       </div>
-    </section>
+    </article>
+  <?php endforeach; ?>
+</section>
+```
 
-    <section class="account-mobile-list">
-      <?php if (!$accounts && $loadError === null): ?>
-        <article class="account-card account-empty">Nenhuma conta encontrada.</article>
-      <?php endif; ?>
-
-      <?php foreach ($accounts as $account): ?>
-        <?php
-          $visualStatus = (string)($account['status_visual'] ?? $account['status']);
-          $canReceive = canClientAccountAccess('pay', $currentNivel)
-            && !in_array($account['status'], ['pago', 'cancelado'], true)
-            && (float)$account['saldo_aberto'] > 0;
-
-          $contaId = (int)$account['id'];
-          $vendaId = (int)($account['venda_id'] ?? 0);
-          $saldoNumber = number_format((float)$account['saldo_aberto'], 2, '.', '');
-        ?>
-        <article class="account-card">
-          <div class="account-card-header">
-            <div class="account-card-meta">
-              <h3><?= e((string)$account['cliente_nome']) ?></h3>
-              <p><?= e((string)($account['cliente_telefone'] ?: 'Sem telefone')) ?> · <?= e((string)($account['cliente_documento'] ?: 'Sem CPF/CNPJ')) ?></p>
-              <p class="account-reference">Conta #<?= $contaId ?><?= $vendaId > 0 ? ' · Venda #' . $vendaId : '' ?> · Vencimento <?= e(accountDate($account['vencimento'])) ?></p>
-            </div>
-
-            <span class="badge <?= e(accountStatusClass($visualStatus)) ?>">
-              <?= e(accountStatusLabel($visualStatus)) ?>
-            </span>
-          </div>
-
-          <div class="account-values">
-            <div><span>Valor original</span><strong><?= e(accountMoney($account['valor_original'])) ?></strong></div>
-            <div><span>Valor pago</span><strong><?= e(accountMoney($account['valor_pago'])) ?></strong></div>
-            <div><span>Saldo aberto</span><strong><?= e(accountMoney($account['saldo_aberto'])) ?></strong></div>
-          </div>
-
-          <div class="account-card-actions no-print">
-            <?php if ($vendaId > 0): ?>
-              <a class="secondary-btn" href="venda-detalhes.php?id=<?= $vendaId ?>">Ver venda</a>
-            <?php endif; ?>
-
-            <?php if ($canReceive): ?>
-              <button
-                type="button"
-                class="secondary-btn open-payment-modal"
-                data-conta-id="<?= $contaId ?>"
-                data-cliente="<?= e((string)$account['cliente_nome']) ?>"
-                data-venda-id="<?= $vendaId ?>"
-                data-saldo="<?= e($saldoNumber) ?>"
-                data-saldo-formatado="<?= e(accountMoney($account['saldo_aberto'])) ?>"
-              >Registrar pagamento</button>
-
-              <?php if (canClientAccountAccess('settle', $currentNivel)): ?>
-                <button
-                  type="button"
-                  class="primary-btn open-settle-modal"
-                  data-conta-id="<?= $contaId ?>"
-                  data-cliente="<?= e((string)$account['cliente_nome']) ?>"
-                  data-venda-id="<?= $vendaId ?>"
-                  data-saldo="<?= e($saldoNumber) ?>"
-                  data-saldo-formatado="<?= e(accountMoney($account['saldo_aberto'])) ?>"
-                >Quitar conta</button>
-              <?php endif; ?>
-            <?php elseif (in_array($account['status'], ['pago'], true) || (float)$account['saldo_aberto'] <= 0): ?>
-              <button type="button" class="secondary-btn" disabled>Conta paga</button>
-            <?php endif; ?>
-          </div>
-        </article>
-      <?php endforeach; ?>
-    </section>
   </div>
 </section>
 
@@ -1319,51 +1407,54 @@ require_once __DIR__ . '/layout/header.php';
         <h2 id="paymentModalTitle">Registrar pagamento</h2>
       </div>
 
-      <button type="button" class="icon-btn light" data-close-modal aria-label="Fechar">×</button>
+```
+  <button type="button" class="icon-btn light" data-close-modal aria-label="Fechar">×</button>
+</div>
+
+<div class="account-modal-body">
+  <div class="modal-account-summary">
+    <div><span>Cliente</span><strong id="paymentCliente">-</strong></div>
+    <div><span>Conta / Venda</span><strong id="paymentContaInfo">-</strong></div>
+    <div><span>Saldo em aberto</span><strong id="paymentSaldo">R$ 0,00</strong></div>
+  </div>
+
+  <form method="post" id="paymentForm" action="<?= e($actionUrl) ?>">
+    <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+    <input type="hidden" name="action" value="pay">
+    <input type="hidden" name="conta_id" id="paymentContaId" value="">
+
+    <div class="account-modal-grid">
+      <label class="field">
+        <span>Valor pago</span>
+        <input type="text" name="valor_pago" id="paymentValor" inputmode="decimal" placeholder="0,00" required>
+      </label>
+
+      <label class="field">
+        <span>Forma de pagamento</span>
+        <select name="forma_pagamento" required>
+          <option value="pix">PIX</option>
+          <option value="dinheiro">Dinheiro</option>
+          <option value="credito">Crédito</option>
+          <option value="debito">Débito</option>
+          <option value="transferencia">Transferência</option>
+          <option value="outro">Outro</option>
+        </select>
+      </label>
     </div>
 
-    <div class="account-modal-body">
-      <div class="modal-account-summary">
-        <div><span>Cliente</span><strong id="paymentCliente">-</strong></div>
-        <div><span>Conta / Venda</span><strong id="paymentContaInfo">-</strong></div>
-        <div><span>Saldo em aberto</span><strong id="paymentSaldo">R$ 0,00</strong></div>
-      </div>
+    <label class="field">
+      <span>Observação</span>
+      <input type="text" name="observacao" maxlength="255" placeholder="Opcional">
+    </label>
 
-      <form method="post" id="paymentForm" action="<?= e($actionUrl) ?>">
-        <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
-        <input type="hidden" name="action" value="pay">
-        <input type="hidden" name="conta_id" id="paymentContaId" value="">
-
-        <div class="account-modal-grid">
-          <label class="field">
-            <span>Valor pago</span>
-            <input type="text" name="valor_pago" id="paymentValor" inputmode="decimal" placeholder="0,00" required>
-          </label>
-
-          <label class="field">
-            <span>Forma de pagamento</span>
-            <select name="forma_pagamento" required>
-              <option value="pix">PIX</option>
-              <option value="dinheiro">Dinheiro</option>
-              <option value="credito">Crédito</option>
-              <option value="debito">Débito</option>
-              <option value="transferencia">Transferência</option>
-              <option value="outro">Outro</option>
-            </select>
-          </label>
-        </div>
-
-        <label class="field">
-          <span>Observação</span>
-          <input type="text" name="observacao" maxlength="255" placeholder="Opcional">
-        </label>
-
-        <div class="account-modal-actions no-print">
-          <button type="button" class="secondary-btn" data-close-modal>Cancelar</button>
-          <button type="submit" class="primary-btn">Salvar pagamento</button>
-        </div>
-      </form>
+    <div class="account-modal-actions no-print">
+      <button type="button" class="secondary-btn" data-close-modal>Cancelar</button>
+      <button type="submit" class="primary-btn">Salvar pagamento</button>
     </div>
+  </form>
+</div>
+```
+
   </div>
 </div>
 
@@ -1377,89 +1468,96 @@ require_once __DIR__ . '/layout/header.php';
         <h2 id="settleModalTitle">Quitar conta</h2>
       </div>
 
-      <button type="button" class="icon-btn light" data-close-modal aria-label="Fechar">×</button>
+```
+  <button type="button" class="icon-btn light" data-close-modal aria-label="Fechar">×</button>
+</div>
+
+<div class="account-modal-body">
+  <div class="modal-account-summary">
+    <div><span>Cliente</span><strong id="settleCliente">-</strong></div>
+    <div><span>Conta / Venda</span><strong id="settleContaInfo">-</strong></div>
+    <div><span>Valor a quitar</span><strong id="settleSaldo">R$ 0,00</strong></div>
+  </div>
+
+  <form method="post" id="settleForm" action="<?= e($actionUrl) ?>" onsubmit="return confirm('Confirmar quitação desta conta?');">
+    <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+    <input type="hidden" name="action" value="settle">
+    <input type="hidden" name="conta_id" id="settleContaId" value="">
+
+    <label class="field">
+      <span>Forma de pagamento</span>
+      <select name="forma_pagamento" required>
+        <option value="pix">PIX</option>
+        <option value="dinheiro">Dinheiro</option>
+        <option value="credito">Crédito</option>
+        <option value="debito">Débito</option>
+        <option value="transferencia">Transferência</option>
+        <option value="outro">Outro</option>
+      </select>
+    </label>
+
+    <div class="account-modal-actions no-print">
+      <button type="button" class="secondary-btn" data-close-modal>Cancelar</button>
+      <button type="submit" class="primary-btn">Confirmar quitação</button>
     </div>
+  </form>
+</div>
+```
 
-    <div class="account-modal-body">
-      <div class="modal-account-summary">
-        <div><span>Cliente</span><strong id="settleCliente">-</strong></div>
-        <div><span>Conta / Venda</span><strong id="settleContaInfo">-</strong></div>
-        <div><span>Valor a quitar</span><strong id="settleSaldo">R$ 0,00</strong></div>
-      </div>
-
-      <form method="post" id="settleForm" action="<?= e($actionUrl) ?>" onsubmit="return confirm('Confirmar quitação desta conta?');">
-        <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
-        <input type="hidden" name="action" value="settle">
-        <input type="hidden" name="conta_id" id="settleContaId" value="">
-
-        <label class="field">
-          <span>Forma de pagamento</span>
-          <select name="forma_pagamento" required>
-            <option value="pix">PIX</option>
-            <option value="dinheiro">Dinheiro</option>
-            <option value="credito">Crédito</option>
-            <option value="debito">Débito</option>
-            <option value="transferencia">Transferência</option>
-            <option value="outro">Outro</option>
-          </select>
-        </label>
-
-        <div class="account-modal-actions no-print">
-          <button type="button" class="secondary-btn" data-close-modal>Cancelar</button>
-          <button type="submit" class="primary-btn">Confirmar quitação</button>
-        </div>
-      </form>
-    </div>
   </div>
 </div>
 
 <?php if ($receipt): ?>
+
   <div class="account-modal" id="receiptModal" hidden>
     <div class="account-modal-backdrop" data-close-modal></div>
 
-    <div class="account-modal-dialog small" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle">
-      <div class="account-modal-header no-print">
-        <div>
-          <p class="micro-label dark-text">Comprovante</p>
-          <h2 id="receiptModalTitle">Recibo de pagamento</h2>
-        </div>
-
-        <button type="button" class="icon-btn light" data-close-modal aria-label="Fechar">×</button>
-      </div>
-
-      <div class="account-modal-body">
-        <div class="receipt-print-area" id="receiptPrintArea">
-          <h2>Recibo de Pagamento</h2>
-
-          <p><strong>Cliente:</strong> <?= e((string)$receipt['cliente']) ?></p>
-          <p><strong>Conta:</strong> #<?= (int)$receipt['conta_id'] ?><?= !empty($receipt['venda_id']) ? ' · Venda #' . (int)$receipt['venda_id'] : '' ?></p>
-          <p><strong>Data:</strong> <?= e(accountDateTime($receipt['data'] ?? '')) ?></p>
-          <p><strong>Operador:</strong> <?= e((string)$receipt['operador']) ?></p>
-
-          <div class="receipt-line">
-            <span>Valor pago</span>
-            <strong><?= e(accountMoney($receipt['valor_pago'] ?? 0)) ?></strong>
-          </div>
-
-          <div class="receipt-line">
-            <span>Forma</span>
-            <strong><?= e(accountPaymentLabel((string)($receipt['forma_pagamento'] ?? ''))) ?></strong>
-          </div>
-
-          <div class="receipt-line">
-            <span>Saldo restante</span>
-            <strong><?= e(accountMoney($receipt['saldo_restante'] ?? 0)) ?></strong>
-          </div>
-
-          <p style="text-align:center;margin-top:12px;">Obrigado pela preferência.</p>
-        </div>
-
-        <div class="account-modal-actions no-print">
-          <button type="button" class="secondary-btn" data-close-modal>Fechar</button>
-          <button type="button" class="primary-btn" onclick="window.print()">Imprimir recibo</button>
-        </div>
-      </div>
+```
+<div class="account-modal-dialog small" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle">
+  <div class="account-modal-header no-print">
+    <div>
+      <p class="micro-label dark-text">Comprovante</p>
+      <h2 id="receiptModalTitle">Recibo de pagamento</h2>
     </div>
+
+    <button type="button" class="icon-btn light" data-close-modal aria-label="Fechar">×</button>
+  </div>
+
+  <div class="account-modal-body">
+    <div class="receipt-print-area" id="receiptPrintArea">
+      <h2>Recibo de Pagamento</h2>
+
+      <p><strong>Cliente:</strong> <?= e((string)$receipt['cliente']) ?></p>
+      <p><strong>Conta:</strong> #<?= (int)$receipt['conta_id'] ?><?= !empty($receipt['venda_id']) ? ' · Venda #' . (int)$receipt['venda_id'] : '' ?></p>
+      <p><strong>Data:</strong> <?= e(accountDateTime($receipt['data'] ?? '')) ?></p>
+      <p><strong>Operador:</strong> <?= e((string)$receipt['operador']) ?></p>
+
+      <div class="receipt-line">
+        <span>Valor pago</span>
+        <strong><?= e(accountMoney($receipt['valor_pago'] ?? 0)) ?></strong>
+      </div>
+
+      <div class="receipt-line">
+        <span>Forma</span>
+        <strong><?= e(accountPaymentLabel((string)($receipt['forma_pagamento'] ?? ''))) ?></strong>
+      </div>
+
+      <div class="receipt-line">
+        <span>Saldo restante</span>
+        <strong><?= e(accountMoney($receipt['saldo_restante'] ?? 0)) ?></strong>
+      </div>
+
+      <p style="text-align:center;margin-top:12px;">Obrigado pela preferência.</p>
+    </div>
+
+    <div class="account-modal-actions no-print">
+      <button type="button" class="secondary-btn" data-close-modal>Fechar</button>
+      <button type="button" class="primary-btn" onclick="window.print()">Imprimir recibo</button>
+    </div>
+  </div>
+</div>
+```
+
   </div>
 <?php endif; ?>
 
