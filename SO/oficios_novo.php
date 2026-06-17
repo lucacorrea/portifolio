@@ -1401,7 +1401,6 @@ include 'views/layout/header.php';
                         >
                         <span>Sem ofício</span>
                     </label>
-                    <small id="sem-oficio-preview" class="sem-oficio-preview"></small>
                     <small class="text-muted">Informe o número do processo físico ou ofício.</small>
                 </div>
 
