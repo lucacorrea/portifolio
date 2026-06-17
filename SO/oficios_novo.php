@@ -211,8 +211,8 @@ function oficio_generate_sem_oficio_numero($pdo, $secretaria_nome) {
 
     for ($tentativa = 0; $tentativa < 100; $tentativa++) {
         $codigo = oficio_random_code(4);
-        $numero = "OFÍCIO Nº {$codigo}/{$ano}/{$sigla}";
-        $stmt->execute([$numero, "OFÍCIO Nº {$codigo}/%"]);
+        $numero = "SEM OFÍCIO Nº {$codigo}/{$ano}/{$sigla}";
+        $stmt->execute([$numero, "SEM OFÍCIO Nº {$codigo}/%"]);
 
         if ((int)$stmt->fetchColumn() === 0) {
             return $numero;
@@ -1685,7 +1685,7 @@ include 'views/layout/header.php';
             semOficioPreviewCode = generateClientPreviewCode();
         }
 
-        return `OFÍCIO Nº ${semOficioPreviewCode}/${new Date().getFullYear()}/${getSelectedSecretariaSigla()}`;
+        return `SEM OFÍCIO Nº ${semOficioPreviewCode}/${new Date().getFullYear()}/${getSelectedSecretariaSigla()}`;
     }
 
     function syncSemOficioState() {
@@ -1714,7 +1714,7 @@ include 'views/layout/header.php';
         numeroOficioInput.classList.remove('numero-oficio-auto');
 
         const currentPreview = semOficioPreviewCode
-            ? `OFÍCIO Nº ${semOficioPreviewCode}/${new Date().getFullYear()}/${getSelectedSecretariaSigla()}`
+            ? `SEM OFÍCIO Nº ${semOficioPreviewCode}/${new Date().getFullYear()}/${getSelectedSecretariaSigla()}`
             : '';
 
         if (currentPreview && numeroOficioInput.value === currentPreview) {
