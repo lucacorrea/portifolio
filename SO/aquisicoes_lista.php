@@ -128,6 +128,97 @@ function nomeRelatorio($valor, string $fallback): string
     return $nome !== '' ? $nome : $fallback;
 }
 
+function secretariaSiglaRelatorio($nome): string
+{
+    $nomeNormalizado = trim(preg_replace('/\s+/u', ' ', (string)$nome));
+
+    if ($nomeNormalizado === '') {
+        return 'N/I';
+    }
+
+    $nomeUp = function_exists('mb_strtoupper')
+        ? mb_strtoupper($nomeNormalizado, 'UTF-8')
+        : strtoupper($nomeNormalizado);
+
+    if (preg_match('/(?:-|\/)\s*([A-Z0-9]{2,15})\s*$/u', $nomeUp, $m)) {
+        return trim($m[1]);
+    }
+
+    $map = [
+        'SECRETARIA MUNICIPAL DA CASA CIVIL' => 'SMCC',
+        'SECRETARIA MUNICIPAL DE ADMINISTRAÇÃO' => 'SEMAD',
+        'SECRETARIA MUNICIPAL DE FAZENDA' => 'SEMFAZ',
+        'SECRETARIA MUNICIPAL DE EDUCAÇÃO' => 'SEMED',
+        'SECRETARIA MUNICIPAL DE SAÚDE' => 'SEMSA',
+        'SECRETARIA MUNICIPAL DE CULTURA E TURISMO' => 'SECULT',
+        'SECRETARIA MUNICIPAL DE COMUNICAÇÃO' => 'SEMCOM',
+        'SECRETARIA MUNICIPAL DE PLANEJAMENTO' => 'SEMPLAN',
+        'SECRETARIA MUNICIPAL DE OBRAS' => 'SEMOB',
+        'SECRETARIA MUNICIPAL DE LIMPEZA PÚBLICA' => 'SEMLIP',
+        'SECRETARIA MUNICIPAL DE ASSISTÊNCIA SOCIAL' => 'SEMAS',
+        'SECRETARIA MUNICIPAL DE TERRAS E HABITAÇÃO' => 'SEMTH',
+        'SECRETARIA MUNICIPAL DE MEIO AMBIENTE' => 'SEMMA',
+        'SECRETARIA MUNICIPAL EXTRAORDINÁRIA' => 'SME',
+        'PROCURADORIA GERAL DO MUNICÍPIO' => 'PGM',
+        'CONTROLADORIA GERAL DO MUNICICÍPIO' => 'CGM',
+        'SECRETARIA MUNICIPAL DE CIÊNCIA, TECNOLOGIA E INOVAÇÃO' => 'SMCTI',
+        'SECRETARIA MUNICIPAL DE DESENVOLVIMENTO RURAL E ECONÔMICO' => 'SMDRE',
+        'SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E DEFESA SOCIAL' => 'SMSPDS',
+        'SECRETARIA MUNICIPAL DE ESPORTE' => 'SEMESP',
+        'SECRETÁRIO MUNICIPAL DE RELAÇÕES INSTITUCIONAIS' => 'SMRI',
+        'COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'CREC',
+        'COMIÇÃO DE CONTRATAÇÃO DE COARI' => 'CCC',
+        'SECRETARIA DE ESTADO DA EDUCAÇÃO E DESPORTO ESCOLAR COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'SEDUC',
+    ];
+
+    foreach ($map as $trecho => $sigla) {
+        $trechoUp = function_exists('mb_strtoupper') ? mb_strtoupper($trecho, 'UTF-8') : strtoupper($trecho);
+        $encontrado = function_exists('mb_strpos')
+            ? mb_strpos($nomeUp, $trechoUp, 0, 'UTF-8') !== false
+            : strpos($nomeUp, $trechoUp) !== false;
+
+        if ($encontrado) {
+            return $sigla;
+        }
+    }
+
+    if (preg_match('/\b([A-Z]{3,})\b/u', $nomeUp, $m)) {
+        $candidato = trim($m[1]);
+        $bloqueados = [
+            'SECRETARIA',
+            'MUNICIPAL',
+            'GERAL',
+            'COARI',
+            'ESTADO',
+            'EDUCACAO',
+            'EDUCAÇÃO',
+            'DEFESA',
+            'SOCIAL',
+            'PUBLICA',
+            'PÚBLICA',
+        ];
+
+        if (!in_array($candidato, $bloqueados, true)) {
+            return $candidato;
+        }
+    }
+
+    $partes = preg_split('/\s+/u', preg_replace('/[^\p{L}\s\/-]+/u', '', $nomeUp));
+    $ignorar = ['DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'A', 'O', 'AS', 'OS', 'MUNICIPAL', 'SECRETARIA'];
+    $sigla = '';
+
+    foreach ($partes as $parte) {
+        $parte = trim($parte);
+        if ($parte === '' || in_array($parte, $ignorar, true)) {
+            continue;
+        }
+
+        $sigla .= function_exists('mb_substr') ? mb_substr($parte, 0, 1, 'UTF-8') : substr($parte, 0, 1);
+    }
+
+    return $sigla !== '' ? $sigla : $nomeUp;
+}
+
 function agruparAquisicoesPorFornecedor(array $aquisicoes): array
 {
     $grupos = [];
@@ -226,39 +317,39 @@ function renderizarCabecalhoAquisicoes(
     $classeLinhaTitulo = $quebrarPagina ? ' class="supplier-page-break"' : '';
     ?>
             <tr<?php echo $classeLinhaTitulo; ?>>
-                <td colspan="6" class="title-main">RELATÓRIO DE AQUISIÇÕES</td>
+                <td colspan="7" class="title-main">RELATÓRIO DE AQUISIÇÕES</td>
             </tr>
             <tr>
-                <td colspan="6" class="sub-info left"><strong>Gerado em:</strong> <?php echo h($geradoEm); ?></td>
+                <td colspan="7" class="sub-info left"><strong>Gerado em:</strong> <?php echo h($geradoEm); ?></td>
             </tr>
             <tr>
                 <td colspan="3" class="sub-info left"><strong>Busca:</strong> <?php echo $busca !== '' ? h($busca) : 'Todos'; ?></td>
-                <td colspan="3" class="sub-info left"><strong>Status:</strong> <?php echo $status !== '' ? h($status) : 'Todos'; ?></td>
+                <td colspan="4" class="sub-info left"><strong>Status:</strong> <?php echo $status !== '' ? h($status) : 'Todos'; ?></td>
             </tr>
             <tr>
                 <td colspan="3" class="sub-info left"><strong>Período:</strong> <?php echo h($periodoTexto); ?></td>
-                <td colspan="3" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($secretaria); ?></td>
+                <td colspan="4" class="sub-info left"><strong>Secretaria:</strong> <?php echo h($secretaria); ?></td>
             </tr>
             <tr>
                 <td colspan="3" class="sub-info left"><strong>Fornecedor:</strong> <?php echo h($fornecedor); ?></td>
-                <td colspan="3" class="sub-info left"><strong>Registros:</strong> <?php echo $quantidade; ?></td>
+                <td colspan="4" class="sub-info left"><strong>Registros:</strong> <?php echo $quantidade; ?></td>
             </tr>
 
-            <tr class="spacer"><td colspan="6"></td></tr>
+            <tr class="spacer"><td colspan="7"></td></tr>
 
             <tr>
                 <td colspan="3" class="summary-label">TOTAL DE AQUISIÇÕES</td>
-                <td colspan="3" class="summary-label">VALOR TOTAL</td>
+                <td colspan="4" class="summary-label">VALOR TOTAL</td>
             </tr>
             <tr>
                 <td colspan="3" class="summary-value"><?php echo $quantidade; ?></td>
-                <td colspan="3" class="summary-value"><?php echo formatarMoedaBR($total); ?></td>
+                <td colspan="4" class="summary-value"><?php echo formatarMoedaBR($total); ?></td>
             </tr>
 
-            <tr class="spacer"><td colspan="6"></td></tr>
+            <tr class="spacer"><td colspan="7"></td></tr>
 
             <tr>
-                <td colspan="6" class="section-title">AQUISIÇÕES INDIVIDUAIS</td>
+                <td colspan="7" class="section-title">AQUISIÇÕES INDIVIDUAIS</td>
             </tr>
     <?php
 }
@@ -391,6 +482,7 @@ $sql_select_export = "
         a.status,
         a.criado_em,
         o.numero as oficio_num,
+        o.local as oficio_local,
         o.resumo_itens,
         s.nome as secretaria,
         s.cor_relatorio as secretaria_cor,
@@ -793,10 +885,11 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
         <table class="sheet excel-report">
             <colgroup>
+                <col style="width: 10%;">
+                <col style="width: 18%;">
                 <col style="width: 13%;">
-                <col style="width: 22%;">
-                <col style="width: 27%;">
-                <col style="width: 22%;">
+                <col style="width: 13%;">
+                <col style="width: 30%;">
                 <col style="width: 8%;">
                 <col style="width: 8%;">
             </colgroup>
@@ -818,7 +911,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
             <?php if (empty($dadosPorFornecedor)): ?>
                 <tr>
-                    <td colspan="6" class="center">Nenhuma aquisição encontrada para os filtros selecionados.</td>
+                    <td colspan="7" class="center">Nenhuma aquisição encontrada para os filtros selecionados.</td>
                 </tr>
             <?php else: ?>
                 <?php $gerado_em_relatorio = date('d/m/Y H:i:s'); ?>
@@ -852,7 +945,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                     <?php endif; ?>
                     <?php if ($mostrar_blocos_fornecedor): ?>
                         <tr class="supplier-section">
-                            <td colspan="4" class="left"<?php echo $fornecedor_bg_attr; ?>>FORNECEDOR: <?php echo h($fornecedor['nome']); ?></td>
+                            <td colspan="5" class="left"<?php echo $fornecedor_bg_attr; ?>>FORNECEDOR: <?php echo h($fornecedor['nome']); ?></td>
                             <td class="center"<?php echo $fornecedor_bg_attr; ?>><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
                             <td class="right money-cell"<?php echo $fornecedor_bg_attr; ?>><?php echo formatarMoedaBR($fornecedor['total']); ?></td>
                         </tr>
@@ -864,9 +957,9 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                         $cor_attr = h($cor_secretaria);
                         $cor_item_attr = $fornecedor_cor !== '' ? $fornecedor_cor : $cor_attr;
                         ?>
-                        <tr class="spacer"><td colspan="6"></td></tr>
+                        <tr class="spacer"><td colspan="7"></td></tr>
                         <tr class="secretaria-card-title">
-                            <td colspan="4" class="left" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;">SECRETARIA: <?php echo h($secretaria['nome']); ?></td>
+                            <td colspan="5" class="left" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;">SECRETARIA: <?php echo h($secretaria['nome']); ?></td>
                             <td class="center" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo (int)$secretaria['quantidade']; ?> AQ</td>
                             <td class="right money-cell" bgcolor="<?php echo $cor_attr; ?>" style="background-color: <?php echo $cor_attr; ?>;"><?php echo formatarMoedaBR($secretaria['total']); ?></td>
                         </tr>
@@ -874,6 +967,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             <th>Nº Aquisição</th>
                             <th>Nº Ofício</th>
                             <th><?php echo $usar_coluna_fornecedor ? 'Fornecedor' : 'Secretaria'; ?></th>
+                            <th>Local</th>
                             <th>DESCRIÇÃO</th>
                             <th>Data</th>
                             <th>Valor</th>
@@ -888,14 +982,15 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             <tr class="report-row">
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
-                                <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($usar_coluna_fornecedor ? nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO') : nomeRelatorio($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA')); ?></td>
+                                <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($usar_coluna_fornecedor ? nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO') : secretariaSiglaRelatorio($aq['secretaria'] ?? '')); ?></td>
+                                <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(nomeRelatorio($aq['oficio_local'] ?? '', '-')); ?></td>
                                 <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($descricaoRelatorio); ?></td>
                                 <td class="center" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
                                 <td class="right money-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
                             </tr>
                         <?php endforeach; ?>
                         <tr class="group-total-row">
-                            <td colspan="4" class="right">TOTAL DA SECRETARIA</td>
+                            <td colspan="5" class="right">TOTAL DA SECRETARIA</td>
                             <td class="center"><?php echo (int)$secretaria['quantidade']; ?> AQ</td>
                             <td class="right money-cell"><?php echo formatarMoedaBR($secretaria['total']); ?></td>
                         </tr>
@@ -903,16 +998,16 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                     <?php if ($mostrar_blocos_fornecedor): ?>
                         <tr class="supplier-total-row">
-                            <td colspan="4" class="right"<?php echo $fornecedor_bg_attr; ?>>TOTAL DO FORNECEDOR</td>
+                            <td colspan="5" class="right"<?php echo $fornecedor_bg_attr; ?>>TOTAL DO FORNECEDOR</td>
                             <td class="center"<?php echo $fornecedor_bg_attr; ?>><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
                             <td class="right money-cell"<?php echo $fornecedor_bg_attr; ?>><?php echo formatarMoedaBR($fornecedor['total']); ?></td>
                         </tr>
                     <?php endif; ?>
                 <?php endforeach; ?>
 
-                <tr class="spacer"><td colspan="6"></td></tr>
+                <tr class="spacer"><td colspan="7"></td></tr>
                 <tr class="total-row">
-                    <td colspan="5" class="right">TOTAL GERAL</td>
+                    <td colspan="6" class="right">TOTAL GERAL</td>
                     <td class="right money-cell"><?php echo formatarMoedaBR($total_export); ?></td>
                 </tr>
             <?php endif; ?>
