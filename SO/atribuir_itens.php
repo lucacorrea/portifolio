@@ -634,9 +634,7 @@ include 'views/layout/header.php';
                     <i class="fas fa-list-ol"></i> Gerar campos
                 </button>
 
-                <p class="item-count-help">
-                    Digite a quantidade total de itens para criar todos os campos de uma vez.
-                </p>
+             
             </div>
 
             <div id="items-container">
