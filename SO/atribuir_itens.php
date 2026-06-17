@@ -387,6 +387,26 @@ include 'views/layout/header.php';
         color: #991b1b;
     }
 
+    .item-count-control {
+        margin-bottom: 1.25rem;
+        padding: 1rem;
+        border: 1px solid #dbe2ea;
+        border-radius: 12px;
+        background: #f8fafc;
+        display: grid;
+        grid-template-columns: minmax(180px, 260px) auto 1fr;
+        gap: .85rem;
+        align-items: end;
+    }
+
+    .item-count-help {
+        margin: 0;
+        color: #64748b;
+        font-size: .86rem;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
     .item-name-group {
         position: relative;
     }
@@ -494,6 +514,10 @@ include 'views/layout/header.php';
         .item-row {
             grid-template-columns: 1fr;
         }
+
+        .item-count-control {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
@@ -584,15 +608,39 @@ include 'views/layout/header.php';
             </div>
         <?php endif; ?>
 
+        <?php
+        $items = !empty($items_form)
+            ? $items_form
+            : (!empty($items_existentes)
+                ? $items_existentes
+                : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]]);
+        ?>
+
         <form action="" method="POST" id="items-form">
+            <div class="item-count-control">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" for="item-count-input">Total de itens</label>
+                    <input
+                        type="number"
+                        id="item-count-input"
+                        class="form-control"
+                        min="1"
+                        max="300"
+                        step="1"
+                        value="<?php echo count($items); ?>">
+                </div>
+
+                <button type="button" class="btn btn-primary" id="generate-items">
+                    <i class="fas fa-list-ol"></i> Gerar campos
+                </button>
+
+                <p class="item-count-help">
+                    Digite a quantidade total de itens para criar todos os campos de uma vez.
+                </p>
+            </div>
+
             <div id="items-container">
                 <?php
-                $items = !empty($items_form)
-                    ? $items_form
-                    : (!empty($items_existentes)
-                        ? $items_existentes
-                        : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]]);
-
                 foreach ($items as $idx => $it):
                     $qtd_value = isset($it['quantidade_input']) ? (string)$it['quantidade_input'] : (string)((float)($it['quantidade'] ?? 0));
                     $qtd_item = (float)str_replace(',', '.', $qtd_value);
@@ -690,6 +738,8 @@ include 'views/layout/header.php';
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('items-container');
     const totalDisplay = document.getElementById('total-itens');
+    const itemCountInput = document.getElementById('item-count-input');
+    const generateItemsBtn = document.getElementById('generate-items');
     const orcamentoPrevisto = parseFloat(document.getElementById('orcamento-previsto').dataset.valor) || 0;
     const oficioId = <?php echo (int)$id; ?>;
     const planilhaInput = document.getElementById('planilha-pdf-input');
@@ -2939,14 +2989,61 @@ document.addEventListener('DOMContentLoaded', function() {
         return row;
     }
 
+    function rowHasUserContent(row) {
+        const produto = row.querySelector('.item-name')?.value.trim() || '';
+        const quantidade = row.querySelector('.item-qtd')?.value.trim() || '';
+        const unidade = (row.querySelector('input[name$="[unidade]"]')?.value.trim() || '').toUpperCase();
+        const valor = row.querySelector('.item-valor')?.value.trim() || '';
+        const total = row.querySelector('.item-total')?.value.trim() || '';
+
+        return produto !== ''
+            || (quantidade !== '' && quantidade !== '1' && quantidade !== '1.00')
+            || (unidade !== '' && unidade !== 'UN')
+            || parseValorBR(valor) > 0
+            || parseValorBR(total) > 0;
+    }
+
+    function syncItemCountInput() {
+        if (itemCountInput) {
+            itemCountInput.value = container.querySelectorAll('.item-row').length;
+        }
+    }
+
+    function setItemsCount(totalDesejado) {
+        const quantidade = Math.max(1, Math.min(300, parseInt(totalDesejado, 10) || 1));
+        const rows = Array.from(container.querySelectorAll('.item-row'));
+
+        if (quantidade < rows.length) {
+            const rowsToRemove = rows.slice(quantidade);
+            const hasFilledRows = rowsToRemove.some(rowHasUserContent);
+
+            if (hasFilledRows && !confirm('Existem itens preenchidos acima da quantidade informada. Deseja remover essas linhas?')) {
+                syncItemCountInput();
+                return;
+            }
+
+            rowsToRemove.forEach(row => row.remove());
+        }
+
+        while (container.querySelectorAll('.item-row').length < quantidade) {
+            const index = container.querySelectorAll('.item-row').length;
+            container.appendChild(createItemRow(index));
+        }
+
+        renumberItems();
+        calculateTotal();
+        syncItemCountInput();
+
+        const firstEmptyName = Array.from(container.querySelectorAll('.item-name'))
+            .find(input => input.value.trim() === '');
+        if (firstEmptyName) {
+            firstEmptyName.focus();
+        }
+    }
+
     function removeEmptyItemRows() {
         Array.from(container.querySelectorAll('.item-row')).forEach(row => {
-            const produto = row.querySelector('.item-name')?.value.trim() || '';
-            const quantidade = row.querySelector('.item-qtd')?.value.trim() || '';
-            const valor = row.querySelector('.item-valor')?.value.trim() || '';
-            const valorNumerico = parseValorBR(valor);
-
-            if (produto === '' && (quantidade === '' || quantidade === '1') && (valor === '' || valorNumerico === 0)) {
+            if (!rowHasUserContent(row)) {
                 row.remove();
             }
         });
@@ -2957,6 +3054,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const index = container.querySelectorAll('.item-row').length;
             container.appendChild(createItemRow(index, item));
         });
+        syncItemCountInput();
     }
 
     function renumberItems() {
@@ -2971,6 +3069,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.name = input.name.replace(/produtos\[\d+\]/, `produtos[${index}]`);
             });
         });
+        syncItemCountInput();
     }
 
     function getItemQuantity(row) {
@@ -3223,7 +3322,21 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(row);
         renumberItems();
         calculateTotal();
+        syncItemCountInput();
     });
+
+    if (generateItemsBtn && itemCountInput) {
+        generateItemsBtn.addEventListener('click', function() {
+            setItemsCount(itemCountInput.value);
+        });
+
+        itemCountInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                setItemsCount(itemCountInput.value);
+            }
+        });
+    }
 
     container.addEventListener('click', function(e) {
         if (e.target.closest('.remove-item')) {
@@ -3232,6 +3345,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.target.closest('.item-row').remove();
                 renumberItems();
                 calculateTotal();
+                syncItemCountInput();
             }
         }
     });
@@ -3262,6 +3376,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     renumberItems();
+    syncItemCountInput();
     calculateTotal();
 });
 </script>
