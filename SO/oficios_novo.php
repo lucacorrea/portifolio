@@ -114,6 +114,114 @@ function oficio_unique_upload_suffix() {
     return str_replace('.', '', uniqid('', true));
 }
 
+function oficio_secretaria_sigla($nome) {
+    $nome = trim(preg_replace('/\s+/u', ' ', (string)$nome));
+
+    if ($nome === '') {
+        return 'SEC';
+    }
+
+    $nome_up = mb_strtoupper($nome, 'UTF-8');
+
+    if (preg_match('/(?:-|\/)\s*([A-Z0-9]{2,15})\s*$/u', $nome_up, $match)) {
+        return trim($match[1]);
+    }
+
+    $map = [
+        'SECRETARIA MUNICIPAL DA CASA CIVIL' => 'SMCC',
+        'SECRETARIA MUNICIPAL DE ADMINISTRAÇÃO' => 'SEMAD',
+        'SECRETARIA MUNICIPAL DE FAZENDA' => 'SEMFAZ',
+        'SECRETARIA MUNICIPAL DE EDUCAÇÃO' => 'SEMED',
+        'SECRETARIA MUNICIPAL DE SAÚDE' => 'SEMSA',
+        'SECRETARIA MUNICIPAL DE CULTURA E TURISMO' => 'SECULT',
+        'SECRETARIA MUNICIPAL DE COMUNICAÇÃO' => 'SEMCOM',
+        'SECRETARIA MUNICIPAL DE PLANEJAMENTO' => 'SEMPLAN',
+        'SECRETARIA MUNICIPAL DE OBRAS' => 'SEMOB',
+        'SECRETARIA MUNICIPAL DE LIMPEZA PÚBLICA' => 'SEMLIP',
+        'SECRETARIA MUNICIPAL DE ASSISTÊNCIA SOCIAL' => 'SEMAS',
+        'SECRETARIA MUNICIPAL DE TERRAS E HABITAÇÃO' => 'SEMTH',
+        'SECRETARIA MUNICIPAL DE MEIO AMBIENTE' => 'SEMMA',
+        'SECRETARIA MUNICIPAL EXTRAORDINÁRIA' => 'SME',
+        'PROCURADORIA GERAL DO MUNICÍPIO' => 'PGM',
+        'CONTROLADORIA GERAL DO MUNICICÍPIO' => 'CGM',
+        'SECRETARIA MUNICIPAL DE CIÊNCIA, TECNOLOGIA E INOVAÇÃO' => 'SMCTI',
+        'SECRETARIA MUNICIPAL DE DESENVOLVIMENTO RURAL E ECONÔMICO' => 'SMDRE',
+        'SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E DEFESA SOCIAL' => 'SMSPDS',
+        'SECRETARIA MUNICIPAL DE ESPORTE' => 'SEMESP',
+        'SECRETÁRIO MUNICIPAL DE RELAÇÕES INSTITUCIONAIS' => 'SMRI',
+        'COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'CREC',
+        'COMIÇÃO DE CONTRATAÇÃO DE COARI' => 'CCC',
+        'SECRETARIA DE ESTADO DA EDUCAÇÃO E DESPORTO ESCOLAR COORDENADORIA REGIONAL DE EDUCAÇÃO DE COARI' => 'SEDUC',
+    ];
+
+    foreach ($map as $trecho => $sigla) {
+        if (mb_strpos($nome_up, mb_strtoupper($trecho, 'UTF-8'), 0, 'UTF-8') !== false) {
+            return $sigla;
+        }
+    }
+
+    $partes = preg_split('/\s+/u', preg_replace('/[^\p{L}\s\/-]+/u', '', $nome_up));
+    $ignorar = ['DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'A', 'O', 'AS', 'OS', 'MUNICIPAL', 'SECRETARIA'];
+    $sigla = '';
+
+    foreach ($partes as $parte) {
+        $parte = trim($parte);
+        if ($parte === '' || in_array($parte, $ignorar, true)) {
+            continue;
+        }
+
+        $sigla .= mb_substr($parte, 0, 1, 'UTF-8');
+    }
+
+    return $sigla !== '' ? mb_substr($sigla, 0, 15, 'UTF-8') : 'SEC';
+}
+
+function oficio_random_code(int $length = 4) {
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    $max = strlen($alphabet) - 1;
+    $code = '';
+
+    for ($i = 0; $i < $length; $i++) {
+        if (function_exists('random_int')) {
+            $code .= $alphabet[random_int(0, $max)];
+        } else {
+            $code .= $alphabet[mt_rand(0, $max)];
+        }
+    }
+
+    return $code;
+}
+
+function oficio_find_secretaria($pdo, $secretaria_id) {
+    $stmt = $pdo->prepare("SELECT id, nome FROM secretarias WHERE id = ?");
+    $stmt->execute([(int)$secretaria_id]);
+    $secretaria = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$secretaria) {
+        throw new Exception("Secretaria solicitante inválida.");
+    }
+
+    return $secretaria;
+}
+
+function oficio_generate_sem_oficio_numero($pdo, $secretaria_nome) {
+    $ano = date('Y');
+    $sigla = oficio_secretaria_sigla($secretaria_nome);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM oficios WHERE numero = ? OR numero LIKE ?");
+
+    for ($tentativa = 0; $tentativa < 100; $tentativa++) {
+        $codigo = oficio_random_code(4);
+        $numero = "OFÍCIO Nº {$codigo}/{$ano}/{$sigla}";
+        $stmt->execute([$numero, "OFÍCIO Nº {$codigo}/%"]);
+
+        if ((int)$stmt->fetchColumn() === 0) {
+            return $numero;
+        }
+    }
+
+    throw new Exception("Não foi possível gerar um número de ofício único. Tente novamente.");
+}
+
 function oficio_normalize_files_array($files) {
     $normalized = [];
     $names = is_array($files['name'] ?? null) ? $files['name'] : [$files['name'] ?? ''];
@@ -846,15 +954,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $valor_orcamento  = !empty($_POST['valor_orcamento'])
         ? str_replace(['.', ','], ['', '.'], $_POST['valor_orcamento'])
         : null;
+    $sem_oficio       = isset($_POST['sem_oficio']) && (string)$_POST['sem_oficio'] === '1';
     $numero_manual    = isset($_POST['numero_oficio']) ? mb_strtoupper(trim($_POST['numero_oficio']), 'UTF-8') : null;
     $criado_em_device = trim($_POST['criado_em_device'] ?? '');
 
     if (empty($justificativa)) {
         $error = "O campo Justificativa é obrigatório.";
-    } elseif (empty($numero_manual)) {
-        $error = "Informe o número do ofício.";
     } elseif (empty($secretaria_id)) {
         $error = "Selecione a secretaria solicitante.";
+    } elseif (!$sem_oficio && empty($numero_manual)) {
+        $error = "Informe o número do ofício ou marque a opção Sem ofício.";
     } elseif (empty($local)) {
         $error = "Informe o local da solicitação.";
     } elseif (empty($criado_em_device)) {
@@ -873,10 +982,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("Data/hora do dispositivo inválida.");
             }
 
-            $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ?");
-            $stmt_check->execute([$numero_manual]);
-            if ($stmt_check->fetch()) {
-                throw new Exception("O número de ofício '{$numero_manual}' já está cadastrado.");
+            $secretaria = oficio_find_secretaria($pdo, $secretaria_id);
+
+            if ($sem_oficio) {
+                $numero_manual = oficio_generate_sem_oficio_numero($pdo, $secretaria['nome']);
+            } else {
+                $stmt_check = $pdo->prepare("SELECT id FROM oficios WHERE numero = ?");
+                $stmt_check->execute([$numero_manual]);
+                if ($stmt_check->fetch()) {
+                    throw new Exception("O número de ofício '{$numero_manual}' já está cadastrado.");
+                }
             }
 
             $arquivo_orcamento = null;
@@ -1017,6 +1132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $secretarias = $pdo->query("SELECT * FROM secretarias ORDER BY nome")->fetchAll();
 $items_form = [];
+$sem_oficio_form = isset($_POST['sem_oficio']) && (string)$_POST['sem_oficio'] === '1';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['produtos']) && is_array($_POST['produtos'])) {
     foreach ($_POST['produtos'] as $produto) {
@@ -1085,6 +1201,41 @@ include 'views/layout/header.php';
 
     .device-time-box strong {
         color: #0f172a;
+    }
+
+    .sem-oficio-option {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        margin-top: .7rem;
+        color: #334155;
+        font-size: .9rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .sem-oficio-option input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .sem-oficio-preview {
+        display: none;
+        margin-top: .4rem;
+        color: #475569;
+        font-size: .84rem;
+        font-weight: 700;
+    }
+
+    .sem-oficio-preview.show {
+        display: block;
+    }
+
+    .numero-oficio-auto {
+        background: #f8fafc;
+        color: #475569;
     }
 
     .oficio-import-status {
@@ -1233,22 +1384,35 @@ include 'views/layout/header.php';
                     <input
                         type="text"
                         name="numero_oficio"
+                        id="numero-oficio-input"
                         class="form-control"
                         placeholder="Ex: OF-2026-01"
                         oninput="this.value = this.value.toUpperCase()"
                         value="<?php echo htmlspecialchars($_POST['numero_oficio'] ?? ''); ?>"
-                        required
+                        <?php echo $sem_oficio_form ? 'readonly' : 'required'; ?>
                     >
+                    <label class="sem-oficio-option" for="sem-oficio-checkbox">
+                        <input
+                            type="checkbox"
+                            name="sem_oficio"
+                            id="sem-oficio-checkbox"
+                            value="1"
+                            <?php echo $sem_oficio_form ? 'checked' : ''; ?>
+                        >
+                        <span>Sem ofício</span>
+                    </label>
+                    <small id="sem-oficio-preview" class="sem-oficio-preview"></small>
                     <small class="text-muted">Informe o número do processo físico ou ofício.</small>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Secretaria Solicitante <span style="color:red">*</span></label>
-                    <select name="secretaria_id" class="form-control" required>
+                    <select name="secretaria_id" id="secretaria-id-select" class="form-control" required>
                         <option value="">Selecione a Secretaria...</option>
                         <?php foreach ($secretarias as $sec): ?>
                             <option
                                 value="<?php echo $sec['id']; ?>"
+                                data-sigla="<?php echo htmlspecialchars(oficio_secretaria_sigla($sec['nome']), ENT_QUOTES, 'UTF-8'); ?>"
                                 <?php echo (isset($_POST['secretaria_id']) && $_POST['secretaria_id'] == $sec['id']) ? 'selected' : ''; ?>
                             >
                                 <?php echo htmlspecialchars($sec['nome']); ?>
@@ -1427,9 +1591,15 @@ include 'views/layout/header.php';
     const itemsContainer = document.getElementById('oficio-items-container');
     const itemsEmpty = document.getElementById('oficio-items-empty');
     const addItemBtn = document.getElementById('add-oficio-item');
+    const numeroOficioInput = document.getElementById('numero-oficio-input');
+    const semOficioCheckbox = document.getElementById('sem-oficio-checkbox');
+    const semOficioPreview = document.getElementById('sem-oficio-preview');
+    const secretariaSelect = document.getElementById('secretaria-id-select');
     const pdfWorkerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.worker.min.js';
     const ocrLanguages = 'por+eng';
     const maxOcrPdfPages = 12;
+    let manualNumeroOficio = numeroOficioInput?.value || '';
+    let semOficioPreviewCode = '';
 
     if (window.pdfjsLib) {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -1489,6 +1659,75 @@ include 'views/layout/header.php';
         return oficioForm?.querySelector(`[name="${name}"]`) || null;
     }
 
+    function generateClientPreviewCode() {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const bytes = new Uint8Array(4);
+
+        if (window.crypto?.getRandomValues) {
+            window.crypto.getRandomValues(bytes);
+        } else {
+            for (let index = 0; index < bytes.length; index++) {
+                bytes[index] = Math.floor(Math.random() * 256);
+            }
+        }
+
+        return Array.from(bytes)
+            .map(byte => alphabet[byte % alphabet.length])
+            .join('');
+    }
+
+    function getSelectedSecretariaSigla() {
+        const option = secretariaSelect?.selectedOptions?.[0] || null;
+        return option?.dataset?.sigla || 'SIGLA';
+    }
+
+    function buildSemOficioPreview() {
+        if (!semOficioPreviewCode) {
+            semOficioPreviewCode = generateClientPreviewCode();
+        }
+
+        return `OFÍCIO Nº ${semOficioPreviewCode}/${new Date().getFullYear()}/${getSelectedSecretariaSigla()}`;
+    }
+
+    function syncSemOficioState() {
+        if (!numeroOficioInput || !semOficioCheckbox) return;
+
+        if (semOficioCheckbox.checked) {
+            if (!numeroOficioInput.readOnly) {
+                manualNumeroOficio = numeroOficioInput.value;
+            }
+
+            const preview = buildSemOficioPreview();
+            numeroOficioInput.value = preview;
+            numeroOficioInput.readOnly = true;
+            numeroOficioInput.required = false;
+            numeroOficioInput.classList.add('numero-oficio-auto');
+
+            if (semOficioPreview) {
+                semOficioPreview.textContent = `Prévia: ${preview}`;
+                semOficioPreview.classList.add('show');
+            }
+            return;
+        }
+
+        numeroOficioInput.readOnly = false;
+        numeroOficioInput.required = true;
+        numeroOficioInput.classList.remove('numero-oficio-auto');
+
+        const currentPreview = semOficioPreviewCode
+            ? `OFÍCIO Nº ${semOficioPreviewCode}/${new Date().getFullYear()}/${getSelectedSecretariaSigla()}`
+            : '';
+
+        if (currentPreview && numeroOficioInput.value === currentPreview) {
+            numeroOficioInput.value = manualNumeroOficio;
+        }
+
+        if (semOficioPreview) {
+            semOficioPreview.textContent = '';
+            semOficioPreview.classList.remove('show');
+        }
+    }
+
     function fillIfEmpty(name, value) {
         const field = getField(name);
         if (!field || !value || String(field.value || '').trim() !== '') {
@@ -1522,11 +1761,13 @@ include 'views/layout/header.php';
 
             if (alias && alias.target.some(target => label.includes(target))) {
                 select.value = option.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
                 return;
             }
 
             if (source && label && (source.includes(label) || label.includes(source))) {
                 select.value = option.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
                 return;
             }
         }
@@ -2078,8 +2319,31 @@ include 'views/layout/header.php';
         });
     }
 
+    if (numeroOficioInput) {
+        numeroOficioInput.addEventListener('input', function () {
+            if (!semOficioCheckbox?.checked) {
+                manualNumeroOficio = numeroOficioInput.value;
+            }
+        });
+    }
+
+    if (semOficioCheckbox) {
+        semOficioCheckbox.addEventListener('change', syncSemOficioState);
+    }
+
+    if (secretariaSelect) {
+        secretariaSelect.addEventListener('change', function () {
+            if (semOficioCheckbox?.checked) {
+                syncSemOficioState();
+            }
+        });
+    }
+
+    syncSemOficioState();
+
     oficioForm.addEventListener('submit', function () {
         atualizarDataHoraDispositivo();
+        syncSemOficioState();
     });
 </script>
 
