@@ -28,6 +28,23 @@ render_layout_start(
         </div>
     </div>
 
+    <div class="print-report-header" aria-hidden="true">
+        <div>
+            <p>Relatorio gerencial</p>
+            <h2>Relatorio de Processos</h2>
+        </div>
+        <dl class="print-report-meta">
+            <div>
+                <dt>Gerado em</dt>
+                <dd id="report-print-generated">-</dd>
+            </div>
+            <div>
+                <dt>Filtros aplicados</dt>
+                <dd id="report-print-filters">Todos os processos</dd>
+            </div>
+        </dl>
+    </div>
+
     <div class="report-filters" id="report-filters">
         <div class="filter-section filter-section-search">
             <span class="filter-title">Buscar processo</span>

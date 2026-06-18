@@ -3,6 +3,7 @@ const APP_STATE = {
     processPage: 1,
     userPage: 1,
     auditPage: 1,
+    reportData: null,
     reportItems: [],
     users: [],
     deadlineItems: [],
@@ -72,7 +73,7 @@ function escapeHtml(value) {
 
 function formatDate(value) {
     if (!value) return '-';
-    const date = new Date(String(value).replace(' ', 'T'));
+    const date = parseDateInput(value);
     if (Number.isNaN(date.getTime())) return value;
     return new Intl.DateTimeFormat('pt-BR', {
         day: '2-digit',
@@ -85,9 +86,18 @@ function formatDate(value) {
 
 function formatDateOnly(value) {
     if (!value) return '-';
-    const date = new Date(String(value).replace(' ', 'T'));
+    const date = parseDateInput(value);
     if (Number.isNaN(date.getTime())) return value;
     return new Intl.DateTimeFormat('pt-BR').format(date);
+}
+
+function parseDateInput(value) {
+    if (value instanceof Date) return value;
+    const text = String(value || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+        return new Date(`${text}T12:00:00`);
+    }
+    return new Date(text.replace(' ', 'T'));
 }
 
 function formatCurrency(value) {
@@ -892,7 +902,7 @@ async function initReports() {
         loadReport();
     });
     document.getElementById('report-csv')?.addEventListener('click', exportReportCsv);
-    document.getElementById('report-print')?.addEventListener('click', () => window.print());
+    document.getElementById('report-print')?.addEventListener('click', printReport);
 
     loadReport();
 }
@@ -917,7 +927,8 @@ async function loadReport() {
     try {
         const response = await api('relatorio_processos', { params: reportParams() });
         const data = response.data;
-        APP_STATE.reportItems = data.items;
+        APP_STATE.reportData = data;
+        APP_STATE.reportItems = data.items || [];
         renderReport(data);
     } catch (err) {
         toast(err.message, 'error');
@@ -936,6 +947,7 @@ function renderReport(data) {
     renderBars(document.getElementById('report-by-status'), data.summary.por_situacao, statusColor);
     renderBars(document.getElementById('report-by-type'), data.summary.por_tipo, typeColor);
     renderReportTable(data.items);
+    updateReportPrintHeader(data);
 }
 
 function renderBars(container, items, colorFn) {
@@ -975,12 +987,69 @@ function renderReportTable(items) {
             <td>${escapeHtml(item.tipo_processo)}</td>
             <td>${escapeHtml(item.situacao)}</td>
             <td>${formatDateOnly(item.data_prazo)}</td>
-            <td>${item.pago_em ? formatCurrency(item.valor_cobrado) : 'Pendente'}</td>
+            <td>${reportPaymentCell(item)}</td>
             <td>${formatDateOnly(item.criado_em)}</td>
             <td>${escapeHtml(truncate(item.observacao, 120))}</td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function reportPaymentCell(item) {
+    if (!item.pago_em) {
+        return '<span class="payment-pill pending">Pendente</span>';
+    }
+
+    return `
+        <strong>${formatCurrency(item.valor_cobrado)}</strong>
+        <span class="cell-sub">Pago em ${formatDateOnly(item.pago_em)}</span>
+    `;
+}
+
+function printReport() {
+    if (!APP_STATE.reportData) {
+        toast('Gere um relatorio antes de imprimir.', 'info');
+        return;
+    }
+
+    updateReportPrintHeader(APP_STATE.reportData);
+    window.print();
+}
+
+function updateReportPrintHeader(data = APP_STATE.reportData) {
+    const generated = document.getElementById('report-print-generated');
+    const filters = document.getElementById('report-print-filters');
+    if (generated) generated.textContent = formatDate(new Date());
+    if (filters) filters.textContent = currentReportFilters().join(' | ');
+
+    const count = document.getElementById('report-count-label');
+    if (count && data) count.textContent = `${data.total} processo(s) no recorte atual`;
+}
+
+function currentReportFilters() {
+    const filters = [];
+    const search = document.getElementById('report-q')?.value.trim();
+    const type = document.getElementById('report-tipo')?.value || '';
+    const status = document.getElementById('report-situacao')?.value || '';
+    const month = document.getElementById('report-mes')?.value || '';
+    const start = document.getElementById('report-inicio')?.value || '';
+    const end = document.getElementById('report-fim')?.value || '';
+
+    if (search) filters.push(`Busca: ${search}`);
+    if (type) filters.push(`Tipo: ${type}`);
+    if (status) filters.push(`Situacao: ${status}`);
+    if (month) filters.push(`Mes de pagamento: ${formatMonthLabel(month)}`);
+    if (!month && (start || end)) {
+        filters.push(`Pagamento: ${start ? formatDateOnly(start) : 'inicio'} ate ${end ? formatDateOnly(end) : 'hoje'}`);
+    }
+
+    return filters.length ? filters : ['Todos os processos'];
+}
+
+function formatMonthLabel(value) {
+    const [year, month] = String(value || '').split('-').map(Number);
+    if (!year || !month) return value || '-';
+    return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
 }
 
 function exportReportCsv() {
@@ -989,24 +1058,8 @@ function exportReportCsv() {
         return;
     }
 
-    const rows = [
-        ['Cliente', 'Numero do Processo', 'Tipo', 'Situacao', 'Prazo', 'Pagamento', 'Valor do Processo', 'Porcentagem', 'Valor Cobrado', 'Cadastro', 'Observacao'],
-        ...APP_STATE.reportItems.map((item) => [
-            item.cliente,
-            item.numero_processo,
-            item.tipo_processo,
-            item.situacao,
-            formatDateOnly(item.data_prazo),
-            item.pago_em ? 'Pago' : 'Pendente',
-            item.valor_processo || '',
-            item.porcentagem_cobrada || '',
-            item.valor_cobrado || '',
-            formatDateOnly(item.criado_em),
-            item.observacao || '',
-        ]),
-    ];
-
-    const csv = rows.map((row) => row.map(csvCell).join(';')).join('\n');
+    const rows = buildReportCsvRows(APP_STATE.reportData);
+    const csv = ['sep=;', ...rows.map((row) => row.map(csvCell).join(';'))].join('\r\n');
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1018,8 +1071,85 @@ function exportReportCsv() {
     URL.revokeObjectURL(url);
 }
 
+function buildReportCsvRows(data) {
+    const report = data || { items: APP_STATE.reportItems, total: APP_STATE.reportItems.length, summary: {} };
+    const summary = report.summary || {};
+    const finance = summary.financeiro || {};
+    const rows = [
+        ['Relatorio de Processos'],
+        ['Gerado em', formatDate(new Date())],
+        ['Filtros aplicados', currentReportFilters().join(' | ')],
+        ['Total de registros', report.total ?? report.items.length],
+        [],
+        ['Resumo financeiro'],
+        ['Faturamento filtrado', formatCurrency(finance.faturamento_total || 0)],
+        ['Processos pagos', finance.processos_pagos || 0],
+        ['Ticket medio', formatCurrency(finance.ticket_medio || 0)],
+        ['Valor pendente', formatCurrency(finance.valor_pendente || 0)],
+        [],
+        ['Quebra por situacao'],
+        ['Situacao', 'Total'],
+        ...(summary.por_situacao || []).map((item) => [item.nome, item.total]),
+        [],
+        ['Quebra por tipo'],
+        ['Tipo', 'Total'],
+        ...(summary.por_tipo || []).map((item) => [item.nome, item.total]),
+        [],
+        ['Listagem de processos'],
+        [
+            'Cliente',
+            'Numero do Processo',
+            'Tipo',
+            'Situacao',
+            'Prazo',
+            'Status do Pagamento',
+            'Data do Pagamento',
+            'Valor do Processo',
+            'Porcentagem Cobrada',
+            'Valor Cobrado',
+            'Cadastro',
+            'Criado Por',
+            'Atualizado Por',
+            'Pago Por',
+            'Observacao',
+        ],
+    ];
+
+    (report.items || []).forEach((item) => {
+        rows.push([
+            item.cliente,
+            item.numero_processo,
+            item.tipo_processo,
+            item.situacao,
+            formatDateOnly(item.data_prazo),
+            item.pago_em ? 'Pago' : 'Pendente',
+            item.pago_em ? formatDateOnly(item.pago_em) : '-',
+            reportCurrency(item.valor_processo),
+            reportPercent(item.porcentagem_cobrada),
+            item.pago_em ? reportCurrency(item.valor_cobrado) : '-',
+            formatDateOnly(item.criado_em),
+            item.criado_por_nome || 'Sistema',
+            item.atualizado_por_nome || '-',
+            item.pago_por_nome || '-',
+            item.observacao || '',
+        ]);
+    });
+
+    return rows;
+}
+
+function reportCurrency(value) {
+    return value === null || value === undefined || value === '' ? '-' : formatCurrency(value);
+}
+
+function reportPercent(value) {
+    return value === null || value === undefined || value === '' ? '-' : formatPercent(value);
+}
+
 function csvCell(value) {
-    return `"${String(value ?? '').replace(/"/g, '""')}"`;
+    let text = String(value ?? '').replace(/\r?\n/g, ' ').trim();
+    if (/^[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
 }
 
 async function initUsers() {

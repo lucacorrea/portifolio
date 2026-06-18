@@ -17,7 +17,7 @@ function render_layout_start(string $active, string $title, string $subtitle, st
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($title) ?> - Controle Juridico</title>
-    <link rel="stylesheet" href="assets/css/app.css?v=2">
+    <link rel="stylesheet" href="assets/css/app.css?v=3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body>
@@ -126,7 +126,7 @@ function render_layout_end(): void
 <script>
     window.APP_USER = <?= json_encode(current_user(), JSON_UNESCAPED_UNICODE) ?>;
 </script>
-<script src="assets/js/app.js?v=2"></script>
+<script src="assets/js/app.js?v=3"></script>
 </body>
 </html>
     <?php

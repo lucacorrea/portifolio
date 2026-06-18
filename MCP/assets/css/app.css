@@ -875,6 +875,10 @@ textarea:focus {
     background: var(--primary);
 }
 
+.print-report-header {
+    display: none;
+}
+
 .settings-layout {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1221,8 +1225,20 @@ textarea:focus {
 }
 
 @media print {
+    @page {
+        size: A4 landscape;
+        margin: 12mm;
+    }
+
+    * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
     body {
         background: #fff;
+        color: #111827;
+        font-size: 9pt;
     }
 
     .topbar,
@@ -1232,7 +1248,7 @@ textarea:focus {
     .button-row,
     .toast-root,
     .report-grid,
-    .report-summary {
+    [data-page="reports"] > .panel-heading {
         display: none !important;
     }
 
@@ -1247,9 +1263,177 @@ textarea:focus {
         padding: 0;
     }
 
+    .print-report-header {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 16px;
+        align-items: start;
+        margin-bottom: 10mm;
+        padding-bottom: 5mm;
+        border-bottom: 2px solid #111827;
+    }
+
+    .print-report-header p {
+        margin: 0 0 4px;
+        color: #475467;
+        font-size: 8pt;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .print-report-header h2 {
+        margin: 0;
+        color: #111827;
+        font-size: 18pt;
+        line-height: 1.15;
+    }
+
+    .print-report-meta {
+        display: grid;
+        gap: 5px;
+        margin: 0;
+    }
+
+    .print-report-meta div {
+        display: grid;
+        grid-template-columns: 28mm 1fr;
+        gap: 7px;
+    }
+
+    .print-report-meta dt {
+        color: #475467;
+        font-size: 7.5pt;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .print-report-meta dd {
+        margin: 0;
+        color: #111827;
+        font-size: 8.5pt;
+        font-weight: 650;
+    }
+
+    .report-summary {
+        display: grid !important;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 6px;
+        margin: 0 0 7mm;
+    }
+
+    .report-summary article {
+        padding: 7px 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 0;
+        background: #fff !important;
+        break-inside: avoid;
+    }
+
+    .report-summary small {
+        display: block;
+        color: #475467;
+        font-size: 7pt;
+        line-height: 1.2;
+        text-transform: uppercase;
+    }
+
+    .report-summary strong {
+        margin-top: 2px;
+        color: #111827 !important;
+        font-size: 11pt;
+        line-height: 1.2;
+    }
+
+    .table-wrap {
+        overflow: visible;
+    }
+
     .data-table {
+        width: 100%;
         min-width: 0;
-        font-size: 11px;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-size: 7.8pt;
+    }
+
+    .data-table thead {
+        display: table-header-group;
+    }
+
+    .data-table tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 4px 5px;
+        border: 1px solid #cbd5e1;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+
+    .data-table th {
+        color: #111827;
+        background: #e5e7eb !important;
+        font-size: 7pt;
+        letter-spacing: 0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .data-table td {
+        font-size: 7.5pt;
+    }
+
+    .data-table tr:hover td {
+        background: transparent;
+    }
+
+    .data-table th:nth-child(1),
+    .data-table td:nth-child(1) {
+        width: 17%;
+    }
+
+    .data-table th:nth-child(2),
+    .data-table td:nth-child(2) {
+        width: 13%;
+    }
+
+    .data-table th:nth-child(3),
+    .data-table td:nth-child(3),
+    .data-table th:nth-child(4),
+    .data-table td:nth-child(4) {
+        width: 11%;
+    }
+
+    .data-table th:nth-child(5),
+    .data-table td:nth-child(5),
+    .data-table th:nth-child(7),
+    .data-table td:nth-child(7) {
+        width: 8%;
+    }
+
+    .data-table th:nth-child(6),
+    .data-table td:nth-child(6) {
+        width: 13%;
+    }
+
+    .data-table th:nth-child(8),
+    .data-table td:nth-child(8) {
+        width: 19%;
+    }
+
+    .payment-pill {
+        border: 0;
+        padding: 0;
+        color: #111827;
+        background: transparent;
+    }
+
+    .cell-sub {
+        color: #475467;
+        font-size: 7pt;
     }
 }
 
