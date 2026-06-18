@@ -28,4 +28,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[title]').forEach((el) => {
     new bootstrap.Tooltip(el);
   });
+
+  document.querySelectorAll('[data-weekly-fullscreen-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const page = document.querySelector('.weekly-page');
+      if (!page) return;
+      const isFull = page.classList.toggle('weekly-fullscreen');
+      const label = button.querySelector('span');
+      const icon = button.querySelector('i');
+      if (label) label.textContent = isFull ? 'Sair tela cheia' : 'Tela cheia';
+      if (icon) icon.className = isFull ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
+    });
+  });
 });

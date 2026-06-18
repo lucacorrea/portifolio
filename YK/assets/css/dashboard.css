@@ -1729,3 +1729,641 @@ textarea.form-control-os {
     color: #000;
   }
 }
+
+/* Painel semanal refinado */
+.operational-page[data-page="painel-semanal"] {
+  padding: 14px 16px 22px;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-page {
+  gap: 10px;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-toolbar {
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) auto minmax(360px, auto);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-kicker {
+  display: inline-flex;
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-toolbar h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.18;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-period {
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 13.5px;
+}
+
+.weekly-nav-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--brand);
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-nav-center,
+.operational-page[data-page="painel-semanal"] .weekly-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-toolbar-actions {
+  justify-content: flex-end;
+}
+
+.operational-page[data-page="painel-semanal"] .btn-filter,
+.operational-page[data-page="painel-semanal"] .btn-new-os {
+  min-height: 35px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.filter-count {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-summary-bar span {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border-right: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-summary-bar span:last-child {
+  border-right: 0;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-summary-bar i {
+  color: var(--brand);
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-summary-bar strong {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-filter-chips span {
+  display: inline-flex;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-filter-panel {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-filters .filter-bar {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-filter-close {
+  margin-top: 10px;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-mobile-days {
+  position: sticky;
+  top: 74px;
+  z-index: 20;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-mobile-days span {
+  min-width: 62px;
+  display: grid;
+  gap: 1px;
+  padding: 7px 9px;
+  border-radius: 12px;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-mobile-days span.active {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-mobile-days strong,
+.operational-page[data-page="painel-semanal"] .weekly-mobile-days small,
+.operational-page[data-page="painel-semanal"] .weekly-mobile-days b {
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.operational-page[data-page="painel-semanal"] .weekly-board {
+  grid-template-columns: repeat(6, minmax(218px, 1fr));
+  gap: 9px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scroll-snap-type: x proximity;
+}
+
+.operational-page[data-page="painel-semanal"] .week-day-column {
+  min-height: 480px;
+  max-height: 68vh;
+  border-radius: 13px;
+  box-shadow: none;
+}
+
+.operational-page[data-page="painel-semanal"] .week-day-column.is-today {
+  background: #f1fbfd;
+  box-shadow: none;
+}
+
+.operational-page[data-page="painel-semanal"] .week-day-header {
+  min-height: 61px;
+  padding: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.operational-page[data-page="painel-semanal"] .week-day-header span {
+  font-size: 10.5px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-day-header strong {
+  margin-top: 1px;
+  font-size: 13.5px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-day-header small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.operational-page[data-page="painel-semanal"] .today-badge {
+  align-self: start;
+  min-height: 20px;
+  padding: 4px 7px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-day-body {
+  gap: 14px;
+  padding: 9px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-day-footer {
+  display: block;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.operational-page[data-page="painel-semanal"] .team-group {
+  gap: 8px;
+}
+
+.operational-page[data-page="painel-semanal"] .team-group-header {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 0 0 8px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  background: transparent;
+}
+
+.operational-page[data-page="painel-semanal"] .team-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  font-size: 11px;
+}
+
+.operational-page[data-page="painel-semanal"] .team-names {
+  font-size: 12.5px;
+}
+
+.operational-page[data-page="painel-semanal"] .team-role {
+  font-size: 11.5px;
+}
+
+.operational-page[data-page="painel-semanal"] .team-service-count {
+  gap: 2px;
+  min-width: 0;
+}
+
+.operational-page[data-page="painel-semanal"] .team-service-count span {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.operational-page[data-page="painel-semanal"] .team-service-count small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+}
+
+.operational-page[data-page="painel-semanal"] .team-service-count i {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-card {
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 9px 9px 11px;
+  border-radius: 11px;
+  box-shadow: none;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-header {
+  align-items: center;
+  min-width: 0;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-header > div:first-child {
+  min-width: 0;
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-time {
+  display: inline-flex;
+  align-items: center;
+  min-width: 68px;
+  color: var(--brand-strong);
+  font-size: 15.5px;
+  letter-spacing: -.02em;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-os {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--brand);
+  font-size: 11.5px;
+  font-weight: 900;
+  padding: 0;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-actions .btn-action {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-client {
+  display: -webkit-box;
+  overflow: hidden;
+  min-width: 0;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 13.5px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-title {
+  display: -webkit-box;
+  overflow: hidden;
+  min-width: 0;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 12.5px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-details {
+  gap: 3px;
+  font-size: 11.8px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-details span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-details i {
+  color: var(--brand);
+  font-size: 12px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-meta {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.operational-page[data-page="painel-semanal"] .week-service-meta .badge-soft {
+  padding: 4px 7px;
+  font-size: 10.5px;
+}
+
+.operational-page[data-page="painel-semanal"] .priority-label {
+  min-height: 20px;
+  gap: 5px;
+  padding: 3px 0;
+  background: transparent;
+  font-size: 10.8px;
+  white-space: nowrap;
+}
+
+.operational-page[data-page="painel-semanal"] .priority-label i {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.operational-page[data-page="painel-semanal"] .priority-low .priority-label { color: var(--blue); }
+.operational-page[data-page="painel-semanal"] .priority-medium .priority-label { color: var(--amber); }
+.operational-page[data-page="painel-semanal"] .priority-high .priority-label { color: #f97316; }
+.operational-page[data-page="painel-semanal"] .priority-urgent .priority-label { color: var(--red); }
+
+.operational-page[data-page="painel-semanal"] .week-empty-state {
+  min-height: 126px;
+  gap: 6px;
+  padding: 12px 10px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-empty-state i {
+  font-size: 22px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-empty-state strong {
+  font-size: 13.5px;
+}
+
+.operational-page[data-page="painel-semanal"] .week-empty-state p {
+  font-size: 12px;
+}
+
+.weekly-legend {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+  padding: 8px 10px;
+}
+
+.weekly-legend summary {
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+.weekly-legend details[open] summary {
+  margin-bottom: 8px;
+}
+
+.weekly-legend details > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.weekly-legend strong {
+  color: var(--muted);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.legend-priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 850;
+}
+
+.legend-priority::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.legend-priority.priority-low { color: var(--blue); }
+.legend-priority.priority-medium { color: var(--amber); }
+.legend-priority.priority-high { color: #f97316; }
+.legend-priority.priority-urgent { color: var(--red); }
+
+.weekly-fullscreen {
+  position: fixed;
+  inset: 8px;
+  z-index: 2000;
+  overflow: hidden;
+  padding: 10px;
+  border-radius: 16px;
+  background: var(--page);
+  box-shadow: 0 20px 80px rgba(2, 6, 23, .28);
+}
+
+.weekly-fullscreen .weekly-filter-chips,
+.weekly-fullscreen .weekly-legend {
+  display: none;
+}
+
+.weekly-fullscreen .weekly-board {
+  height: calc(100vh - 150px);
+}
+
+.weekly-fullscreen .week-day-column {
+  max-height: none;
+  height: 100%;
+}
+
+.weekly-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.weekly-modal-grid .form-section:nth-child(2) {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1500px) {
+  .operational-page[data-page="painel-semanal"] .weekly-board {
+    grid-template-columns: repeat(6, minmax(218px, 1fr));
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-toolbar {
+    grid-template-columns: minmax(220px, 1fr) auto;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-toolbar-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 1100px) {
+  .operational-page[data-page="painel-semanal"] .weekly-board {
+    grid-template-columns: repeat(6, minmax(220px, 34vw));
+    scroll-snap-type: x mandatory;
+  }
+}
+
+@media (max-width: 680px) {
+  .operational-page[data-page="painel-semanal"] {
+    padding: 10px 12px 18px;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+    padding: 12px;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-toolbar h2 {
+    font-size: 19px;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-nav-center {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-nav-center .btn-filter {
+    width: auto;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-toolbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-toolbar-actions .btn-filter,
+  .operational-page[data-page="painel-semanal"] .weekly-toolbar-actions .btn-new-os {
+    width: auto;
+    padding: 0 8px;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-summary-bar span {
+    min-width: 132px;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-mobile-days {
+    display: flex;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-board {
+    grid-template-columns: repeat(6, minmax(290px, 92vw));
+  }
+
+  .operational-page[data-page="painel-semanal"] .week-day-column {
+    min-height: 0;
+    height: auto;
+    max-height: none;
+  }
+
+  .operational-page[data-page="painel-semanal"] .week-day-body {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .weekly-fullscreen {
+    inset: 0;
+    border-radius: 0;
+  }
+
+  .weekly-fullscreen .weekly-board {
+    height: auto;
+  }
+
+  .weekly-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .operational-page[data-page="painel-semanal"] .weekly-summary-bar,
+  .operational-page[data-page="painel-semanal"] .weekly-filter-chips,
+  .operational-page[data-page="painel-semanal"] .weekly-legend {
+    display: none;
+  }
+
+  .operational-page[data-page="painel-semanal"] .weekly-board {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .operational-page[data-page="painel-semanal"] .week-day-column {
+    height: auto;
+    max-height: none;
+  }
+}
