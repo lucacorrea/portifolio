@@ -909,6 +909,50 @@ textarea.form-control-os {
 .calendar-dot.service { background: var(--brand-soft); color: var(--brand); }
 .calendar-dot.note { background: #fff7e8; color: var(--amber); }
 
+.operational-page[data-page="agenda"] .agenda-week-board {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  overflow-x: visible;
+}
+
+.operational-page[data-page="agenda"] .day-column {
+  min-height: 330px;
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.operational-page[data-page="agenda"] .day-column h3 {
+  margin-bottom: 16px;
+  font-size: 17px;
+}
+
+.operational-page[data-page="agenda"] .schedule-card {
+  min-height: 220px;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 15px;
+}
+
+.operational-page[data-page="agenda"] .schedule-card strong {
+  font-size: 18px;
+}
+
+.operational-page[data-page="agenda"] .schedule-card span {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.operational-page[data-page="agenda"] .schedule-card small {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.operational-page[data-page="agenda"] .schedule-card div {
+  gap: 6px;
+  font-size: 13px;
+}
+
 .cash-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -1444,6 +1488,9 @@ textarea.form-control-os {
 
   .weekly-metrics .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .weekly-board { grid-template-columns: repeat(6, minmax(280px, 42vw)); }
+  .operational-page[data-page="agenda"] .agenda-week-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 680px) {
@@ -1503,6 +1550,15 @@ textarea.form-control-os {
 
   .calendar-grid {
     grid-template-columns: repeat(7, 96px);
+  }
+
+  .operational-page[data-page="agenda"] .agenda-week-board {
+    grid-template-columns: 1fr;
+    overflow-x: visible;
+  }
+
+  .operational-page[data-page="agenda"] .day-column {
+    min-height: 300px;
   }
 
   .weekly-toolbar,
