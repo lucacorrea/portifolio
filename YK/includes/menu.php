@@ -7,6 +7,7 @@ $navGroups = [
     ['key' => 'orcamentos', 'label' => 'Orçamentos', 'icon' => 'bi-file-earmark-text', 'href' => 'orcamentos.php'],
     ['key' => 'clientes', 'label' => 'Clientes', 'icon' => 'bi-people', 'href' => 'clientes.php'],
     ['key' => 'agenda', 'label' => 'Agenda', 'icon' => 'bi-calendar3', 'href' => 'agenda.php'],
+    ['key' => 'painel-semanal', 'label' => 'Serviços da Semana', 'icon' => 'bi-calendar-week', 'href' => 'painel-semanal.php'],
   ],
   'Operacional' => [
     ['key' => 'pecas', 'label' => 'Produtos / Peças', 'icon' => 'bi-box-seam', 'href' => 'pecas.php'],

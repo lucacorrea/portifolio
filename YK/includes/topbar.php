@@ -24,11 +24,11 @@ $pageSubtitle = $pageSubtitle ?? 'Gestão de serviços';
     </div>
   </div>
   <div class="topbar-right">
-    <button class="tb-icon-btn" type="button" title="Notificações">
+    <button class="tb-icon-btn" type="button" title="Notificações" aria-label="Notificações">
       <i class="bi bi-bell"></i>
       <span class="notif-dot"></span>
     </button>
-    <button class="tb-icon-btn" type="button" title="Ajuda visual">
+    <button class="tb-icon-btn" type="button" title="Ajuda visual" aria-label="Ajuda visual">
       <i class="bi bi-question-circle"></i>
     </button>
     <button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="<?= htmlspecialchars($primaryActionTarget, ENT_QUOTES, 'UTF-8') ?>">

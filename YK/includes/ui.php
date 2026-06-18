@@ -10,10 +10,12 @@ function money($value): string {
 function badge_class(string $text): string {
   $map = [
     'Aberta' => 'blue', 'Agendada' => 'blue', 'Agendado' => 'blue', 'Enviado' => 'blue',
+    'Confirmado' => 'teal', 'Em deslocamento' => 'purple',
     'Em execução' => 'amber', 'Em andamento' => 'amber', 'Rascunho' => 'gray',
     'Aguardando peça' => 'purple', 'Aguardando pagamento' => 'purple', 'Aguardando aprovação' => 'purple',
-    'Finalizada' => 'green', 'Aprovado' => 'green', 'Ativo' => 'green', 'Emitida' => 'green', 'Pago' => 'green',
-    'Urgente' => 'red', 'Alta' => 'red', 'Vencido' => 'red', 'Recusado' => 'red', 'Sem estoque' => 'red',
+    'Finalizada' => 'green', 'Concluído' => 'green', 'Aprovado' => 'green', 'Ativo' => 'green', 'Emitida' => 'green', 'Pago' => 'green',
+    'Cancelado' => 'red', 'Urgente' => 'red', 'Alta' => 'red', 'Vencido' => 'red', 'Recusado' => 'red', 'Sem estoque' => 'red',
+    'Baixa' => 'blue', 'Média' => 'amber',
     'Estoque baixo' => 'amber', 'Convertido em OS' => 'teal', 'Pendente' => 'amber',
   ];
   return $map[$text] ?? 'gray';
@@ -204,6 +206,7 @@ function render_common_modals(): void {
   modal_shell('modal-recibo', 'Novo Recibo Visual', form_section('Recibo', '<div class="form-row">' . field('Cliente','João Almeida') . field('Referência','OS-00254') . field('Valor','120,00') . field('Data','2026-06-18','date') . '</div>' . field('Referente a','Diagnóstico técnico em ar-condicionado janela.','textarea')));
   modal_shell('modal-relatorio', 'Exportação Visual', form_section('Relatório', '<div class="form-row">' . select_field('Tipo',['Visão Geral','Produtividade','Serviços por Funcionário','Financeiro','Estoque']) . field('Período inicial','2026-06-01','date') . field('Período final','2026-06-30','date') . select_field('Formato visual',['Tela','PDF futuro','Planilha futura']) . '</div>' . field('Observações','Botão apenas visual; exportação real será implementada em outra etapa.','textarea')), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Exportar visualmente</button>');
   modal_shell('modal-config', 'Salvar Configurações Visuais', form_section('Confirmação visual', '<p class="section-note">As configurações exibidas nesta tela são apenas demonstrativas nesta etapa. Nenhuma informação será persistida.</p>'), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Salvar visualmente</button>');
+  modal_shell('modal-servico-semanal', 'Adicionar Serviço Semanal', servico_semanal_modal_body(), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Adicionar visualmente</button>');
 }
 
 function os_modal_body(): string {
@@ -257,6 +260,254 @@ function lembrete_modal_body(): string {
   return form_section('Lembrete', '<div class="form-row">' . field('Título','Retornar orçamento') . field('Data','2026-06-20','date') . field('Horário','09:00','time') . field('Cliente','Clínica Bem Estar') . field('OS','OS-00256') . field('Responsável','Ana Martins') . select_field('Categoria',['Serviço','Financeiro','Peça','Retorno']) . '</div>' . field('Descrição','Confirmar aprovação do orçamento enviado.','textarea'));
 }
 
+function servico_semanal_modal_body(): string {
+  return form_section('Ordem de Serviço', '<div class="form-row">' . field('Número da OS','OS-00272') . field('Cliente','Universal Refrigeração') . field('Telefone','(92) 98844-1188') . field('Endereço','Av. Djalma Batista, 1240') . field('Bairro','Centro') . '</div>') .
+    form_section('Serviço', '<div class="form-row">' . select_field('Tipo de serviço',['Revisão de Split','Lavagem de Split','Instalação','Reinstalação','Manutenção preventiva','Manutenção corretiva','Limpeza de evaporadora','Limpeza de condensadora','Carga de gás','Troca de compressor']) . select_field('Equipamento',['Split','Janela','Cassete','Piso-Teto','Freezer Vertical','Câmara Fria','Balcão Refrigerado']) . field('Capacidade','12.000 BTUs') . select_field('Ambiente',['Sala','Quarto','Cozinha','Loja','Salão','Escritório','Depósito','Área externa']) . '</div>' . field('Descrição','Atendimento visual planejado para o painel semanal.','textarea')) .
+    form_section('Data e horário', '<div class="form-row">' . field('Data','2026-05-18','date') . field('Horário inicial','08:00','time') . field('Horário final','10:00','time') . field('Duração estimada','2h') . '</div>') .
+    form_section('Dupla', '<div class="form-row">' . select_field('Instalador',['Everton','Dione','Kalebe','Leonardo']) . select_field('Ajudante',['Odinez','Cristian','Inácio','Rafael']) . '</div>') .
+    form_section('Classificação', '<div class="form-row">' . select_field('Status',['Agendado','Confirmado','Em deslocamento','Em execução','Aguardando peça','Concluído','Cancelado']) . select_field('Prioridade',['Baixa','Média','Alta','Urgente']) . '</div>');
+}
+
+function mock_servicos_semanais(): array {
+  return [
+    [
+      'dia' => 'Segunda-feira',
+      'curto' => 'SEG.',
+      'data' => '18/05',
+      'hoje' => true,
+      'duplas' => [
+        [
+          'instalador' => 'Everton',
+          'ajudante' => 'Odinez',
+          'status' => 'Em atividade',
+          'servicos' => [
+            ['horario' => '08:00', 'os' => 'OS-00258', 'cliente' => 'Universal Refrigeração', 'servico' => 'Revisão de Split', 'equipamento' => 'Split', 'capacidade' => '12.000 BTUs', 'ambiente' => 'Sala', 'local' => 'Centro', 'status' => 'Agendado', 'prioridade' => 'Baixa'],
+            ['horario' => '10:30', 'os' => 'OS-00259', 'cliente' => 'Fernanda Paula', 'servico' => 'Lavagem de Split', 'equipamento' => 'Split', 'capacidade' => '9.000 BTUs', 'ambiente' => 'Quarto', 'local' => 'Duque de Caxias', 'status' => 'Confirmado', 'prioridade' => 'Média'],
+          ],
+        ],
+        [
+          'instalador' => 'Dione',
+          'ajudante' => 'Cristian',
+          'status' => 'Em atividade',
+          'servicos' => [
+            ['horario' => '14:00', 'os' => 'OS-00260', 'cliente' => 'Mercado Ponto Frio', 'servico' => 'Manutenção preventiva', 'equipamento' => 'Freezer Vertical', 'capacidade' => '410 L', 'ambiente' => 'Loja', 'local' => 'Adrianópolis', 'status' => 'Em execução', 'prioridade' => 'Alta'],
+          ],
+        ],
+      ],
+    ],
+    [
+      'dia' => 'Terça-feira',
+      'curto' => 'TER.',
+      'data' => '19/05',
+      'hoje' => false,
+      'duplas' => [
+        [
+          'instalador' => 'Kalebe',
+          'ajudante' => 'Inácio',
+          'status' => 'Em atividade',
+          'servicos' => [
+            ['horario' => '08:30', 'os' => 'OS-00261', 'cliente' => 'Clínica Bem Estar', 'servico' => 'Limpeza de evaporadora', 'equipamento' => 'Split', 'capacidade' => '18.000 BTUs', 'ambiente' => 'Recepção', 'local' => 'Vieiralves', 'status' => 'Concluído', 'prioridade' => 'Média'],
+            ['horario' => '13:30', 'os' => 'OS-00262', 'cliente' => 'Restaurante Sabor Norte', 'servico' => 'Carga de gás', 'equipamento' => 'Balcão Refrigerado', 'capacidade' => '2 metros', 'ambiente' => 'Cozinha', 'local' => 'Parque 10', 'status' => 'Aguardando peça', 'prioridade' => 'Urgente'],
+          ],
+        ],
+      ],
+    ],
+    [
+      'dia' => 'Quarta-feira',
+      'curto' => 'QUA.',
+      'data' => '20/05',
+      'hoje' => false,
+      'duplas' => [
+        [
+          'instalador' => 'Leonardo',
+          'ajudante' => 'Rafael',
+          'status' => 'Em atividade',
+          'servicos' => [
+            ['horario' => '09:00', 'os' => 'OS-00263', 'cliente' => 'Hotel Amazonas', 'servico' => 'Instalação', 'equipamento' => 'Piso-Teto', 'capacidade' => '36.000 BTUs', 'ambiente' => 'Salão', 'local' => 'Centro', 'status' => 'Confirmado', 'prioridade' => 'Alta'],
+          ],
+        ],
+        [
+          'instalador' => 'Everton',
+          'ajudante' => 'Odinez',
+          'status' => 'Em atividade',
+          'servicos' => [
+            ['horario' => '15:00', 'os' => 'OS-00264', 'cliente' => 'Sorveteria Polar', 'servico' => 'Troca de compressor', 'equipamento' => 'Freezer Horizontal', 'capacidade' => '520 L', 'ambiente' => 'Loja', 'local' => 'Aleixo', 'status' => 'Em deslocamento', 'prioridade' => 'Urgente'],
+          ],
+        ],
+      ],
+    ],
+    [
+      'dia' => 'Quinta-feira',
+      'curto' => 'QUI.',
+      'data' => '21/05',
+      'hoje' => false,
+      'duplas' => [
+        [
+          'instalador' => 'Dione',
+          'ajudante' => 'Cristian',
+          'status' => 'Em atividade',
+          'servicos' => [
+            ['horario' => '08:00', 'os' => 'OS-00265', 'cliente' => 'Padaria Santa Luzia', 'servico' => 'Manutenção corretiva', 'equipamento' => 'Balcão Refrigerado', 'capacidade' => '1,8 metro', 'ambiente' => 'Atendimento', 'local' => 'Cidade Nova', 'status' => 'Agendado', 'prioridade' => 'Média'],
+            ['horario' => '11:00', 'os' => 'OS-00266', 'cliente' => 'João Almeida', 'servico' => 'Reinstalação', 'equipamento' => 'Split', 'capacidade' => '12.000 BTUs', 'ambiente' => 'Quarto', 'local' => 'Flores', 'status' => 'Confirmado', 'prioridade' => 'Baixa'],
+            ['horario' => '16:00', 'os' => 'OS-00267', 'cliente' => 'Loja Tropical', 'servico' => 'Limpeza de condensadora', 'equipamento' => 'Split', 'capacidade' => '24.000 BTUs', 'ambiente' => 'Loja', 'local' => 'Chapada', 'status' => 'Agendado', 'prioridade' => 'Baixa'],
+          ],
+        ],
+      ],
+    ],
+    [
+      'dia' => 'Sexta-feira',
+      'curto' => 'SEX.',
+      'data' => '22/05',
+      'hoje' => false,
+      'duplas' => [
+        [
+          'instalador' => 'Kalebe',
+          'ajudante' => 'Inácio',
+          'status' => 'Em atividade',
+          'servicos' => [
+            ['horario' => '09:30', 'os' => 'OS-00268', 'cliente' => 'Farmácia Vida', 'servico' => 'Manutenção preventiva', 'equipamento' => 'Geladeira Comercial', 'capacidade' => '730 L', 'ambiente' => 'Loja', 'local' => 'São José', 'status' => 'Agendado', 'prioridade' => 'Média'],
+          ],
+        ],
+        [
+          'instalador' => 'Leonardo',
+          'ajudante' => 'Rafael',
+          'status' => 'Disponível à tarde',
+          'servicos' => [
+            ['horario' => '13:00', 'os' => 'OS-00269', 'cliente' => 'Condomínio Jardim Europa', 'servico' => 'Lavagem de Split', 'equipamento' => 'Split', 'capacidade' => '18.000 BTUs', 'ambiente' => 'Salão', 'local' => 'Ponta Negra', 'status' => 'Cancelado', 'prioridade' => 'Alta'],
+          ],
+        ],
+      ],
+    ],
+    [
+      'dia' => 'Sábado',
+      'curto' => 'SÁB.',
+      'data' => '23/05',
+      'hoje' => false,
+      'duplas' => [],
+    ],
+  ];
+}
+
+function render_painel_semanal(): void {
+  $dias = mock_servicos_semanais();
+  echo '<section class="weekly-page">';
+  echo '<div class="panel weekly-toolbar">
+    <div>
+      <h2>Painel Semanal de Serviços</h2>
+      <p class="weekly-period"><i class="bi bi-calendar-week"></i>18 a 23 de maio de 2026</p>
+    </div>
+    <div class="weekly-toolbar-actions" aria-label="Controles visuais da semana">
+      <button class="btn-filter btn-filter-ghost" type="button"><i class="bi bi-chevron-left"></i> Semana anterior</button>
+      <button class="btn-filter btn-filter-primary" type="button"><i class="bi bi-calendar-check"></i> Hoje</button>
+      <button class="btn-filter btn-filter-ghost" type="button">Próxima semana <i class="bi bi-chevron-right"></i></button>
+      <button class="btn-filter btn-filter-ghost" type="button" aria-label="Imprimir painel semanal"><i class="bi bi-printer"></i> Imprimir</button>
+      <button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="#modal-servico-semanal"><i class="bi bi-calendar-plus"></i><span>Adicionar Serviço</span></button>
+    </div>
+  </div>';
+
+  echo '<div class="weekly-metrics">';
+  metric_grid([
+    ['Serviços agendados','18','bi-calendar2-check','#2563EB','semana atual'],
+    ['Concluídos','6','bi-check-circle','#16A34A','atendimentos'],
+    ['Pendentes','10','bi-hourglass-split','#D97706','em aberto'],
+    ['Urgentes','2','bi-exclamation-triangle','#DC2626','prioridade'],
+    ['Duplas em atividade','4','bi-people','#0F766E','em campo'],
+    ['Duplas disponíveis','1','bi-person-check','#7C3AED','janela livre'],
+  ]);
+  echo '</div>';
+
+  echo '<div class="weekly-filters">';
+  filter_bar([
+    ['Dupla',['Everton / Odinez','Dione / Cristian','Kalebe / Inácio','Leonardo / Rafael']],
+    ['Instalador',['Everton','Dione','Kalebe','Leonardo']],
+    ['Ajudante',['Odinez','Cristian','Inácio','Rafael']],
+    ['Status',['Agendado','Confirmado','Em deslocamento','Em execução','Aguardando peça','Concluído','Cancelado']],
+    ['Prioridade',['Baixa','Média','Alta','Urgente']],
+    ['Tipo de serviço',['Revisão de Split','Lavagem de Split','Instalação','Reinstalação','Manutenção preventiva','Manutenção corretiva','Limpeza de evaporadora','Limpeza de condensadora','Carga de gás','Troca de compressor']],
+    ['Equipamento',['Split','Freezer Vertical','Freezer Horizontal','Piso-Teto','Balcão Refrigerado','Geladeira Comercial']],
+  ], 'Buscar serviço, cliente ou OS...');
+  echo '</div>';
+
+  echo '<nav class="weekly-mobile-days" aria-label="Dias da semana"><span>Seg.</span><span>Ter.</span><span>Qua.</span><span>Qui.</span><span>Sex.</span><span>Sáb.</span></nav>';
+  echo '<section class="weekly-board" aria-label="Quadro semanal de serviços por dupla">';
+  foreach ($dias as $dia) echo render_coluna_dia($dia);
+  echo '</section></section>';
+}
+
+function render_coluna_dia(array $dia): string {
+  $servicos = [];
+  foreach ($dia['duplas'] as $dupla) {
+    foreach ($dupla['servicos'] as $servico) $servicos[] = $servico;
+  }
+  $total = count($servicos);
+  $concluidos = count(array_filter($servicos, fn($servico) => $servico['status'] === 'Concluído'));
+  $pendentes = max(0, $total - $concluidos);
+  $duplas = count($dia['duplas']);
+  $classes = 'week-day-column' . (!empty($dia['hoje']) ? ' is-today' : '');
+
+  $html = '<article class="' . h($classes) . '">';
+  $html .= '<header class="week-day-header"><div><span>' . h($dia['curto'] . ', ' . $dia['data']) . '</span><strong>' . h($dia['dia']) . '</strong></div><div class="week-day-count">' . h($total . ' serviços') . '</div>' . (!empty($dia['hoje']) ? '<div class="today-badge">Hoje</div>' : '') . '</header>';
+  $html .= '<div class="week-day-body">';
+  if ($total === 0) {
+    $html .= render_estado_vazio_semanal();
+  } else {
+    foreach ($dia['duplas'] as $dupla) $html .= render_grupo_dupla($dupla);
+  }
+  $html .= '</div>';
+  $html .= '<footer class="week-day-footer"><strong>' . h($total . ' serviços') . '</strong><span>' . h($concluidos . ' concluído' . ($concluidos === 1 ? '' : 's') . ' · ' . $pendentes . ' pendente' . ($pendentes === 1 ? '' : 's')) . '</span><span>' . h($duplas . ' dupla' . ($duplas === 1 ? '' : 's')) . '</span></footer>';
+  return $html . '</article>';
+}
+
+function render_grupo_dupla(array $dupla): string {
+  $initials = substr($dupla['instalador'], 0, 1) . substr($dupla['ajudante'], 0, 1);
+  $count = count($dupla['servicos']);
+  $html = '<section class="team-group">';
+  $html .= '<header class="team-group-header"><div class="team-avatar" aria-hidden="true">' . h($initials) . '</div><div class="team-info"><strong class="team-names">' . h($dupla['instalador'] . ' / ' . $dupla['ajudante']) . '</strong><span class="team-role">Instalador + Ajudante</span></div><div class="team-service-count"><span>' . h($count . ' serviço' . ($count === 1 ? '' : 's')) . '</span><small>' . h($dupla['status']) . '</small></div></header>';
+  foreach ($dupla['servicos'] as $servico) $html .= render_card_servico_semanal($servico);
+  return $html . '</section>';
+}
+
+function render_card_servico_semanal(array $servico): string {
+  $priorityMap = ['Baixa' => 'priority-low', 'Média' => 'priority-medium', 'Alta' => 'priority-high', 'Urgente' => 'priority-urgent'];
+  $priorityTextMap = ['Baixa' => 'baixa', 'Média' => 'média', 'Alta' => 'alta', 'Urgente' => 'urgente'];
+  $priorityClass = $priorityMap[$servico['prioridade']] ?? 'priority-medium';
+  $priorityText = $priorityTextMap[$servico['prioridade']] ?? strtolower($servico['prioridade']);
+
+  return '<article class="week-service-card ' . h($priorityClass) . '">
+    <div class="week-service-header">
+      <div><span class="week-service-time">' . h($servico['horario']) . '</span><span class="week-service-os">' . h($servico['os']) . '</span></div>
+      <div class="week-service-actions">
+        <button class="btn-action" type="button" aria-label="Visualizar ' . h($servico['os']) . '" title="Visualizar OS"><i class="bi bi-eye"></i></button>
+        <div class="dropdown">
+          <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-label="Ações de ' . h($servico['os']) . '"><i class="bi bi-three-dots-vertical"></i></button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><button class="dropdown-item" type="button"><i class="bi bi-pencil"></i> Editar</button></li>
+            <li><button class="dropdown-item" type="button"><i class="bi bi-calendar-event"></i> Reagendar</button></li>
+            <li><button class="dropdown-item" type="button"><i class="bi bi-check2-circle"></i> Marcar como concluído</button></li>
+            <li><button class="dropdown-item text-danger" type="button"><i class="bi bi-x-circle"></i> Cancelar</button></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <strong class="week-service-client">' . h($servico['cliente']) . '</strong>
+    <span class="week-service-title">' . h($servico['servico']) . '</span>
+    <div class="week-service-details">
+      <span>' . h($servico['equipamento'] . ' ' . $servico['capacidade']) . '</span>
+      <span>' . h($servico['ambiente'] . ' · ' . $servico['local']) . '</span>
+    </div>
+    <div class="week-service-meta">' . ui_badge($servico['status']) . '<span class="priority-label">Prioridade ' . h($priorityText) . '</span></div>
+  </article>';
+}
+
+function render_estado_vazio_semanal(): string {
+  return '<div class="week-empty-state">
+    <i class="bi bi-calendar-x" aria-hidden="true"></i>
+    <strong>Nenhum serviço agendado</strong>
+    <p>Nenhuma dupla possui atendimento neste dia</p>
+    <button class="btn-filter btn-filter-ghost" type="button" data-bs-toggle="modal" data-bs-target="#modal-servico-semanal"><i class="bi bi-calendar-plus"></i> Adicionar serviço</button>
+  </div>';
+}
+
 function produto_modal_body(): string {
   return form_section('Dados do produto', '<div class="form-row-3">' . field('Código','CMP-014') . field('Descrição','Compressor 1/4 HP') . select_field('Categoria',['Compressor','Sensor','Filtro','Gás refrigerante','Tubulação','Placa eletrônica']) . field('Fabricante','Embraco') . select_field('Unidade',['un','kg','m','cx']) . field('Código de barras','789000000014') . '</div>') .
     form_section('Preços e estoque', '<div class="form-row-3">' . field('Custo','420,00') . field('Preço','620,00') . field('Estoque','3') . field('Estoque mínimo','2') . field('Localização','Prateleira A-03') . select_field('Situação',['Em estoque','Estoque baixo','Sem estoque']) . '</div>') .
@@ -290,6 +541,7 @@ function render_operational_page(string $key): void {
     'orcamentos' => render_orcamentos(),
     'clientes' => render_clientes(),
     'agenda' => render_agenda(),
+    'painel-semanal' => render_painel_semanal(),
     'pecas' => render_pecas(),
     'servicos' => render_servicos(),
     'funcionarios' => render_funcionarios(),
