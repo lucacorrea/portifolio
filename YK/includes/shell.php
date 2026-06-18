@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OSmais — <?= htmlspecialchars($pageTitle ?? 'Sistema', ENT_QUOTES, 'UTF-8') ?></title>
+  <title>K. Yamaguchi — <?= htmlspecialchars($pageTitle ?? 'Sistema', ENT_QUOTES, 'UTF-8') ?></title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -22,19 +22,8 @@
     </main>
   </div>
 
-  <?php if (($includeDashboardModal ?? false) === true) require __DIR__ . '/modal-nova-os.php'; ?>
-
-  <div id="app-modal-root"></div>
-  <?php if (($includeDashboardModal ?? false) !== true): ?>
-  <div class="toast-container" id="toast-container"></div>
-  <?php endif; ?>
-  <div id="pdf-workspace" class="pdf-workspace" aria-hidden="true"></div>
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-  <?php if (($includePdfVendor ?? false) === true): ?>
-  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-  <?php endif; ?>
+  <script src="assets/js/osmais-app.js"></script>
   <?php foreach (($pageScripts ?? []) as $script): ?>
   <script src="<?= htmlspecialchars($script, ENT_QUOTES, 'UTF-8') ?>"></script>
   <?php endforeach; ?>

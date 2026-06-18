@@ -1,12 +1,11 @@
 <?php
 $pageKey = 'faturamento';
 $activePage = 'faturamento';
-$pageTitle = 'Notas / Faturamento';
+$pageTitle = 'Notas e Faturamento';
 $pageSubtitle = 'Controle visual de notas, valores e status financeiro';
-$primaryActionLabel = 'Registrar Nota';
+$primaryActionLabel = 'Novo Recibo';
 $primaryActionIcon = 'bi-receipt-cutoff';
-$primaryActionHandler = "openEntityModal('nota')";
+$primaryActionTarget = '#modal-recibo';
 $pageContent = __DIR__ . '/pages/operational.php';
-$pageScripts = ['assets/js/osmais-app.js'];
 
 require __DIR__ . '/includes/shell.php';

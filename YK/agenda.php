@@ -3,10 +3,9 @@ $pageKey = 'agenda';
 $activePage = 'agenda';
 $pageTitle = 'Agenda';
 $pageSubtitle = 'Visualize atendimentos por data, horário e técnico';
-$primaryActionLabel = 'Novo Agendamento';
-$primaryActionIcon = 'bi-calendar-plus';
-$primaryActionHandler = "openEntityModal('agenda')";
+$primaryActionLabel = 'Novo Lembrete';
+$primaryActionIcon = 'bi-alarm';
+$primaryActionTarget = '#modal-lembrete';
 $pageContent = __DIR__ . '/pages/operational.php';
-$pageScripts = ['assets/js/osmais-app.js'];
 
 require __DIR__ . '/includes/shell.php';

@@ -5,8 +5,7 @@ $pageTitle = 'Configurações';
 $pageSubtitle = 'Configure dados visuais e padrões operacionais';
 $primaryActionLabel = 'Salvar Visual';
 $primaryActionIcon = 'bi-check2';
-$primaryActionHandler = "toast('Configurações visuais salvas localmente', 'success')";
+$primaryActionTarget = '#modal-config';
 $pageContent = __DIR__ . '/pages/operational.php';
-$pageScripts = ['assets/js/osmais-app.js'];
 
 require __DIR__ . '/includes/shell.php';

@@ -1,22 +1,39 @@
+<?php
+$primaryActionLabel = $primaryActionLabel ?? 'Nova OS';
+$primaryActionIcon = $primaryActionIcon ?? 'bi-plus-lg';
+$primaryActionTarget = $primaryActionTarget ?? '#modal-os';
+$pageSubtitle = $pageSubtitle ?? 'Gestão de serviços';
+?>
+
 <header class="topbar">
   <div class="topbar-left">
-    <span class="topbar-title"><?= htmlspecialchars($pageTitle ?? 'Dashboard', ENT_QUOTES, 'UTF-8') ?></span>
-    <span class="topbar-sep">/</span>
-    <span class="topbar-subtitle"><?= htmlspecialchars($pageSubtitle ?? 'Visão geral do sistema', ENT_QUOTES, 'UTF-8') ?></span>
+    <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" data-sidebar-toggle>
+      <i class="bi bi-list"></i>
+    </button>
+    <div>
+      <nav class="breadcrumb-wrap" aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item"><a href="dashboard.php">Início</a></li>
+          <li class="breadcrumb-item active" aria-current="page"><?= htmlspecialchars($pageTitle ?? 'Dashboard', ENT_QUOTES, 'UTF-8') ?></li>
+        </ol>
+      </nav>
+      <div class="topbar-heading">
+        <span class="topbar-title"><?= htmlspecialchars($pageTitle ?? 'Dashboard', ENT_QUOTES, 'UTF-8') ?></span>
+        <span class="topbar-subtitle"><?= htmlspecialchars($pageSubtitle, ENT_QUOTES, 'UTF-8') ?></span>
+      </div>
+    </div>
   </div>
   <div class="topbar-right">
-    <div class="tb-icon-btn" title="Atualizar" onclick="window.handleTopbarRefresh ? handleTopbarRefresh() : (window.loadAll ? loadAll() : location.reload())">
-      <i class="bi bi-arrow-clockwise"></i>
-    </div>
-    <div class="tb-icon-btn" title="Notificações">
+    <button class="tb-icon-btn" type="button" title="Notificações">
       <i class="bi bi-bell"></i>
       <span class="notif-dot"></span>
-    </div>
-    <div class="tb-icon-btn" title="Tela cheia" onclick="toggleFullscreen()">
-      <i class="bi bi-fullscreen"></i>
-    </div>
-    <button class="btn-new-os" type="button" title="<?= htmlspecialchars($primaryActionLabel ?? 'Nova OS', ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars($primaryActionLabel ?? 'Nova OS', ENT_QUOTES, 'UTF-8') ?>" onclick="<?= htmlspecialchars($primaryActionHandler ?? 'openModal()', ENT_QUOTES, 'UTF-8') ?>">
-      <i class="bi <?= htmlspecialchars($primaryActionIcon ?? 'bi-plus-lg', ENT_QUOTES, 'UTF-8') ?>"></i> <?= htmlspecialchars($primaryActionLabel ?? 'Nova OS', ENT_QUOTES, 'UTF-8') ?>
+    </button>
+    <button class="tb-icon-btn" type="button" title="Ajuda visual">
+      <i class="bi bi-question-circle"></i>
+    </button>
+    <button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="<?= htmlspecialchars($primaryActionTarget, ENT_QUOTES, 'UTF-8') ?>">
+      <i class="bi <?= htmlspecialchars($primaryActionIcon, ENT_QUOTES, 'UTF-8') ?>"></i>
+      <span><?= htmlspecialchars($primaryActionLabel, ENT_QUOTES, 'UTF-8') ?></span>
     </button>
   </div>
 </header>
