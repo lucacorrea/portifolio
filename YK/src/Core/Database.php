@@ -6,16 +6,18 @@ namespace App\Core;
 use PDO;
 use PDOException;
 use RuntimeException;
-use Throwable;
 
 final class Database
 {
     private ?PDO $connection = null;
 
     public function __construct(
-        private readonly array $config,
-        private readonly string $environment = 'production',
-        private readonly ?string $logFile = null
+        private readonly string $host,
+        private readonly int $port,
+        private readonly string $database,
+        private readonly string $username,
+        private readonly string $password,
+        private readonly string $charset = 'utf8mb4'
     ) {
     }
 
@@ -29,15 +31,19 @@ final class Database
             throw new RuntimeException('Driver de banco indisponivel.');
         }
 
-        $host = $this->requiredString('host');
-        $database = $this->requiredString('database');
-        $username = $this->requiredString('username');
-        $password = (string) ($this->config['password'] ?? '');
-        $charset = (string) ($this->config['charset'] ?? 'utf8mb4');
-        $port = (int) ($this->config['port'] ?? 3306);
+        $host = $this->requiredString($this->host);
+        $database = $this->requiredString($this->database);
+        $username = $this->requiredString($this->username);
+        $password = $this->password;
+        $charset = $this->charset;
+        $port = $this->port;
 
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $charset)) {
             $charset = 'utf8mb4';
+        }
+
+        if ($port <= 0 || $port > 65535) {
+            throw new RuntimeException('Porta de banco invalida.');
         }
 
         $dsn = sprintf(
@@ -58,15 +64,15 @@ final class Database
 
             return $this->connection;
         } catch (PDOException $exception) {
-            $this->logFailure($exception);
+            $this->logFailure();
 
             throw new RuntimeException('Nao foi possivel concluir a operacao.');
         }
     }
 
-    private function requiredString(string $key): string
+    private function requiredString(string $value): string
     {
-        $value = trim((string) ($this->config[$key] ?? ''));
+        $value = trim($value);
 
         if ($value === '') {
             throw new RuntimeException('Configuracao de banco incompleta.');
@@ -75,24 +81,8 @@ final class Database
         return $value;
     }
 
-    private function logFailure(Throwable $exception): void
+    private function logFailure(): void
     {
-        $message = sprintf(
-            '[%s] Database connection failed: %s',
-            date('c'),
-            $exception->getMessage()
-        );
-
-        if ($this->logFile !== null) {
-            $dir = dirname($this->logFile);
-            if (is_dir($dir) && is_writable($dir)) {
-                error_log($message . PHP_EOL, 3, $this->logFile);
-                return;
-            }
-        }
-
-        if ($this->environment !== 'production') {
-            error_log($message);
-        }
+        error_log('Database connection failed.');
     }
 }

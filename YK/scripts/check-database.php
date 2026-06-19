@@ -8,9 +8,8 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 
-$app = require dirname(__DIR__) . '/bootstrap.php';
-
 try {
+    $app = require dirname(__DIR__) . '/bootstrap.php';
     /** @var Database $database */
     $database = $app['database'];
     $connection = $database->connection();
