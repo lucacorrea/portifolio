@@ -6,6 +6,8 @@ $pageSubtitle = 'Cadastro visual de fornecedores de peças e serviços';
 $primaryActionLabel = 'Novo Fornecedor';
 $primaryActionIcon = 'bi-building-add';
 $primaryActionTarget = '#modal-fornecedor';
+$primaryActionPermission = 'fornecedor.criar';
+$requiredPermission = 'fornecedor.visualizar';
 $pageContent = __DIR__ . '/pages/operational.php';
 
 require __DIR__ . '/includes/shell.php';

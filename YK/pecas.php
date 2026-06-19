@@ -6,6 +6,8 @@ $pageSubtitle = 'Controle peças utilizadas nos serviços e estoque mínimo';
 $primaryActionLabel = 'Novo produto';
 $primaryActionIcon = 'bi-plus-lg';
 $primaryActionTarget = '#modal-peca';
+$primaryActionPermission = 'produto.criar';
+$requiredPermission = 'produto.visualizar';
 $pageContent = __DIR__ . '/pages/operational.php';
 
 require __DIR__ . '/includes/shell.php';

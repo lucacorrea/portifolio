@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Access\Repository;
 
 use App\Access\Entity\User;
+use DateTimeImmutable;
 use InvalidArgumentException;
 use PDO;
 
@@ -74,6 +75,119 @@ final class UserRepository
     public function existsByEmail(string $email, ?int $ignoreId = null): bool
     {
         return $this->existsByField('email', strtolower(trim($email)), $ignoreId);
+    }
+
+    public function findByIdentifier(string $identifier): ?User
+    {
+        $identifier = trim($identifier);
+
+        if ($identifier === '') {
+            return null;
+        }
+
+        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            return $this->findByEmail($identifier);
+        }
+
+        return $this->findByUsername($identifier);
+    }
+
+    public function create(User $user): int
+    {
+        $statement = $this->connection->prepare(
+            'INSERT INTO usuarios (
+                perfil_id, nome, usuario, email, senha_hash, telefone, status,
+                deve_alterar_senha, tentativas_falhas, bloqueado_ate, ultimo_acesso,
+                senha_alterada_em
+            ) VALUES (
+                :profile_id, :name, :username, :email, :password_hash, :phone, :status,
+                :must_change_password, :failed_attempts, :locked_until, :last_access,
+                :password_changed_at
+            )'
+        );
+
+        $statement->execute([
+            'profile_id' => $user->profileId(),
+            'name' => $user->name(),
+            'username' => $user->username(),
+            'email' => $user->email(),
+            'password_hash' => $user->passwordHash(),
+            'phone' => $user->phone(),
+            'status' => $user->status(),
+            'must_change_password' => $user->mustChangePassword() ? 1 : 0,
+            'failed_attempts' => $user->failedAttempts(),
+            'locked_until' => $user->lockedUntil(),
+            'last_access' => $user->lastAccess(),
+            'password_changed_at' => $user->passwordChangedAt(),
+        ]);
+
+        return (int) $this->connection->lastInsertId();
+    }
+
+    public function registerFailedAttempt(int $userId, int $attempts, ?DateTimeImmutable $lockedUntil): void
+    {
+        $this->assertPositiveId($userId);
+        if ($attempts < 0) {
+            throw new InvalidArgumentException('Tentativas falhas invalida.');
+        }
+
+        $statement = $this->connection->prepare(
+            'UPDATE usuarios
+                SET tentativas_falhas = :attempts,
+                    bloqueado_ate = :locked_until
+              WHERE id = :id'
+        );
+        $statement->execute([
+            'id' => $userId,
+            'attempts' => $attempts,
+            'locked_until' => $lockedUntil?->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function resetFailedAttempts(int $userId): void
+    {
+        $this->assertPositiveId($userId);
+
+        $statement = $this->connection->prepare(
+            'UPDATE usuarios
+                SET tentativas_falhas = 0,
+                    bloqueado_ate = NULL
+              WHERE id = :id'
+        );
+        $statement->execute(['id' => $userId]);
+    }
+
+    public function updateLastAccess(int $userId, DateTimeImmutable $date): void
+    {
+        $this->assertPositiveId($userId);
+
+        $statement = $this->connection->prepare(
+            'UPDATE usuarios SET ultimo_acesso = :last_access WHERE id = :id'
+        );
+        $statement->execute([
+            'id' => $userId,
+            'last_access' => $date->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function updatePasswordHash(int $userId, string $passwordHash, DateTimeImmutable $changedAt): void
+    {
+        $this->assertPositiveId($userId);
+        if (trim($passwordHash) === '') {
+            throw new InvalidArgumentException('Hash de senha invalido.');
+        }
+
+        $statement = $this->connection->prepare(
+            'UPDATE usuarios
+                SET senha_hash = :password_hash,
+                    senha_alterada_em = :changed_at
+              WHERE id = :id'
+        );
+        $statement->execute([
+            'id' => $userId,
+            'password_hash' => $passwordHash,
+            'changed_at' => $changedAt->format('Y-m-d H:i:s'),
+        ]);
     }
 
     public function countActiveAdministrators(): int

@@ -6,6 +6,8 @@ $pageSubtitle = 'Gerencie clientes, contatos e histórico de atendimentos';
 $primaryActionLabel = 'Novo Cliente';
 $primaryActionIcon = 'bi-person-plus';
 $primaryActionTarget = '#modal-cliente';
+$primaryActionPermission = 'cliente.criar';
+$requiredPermission = 'cliente.visualizar';
 $pageContent = __DIR__ . '/pages/operational.php';
 
 require __DIR__ . '/includes/shell.php';

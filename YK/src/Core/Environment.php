@@ -17,6 +17,13 @@ final class Environment
         'DB_USERNAME',
         'DB_PASSWORD',
         'DB_CHARSET',
+        'SESSION_NAME',
+        'SESSION_TIMEOUT',
+        'SESSION_ABSOLUTE_TIMEOUT',
+        'SESSION_REGENERATE_INTERVAL',
+        'SESSION_COOKIE_PATH',
+        'LOGIN_MAX_ATTEMPTS',
+        'LOGIN_LOCK_MINUTES',
     ];
 
     public function __construct(private string $filePath)
@@ -28,15 +35,6 @@ final class Environment
         $serverConfiguredPath = getenv('YK_ENV_PATH');
         if (is_string($serverConfiguredPath) && trim($serverConfiguredPath) !== '') {
             return trim($serverConfiguredPath);
-        }
-
-        $outsidePublicPath = dirname($projectRoot) . DIRECTORY_SEPARATOR
-            . 'configuracoes' . DIRECTORY_SEPARATOR
-            . 'YK' . DIRECTORY_SEPARATOR
-            . '.env';
-
-        if (is_file($outsidePublicPath)) {
-            return $outsidePublicPath;
         }
 
         return rtrim($projectRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '.env';

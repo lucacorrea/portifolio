@@ -6,6 +6,8 @@ $pageSubtitle = 'Visualize atendimentos por data, horário e técnico';
 $primaryActionLabel = 'Novo Lembrete';
 $primaryActionIcon = 'bi-alarm';
 $primaryActionTarget = '#modal-lembrete';
+$primaryActionPermission = 'agenda.criar_lembrete';
+$requiredPermission = 'agenda.visualizar';
 $pageContent = __DIR__ . '/pages/operational.php';
 
 require __DIR__ . '/includes/shell.php';

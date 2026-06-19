@@ -6,6 +6,8 @@ $pageSubtitle = 'Gerencie equipe, funções e disponibilidade';
 $primaryActionLabel = 'Novo Funcionário';
 $primaryActionIcon = 'bi-person-badge';
 $primaryActionTarget = '#modal-funcionario';
+$primaryActionPermission = 'funcionario.criar';
+$requiredPermission = 'funcionario.visualizar';
 $pageContent = __DIR__ . '/pages/operational.php';
 
 require __DIR__ . '/includes/shell.php';

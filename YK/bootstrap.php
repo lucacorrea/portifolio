@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use App\Core\Database;
 use App\Core\Environment;
+use App\Core\Application;
 
 spl_autoload_register(static function (string $class): void {
     $prefix = 'App\\';
@@ -65,16 +66,32 @@ try {
         throw new RuntimeException('Porta de banco invalida.');
     }
 
+    $settings = [
+        'app_env' => $appEnv,
+        'app_debug' => $appDebug,
+        'session_name' => $environment->get('SESSION_NAME', 'YKSESSID'),
+        'session_timeout' => (int) $environment->get('SESSION_TIMEOUT', '1800'),
+        'session_absolute_timeout' => (int) $environment->get('SESSION_ABSOLUTE_TIMEOUT', '28800'),
+        'session_regenerate_interval' => (int) $environment->get('SESSION_REGENERATE_INTERVAL', '900'),
+        'session_cookie_path' => $environment->get('SESSION_COOKIE_PATH', '/YK'),
+        'login_max_attempts' => (int) $environment->get('LOGIN_MAX_ATTEMPTS', '5'),
+        'login_lock_minutes' => (int) $environment->get('LOGIN_LOCK_MINUTES', '15'),
+    ];
+
+    $database = new Database(
+        host: $environment->require('DB_HOST'),
+        port: $port,
+        database: $environment->require('DB_DATABASE'),
+        username: $environment->require('DB_USERNAME'),
+        password: $environment->require('DB_PASSWORD'),
+        charset: $environment->require('DB_CHARSET')
+    );
+
     return [
         'environment' => $environment,
-        'database' => new Database(
-            host: $environment->require('DB_HOST'),
-            port: $port,
-            database: $environment->require('DB_DATABASE'),
-            username: $environment->require('DB_USERNAME'),
-            password: $environment->require('DB_PASSWORD'),
-            charset: $environment->require('DB_CHARSET')
-        ),
+        'settings' => $settings,
+        'database' => $database,
+        'application' => new Application($database, $settings),
     ];
 } catch (Throwable $exception) {
     error_log('Bootstrap failed: ' . $exception->getMessage());

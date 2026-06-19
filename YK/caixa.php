@@ -6,6 +6,8 @@ $pageSubtitle = 'Venda avulsa e movimentações visuais';
 $primaryActionLabel = 'Venda Avulsa';
 $primaryActionIcon = 'bi-cart-plus';
 $primaryActionTarget = '#modal-venda';
+$primaryActionPermission = 'caixa.registrar_venda';
+$requiredPermission = 'caixa.visualizar';
 $pageContent = __DIR__ . '/pages/operational.php';
 
 require __DIR__ . '/includes/shell.php';

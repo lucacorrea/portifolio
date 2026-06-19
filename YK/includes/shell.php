@@ -1,3 +1,45 @@
+<?php
+declare(strict_types=1);
+
+use App\Access\Exception\AuthenticationException;
+use App\Access\Exception\AuthorizationException;
+use App\Core\Application;
+
+$app = require dirname(__DIR__) . '/bootstrap.php';
+/** @var Application $application */
+$application = $app['application'];
+$session = $application->session();
+$session->start();
+$csrf = $application->csrf();
+
+try {
+  $authorization = $application->authorization();
+  $currentUser = $authorization->requireLogin();
+} catch (AuthenticationException $exception) {
+  $session->flash('warning', 'Sua sessão expirou. Entre novamente.');
+  $currentPage = basename(parse_url($_SERVER['REQUEST_URI'] ?? 'dashboard.php', PHP_URL_PATH) ?: 'dashboard.php');
+  header('Location: login.php?next=' . rawurlencode($application->redirect()->sanitize($currentPage)), true, 303);
+  exit;
+} catch (Throwable $exception) {
+  $session->flash('danger', 'Não foi possível manter o acesso ao sistema. Entre em contato com o administrador.');
+  header('Location: login.php', true, 303);
+  exit;
+}
+
+try {
+  if (isset($requiredPermission) && is_string($requiredPermission) && $requiredPermission !== '') {
+    $authorization->requirePermission($requiredPermission);
+  } elseif (isset($requiredAnyPermission) && is_array($requiredAnyPermission) && $requiredAnyPermission !== []) {
+    $authorization->requireAnyPermission($requiredAnyPermission);
+  } else {
+    error_log('Internal page without required permission declaration: ' . ($_SERVER['SCRIPT_NAME'] ?? 'unknown'));
+    throw new AuthorizationException('Acesso negado.');
+  }
+} catch (AuthorizationException $exception) {
+  header('Location: acesso-negado.php', true, 303);
+  exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>

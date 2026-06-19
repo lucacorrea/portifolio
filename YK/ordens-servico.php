@@ -6,6 +6,8 @@ $pageSubtitle = 'Controle os atendimentos técnicos da empresa';
 $primaryActionLabel = 'Nova OS';
 $primaryActionIcon = 'bi-plus-lg';
 $primaryActionTarget = '#modal-os';
+$primaryActionPermission = 'os.criar';
+$requiredPermission = 'os.visualizar';
 $pageContent = __DIR__ . '/pages/operational.php';
 
 require __DIR__ . '/includes/shell.php';
