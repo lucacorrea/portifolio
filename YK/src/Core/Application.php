@@ -1,15 +1,17 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Access\Repository\PermissionRepository;
 use App\Access\Repository\ProfilePermissionRepository;
 use App\Access\Repository\ProfileRepository;
-use App\Access\Repository\PermissionRepository;
 use App\Access\Repository\UserRepository;
 use App\Access\Service\AuthenticationService;
 use App\Access\Service\AuthorizationService;
 use App\Access\Service\ProfileManagementService;
+use App\Access\Service\UserManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\SafeRedirect;
 use App\Security\SessionManager;
@@ -17,10 +19,17 @@ use App\Security\SessionManager;
 final class Application
 {
     private ?SessionManager $session = null;
+
     private ?CsrfTokenManager $csrf = null;
+
     private ?AuthenticationService $authentication = null;
+
     private ?AuthorizationService $authorization = null;
+
     private ?ProfileManagementService $profileManagement = null;
+
+    private ?UserManagementService $userManagement = null;
+
     private ?SafeRedirect $redirect = null;
 
     public function __construct(
@@ -37,15 +46,35 @@ final class Application
     public function session(): SessionManager
     {
         if ($this->session === null) {
-            $secure = ($this->settings['app_env'] ?? 'production') === 'production'
-                || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+            $secure = (
+                $this->settings['app_env'] ?? 'production'
+            ) === 'production'
+                || (
+                    !empty($_SERVER['HTTPS'])
+                    && $_SERVER['HTTPS'] !== 'off'
+                );
 
             $this->session = new SessionManager(
-                (string) ($this->settings['session_name'] ?? 'YKSESSID'),
-                (int) ($this->settings['session_timeout'] ?? 1800),
-                (int) ($this->settings['session_absolute_timeout'] ?? 28800),
-                (int) ($this->settings['session_regenerate_interval'] ?? 900),
-                (string) ($this->settings['session_cookie_path'] ?? '/YK'),
+                (string) (
+                    $this->settings['session_name']
+                    ?? 'YKSESSID'
+                ),
+                (int) (
+                    $this->settings['session_timeout']
+                    ?? 1800
+                ),
+                (int) (
+                    $this->settings['session_absolute_timeout']
+                    ?? 28800
+                ),
+                (int) (
+                    $this->settings['session_regenerate_interval']
+                    ?? 900
+                ),
+                (string) (
+                    $this->settings['session_cookie_path']
+                    ?? '/YK'
+                ),
                 $secure
             );
         }
@@ -56,7 +85,9 @@ final class Application
     public function csrf(): CsrfTokenManager
     {
         if ($this->csrf === null) {
-            $this->csrf = new CsrfTokenManager($this->session());
+            $this->csrf = new CsrfTokenManager(
+                $this->session()
+            );
         }
 
         return $this->csrf;
@@ -66,13 +97,20 @@ final class Application
     {
         if ($this->authentication === null) {
             $connection = $this->database->connection();
+
             $this->authentication = new AuthenticationService(
                 new UserRepository($connection),
                 new ProfileRepository($connection),
                 new ProfilePermissionRepository($connection),
                 $this->session(),
-                (int) ($this->settings['login_max_attempts'] ?? 5),
-                (int) ($this->settings['login_lock_minutes'] ?? 15)
+                (int) (
+                    $this->settings['login_max_attempts']
+                    ?? 5
+                ),
+                (int) (
+                    $this->settings['login_lock_minutes']
+                    ?? 15
+                )
             );
         }
 
@@ -82,7 +120,9 @@ final class Application
     public function authorization(): AuthorizationService
     {
         if ($this->authorization === null) {
-            $this->authorization = new AuthorizationService($this->authentication());
+            $this->authorization = new AuthorizationService(
+                $this->authentication()
+            );
         }
 
         return $this->authorization;
@@ -92,6 +132,7 @@ final class Application
     {
         if ($this->profileManagement === null) {
             $connection = $this->database->connection();
+
             $this->profileManagement = new ProfileManagementService(
                 $connection,
                 new ProfileRepository($connection),
@@ -102,6 +143,20 @@ final class Application
         }
 
         return $this->profileManagement;
+    }
+
+    public function userManagement(): UserManagementService
+    {
+        if ($this->userManagement === null) {
+            $connection = $this->database->connection();
+
+            $this->userManagement = new UserManagementService(
+                new UserRepository($connection),
+                new ProfileRepository($connection)
+            );
+        }
+
+        return $this->userManagement;
     }
 
     public function redirect(): SafeRedirect
