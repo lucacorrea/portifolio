@@ -15,6 +15,7 @@ $session = $application->session();
 $session->start();
 $redirect = $application->redirect();
 $next = $redirect->sanitize($_POST['next'] ?? 'dashboard.php');
+$targetUrl = $redirect->applicationUrl($next);
 
 try {
     $application->csrf()->requireValid(isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : null);
@@ -24,7 +25,7 @@ try {
 
     $result = $application->authentication()->attempt($identifier, $password);
     if ($result->success()) {
-        header('Location: ' . $next, true, 303);
+        header('Location: ' . $targetUrl, true, 303);
         exit;
     }
 
@@ -33,5 +34,5 @@ try {
     $session->flash('danger', 'Não foi possível concluir a operação. Tente novamente.');
 }
 
-header('Location: ../login.php?next=' . rawurlencode($next), true, 303);
+header('Location: ' . $redirect->loginUrl() . '?next=' . rawurlencode($next), true, 303);
 exit;

@@ -94,6 +94,7 @@ $foreignKeys = checkScalar(
 );
 
 $permissionCount = checkScalar($connection, 'SELECT COUNT(*) FROM permissoes');
+$activePermissionCount = checkScalar($connection, "SELECT COUNT(*) FROM permissoes WHERE status = 'ativo'");
 $profileCount = checkScalar($connection, 'SELECT COUNT(*) FROM perfis');
 $administratorPermissionCount = checkScalar(
     $connection,
@@ -101,6 +102,16 @@ $administratorPermissionCount = checkScalar(
        FROM perfil_permissoes pp
        INNER JOIN perfis p ON p.id = pp.perfil_id
       WHERE p.nome = 'Administrador'"
+);
+$activeAdministratorPermissionCount = checkScalar(
+    $connection,
+    "SELECT COUNT(*)
+       FROM perfil_permissoes pp
+       INNER JOIN perfis p ON p.id = pp.perfil_id
+       INNER JOIN permissoes pe ON pe.id = pp.permissao_id
+      WHERE p.nome = 'Administrador'
+        AND p.status = 'ativo'
+        AND pe.status = 'ativo'"
 );
 $receptionPermissionCount = checkScalar(
     $connection,
@@ -119,6 +130,13 @@ $duplicateCodes = checkScalar(
             HAVING COUNT(*) > 1
        ) duplicados'
 );
+$dashboardPermissionExists = checkScalar(
+    $connection,
+    "SELECT COUNT(*)
+       FROM permissoes
+      WHERE codigo = 'dashboard.visualizar'
+        AND status = 'ativo'"
+);
 
 $errors = [];
 if ($missingIndexes !== []) {
@@ -130,6 +148,12 @@ if ($foreignKeys !== 3) {
 if ($duplicateCodes !== 0) {
     $errors[] = 'Existem codigos de permissao duplicados.';
 }
+if ($dashboardPermissionExists !== 1) {
+    $errors[] = 'Permissao dashboard.visualizar ativa nao encontrada.';
+}
+if ($activePermissionCount !== $activeAdministratorPermissionCount) {
+    $errors[] = 'Administrador nao possui todas as permissoes ativas.';
+}
 
 echo 'Verificacao da estrutura de acesso' . PHP_EOL;
 echo 'Tabelas: OK' . PHP_EOL;
@@ -137,8 +161,11 @@ echo 'Indices basicos: ' . ($missingIndexes === [] ? 'OK' : 'FALHA') . PHP_EOL;
 echo 'Foreign keys: ' . $foreignKeys . '/3' . PHP_EOL;
 echo 'Perfis: ' . $profileCount . PHP_EOL;
 echo 'Permissoes: ' . $permissionCount . PHP_EOL;
+echo 'Permissoes ativas: ' . $activePermissionCount . PHP_EOL;
 echo 'Permissoes Administrador: ' . $administratorPermissionCount . PHP_EOL;
+echo 'Permissoes ativas Administrador: ' . $activeAdministratorPermissionCount . PHP_EOL;
 echo 'Permissoes Recepcao: ' . $receptionPermissionCount . PHP_EOL;
+echo 'dashboard.visualizar ativa: ' . ($dashboardPermissionExists === 1 ? 'sim' : 'nao') . PHP_EOL;
 
 if ($errors !== []) {
     foreach ($errors as $error) {

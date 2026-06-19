@@ -13,6 +13,7 @@ $app = require dirname(__DIR__) . '/bootstrap.php';
 $application = $app['application'];
 $session = $application->session();
 $session->start();
+$redirect = $application->redirect();
 
 try {
     $application->csrf()->requireValid(isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : null);
@@ -25,11 +26,11 @@ try {
     $application->authentication()->requireAuthenticatedUser();
     $application->authentication()->logout();
 } catch (Throwable $exception) {
-    header('Location: ../login.php', true, 303);
+    header('Location: ' . $redirect->loginUrl(), true, 303);
     exit;
 }
 
 $session->start();
 $session->flash('info', 'Você saiu do sistema.');
-header('Location: ../login.php', true, 303);
+header('Location: ' . $redirect->loginUrl(), true, 303);
 exit;

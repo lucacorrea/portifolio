@@ -6,6 +6,7 @@ namespace App\Security;
 final class SafeRedirect
 {
     private const DEFAULT_TARGET = 'dashboard.php';
+    private const BASE_PATH = '/YK/';
 
     private const ALLOWED_TARGETS = [
         'dashboard.php',
@@ -53,5 +54,17 @@ final class SafeRedirect
         }
 
         return $decoded;
+    }
+
+    public function applicationUrl(?string $target): string
+    {
+        $safeTarget = $this->sanitize($target);
+
+        return self::BASE_PATH . ltrim($safeTarget, '/');
+    }
+
+    public function loginUrl(): string
+    {
+        return self::BASE_PATH . 'login.php';
     }
 }

@@ -11,9 +11,11 @@ try {
     $currentUser = $application->authorization()->requireLogin();
 } catch (Throwable $exception) {
     $application->session()->flash('warning', 'Sua sessão expirou. Entre novamente.');
-    header('Location: login.php', true, 303);
+    header('Location: ' . $application->redirect()->loginUrl(), true, 303);
     exit;
 }
+
+$csrf = $application->csrf();
 
 http_response_code(403);
 
@@ -44,8 +46,10 @@ function h(string $value): string
       <h1>Acesso negado</h1>
       <p class="auth-subtitle">Você não possui permissão para acessar este recurso.</p>
       <div class="access-actions">
-        <a class="auth-link-btn" href="dashboard.php">Ir para o dashboard</a>
-        <button class="auth-link-btn muted" type="button" onclick="history.back()">Voltar</button>
+        <form method="post" action="actions/logout.php">
+          <?= $csrf->field() ?>
+          <button class="auth-link-btn" type="submit">Voltar para o login</button>
+        </form>
       </div>
     </section>
   </main>
