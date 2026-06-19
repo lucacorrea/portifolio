@@ -7,7 +7,7 @@ INSERT INTO perfis
     (nome, descricao, protegido, status)
 VALUES
     ('Administrador', 'Acesso completo ao sistema', 1, 'ativo'),
-    ('Recepção', 'Atendimento, clientes, OS, orçamentos e agenda', 0, 'ativo')
+    ('Recepção', 'Atendimento, clientes, ordens de serviço, orçamentos e agenda', 0, 'ativo')
 ON DUPLICATE KEY UPDATE
     descricao = VALUES(descricao),
     protegido = VALUES(protegido),
@@ -18,12 +18,12 @@ INSERT IGNORE INTO perfil_permissoes (
     permissao_id
 )
 SELECT
-    p.id,
-    pe.id
-FROM perfis p
-CROSS JOIN permissoes pe
-WHERE p.nome = 'Administrador'
-  AND pe.status = 'ativo';
+    perfil.id,
+    permissao.id
+FROM perfis perfil
+CROSS JOIN permissoes permissao
+WHERE perfil.nome = 'Administrador'
+  AND permissao.status = 'ativo';
 
 INSERT IGNORE INTO perfil_permissoes (
     perfil_id,
@@ -75,7 +75,6 @@ INNER JOIN permissoes permissao
         'caixa.visualizar',
         'caixa.registrar_venda',
         'caixa.registrar_recebimento',
-        'caixa.imprimir_comprovante',
         'recibo.visualizar',
         'recibo.emitir',
         'recibo.reimprimir',

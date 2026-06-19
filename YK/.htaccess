@@ -1,0 +1,18 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(config|src|database|scripts|storage|backups)(/|$) - [F,L]
+</IfModule>
+
+<IfModule mod_authz_core.c>
+    <FilesMatch "^(\.env|.*\.(ini|log|sql|bak|backup|old|dist)|database\.local\.php)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    <FilesMatch "^(\.env|.*\.(ini|log|sql|bak|backup|old|dist)|database\.local\.php)$">
+        Deny from all
+    </FilesMatch>
+</IfModule>

@@ -1,4 +1,4 @@
--- Infraestrutura inicial de usuarios, perfis e permissoes.
+-- Migration inicial de controle de acesso.
 -- Compatibilidade: MySQL 5.7+ e MariaDB 10.4+.
 -- Seguro para reexecucao: usa CREATE TABLE IF NOT EXISTS e nao remove dados.
 

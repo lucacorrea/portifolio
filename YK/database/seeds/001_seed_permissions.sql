@@ -1,4 +1,4 @@
--- Catalogo inicial de permissoes.
+-- Catalogo inicial de permissoes do sistema.
 -- Seguro para reexecucao: codigo e unico e os dados sao atualizados sem duplicar.
 
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6,9 +6,9 @@ SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 INSERT INTO permissoes
     (grupo, modulo, codigo, nome, descricao, ordem)
 VALUES
-    ('Painel', 'dashboard', 'dashboard.visualizar', 'Visualizar painel', 'Permite acessar a visão geral do sistema.', 10),
-    ('Painel', 'dashboard', 'dashboard.visualizar_operacional', 'Visualizar painel operacional', 'Permite acessar indicadores operacionais do painel.', 20),
-    ('Painel', 'dashboard', 'dashboard.visualizar_financeiro', 'Visualizar painel financeiro', 'Permite acessar indicadores financeiros do painel.', 30),
+    ('Dashboard', 'dashboard', 'dashboard.visualizar', 'Visualizar dashboard', 'Permite acessar a visão geral do sistema.', 10),
+    ('Dashboard', 'dashboard', 'dashboard.visualizar_operacional', 'Visualizar dashboard operacional', 'Permite acessar indicadores operacionais do dashboard.', 20),
+    ('Dashboard', 'dashboard', 'dashboard.visualizar_financeiro', 'Visualizar dashboard financeiro', 'Permite acessar indicadores financeiros do dashboard.', 30),
 
     ('Clientes', 'cliente', 'cliente.visualizar', 'Visualizar clientes', 'Permite acessar a listagem e os dados dos clientes.', 110),
     ('Clientes', 'cliente', 'cliente.criar', 'Criar clientes', 'Permite cadastrar novos clientes.', 120),
@@ -16,7 +16,6 @@ VALUES
     ('Clientes', 'cliente', 'cliente.desativar', 'Desativar clientes', 'Permite desativar clientes sem excluir o cadastro.', 140),
     ('Clientes', 'cliente', 'cliente.excluir', 'Excluir clientes', 'Permite excluir cadastros de clientes.', 150),
     ('Clientes', 'cliente', 'cliente.visualizar_historico', 'Visualizar histórico de clientes', 'Permite consultar histórico de atendimentos dos clientes.', 160),
-    ('Clientes', 'cliente', 'cliente.exportar', 'Exportar clientes', 'Permite exportar dados de clientes.', 170),
 
     ('Ordens de Serviço', 'os', 'os.visualizar', 'Visualizar ordens de serviço', 'Permite acessar ordens de serviço.', 210),
     ('Ordens de Serviço', 'os', 'os.criar', 'Criar ordens de serviço', 'Permite cadastrar novas ordens de serviço.', 220),
@@ -30,17 +29,15 @@ VALUES
     ('Ordens de Serviço', 'os', 'os.imprimir', 'Imprimir ordens de serviço', 'Permite imprimir ordens de serviço.', 300),
     ('Ordens de Serviço', 'os', 'os.excluir', 'Excluir ordens de serviço', 'Permite excluir ordens de serviço.', 310),
     ('Ordens de Serviço', 'os', 'os.visualizar_valores', 'Visualizar valores da OS', 'Permite visualizar valores financeiros da ordem de serviço.', 320),
-    ('Ordens de Serviço', 'os', 'os.aplicar_desconto', 'Aplicar desconto na OS', 'Permite aplicar descontos em ordens de serviço.', 330),
 
     ('Orçamentos', 'orcamento', 'orcamento.visualizar', 'Visualizar orçamentos', 'Permite acessar orçamentos.', 410),
     ('Orçamentos', 'orcamento', 'orcamento.criar', 'Criar orçamentos', 'Permite cadastrar novos orçamentos.', 420),
     ('Orçamentos', 'orcamento', 'orcamento.editar', 'Editar orçamentos', 'Permite alterar orçamentos existentes.', 430),
-    ('Orçamentos', 'orcamento', 'orcamento.aplicar_desconto', 'Aplicar desconto em orçamento', 'Permite aplicar descontos em orçamentos.', 440),
-    ('Orçamentos', 'orcamento', 'orcamento.aprovar', 'Aprovar orçamentos', 'Permite registrar aprovação de orçamentos.', 450),
-    ('Orçamentos', 'orcamento', 'orcamento.recusar', 'Recusar orçamentos', 'Permite registrar recusa de orçamentos.', 460),
-    ('Orçamentos', 'orcamento', 'orcamento.converter_os', 'Converter orçamento em OS', 'Permite converter orçamento aprovado em ordem de serviço.', 470),
-    ('Orçamentos', 'orcamento', 'orcamento.imprimir', 'Imprimir orçamentos', 'Permite imprimir orçamentos.', 480),
-    ('Orçamentos', 'orcamento', 'orcamento.excluir', 'Excluir orçamentos', 'Permite excluir orçamentos.', 490),
+    ('Orçamentos', 'orcamento', 'orcamento.aprovar', 'Aprovar orçamentos', 'Permite registrar aprovação de orçamentos.', 440),
+    ('Orçamentos', 'orcamento', 'orcamento.recusar', 'Recusar orçamentos', 'Permite registrar recusa de orçamentos.', 450),
+    ('Orçamentos', 'orcamento', 'orcamento.converter_os', 'Converter orçamento em OS', 'Permite converter orçamento aprovado em ordem de serviço.', 460),
+    ('Orçamentos', 'orcamento', 'orcamento.imprimir', 'Imprimir orçamentos', 'Permite imprimir orçamentos.', 470),
+    ('Orçamentos', 'orcamento', 'orcamento.excluir', 'Excluir orçamentos', 'Permite excluir orçamentos.', 480),
 
     ('Agenda', 'agenda', 'agenda.visualizar', 'Visualizar agenda', 'Permite acessar a agenda de atendimentos.', 510),
     ('Agenda', 'agenda', 'agenda.criar', 'Criar agendamentos', 'Permite criar compromissos na agenda.', 520),
@@ -64,41 +61,35 @@ VALUES
     ('Produtos', 'produto', 'produto.criar', 'Criar produtos', 'Permite cadastrar produtos e peças.', 740),
     ('Produtos', 'produto', 'produto.editar', 'Editar produtos', 'Permite alterar produtos e peças.', 750),
     ('Produtos', 'produto', 'produto.excluir', 'Excluir produtos', 'Permite excluir produtos e peças.', 760),
-    ('Produtos', 'produto', 'produto.importar', 'Importar produtos', 'Permite importar produtos e peças em lote.', 770),
 
     ('Estoque', 'estoque', 'estoque.visualizar', 'Visualizar estoque', 'Permite acessar saldos de estoque.', 810),
     ('Estoque', 'estoque', 'estoque.entrada', 'Registrar entrada de estoque', 'Permite registrar entradas de estoque.', 820),
     ('Estoque', 'estoque', 'estoque.saida', 'Registrar saída de estoque', 'Permite registrar saídas de estoque.', 830),
     ('Estoque', 'estoque', 'estoque.ajustar', 'Ajustar estoque', 'Permite realizar ajustes manuais de estoque.', 840),
     ('Estoque', 'estoque', 'estoque.visualizar_historico', 'Visualizar histórico de estoque', 'Permite consultar movimentações de estoque.', 850),
-    ('Estoque', 'estoque', 'estoque.visualizar_valor_total', 'Visualizar valor total do estoque', 'Permite visualizar valores financeiros do estoque.', 860),
 
-    ('Serviços cadastrados', 'servico', 'servico.visualizar', 'Visualizar serviços cadastrados', 'Permite acessar serviços cadastrados.', 910),
-    ('Serviços cadastrados', 'servico', 'servico.criar', 'Criar serviços cadastrados', 'Permite cadastrar serviços.', 920),
-    ('Serviços cadastrados', 'servico', 'servico.editar', 'Editar serviços cadastrados', 'Permite alterar serviços cadastrados.', 930),
-    ('Serviços cadastrados', 'servico', 'servico.excluir', 'Excluir serviços cadastrados', 'Permite excluir serviços cadastrados.', 940),
-    ('Serviços cadastrados', 'servico', 'servico.alterar_preco', 'Alterar preço de serviço', 'Permite alterar preços de serviços cadastrados.', 950),
+    ('Serviços', 'servico', 'servico.visualizar', 'Visualizar serviços', 'Permite acessar serviços cadastrados.', 910),
+    ('Serviços', 'servico', 'servico.criar', 'Criar serviços', 'Permite cadastrar serviços.', 920),
+    ('Serviços', 'servico', 'servico.editar', 'Editar serviços', 'Permite alterar serviços cadastrados.', 930),
+    ('Serviços', 'servico', 'servico.excluir', 'Excluir serviços', 'Permite excluir serviços cadastrados.', 940),
+    ('Serviços', 'servico', 'servico.alterar_preco', 'Alterar preço de serviço', 'Permite alterar preços de serviços cadastrados.', 950),
 
     ('Funcionários', 'funcionario', 'funcionario.visualizar', 'Visualizar funcionários', 'Permite acessar funcionários.', 1010),
     ('Funcionários', 'funcionario', 'funcionario.criar', 'Criar funcionários', 'Permite cadastrar funcionários.', 1020),
     ('Funcionários', 'funcionario', 'funcionario.editar', 'Editar funcionários', 'Permite alterar dados de funcionários.', 1030),
     ('Funcionários', 'funcionario', 'funcionario.desativar', 'Desativar funcionários', 'Permite desativar funcionários.', 1040),
-    ('Funcionários', 'funcionario', 'funcionario.excluir', 'Excluir funcionários', 'Permite excluir funcionários.', 1050),
-    ('Funcionários', 'funcionario', 'funcionario.visualizar_produtividade', 'Visualizar produtividade', 'Permite visualizar produtividade dos funcionários.', 1060),
-    ('Funcionários', 'funcionario', 'funcionario.visualizar_comissao', 'Visualizar comissão', 'Permite visualizar comissões dos funcionários.', 1070),
-    ('Funcionários', 'funcionario', 'funcionario.visualizar_dados_pessoais', 'Visualizar dados pessoais', 'Permite visualizar dados pessoais de funcionários.', 1080),
+    ('Funcionários', 'funcionario', 'funcionario.visualizar_produtividade', 'Visualizar produtividade', 'Permite visualizar produtividade dos funcionários.', 1050),
+    ('Funcionários', 'funcionario', 'funcionario.visualizar_comissao', 'Visualizar comissão', 'Permite visualizar comissões dos funcionários.', 1060),
 
     ('Fornecedores', 'fornecedor', 'fornecedor.visualizar', 'Visualizar fornecedores', 'Permite acessar fornecedores.', 1110),
     ('Fornecedores', 'fornecedor', 'fornecedor.criar', 'Criar fornecedores', 'Permite cadastrar fornecedores.', 1120),
     ('Fornecedores', 'fornecedor', 'fornecedor.editar', 'Editar fornecedores', 'Permite alterar fornecedores.', 1130),
     ('Fornecedores', 'fornecedor', 'fornecedor.desativar', 'Desativar fornecedores', 'Permite desativar fornecedores.', 1140),
-    ('Fornecedores', 'fornecedor', 'fornecedor.excluir', 'Excluir fornecedores', 'Permite excluir fornecedores.', 1150),
 
     ('Transportadoras', 'transportadora', 'transportadora.visualizar', 'Visualizar transportadoras', 'Permite acessar transportadoras.', 1210),
     ('Transportadoras', 'transportadora', 'transportadora.criar', 'Criar transportadoras', 'Permite cadastrar transportadoras.', 1220),
     ('Transportadoras', 'transportadora', 'transportadora.editar', 'Editar transportadoras', 'Permite alterar transportadoras.', 1230),
     ('Transportadoras', 'transportadora', 'transportadora.desativar', 'Desativar transportadoras', 'Permite desativar transportadoras.', 1240),
-    ('Transportadoras', 'transportadora', 'transportadora.excluir', 'Excluir transportadoras', 'Permite excluir transportadoras.', 1250),
 
     ('Caixa', 'caixa', 'caixa.visualizar', 'Visualizar caixa', 'Permite acessar o caixa.', 1310),
     ('Caixa', 'caixa', 'caixa.abrir', 'Abrir caixa', 'Permite abrir caixa operacional.', 1320),
@@ -109,16 +100,13 @@ VALUES
     ('Caixa', 'caixa', 'caixa.estornar', 'Estornar caixa', 'Permite estornar movimentações de caixa.', 1370),
     ('Caixa', 'caixa', 'caixa.fechar', 'Fechar caixa', 'Permite fechar caixa operacional.', 1380),
     ('Caixa', 'caixa', 'caixa.visualizar_saldo', 'Visualizar saldo do caixa', 'Permite visualizar saldo do caixa.', 1390),
-    ('Caixa', 'caixa', 'caixa.imprimir_comprovante', 'Imprimir comprovante', 'Permite imprimir comprovantes do caixa.', 1400),
 
     ('Financeiro', 'financeiro', 'financeiro.visualizar', 'Visualizar financeiro', 'Permite acessar informações financeiras.', 1510),
     ('Financeiro', 'financeiro', 'financeiro.visualizar_custos', 'Visualizar custos', 'Permite visualizar custos financeiros.', 1520),
     ('Financeiro', 'financeiro', 'financeiro.visualizar_lucro', 'Visualizar lucro', 'Permite visualizar lucro financeiro.', 1530),
     ('Financeiro', 'financeiro', 'financeiro.criar_lancamento', 'Criar lançamento financeiro', 'Permite criar lançamentos financeiros.', 1540),
     ('Financeiro', 'financeiro', 'financeiro.editar_lancamento', 'Editar lançamento financeiro', 'Permite alterar lançamentos financeiros.', 1550),
-    ('Financeiro', 'financeiro', 'financeiro.dar_baixa', 'Dar baixa financeira', 'Permite dar baixa em lançamentos financeiros.', 1560),
-    ('Financeiro', 'financeiro', 'financeiro.estornar', 'Estornar financeiro', 'Permite estornar lançamentos financeiros.', 1570),
-    ('Financeiro', 'financeiro', 'financeiro.exportar', 'Exportar financeiro', 'Permite exportar dados financeiros.', 1580),
+    ('Financeiro', 'financeiro', 'financeiro.estornar', 'Estornar financeiro', 'Permite estornar lançamentos financeiros.', 1560),
 
     ('Fiscal', 'nota_fiscal', 'nota_fiscal.visualizar', 'Visualizar notas fiscais', 'Permite acessar notas fiscais.', 1610),
     ('Fiscal', 'nota_fiscal', 'nota_fiscal.emitir', 'Emitir notas fiscais', 'Permite emitir notas fiscais.', 1620),
@@ -146,7 +134,6 @@ VALUES
     ('Administração', 'usuario', 'usuario.bloquear', 'Bloquear usuários', 'Permite bloquear usuários do sistema.', 1950),
     ('Administração', 'usuario', 'usuario.desativar', 'Desativar usuários', 'Permite desativar usuários do sistema.', 1960),
     ('Administração', 'usuario', 'usuario.redefinir_senha', 'Redefinir senha de usuário', 'Permite redefinir senha de usuários.', 1970),
-    ('Administração', 'usuario', 'usuario.excluir', 'Excluir usuários', 'Permite excluir usuários do sistema.', 1980),
     ('Administração', 'perfil', 'perfil.visualizar', 'Visualizar perfis', 'Permite acessar perfis de acesso.', 2010),
     ('Administração', 'perfil', 'perfil.criar', 'Criar perfis', 'Permite cadastrar perfis de acesso.', 2020),
     ('Administração', 'perfil', 'perfil.editar', 'Editar perfis', 'Permite alterar perfis de acesso.', 2030),
