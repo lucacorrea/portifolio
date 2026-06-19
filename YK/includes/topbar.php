@@ -33,10 +33,17 @@ $showPrimaryAction = !isset($primaryActionPermission) || $authorization->can((st
       <i class="bi bi-question-circle"></i>
     </button>
     <?php if ($showPrimaryAction): ?>
+      <?php if (isset($primaryActionHref) && is_string($primaryActionHref) && $primaryActionHref !== ''): ?>
+      <a class="btn-new-os" href="<?= htmlspecialchars($primaryActionHref, ENT_QUOTES, 'UTF-8') ?>">
+        <i class="bi <?= htmlspecialchars($primaryActionIcon, ENT_QUOTES, 'UTF-8') ?>"></i>
+        <span><?= htmlspecialchars($primaryActionLabel, ENT_QUOTES, 'UTF-8') ?></span>
+      </a>
+      <?php else: ?>
       <button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="<?= htmlspecialchars($primaryActionTarget, ENT_QUOTES, 'UTF-8') ?>">
         <i class="bi <?= htmlspecialchars($primaryActionIcon, ENT_QUOTES, 'UTF-8') ?>"></i>
         <span><?= htmlspecialchars($primaryActionLabel, ENT_QUOTES, 'UTF-8') ?></span>
       </button>
+      <?php endif; ?>
     <?php endif; ?>
     <div class="dropdown">
       <button class="tb-icon-btn user-topbar-btn" type="button" data-bs-toggle="dropdown" aria-label="Menu do usuário">

@@ -205,6 +205,18 @@ final class UserRepository
         return (int) $statement->fetchColumn();
     }
 
+    public function countByProfile(int $profileId): int
+    {
+        $this->assertPositiveId($profileId);
+
+        $statement = $this->connection->prepare(
+            'SELECT COUNT(*) FROM usuarios WHERE perfil_id = :profile_id'
+        );
+        $statement->execute(['profile_id' => $profileId]);
+
+        return (int) $statement->fetchColumn();
+    }
+
     private function existsByField(string $field, string $value, ?int $ignoreId): bool
     {
         if (!in_array($field, ['usuario', 'email'], true)) {

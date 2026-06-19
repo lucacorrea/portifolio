@@ -25,6 +25,9 @@ $navGroups = [
     ['key' => 'relatorios', 'label' => 'Relatórios', 'icon' => 'bi-bar-chart-line', 'href' => 'relatorios.php', 'permissions_any' => ['relatorio.operacional', 'relatorio.financeiro', 'relatorio.estoque', 'relatorio.produtividade', 'relatorio.funcionarios']],
     ['key' => 'configuracoes', 'label' => 'Configurações', 'icon' => 'bi-sliders', 'href' => 'configuracoes.php', 'permission' => 'configuracao.visualizar'],
   ],
+  'Administração' => [
+    ['key' => 'perfis-acesso', 'label' => 'Perfis de Acesso', 'icon' => 'bi-shield-lock', 'href' => 'perfis-acesso.php', 'permission' => 'perfil.visualizar'],
+  ],
 ];
 
 $canSeeItem = static function (array $item) use ($authorization): bool {

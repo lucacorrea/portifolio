@@ -5,9 +5,11 @@ namespace App\Core;
 
 use App\Access\Repository\ProfilePermissionRepository;
 use App\Access\Repository\ProfileRepository;
+use App\Access\Repository\PermissionRepository;
 use App\Access\Repository\UserRepository;
 use App\Access\Service\AuthenticationService;
 use App\Access\Service\AuthorizationService;
+use App\Access\Service\ProfileManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\SafeRedirect;
 use App\Security\SessionManager;
@@ -18,6 +20,7 @@ final class Application
     private ?CsrfTokenManager $csrf = null;
     private ?AuthenticationService $authentication = null;
     private ?AuthorizationService $authorization = null;
+    private ?ProfileManagementService $profileManagement = null;
     private ?SafeRedirect $redirect = null;
 
     public function __construct(
@@ -83,6 +86,22 @@ final class Application
         }
 
         return $this->authorization;
+    }
+
+    public function profileManagement(): ProfileManagementService
+    {
+        if ($this->profileManagement === null) {
+            $connection = $this->database->connection();
+            $this->profileManagement = new ProfileManagementService(
+                $connection,
+                new ProfileRepository($connection),
+                new PermissionRepository($connection),
+                new ProfilePermissionRepository($connection),
+                new UserRepository($connection)
+            );
+        }
+
+        return $this->profileManagement;
     }
 
     public function redirect(): SafeRedirect

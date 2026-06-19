@@ -10,6 +10,7 @@ final class SafeRedirect
 
     private const ALLOWED_TARGETS = [
         'dashboard.php',
+        'acesso-negado.php',
         'ordens-servico.php',
         'orcamentos.php',
         'clientes.php',
@@ -24,6 +25,9 @@ final class SafeRedirect
         'faturamento.php',
         'relatorios.php',
         'configuracoes.php',
+        'perfis-acesso.php',
+        'perfil-formulario.php',
+        'perfil-permissoes.php',
     ];
 
     public function sanitize(?string $next): string

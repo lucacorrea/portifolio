@@ -2254,6 +2254,145 @@ textarea.form-control-os {
   grid-column: 1 / -1;
 }
 
+.flash-stack {
+  padding: 14px 28px 0;
+}
+
+.profiles-page .profile-description {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-form-panel {
+  max-width: 980px;
+}
+
+.profile-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-summary-grid div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.profile-summary-grid span,
+.permission-counter {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.profile-summary-grid strong {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.profile-sticky-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line-soft);
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(10px);
+}
+
+.permissions-toolbar {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.permission-actions,
+.permission-group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permissions-accordion {
+  padding: 16px;
+}
+
+.permissions-accordion .accordion-item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.permissions-accordion .accordion-item + .accordion-item {
+  margin-top: 10px;
+}
+
+.permissions-accordion .accordion-button {
+  gap: 10px;
+  font-weight: 900;
+}
+
+.permissions-accordion .accordion-button small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.permission-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.permission-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  min-height: 64px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfdfe;
+  cursor: pointer;
+}
+
+.permission-option input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.permission-option span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.permission-option strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.permission-option small,
+.permission-option em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1500px) {
   .operational-page[data-page="painel-semanal"] .weekly-board {
     grid-template-columns: repeat(6, minmax(218px, 1fr));
@@ -2348,6 +2487,35 @@ textarea.form-control-os {
 
   .weekly-modal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .flash-stack {
+    padding: 10px 12px 0;
+  }
+
+  .profile-summary-grid,
+  .permission-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-sticky-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profile-sticky-actions > * {
+    width: 100%;
+  }
+
+  .permission-actions,
+  .permission-group-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .permission-actions .btn-filter,
+  .permission-group-actions .btn-filter {
+    width: 100%;
   }
 }
 

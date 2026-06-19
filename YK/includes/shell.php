@@ -29,6 +29,10 @@ try {
 try {
   if (isset($requiredPermission) && is_string($requiredPermission) && $requiredPermission !== '') {
     $authorization->requirePermission($requiredPermission);
+  } elseif (isset($requiredAllPermissions) && is_array($requiredAllPermissions) && $requiredAllPermissions !== []) {
+    foreach ($requiredAllPermissions as $permission) {
+      $authorization->requirePermission((string) $permission);
+    }
   } elseif (isset($requiredAnyPermission) && is_array($requiredAnyPermission) && $requiredAnyPermission !== []) {
     $authorization->requireAnyPermission($requiredAnyPermission);
   } else {
@@ -60,6 +64,17 @@ try {
 
     <main class="os-main">
       <?php require __DIR__ . '/topbar.php'; ?>
+      <?php $flashMessages = $session->consumeFlashMessages(); ?>
+      <?php if ($flashMessages !== []): ?>
+        <div class="flash-stack" role="status" aria-live="polite">
+          <?php foreach ($flashMessages as $message): ?>
+            <?php $type = in_array(($message['type'] ?? ''), ['success', 'info', 'warning', 'danger'], true) ? $message['type'] : 'info'; ?>
+            <div class="alert alert-<?= htmlspecialchars((string) $type, ENT_QUOTES, 'UTF-8') ?> mb-2">
+              <?= htmlspecialchars((string) ($message['message'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
       <?php require $pageContent; ?>
     </main>
   </div>

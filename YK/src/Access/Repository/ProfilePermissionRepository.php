@@ -33,6 +33,36 @@ final class ProfilePermissionRepository
         return array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN));
     }
 
+    /**
+     * @return int[]
+     */
+    public function findPermissionIdsByProfile(int $profileId): array
+    {
+        $this->assertPositiveId($profileId);
+
+        $statement = $this->connection->prepare(
+            'SELECT permissao_id
+               FROM perfil_permissoes
+              WHERE perfil_id = :profile_id
+              ORDER BY permissao_id ASC'
+        );
+        $statement->execute(['profile_id' => $profileId]);
+
+        return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function countByProfile(int $profileId): int
+    {
+        $this->assertPositiveId($profileId);
+
+        $statement = $this->connection->prepare(
+            'SELECT COUNT(*) FROM perfil_permissoes WHERE perfil_id = :profile_id'
+        );
+        $statement->execute(['profile_id' => $profileId]);
+
+        return (int) $statement->fetchColumn();
+    }
+
     public function grant(int $profileId, int $permissionId): bool
     {
         $this->assertPositiveId($profileId);
@@ -78,8 +108,12 @@ final class ProfilePermissionRepository
             $this->assertPositiveId($permissionId);
         }
 
+        $ownsTransaction = !$this->connection->inTransaction();
+
         try {
+            if ($ownsTransaction) {
             $this->connection->beginTransaction();
+            }
 
             $delete = $this->connection->prepare(
                 'DELETE FROM perfil_permissoes WHERE perfil_id = :profile_id'
@@ -98,13 +132,44 @@ final class ProfilePermissionRepository
                 ]);
             }
 
-            $this->connection->commit();
+            if ($ownsTransaction) {
+                $this->connection->commit();
+            }
         } catch (Throwable $exception) {
-            if ($this->connection->inTransaction()) {
+            if ($ownsTransaction && $this->connection->inTransaction()) {
                 $this->connection->rollBack();
             }
 
             throw $exception;
+        }
+    }
+
+    /**
+     * @param int[] $permissionIds
+     */
+    public function insertIgnoreMany(int $profileId, array $permissionIds): void
+    {
+        $this->assertPositiveId($profileId);
+        $permissionIds = array_values(array_unique(array_map('intval', $permissionIds)));
+
+        if ($permissionIds === []) {
+            return;
+        }
+
+        foreach ($permissionIds as $permissionId) {
+            $this->assertPositiveId($permissionId);
+        }
+
+        $insert = $this->connection->prepare(
+            'INSERT IGNORE INTO perfil_permissoes (perfil_id, permissao_id)
+             VALUES (:profile_id, :permission_id)'
+        );
+
+        foreach ($permissionIds as $permissionId) {
+            $insert->execute([
+                'profile_id' => $profileId,
+                'permission_id' => $permissionId,
+            ]);
         }
     }
 
