@@ -1,4 +1,3 @@
-```php
 <?php
 
 declare(strict_types=1);
@@ -21,4 +20,3 @@ $requiredPermission = 'usuario.visualizar';
 $pageContent = __DIR__ . '/pages/usuarios.php';
 
 require __DIR__ . '/includes/shell.php';
-```
