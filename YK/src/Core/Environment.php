@@ -32,12 +32,18 @@ final class Environment
 
     public static function resolveFilePath(string $projectRoot): string
     {
-        $serverConfiguredPath = getenv('YK_ENV_PATH');
-        if (is_string($serverConfiguredPath) && trim($serverConfiguredPath) !== '') {
-            return trim($serverConfiguredPath);
+        $configuredPath = getenv('YK_ENV_PATH');
+        if (is_string($configuredPath) && trim($configuredPath) !== '') {
+            return trim($configuredPath);
         }
 
-        return rtrim($projectRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '.env';
+        return dirname($projectRoot)
+            . DIRECTORY_SEPARATOR
+            . 'configuracoes'
+            . DIRECTORY_SEPARATOR
+            . 'YK'
+            . DIRECTORY_SEPARATOR
+            . '.env';
     }
 
     public function load(): void
