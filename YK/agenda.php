@@ -1,13 +1,14 @@
 <?php
-$pageKey = 'agenda';
+declare(strict_types=1);
+
 $activePage = 'agenda';
 $pageTitle = 'Agenda';
-$pageSubtitle = 'Visualize atendimentos por data, horário e técnico';
+$pageSubtitle = 'Atendimentos e lembretes por data e horário';
 $primaryActionLabel = 'Novo Lembrete';
 $primaryActionIcon = 'bi-alarm';
 $primaryActionTarget = '#modal-lembrete';
 $primaryActionPermission = 'agenda.criar_lembrete';
 $requiredPermission = 'agenda.visualizar';
-$pageContent = __DIR__ . '/pages/operational.php';
+$pageContent = __DIR__ . '/pages/agenda.php';
 
 require __DIR__ . '/includes/shell.php';

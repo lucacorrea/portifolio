@@ -1,0 +1,22 @@
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/painel-semanal-action-common.php';
+os_require_post_request();
+[$application, $session] = os_action_context('painel_semanal.alterar_status');
+try {
+    $map = ['start_travel' => 'em_deslocamento', 'start_execution' => 'em_execucao', 'wait_part' => 'aguardando_peca', 'finalize' => 'finalizada'];
+    $operation = (string) ($_POST['operation'] ?? '');
+    if (!isset($map[$operation])) throw new InvalidArgumentException('Operação inválida.');
+    $map[$operation] === 'finalizada'
+        ? $application->serviceOrderManagement()->finalize(os_posted_positive_int('id'))
+        : $application->serviceOrderManagement()->changeStatus(os_posted_positive_int('id'), $map[$operation]);
+    $session->flash('success', 'Status atualizado.');
+} catch (InvalidArgumentException $exception) {
+    $session->flash('danger', $exception->getMessage());
+} catch (Throwable $exception) {
+    error_log('Weekly status failed: ' . $exception->getMessage());
+    $session->flash('danger', 'Não foi possível alterar status.');
+}
+painel_semanal_redirect($application);

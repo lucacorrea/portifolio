@@ -21,6 +21,8 @@ use App\CRM\Service\ClientManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\SafeRedirect;
 use App\Security\SessionManager;
+use App\Schedule\Repository\AgendaReminderRepository;
+use App\Schedule\Service\AgendaManagementService;
 use App\ServiceOrder\Repository\ServiceOrderRepository;
 use App\ServiceOrder\Service\ServiceOrderManagementService;
 use App\Sales\Repository\BudgetRepository;
@@ -53,6 +55,8 @@ final class Application
     private ?BudgetManagementService $budgetManagement = null;
 
     private ?ServiceOrderManagementService $serviceOrderManagement = null;
+
+    private ?AgendaManagementService $agendaManagement = null;
 
     private ?SafeRedirect $redirect = null;
 
@@ -259,11 +263,27 @@ final class Application
             $this->serviceOrderManagement = new ServiceOrderManagementService(
                 $connection,
                 new ServiceOrderRepository($connection),
-                new EmployeeRepository($connection)
+                new EmployeeRepository($connection),
+                new ClientRepository($connection),
+                new ServiceRepository($connection),
+                new ProductRepository($connection)
             );
         }
 
         return $this->serviceOrderManagement;
+    }
+
+    public function agendaManagement(): AgendaManagementService
+    {
+        if ($this->agendaManagement === null) {
+            $connection = $this->database->connection();
+
+            $this->agendaManagement = new AgendaManagementService(
+                new AgendaReminderRepository($connection)
+            );
+        }
+
+        return $this->agendaManagement;
     }
 
     public function redirect(): SafeRedirect
