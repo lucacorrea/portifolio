@@ -113,7 +113,7 @@ function print_items(array $items, string $type, string $title): void
             <div class="field"><span>Cliente</span><strong><?= h($budget->clientName()) ?></strong></div>
             <div class="field"><span>CPF/CNPJ</span><strong><?= h($budget->clientDocument() ?? '-') ?></strong></div>
             <div class="field"><span>Código do cliente</span><strong><?= h($budget->clientCode()) ?></strong></div>
-            <div class="field"><span>Responsável</span><strong><?= h($budget->responsibleName() ?? '-') ?></strong></div>
+            <div class="field"><span>Status comercial</span><strong><?= h($budget->displayStatus()) ?></strong></div>
         </section>
         <?php print_items($items, 'servico', 'Serviços'); ?>
         <?php print_items($items, 'produto', 'Produtos'); ?>
@@ -129,7 +129,7 @@ function print_items(array $items, string $type, string $title): void
         </section>
         <h2>Observações</h2>
         <p><?= nl2br(h($budget->notes() ?? 'Sem observações.')) ?></p>
-        <section class="signature"><div>Assinatura do cliente</div></section>
+        <section class="signature"><div>Assinatura comercial</div></section>
     </main>
 </body>
 </html>

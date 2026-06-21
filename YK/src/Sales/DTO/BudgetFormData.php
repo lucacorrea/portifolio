@@ -11,7 +11,6 @@ final class BudgetFormData
     /** @param BudgetItemData[] $items */
     public function __construct(
         private readonly int $clientId,
-        private readonly ?int $responsibleId,
         private readonly string $issueDate,
         private readonly string $validUntil,
         private readonly string $status,
@@ -25,7 +24,6 @@ final class BudgetFormData
     public static function fromArray(array $data): self
     {
         $clientId = self::positiveInt($data['client_id'] ?? $data['cliente_id'] ?? null, 'cliente');
-        $responsibleId = self::optionalPositiveInt($data['responsible_id'] ?? $data['responsavel_id'] ?? null, 'responsável');
         $issueDate = self::date((string) ($data['issue_date'] ?? $data['data_emissao'] ?? ''), 'data de emissão');
         $validUntil = self::date((string) ($data['valid_until'] ?? $data['validade'] ?? ''), 'validade');
 
@@ -49,7 +47,6 @@ final class BudgetFormData
 
         return new self(
             clientId: $clientId,
-            responsibleId: $responsibleId,
             issueDate: $issueDate,
             validUntil: $validUntil,
             status: $status,
@@ -61,7 +58,6 @@ final class BudgetFormData
     }
 
     public function clientId(): int { return $this->clientId; }
-    public function responsibleId(): ?int { return $this->responsibleId; }
     public function issueDate(): string { return $this->issueDate; }
     public function validUntil(): string { return $this->validUntil; }
     public function status(): string { return $this->status; }
@@ -108,12 +104,6 @@ final class BudgetFormData
         $int = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if (!is_int($int)) throw new InvalidArgumentException('Informe um ' . $field . ' válido.');
         return $int;
-    }
-
-    private static function optionalPositiveInt(mixed $value, string $field): ?int
-    {
-        if ($value === null || trim((string) $value) === '') return null;
-        return self::positiveInt($value, $field);
     }
 
     private static function date(string $value, string $field): string

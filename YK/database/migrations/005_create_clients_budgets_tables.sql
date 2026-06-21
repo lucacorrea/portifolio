@@ -30,7 +30,6 @@ CREATE TABLE IF NOT EXISTS orcamentos (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     numero VARCHAR(20) NULL,
     cliente_id INT UNSIGNED NOT NULL,
-    responsavel_id INT UNSIGNED NULL,
     data_emissao DATE NOT NULL,
     validade DATE NOT NULL,
     status ENUM('rascunho', 'enviado', 'aguardando_aprovacao', 'aprovado', 'recusado') NOT NULL DEFAULT 'rascunho',
@@ -48,12 +47,10 @@ CREATE TABLE IF NOT EXISTS orcamentos (
     atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_orcamentos_numero (numero),
     KEY idx_orcamentos_cliente (cliente_id),
-    KEY idx_orcamentos_responsavel (responsavel_id),
     KEY idx_orcamentos_emissao (data_emissao),
     KEY idx_orcamentos_validade (validade),
     KEY idx_orcamentos_status (status),
-    CONSTRAINT fk_orcamentos_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_orcamentos_responsavel FOREIGN KEY (responsavel_id) REFERENCES funcionarios(id) ON UPDATE CASCADE ON DELETE SET NULL
+    CONSTRAINT fk_orcamentos_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS orcamento_itens (

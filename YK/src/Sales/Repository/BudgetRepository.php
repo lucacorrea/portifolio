@@ -77,10 +77,10 @@ final class BudgetRepository
             $totals = $data->totals();
             $statement = $this->connection->prepare(
                 'INSERT INTO orcamentos
-                    (cliente_id, responsavel_id, data_emissao, validade, status, observacoes,
+                    (cliente_id, data_emissao, validade, status, observacoes,
                      subtotal_servicos, subtotal_produtos, subtotal_outros, desconto, acrescimo, total)
                  VALUES
-                    (:client_id, :responsible_id, :issue_date, :valid_until, :status, :notes,
+                    (:client_id, :issue_date, :valid_until, :status, :notes,
                      :services_subtotal, :products_subtotal, :others_subtotal, :discount, :increase, :total)'
             );
             $this->bindForm($statement, $data, $totals);
@@ -111,7 +111,6 @@ final class BudgetRepository
             $statement = $this->connection->prepare(
                 'UPDATE orcamentos
                     SET cliente_id = :client_id,
-                        responsavel_id = :responsible_id,
                         data_emissao = :issue_date,
                         validade = :valid_until,
                         status = :status,
@@ -173,16 +172,15 @@ final class BudgetRepository
         $params = [];
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
-            $where[] = '(o.numero LIKE :search_number OR c.codigo LIKE :search_client_code OR c.nome LIKE :search_client_name OR f.nome LIKE :search_employee_name)';
+            $where[] = '(o.numero LIKE :search_number OR c.codigo LIKE :search_client_code OR c.nome LIKE :search_client_name)';
             $like = '%' . $search . '%';
             $params += [
                 'search_number' => $like,
                 'search_client_code' => $like,
                 'search_client_name' => $like,
-                'search_employee_name' => $like,
             ];
         }
-        foreach (['client_id' => 'o.cliente_id', 'responsible_id' => 'o.responsavel_id'] as $key => $column) {
+        foreach (['client_id' => 'o.cliente_id'] as $key => $column) {
             $value = trim((string) ($filters[$key] ?? ''));
             if ($value !== '') {
                 $where[] = $column . ' = :' . $key;
@@ -211,18 +209,17 @@ final class BudgetRepository
     private function selectBudgets(array $where, array $params, string $orderBy): array
     {
         $sql = 'SELECT o.id, o.numero, o.cliente_id, c.codigo AS cliente_codigo, c.nome AS cliente_nome,
-                       c.documento AS cliente_documento, o.responsavel_id, f.nome AS responsavel_nome,
+                       c.documento AS cliente_documento,
                        o.data_emissao, o.validade, o.status, o.observacoes, o.motivo_recusa,
                        o.subtotal_servicos, o.subtotal_produtos, o.subtotal_outros,
                        o.desconto, o.acrescimo, o.total, o.aprovado_em, o.recusado_em,
                        o.criado_em, o.atualizado_em, COUNT(i.id) AS itens_total
                   FROM orcamentos o
                   JOIN clientes c ON c.id = o.cliente_id
-             LEFT JOIN funcionarios f ON f.id = o.responsavel_id
              LEFT JOIN orcamento_itens i ON i.orcamento_id = o.id';
         if ($where !== []) $sql .= ' WHERE ' . implode(' AND ', $where);
         $sql .= ' GROUP BY o.id, o.numero, o.cliente_id, c.codigo, c.nome, c.documento,
-                         o.responsavel_id, f.nome, o.data_emissao, o.validade, o.status,
+                         o.data_emissao, o.validade, o.status,
                          o.observacoes, o.motivo_recusa, o.subtotal_servicos, o.subtotal_produtos,
                          o.subtotal_outros, o.desconto, o.acrescimo, o.total, o.aprovado_em,
                          o.recusado_em, o.criado_em, o.atualizado_em
@@ -235,7 +232,6 @@ final class BudgetRepository
     private function bindForm(\PDOStatement $statement, BudgetFormData $data, array $totals): void
     {
         $statement->bindValue('client_id', $data->clientId(), PDO::PARAM_INT);
-        $statement->bindValue('responsible_id', $data->responsibleId(), $data->responsibleId() === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
         $statement->bindValue('issue_date', $data->issueDate());
         $statement->bindValue('valid_until', $data->validUntil());
         $statement->bindValue('status', $data->status());

@@ -11,7 +11,6 @@ use App\Sales\DTO\BudgetFormData;
 use App\Sales\Entity\Budget;
 use App\Sales\Entity\BudgetItem;
 use App\Sales\Repository\BudgetRepository;
-use App\Workforce\Repository\EmployeeRepository;
 use InvalidArgumentException;
 
 final class BudgetManagementService
@@ -19,7 +18,6 @@ final class BudgetManagementService
     public function __construct(
         private readonly BudgetRepository $budgets,
         private readonly ClientRepository $clients,
-        private readonly EmployeeRepository $employees,
         private readonly ProductRepository $products,
         private readonly ServiceRepository $services
     ) {
@@ -94,9 +92,6 @@ final class BudgetManagementService
         if ($client === null) throw new InvalidArgumentException('Cliente não encontrado.');
         if ($newBudget && $client->status() !== 'ativo') {
             throw new InvalidArgumentException('Não é possível criar orçamento para cliente inativo.');
-        }
-        if ($data->responsibleId() !== null && $this->employees->findById($data->responsibleId()) === null) {
-            throw new InvalidArgumentException('Responsável não encontrado.');
         }
         foreach ($data->items() as $item) {
             if ($item->type() === 'servico' && ($item->referenceId() === null || $this->services->findById($item->referenceId()) === null)) {

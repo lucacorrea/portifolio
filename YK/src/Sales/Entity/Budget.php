@@ -15,8 +15,6 @@ final class Budget
         private readonly string $clientCode,
         private readonly string $clientName,
         private readonly ?string $clientDocument,
-        private readonly ?int $responsibleId,
-        private readonly ?string $responsibleName,
         private readonly string $issueDate,
         private readonly string $validUntil,
         private readonly string $status,
@@ -48,8 +46,6 @@ final class Budget
             clientCode: (string) ($data['cliente_codigo'] ?? ''),
             clientName: (string) ($data['cliente_nome'] ?? ''),
             clientDocument: isset($data['cliente_documento']) ? (string) $data['cliente_documento'] : null,
-            responsibleId: isset($data['responsavel_id']) ? (int) $data['responsavel_id'] : null,
-            responsibleName: isset($data['responsavel_nome']) ? (string) $data['responsavel_nome'] : null,
             issueDate: (string) ($data['data_emissao'] ?? ''),
             validUntil: (string) ($data['validade'] ?? ''),
             status: (string) ($data['status'] ?? 'rascunho'),
@@ -76,8 +72,6 @@ final class Budget
     public function clientCode(): string { return $this->clientCode; }
     public function clientName(): string { return $this->clientName; }
     public function clientDocument(): ?string { return $this->clientDocument; }
-    public function responsibleId(): ?int { return $this->responsibleId; }
-    public function responsibleName(): ?string { return $this->responsibleName; }
     public function issueDate(): string { return $this->issueDate; }
     public function validUntil(): string { return $this->validUntil; }
     public function status(): string { return $this->status; }

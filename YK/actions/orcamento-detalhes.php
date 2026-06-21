@@ -27,8 +27,6 @@ try {
             'client_code' => $budget->clientCode(),
             'client_name' => $budget->clientName(),
             'client_document' => $budget->clientDocument(),
-            'responsible_id' => $budget->responsibleId(),
-            'responsible_name' => $budget->responsibleName(),
             'issue_date' => $budget->issueDate(),
             'valid_until' => $budget->validUntil(),
             'status' => $budget->status(),

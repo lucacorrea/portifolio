@@ -21,6 +21,8 @@ use App\CRM\Service\ClientManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\SafeRedirect;
 use App\Security\SessionManager;
+use App\ServiceOrder\Repository\ServiceOrderRepository;
+use App\ServiceOrder\Service\ServiceOrderManagementService;
 use App\Sales\Repository\BudgetRepository;
 use App\Sales\Service\BudgetManagementService;
 use App\Workforce\Repository\EmployeeRepository;
@@ -49,6 +51,8 @@ final class Application
     private ?ClientManagementService $clientManagement = null;
 
     private ?BudgetManagementService $budgetManagement = null;
+
+    private ?ServiceOrderManagementService $serviceOrderManagement = null;
 
     private ?SafeRedirect $redirect = null;
 
@@ -239,13 +243,27 @@ final class Application
             $this->budgetManagement = new BudgetManagementService(
                 new BudgetRepository($connection),
                 new ClientRepository($connection),
-                new EmployeeRepository($connection),
                 new ProductRepository($connection),
                 new ServiceRepository($connection)
             );
         }
 
         return $this->budgetManagement;
+    }
+
+    public function serviceOrderManagement(): ServiceOrderManagementService
+    {
+        if ($this->serviceOrderManagement === null) {
+            $connection = $this->database->connection();
+
+            $this->serviceOrderManagement = new ServiceOrderManagementService(
+                $connection,
+                new ServiceOrderRepository($connection),
+                new EmployeeRepository($connection)
+            );
+        }
+
+        return $this->serviceOrderManagement;
     }
 
     public function redirect(): SafeRedirect
