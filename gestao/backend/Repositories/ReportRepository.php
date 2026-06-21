@@ -200,7 +200,8 @@ final class ReportRepository
                 v.criado_em,
                 COALESCE(c.nome, 'Venda balcão') AS customer_name,
                 COALESCE(u.nome, CONCAT('Usuário #', v.usuario_id)) AS operator_name,
-                COALESCE(p.metodo, '') AS payment_method
+                COALESCE(p.metodo, '') AS payment_method,
+                p.parcelas AS payment_installments
             FROM vendas v
             LEFT JOIN clientes c
                    ON c.id = v.cliente_id

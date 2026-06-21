@@ -287,6 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'items' => $cart,
                 'cliente_id' => $_POST['cliente_id'] ?? 0,
                 'payment' => $_POST['payment'] ?? 'pix',
+                'creditInstallments' => $_POST['credit_installments'] ?? null,
                 'discount' => $_POST['discount'] ?? 0,
                 'received' => $_POST['received'] ?? null,
                 'dueDate' => $_POST['due_date'] ?? '',
@@ -369,6 +370,21 @@ $enabledPayments = array_filter(
     static fn (string $label, string $method): bool => saleEnabled($settings, $paymentKeys[$method], true),
     ARRAY_FILTER_USE_BOTH
 );
+$firstEnabledPayment = (string)(array_key_first($enabledPayments) ?? '');
+$postedPayment = (string)($_POST['payment'] ?? '');
+$selectedPaymentMethod = isset($enabledPayments[$postedPayment]) ? $postedPayment : $firstEnabledPayment;
+$selectedPaymentLabel = (string)($enabledPayments[$selectedPaymentMethod] ?? 'Não habilitado');
+$postedCreditInstallments = '';
+$postedCreditInstallmentsRaw = trim((string)($_POST['credit_installments'] ?? ''));
+if ($selectedPaymentMethod === 'credito' && preg_match('/^\d+$/', $postedCreditInstallmentsRaw)) {
+    $installments = filter_var($postedCreditInstallmentsRaw, FILTER_VALIDATE_INT, [
+        'options' => [
+            'min_range' => 1,
+            'max_range' => 12,
+        ],
+    ]);
+    $postedCreditInstallments = $installments === false ? '' : (string)$installments;
+}
 
 $flash = $_SESSION['sale_flash'] ?? null;
 unset($_SESSION['sale_flash']);
@@ -452,6 +468,8 @@ require_once __DIR__ . '/layout/header.php';
   .sale-payment-card input { width: 18px; height: 18px; }
   .sale-payment-icon { width: 40px; height: 34px; display: grid; place-items: center; border-radius: 12px; color: var(--blue); background: var(--blue-soft); font-size: 11px; font-weight: 950; }
   .sale-payment-card:has(input:checked) { border-color: var(--blue-line); background: var(--blue-soft); }
+  .sale-credit-installments-label { display: block; margin-top: 2px; color: var(--blue); font-size: 11px; font-weight: 900; }
+  .sale-credit-installments-label[hidden] { display: none !important; }
   .sale-selected-client { min-height: 88px; padding: 12px; border: 1px dashed var(--blue-line); border-radius: 14px; background: #F8FBFF; }
   .sale-selected-client strong { display: block; font-size: 14px; }
   .sale-selected-client p { margin: 5px 0 0; color: var(--muted); font-size: 12px; font-weight: 700; }
@@ -474,6 +492,19 @@ require_once __DIR__ . '/layout/header.php';
   .sale-step-warning { display: none; margin-top: 10px; }
   .sale-step-warning.visible { display: block; }
   .sale-submit-btn[disabled], .secondary-btn[disabled] { opacity: .55; cursor: not-allowed; }
+  body.modal-open { overflow: hidden; }
+  .sale-installments-backdrop { position: fixed; inset: 0; z-index: 120; display: none; place-items: center; padding: 16px; background: rgba(18,32,54,.64); backdrop-filter: blur(5px); }
+  .sale-installments-backdrop.open { display: grid; }
+  .sale-installments-modal { width: min(100%, 430px); padding: 18px; background: #fff; border-radius: 20px; box-shadow: 0 24px 64px rgba(18,32,54,.28); }
+  .sale-installments-header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .sale-installments-modal h2 { margin: 0; font-size: 20px; letter-spacing: 0; }
+  .sale-installments-description { margin: 10px 0 14px; color: var(--muted); font-size: 12px; font-weight: 750; line-height: 1.4; }
+  .sale-installments-modal input { min-height: 54px; font-size: 18px; text-align: center; }
+  .sale-installments-preview { margin-top: 12px; padding: 12px; border: 1px solid var(--blue-line); border-radius: 14px; background: var(--blue-soft); }
+  .sale-installments-preview span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; }
+  .sale-installments-preview strong { display: block; margin-top: 4px; color: var(--ink); font-size: 16px; }
+  .sale-installments-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .sale-installments-actions button { width: 100%; min-height: 46px; }
   @media (max-width: 819px) {
     .sale-layout { display: block; padding-bottom: 118px; }
     .sale-summary-sticky { display: none !important; }
@@ -498,6 +529,11 @@ require_once __DIR__ . '/layout/header.php';
     .sale-panel-actions { justify-content: stretch; }
     .sale-panel-actions button { flex: 1; }
     .sale-cart-summary-actions { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 420px) {
+    .sale-installments-backdrop { align-items: end; padding: 10px; }
+    .sale-installments-modal { border-radius: 20px 20px 14px 14px; }
+    .sale-installments-actions { grid-template-columns: 1fr; }
   }
   @media (min-width: 820px) {
     .sale-layout { grid-template-columns: minmax(0, 1fr) minmax(340px, 390px); align-items: start; padding-bottom: 0; }
@@ -705,6 +741,7 @@ require_once __DIR__ . '/layout/header.php';
       <form id="saleFinishForm" method="post">
         <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
         <input type="hidden" name="action" value="finish">
+        <input type="hidden" id="saleCreditInstallments" name="credit_installments" value="<?= e($postedCreditInstallments) ?>">
 
         <section class="sale-panel" data-sale-panel="client">
           <div class="sale-panel-head">
@@ -754,9 +791,14 @@ require_once __DIR__ . '/layout/header.php';
               <div class="sale-payment-grid">
                 <?php foreach ($enabledPayments as $method => $label): ?>
                   <label class="sale-payment-card">
-                    <input type="radio" name="payment" value="<?= e($method) ?>" data-payment-label="<?= e($label) ?>" <?= $method === array_key_first($enabledPayments) ? 'checked' : '' ?>>
+                    <input type="radio" name="payment" value="<?= e($method) ?>" data-payment-label="<?= e($label) ?>" <?= $method === $selectedPaymentMethod ? 'checked' : '' ?>>
                     <span class="sale-payment-icon"><?= e(salePaymentIcon($method)) ?></span>
-                    <span><?= e($label) ?></span>
+                    <span>
+                      <?= e($label) ?>
+                      <?php if ($method === 'credito'): ?>
+                        <span id="saleCreditInstallmentsLabel" class="sale-credit-installments-label" hidden></span>
+                      <?php endif; ?>
+                    </span>
                   </label>
                 <?php endforeach; ?>
               </div>
@@ -842,7 +884,8 @@ require_once __DIR__ . '/layout/header.php';
               </div>
             <?php endforeach; ?>
             <div class="sale-review-row"><span>Cliente</span><strong id="saleReviewClient">Venda balcão</strong></div>
-            <div class="sale-review-row"><span>Pagamento</span><strong id="saleReviewPayment"><?= e((string)(reset($enabledPayments) ?: 'Não habilitado')) ?></strong></div>
+            <div class="sale-review-row"><span>Pagamento</span><strong id="saleReviewPayment"><?= e($selectedPaymentLabel) ?></strong></div>
+            <div id="saleReviewInstallmentsRow" class="sale-review-row" hidden><span>Parcelamento</span><strong id="saleReviewInstallments"></strong></div>
             <div class="sale-review-row"><span>Desconto</span><strong id="saleReviewDiscount">R$ 0,00</strong></div>
             <div class="sale-review-row" data-review-field="change"><span>Troco</span><strong id="saleReviewChange">R$ 0,00</strong></div>
             <div class="sale-review-row" data-review-field="due-date"><span>Vencimento</span><strong id="saleReviewDueDate">Não informado</strong></div>
@@ -873,7 +916,7 @@ require_once __DIR__ . '/layout/header.php';
         <div class="sale-summary-lines">
           <div><span>Subtotal</span><strong><?= e(saleMoney($cartSubtotal)) ?></strong></div>
           <div><span>Desconto</span><strong id="saleSummaryDiscount">R$ 0,00</strong></div>
-          <div><span>Pagamento</span><strong id="saleSummaryPayment"><?= e((string)(reset($enabledPayments) ?: 'Não habilitado')) ?></strong></div>
+          <div><span>Pagamento</span><strong id="saleSummaryPayment"><?= e($selectedPaymentLabel) ?></strong></div>
         </div>
         <div class="sale-summary-total">
           <span>Total da venda</span>
@@ -883,6 +926,31 @@ require_once __DIR__ . '/layout/header.php';
     </aside>
   </div>
 </section>
+
+<div id="creditInstallmentsModal" class="sale-installments-backdrop" aria-hidden="true">
+  <section id="creditInstallmentsDialog" class="sale-installments-modal" role="dialog" aria-modal="true" aria-labelledby="creditInstallmentsTitle">
+    <div class="sale-installments-header">
+      <div>
+        <p class="micro-label dark-text">Cartão de crédito</p>
+        <h2 id="creditInstallmentsTitle">Informe as parcelas</h2>
+      </div>
+    </div>
+    <p class="sale-installments-description">Digite 1 para crédito à vista ou de 2 a 12 para parcelado.</p>
+    <div class="field">
+      <label for="creditInstallmentsInput">Número de parcelas</label>
+      <input id="creditInstallmentsInput" type="number" min="1" max="12" step="1" inputmode="numeric" autocomplete="off" placeholder="Ex.: 3">
+    </div>
+    <div id="creditInstallmentsError" class="sale-alert danger" role="alert" hidden></div>
+    <div class="sale-installments-preview">
+      <span>Forma selecionada</span>
+      <strong id="creditInstallmentsPreview">Informe a quantidade</strong>
+    </div>
+    <div class="sale-installments-actions">
+      <button id="creditInstallmentsCancel" type="button" class="secondary-btn">Cancelar</button>
+      <button id="creditInstallmentsConfirm" type="button" class="primary-btn">Confirmar parcelas</button>
+    </div>
+  </section>
+</div>
 
 <script>
 (() => {
@@ -908,8 +976,21 @@ require_once __DIR__ . '/layout/header.php';
   const stepMessage = document.getElementById('saleStepMessage');
   const paymentValidation = document.getElementById('salePaymentValidation');
   const reviewButton = document.getElementById('saleReviewButton');
+  const creditInstallmentsHidden = document.getElementById('saleCreditInstallments');
+  const creditInstallmentsModal = document.getElementById('creditInstallmentsModal');
+  const creditInstallmentsInput = document.getElementById('creditInstallmentsInput');
+  const creditInstallmentsConfirm = document.getElementById('creditInstallmentsConfirm');
+  const creditInstallmentsCancel = document.getElementById('creditInstallmentsCancel');
+  const creditInstallmentsError = document.getElementById('creditInstallmentsError');
+  const creditInstallmentsPreview = document.getElementById('creditInstallmentsPreview');
+  const creditInstallmentsLabel = document.getElementById('saleCreditInstallmentsLabel');
+  const saleReviewInstallmentsRow = document.getElementById('saleReviewInstallmentsRow');
+  const saleReviewInstallments = document.getElementById('saleReviewInstallments');
   const allowedSteps = ['products', 'client', 'payment', 'review'];
   let currentStep = 'products';
+  let previousPaymentMethod = '';
+  let confirmedCreditInstallments = 0;
+  let installmentsModalOpen = false;
   let cameraStream = null;
   let cameraLoop = 0;
   let zxingControls = null;
@@ -921,6 +1002,134 @@ require_once __DIR__ . '/layout/header.php';
 
   function paymentMethod() {
     return document.querySelector('input[name="payment"]:checked')?.value || '';
+  }
+
+  function setPaymentMethod(method) {
+    document.querySelectorAll('input[name="payment"]').forEach((input) => {
+      input.checked = input.value === method;
+    });
+  }
+
+  function parseInstallmentsValue(value) {
+    const raw = String(value || '').trim();
+    if (!/^\d+$/.test(raw)) return 0;
+    const installments = Number.parseInt(raw, 10);
+
+    return Number.isInteger(installments) && installments >= 1 && installments <= 12 ? installments : 0;
+  }
+
+  function creditInstallmentsText(installments, short = false) {
+    if (installments === 1) return short ? 'à vista' : 'Crédito à vista';
+
+    return short ? `${installments}x` : `Crédito em ${installments}x`;
+  }
+
+  function reviewInstallmentsText(installments) {
+    if (installments === 1) return 'À vista';
+
+    return `${installments} parcelas`;
+  }
+
+  function resetCreditInstallments() {
+    confirmedCreditInstallments = 0;
+    if (creditInstallmentsHidden) creditInstallmentsHidden.value = '';
+    if (creditInstallmentsInput) creditInstallmentsInput.value = '';
+    updateCreditInstallmentsDisplay();
+  }
+
+  function selectedPaymentLabel() {
+    const selected = document.querySelector('input[name="payment"]:checked');
+    const label = selected?.dataset.paymentLabel || 'Não informado';
+
+    if (selected?.value === 'credito' && confirmedCreditInstallments > 0) {
+      return `${label} · ${creditInstallmentsText(confirmedCreditInstallments, true)}`;
+    }
+
+    return label;
+  }
+
+  function updateCreditInstallmentsDisplay() {
+    const show = paymentMethod() === 'credito' && confirmedCreditInstallments > 0;
+
+    if (creditInstallmentsLabel) {
+      creditInstallmentsLabel.hidden = !show;
+      creditInstallmentsLabel.textContent = show ? creditInstallmentsText(confirmedCreditInstallments) : '';
+    }
+
+    if (saleReviewInstallmentsRow) {
+      saleReviewInstallmentsRow.hidden = !show;
+    }
+
+    if (saleReviewInstallments) {
+      saleReviewInstallments.textContent = show ? reviewInstallmentsText(confirmedCreditInstallments) : '';
+    }
+  }
+
+  function setInstallmentsError(message) {
+    if (!creditInstallmentsError) return;
+    creditInstallmentsError.hidden = message === '';
+    creditInstallmentsError.textContent = message;
+  }
+
+  function updateInstallmentsPreview() {
+    const installments = parseInstallmentsValue(creditInstallmentsInput?.value || '');
+    if (!creditInstallmentsPreview) return;
+
+    creditInstallmentsPreview.textContent = installments > 0
+      ? creditInstallmentsText(installments)
+      : 'Informe a quantidade';
+  }
+
+  function openCreditInstallmentsModal() {
+    if (!creditInstallmentsModal || !creditInstallmentsInput) return;
+    installmentsModalOpen = true;
+    setInstallmentsError('');
+    creditInstallmentsInput.value = confirmedCreditInstallments > 0 ? String(confirmedCreditInstallments) : '';
+    updateInstallmentsPreview();
+    creditInstallmentsModal.classList.add('open');
+    creditInstallmentsModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    setTimeout(() => {
+      creditInstallmentsInput.focus();
+      creditInstallmentsInput.select();
+    }, 0);
+  }
+
+  function closeCreditInstallmentsModal(restorePreviousPayment = false) {
+    if (!creditInstallmentsModal) return;
+    installmentsModalOpen = false;
+    creditInstallmentsModal.classList.remove('open');
+    creditInstallmentsModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+    setInstallmentsError('');
+
+    if (restorePreviousPayment) {
+      resetCreditInstallments();
+      setPaymentMethod(previousPaymentMethod || '');
+    }
+
+    document.querySelector('input[name="payment"][value="credito"]')?.closest('.sale-payment-card')?.focus?.({ preventScroll: true });
+    updatePaymentVisibility();
+    updateTotals();
+  }
+
+  function confirmCreditInstallments() {
+    const installments = parseInstallmentsValue(creditInstallmentsInput?.value || '');
+
+    if (installments < 1) {
+      setInstallmentsError('Informe uma quantidade de parcelas entre 1 e 12.');
+      creditInstallmentsInput?.focus();
+      return false;
+    }
+
+    confirmedCreditInstallments = installments;
+    if (creditInstallmentsHidden) creditInstallmentsHidden.value = String(installments);
+    previousPaymentMethod = 'credito';
+    closeCreditInstallmentsModal(false);
+    updateCreditInstallmentsDisplay();
+    updateTotals();
+
+    return true;
   }
 
   function mixedInputs() {
@@ -944,6 +1153,7 @@ require_once __DIR__ . '/layout/header.php';
       received,
       change: Math.max(0, received - total),
       payment: paymentMethod(),
+      creditInstallments: parseInstallmentsValue(creditInstallmentsHidden?.value || ''),
       clientId: Number(document.getElementById('saleClient')?.value || 0),
       mixedTotal: mixedTotalValue(),
       dueDate: document.getElementById('saleDueDate')?.value || '',
@@ -1033,6 +1243,10 @@ require_once __DIR__ . '/layout/header.php';
       return 'Para vender fiado, selecione um cliente.';
     }
 
+    if (state.payment === 'credito' && state.creditInstallments < 1) {
+      return 'Informe e confirme a quantidade de parcelas do cartão de crédito.';
+    }
+
     if (!validateMixedPayment()) {
       return 'A soma do pagamento misto precisa bater com o total final.';
     }
@@ -1108,6 +1322,9 @@ require_once __DIR__ . '/layout/header.php';
       if (target === 'review' && cartItems > 0) {
         showStep('payment');
         sessionStorage.setItem('saleCurrentStep', 'payment');
+        if (paymentMethod() === 'credito' && parseInstallmentsValue(creditInstallmentsHidden?.value || '') < 1) {
+          openCreditInstallmentsModal();
+        }
       }
       return;
     }
@@ -1115,11 +1332,6 @@ require_once __DIR__ . '/layout/header.php';
     hideStepMessage();
     sessionStorage.setItem('saleCurrentStep', target);
     showStep(target);
-  }
-
-  function selectedPaymentLabel() {
-    const selected = document.querySelector('input[name="payment"]:checked');
-    return selected?.dataset.paymentLabel || 'Não informado';
   }
 
   function formatDate(value) {
@@ -1205,6 +1417,7 @@ require_once __DIR__ . '/layout/header.php';
     document.getElementById('saleMixedDifference')?.replaceChildren(document.createTextNode(money.format(Math.abs(mixedDifference))));
     document.getElementById('saleSummaryPayment')?.replaceChildren(document.createTextNode(selectedPaymentLabel()));
     document.getElementById('saleReviewPayment')?.replaceChildren(document.createTextNode(selectedPaymentLabel()));
+    updateCreditInstallmentsDisplay();
     updateReviewDetails(state);
     validatePaymentStep();
   }
@@ -1361,6 +1574,13 @@ require_once __DIR__ . '/layout/header.php';
       updateTotals();
     }
     if (event.target.matches('input[name="payment"]')) {
+      const selected = event.target.value;
+      if (selected === 'credito') {
+        openCreditInstallmentsModal();
+      } else {
+        previousPaymentMethod = selected;
+        resetCreditInstallments();
+      }
       updatePaymentVisibility();
       updateTotals();
     }
@@ -1378,9 +1598,31 @@ require_once __DIR__ . '/layout/header.php';
       event.preventDefault();
       showStepMessage(blockedStepMessage('review'));
       showStep(canEnterStep('payment') ? 'payment' : 'products');
+      if (paymentMethod() === 'credito' && parseInstallmentsValue(creditInstallmentsHidden?.value || '') < 1) {
+        openCreditInstallmentsModal();
+      }
       return;
     }
     sessionStorage.removeItem('saleCurrentStep');
+  });
+  creditInstallmentsConfirm?.addEventListener('click', confirmCreditInstallments);
+  creditInstallmentsCancel?.addEventListener('click', () => closeCreditInstallmentsModal(true));
+  creditInstallmentsInput?.addEventListener('input', () => {
+    setInstallmentsError('');
+    updateInstallmentsPreview();
+  });
+  creditInstallmentsInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      confirmCreditInstallments();
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeCreditInstallmentsModal(true);
+    }
+  });
+  creditInstallmentsModal?.addEventListener('click', (event) => {
+    if (event.target === creditInstallmentsModal) closeCreditInstallmentsModal(true);
   });
   cameraButton?.addEventListener('click', openCamera);
   cameraCancel?.addEventListener('click', stopCamera);
@@ -1388,12 +1630,25 @@ require_once __DIR__ . '/layout/header.php';
     if (event.target === cameraPanel) stopCamera();
   });
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && installmentsModalOpen) {
+      event.preventDefault();
+      closeCreditInstallmentsModal(true);
+      return;
+    }
     if (event.key === 'Escape' && cameraPanel?.classList.contains('open')) {
       stopCamera();
     }
   });
 
   bindSubmitStepMemory();
+  confirmedCreditInstallments = paymentMethod() === 'credito'
+    ? parseInstallmentsValue(creditInstallmentsHidden?.value || '')
+    : 0;
+  if (paymentMethod() !== 'credito') {
+    resetCreditInstallments();
+  }
+  previousPaymentMethod = paymentMethod() === 'credito' ? '' : paymentMethod();
+  updateCreditInstallmentsDisplay();
   updateClient();
   updatePaymentVisibility();
   updateTotals();

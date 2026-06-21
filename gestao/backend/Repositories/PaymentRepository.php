@@ -24,12 +24,13 @@ final class PaymentRepository
     public function create(int $saleId, array $data): int
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO pagamentos (venda_id, metodo, valor, valor_recebido, troco, status)
-             VALUES (:venda_id, :metodo, :valor, :valor_recebido, :troco, :status)'
+            'INSERT INTO pagamentos (venda_id, metodo, parcelas, valor, valor_recebido, troco, status)
+             VALUES (:venda_id, :metodo, :parcelas, :valor, :valor_recebido, :troco, :status)'
         );
         $stmt->execute([
             ':venda_id' => $saleId,
             ':metodo' => $data['metodo'],
+            ':parcelas' => $data['parcelas'] ?? null,
             ':valor' => $data['valor'],
             ':valor_recebido' => $data['valor_recebido'] ?? null,
             ':troco' => $data['troco'] ?? null,
@@ -42,7 +43,7 @@ final class PaymentRepository
     public function getBySale(int $saleId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, metodo, valor, valor_recebido, troco, status, criado_em
+            'SELECT id, metodo, parcelas, valor, valor_recebido, troco, status, criado_em
              FROM pagamentos
              WHERE venda_id = :venda_id
              ORDER BY id ASC'

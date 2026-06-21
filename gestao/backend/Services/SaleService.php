@@ -85,6 +85,10 @@ final class SaleService
 
         $paymentMethod = $this->mapPaymentMethod((string)($payload['payment'] ?? $payload['metodo'] ?? 'pix'));
         $this->assertPaymentEnabled($paymentMethod, $settings);
+        $creditInstallments = $this->normalizeCreditInstallments(
+            $payload['creditInstallments'] ?? $payload['credit_installments'] ?? $payload['parcelas'] ?? null,
+            $paymentMethod
+        );
 
         $discount = $this->moneyValue($payload['discount'] ?? $payload['desconto'] ?? 0, 'Desconto');
         $addition = $this->moneyValue($payload['addition'] ?? $payload['acrescimo'] ?? 0, 'Acréscimo');
@@ -203,6 +207,7 @@ final class SaleService
 
             $this->payments->create($saleId, [
                 'metodo' => $paymentMethod,
+                'parcelas' => $creditInstallments,
                 'valor' => $total,
                 'valor_recebido' => $received,
                 'troco' => $change,
@@ -363,6 +368,37 @@ final class SaleService
         }
 
         return $payments;
+    }
+
+    private function normalizeCreditInstallments(mixed $value, string $paymentMethod): ?int
+    {
+        if ($paymentMethod !== 'credito') {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $value = trim($value);
+            if ($value === '' || !preg_match('/^\d+$/', $value)) {
+                throw new InvalidArgumentException('Informe uma quantidade de parcelas entre 1 e 12.');
+            }
+        }
+
+        $installments = filter_var(
+            $value,
+            FILTER_VALIDATE_INT,
+            [
+                'options' => [
+                    'min_range' => 1,
+                    'max_range' => 12,
+                ],
+            ]
+        );
+
+        if ($installments === false) {
+            throw new InvalidArgumentException('Informe uma quantidade de parcelas entre 1 e 12.');
+        }
+
+        return (int)$installments;
     }
 
     private function settingsWithDefaults(int $empresaId): array

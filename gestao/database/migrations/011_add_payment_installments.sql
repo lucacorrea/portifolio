@@ -1,0 +1,4 @@
+SET NAMES utf8mb4;
+
+ALTER TABLE pagamentos
+ADD COLUMN parcelas SMALLINT UNSIGNED NULL AFTER metodo;

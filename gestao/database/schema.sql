@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS pagamentos (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     venda_id BIGINT UNSIGNED NOT NULL,
     metodo ENUM('pix','credito','debito','dinheiro','conta_cliente','misto') NOT NULL,
+    parcelas SMALLINT UNSIGNED NULL,
     valor DECIMAL(12,2) NOT NULL,
     valor_recebido DECIMAL(12,2) NULL,
     troco DECIMAL(12,2) NULL,

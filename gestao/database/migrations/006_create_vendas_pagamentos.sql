@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS pagamentos (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     venda_id BIGINT UNSIGNED NOT NULL,
     metodo ENUM('pix','credito','debito','dinheiro','conta_cliente','misto') NOT NULL,
+    parcelas SMALLINT UNSIGNED NULL,
     valor DECIMAL(12,2) NOT NULL,
     valor_recebido DECIMAL(12,2) NULL,
     troco DECIMAL(12,2) NULL,
@@ -57,5 +58,4 @@ CREATE TABLE IF NOT EXISTS pagamentos (
     KEY idx_pagamentos_venda (venda_id),
     CONSTRAINT fk_pagamentos_venda FOREIGN KEY (venda_id) REFERENCES vendas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 

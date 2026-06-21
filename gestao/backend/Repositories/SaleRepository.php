@@ -148,6 +148,14 @@ final class SaleRepository
                     LIMIT 1
                 ), '') AS forma_pagamento,
 
+                (
+                    SELECT p1.parcelas
+                    FROM pagamentos p1
+                    WHERE p1.venda_id = v.id
+                    ORDER BY p1.id ASC
+                    LIMIT 1
+                ) AS parcelas,
+
                 COALESCE((
                     SELECT SUM(p2.valor)
                     FROM pagamentos p2
@@ -241,6 +249,7 @@ final class SaleRepository
                 v.criado_em,
                 v.atualizado_em,
                 COALESCE(p.metodo, \'\') AS forma_pagamento,
+                p.parcelas AS parcelas,
                 COALESCE(p.valor_recebido, 0) AS valor_recebido,
                 COALESCE(p.troco, 0) AS troco,
                 COALESCE(p.valor, 0) AS valor_pago,
@@ -541,6 +550,7 @@ final class SaleRepository
                 COALESCE(c.nome, \'Venda balcão\') AS customer,
                 COALESCE(c.telefone, \'\') AS customerPhone,
                 COALESCE(p.metodo, \'\') AS payment,
+                p.parcelas AS paymentInstallments,
                 COALESCE(p.valor, 0) AS paid,
                 COALESCE(p.valor_recebido, 0) AS received,
                 COALESCE(p.troco, 0) AS changeValue,
@@ -621,7 +631,8 @@ final class SaleRepository
             'seller' => $sale['seller'],
             'customer' => $sale['customer'],
             'customerPhone' => $sale['customerPhone'],
-            'payment' => $this->formatPayment((string)$sale['payment']),
+            'payment' => $this->formatPaymentWithInstallments((string)$sale['payment'], $sale['paymentInstallments'] ?? null),
+            'paymentInstallments' => $this->installmentsValue($sale['paymentInstallments'] ?? null),
             'status' => $this->formatStatus((string)$sale['status']),
             'subtotal' => (float)$sale['subtotal'],
             'discount' => (float)$sale['desconto'],
@@ -670,7 +681,8 @@ final class SaleRepository
             'operador_nome' => (string)$sale['operador_nome'],
             'operador_email' => (string)$sale['operador_email'],
             'forma_pagamento' => $paymentMethod,
-            'forma_pagamento_label' => $this->formatPayment($paymentMethod),
+            'parcelas' => $this->installmentsValue($sale['parcelas'] ?? null),
+            'forma_pagamento_label' => $this->formatPaymentWithInstallments($paymentMethod, $sale['parcelas'] ?? null),
             'valor_pago' => (float)$sale['valor_pago'],
             'valor_recebido' => (float)$sale['valor_recebido'],
             'troco' => (float)$sale['troco'],
@@ -693,6 +705,30 @@ final class SaleRepository
             'outro' => 'Outro',
             '' => 'Não informado',
         ][$payment] ?? ucfirst(str_replace('_', ' ', $payment));
+    }
+
+    private function formatPaymentWithInstallments(string $payment, mixed $installments): string
+    {
+        $label = $this->formatPayment($payment);
+        $installments = $this->installmentsValue($installments);
+
+        if (!in_array($payment, ['credito', 'cartao_credito'], true) || $installments === null) {
+            return $label;
+        }
+
+        return $installments === 1 ? $label . ' - à vista' : $label . ' - ' . $installments . 'x';
+    }
+
+    private function installmentsValue(mixed $value): ?int
+    {
+        $installments = filter_var($value, FILTER_VALIDATE_INT, [
+            'options' => [
+                'min_range' => 1,
+                'max_range' => 12,
+            ],
+        ]);
+
+        return $installments === false ? null : (int)$installments;
     }
 
     private function formatStatus(string $status): string
