@@ -7,6 +7,7 @@ require_once __DIR__ . '/../backend/bootstrap.php';
 use App\Repositories\SettingsRepository;
 use App\Security\Auth;
 use App\Security\Csrf;
+use App\Services\ExternalProductImageService;
 use App\Services\ProductService;
 
 Auth::requireLogin();
@@ -65,6 +66,23 @@ function productFormImageUrl(mixed $image): string
     }
 
     return '../assets/img/prod-placeholder.svg';
+}
+
+function productExternalImagePreviewUrl(mixed $url): string
+{
+    $url = trim((string)$url);
+    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+
+    if (
+        $url !== ''
+        && filter_var($url, FILTER_VALIDATE_URL) !== false
+        && str_starts_with($url, 'https://')
+        && ($host === 'images.openfoodfacts.org' || $host === 'world.openfoodfacts.org' || str_ends_with($host, '.openfoodfacts.org'))
+    ) {
+        return $url;
+    }
+
+    return '';
 }
 
 function storeProductImage(int $empresaId, string $currentImage): array
@@ -140,12 +158,36 @@ function removePreviousProductImage(string $image, string $newImage): void
 
 function productFormData(array $source, array $fallback = []): array
 {
-    $fields = ['id', 'name', 'sku', 'barcode', 'category', 'cost', 'price', 'stock', 'minStock', 'lot', 'expiry', 'image'];
+    $fields = [
+        'id',
+        'name',
+        'sku',
+        'barcode',
+        'category',
+        'description',
+        'brand',
+        'unit',
+        'packageQuantity',
+        'ncm',
+        'cest',
+        'manufacturer',
+        'cost',
+        'price',
+        'stock',
+        'minStock',
+        'lot',
+        'expiry',
+        'image',
+        'externalImageUrl',
+        'source',
+    ];
     $data = [];
 
     foreach ($fields as $field) {
         $data[$field] = $source[$field] ?? $fallback[$field] ?? '';
     }
+
+    $data['source'] = in_array((string)$data['source'], ['manual', 'open_food_facts', 'cosmos'], true) ? $data['source'] : 'manual';
 
     return $data;
 }
@@ -227,6 +269,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $currentImage = (string)($existingProduct['image'] ?? '');
         $formData['image'] = $currentImage;
         [$image, $uploadedAbsolutePath] = storeProductImage($empresaId, $currentImage);
+        $externalImageUrl = (string)($_POST['externalImageUrl'] ?? '');
+
+        if ($uploadedAbsolutePath === null && trim($externalImageUrl) !== '') {
+            try {
+                $downloaded = (new ExternalProductImageService())->download($empresaId, $externalImageUrl);
+                if (is_array($downloaded)) {
+                    $image = (string)$downloaded['relativePath'];
+                    $uploadedAbsolutePath = (string)$downloaded['absolutePath'];
+                } else {
+                    log_app_message('[' . date('Y-m-d H:i:s') . "] Nao foi possivel baixar imagem externa do produto.\n");
+                }
+            } catch (Throwable $e) {
+                log_app_exception($e);
+            }
+        }
 
         $payload = [
             'id' => $productId,
@@ -234,6 +291,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'sku' => (string)($_POST['sku'] ?? ''),
             'barcode' => (string)($_POST['barcode'] ?? ''),
             'category' => (string)($_POST['category'] ?? ''),
+            'description' => (string)($_POST['description'] ?? ''),
+            'brand' => (string)($_POST['brand'] ?? ''),
+            'unit' => (string)($_POST['unit'] ?? ''),
+            'packageQuantity' => (string)($_POST['packageQuantity'] ?? ''),
+            'ncm' => (string)($_POST['ncm'] ?? ''),
+            'cest' => (string)($_POST['cest'] ?? ''),
+            'manufacturer' => (string)($_POST['manufacturer'] ?? ''),
             'cost' => $_POST['cost'] ?? '',
             'price' => $_POST['price'] ?? '',
             'stock' => $_POST['stock'] ?? '',
@@ -241,11 +305,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'lot' => (string)($_POST['lot'] ?? ''),
             'expiry' => (string)($_POST['expiry'] ?? ''),
             'image' => $image,
+            'externalImageUrl' => $externalImageUrl,
+            'source' => (string)($_POST['source'] ?? 'manual'),
         ];
 
         $productService->save($empresaId, $payload);
 
-        if ($uploadedAbsolutePath !== null) {
+        if ($uploadedAbsolutePath !== null && $image !== $currentImage) {
             removePreviousProductImage($currentImage, $image);
         }
 
@@ -268,6 +334,10 @@ if (!$canRenderForm) {
 $pageId = 'produto-form-server';
 $pageTitle = $isEditing ? 'Editar produto' : 'Novo produto';
 $activeMenu = 'produtos';
+$safeExternalPreview = productExternalImagePreviewUrl($formData['externalImageUrl'] ?? '');
+$previewUrl = $safeExternalPreview !== '' && (($formData['image'] ?? '') === '' || ($formData['image'] ?? '') === 'prod-placeholder.svg')
+    ? $safeExternalPreview
+    : productFormImageUrl($formData['image'] ?? '');
 require_once __DIR__ . '/layout/header.php';
 ?>
 
@@ -276,6 +346,40 @@ require_once __DIR__ . '/layout/header.php';
   .product-form-help { margin: 8px 0 0; color: var(--muted); font-size: 11px; font-weight: 650; }
   .product-form-preview > div { display: flex; flex-wrap: wrap; gap: 6px; }
   .product-form-preview .file-btn { flex: 1 1 135px; }
+  .product-form-section { display: grid; gap: 12px; padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--line); }
+  .product-form-section:first-of-type { padding-top: 0; margin-top: 0; border-top: 0; }
+  .product-form-section-title { margin: 0; color: var(--blue); font-size: 13px; font-weight: 900; letter-spacing: 0; }
+  .product-barcode-actions { display: grid; gap: 9px; align-items: center; }
+  .product-barcode-actions .secondary-btn { min-height: 44px; }
+  .product-lookup-message { display: grid; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 14px; border: 1px solid var(--line); color: var(--ink); background: #fff; font-size: 12px; font-weight: 760; }
+  .product-lookup-message[hidden] { display: none; }
+  .product-lookup-message.success { color: var(--green); background: rgba(37,196,132,.1); border-color: rgba(37,196,132,.25); }
+  .product-lookup-message.warning { color: #8A4A00; background: rgba(255,181,71,.14); border-color: rgba(255,181,71,.3); }
+  .product-lookup-message.danger { color: var(--red); background: rgba(230,83,103,.1); border-color: rgba(230,83,103,.25); }
+  .product-existing-card { display: grid; gap: 6px; padding: 12px; border-radius: 14px; color: var(--ink); background: #fff; border: 1px solid rgba(230,83,103,.25); }
+  .product-existing-card strong { font-size: 13px; }
+  .product-existing-card span { color: var(--muted); font-size: 11px; }
+  .product-existing-card a { min-height: 38px; margin-top: 4px; }
+  .product-autofilled { border-color: rgba(37,196,132,.55) !important; box-shadow: 0 0 0 3px rgba(37,196,132,.13); transition: box-shadow .2s ease, border-color .2s ease; }
+  .product-scanner-backdrop { position: fixed; inset: 0; z-index: 100; display: none; place-items: center; padding: 18px; background: rgba(17,48,77,.48); backdrop-filter: blur(6px); }
+  .product-scanner-backdrop.open { display: grid; }
+  .product-scanner-modal { width: min(100%, 520px); padding: 16px; background: #fff; border-radius: 22px; box-shadow: 0 24px 70px rgba(17,48,77,.28); }
+  .product-scanner-modal h2 { margin: 0; font-size: 19px; letter-spacing: 0; }
+  .product-scanner-modal p { margin: 6px 0 12px; color: var(--muted); font-size: 12px; font-weight: 750; }
+  .product-scanner-frame { position: relative; overflow: hidden; border-radius: 16px; background: #091B32; }
+  .product-scanner-frame::after { content: ""; position: absolute; inset: 18%; border: 2px solid rgba(255,255,255,.78); border-radius: 14px; box-shadow: 0 0 0 999px rgba(0,0,0,.18); pointer-events: none; }
+  .product-scanner-video { width: 100%; min-height: 260px; max-height: 58vh; display: block; object-fit: cover; }
+  .product-scanner-status { min-height: 18px; margin-top: 10px; color: var(--muted); font-size: 12px; font-weight: 800; }
+  .product-scanner-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 12px; }
+  .product-scanner-actions .ghost-btn { width: auto; min-width: 130px; }
+  @media (max-width: 620px) {
+    .product-barcode-actions { grid-template-columns: 1fr 1fr; }
+    .product-barcode-actions input { grid-column: 1 / -1; }
+  }
+  @media (min-width: 621px) {
+    .product-barcode-actions { grid-template-columns: minmax(0, 1fr) auto auto; }
+    .product-barcode-actions .secondary-btn { width: auto; padding: 0 14px; }
+  }
   @media (min-width: 720px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 
@@ -299,9 +403,11 @@ require_once __DIR__ . '/layout/header.php';
     <form method="post" enctype="multipart/form-data" class="form-card">
       <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
       <input type="hidden" name="id" value="<?= (int)($formData['id'] ?? 0) ?>">
+      <input type="hidden" id="productExternalImageUrl" name="externalImageUrl" value="<?= e($formData['externalImageUrl']) ?>">
+      <input type="hidden" id="productDataSource" name="source" value="<?= e($formData['source']) ?>">
 
       <div class="product-form-preview">
-        <img id="productPreview" src="<?= e(productFormImageUrl($formData['image'] ?? '')) ?>" alt="Prévia do produto">
+        <img id="productPreview" src="<?= e($previewUrl) ?>" alt="Prévia do produto">
         <div>
           <label class="file-btn">
             Escolher imagem
@@ -313,22 +419,68 @@ require_once __DIR__ . '/layout/header.php';
       </div>
       <p class="product-form-help">JPG, PNG, WEBP ou GIF, com no máximo 2MB.</p>
 
-      <div class="form-grid section-gap-small">
-        <div class="field"><label for="productName">Nome do produto</label><input id="productName" name="name" maxlength="180" value="<?= e($formData['name']) ?>" required></div>
-        <div class="field"><label for="productSku">SKU / Código interno</label><input id="productSku" name="sku" maxlength="80" value="<?= e($formData['sku']) ?>" required></div>
-        <div class="field"><label for="productBarcode">Código de barras / QR</label><input id="productBarcode" name="barcode" maxlength="80" value="<?= e($formData['barcode']) ?>"></div>
-        <div class="field"><label for="productCategory">Categoria</label><input id="productCategory" name="category" maxlength="120" value="<?= e($formData['category']) ?>" required></div>
-        <div class="field"><label for="productCost">Preço de custo</label><input id="productCost" name="cost" type="number" min="0" step="0.01" value="<?= e($formData['cost']) ?>" required></div>
-        <div class="field"><label for="productPrice">Preço de venda</label><input id="productPrice" name="price" type="number" min="0" step="0.01" value="<?= e($formData['price']) ?>" required></div>
-        <div class="field"><label for="productStock">Quantidade em estoque</label><input id="productStock" name="stock" type="number" min="0" step="0.001" value="<?= e($formData['stock']) ?>" required></div>
-        <div class="field"><label for="productMinStock">Limite mínimo</label><input id="productMinStock" name="minStock" type="number" min="0" step="0.001" value="<?= e($formData['minStock']) ?>" required></div>
-        <div class="field"><label for="productLot">Lote</label><input id="productLot" name="lot" maxlength="80" value="<?= e($formData['lot']) ?>" required></div>
-        <div class="field"><label for="productExpiry">Data de validade</label><input id="productExpiry" name="expiry" type="date" value="<?= e($formData['expiry']) ?>" required></div>
+      <div class="product-form-section section-gap-small">
+        <h2 class="product-form-section-title">Identificação</h2>
+        <div class="form-grid">
+          <div class="field"><label for="productName">Nome do produto</label><input id="productName" name="name" maxlength="180" value="<?= e($formData['name']) ?>" required></div>
+          <div class="field"><label for="productSku">SKU / Código interno</label><input id="productSku" name="sku" maxlength="80" value="<?= e($formData['sku']) ?>" required></div>
+          <div class="field product-barcode-field">
+            <label for="productBarcode">Código de barras / GTIN</label>
+            <div class="product-barcode-actions">
+              <input id="productBarcode" name="barcode" maxlength="80" inputmode="numeric" autocomplete="off" value="<?= e($formData['barcode']) ?>">
+              <button id="lookupBarcodeButton" type="button" class="secondary-btn">Consultar</button>
+              <button id="scanBarcodeButton" type="button" class="secondary-btn">Escanear</button>
+            </div>
+            <p class="product-form-help">Digite ou escaneie EAN, UPC ou GTIN.</p>
+            <div id="barcodeLookupMessage" class="product-lookup-message" aria-live="polite" hidden></div>
+          </div>
+          <div class="field"><label for="productCategory">Categoria</label><input id="productCategory" name="category" maxlength="120" value="<?= e($formData['category']) ?>" required></div>
+          <div class="field"><label for="productBrand">Marca</label><input id="productBrand" name="brand" maxlength="150" value="<?= e($formData['brand']) ?>"></div>
+          <div class="field"><label for="productDescription">Descrição</label><textarea id="productDescription" name="description"><?= e($formData['description']) ?></textarea></div>
+        </div>
       </div>
 
-      <button class="primary-btn section-gap-small" type="submit">Salvar produto</button>
+      <div class="product-form-section">
+        <h2 class="product-form-section-title">Embalagem e fiscal</h2>
+        <div class="form-grid">
+          <div class="field"><label for="productUnit">Unidade</label><input id="productUnit" name="unit" maxlength="20" value="<?= e($formData['unit']) ?>"></div>
+          <div class="field"><label for="productPackageQuantity">Quantidade da embalagem</label><input id="productPackageQuantity" name="packageQuantity" maxlength="50" value="<?= e($formData['packageQuantity']) ?>"></div>
+          <div class="field"><label for="productNcm">NCM</label><input id="productNcm" name="ncm" maxlength="8" inputmode="numeric" value="<?= e($formData['ncm']) ?>"></div>
+          <div class="field"><label for="productCest">CEST</label><input id="productCest" name="cest" maxlength="7" inputmode="numeric" value="<?= e($formData['cest']) ?>"></div>
+          <div class="field"><label for="productManufacturer">Fabricante</label><input id="productManufacturer" name="manufacturer" maxlength="150" value="<?= e($formData['manufacturer']) ?>"></div>
+        </div>
+      </div>
+
+      <div class="product-form-section">
+        <h2 class="product-form-section-title">Estoque e preço</h2>
+        <div class="form-grid">
+          <div class="field"><label for="productCost">Preço de custo</label><input id="productCost" name="cost" type="number" min="0" step="0.01" value="<?= e($formData['cost']) ?>" required></div>
+          <div class="field"><label for="productPrice">Preço de venda</label><input id="productPrice" name="price" type="number" min="0" step="0.01" value="<?= e($formData['price']) ?>" required></div>
+          <div class="field"><label for="productStock">Quantidade em estoque</label><input id="productStock" name="stock" type="number" min="0" step="0.001" value="<?= e($formData['stock']) ?>" required></div>
+          <div class="field"><label for="productMinStock">Limite mínimo</label><input id="productMinStock" name="minStock" type="number" min="0" step="0.001" value="<?= e($formData['minStock']) ?>" required></div>
+          <div class="field"><label for="productLot">Lote</label><input id="productLot" name="lot" maxlength="80" value="<?= e($formData['lot']) ?>" required></div>
+          <div class="field"><label for="productExpiry">Data de validade</label><input id="productExpiry" name="expiry" type="date" value="<?= e($formData['expiry']) ?>" required></div>
+        </div>
+      </div>
+
+      <button id="saveProductButton" class="primary-btn section-gap-small" type="submit">Salvar produto</button>
     </form>
+
+    <div id="productScannerBackdrop" class="product-scanner-backdrop" aria-hidden="true">
+      <section class="product-scanner-modal" role="dialog" aria-modal="true" aria-labelledby="productScannerTitle">
+        <h2 id="productScannerTitle">Escanear código de barras</h2>
+        <p>Aponte a câmera para o código do produto.</p>
+        <div class="product-scanner-frame">
+          <video id="productScannerVideo" class="product-scanner-video" autoplay muted playsinline></video>
+        </div>
+        <div id="productScannerStatus" class="product-scanner-status" aria-live="polite">Aguardando câmera.</div>
+        <div class="product-scanner-actions">
+          <button id="productScannerCancel" type="button" class="ghost-btn">Cancelar</button>
+        </div>
+      </section>
+    </div>
   <?php endif; ?>
 </section>
 
+<script src="../assets/js/produto-codigo-barras.js"></script>
 <?php require_once __DIR__ . '/layout/footer.php'; ?>

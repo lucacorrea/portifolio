@@ -1,7 +1,8 @@
-const CACHE_NAME = 'lj-caixa-assets-oo-v6';
+const CACHE_NAME = 'lj-caixa-assets-oo-v7';
 const FILES = [
   './assets/css/main.css',
   './assets/js/app.js',
+  './assets/js/produto-codigo-barras.js',
   './assets/icons/icon.svg',
   './assets/img/prod-placeholder.svg',
   './assets/img/prod-leite.svg',

@@ -38,7 +38,16 @@ final class ProductRepository
             p.estoque_minimo AS minStock,
             p.preco_custo AS cost,
             p.preco_venda AS price,
-            COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image
+            COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image,
+            p.descricao AS description,
+            p.marca AS brand,
+            p.unidade AS unit,
+            p.quantidade_embalagem AS packageQuantity,
+            p.ncm,
+            p.cest,
+            p.fabricante AS manufacturer,
+            COALESCE(NULLIF(p.origem_dados, \'\'), \'manual\') AS source,
+            p.url_imagem_origem AS externalImageUrl
         FROM produtos p
         LEFT JOIN categorias c
                ON p.categoria_id = c.id
@@ -94,9 +103,18 @@ final class ProductRepository
                 DATE_FORMAT(p.validade, \'%Y-%m-%d\') AS expiry,
                 p.quantidade AS stock,
                 p.estoque_minimo AS minStock,
-                p.preco_custo AS cost,
-                p.preco_venda AS price,
-                COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image
+            p.preco_custo AS cost,
+            p.preco_venda AS price,
+            COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image,
+            p.descricao AS description,
+            p.marca AS brand,
+            p.unidade AS unit,
+            p.quantidade_embalagem AS packageQuantity,
+            p.ncm,
+            p.cest,
+            p.fabricante AS manufacturer,
+            COALESCE(NULLIF(p.origem_dados, \'\'), \'manual\') AS source,
+            p.url_imagem_origem AS externalImageUrl
             FROM produtos p
             LEFT JOIN categorias c
                    ON p.categoria_id = c.id
@@ -129,9 +147,18 @@ final class ProductRepository
                 DATE_FORMAT(p.validade, \'%Y-%m-%d\') AS expiry,
                 p.quantidade AS stock,
                 p.estoque_minimo AS minStock,
-                p.preco_custo AS cost,
-                p.preco_venda AS price,
-                COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image
+            p.preco_custo AS cost,
+            p.preco_venda AS price,
+            COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image,
+            p.descricao AS description,
+            p.marca AS brand,
+            p.unidade AS unit,
+            p.quantidade_embalagem AS packageQuantity,
+            p.ncm,
+            p.cest,
+            p.fabricante AS manufacturer,
+            COALESCE(NULLIF(p.origem_dados, \'\'), \'manual\') AS source,
+            p.url_imagem_origem AS externalImageUrl
             FROM produtos p
             LEFT JOIN categorias c
                    ON p.categoria_id = c.id
@@ -152,16 +179,73 @@ final class ProductRepository
         return $product ? $this->mapProduct($product) : null;
     }
 
+    public function findByBarcode(int $empresaId, string $barcode, ?int $ignoreProductId = null): ?array
+    {
+        $sql = '
+            SELECT
+                p.id,
+                p.nome AS name,
+                p.sku,
+                p.codigo_barras AS barcode,
+                COALESCE(c.nome, \'Sem categoria\') AS category,
+                p.lote AS lot,
+                DATE_FORMAT(p.validade, \'%Y-%m-%d\') AS expiry,
+                p.quantidade AS stock,
+                p.estoque_minimo AS minStock,
+                p.preco_custo AS cost,
+                p.preco_venda AS price,
+                COALESCE(NULLIF(p.imagem, \'\'), \'prod-placeholder.svg\') AS image,
+                p.descricao AS description,
+                p.marca AS brand,
+                p.unidade AS unit,
+                p.quantidade_embalagem AS packageQuantity,
+                p.ncm,
+                p.cest,
+                p.fabricante AS manufacturer,
+                COALESCE(NULLIF(p.origem_dados, \'\'), \'manual\') AS source,
+                p.url_imagem_origem AS externalImageUrl
+            FROM produtos p
+            LEFT JOIN categorias c
+                   ON p.categoria_id = c.id
+                  AND c.empresa_id = p.empresa_id
+            WHERE p.empresa_id = :empresa_id
+              AND p.ativo = 1
+              AND p.codigo_barras = :codigo_barras
+        ';
+
+        $params = [
+            ':empresa_id' => $empresaId,
+            ':codigo_barras' => trim($barcode),
+        ];
+
+        if ($ignoreProductId !== null && $ignoreProductId > 0) {
+            $sql .= ' AND p.id <> :ignore_id';
+            $params[':ignore_id'] = $ignoreProductId;
+        }
+
+        $sql .= ' LIMIT 1';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $product = $stmt->fetch();
+
+        return $product ? $this->mapProduct($product) : null;
+    }
+
     public function create(int $empresaId, array $data): int
     {
         $stmt = $this->db->prepare(
             'INSERT INTO produtos (
                 empresa_id, categoria_id, nome, sku, codigo_barras, lote, validade,
-                quantidade, estoque_minimo, preco_custo, preco_venda, imagem
+                quantidade, estoque_minimo, preco_custo, preco_venda, imagem,
+                descricao, marca, unidade, quantidade_embalagem, ncm, cest,
+                fabricante, origem_dados, url_imagem_origem
              )
              VALUES (
                 :empresa_id, :categoria_id, :nome, :sku, :codigo_barras, :lote, :validade,
-                :quantidade, :estoque_minimo, :preco_custo, :preco_venda, :imagem
+                :quantidade, :estoque_minimo, :preco_custo, :preco_venda, :imagem,
+                :descricao, :marca, :unidade, :quantidade_embalagem, :ncm, :cest,
+                :fabricante, :origem_dados, :url_imagem_origem
              )'
         );
         $stmt->execute([
@@ -177,6 +261,15 @@ final class ProductRepository
             ':preco_custo' => $data['preco_custo'],
             ':preco_venda' => $data['preco_venda'],
             ':imagem' => $data['imagem'] ?: null,
+            ':descricao' => $data['descricao'] ?: null,
+            ':marca' => $data['marca'] ?: null,
+            ':unidade' => $data['unidade'] ?: null,
+            ':quantidade_embalagem' => $data['quantidade_embalagem'] ?: null,
+            ':ncm' => $data['ncm'] ?: null,
+            ':cest' => $data['cest'] ?: null,
+            ':fabricante' => $data['fabricante'] ?: null,
+            ':origem_dados' => $data['origem_dados'] ?: 'manual',
+            ':url_imagem_origem' => $data['url_imagem_origem'] ?: null,
         ]);
 
         return (int) $this->db->lastInsertId();
@@ -196,7 +289,16 @@ final class ProductRepository
                  estoque_minimo = :estoque_minimo,
                  preco_custo = :preco_custo,
                  preco_venda = :preco_venda,
-                 imagem = :imagem
+                 imagem = :imagem,
+                 descricao = :descricao,
+                 marca = :marca,
+                 unidade = :unidade,
+                 quantidade_embalagem = :quantidade_embalagem,
+                 ncm = :ncm,
+                 cest = :cest,
+                 fabricante = :fabricante,
+                 origem_dados = :origem_dados,
+                 url_imagem_origem = :url_imagem_origem
              WHERE empresa_id = :empresa_id AND id = :id'
         );
         $stmt->execute([
@@ -213,6 +315,15 @@ final class ProductRepository
             ':preco_custo' => $data['preco_custo'],
             ':preco_venda' => $data['preco_venda'],
             ':imagem' => $data['imagem'] ?: null,
+            ':descricao' => $data['descricao'] ?: null,
+            ':marca' => $data['marca'] ?: null,
+            ':unidade' => $data['unidade'] ?: null,
+            ':quantidade_embalagem' => $data['quantidade_embalagem'] ?: null,
+            ':ncm' => $data['ncm'] ?: null,
+            ':cest' => $data['cest'] ?: null,
+            ':fabricante' => $data['fabricante'] ?: null,
+            ':origem_dados' => $data['origem_dados'] ?: 'manual',
+            ':url_imagem_origem' => $data['url_imagem_origem'] ?: null,
         ]);
     }
 
@@ -272,6 +383,15 @@ final class ProductRepository
             'cost' => (float)$product['cost'],
             'price' => (float)$product['price'],
             'image' => $product['image'],
+            'description' => $product['description'] ?? '',
+            'brand' => $product['brand'] ?? '',
+            'unit' => $product['unit'] ?? '',
+            'packageQuantity' => $product['packageQuantity'] ?? '',
+            'ncm' => $product['ncm'] ?? '',
+            'cest' => $product['cest'] ?? '',
+            'manufacturer' => $product['manufacturer'] ?? '',
+            'source' => $product['source'] ?? 'manual',
+            'externalImageUrl' => $product['externalImageUrl'] ?? '',
         ];
     }
 }
