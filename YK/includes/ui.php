@@ -170,7 +170,7 @@ function render_dashboard(): void {
   ]);
 
   echo '<section class="quick-actions panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-lightning-charge"></i>Ações rápidas</div></div><div class="quick-grid">';
-  foreach ([['Nova OS','bi-plus-circle','#modal-os'],['Novo Orçamento','bi-file-earmark-plus','#modal-orcamento'],['Novo Cliente','bi-person-plus','#modal-cliente'],['Venda Avulsa','bi-cart-plus','#modal-venda'],['Novo Lembrete','bi-alarm','#modal-lembrete']] as $action) {
+  foreach ([['Nova OS','bi-plus-circle','#modal-os'],['Venda Avulsa','bi-cart-plus','#modal-venda'],['Novo Lembrete','bi-alarm','#modal-lembrete']] as $action) {
     echo '<button class="quick-action" type="button" data-bs-toggle="modal" data-bs-target="' . h($action[2]) . '"><i class="bi ' . h($action[1]) . '"></i><span>' . h($action[0]) . '</span></button>';
   }
   echo '</div></section>';
@@ -197,8 +197,6 @@ function render_dashboard(): void {
 
 function render_common_modals(): void {
   modal_shell('modal-os', 'Nova Ordem de Serviço', os_modal_body(), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-secondary" type="button">Salvar rascunho</button><button class="btn-modal-save" type="button">Salvar OS</button><button class="btn-modal-secondary" type="button">Imprimir</button><button class="btn-modal-secondary" type="button">Gerar recibo</button><button class="btn-modal-secondary" type="button">Dar baixa no pagamento</button>');
-  modal_shell('modal-orcamento', 'Novo Orçamento', budget_modal_body(), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-secondary" type="button">Salvar rascunho</button><button class="btn-modal-save" type="button">Salvar orçamento</button><button class="btn-modal-warning" type="button">Transformar em Ordem de Serviço</button>');
-  modal_shell('modal-cliente', 'Novo Cliente', cliente_modal_body());
   modal_shell('modal-venda', 'Venda avulsa', venda_modal_body(), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar venda</button><button class="btn-modal-save" type="button">Finalizar venda</button><button class="btn-modal-secondary" type="button">Imprimir cupom</button>');
   modal_shell('modal-lembrete', 'Novo lembrete', lembrete_modal_body());
   modal_shell('modal-recibo', 'Novo Recibo Visual', form_section('Recibo', '<div class="form-row">' . field('Cliente','João Almeida') . field('Referência','OS-00254') . field('Valor','120,00') . field('Data','2026-06-18','date') . '</div>' . field('Referente a','Diagnóstico técnico em ar-condicionado janela.','textarea')));
@@ -234,20 +232,6 @@ function os_modal_body(): string {
       form_section('Resumo visual', '<div class="summary-box"><div><span>Subtotal serviços</span><strong>R$ 360,00</strong></div><div><span>Subtotal produtos</span><strong>R$ 390,00</strong></div><div><span>Desconto</span><strong>R$ 0,00</strong></div><div><span>Acréscimo</span><strong>R$ 120,00</strong></div><div class="total"><span>Total</span><strong>R$ 870,00</strong></div><div><span>Recebido</span><strong>R$ 300,00</strong></div><div><span>Saldo pendente</span><strong>R$ 570,00</strong></div><div><span>Forma de pagamento</span><strong>Pix</strong></div></div>' . field('Observações','Retorno combinado após aprovação do cliente.','textarea')) .
     '</div>
   </div>';
-}
-
-function budget_modal_body(): string {
-  return form_section('Dados do orçamento', '<div class="form-row">' . field('Cliente','Clínica Bem Estar') . field('Validade','2026-06-25','date') . field('Responsável','Ana Martins') . field('Status','Aguardando aprovação') . '</div>') .
-    form_section('Serviços', '<div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Serviço</th><th>Qtd.</th><th>Valor</th><th>Subtotal</th></tr></thead><tbody><tr><td>Limpeza de ar-condicionado split</td><td>2</td><td>R$ 180,00</td><td>R$ 360,00</td></tr></tbody></table></div>') .
-    form_section('Produtos', '<div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Produto</th><th>Qtd.</th><th>Valor</th><th>Subtotal</th></tr></thead><tbody><tr><td>Filtro universal</td><td>2</td><td>R$ 45,00</td><td>R$ 90,00</td></tr></tbody></table></div>') .
-    form_section('Observações e resumo', field('Observações','Orçamento sujeito à conferência técnica no local.','textarea') . '<div class="summary-box compact"><div><span>Serviços</span><strong>R$ 360,00</strong></div><div><span>Produtos</span><strong>R$ 90,00</strong></div><div class="total"><span>Total</span><strong>R$ 450,00</strong></div></div>');
-}
-
-function cliente_modal_body(): string {
-  return '<ul class="nav nav-tabs visual-tabs"><li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#cli-dados" type="button">Dados</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#cli-equip" type="button">Equipamentos</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#cli-os" type="button">Ordens de Serviço</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#cli-orc" type="button">Orçamentos</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#cli-pag" type="button">Pagamentos</button></li></ul><div class="tab-content pt-3"><div class="tab-pane fade show active" id="cli-dados">' .
-    form_section('Dados pessoais', '<div class="form-row">' . field('Nome / Razão social','Mercado Ponto Frio') . field('CPF ou CNPJ','08.441.302/0001-91') . field('Telefone','(92) 98122-5544') . field('WhatsApp','(92) 98122-5544') . '</div>') .
-    form_section('Endereço e contato', '<div class="form-row">' . field('Endereço','Rua das Palmeiras, 88') . field('Cidade','Manaus') . field('E-mail','compras@pontofrio.local') . field('Status','Ativo') . '</div>' . field('Observações','Cliente com recorrência mensal em balcões e freezers.','textarea')) .
-    '</div><div class="tab-pane fade" id="cli-equip"><div class="info-list"><div class="info-item"><i class="bi bi-snow2 info-icon"></i><div><strong>Freezer vertical Metalfrio</strong><span>Loja principal · Série MF-2291</span></div></div></div></div><div class="tab-pane fade" id="cli-os"><p class="section-note">Histórico visual de OS do cliente.</p></div><div class="tab-pane fade" id="cli-orc"><p class="section-note">Histórico visual de orçamentos.</p></div><div class="tab-pane fade" id="cli-pag"><p class="section-note">Pagamentos e pendências visuais.</p></div></div>';
 }
 
 function venda_modal_body(): string {
@@ -524,8 +508,6 @@ function render_operational_page(string $key): void {
   echo '<div class="page-body operational-page" data-page="' . h($key) . '">';
   match ($key) {
     'ordens' => render_ordens(),
-    'orcamentos' => render_orcamentos(),
-    'clientes' => render_clientes(),
     'agenda' => render_agenda(),
     'painel-semanal' => render_painel_semanal(),
     'caixa' => render_caixa(),
@@ -550,33 +532,6 @@ function render_ordens(): void {
   ui_table(['Número','Cliente','Equipamento','Serviço','Instalador','Ajudante','Data','Prioridade','Status','Pagamento','Valor','Ações'], $rows, ['scroll' => true]);
   echo '</section>';
   empty_state('Sem OS nos filtros aplicados', 'Estado vazio visual para quando filtros não retornarem registros.');
-}
-
-function render_orcamentos(): void {
-  metric_grid([['Rascunhos','5','bi-pencil-square','#64748B'],['Enviados','11','bi-send','#2563EB'],['Aguardando aprovação','17','bi-hourglass-split','#D97706'],['Aprovados','8','bi-check2-circle','#16A34A'],['Vencidos','3','bi-exclamation-circle','#DC2626']]);
-  filter_bar([['Período', [], 'date'], ['Cliente',['Clínica Bem Estar','Mercado Ponto Frio']], ['Responsável',['Carlos','Ana','Lucas']], ['Status',['Rascunho','Enviado','Aguardando aprovação','Aprovado','Recusado','Vencido','Convertido em OS']]], 'Buscar orçamento...');
-  echo '<section class="panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-file-earmark-text"></i>Orçamentos</div><button class="btn-new-os" data-bs-toggle="modal" data-bs-target="#modal-orcamento" type="button"><i class="bi bi-file-earmark-plus"></i><span>Novo Orçamento</span></button></div>';
-  ui_table(['Número','Cliente','Data','Validade','Responsável','Valor','Status','Ações'], [
-    ['ORC-00124','Clínica Bem Estar','18/06/2026','25/06/2026','Ana Martins',money(450),ui_badge('Aguardando aprovação'),action_menu()],
-    ['ORC-00123','Restaurante Sabor Norte','17/06/2026','24/06/2026','Carlos Ferreira',money(1320),ui_badge('Enviado'),action_menu()],
-    ['ORC-00122','Mercado Ponto Frio','16/06/2026','23/06/2026','Lucas Ferreira',money(2380),ui_badge('Aprovado'),action_menu()],
-    ['ORC-00121','Hotel Amazonas','10/06/2026','17/06/2026','Pedro Alves',money(1960),ui_badge('Vencido'),action_menu()],
-  ]);
-  pagination_visual();
-  echo '</section>';
-}
-
-function render_clientes(): void {
-  metric_grid([['Total de clientes','126','bi-people','#2563EB'],['Clientes ativos','113','bi-person-check','#16A34A'],['Novos no mês','14','bi-person-plus','#0EA5E9'],['Com OS aberta','28','bi-clipboard2-check','#D97706']]);
-  filter_bar([['Tipo de pessoa',['Pessoa Física','Pessoa Jurídica']], ['Cidade',['Manaus','Iranduba']], ['Status',['Ativo','Inativo']]], 'Buscar nome, CPF, CNPJ ou telefone...');
-  echo '<section class="panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-people"></i>Clientes</div><button class="btn-new-os" data-bs-toggle="modal" data-bs-target="#modal-cliente" type="button"><i class="bi bi-person-plus"></i><span>Novo Cliente</span></button></div>';
-  ui_table(['Nome','CPF ou CNPJ','Telefone','WhatsApp','Cidade','Qtd. OS','Status','Ações'], [
-    ['Restaurante Sabor Norte','12.845.778/0001-20','(92) 98844-1188','(92) 98844-1188','Manaus','8',ui_badge('Ativo'),action_menu()],
-    ['João Almeida','182.334.210-09','(92) 99134-2201','(92) 99134-2201','Manaus','2',ui_badge('Ativo'),action_menu()],
-    ['Clínica Bem Estar','31.672.404/0001-75','(92) 3232-4411','(92) 98420-1199','Manaus','5',ui_badge('Ativo'),action_menu()],
-  ]);
-  pagination_visual();
-  echo '</section>';
 }
 
 function render_agenda(): void {

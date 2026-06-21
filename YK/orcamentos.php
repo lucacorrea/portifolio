@@ -1,13 +1,17 @@
 <?php
-$pageKey = 'orcamentos';
-$activePage = 'orcamentos';
+
+declare(strict_types=1);
+
 $pageTitle = 'Orçamentos';
-$pageSubtitle = 'Gere orçamentos profissionais e envie para o cliente';
-$primaryActionLabel = 'Novo Orçamento';
+$pageSubtitle = 'Criação e acompanhamento de propostas comerciais';
+$activePage = 'orcamentos';
+
+$primaryActionLabel = 'Novo orçamento';
 $primaryActionIcon = 'bi-file-earmark-plus';
 $primaryActionTarget = '#modal-orcamento';
 $primaryActionPermission = 'orcamento.criar';
+
 $requiredPermission = 'orcamento.visualizar';
-$pageContent = __DIR__ . '/pages/operational.php';
+$pageContent = __DIR__ . '/pages/orcamentos.php';
 
 require __DIR__ . '/includes/shell.php';

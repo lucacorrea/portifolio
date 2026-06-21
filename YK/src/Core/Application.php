@@ -16,9 +16,13 @@ use App\Catalog\Repository\ProductRepository;
 use App\Catalog\Repository\ServiceRepository;
 use App\Catalog\Service\ProductManagementService;
 use App\Catalog\Service\ServiceManagementService;
+use App\CRM\Repository\ClientRepository;
+use App\CRM\Service\ClientManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\SafeRedirect;
 use App\Security\SessionManager;
+use App\Sales\Repository\BudgetRepository;
+use App\Sales\Service\BudgetManagementService;
 use App\Workforce\Repository\EmployeeRepository;
 use App\Workforce\Service\EmployeeManagementService;
 
@@ -41,6 +45,10 @@ final class Application
     private ?ProductManagementService $productManagement = null;
 
     private ?ServiceManagementService $serviceManagement = null;
+
+    private ?ClientManagementService $clientManagement = null;
+
+    private ?BudgetManagementService $budgetManagement = null;
 
     private ?SafeRedirect $redirect = null;
 
@@ -208,6 +216,36 @@ final class Application
         }
 
         return $this->serviceManagement;
+    }
+
+    public function clientManagement(): ClientManagementService
+    {
+        if ($this->clientManagement === null) {
+            $connection = $this->database->connection();
+
+            $this->clientManagement = new ClientManagementService(
+                new ClientRepository($connection)
+            );
+        }
+
+        return $this->clientManagement;
+    }
+
+    public function budgetManagement(): BudgetManagementService
+    {
+        if ($this->budgetManagement === null) {
+            $connection = $this->database->connection();
+
+            $this->budgetManagement = new BudgetManagementService(
+                new BudgetRepository($connection),
+                new ClientRepository($connection),
+                new EmployeeRepository($connection),
+                new ProductRepository($connection),
+                new ServiceRepository($connection)
+            );
+        }
+
+        return $this->budgetManagement;
     }
 
     public function redirect(): SafeRedirect
