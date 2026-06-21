@@ -113,6 +113,46 @@ function user_redirect(
     Application $application,
     string $target = 'usuarios.php'
 ): never {
+    $decodedTarget = rawurldecode(
+        trim($target)
+    );
+
+    $targetPath = parse_url(
+        $decodedTarget,
+        PHP_URL_PATH
+    );
+
+    if (
+        $decodedTarget !== ''
+        && $targetPath === 'usuarios.php'
+        && !str_contains($decodedTarget, "\0")
+        && !str_contains($decodedTarget, '..')
+        && !str_starts_with($decodedTarget, '/')
+        && !str_starts_with($decodedTarget, '\\')
+        && !str_starts_with($decodedTarget, '//')
+        && !preg_match('/^[a-z][a-z0-9+.-]*:/i', $decodedTarget)
+    ) {
+        $basePath = rtrim(
+            dirname(
+                $application
+                    ->redirect()
+                    ->loginUrl()
+            ),
+            '/\\'
+        );
+
+        header(
+            'Location: '
+            . $basePath
+            . '/'
+            . $decodedTarget,
+            true,
+            303
+        );
+
+        exit;
+    }
+
     header(
         'Location: '
         . $application
@@ -190,6 +230,82 @@ function user_posted_bool(
         ],
         true
     );
+}
+
+/**
+ * Guarda dados seguros para reabrir um modal após erro de validação.
+ */
+function user_store_form_recovery(
+    string $modal,
+    array $data,
+    string $error
+): void {
+    $blockedKeys = [
+        'password',
+        'password_confirmation',
+        'senha_hash',
+        'csrf_token',
+    ];
+
+    $safeData = [];
+
+    foreach ($data as $key => $value) {
+        $key = (string) $key;
+
+        if (in_array($key, $blockedKeys, true)) {
+            continue;
+        }
+
+        if (is_scalar($value) || $value === null) {
+            $safeData[$key] = $value;
+        }
+    }
+
+    $_SESSION['user_form_recovery'] = [
+        'modal' => $modal,
+        'error' => $error,
+        'data' => $safeData,
+    ];
+}
+
+/**
+ * Recupera uma única vez os dados seguros do modal.
+ *
+ * @return array{
+ *     modal:string,
+ *     error:string,
+ *     data:array<string, mixed>
+ * }|null
+ */
+function user_consume_form_recovery(): ?array
+{
+    if (
+        !isset($_SESSION['user_form_recovery'])
+        || !is_array($_SESSION['user_form_recovery'])
+    ) {
+        unset($_SESSION['user_form_recovery']);
+
+        return null;
+    }
+
+    $recovery = $_SESSION['user_form_recovery'];
+
+    unset($_SESSION['user_form_recovery']);
+
+    if (
+        !isset($recovery['modal'], $recovery['error'], $recovery['data'])
+        || !is_string($recovery['modal'])
+        || !is_string($recovery['error'])
+        || !is_array($recovery['data'])
+    ) {
+        return null;
+    }
+
+    return [
+        'modal' => $recovery['modal'],
+        'error' => $recovery['error'],
+        'data' => $recovery['data'],
+    ];
 }
 
 /**

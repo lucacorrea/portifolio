@@ -96,9 +96,34 @@ try {
         );
     }
 } catch (InvalidArgumentException $exception) {
+    user_store_form_recovery(
+        $isEditing ? 'edit' : 'create',
+        [
+            'id' => $rawUserId,
+            'name' => $_POST['name'] ?? '',
+            'username' => $_POST['username'] ?? '',
+            'email' => $_POST['email'] ?? '',
+            'phone' => $_POST['phone'] ?? '',
+            'profile_id' => $_POST['profile_id'] ?? '',
+            'status' => $_POST['status'] ?? 'ativo',
+            'must_change_password' =>
+                user_posted_bool('must_change_password', false)
+                    ? '1'
+                    : '0',
+        ],
+        $exception->getMessage()
+    );
+
     $session->flash(
         'danger',
         $exception->getMessage()
+    );
+
+    user_redirect(
+        $application,
+        $isEditing
+            ? 'usuarios.php?modal=usuario-edit'
+            : 'usuarios.php?modal=usuario'
     );
 } catch (Throwable $exception) {
     error_log(

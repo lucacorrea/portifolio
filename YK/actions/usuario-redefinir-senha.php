@@ -30,9 +30,27 @@ try {
         'Senha redefinida com sucesso.'
     );
 } catch (InvalidArgumentException $exception) {
+    user_store_form_recovery(
+        'password',
+        [
+            'id' => $_POST['id'] ?? '',
+            'name' => $_POST['user_name'] ?? '',
+            'must_change_password' =>
+                user_posted_bool('must_change_password', false)
+                    ? '1'
+                    : '0',
+        ],
+        $exception->getMessage()
+    );
+
     $session->flash(
         'danger',
         $exception->getMessage()
+    );
+
+    user_redirect(
+        $application,
+        'usuarios.php?modal=usuario-password'
     );
 } catch (Throwable $exception) {
     error_log(

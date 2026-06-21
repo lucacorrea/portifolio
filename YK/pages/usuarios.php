@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/ui.php';
+require_once __DIR__ . '/../actions/usuario-action-common.php';
 
 $userService = $application->userManagement();
 
@@ -24,6 +25,54 @@ $canDeactivate = $authorization->can('usuario.desativar');
 $canResetPassword = $authorization->can(
     'usuario.redefinir_senha'
 );
+
+$userFormRecovery = user_consume_form_recovery();
+
+function user_recovery_data(
+    ?array $recovery,
+    string $modal
+): array {
+    if (
+        $recovery === null
+        || ($recovery['modal'] ?? '') !== $modal
+        || !isset($recovery['data'])
+        || !is_array($recovery['data'])
+    ) {
+        return [];
+    }
+
+    return $recovery['data'];
+}
+
+function user_recovery_error(
+    ?array $recovery,
+    string $modal
+): ?string {
+    if (
+        $recovery === null
+        || ($recovery['modal'] ?? '') !== $modal
+        || !isset($recovery['error'])
+        || !is_string($recovery['error'])
+    ) {
+        return null;
+    }
+
+    return $recovery['error'];
+}
+
+function user_recovery_value(
+    array $data,
+    string $key,
+    string $default = ''
+): string {
+    $value = $data[$key] ?? $default;
+
+    if (!is_scalar($value)) {
+        return $default;
+    }
+
+    return (string) $value;
+}
 
 function user_date(?string $value): string
 {
@@ -587,6 +636,30 @@ metric_grid([
 
 <?php if ($canCreate): ?>
 
+<?php
+$createRecoveryData = user_recovery_data(
+    $userFormRecovery,
+    'create'
+);
+$createRecoveryError = user_recovery_error(
+    $userFormRecovery,
+    'create'
+);
+$createRecoveryStatus = user_recovery_value(
+    $createRecoveryData,
+    'status',
+    'ativo'
+);
+$createRecoveryProfileId = user_recovery_value(
+    $createRecoveryData,
+    'profile_id'
+);
+$createMustChangeChecked = $createRecoveryError === null
+    || user_recovery_value(
+        $createRecoveryData,
+        'must_change_password'
+    ) === '1';
+?>
 
 <div
     class="modal fade"
@@ -629,6 +702,14 @@ metric_grid([
             <div class="modal-body">
                 <?= $csrf->field() ?>
 
+                <div
+                    class="alert alert-danger <?= $createRecoveryError === null ? 'd-none' : '' ?>"
+                    id="create-user-form-error"
+                    role="alert"
+                >
+                    <?= h($createRecoveryError ?? '') ?>
+                </div>
+
                 <section class="form-section">
                     <h3 class="form-section-title">
                         Dados do usuário
@@ -648,6 +729,7 @@ metric_grid([
                                 id="create-user-name"
                                 type="text"
                                 name="name"
+                                value="<?= h(user_recovery_value($createRecoveryData, 'name')) ?>"
                                 maxlength="150"
                                 required
                             >
@@ -666,6 +748,7 @@ metric_grid([
                                 id="create-user-phone"
                                 type="text"
                                 name="phone"
+                                value="<?= h(user_recovery_value($createRecoveryData, 'phone')) ?>"
                                 maxlength="30"
                                 placeholder="(92) 99999-9999"
                             >
@@ -686,6 +769,7 @@ metric_grid([
                                 id="create-user-email"
                                 type="email"
                                 name="email"
+                                value="<?= h(user_recovery_value($createRecoveryData, 'email')) ?>"
                                 maxlength="150"
                                 required
                             >
@@ -704,6 +788,7 @@ metric_grid([
                                 id="create-user-username"
                                 type="text"
                                 name="username"
+                                value="<?= h(user_recovery_value($createRecoveryData, 'username')) ?>"
                                 minlength="3"
                                 maxlength="80"
                                 pattern="[a-zA-Z0-9_.-]{3,80}"
@@ -753,6 +838,9 @@ metric_grid([
 
                                     <option
                                         value="<?= h((string) $createProfileId) ?>"
+                                        <?= $createRecoveryProfileId === (string) $createProfileId
+                                            ? 'selected'
+                                            : '' ?>
                                     >
                                         <?= h($profile->name()) ?>
                                     </option>
@@ -778,7 +866,12 @@ metric_grid([
                                     Ativo
                                 </option>
 
-                                <option value="inativo">
+                                <option
+                                    value="inativo"
+                                    <?= $createRecoveryStatus === 'inativo'
+                                        ? 'selected'
+                                        : '' ?>
+                                >
                                     Inativo
                                 </option>
                             </select>
@@ -850,7 +943,7 @@ metric_grid([
                             type="checkbox"
                             name="must_change_password"
                             value="1"
-                            checked
+                            <?= $createMustChangeChecked ? 'checked' : '' ?>
                         >
 
                         <label
@@ -1090,6 +1183,29 @@ metric_grid([
 
 <?php if ($canEdit): ?>
 
+<?php
+$editRecoveryData = user_recovery_data(
+    $userFormRecovery,
+    'edit'
+);
+$editRecoveryError = user_recovery_error(
+    $userFormRecovery,
+    'edit'
+);
+$editRecoveryStatus = user_recovery_value(
+    $editRecoveryData,
+    'status',
+    'ativo'
+);
+$editRecoveryProfileId = user_recovery_value(
+    $editRecoveryData,
+    'profile_id'
+);
+$editMustChangeChecked = user_recovery_value(
+    $editRecoveryData,
+    'must_change_password'
+) === '1';
+?>
 
 <div
     class="modal fade"
@@ -1119,7 +1235,7 @@ metric_grid([
                     <p
                         class="text-muted small mb-0"
                         id="edit-user-subtitle"
-                    ></p>
+                    ><?= h(user_recovery_value($editRecoveryData, 'name')) ?></p>
                 </div>
 
                 <button
@@ -1133,10 +1249,19 @@ metric_grid([
             <div class="modal-body">
                 <?= $csrf->field() ?>
 
+                <div
+                    class="alert alert-danger <?= $editRecoveryError === null ? 'd-none' : '' ?>"
+                    id="edit-user-form-error"
+                    role="alert"
+                >
+                    <?= h($editRecoveryError ?? '') ?>
+                </div>
+
                 <input
                     type="hidden"
                     name="id"
                     id="edit-user-id"
+                    value="<?= h(user_recovery_value($editRecoveryData, 'id')) ?>"
                 >
 
                 <section class="form-section">
@@ -1158,6 +1283,7 @@ metric_grid([
                                 id="edit-user-name"
                                 type="text"
                                 name="name"
+                                value="<?= h(user_recovery_value($editRecoveryData, 'name')) ?>"
                                 maxlength="150"
                                 required
                             >
@@ -1176,6 +1302,7 @@ metric_grid([
                                 id="edit-user-phone"
                                 type="text"
                                 name="phone"
+                                value="<?= h(user_recovery_value($editRecoveryData, 'phone')) ?>"
                                 maxlength="30"
                             >
                         </div>
@@ -1195,6 +1322,7 @@ metric_grid([
                                 id="edit-user-email"
                                 type="email"
                                 name="email"
+                                value="<?= h(user_recovery_value($editRecoveryData, 'email')) ?>"
                                 maxlength="150"
                                 required
                             >
@@ -1213,6 +1341,7 @@ metric_grid([
                                 id="edit-user-username"
                                 type="text"
                                 name="username"
+                                value="<?= h(user_recovery_value($editRecoveryData, 'username')) ?>"
                                 minlength="3"
                                 maxlength="80"
                                 pattern="[a-zA-Z0-9_.-]{3,80}"
@@ -1254,6 +1383,9 @@ metric_grid([
 
                                     <option
                                         value="<?= h((string) $editProfileId) ?>"
+                                        <?= $editRecoveryProfileId === (string) $editProfileId
+                                            ? 'selected'
+                                            : '' ?>
                                     >
                                         <?= h($profile->name()) ?>
                                     </option>
@@ -1275,15 +1407,30 @@ metric_grid([
                                 name="status"
                                 required
                             >
-                                <option value="ativo">
+                                <option
+                                    value="ativo"
+                                    <?= $editRecoveryStatus === 'ativo'
+                                        ? 'selected'
+                                        : '' ?>
+                                >
                                     Ativo
                                 </option>
 
-                                <option value="inativo">
+                                <option
+                                    value="inativo"
+                                    <?= $editRecoveryStatus === 'inativo'
+                                        ? 'selected'
+                                        : '' ?>
+                                >
                                     Inativo
                                 </option>
 
-                                <option value="bloqueado">
+                                <option
+                                    value="bloqueado"
+                                    <?= $editRecoveryStatus === 'bloqueado'
+                                        ? 'selected'
+                                        : '' ?>
+                                >
                                     Bloqueado
                                 </option>
                             </select>
@@ -1303,6 +1450,7 @@ metric_grid([
                             type="checkbox"
                             name="must_change_password"
                             value="1"
+                            <?= $editMustChangeChecked ? 'checked' : '' ?>
                         >
 
                         <label
@@ -1341,6 +1489,21 @@ metric_grid([
 
 <?php if ($canResetPassword): ?>
 
+<?php
+$passwordRecoveryData = user_recovery_data(
+    $userFormRecovery,
+    'password'
+);
+$passwordRecoveryError = user_recovery_error(
+    $userFormRecovery,
+    'password'
+);
+$passwordMustChangeChecked = $passwordRecoveryError === null
+    || user_recovery_value(
+        $passwordRecoveryData,
+        'must_change_password'
+    ) === '1';
+?>
 
 <div
     class="modal fade"
@@ -1370,7 +1533,7 @@ metric_grid([
                     <p
                         class="text-muted small mb-0"
                         id="password-user-subtitle"
-                    ></p>
+                    ><?= h(user_recovery_value($passwordRecoveryData, 'name')) ?></p>
                 </div>
 
                 <button
@@ -1384,10 +1547,26 @@ metric_grid([
             <div class="modal-body">
                 <?= $csrf->field() ?>
 
+                <div
+                    class="alert alert-danger <?= $passwordRecoveryError === null ? 'd-none' : '' ?>"
+                    id="password-user-form-error"
+                    role="alert"
+                >
+                    <?= h($passwordRecoveryError ?? '') ?>
+                </div>
+
                 <input
                     type="hidden"
                     name="id"
                     id="password-user-id"
+                    value="<?= h(user_recovery_value($passwordRecoveryData, 'id')) ?>"
+                >
+
+                <input
+                    type="hidden"
+                    name="user_name"
+                    id="password-user-name"
+                    value="<?= h(user_recovery_value($passwordRecoveryData, 'name')) ?>"
                 >
 
                 <div class="form-group mb-3">
@@ -1447,7 +1626,7 @@ metric_grid([
                         type="checkbox"
                         name="must_change_password"
                         value="1"
-                        checked
+                        <?= $passwordMustChangeChecked ? 'checked' : '' ?>
                     >
 
                     <label
@@ -1577,12 +1756,131 @@ metric_grid([
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
+    const userFormRecoveryModal = <?= json_encode(
+        $userFormRecovery['modal'] ?? null,
+        JSON_HEX_TAG
+        | JSON_HEX_APOS
+        | JSON_HEX_AMP
+        | JSON_HEX_QUOT
+    ) ?>;
+
     function text(id, value) {
         const element = document.getElementById(id);
 
         if (element) {
             element.textContent = value || '-';
         }
+    }
+
+    function field(id) {
+        return document.getElementById(id);
+    }
+
+    function showFormError(id, message) {
+        const element = field(id);
+
+        if (!element) {
+            return;
+        }
+
+        element.textContent = message || '';
+        element.classList.toggle('d-none', !message);
+    }
+
+    function clearFieldValidation(element) {
+        if (!element) {
+            return;
+        }
+
+        element.setCustomValidity('');
+        element.classList.remove('is-invalid');
+    }
+
+    function clearPasswordValidation(errorId, fields) {
+        showFormError(errorId, '');
+
+        fields.forEach(function (element) {
+            clearFieldValidation(element);
+        });
+    }
+
+    function validatePasswordPair(
+        event,
+        password,
+        confirmation,
+        errorId
+    ) {
+        if (!password || !confirmation) {
+            return true;
+        }
+
+        let invalidField = null;
+        let message = '';
+
+        if (
+            password.value.length < 8
+            || password.value.length > 72
+        ) {
+            invalidField = password;
+            message = 'A senha deve ter entre 8 e 72 caracteres.';
+        } else if (!/[A-Za-z]/.test(password.value)) {
+            invalidField = password;
+            message = 'A senha deve conter pelo menos uma letra.';
+        } else if (!/[0-9]/.test(password.value)) {
+            invalidField = password;
+            message = 'A senha deve conter pelo menos um número.';
+        } else if (password.value !== confirmation.value) {
+            invalidField = confirmation;
+            message = 'A confirmação da senha não corresponde.';
+        }
+
+        clearFieldValidation(password);
+        clearFieldValidation(confirmation);
+
+        if (!message || !invalidField) {
+            showFormError(errorId, '');
+
+            return true;
+        }
+
+        event.preventDefault();
+        invalidField.setCustomValidity(message);
+        invalidField.classList.add('is-invalid');
+        showFormError(errorId, message);
+        invalidField.focus();
+        invalidField.reportValidity();
+
+        return false;
+    }
+
+    function bindPasswordValidation(
+        form,
+        passwordId,
+        confirmationId,
+        errorId
+    ) {
+        if (!form) {
+            return;
+        }
+
+        const password = field(passwordId);
+        const confirmation = field(confirmationId);
+        const inputs = [password, confirmation].filter(Boolean);
+
+        inputs.forEach(function (input) {
+            input.addEventListener('input', function () {
+                clearPasswordValidation(errorId, inputs);
+            });
+        });
+
+        form.addEventListener('submit', function (event) {
+            validatePasswordPair(
+                event,
+                password,
+                confirmation,
+                errorId
+            );
+        });
     }
 
     document
@@ -1727,6 +2025,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         button.dataset.userMustChange === '1';
                 }
 
+                showFormError('edit-user-form-error', '');
+
                 text(
                     'edit-user-subtitle',
                     button.dataset.userName
@@ -1745,6 +2045,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (id) {
                     id.value = button.dataset.userId || '';
                 }
+
+                const name = document.getElementById(
+                    'password-user-name'
+                );
+
+                if (name) {
+                    name.value = button.dataset.userName || '';
+                }
+
+                const password = document.getElementById(
+                    'password-user-new'
+                );
+
+                const confirmation = document.getElementById(
+                    'password-user-confirmation'
+                );
+
+                if (password) {
+                    password.value = '';
+                }
+
+                if (confirmation) {
+                    confirmation.value = '';
+                }
+
+                clearPasswordValidation(
+                    'password-user-form-error',
+                    [password, confirmation].filter(Boolean)
+                );
 
                 text(
                     'password-user-subtitle',
@@ -1844,14 +2173,41 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     if (createModal) {
+        const createForm = createModal.querySelector('form');
+
+        bindPasswordValidation(
+            createForm,
+            'create-user-password',
+            'create-user-password-confirmation',
+            'create-user-form-error'
+        );
+
+        createModal.addEventListener(
+            'show.bs.modal',
+            function (event) {
+                if (!event.relatedTarget) {
+                    return;
+                }
+
+                if (createForm) {
+                    createForm.reset();
+                }
+
+                clearPasswordValidation(
+                    'create-user-form-error',
+                    [
+                        field('create-user-password'),
+                        field('create-user-password-confirmation')
+                    ].filter(Boolean)
+                );
+            }
+        );
+
         createModal.addEventListener(
             'hidden.bs.modal',
             function () {
-                const form =
-                    createModal.querySelector('form');
-
-                if (form) {
-                    form.reset();
+                if (createForm) {
+                    createForm.reset();
                 }
             }
         );
@@ -1862,17 +2218,45 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     if (passwordModal) {
+        const passwordForm = passwordModal.querySelector('form');
+
+        bindPasswordValidation(
+            passwordForm,
+            'password-user-new',
+            'password-user-confirmation',
+            'password-user-form-error'
+        );
+
         passwordModal.addEventListener(
             'hidden.bs.modal',
             function () {
-                const form =
-                    passwordModal.querySelector('form');
-
-                if (form) {
-                    form.reset();
+                if (passwordForm) {
+                    passwordForm.reset();
                 }
             }
         );
+    }
+
+    const recoveryTargets = {
+        create: 'modal-usuario',
+        edit: 'modal-usuario-edit',
+        password: 'modal-usuario-password'
+    };
+
+    if (
+        userFormRecoveryModal
+        && recoveryTargets[userFormRecoveryModal]
+        && window.bootstrap
+    ) {
+        const modalElement = document.getElementById(
+            recoveryTargets[userFormRecoveryModal]
+        );
+
+        if (modalElement) {
+            bootstrap.Modal
+                .getOrCreateInstance(modalElement)
+                .show();
+        }
     }
 });
 </script>
