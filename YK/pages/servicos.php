@@ -142,7 +142,7 @@ metric_grid([
                             <td><?= h(service_duration($service->durationMinutes())) ?></td>
                             <td><?= h(money($service->value())) ?></td>
                             <td><span class="badge-soft badge-<?= $service->status() === 'ativo' ? 'green' : 'gray' ?>"><?= h($service->status() === 'ativo' ? 'Ativo' : 'Inativo') ?></span></td>
-                            <td><div class="dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-label="Ações do serviço <?= h($service->name()) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
+                            <td class="table-actions-cell"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do serviço <?= h($service->name()) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
                                 <li><button class="dropdown-item js-service-view" type="button" data-bs-toggle="modal" data-bs-target="#modal-servico-view"
                                     data-service-id="<?= h((string) $service->id()) ?>"
                                     data-service-code="<?= h($service->displayCode()) ?>"

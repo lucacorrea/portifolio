@@ -64,8 +64,8 @@ function filter_bar(array $filters, string $placeholder = 'Buscar...'): void {
 }
 
 function action_menu(): string {
-  return '<div class="dropdown text-center">
-    <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-label="Ações"><i class="bi bi-three-dots-vertical"></i></button>
+  return '<div class="dropdown text-center table-action-dropdown">
+    <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações"><i class="bi bi-three-dots-vertical"></i></button>
     <ul class="dropdown-menu dropdown-menu-end">
       <li><button class="dropdown-item" type="button"><i class="bi bi-eye"></i> Visualizar</button></li>
       <li><button class="dropdown-item" type="button"><i class="bi bi-pencil"></i> Editar</button></li>
@@ -84,7 +84,10 @@ function ui_table(array $columns, array $rows, array $options = []): void {
   echo '</tr></thead><tbody>';
   foreach ($rows as $row) {
     echo '<tr>';
-    foreach ($row as $cell) echo '<td>' . $cell . '</td>';
+    foreach ($row as $index => $cell) {
+      $cellClass = (($columns[$index] ?? '') === 'Ações') ? ' class="table-actions-cell"' : '';
+      echo '<td' . $cellClass . '>' . $cell . '</td>';
+    }
     echo '</tr>';
   }
   echo '</tbody></table></div>';
@@ -223,8 +226,8 @@ function os_modal_body(): string {
       form_section('Equipe', '<div class="form-row">' . select_field('Instalador', ['Carlos Ferreira','Ana Martins','Lucas Ferreira','Pedro Alves']) . select_field('Ajudante', ['Rafael Souza','Bruno Lima','Mateus Costa','Nina Rocha']) . '</div>') .
     '</div>
     <div class="tab-pane fade" id="os-itens">' .
-      form_section('Serviços', '<div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Serviço</th><th>Ambiente</th><th>Qtd.</th><th>Valor unit.</th><th>Desconto</th><th>Subtotal</th><th>Ações</th></tr></thead><tbody><tr><td>Limpeza técnica split</td><td>' . h($ambientes[5]) . '</td><td>2</td><td>R$ 180,00</td><td>R$ 0,00</td><td>R$ 360,00</td><td>' . action_menu() . '</td></tr></tbody></table></div>') .
-      form_section('Produtos e peças', '<div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Código</th><th>Produto</th><th>Unidade</th><th>Qtd.</th><th>Valor unit.</th><th>Desconto</th><th>Subtotal</th><th>Ações</th></tr></thead><tbody><tr><td>GAS-410</td><td>Gás refrigerante R410A</td><td>kg</td><td>1</td><td>R$ 390,00</td><td>R$ 0,00</td><td>R$ 390,00</td><td>' . action_menu() . '</td></tr></tbody></table></div>') .
+      form_section('Serviços', '<div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Serviço</th><th>Ambiente</th><th>Qtd.</th><th>Valor unit.</th><th>Desconto</th><th>Subtotal</th><th>Ações</th></tr></thead><tbody><tr><td>Limpeza técnica split</td><td>' . h($ambientes[5]) . '</td><td>2</td><td>R$ 180,00</td><td>R$ 0,00</td><td>R$ 360,00</td><td class="table-actions-cell">' . action_menu() . '</td></tr></tbody></table></div>') .
+      form_section('Produtos e peças', '<div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Código</th><th>Produto</th><th>Unidade</th><th>Qtd.</th><th>Valor unit.</th><th>Desconto</th><th>Subtotal</th><th>Ações</th></tr></thead><tbody><tr><td>GAS-410</td><td>Gás refrigerante R410A</td><td>kg</td><td>1</td><td>R$ 390,00</td><td>R$ 0,00</td><td>R$ 390,00</td><td class="table-actions-cell">' . action_menu() . '</td></tr></tbody></table></div>') .
     '</div>
     <div class="tab-pane fade" id="os-valores">' .
       form_section('Agendamento', '<div class="form-row-3">' . field('Data','2026-06-18','date') . field('Horário inicial','08:30','time') . field('Horário final','11:30','time') . select_field('Prioridade',['Baixa','Média','Alta','Urgente']) . select_field('Status',['Aberta','Agendada','Em execução','Aguardando peça','Finalizada']) . '</div>') .

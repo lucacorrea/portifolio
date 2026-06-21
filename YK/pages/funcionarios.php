@@ -226,12 +226,13 @@ metric_grid([
                                 <?= h(employee_date($employee->createdAt())) ?>
                             </td>
 
-                            <td>
-                                <div class="dropdown">
+                            <td class="table-actions-cell">
+                                <div class="dropdown table-action-dropdown">
                                     <button
                                         class="btn-action"
                                         type="button"
                                         data-bs-toggle="dropdown"
+                                        aria-expanded="false"
                                         aria-label="Ações do funcionário <?= h($employee->name()) ?>"
                                     >
                                         <i class="bi bi-three-dots-vertical"></i>

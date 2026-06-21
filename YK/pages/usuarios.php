@@ -445,12 +445,13 @@ metric_grid([
                                 ) ?>
                             </td>
 
-                            <td>
-                                <div class="dropdown">
+                            <td class="table-actions-cell">
+                                <div class="dropdown table-action-dropdown">
                                     <button
                                         class="btn-action"
                                         type="button"
                                         data-bs-toggle="dropdown"
+                                        aria-expanded="false"
                                         aria-label="Ações do usuário <?= h($user->name()) ?>"
                                     >
                                         <i
@@ -1882,162 +1883,6 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         });
     }
-
-    function positionUserActionMenu(dropdown) {
-        const button = dropdown.querySelector('[data-bs-toggle="dropdown"]');
-        const menu = dropdown._userActionMenu
-            || dropdown.querySelector('.dropdown-menu');
-
-        if (!button || !menu) {
-            return;
-        }
-
-        dropdown._userActionMenu = menu;
-        menu._userActionDropdown = dropdown;
-
-        if (!menu._userActionPlaceholder) {
-            const placeholder = document.createComment(
-                'user action menu'
-            );
-
-            dropdown.appendChild(placeholder);
-            menu._userActionPlaceholder = placeholder;
-        }
-
-        if (menu.parentElement !== document.body) {
-            document.body.appendChild(menu);
-        }
-
-        const buttonRect = button.getBoundingClientRect();
-
-        menu.style.position = 'fixed';
-        menu.style.inset = 'auto';
-        menu.style.transform = 'none';
-        menu.style.zIndex = '1060';
-        menu.style.visibility = 'hidden';
-        menu.style.display = 'block';
-
-        const menuRect = menu.getBoundingClientRect();
-        const viewportPadding = 12;
-        const left = Math.max(
-            viewportPadding,
-            Math.min(
-                buttonRect.right - menuRect.width,
-                window.innerWidth - menuRect.width - viewportPadding
-            )
-        );
-
-        const tableWrap = button.closest('.table-panel-wrap');
-        const tableRect = tableWrap
-            ? tableWrap.getBoundingClientRect()
-            : null;
-        const topAboveTable = tableRect
-            ? tableRect.top - menuRect.height - 8
-            : buttonRect.top - menuRect.height - 8;
-        const topAboveButton = buttonRect.top - menuRect.height - 8;
-        const topBelowButton = buttonRect.bottom + 8;
-        const top = topAboveTable >= viewportPadding
-            ? topAboveTable
-            : (
-                topAboveButton >= viewportPadding
-                    ? topAboveButton
-                    : Math.min(
-                        topBelowButton,
-                        window.innerHeight
-                            - menuRect.height
-                            - viewportPadding
-                    )
-            );
-
-        menu.style.left = left + 'px';
-        menu.style.top = Math.max(viewportPadding, top) + 'px';
-        menu.style.visibility = '';
-    }
-
-    function resetUserActionMenu(dropdown) {
-        const menu = dropdown._userActionMenu
-            || document.body.querySelector(
-                '.dropdown-menu[data-user-action-open="1"]'
-            )
-            || dropdown.querySelector('.dropdown-menu');
-
-        if (!menu) {
-            return;
-        }
-
-        menu.style.position = '';
-        menu.style.inset = '';
-        menu.style.transform = '';
-        menu.style.zIndex = '';
-        menu.style.visibility = '';
-        menu.style.display = '';
-        menu.style.left = '';
-        menu.style.top = '';
-        delete menu.dataset.userActionOpen;
-
-        if (menu._userActionPlaceholder) {
-            menu._userActionPlaceholder.replaceWith(menu);
-            delete menu._userActionPlaceholder;
-        }
-
-        delete menu._userActionDropdown;
-        delete dropdown._userActionMenu;
-    }
-
-    document
-        .querySelectorAll('.users-table .dropdown')
-        .forEach(function (dropdown) {
-            dropdown.addEventListener('shown.bs.dropdown', function () {
-                const menu = dropdown._userActionMenu
-                    || dropdown.querySelector('.dropdown-menu');
-
-                if (menu) {
-                    menu.dataset.userActionOpen = '1';
-                }
-
-                positionUserActionMenu(dropdown);
-            });
-
-            dropdown.addEventListener('hidden.bs.dropdown', function () {
-                resetUserActionMenu(dropdown);
-            });
-        });
-
-    window.addEventListener('resize', function () {
-        document
-            .querySelectorAll(
-                '.dropdown-menu[data-user-action-open="1"], '
-                + '.users-table .dropdown .dropdown-menu.show'
-            )
-            .forEach(function (menu) {
-                const dropdown = menu._userActionDropdown
-                    || menu.closest('.dropdown');
-
-                if (dropdown) {
-                    positionUserActionMenu(dropdown);
-                }
-            });
-    });
-
-    window.addEventListener(
-        'scroll',
-        function () {
-            document
-                .querySelectorAll(
-                    '.dropdown-menu[data-user-action-open="1"], '
-                    + '.users-table .dropdown .dropdown-menu.show'
-                )
-                .forEach(function (menu) {
-                    const dropdown = menu._userActionDropdown
-                        || menu.closest('.dropdown');
-
-                    if (dropdown) {
-                        positionUserActionMenu(dropdown);
-                    }
-                });
-        },
-        true
-    );
 
     document
         .querySelectorAll('.js-user-view')

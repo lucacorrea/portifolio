@@ -176,9 +176,9 @@ metric_grid([
                             <td><span class="badge-soft badge-<?= h(product_stock_class($situation)) ?>"><?= h(product_stock_label($situation)) ?></span></td>
                             <?php if ($canCost): ?><td><?= h(money($product->costPrice())) ?></td><?php endif; ?>
                             <?php if ($canSale): ?><td><?= h(money($product->salePrice())) ?></td><?php endif; ?>
-                            <td>
-                                <div class="dropdown">
-                                    <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-label="Ações do produto <?= h($product->name()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
+                            <td class="table-actions-cell">
+                                <div class="dropdown table-action-dropdown">
+                                    <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do produto <?= h($product->name()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
                                     <ul class="dropdown-menu dropdown-menu-end">
                                         <li><button class="dropdown-item js-product-view" type="button" data-bs-toggle="modal" data-bs-target="#modal-produto-view"
                                             data-product-id="<?= h((string) $product->id()) ?>"

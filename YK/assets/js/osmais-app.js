@@ -40,4 +40,202 @@ document.addEventListener('DOMContentLoaded', () => {
       if (icon) icon.className = isFull ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
     });
   });
+
+  const actionMenu = {
+    active: null,
+    viewportPadding: 12,
+    gap: 6,
+  };
+
+  const isActionDropdown = (dropdown) => {
+    if (!dropdown) return false;
+    const toggle = dropdown.querySelector('.btn-action[data-bs-toggle="dropdown"]');
+    return Boolean(
+      toggle
+      && (
+        dropdown.classList.contains('table-action-dropdown')
+        || dropdown.closest('.os-table')
+      )
+    );
+  };
+
+  const resetMenuStyles = (menu) => {
+    [
+      'position',
+      'inset',
+      'left',
+      'top',
+      'right',
+      'bottom',
+      'transform',
+      'zIndex',
+      'visibility',
+      'display',
+      'minWidth',
+      'maxWidth',
+      'maxHeight',
+      'overflowY',
+    ].forEach((property) => {
+      menu.style[property] = '';
+    });
+  };
+
+  const restoreActionMenu = () => {
+    if (!actionMenu.active) return;
+
+    const { menu, originalParent, originalNextSibling, toggle } = actionMenu.active;
+
+    menu.classList.remove('action-menu-portal');
+    resetMenuStyles(menu);
+
+    if (originalParent) {
+      if (
+        originalNextSibling
+        && originalNextSibling.parentNode === originalParent
+      ) {
+        originalParent.insertBefore(menu, originalNextSibling);
+      } else {
+        originalParent.appendChild(menu);
+      }
+    }
+
+    toggle?.setAttribute('aria-expanded', 'false');
+    actionMenu.active = null;
+  };
+
+  const closeActionMenu = () => {
+    if (!actionMenu.active) return;
+
+    const instance = window.bootstrap?.Dropdown?.getInstance(actionMenu.active.toggle);
+    if (instance) {
+      instance.hide();
+      return;
+    }
+
+    restoreActionMenu();
+  };
+
+  const positionActionMenu = () => {
+    if (!actionMenu.active) return;
+
+    const { menu, toggle } = actionMenu.active;
+    const toggleRect = toggle.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const padding = actionMenu.viewportPadding;
+    const gap = actionMenu.gap;
+
+    const isInvisible = (
+      toggleRect.bottom <= 0
+      || toggleRect.top >= viewportHeight
+      || toggleRect.right <= 0
+      || toggleRect.left >= viewportWidth
+    );
+
+    if (isInvisible) {
+      closeActionMenu();
+      return;
+    }
+
+    menu.style.visibility = 'hidden';
+    menu.style.display = 'block';
+    menu.style.position = 'fixed';
+    menu.style.inset = 'auto';
+    menu.style.transform = 'none';
+    menu.style.zIndex = '1070';
+
+    const menuRect = menu.getBoundingClientRect();
+    const availableWidth = Math.max(160, viewportWidth - (padding * 2));
+    const menuWidth = Math.min(
+      Math.max(menuRect.width, 200),
+      availableWidth
+    );
+    const naturalHeight = Math.max(menuRect.height, 1);
+    const availableBelow = viewportHeight - toggleRect.bottom - gap - padding;
+    const availableAbove = toggleRect.top - gap - padding;
+    const opensDown = availableBelow >= naturalHeight || availableBelow >= availableAbove;
+    const maxHeight = Math.max(
+      120,
+      Math.min(
+        naturalHeight,
+        opensDown ? availableBelow : availableAbove
+      )
+    );
+    const left = Math.min(
+      Math.max(toggleRect.right - menuWidth, padding),
+      viewportWidth - menuWidth - padding
+    );
+    const top = opensDown
+      ? Math.min(toggleRect.bottom + gap, viewportHeight - maxHeight - padding)
+      : Math.max(toggleRect.top - gap - maxHeight, padding);
+
+    menu.style.left = `${Math.max(padding, left)}px`;
+    menu.style.top = `${Math.max(padding, top)}px`;
+    menu.style.minWidth = '200px';
+    menu.style.maxWidth = `${availableWidth}px`;
+    menu.style.maxHeight = `${maxHeight}px`;
+    menu.style.overflowY = naturalHeight > maxHeight ? 'auto' : '';
+    menu.style.visibility = '';
+  };
+
+  document.addEventListener('show.bs.dropdown', (event) => {
+    const dropdown = event.target?.closest?.('.dropdown');
+    if (!isActionDropdown(dropdown)) return;
+
+    if (actionMenu.active && actionMenu.active.dropdown !== dropdown) {
+      closeActionMenu();
+    }
+  });
+
+  document.addEventListener('shown.bs.dropdown', (event) => {
+    const dropdown = event.target?.closest?.('.dropdown');
+    if (!isActionDropdown(dropdown)) return;
+
+    const toggle = dropdown.querySelector('.btn-action[data-bs-toggle="dropdown"]');
+    const menu = dropdown.querySelector('.dropdown-menu') || actionMenu.active?.menu;
+    if (!toggle || !menu) return;
+
+    actionMenu.active = {
+      dropdown,
+      toggle,
+      menu,
+      originalParent: menu.parentNode,
+      originalNextSibling: menu.nextSibling,
+    };
+
+    menu.classList.add('action-menu-portal');
+    document.body.appendChild(menu);
+    toggle.setAttribute('aria-expanded', 'true');
+    positionActionMenu();
+  });
+
+  document.addEventListener('hidden.bs.dropdown', (event) => {
+    const dropdown = event.target?.closest?.('.dropdown');
+    if (!isActionDropdown(dropdown)) return;
+    if (!actionMenu.active || actionMenu.active.dropdown !== dropdown) return;
+    restoreActionMenu();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (
+      actionMenu.active
+      && actionMenu.active.menu.contains(event.target)
+      && event.target.closest('.dropdown-item')
+    ) {
+      window.setTimeout(closeActionMenu, 0);
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !actionMenu.active) return;
+    const toggle = actionMenu.active.toggle;
+    closeActionMenu();
+    toggle?.focus();
+  });
+
+  window.addEventListener('resize', positionActionMenu, { passive: true });
+  document.addEventListener('scroll', positionActionMenu, {
+    passive: true,
+    capture: true,
+  });
 });
