@@ -262,4 +262,3 @@ if ($companyDisplayName !== '') {
   data-company-logo="<?= e($companyLogoUrl) ?>">
   <main class="phone-app">
     <section class="screen">
-      
