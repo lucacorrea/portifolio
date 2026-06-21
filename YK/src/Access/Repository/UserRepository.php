@@ -262,13 +262,15 @@ final class UserRepository
         if ($search !== '') {
             $sql .= '
             AND (
-                u.nome LIKE :search
-                OR u.usuario LIKE :search
-                OR u.email LIKE :search
+                u.nome LIKE :search_name
+                OR u.usuario LIKE :search_username
+                OR u.email LIKE :search_email
             )
         ';
 
-            $parameters['search'] = '%' . $search . '%';
+            $parameters['search_name'] = '%' . $search . '%';
+            $parameters['search_username'] = '%' . $search . '%';
+            $parameters['search_email'] = '%' . $search . '%';
         }
 
         if (

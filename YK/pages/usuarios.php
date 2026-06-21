@@ -1637,11 +1637,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
 
                 text(
-                    'view-userLockedUntil',
-                    button.dataset.userLockedUntil
-                );
-
-                text(
                     'view-user-locked-until',
                     button.dataset.userLockedUntil
                 );

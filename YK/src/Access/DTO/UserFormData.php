@@ -11,6 +11,7 @@ final class UserFormData
     private const VALID_STATUSES = [
         'ativo',
         'inativo',
+        'bloqueado',
     ];
 
     public function __construct(
