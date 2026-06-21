@@ -48,12 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (scanLocked) return;
 
     if (!window.isSecureContext && location.hostname !== 'localhost') {
-      setScannerMessage('warning', 'A câmera exige acesso HTTPS. Digite o código manualmente.');
+      setScannerMessage('warning', 'A câmera só abre em HTTPS ou localhost. Se estiver usando o IP da rede no celular, o navegador bloqueia o acesso.');
       return;
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setScannerMessage('warning', 'Este dispositivo não possui câmera disponível.');
+      setScannerMessage('warning', 'Este navegador não liberou acesso à câmera. Verifique HTTPS, permissões e suporte do aparelho.');
       return;
     }
 

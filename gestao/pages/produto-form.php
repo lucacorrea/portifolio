@@ -296,6 +296,7 @@ $pageId = 'produto-form-server';
 $pageTitle = $isEditing ? 'Editar produto' : 'Novo produto';
 $activeMenu = 'produtos';
 $previewUrl = productFormImageUrl($formData['image'] ?? '');
+$barcodeScriptVersion = (string)(@filemtime(BASE_PATH . '/assets/js/produto-codigo-barras.js') ?: time());
 require_once __DIR__ . '/layout/header.php';
 ?>
 
@@ -436,5 +437,5 @@ require_once __DIR__ . '/layout/header.php';
   <?php endif; ?>
 </section>
 
-<script src="../assets/js/produto-codigo-barras.js"></script>
+<script src="../assets/js/produto-codigo-barras.js?v=<?= e($barcodeScriptVersion) ?>"></script>
 <?php require_once __DIR__ . '/layout/footer.php'; ?>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lj-caixa-assets-oo-v10';
+const CACHE_NAME = 'lj-caixa-assets-oo-v11';
 const FILES = [
   './assets/css/main.css',
   './assets/js/app.js',
@@ -27,6 +27,19 @@ self.addEventListener('fetch', event => {
 
   if (event.request.method !== 'GET') return;
   if (url.pathname.endsWith('.php') || url.pathname.endsWith('/')) return;
+
+  if (url.origin === self.location.origin && (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'))) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)).catch(() => {}));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)));
 });
