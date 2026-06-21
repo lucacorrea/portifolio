@@ -1,13 +1,17 @@
 <?php
-$pageKey = 'servicos';
-$activePage = 'servicos';
+
+declare(strict_types=1);
+
 $pageTitle = 'Serviços';
-$pageSubtitle = 'Cadastre os tipos de serviço oferecidos pela empresa';
-$primaryActionLabel = 'Novo Serviço';
-$primaryActionIcon = 'bi-plus-lg';
+$pageSubtitle = 'Cadastro dos serviços oferecidos pela empresa';
+$activePage = 'servicos';
+
+$primaryActionLabel = 'Novo serviço';
+$primaryActionIcon = 'bi-tools';
 $primaryActionTarget = '#modal-servico';
 $primaryActionPermission = 'servico.criar';
+
 $requiredPermission = 'servico.visualizar';
-$pageContent = __DIR__ . '/pages/operational.php';
+$pageContent = __DIR__ . '/pages/servicos.php';
 
 require __DIR__ . '/includes/shell.php';

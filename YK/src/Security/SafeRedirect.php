@@ -16,6 +16,7 @@ final class SafeRedirect
         'clientes.php',
         'agenda.php',
         'painel-semanal.php',
+        'produtos.php',
         'pecas.php',
         'servicos.php',
         'funcionarios.php',

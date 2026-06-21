@@ -198,8 +198,6 @@ function render_common_modals(): void {
   modal_shell('modal-cliente', 'Novo Cliente', cliente_modal_body());
   modal_shell('modal-venda', 'Venda avulsa', venda_modal_body(), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar venda</button><button class="btn-modal-save" type="button">Finalizar venda</button><button class="btn-modal-secondary" type="button">Imprimir cupom</button>');
   modal_shell('modal-lembrete', 'Novo lembrete', lembrete_modal_body());
-  modal_shell('modal-peca', 'Novo Produto / Peça', produto_modal_body());
-  modal_shell('modal-servico', 'Novo Serviço', servico_modal_body());
   modal_shell('modal-recibo', 'Novo Recibo Visual', form_section('Recibo', '<div class="form-row">' . field('Cliente','João Almeida') . field('Referência','OS-00254') . field('Valor','120,00') . field('Data','2026-06-18','date') . '</div>' . field('Referente a','Diagnóstico técnico em ar-condicionado janela.','textarea')));
   modal_shell('modal-relatorio', 'Exportação Visual', form_section('Relatório', '<div class="form-row">' . select_field('Tipo',['Visão Geral','Produtividade','Serviços por Funcionário','Financeiro','Estoque']) . field('Período inicial','2026-06-01','date') . field('Período final','2026-06-30','date') . select_field('Formato visual',['Tela','PDF futuro','Planilha futura']) . '</div>' . field('Observações','Botão apenas visual; exportação real será implementada em outra etapa.','textarea')), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Exportar visualmente</button>');
   modal_shell('modal-config', 'Salvar Configurações Visuais', form_section('Confirmação visual', '<p class="section-note">As configurações exibidas nesta tela são apenas demonstrativas nesta etapa. Nenhuma informação será persistida.</p>'), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Salvar visualmente</button>');
@@ -519,15 +517,6 @@ function render_estado_vazio_semanal(): string {
   </div>';
 }
 
-function produto_modal_body(): string {
-  return form_section('Dados do produto', '<div class="form-row-3">' . field('Código','CMP-014') . field('Descrição','Compressor 1/4 HP') . select_field('Categoria',['Compressor','Sensor','Filtro','Gás refrigerante','Tubulação','Placa eletrônica']) . field('Fabricante','Embraco') . select_field('Unidade',['un','kg','m','cx']) . field('Código de barras','789000000014') . '</div>') .
-    form_section('Preços e estoque', '<div class="form-row-3">' . field('Custo','420,00') . field('Preço','620,00') . field('Estoque','3') . field('Estoque mínimo','2') . field('Localização','Prateleira A-03') . select_field('Situação',['Em estoque','Estoque baixo','Sem estoque']) . '</div>' . field('Observações','Peça usada em freezers verticais e balcões refrigerados.','textarea'));
-}
-
-function servico_modal_body(): string {
-  return form_section('Serviço', '<div class="form-row">' . field('Nome','Limpeza de ar-condicionado split') . select_field('Categoria',['Manutenção preventiva','Manutenção corretiva','Instalação','Visita técnica']) . select_field('Equipamentos compatíveis',['Ar-condicionado Split','Ar-condicionado Janela','Cassete','Piso-Teto','Freezer','Câmara Fria']) . field('Duração','1h30') . field('Valor','180,00') . select_field('Status',['Ativo','Inativo']) . '</div>' . field('Descrição','Higienização da evaporadora, filtros e conferência visual da condensadora.','textarea'));
-}
-
 function render_operational_page(string $key): void {
   echo '<div class="page-body operational-page" data-page="' . h($key) . '">';
   match ($key) {
@@ -536,8 +525,6 @@ function render_operational_page(string $key): void {
     'clientes' => render_clientes(),
     'agenda' => render_agenda(),
     'painel-semanal' => render_painel_semanal(),
-    'pecas' => render_pecas(),
-    'servicos' => render_servicos(),
     'caixa' => render_caixa(),
     'faturamento' => render_faturamento(),
     'relatorios' => render_relatorios(),
@@ -597,32 +584,6 @@ function render_agenda(): void {
   echo '</div></div><div class="tab-pane fade" id="agenda-calendario"><div class="calendar-grid">';
   for ($day = 1; $day <= 30; $day++) echo '<div class="calendar-day"><strong>' . $day . '</strong>' . ($day % 4 === 0 ? '<span class="calendar-dot service">Serviço</span>' : '') . ($day % 7 === 0 ? '<span class="calendar-dot note">Lembrete</span>' : '') . '</div>';
   echo '</div><button class="btn-new-os mt-3" type="button" data-bs-toggle="modal" data-bs-target="#modal-lembrete"><i class="bi bi-alarm"></i><span>Novo lembrete</span></button></div></div></div></div>';
-}
-
-function render_pecas(): void {
-  metric_grid([['Total de produtos','284','bi-box-seam','#2563EB'],['Estoque baixo','18','bi-exclamation-triangle','#D97706'],['Sem estoque','7','bi-x-octagon','#DC2626'],['Valor estimado',money(82450),'bi-cash-stack','#16A34A']]);
-  filter_bar([['Categoria',['Compressor','Sensor','Filtro','Gás']], ['Situação',['Em estoque','Estoque baixo','Sem estoque']]], 'Buscar código ou descrição...');
-  echo '<section class="panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-box-seam"></i>Produtos / Peças e Estoque</div><div class="panel-actions"><button class="btn-filter btn-filter-primary">Novo produto</button><button class="btn-filter btn-filter-ghost">Entrada</button><button class="btn-filter btn-filter-ghost">Saída</button><button class="btn-filter btn-filter-ghost">Ajuste</button><button class="btn-filter btn-filter-ghost">Importar peças</button></div></div>';
-  ui_table(['Código','Descrição','Categoria','Fabricante','Unidade','Estoque','Estoque mín.','Custo','Preço','Situação','Ações'], [
-    ['CMP-014','Compressor 1/4 HP','Compressor','Embraco','un','3','2',money(420),money(620),ui_badge('Em estoque'),action_menu()],
-    ['SEN-022','Sensor de temperatura','Sensor','Full Gauge','un','2','5',money(38),money(75),ui_badge('Estoque baixo'),action_menu()],
-    ['FLT-009','Filtro secador','Filtro','Danfoss','un','0','6',money(24),money(49),ui_badge('Sem estoque'),action_menu()],
-  ]);
-  pagination_visual();
-  echo '</section>';
-}
-
-function render_servicos(): void {
-  metric_grid([['Serviços cadastrados','38','bi-tools','#2563EB'],['Serviços ativos','35','bi-check-circle','#16A34A'],['Mais utilizados','8','bi-star','#D97706'],['Ticket médio visual',money(420),'bi-graph-up','#7C3AED']]);
-  filter_bar([['Categoria',['Preventiva','Corretiva','Instalação']], ['Equipamento',['Split','Freezer','Câmara fria']], ['Status',['Ativo','Inativo']]], 'Buscar serviço...');
-  echo '<section class="panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-tools"></i>Serviços</div></div>';
-  ui_table(['Código','Serviço','Categoria','Equipamento','Duração estimada','Valor','Status','Ações'], [
-    ['SRV-001','Limpeza de ar-condicionado split','Preventiva','Split','1h30',money(180),ui_badge('Ativo'),action_menu()],
-    ['SRV-002','Troca de compressor','Corretiva','Freezer','3h',money(650),ui_badge('Ativo'),action_menu()],
-    ['SRV-003','Manutenção em câmara fria','Preventiva','Câmara Fria','4h',money(520),ui_badge('Ativo'),action_menu()],
-  ]);
-  pagination_visual();
-  echo '</section>';
 }
 
 function render_caixa(): void {

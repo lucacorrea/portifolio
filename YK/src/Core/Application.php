@@ -12,6 +12,10 @@ use App\Access\Service\AuthenticationService;
 use App\Access\Service\AuthorizationService;
 use App\Access\Service\ProfileManagementService;
 use App\Access\Service\UserManagementService;
+use App\Catalog\Repository\ProductRepository;
+use App\Catalog\Repository\ServiceRepository;
+use App\Catalog\Service\ProductManagementService;
+use App\Catalog\Service\ServiceManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\SafeRedirect;
 use App\Security\SessionManager;
@@ -33,6 +37,10 @@ final class Application
     private ?UserManagementService $userManagement = null;
 
     private ?EmployeeManagementService $employeeManagement = null;
+
+    private ?ProductManagementService $productManagement = null;
+
+    private ?ServiceManagementService $serviceManagement = null;
 
     private ?SafeRedirect $redirect = null;
 
@@ -174,6 +182,32 @@ final class Application
         }
 
         return $this->employeeManagement;
+    }
+
+    public function productManagement(): ProductManagementService
+    {
+        if ($this->productManagement === null) {
+            $connection = $this->database->connection();
+
+            $this->productManagement = new ProductManagementService(
+                new ProductRepository($connection)
+            );
+        }
+
+        return $this->productManagement;
+    }
+
+    public function serviceManagement(): ServiceManagementService
+    {
+        if ($this->serviceManagement === null) {
+            $connection = $this->database->connection();
+
+            $this->serviceManagement = new ServiceManagementService(
+                new ServiceRepository($connection)
+            );
+        }
+
+        return $this->serviceManagement;
     }
 
     public function redirect(): SafeRedirect

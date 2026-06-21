@@ -55,7 +55,7 @@ $navGroups = [
             'key' => 'pecas',
             'label' => 'Produtos / Peças',
             'icon' => 'bi-box-seam',
-            'href' => 'pecas.php',
+            'href' => 'produtos.php',
             'permission' => 'produto.visualizar',
         ],
         [
