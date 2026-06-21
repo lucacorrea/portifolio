@@ -14,17 +14,20 @@ use App\Security\Auth;
 use App\Security\Csrf;
 use App\Security\Password;
 use App\Security\Permission;
+use App\Services\CompanyBrandService;
 
 final class SettingController
 {
     public function __construct(
         private ?CompanyRepository $companies = null,
         private ?SettingRepository $settings = null,
-        private ?UserRepository $users = null
+        private ?UserRepository $users = null,
+        private ?CompanyBrandService $brands = null
     ) {
         $this->companies ??= new CompanyRepository();
         $this->settings ??= new SettingRepository();
         $this->users ??= new UserRepository();
+        $this->brands ??= new CompanyBrandService($this->companies);
     }
 
     public function list(): void
@@ -41,7 +44,7 @@ final class SettingController
         $settings = $this->settings->getAll($empresaId);
 
         Response::success([
-                'settings' => $this->formatSettings($company, $settings),
+                'settings' => $this->formatSettings($company, $settings, $empresaId),
                 'users' => array_map([$this, 'formatUser'], $this->users->findByCompany($empresaId)),
         ]);
     }
@@ -250,10 +253,19 @@ final class SettingController
         ]);
     }
 
-    private function formatSettings(array $company, array $settings): array
+    private function formatSettings(array $company, array $settings, int $empresaId): array
     {
+        $brand = $this->brands->getForCompany($empresaId, '../../');
+        $companyName = (string)($brand['name'] ?: ($company['nome'] ?? ''));
+        $appName = trim((string)($settings['app_name'] ?? '')) ?: $companyName;
+
         return [
-            'companyName' => $company['nome'] ?? '',
+            'companyName' => $companyName,
+            'companyLegalName' => $company['nome'] ?? '',
+            'companyLogo' => $brand['logo_url'] ?? '',
+            'companyInitials' => $brand['initials'] ?? '',
+            'appName' => $appName,
+            'appShortName' => trim((string)($settings['app_short_name'] ?? '')) ?: mb_substr($appName, 0, 40),
             'companyPhone' => $company['telefone'] ?? '',
             'companyAddress' => $company['endereco'] ?? '',
             'receiptMode' => $settings['comprovante_modo'] ?? 'perguntar',

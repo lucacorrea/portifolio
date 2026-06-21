@@ -9,7 +9,7 @@ final class Config
     public static function app(): array
     {
         return [
-            'name' => (string) Env::first(['APP_NAME'], 'L&J Caixa'),
+            'name' => (string) Env::first(['APP_NAME'], 'Sistema de Gestão'),
             'env' => (string) Env::first(['APP_ENV'], 'production'),
             'debug' => self::boolFromKeys(['APP_DEBUG'], false),
             'url' => rtrim((string) Env::first(['BASE_URL', 'APP_URL'], self::detectBaseUrl()), '/'),

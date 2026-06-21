@@ -1,4 +1,4 @@
-# L&J Caixa - Sistema PHP/MySQL
+# Sistema de Gestão - PHP/MySQL
 
 Projeto com:
 

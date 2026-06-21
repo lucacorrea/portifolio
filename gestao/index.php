@@ -3,7 +3,6 @@
 declare(strict_types=1);
 require_once __DIR__ . '/backend/bootstrap.php';
 
-use App\Repositories\CompanyRepository;
 use App\Security\Auth;
 use App\Services\DashboardService;
 
@@ -11,7 +10,6 @@ Auth::requireLogin();
 $user = Auth::user();
 $empresaId = (int)($user['empresa_id'] ?? 0);
 $dashboardService = new DashboardService();
-$companyRepository = new CompanyRepository();
 function dashboardMoney(mixed $value): string
 {
   return 'R$ ' . number_format((float)$value, 2, ',', '.');
@@ -61,68 +59,6 @@ function dashboardSafePercent(float $value, float $base): float
     return 0.0;
   }
   return round(($value / $base) * 100, 1);
-}
-/** * Retorna as iniciais calculadas a partir do nome * cadastrado no banco de dados. */ function dashboardCompanyInitials(string $name): string
-{
-  $name = trim($name);
-  if ($name === '') {
-    return '';
-  }
-  $parts = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY);
-  if (!$parts) {
-    return '';
-  }
-  $firstPart = (string)$parts[0];
-  $firstInitial = function_exists('mb_substr') ? mb_substr($firstPart, 0, 1, 'UTF-8') : substr($firstPart, 0, 1);
-  $lastInitial = '';
-  if (count($parts) > 1) {
-    $lastPart = (string)$parts[count($parts) - 1];
-    $lastInitial = function_exists('mb_substr') ? mb_substr($lastPart, 0, 1, 'UTF-8') : substr($lastPart, 0, 1);
-  }
-  $initials = $firstInitial . $lastInitial;
-  return function_exists('mb_strtoupper') ? mb_strtoupper($initials, 'UTF-8') : strtoupper($initials);
-}
-/** * Valida o caminho salvo no banco e retorna * a URL relativa da imagem. * * Não utiliza imagem fixa como fallback. */ function dashboardCompanyLogoUrl(int $empresaId, mixed $storedLogo): string
-{
-  if ($empresaId <= 0) {
-    return '';
-  }
-  $storedLogo = trim((string)$storedLogo);
-  if ($storedLogo === '') {
-    return '';
-  }
-  $relativePath = ltrim(str_replace('\\', '/', $storedLogo), '/');
-  $companyDirectory = sprintf('uploads/empresas/%d/', $empresaId);
-  if (!str_starts_with($relativePath, $companyDirectory) || str_contains($relativePath, '../') || str_contains($relativePath, '..\\')) {
-    return '';
-  }
-  $extension = strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
-  if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
-    return '';
-  }
-  $absolutePath = BASE_PATH . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
-  if (!is_file($absolutePath)) {
-    return '';
-  }
-  return $relativePath;
-} /* |-------------------------------------------------------------------------- | Identidade visual da empresa |-------------------------------------------------------------------------- | | A logo e o nome são buscados diretamente da tabela empresas. | */
-$company = [];
-$companyDisplayName = '';
-$companyLogoUrl = '';
-$companyInitials = '';
-$companyLoadError = null;
-if ($empresaId > 0) {
-  try {
-    $company = $companyRepository->findById($empresaId) ?? [];
-    $companyFantasyName = trim((string)($company['nome_fantasia'] ?? ''));
-    $companyLegalName = trim((string)($company['nome'] ?? ''));
-    $companyDisplayName = $companyFantasyName !== '' ? $companyFantasyName : $companyLegalName;
-    $companyLogoUrl = dashboardCompanyLogoUrl($empresaId, $company['logo'] ?? null);
-    $companyInitials = dashboardCompanyInitials($companyDisplayName);
-  } catch (Throwable $e) {
-    log_app_exception($e);
-    $companyLoadError = 'Não foi possível carregar a identidade visual da empresa.';
-  }
 }
 $dashboard = ['today' => ['sales_count' => 0, 'total_sales' => 0, 'estimated_profit' => 0,], 'month' => ['sales_count' => 0, 'total_sales' => 0, 'estimated_profit' => 0,], 'clientAccounts' => ['total_open' => 0, 'total_overdue' => 0, 'open_count' => 0, 'overdue_count' => 0, 'clients_with_debt' => 0,], 'paymentMethods' => [], 'salesEvolution' => [], 'latestSales' => [], 'topProducts' => [], 'lowStock' => [], 'expiringProducts' => [], 'expiredProducts' => [], 'settings' => ['alertDays' => 7,],];
 $loadError = null;
@@ -803,7 +739,7 @@ require_once __DIR__ . '/pages/layout/header.php'; ?> <style>
   <nav class="quick-menu" aria-label="Ações rápidas"> <a href="pages/nova-venda.php"> <i data-icon="receipt"></i> <span>Venda</span> </a> <a href="pages/produtos.php"> <i data-icon="product"></i> <span>Produtos</span> </a> <a href="pages/clientes.php"> <i data-icon="user"></i> <span>Clientes</span> </a> <a href="pages/contas-clientes.php"> <i data-icon="box"></i> <span>Fiado</span> </a> <a href="pages/relatorios.php"> <i data-icon="report"></i> <span>Relatórios</span> </a> </nav>
 </header>
 <section class="white-sheet">
-  <div class="dashboard-page"> <?php if ($companyLoadError !== null): ?> <div class="dashboard-alert" role="alert"> <?= e($companyLoadError) ?> </div> <?php endif; ?> <?php if ($loadError !== null): ?> <div class="dashboard-alert" role="alert"> <?= e($loadError) ?> </div> <?php endif; ?> <section class="dashboard-section">
+  <div class="dashboard-page"> <?php if ($loadError !== null): ?> <div class="dashboard-alert" role="alert"> <?= e($loadError) ?> </div> <?php endif; ?> <section class="dashboard-section">
       <div class="dashboard-section-header">
         <div>
           <h2>Resumo geral</h2>

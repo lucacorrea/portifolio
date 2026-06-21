@@ -51,7 +51,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#173F5F" />
-  <title>Login | L&J Caixa</title>
+  <title>Login | Sistema de Gestão</title>
 
   <style>
     :root {
@@ -475,7 +475,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
   <main class="login-card" aria-labelledby="loginTitle">
     <header class="login-brand">
       <h1 id="loginTitle">Login</h1>
-      <p>Acesse o L&amp;J Caixa para gerenciar vendas, caixa e operações.</p>
+      <p>Acesse o Sistema de Gestão para gerenciar vendas, caixa e operações.</p>
     </header>
 
     <?php if ($error): ?>
@@ -521,7 +521,7 @@ $showInitialAccess = ($appConfig['env'] ?? 'production') !== 'production' || (bo
       <span>
         Desenvolvido por
         <a href="https://ljsolucoestech.com.br" target="_blank" rel="noopener noreferrer">
-          L&amp;J Soluções Tech
+          Sistema de Gestão
         </a>
       </span>
       <small>Gestão comercial premium</small>

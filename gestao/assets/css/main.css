@@ -1900,7 +1900,7 @@ svg {
   }
 
   .screen::before {
-    content: "L&J Caixa";
+    content: none;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -2209,8 +2209,8 @@ svg {
   }
 
   .bottom-nav::before {
-    content: "L&J Caixa";
-    display: flex;
+    content: none;
+    display: none;
     align-items: center;
     min-height: 56px;
     margin-bottom: 18px;

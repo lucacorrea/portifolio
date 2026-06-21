@@ -26,14 +26,20 @@ final class SettingsService
 
     private CompanyLogoService $companyLogoService;
 
+    private PwaIconService $pwaIconService;
+
     public function __construct(
         SettingsRepository $settings,
-        ?CompanyLogoService $companyLogoService = null
+        ?CompanyLogoService $companyLogoService = null,
+        ?PwaIconService $pwaIconService = null
     ) {
         $this->settings = $settings;
 
         $this->companyLogoService = $companyLogoService
             ?? new CompanyLogoService();
+
+        $this->pwaIconService = $pwaIconService
+            ?? new PwaIconService();
     }
 
     public function getEmpresa(int $empresaId): array
@@ -279,6 +285,9 @@ final class SettingsService
             );
         }
 
+        $this->pwaIconService->deleteGeneratedIcons($empresaId);
+        $this->touchBranding($empresaId);
+
         return $newLogo;
     }
 
@@ -322,7 +331,54 @@ final class SettingsService
             );
         }
 
+        $this->pwaIconService->deleteGeneratedIcons($empresaId);
+        $this->touchBranding($empresaId);
+
         return true;
+    }
+
+    public function saveAppSettings(int $empresaId, array $data): bool
+    {
+        if ($empresaId <= 0) {
+            throw new InvalidArgumentException('Empresa inválida.');
+        }
+
+        $empresa = $this->getEmpresa($empresaId);
+        $defaultName = trim((string)($empresa['nome_fantasia'] ?? '')) !== ''
+            ? trim((string)$empresa['nome_fantasia'])
+            : trim((string)($empresa['nome'] ?? 'Sistema de Gestão'));
+
+        $appName = trim((string)($data['app_name'] ?? $defaultName));
+        $appShortName = trim((string)($data['app_short_name'] ?? ''));
+
+        if ($appName === '') {
+            throw new InvalidArgumentException('Informe o nome do aplicativo.');
+        }
+
+        if ($this->stringLength($appName) > 180) {
+            throw new InvalidArgumentException('O nome do aplicativo deve ter no máximo 180 caracteres.');
+        }
+
+        if ($appShortName === '') {
+            $appShortName = $appName;
+        }
+
+        if ($this->stringLength($appShortName) > 40) {
+            throw new InvalidArgumentException('O nome curto deve ter no máximo 40 caracteres.');
+        }
+
+        return $this->settings->saveAppSettings($empresaId, [
+            'app_name' => $appName,
+            'app_short_name' => $appShortName,
+            'branding_updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    private function touchBranding(int $empresaId): void
+    {
+        $this->settings->saveAppSettings($empresaId, [
+            'branding_updated_at' => date('Y-m-d H:i:s'),
+        ]);
     }
 
     public function saveReceiptRules(

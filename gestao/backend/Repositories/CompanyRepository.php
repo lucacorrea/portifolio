@@ -24,7 +24,7 @@ final class CompanyRepository
     public function findById(int $empresaId): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, nome, nome_fantasia, cpf_cnpj, telefone, endereco, logo
+            'SELECT id, nome, nome_fantasia, cpf_cnpj, telefone, endereco, logo, atualizado_em
              FROM empresas
              WHERE id = :id AND ativo = 1
              LIMIT 1'

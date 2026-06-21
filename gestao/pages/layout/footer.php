@@ -43,5 +43,6 @@ $activeMenu = $activeMenu ?? '';
   </main>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="<?= $prefix ?>assets/js/app.js"></script>
+  <script src="<?= $prefix ?>assets/js/pwa-install.js"></script>
 </body>
 </html>

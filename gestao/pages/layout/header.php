@@ -4,175 +4,51 @@ $prefix = $prefix ?? '../';
 $pageId = $pageId ?? '';
 $pageTitle = $pageTitle ?? 'Sistema';
 
-/*
-|--------------------------------------------------------------------------
-| Identidade visual da empresa
-|--------------------------------------------------------------------------
-|
-| A fonte dos dados é exclusivamente a tabela empresas:
-|
-| - empresas.nome
-| - empresas.nome_fantasia
-| - empresas.logo
-|
-| Não existe nome ou imagem fixa como fallback.
-|
-*/
-
-$layoutCompany = [];
-
-$companyDisplayName = '';
-$companyLogoPath = '';
-$companyLogoUrl = '';
-$companyLogoMime = '';
-
 $layoutUser = \App\Security\Auth::user();
-
 $layoutEmpresaId = (int)(
   $layoutUser['empresa_id']
   ?? 0
 );
 
+$companyBrand = [
+  'company_id' => $layoutEmpresaId,
+  'name' => '',
+  'legal_name' => '',
+  'logo_path' => '',
+  'logo_url' => '',
+  'logo_mime' => '',
+  'initials' => '',
+  'has_logo' => false,
+];
+$companyDisplayName = '';
+$companyLogoUrl = '';
+$companyLogoMime = '';
+$companyInitials = '';
+$companyManifestVersion = '';
+$companyAppleTouchIconUrl = '';
+
 if ($layoutEmpresaId > 0) {
   try {
-    $companyRepository =
-      new \App\Repositories\CompanyRepository();
+    $brandService = new \App\Services\CompanyBrandService();
+    $companyBrand = $brandService->getForCompany($layoutEmpresaId, $prefix);
+    $companyDisplayName = (string)$companyBrand['name'];
+    $companyLogoUrl = (string)$companyBrand['logo_url'];
+    $companyLogoMime = (string)$companyBrand['logo_mime'];
+    $companyInitials = (string)$companyBrand['initials'];
 
-    $layoutCompany =
-      $companyRepository->findById(
-        $layoutEmpresaId
-      ) ?? [];
+    $pwaManifestService = new \App\Services\PwaManifestService($brandService);
+    $pwaSettings = $pwaManifestService->appSettingsForCompany($layoutEmpresaId);
+    $companyManifestVersion = (string)$pwaSettings['version'];
 
-    /*
-        |--------------------------------------------------------------------------
-        | Nome exibido
-        |--------------------------------------------------------------------------
-        |
-        | Prioridade:
-        |
-        | 1. nome_fantasia
-        | 2. nome
-        |
-        */
-
-    $companyFantasyName = trim(
-      (string)(
-        $layoutCompany['nome_fantasia']
-        ?? ''
-      )
-    );
-
-    $companyLegalName = trim(
-      (string)(
-        $layoutCompany['nome']
-        ?? ''
-      )
-    );
-
-    $companyDisplayName =
-      $companyFantasyName !== ''
-      ? $companyFantasyName
-      : $companyLegalName;
-
-    /*
-        |--------------------------------------------------------------------------
-        | Logo enviada por upload
-        |--------------------------------------------------------------------------
-        |
-        | Exemplo salvo no banco:
-        |
-        | uploads/empresas/1/logo-abc123.webp
-        |
-        */
-
-    $storedLogo = trim(
-      (string)(
-        $layoutCompany['logo']
-        ?? ''
-      )
-    );
-
-    if ($storedLogo !== '') {
-      $normalizedLogo = ltrim(
-        str_replace(
-          '\\',
-          '/',
-          $storedLogo
-        ),
-        '/'
-      );
-
-      /*
-             * Cada empresa só pode carregar arquivos
-             * existentes dentro da própria pasta.
-             */
-      $allowedCompanyDirectory =
-        'uploads/empresas/'
-        . $layoutEmpresaId
-        . '/';
-
-      $isSafeLogoPath =
-        str_starts_with(
-          $normalizedLogo,
-          $allowedCompanyDirectory
-        )
-        && !str_contains(
-          $normalizedLogo,
-          '../'
-        )
-        && !str_contains(
-          $normalizedLogo,
-          '..\\'
-        );
-
-      if ($isSafeLogoPath) {
-        $absoluteLogoPath =
-          BASE_PATH
-          . DIRECTORY_SEPARATOR
-          . str_replace(
-            '/',
-            DIRECTORY_SEPARATOR,
-            $normalizedLogo
-          );
-
-        if (is_file($absoluteLogoPath)) {
-          $extension = strtolower(
-            pathinfo(
-              $normalizedLogo,
-              PATHINFO_EXTENSION
-            )
-          );
-
-          $detectedMime = match ($extension) {
-            'jpg',
-            'jpeg' => 'image/jpeg',
-
-            'png' => 'image/png',
-
-            'webp' => 'image/webp',
-
-            default => '',
-          };
-
-          if ($detectedMime !== '') {
-            $companyLogoPath =
-              $normalizedLogo;
-
-            $companyLogoUrl =
-              $prefix
-              . $normalizedLogo;
-
-            $companyLogoMime =
-              $detectedMime;
-          }
-        }
-      }
+    $pwaIconService = new \App\Services\PwaIconService();
+    if (!empty($companyBrand['has_logo']) && extension_loaded('gd')) {
+      $pwaIconService->iconsForBrand($companyBrand);
+      $appleTouchIconPath = $pwaIconService->appleTouchIconPath($companyBrand);
+      $companyAppleTouchIconUrl = $appleTouchIconPath !== ''
+        ? (rtrim($prefix, '/') === '' ? $appleTouchIconPath : rtrim($prefix, '/') . '/' . $appleTouchIconPath)
+        : '';
     }
   } catch (\Throwable $e) {
-    /*
-         * O erro é registrado, mas o layout
-         * continua carregando sem identidade visual.
-         */
     log_app_exception($e);
   }
 }
@@ -243,10 +119,19 @@ if ($companyDisplayName !== '') {
       rel="icon"
       href="<?= e($companyLogoUrl) ?>"
       type="<?= e($companyLogoMime) ?>">
+  <?php endif; ?>
 
+  <?php if ($companyAppleTouchIconUrl !== ''): ?>
     <link
       rel="apple-touch-icon"
-      href="<?= e($companyLogoUrl) ?>">
+      href="<?= e($companyAppleTouchIconUrl) ?>">
+  <?php endif; ?>
+
+  <?php if ($layoutEmpresaId > 0): ?>
+    <link
+      rel="manifest"
+      href="<?= e($prefix) ?>manifest.php?v=<?= e($companyManifestVersion) ?>"
+      crossorigin="use-credentials">
   <?php endif; ?>
 
   <link
@@ -259,6 +144,7 @@ if ($companyDisplayName !== '') {
   data-prefix="<?= e($prefix) ?>"
   data-company-id="<?= $layoutEmpresaId ?>"
   data-company-name="<?= e($companyDisplayName) ?>"
-  data-company-logo="<?= e($companyLogoUrl) ?>">
+  data-company-logo="<?= e($companyLogoUrl) ?>"
+  data-company-initials="<?= e($companyInitials) ?>">
   <main class="phone-app">
     <section class="screen">

@@ -2,7 +2,12 @@ const prefix = document.body.dataset.prefix || '';
 const page = document.body.dataset.page || 'dashboard';
 const data = {
   settings: {
-    companyName: '',
+    companyName: document.body?.dataset.companyName || '',
+    companyLegalName: '',
+    companyLogo: document.body?.dataset.companyLogo || '',
+    companyInitials: document.body?.dataset.companyInitials || '',
+    appName: document.body?.dataset.companyName || '',
+    appShortName: document.body?.dataset.companyName || '',
     companyPhone: '',
     companyAddress: '',
     receiptMode: 'perguntar',
@@ -1098,11 +1103,11 @@ function initReceipt() {
 
 function renderReceipt(s) {
   $('#receiptTitle').textContent = `Venda nº ${String(s.id).padStart(6, '0')}`;
+  const receiptCompanyName = data.settings.companyName || document.body?.dataset.companyName || 'Empresa';
   $('#receiptContentWrap').innerHTML = `
     <article class="receipt-card" id="receiptContent">
       <div class="receipt-head">
-        <img src="${prefix}assets/icons/icon.svg" alt="">
-        <h2>${data.settings.companyName}</h2>
+        <h2>${receiptCompanyName}</h2>
         <p>${data.settings.companyPhone} • ${data.settings.companyAddress}</p>
         <p>Venda nº ${String(s.id).padStart(6, '0')} • ${formatDate(s.date)} às ${s.time}</p>
       </div>

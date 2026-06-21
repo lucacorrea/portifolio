@@ -12,6 +12,8 @@ require_once __DIR__ . '/../backend/Services/SettingsService.php';
 use App\Repositories\SettingsRepository;
 use App\Repositories\UserRepository;
 use App\Security\Auth;
+use App\Services\CompanyBrandService;
+use App\Services\PwaManifestService;
 use App\Services\SettingsService;
 use App\Services\UserService;
 
@@ -31,6 +33,7 @@ $currentNivel = (string)$user['nivel'];
 $CONFIG_PERMISSIONS = [
     'usuarios' => ['admin'],
     'empresa' => ['admin', 'gerente'],
+    'aplicativo' => ['admin', 'gerente'],
     'comprovantes' => ['admin', 'gerente', 'operador'],
     'vencimentos' => ['admin', 'gerente', 'estoquista'],
     'estoque' => ['admin', 'gerente', 'estoquista'],
@@ -41,6 +44,7 @@ $CONFIG_PERMISSIONS = [
 
 $ACTION_PERMISSIONS = [
     'salvar_empresa' => 'empresa',
+    'salvar_aplicativo' => 'aplicativo',
     'salvar_comprovante' => 'comprovantes',
     'salvar_vencimento' => 'vencimentos',
     'salvar_estoque' => 'estoque',
@@ -58,6 +62,8 @@ $pageTitle = 'Configurações';
 $activeMenu = 'mais';
 
 $settingsService = new SettingsService(new SettingsRepository());
+$brandService = new CompanyBrandService();
+$pwaManifestService = new PwaManifestService($brandService);
 $userRepository = new UserRepository();
 $userService = new UserService($userRepository);
 
@@ -163,6 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST,
                 $_FILES
             ),
+            'salvar_aplicativo' => $settingsService->saveAppSettings($empresaId, $_POST),
             'salvar_comprovante' => $settingsService->saveReceiptRules($empresaId, $_POST),
             'salvar_vencimento' => $settingsService->saveDueRules($empresaId, $_POST),
             'salvar_estoque' => $settingsService->saveStockRules($empresaId, $_POST),
@@ -199,33 +206,12 @@ try {
 $flash = $_SESSION['config_flash'] ?? null;
 unset($_SESSION['config_flash']);
 
-$defaultCompanyLogoUrl = '../assets/icons/icon.svg';
-$companyLogoPreviewUrl = $defaultCompanyLogoUrl;
-$hasCompanyLogo = false;
-$currentCompanyLogoPath = trim((string)($empresa['logo'] ?? ''));
-
-if ($currentCompanyLogoPath !== '') {
-    $normalizedCompanyLogoPath = ltrim(
-        str_replace('\\', '/', $currentCompanyLogoPath),
-        '/'
-    );
-
-    $isSafeCompanyLogoPath = str_starts_with(
-        $normalizedCompanyLogoPath,
-        'uploads/empresas/'
-    ) && !str_contains($normalizedCompanyLogoPath, '../');
-
-    if ($isSafeCompanyLogoPath) {
-        $absoluteCompanyLogoPath = BASE_PATH
-            . DIRECTORY_SEPARATOR
-            . str_replace('/', DIRECTORY_SEPARATOR, $normalizedCompanyLogoPath);
-
-        if (is_file($absoluteCompanyLogoPath)) {
-            $companyLogoPreviewUrl = '../' . $normalizedCompanyLogoPath;
-            $hasCompanyLogo = true;
-        }
-    }
-}
+$companyBrand = $brandService->getForCompany($empresaId, '../');
+$companyLogoPreviewUrl = (string)$companyBrand['logo_url'];
+$hasCompanyLogo = (bool)$companyBrand['has_logo'];
+$companyInitials = (string)$companyBrand['initials'];
+$appSettings = $pwaManifestService->appSettingsForCompany($empresaId);
+$gdAvailable = extension_loaded('gd');
 
 $csrfToken = (string)$_SESSION['csrf_configuracoes'];
 $visibleConfigModules = array_filter(
@@ -575,6 +561,73 @@ require_once __DIR__ . '/layout/header.php';
         height: 100%;
         padding: 10px;
         object-fit: contain;
+    }
+
+    .company-logo-initials {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        place-items: center;
+        color: #111827;
+        background: #eef2ff;
+        font-size: 2rem;
+        font-weight: 950;
+        letter-spacing: .04em;
+    }
+
+    .pwa-preview-grid {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 14px;
+        align-items: center;
+        padding: 14px;
+        border: 1px solid #dbe3ef;
+        border-radius: 18px;
+        background: #f8fafc;
+    }
+
+    .pwa-icon-preview {
+        width: 96px;
+        height: 96px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        border-radius: 22px;
+        background: #fff;
+        border: 1px solid #dbe3ef;
+    }
+
+    .pwa-icon-preview img {
+        width: 100%;
+        height: 100%;
+        padding: 9px;
+        object-fit: contain;
+    }
+
+    .pwa-status {
+        margin: 0;
+        color: #475569;
+        font-size: .86rem;
+        line-height: 1.45;
+        font-weight: 750;
+    }
+
+    .pwa-status.error {
+        color: var(--cfg-danger);
+    }
+
+    .pwa-status.success {
+        color: var(--cfg-success);
+    }
+
+    .pwa-install-box {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid #dbe3ef;
+        background: #fff;
     }
 
     .company-logo-controls {
@@ -1110,6 +1163,17 @@ require_once __DIR__ . '/layout/header.php';
             </button>
             <?php endif; ?>
 
+            <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'aplicativo', $currentNivel)): ?>
+            <button class="settings-launch-card" type="button" data-open-modal="modalAplicativo">
+                <span class="settings-launch-icon">📱</span>
+                <span>
+                    <h3>Aplicativo</h3>
+                    <p>Nome, instalação e ícones do PWA.</p>
+                </span>
+                <span class="settings-launch-arrow">→</span>
+            </button>
+            <?php endif; ?>
+
             <?php if (canAccessConfig($CONFIG_PERMISSIONS, 'comprovantes', $currentNivel)): ?>
             <button class="settings-launch-card" type="button" data-open-modal="modalComprovantes">
                 <span class="settings-launch-icon">🧾</span>
@@ -1306,13 +1370,20 @@ require_once __DIR__ . '/layout/header.php';
 
                         <div class="company-logo-panel">
                             <div class="company-logo-preview">
-                                <img
-                                    id="companyLogoPreview"
-                                    src="<?= h($companyLogoPreviewUrl) ?>"
-                                    alt="Prévia da logo da empresa"
-                                    data-current-logo="<?= h($companyLogoPreviewUrl) ?>"
-                                    data-default-logo="<?= h($defaultCompanyLogoUrl) ?>"
-                                >
+                                <?php if ($hasCompanyLogo): ?>
+                                    <img
+                                        id="companyLogoPreview"
+                                        src="<?= h($companyLogoPreviewUrl) ?>"
+                                        alt="Prévia da logo da empresa"
+                                        data-current-logo="<?= h($companyLogoPreviewUrl) ?>"
+                                    >
+                                <?php else: ?>
+                                    <span
+                                        id="companyLogoPreview"
+                                        class="company-logo-initials"
+                                        data-current-logo=""
+                                    ><?= h($companyInitials) ?></span>
+                                <?php endif; ?>
                             </div>
 
                             <div class="company-logo-controls">
@@ -1375,6 +1446,77 @@ require_once __DIR__ . '/layout/header.php';
                 <div class="settings-actions">
                     <button class="settings-btn ghost" type="button" data-close-modal>Cancelar</button>
                     <button class="settings-btn" type="submit">Salvar empresa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if (canAccessConfig($CONFIG_PERMISSIONS, 'aplicativo', $currentNivel)): ?>
+<div class="settings-modal" id="modalAplicativo" aria-hidden="true">
+    <div class="settings-modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalAplicativoTitle">
+        <div class="settings-modal-header">
+            <div>
+                <h3 id="modalAplicativoTitle">Aplicativo no celular</h3>
+                <p>Defina o nome instalado e verifique se a empresa possui logo válida para gerar os ícones.</p>
+            </div>
+            <button class="settings-modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        </div>
+
+        <div class="settings-modal-body">
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <input type="hidden" name="acao" value="salvar_aplicativo">
+
+                <div class="settings-form-grid">
+                    <div class="settings-field">
+                        <label for="app_name">Nome do aplicativo</label>
+                        <input type="text" id="app_name" name="app_name" maxlength="180" required value="<?= h($appSettings['app_name'] ?? '') ?>">
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="app_short_name">Nome curto</label>
+                        <input type="text" id="app_short_name" name="app_short_name" maxlength="40" required value="<?= h($appSettings['app_short_name'] ?? '') ?>">
+                    </div>
+
+                    <div class="settings-field full">
+                        <label>Prévia da logo</label>
+                        <div class="pwa-preview-grid">
+                            <div class="pwa-icon-preview">
+                                <?php if ($hasCompanyLogo): ?>
+                                    <img src="<?= h($companyLogoPreviewUrl) ?>" alt="Logo usada para gerar o ícone do aplicativo">
+                                <?php else: ?>
+                                    <span class="company-logo-initials"><?= h($companyInitials) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div>
+                                <?php if (!$hasCompanyLogo): ?>
+                                    <p class="pwa-status error">Instalação bloqueada: cadastre uma logo da empresa em JPG, PNG ou WEBP.</p>
+                                <?php elseif (!$gdAvailable): ?>
+                                    <p class="pwa-status error">Instalação bloqueada: a extensão GD do PHP não está disponível para gerar os ícones.</p>
+                                <?php else: ?>
+                                    <p class="pwa-status success">Logo válida. Os ícones 192, 512, maskable e Apple são gerados a partir do arquivo da empresa.</p>
+                                <?php endif; ?>
+                                <p class="pwa-status">Nome e ícone são definidos pelo manifesto no momento da instalação. Alguns navegadores não atualizam imediatamente apps já instalados; após mudar nome ou logo, pode ser necessário remover e instalar novamente.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pwa-install-box"
+                     data-pwa-install
+                     data-has-logo="<?= $hasCompanyLogo ? '1' : '0' ?>"
+                     data-has-app-name="<?= trim((string)($appSettings['app_name'] ?? '')) !== '' ? '1' : '0' ?>">
+                    <p class="pwa-status" data-pwa-status>Status de instalação: verificando disponibilidade.</p>
+                    <button class="settings-btn success" type="button" data-pwa-install-button disabled>Instalar aplicativo</button>
+                    <p class="pwa-status">Android/Chrome ou Edge: toque em instalar quando o botão estiver disponível.</p>
+                    <p class="pwa-status">iPhone/iPad: abra no Safari, toque em Compartilhar e escolha Adicionar à Tela de Início. O iOS não expõe prompt programático de instalação.</p>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="settings-btn ghost" type="button" data-close-modal>Cancelar</button>
+                    <button class="settings-btn" type="submit">Salvar aplicativo</button>
                 </div>
             </form>
         </div>
@@ -1838,6 +1980,30 @@ require_once __DIR__ . '/layout/header.php';
             }
         }
 
+        function setCompanyLogoPreview(source) {
+            const preview = document.getElementById('companyLogoPreview');
+            if (!preview) return;
+
+            if (source) {
+                if (preview.tagName.toLowerCase() === 'img') {
+                    preview.src = source;
+                    return;
+                }
+
+                const image = document.createElement('img');
+                image.id = 'companyLogoPreview';
+                image.alt = 'Prévia da logo da empresa';
+                image.dataset.currentLogo = preview.dataset.currentLogo || '';
+                image.src = source;
+                preview.replaceWith(image);
+                return;
+            }
+
+            if (preview.tagName.toLowerCase() === 'img' && preview.dataset.currentLogo) {
+                preview.src = preview.dataset.currentLogo;
+            }
+        }
+
         function setCompanyLogoStatus(message, type = '') {
             if (!companyLogoStatus) return;
 
@@ -1859,9 +2025,7 @@ require_once __DIR__ . '/layout/header.php';
                     : null;
 
                 if (!file) {
-                    companyLogoPreview.src = companyLogoPreview.dataset.currentLogo
-                        || companyLogoPreview.dataset.defaultLogo
-                        || '';
+                    setCompanyLogoPreview(companyLogoPreview.dataset.currentLogo || '');
                     return;
                 }
 
@@ -1869,18 +2033,14 @@ require_once __DIR__ . '/layout/header.php';
 
                 if (!allowedTypes.includes(file.type)) {
                     companyLogoInput.value = '';
-                    companyLogoPreview.src = companyLogoPreview.dataset.currentLogo
-                        || companyLogoPreview.dataset.defaultLogo
-                        || '';
+                    setCompanyLogoPreview(companyLogoPreview.dataset.currentLogo || '');
                     setCompanyLogoStatus('Formato inválido. Use JPG, PNG ou WEBP.', 'error');
                     return;
                 }
 
                 if (file.size > 2 * 1024 * 1024) {
                     companyLogoInput.value = '';
-                    companyLogoPreview.src = companyLogoPreview.dataset.currentLogo
-                        || companyLogoPreview.dataset.defaultLogo
-                        || '';
+                    setCompanyLogoPreview(companyLogoPreview.dataset.currentLogo || '');
                     setCompanyLogoStatus('A imagem deve possuir no máximo 2 MB.', 'error');
                     return;
                 }
@@ -1890,7 +2050,7 @@ require_once __DIR__ . '/layout/header.php';
                 }
 
                 companyLogoObjectUrl = URL.createObjectURL(file);
-                companyLogoPreview.src = companyLogoObjectUrl;
+                setCompanyLogoPreview(companyLogoObjectUrl);
                 setCompanyLogoStatus('Nova logo selecionada. Clique em Salvar empresa para confirmar.', 'success');
             });
         }
@@ -1898,9 +2058,7 @@ require_once __DIR__ . '/layout/header.php';
         if (removeCompanyLogo && companyLogoPreview) {
             removeCompanyLogo.addEventListener('change', () => {
                 if (!removeCompanyLogo.checked) {
-                    companyLogoPreview.src = companyLogoPreview.dataset.currentLogo
-                        || companyLogoPreview.dataset.defaultLogo
-                        || '';
+                    setCompanyLogoPreview(companyLogoPreview.dataset.currentLogo || '');
                     setCompanyLogoStatus('');
                     return;
                 }
@@ -1911,7 +2069,7 @@ require_once __DIR__ . '/layout/header.php';
                     companyLogoInput.value = '';
                 }
 
-                companyLogoPreview.src = companyLogoPreview.dataset.defaultLogo || '';
+                setCompanyLogoPreview('');
                 setCompanyLogoStatus('A logo atual será removida ao salvar.', 'error');
             });
         }

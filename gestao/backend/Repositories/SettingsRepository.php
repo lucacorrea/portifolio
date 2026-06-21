@@ -84,26 +84,46 @@ final class SettingsRepository
 
     public function getConfiguracoes(int $empresaId): array
     {
-        $this->ensureConfiguracoes($empresaId);
+        if ($this->hasConfiguracoesEmpresaTable()) {
+            $this->ensureConfiguracoes($empresaId);
+
+            $stmt = $this->db->prepare(
+                'SELECT *
+                 FROM configuracoes_empresa
+                 WHERE empresa_id = :empresa_id
+                 LIMIT 1'
+            );
+
+            $stmt->execute([
+                ':empresa_id' => $empresaId,
+            ]);
+
+            $config = $stmt->fetch();
+
+            return $config ?: [];
+        }
 
         $stmt = $this->db->prepare(
-            'SELECT *
-             FROM configuracoes_empresa
-             WHERE empresa_id = :empresa_id
-             LIMIT 1'
+            'SELECT chave, valor
+             FROM configuracoes
+             WHERE empresa_id = :empresa_id'
         );
+        $stmt->execute([':empresa_id' => $empresaId]);
 
-        $stmt->execute([
-            ':empresa_id' => $empresaId,
-        ]);
+        $settings = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $settings[(string)$row['chave']] = $row['valor'];
+        }
 
-        $config = $stmt->fetch();
-
-        return $config ?: [];
+        return $settings;
     }
 
     public function ensureConfiguracoes(int $empresaId): void
     {
+        if (!$this->hasConfiguracoesEmpresaTable()) {
+            return;
+        }
+
         $stmt = $this->db->prepare(
             'INSERT IGNORE INTO configuracoes_empresa (empresa_id)
              VALUES (:empresa_id)'
@@ -116,6 +136,10 @@ final class SettingsRepository
 
     public function saveReceiptRules(int $empresaId, array $data): bool
     {
+        if (!$this->hasConfiguracoesEmpresaTable()) {
+            return $this->saveAppSettings($empresaId, $data);
+        }
+
         $this->ensureConfiguracoes($empresaId);
 
         $stmt = $this->db->prepare(
@@ -137,6 +161,10 @@ final class SettingsRepository
 
     public function saveDueRules(int $empresaId, array $data): bool
     {
+        if (!$this->hasConfiguracoesEmpresaTable()) {
+            return $this->saveAppSettings($empresaId, $data);
+        }
+
         $this->ensureConfiguracoes($empresaId);
 
         $stmt = $this->db->prepare(
@@ -158,6 +186,10 @@ final class SettingsRepository
 
     public function saveStockRules(int $empresaId, array $data): bool
     {
+        if (!$this->hasConfiguracoesEmpresaTable()) {
+            return $this->saveAppSettings($empresaId, $data);
+        }
+
         $this->ensureConfiguracoes($empresaId);
 
         $stmt = $this->db->prepare(
@@ -183,6 +215,10 @@ final class SettingsRepository
 
     public function savePaymentRules(int $empresaId, array $data): bool
     {
+        if (!$this->hasConfiguracoesEmpresaTable()) {
+            return $this->saveAppSettings($empresaId, $data);
+        }
+
         $this->ensureConfiguracoes($empresaId);
 
         $stmt = $this->db->prepare(
@@ -212,6 +248,10 @@ final class SettingsRepository
 
     public function saveCashRules(int $empresaId, array $data): bool
     {
+        if (!$this->hasConfiguracoesEmpresaTable()) {
+            return $this->saveAppSettings($empresaId, $data);
+        }
+
         $this->ensureConfiguracoes($empresaId);
 
         $stmt = $this->db->prepare(
@@ -237,6 +277,10 @@ final class SettingsRepository
 
     public function saveSecurityRules(int $empresaId, array $data): bool
     {
+        if (!$this->hasConfiguracoesEmpresaTable()) {
+            return $this->saveAppSettings($empresaId, $data);
+        }
+
         $this->ensureConfiguracoes($empresaId);
 
         $stmt = $this->db->prepare(
@@ -258,5 +302,42 @@ final class SettingsRepository
         ]);
 
         return $stmt->rowCount() >= 0;
+    }
+
+    public function saveAppSettings(int $empresaId, array $data): bool
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO configuracoes (empresa_id, chave, valor)
+             VALUES (:empresa_id, :chave, :valor)
+             ON DUPLICATE KEY UPDATE valor = VALUES(valor)'
+        );
+
+        foreach ($data as $key => $value) {
+            $stmt->execute([
+                ':empresa_id' => $empresaId,
+                ':chave' => $key,
+                ':valor' => $value,
+            ]);
+        }
+
+        return true;
+    }
+
+    private function hasConfiguracoesEmpresaTable(): bool
+    {
+        static $exists = null;
+
+        if ($exists !== null) {
+            return $exists;
+        }
+
+        try {
+            $stmt = $this->db->query("SHOW TABLES LIKE 'configuracoes_empresa'");
+            $exists = (bool)$stmt->fetchColumn();
+        } catch (\Throwable) {
+            $exists = false;
+        }
+
+        return $exists;
     }
 }
