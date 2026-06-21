@@ -116,6 +116,34 @@ function moduleForAction(array $actions, string $acao): string
     return $actions[$acao];
 }
 
+
+function saveCompanyConfiguration(
+    SettingsService $settingsService,
+    int $empresaId,
+    array $post,
+    array $files
+): void {
+    $settingsService->saveEmpresa($empresaId, $post);
+
+    $logoFile = $files['company_logo'] ?? null;
+    $uploadError = is_array($logoFile)
+        ? (int)($logoFile['error'] ?? UPLOAD_ERR_NO_FILE)
+        : UPLOAD_ERR_NO_FILE;
+
+    /*
+     * Se uma nova imagem foi enviada, ela tem prioridade.
+     * Caso contrário, aplica a remoção solicitada pelo usuário.
+     */
+    if ($uploadError !== UPLOAD_ERR_NO_FILE) {
+        $settingsService->saveCompanyLogo($empresaId, $logoFile);
+        return;
+    }
+
+    if (isset($post['remove_company_logo'])) {
+        $settingsService->removeCompanyLogo($empresaId);
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $token = (string)($_POST['csrf_token'] ?? '');
@@ -129,7 +157,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         requireConfigPermission($CONFIG_PERMISSIONS, $module, $currentNivel);
 
         match ($acao) {
-            'salvar_empresa' => $settingsService->saveEmpresa($empresaId, $_POST),
+            'salvar_empresa' => saveCompanyConfiguration(
+                $settingsService,
+                $empresaId,
+                $_POST,
+                $_FILES
+            ),
             'salvar_comprovante' => $settingsService->saveReceiptRules($empresaId, $_POST),
             'salvar_vencimento' => $settingsService->saveDueRules($empresaId, $_POST),
             'salvar_estoque' => $settingsService->saveStockRules($empresaId, $_POST),
@@ -165,6 +198,34 @@ try {
 
 $flash = $_SESSION['config_flash'] ?? null;
 unset($_SESSION['config_flash']);
+
+$defaultCompanyLogoUrl = '../assets/icons/icon.svg';
+$companyLogoPreviewUrl = $defaultCompanyLogoUrl;
+$hasCompanyLogo = false;
+$currentCompanyLogoPath = trim((string)($empresa['logo'] ?? ''));
+
+if ($currentCompanyLogoPath !== '') {
+    $normalizedCompanyLogoPath = ltrim(
+        str_replace('\\', '/', $currentCompanyLogoPath),
+        '/'
+    );
+
+    $isSafeCompanyLogoPath = str_starts_with(
+        $normalizedCompanyLogoPath,
+        'uploads/empresas/'
+    ) && !str_contains($normalizedCompanyLogoPath, '../');
+
+    if ($isSafeCompanyLogoPath) {
+        $absoluteCompanyLogoPath = BASE_PATH
+            . DIRECTORY_SEPARATOR
+            . str_replace('/', DIRECTORY_SEPARATOR, $normalizedCompanyLogoPath);
+
+        if (is_file($absoluteCompanyLogoPath)) {
+            $companyLogoPreviewUrl = '../' . $normalizedCompanyLogoPath;
+            $hasCompanyLogo = true;
+        }
+    }
+}
 
 $csrfToken = (string)$_SESSION['csrf_configuracoes'];
 $visibleConfigModules = array_filter(
@@ -486,6 +547,98 @@ require_once __DIR__ . '/layout/header.php';
         box-shadow: 0 0 0 3px rgba(17, 24, 39, .08);
     }
 
+    .company-logo-panel {
+        display: grid;
+        grid-template-columns: 124px minmax(0, 1fr);
+        gap: 16px;
+        align-items: center;
+        padding: 14px;
+        border: 1px solid #dbe3ef;
+        border-radius: 18px;
+        background: #f8fafc;
+    }
+
+    .company-logo-preview {
+        width: 124px;
+        height: 124px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        border: 1px solid #dbe3ef;
+        border-radius: 20px;
+        background: #fff;
+    }
+
+    .company-logo-preview img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        padding: 10px;
+        object-fit: contain;
+    }
+
+    .company-logo-controls {
+        display: grid;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .company-logo-controls strong {
+        color: var(--cfg-text);
+        font-size: .95rem;
+    }
+
+    .company-logo-help,
+    .company-logo-status {
+        margin: 0;
+        color: var(--cfg-muted);
+        font-size: .8rem;
+        line-height: 1.45;
+    }
+
+    .company-logo-status.error {
+        color: var(--cfg-danger);
+        font-weight: 850;
+    }
+
+    .company-logo-status.success {
+        color: var(--cfg-success);
+        font-weight: 850;
+    }
+
+    .settings-field input[type="file"] {
+        min-height: 48px;
+        padding: 6px;
+        background: #fff;
+    }
+
+    .settings-field input[type="file"]::file-selector-button {
+        min-height: 34px;
+        margin-right: 10px;
+        padding: 7px 12px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--cfg-primary);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 850;
+    }
+
+    .company-logo-remove {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        color: #475569;
+        font-size: .84rem;
+        font-weight: 800;
+    }
+
+    .company-logo-remove input {
+        width: 18px;
+        min-width: 18px;
+        height: 18px;
+    }
+
     .settings-actions {
         display: flex;
         justify-content: flex-end;
@@ -732,6 +885,18 @@ require_once __DIR__ . '/layout/header.php';
         .settings-switches {
             grid-template-columns: 1fr;
             gap: 12px;
+        }
+
+
+        .company-logo-panel {
+            grid-template-columns: 1fr;
+            justify-items: stretch;
+        }
+
+        .company-logo-preview {
+            width: 112px;
+            height: 112px;
+            justify-self: center;
         }
 
         .settings-actions {
@@ -1131,11 +1296,56 @@ require_once __DIR__ . '/layout/header.php';
         </div>
 
         <div class="settings-modal-body">
-            <form method="post">
+            <form method="post" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                 <input type="hidden" name="acao" value="salvar_empresa">
 
                 <div class="settings-form-grid">
+                    <div class="settings-field full">
+                        <label for="company_logo">Logo da empresa</label>
+
+                        <div class="company-logo-panel">
+                            <div class="company-logo-preview">
+                                <img
+                                    id="companyLogoPreview"
+                                    src="<?= h($companyLogoPreviewUrl) ?>"
+                                    alt="Prévia da logo da empresa"
+                                    data-current-logo="<?= h($companyLogoPreviewUrl) ?>"
+                                    data-default-logo="<?= h($defaultCompanyLogoUrl) ?>"
+                                >
+                            </div>
+
+                            <div class="company-logo-controls">
+                                <strong><?= $hasCompanyLogo ? 'Logo atual cadastrada' : 'Nenhuma logo personalizada cadastrada' ?></strong>
+
+                                <input
+                                    type="file"
+                                    id="company_logo"
+                                    name="company_logo"
+                                    accept="image/jpeg,image/png,image/webp"
+                                >
+
+                                <p class="company-logo-help">
+                                    Envie uma imagem JPG, PNG ou WEBP com até 2 MB. A logo será usada na interface do sistema, mas não será inserida na nota fiscal.
+                                </p>
+
+                                <p class="company-logo-status" id="companyLogoStatus" aria-live="polite"></p>
+
+                                <?php if ($hasCompanyLogo): ?>
+                                    <label class="company-logo-remove" for="remove_company_logo">
+                                        <input
+                                            type="checkbox"
+                                            id="remove_company_logo"
+                                            name="remove_company_logo"
+                                            value="1"
+                                        >
+                                        Remover a logo atual ao salvar
+                                    </label>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="settings-field">
                         <label for="nome">Razão social / Nome</label>
                         <input type="text" id="nome" name="nome" maxlength="180" required value="<?= h($empresa['nome'] ?? '') ?>">
@@ -1614,6 +1824,99 @@ require_once __DIR__ . '/layout/header.php';
                 document.querySelectorAll('.settings-modal.is-open').forEach(closeModal);
             }
         });
+
+        const companyLogoInput = document.getElementById('company_logo');
+        const companyLogoPreview = document.getElementById('companyLogoPreview');
+        const companyLogoStatus = document.getElementById('companyLogoStatus');
+        const removeCompanyLogo = document.getElementById('remove_company_logo');
+        let companyLogoObjectUrl = '';
+
+        function clearCompanyLogoObjectUrl() {
+            if (companyLogoObjectUrl) {
+                URL.revokeObjectURL(companyLogoObjectUrl);
+                companyLogoObjectUrl = '';
+            }
+        }
+
+        function setCompanyLogoStatus(message, type = '') {
+            if (!companyLogoStatus) return;
+
+            companyLogoStatus.textContent = message;
+            companyLogoStatus.classList.remove('error', 'success');
+
+            if (type) {
+                companyLogoStatus.classList.add(type);
+            }
+        }
+
+        if (companyLogoInput && companyLogoPreview) {
+            companyLogoInput.addEventListener('change', () => {
+                clearCompanyLogoObjectUrl();
+                setCompanyLogoStatus('');
+
+                const file = companyLogoInput.files && companyLogoInput.files[0]
+                    ? companyLogoInput.files[0]
+                    : null;
+
+                if (!file) {
+                    companyLogoPreview.src = companyLogoPreview.dataset.currentLogo
+                        || companyLogoPreview.dataset.defaultLogo
+                        || '';
+                    return;
+                }
+
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+                if (!allowedTypes.includes(file.type)) {
+                    companyLogoInput.value = '';
+                    companyLogoPreview.src = companyLogoPreview.dataset.currentLogo
+                        || companyLogoPreview.dataset.defaultLogo
+                        || '';
+                    setCompanyLogoStatus('Formato inválido. Use JPG, PNG ou WEBP.', 'error');
+                    return;
+                }
+
+                if (file.size > 2 * 1024 * 1024) {
+                    companyLogoInput.value = '';
+                    companyLogoPreview.src = companyLogoPreview.dataset.currentLogo
+                        || companyLogoPreview.dataset.defaultLogo
+                        || '';
+                    setCompanyLogoStatus('A imagem deve possuir no máximo 2 MB.', 'error');
+                    return;
+                }
+
+                if (removeCompanyLogo) {
+                    removeCompanyLogo.checked = false;
+                }
+
+                companyLogoObjectUrl = URL.createObjectURL(file);
+                companyLogoPreview.src = companyLogoObjectUrl;
+                setCompanyLogoStatus('Nova logo selecionada. Clique em Salvar empresa para confirmar.', 'success');
+            });
+        }
+
+        if (removeCompanyLogo && companyLogoPreview) {
+            removeCompanyLogo.addEventListener('change', () => {
+                if (!removeCompanyLogo.checked) {
+                    companyLogoPreview.src = companyLogoPreview.dataset.currentLogo
+                        || companyLogoPreview.dataset.defaultLogo
+                        || '';
+                    setCompanyLogoStatus('');
+                    return;
+                }
+
+                clearCompanyLogoObjectUrl();
+
+                if (companyLogoInput) {
+                    companyLogoInput.value = '';
+                }
+
+                companyLogoPreview.src = companyLogoPreview.dataset.defaultLogo || '';
+                setCompanyLogoStatus('A logo atual será removida ao salvar.', 'error');
+            });
+        }
+
+        window.addEventListener('beforeunload', clearCompanyLogoObjectUrl);
 
         document.querySelectorAll('[data-open-edit-user]').forEach((button) => {
             button.addEventListener('click', () => {
