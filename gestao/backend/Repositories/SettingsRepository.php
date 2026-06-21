@@ -59,6 +59,28 @@ final class SettingsRepository
         return $stmt->rowCount() >= 0;
     }
 
+
+    public function updateLogo(
+        int $empresaId,
+        ?string $logo
+    ): bool {
+        $stmt = $this->db->prepare(
+            'UPDATE empresas
+         SET logo = :logo
+         WHERE id = :id
+         LIMIT 1'
+        );
+
+        $stmt->execute([
+            ':id' => $empresaId,
+            ':logo' => $logo,
+        ]);
+
+        return $stmt->rowCount() >= 0;
+    }
+
+
+
     public function getConfiguracoes(int $empresaId): array
     {
         $this->ensureConfiguracoes($empresaId);
