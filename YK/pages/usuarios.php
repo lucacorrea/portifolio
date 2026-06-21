@@ -1883,6 +1883,104 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function positionUserActionMenu(dropdown) {
+        const button = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+        const menu = dropdown.querySelector('.dropdown-menu');
+
+        if (!button || !menu) {
+            return;
+        }
+
+        const buttonRect = button.getBoundingClientRect();
+
+        menu.style.position = 'fixed';
+        menu.style.inset = 'auto';
+        menu.style.transform = 'none';
+        menu.style.zIndex = '1060';
+        menu.style.visibility = 'hidden';
+        menu.style.display = 'block';
+
+        const menuRect = menu.getBoundingClientRect();
+        const viewportPadding = 12;
+        const left = Math.max(
+            viewportPadding,
+            Math.min(
+                buttonRect.right - menuRect.width,
+                window.innerWidth - menuRect.width - viewportPadding
+            )
+        );
+
+        const topAbove = buttonRect.top - menuRect.height - 8;
+        const topBelow = buttonRect.bottom + 8;
+        const top = topAbove >= viewportPadding
+            ? topAbove
+            : Math.min(
+                topBelow,
+                window.innerHeight - menuRect.height - viewportPadding
+            );
+
+        menu.style.left = left + 'px';
+        menu.style.top = Math.max(viewportPadding, top) + 'px';
+        menu.style.visibility = '';
+    }
+
+    function resetUserActionMenu(dropdown) {
+        const menu = dropdown.querySelector('.dropdown-menu');
+
+        if (!menu) {
+            return;
+        }
+
+        menu.style.position = '';
+        menu.style.inset = '';
+        menu.style.transform = '';
+        menu.style.zIndex = '';
+        menu.style.visibility = '';
+        menu.style.display = '';
+        menu.style.left = '';
+        menu.style.top = '';
+    }
+
+    document
+        .querySelectorAll('.users-table .dropdown')
+        .forEach(function (dropdown) {
+            dropdown.addEventListener('shown.bs.dropdown', function () {
+                positionUserActionMenu(dropdown);
+            });
+
+            dropdown.addEventListener('hidden.bs.dropdown', function () {
+                resetUserActionMenu(dropdown);
+            });
+        });
+
+    window.addEventListener('resize', function () {
+        document
+            .querySelectorAll('.users-table .dropdown .dropdown-menu.show')
+            .forEach(function (menu) {
+                const dropdown = menu.closest('.dropdown');
+
+                if (dropdown) {
+                    positionUserActionMenu(dropdown);
+                }
+            });
+    });
+
+    window.addEventListener(
+        'scroll',
+        function () {
+            document
+                .querySelectorAll('.users-table .dropdown .dropdown-menu.show')
+                .forEach(function (menu) {
+                    const dropdown = menu.closest('.dropdown');
+
+                    if (dropdown) {
+                        positionUserActionMenu(dropdown);
+                    }
+                });
+        },
+        true
+    );
+
     document
         .querySelectorAll('.js-user-view')
         .forEach(function (button) {
