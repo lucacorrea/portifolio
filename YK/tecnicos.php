@@ -1,13 +1,6 @@
 <?php
-$pageKey = 'funcionarios';
-$activePage = 'funcionarios';
-$pageTitle = 'Funcionários';
-$pageSubtitle = 'Gerencie equipe, funções e disponibilidade';
-$primaryActionLabel = 'Novo Funcionário';
-$primaryActionIcon = 'bi-person-badge';
-$primaryActionTarget = '#modal-funcionario';
-$primaryActionPermission = 'funcionario.criar';
-$requiredPermission = 'funcionario.visualizar';
-$pageContent = __DIR__ . '/pages/operational.php';
 
-require __DIR__ . '/includes/shell.php';
+declare(strict_types=1);
+
+header('Location: funcionarios.php', true, 303);
+exit;

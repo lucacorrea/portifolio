@@ -15,6 +15,8 @@ use App\Access\Service\UserManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\SafeRedirect;
 use App\Security\SessionManager;
+use App\Workforce\Repository\EmployeeRepository;
+use App\Workforce\Service\EmployeeManagementService;
 
 final class Application
 {
@@ -29,6 +31,8 @@ final class Application
     private ?ProfileManagementService $profileManagement = null;
 
     private ?UserManagementService $userManagement = null;
+
+    private ?EmployeeManagementService $employeeManagement = null;
 
     private ?SafeRedirect $redirect = null;
 
@@ -157,6 +161,19 @@ final class Application
         }
 
         return $this->userManagement;
+    }
+
+    public function employeeManagement(): EmployeeManagementService
+    {
+        if ($this->employeeManagement === null) {
+            $connection = $this->database->connection();
+
+            $this->employeeManagement = new EmployeeManagementService(
+                new EmployeeRepository($connection)
+            );
+        }
+
+        return $this->employeeManagement;
     }
 
     public function redirect(): SafeRedirect

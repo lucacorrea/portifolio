@@ -200,9 +200,6 @@ function render_common_modals(): void {
   modal_shell('modal-lembrete', 'Novo lembrete', lembrete_modal_body());
   modal_shell('modal-peca', 'Novo Produto / Peça', produto_modal_body());
   modal_shell('modal-servico', 'Novo Serviço', servico_modal_body());
-  modal_shell('modal-funcionario', 'Novo Funcionário', funcionario_modal_body());
-  modal_shell('modal-fornecedor', 'Novo Fornecedor', fornecedor_modal_body());
-  modal_shell('modal-transportadora', 'Nova Transportadora', transportadora_modal_body());
   modal_shell('modal-recibo', 'Novo Recibo Visual', form_section('Recibo', '<div class="form-row">' . field('Cliente','João Almeida') . field('Referência','OS-00254') . field('Valor','120,00') . field('Data','2026-06-18','date') . '</div>' . field('Referente a','Diagnóstico técnico em ar-condicionado janela.','textarea')));
   modal_shell('modal-relatorio', 'Exportação Visual', form_section('Relatório', '<div class="form-row">' . select_field('Tipo',['Visão Geral','Produtividade','Serviços por Funcionário','Financeiro','Estoque']) . field('Período inicial','2026-06-01','date') . field('Período final','2026-06-30','date') . select_field('Formato visual',['Tela','PDF futuro','Planilha futura']) . '</div>' . field('Observações','Botão apenas visual; exportação real será implementada em outra etapa.','textarea')), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Exportar visualmente</button>');
   modal_shell('modal-config', 'Salvar Configurações Visuais', form_section('Confirmação visual', '<p class="section-note">As configurações exibidas nesta tela são apenas demonstrativas nesta etapa. Nenhuma informação será persistida.</p>'), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Salvar visualmente</button>');
@@ -524,28 +521,11 @@ function render_estado_vazio_semanal(): string {
 
 function produto_modal_body(): string {
   return form_section('Dados do produto', '<div class="form-row-3">' . field('Código','CMP-014') . field('Descrição','Compressor 1/4 HP') . select_field('Categoria',['Compressor','Sensor','Filtro','Gás refrigerante','Tubulação','Placa eletrônica']) . field('Fabricante','Embraco') . select_field('Unidade',['un','kg','m','cx']) . field('Código de barras','789000000014') . '</div>') .
-    form_section('Preços e estoque', '<div class="form-row-3">' . field('Custo','420,00') . field('Preço','620,00') . field('Estoque','3') . field('Estoque mínimo','2') . field('Localização','Prateleira A-03') . select_field('Situação',['Em estoque','Estoque baixo','Sem estoque']) . '</div>') .
-    form_section('Fornecedor', '<div class="form-row">' . field('Fornecedor','FrioPeças AM') . field('Contato','Renata') . '</div>' . field('Observações','Peça usada em freezers verticais e balcões refrigerados.','textarea'));
+    form_section('Preços e estoque', '<div class="form-row-3">' . field('Custo','420,00') . field('Preço','620,00') . field('Estoque','3') . field('Estoque mínimo','2') . field('Localização','Prateleira A-03') . select_field('Situação',['Em estoque','Estoque baixo','Sem estoque']) . '</div>' . field('Observações','Peça usada em freezers verticais e balcões refrigerados.','textarea'));
 }
 
 function servico_modal_body(): string {
   return form_section('Serviço', '<div class="form-row">' . field('Nome','Limpeza de ar-condicionado split') . select_field('Categoria',['Manutenção preventiva','Manutenção corretiva','Instalação','Visita técnica']) . select_field('Equipamentos compatíveis',['Ar-condicionado Split','Ar-condicionado Janela','Cassete','Piso-Teto','Freezer','Câmara Fria']) . field('Duração','1h30') . field('Valor','180,00') . select_field('Status',['Ativo','Inativo']) . '</div>' . field('Descrição','Higienização da evaporadora, filtros e conferência visual da condensadora.','textarea'));
-}
-
-function funcionario_modal_body(): string {
-  return form_section('Dados pessoais', '<div class="form-row">' . field('Nome','Carlos Ferreira') . field('CPF','000.000.000-00') . field('Telefone','(92) 98444-1001') . field('E-mail','carlos@yamaguchi.local') . '</div>') .
-    form_section('Função e disponibilidade', '<div class="form-row">' . select_field('Função',['Instalador','Ajudante','Administrativo','Atendente']) . select_field('Especialidade',['Ar-condicionado','Câmara fria','Refrigeração comercial','Elétrica básica']) . select_field('Status',['Ativo','Disponível','Em atendimento','Inativo']) . field('Serviços no mês','28') . '</div>' . field('Observações','Disponível para atendimentos comerciais pela manhã.','textarea'));
-}
-
-function fornecedor_modal_body(): string {
-  return form_section('Dados fiscais', '<div class="form-row">' . field('Razão social','FrioPeças Amazonas Ltda.') . field('Nome fantasia','FrioPeças AM') . field('CNPJ','11.222.333/0001-44') . field('Inscrição estadual','04.123.456-7') . '</div>') .
-    form_section('Contato e endereço', '<div class="form-row">' . field('Telefone','(92) 3232-5522') . field('WhatsApp','(92) 98844-5522') . field('E-mail','vendas@friopecas.local') . field('Contato','Renata') . field('Endereço','Av. das Torres, 900') . field('Cidade','Manaus') . field('Estado','AM') . select_field('Status',['Ativo','Inativo']) . '</div>') .
-    form_section('Categorias', '<div class="form-row">' . field('Categorias','Compressores, sensores, gás refrigerante') . field('Condição comercial','Pagamento em 14 dias') . '</div>' . field('Observações','Fornecedor visual para peças de refrigeração.','textarea'));
-}
-
-function transportadora_modal_body(): string {
-  return form_section('Transportadora', '<div class="form-row">' . field('Transportadora','NorteLog Express') . field('CNPJ','44.778.111/0001-22') . field('Contato','Paulo') . field('Telefone','(92) 98822-1919') . field('WhatsApp','(92) 98822-1919') . field('E-mail','operacao@nortelog.local') . field('Cidade','Manaus') . field('Estado','AM') . '</div>') .
-    form_section('Operação', '<div class="form-row">' . field('Tipos de transporte','Peças e equipamentos') . field('Prazo médio','2 dias') . select_field('Status',['Ativo','Inativo']) . field('Região atendida','Manaus e região metropolitana') . '</div>' . field('Observações','Cadastro visual sem integração logística.','textarea'));
 }
 
 function render_operational_page(string $key): void {
@@ -558,9 +538,6 @@ function render_operational_page(string $key): void {
     'painel-semanal' => render_painel_semanal(),
     'pecas' => render_pecas(),
     'servicos' => render_servicos(),
-    'funcionarios' => render_funcionarios(),
-    'fornecedores' => render_fornecedores(),
-    'transportadoras' => render_transportadoras(),
     'caixa' => render_caixa(),
     'faturamento' => render_faturamento(),
     'relatorios' => render_relatorios(),
@@ -624,12 +601,12 @@ function render_agenda(): void {
 
 function render_pecas(): void {
   metric_grid([['Total de produtos','284','bi-box-seam','#2563EB'],['Estoque baixo','18','bi-exclamation-triangle','#D97706'],['Sem estoque','7','bi-x-octagon','#DC2626'],['Valor estimado',money(82450),'bi-cash-stack','#16A34A']]);
-  filter_bar([['Categoria',['Compressor','Sensor','Filtro','Gás']], ['Fornecedor',['FrioPeças AM','Clima Parts']], ['Situação',['Em estoque','Estoque baixo','Sem estoque']]], 'Buscar código ou descrição...');
+  filter_bar([['Categoria',['Compressor','Sensor','Filtro','Gás']], ['Situação',['Em estoque','Estoque baixo','Sem estoque']]], 'Buscar código ou descrição...');
   echo '<section class="panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-box-seam"></i>Produtos / Peças e Estoque</div><div class="panel-actions"><button class="btn-filter btn-filter-primary">Novo produto</button><button class="btn-filter btn-filter-ghost">Entrada</button><button class="btn-filter btn-filter-ghost">Saída</button><button class="btn-filter btn-filter-ghost">Ajuste</button><button class="btn-filter btn-filter-ghost">Importar peças</button></div></div>';
-  ui_table(['Código','Descrição','Categoria','Fabricante','Fornecedor','Unidade','Estoque','Estoque mín.','Custo','Preço','Situação','Ações'], [
-    ['CMP-014','Compressor 1/4 HP','Compressor','Embraco','FrioPeças AM','un','3','2',money(420),money(620),ui_badge('Em estoque'),action_menu()],
-    ['SEN-022','Sensor de temperatura','Sensor','Full Gauge','Refrigera Norte','un','2','5',money(38),money(75),ui_badge('Estoque baixo'),action_menu()],
-    ['FLT-009','Filtro secador','Filtro','Danfoss','Clima Parts','un','0','6',money(24),money(49),ui_badge('Sem estoque'),action_menu()],
+  ui_table(['Código','Descrição','Categoria','Fabricante','Unidade','Estoque','Estoque mín.','Custo','Preço','Situação','Ações'], [
+    ['CMP-014','Compressor 1/4 HP','Compressor','Embraco','un','3','2',money(420),money(620),ui_badge('Em estoque'),action_menu()],
+    ['SEN-022','Sensor de temperatura','Sensor','Full Gauge','un','2','5',money(38),money(75),ui_badge('Estoque baixo'),action_menu()],
+    ['FLT-009','Filtro secador','Filtro','Danfoss','un','0','6',money(24),money(49),ui_badge('Sem estoque'),action_menu()],
   ]);
   pagination_visual();
   echo '</section>';
@@ -643,41 +620,6 @@ function render_servicos(): void {
     ['SRV-001','Limpeza de ar-condicionado split','Preventiva','Split','1h30',money(180),ui_badge('Ativo'),action_menu()],
     ['SRV-002','Troca de compressor','Corretiva','Freezer','3h',money(650),ui_badge('Ativo'),action_menu()],
     ['SRV-003','Manutenção em câmara fria','Preventiva','Câmara Fria','4h',money(520),ui_badge('Ativo'),action_menu()],
-  ]);
-  pagination_visual();
-  echo '</section>';
-}
-
-function render_funcionarios(): void {
-  metric_grid([['Funcionários ativos','12','bi-person-check','#16A34A'],['Instaladores','6','bi-tools','#2563EB'],['Ajudantes','4','bi-person-arms-up','#0EA5E9'],['Disponíveis hoje','5','bi-calendar-check','#D97706']]);
-  filter_bar([['Função',['Instalador','Ajudante','Administrativo','Atendente']], ['Especialidade',['Ar-condicionado','Câmara fria','Comercial']], ['Status',['Ativo','Disponível','Em atendimento','Inativo']]], 'Buscar funcionário...');
-  echo '<section class="panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-person-badge"></i>Funcionários</div></div>';
-  ui_table(['Nome','Função','Telefone','Especialidade','Serviços no mês','Status','Ações'], [
-    ['Carlos Ferreira','Instalador','(92) 98444-1001','Ar-condicionado','28',ui_badge('Em atendimento'),action_menu()],
-    ['Rafael Souza','Ajudante','(92) 98111-3322','Instalação','21',ui_badge('Disponível'),action_menu()],
-    ['Marina Kato','Administrativo','(92) 3232-8080','Financeiro','-',ui_badge('Ativo'),action_menu()],
-  ]);
-  pagination_visual();
-  echo '</section>';
-}
-
-function render_fornecedores(): void {
-  metric_grid([['Fornecedores ativos','24','bi-building-check','#16A34A'],['Fornecedores de peças','16','bi-box-seam','#2563EB'],['Recentes','4','bi-clock-history','#D97706'],['Total cadastrado','31','bi-building','#64748B']]);
-  echo '<section class="panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-building-check"></i>Fornecedores</div></div>';
-  ui_table(['Razão social','Nome fantasia','CNPJ','Contato','Telefone','Cidade','Categoria','Status','Ações'], [
-    ['FrioPeças Amazonas Ltda.','FrioPeças AM','11.222.333/0001-44','Renata','(92) 3232-5522','Manaus','Peças',ui_badge('Ativo'),action_menu()],
-    ['Clima Parts Distribuidora','Clima Parts','22.111.900/0001-70','Marcos','(92) 99120-4411','Manaus','Componentes',ui_badge('Ativo'),action_menu()],
-  ]);
-  pagination_visual();
-  echo '</section>';
-}
-
-function render_transportadoras(): void {
-  metric_grid([['Transportadoras ativas','9','bi-truck','#16A34A'],['Entregas em andamento','14','bi-box-arrow-right','#2563EB'],['Prazo médio','2,3 dias','bi-clock','#D97706'],['Total cadastrado','12','bi-list-check','#64748B']]);
-  echo '<section class="panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-truck"></i>Transportadoras</div></div>';
-  ui_table(['Transportadora','CNPJ','Contato','Telefone','Cidade','Tipos de transporte','Prazo médio','Status','Ações'], [
-    ['NorteLog Express','44.778.111/0001-22','Paulo','(92) 98822-1919','Manaus','Peças e equipamentos','2 dias',ui_badge('Ativo'),action_menu()],
-    ['Rápido Frio Cargo','09.543.210/0001-80','Sandra','(92) 98177-4040','Manaus','Carga refrigerada','3 dias',ui_badge('Ativo'),action_menu()],
   ]);
   pagination_visual();
   echo '</section>';

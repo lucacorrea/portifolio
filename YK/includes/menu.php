@@ -69,22 +69,8 @@ $navGroups = [
             'key' => 'funcionarios',
             'label' => 'Funcionários',
             'icon' => 'bi-person-badge',
-            'href' => 'tecnicos.php',
+            'href' => 'funcionarios.php',
             'permission' => 'funcionario.visualizar',
-        ],
-        [
-            'key' => 'fornecedores',
-            'label' => 'Fornecedores',
-            'icon' => 'bi-building-check',
-            'href' => 'fornecedores.php',
-            'permission' => 'fornecedor.visualizar',
-        ],
-        [
-            'key' => 'transportadoras',
-            'label' => 'Transportadoras',
-            'icon' => 'bi-truck',
-            'href' => 'transportadoras.php',
-            'permission' => 'transportadora.visualizar',
         ],
     ],
 

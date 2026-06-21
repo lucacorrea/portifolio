@@ -77,19 +77,6 @@ VALUES
     ('Funcionários', 'funcionario', 'funcionario.visualizar', 'Visualizar funcionários', 'Permite acessar funcionários.', 1010),
     ('Funcionários', 'funcionario', 'funcionario.criar', 'Criar funcionários', 'Permite cadastrar funcionários.', 1020),
     ('Funcionários', 'funcionario', 'funcionario.editar', 'Editar funcionários', 'Permite alterar dados de funcionários.', 1030),
-    ('Funcionários', 'funcionario', 'funcionario.desativar', 'Desativar funcionários', 'Permite desativar funcionários.', 1040),
-    ('Funcionários', 'funcionario', 'funcionario.visualizar_produtividade', 'Visualizar produtividade', 'Permite visualizar produtividade dos funcionários.', 1050),
-    ('Funcionários', 'funcionario', 'funcionario.visualizar_comissao', 'Visualizar comissão', 'Permite visualizar comissões dos funcionários.', 1060),
-
-    ('Fornecedores', 'fornecedor', 'fornecedor.visualizar', 'Visualizar fornecedores', 'Permite acessar fornecedores.', 1110),
-    ('Fornecedores', 'fornecedor', 'fornecedor.criar', 'Criar fornecedores', 'Permite cadastrar fornecedores.', 1120),
-    ('Fornecedores', 'fornecedor', 'fornecedor.editar', 'Editar fornecedores', 'Permite alterar fornecedores.', 1130),
-    ('Fornecedores', 'fornecedor', 'fornecedor.desativar', 'Desativar fornecedores', 'Permite desativar fornecedores.', 1140),
-
-    ('Transportadoras', 'transportadora', 'transportadora.visualizar', 'Visualizar transportadoras', 'Permite acessar transportadoras.', 1210),
-    ('Transportadoras', 'transportadora', 'transportadora.criar', 'Criar transportadoras', 'Permite cadastrar transportadoras.', 1220),
-    ('Transportadoras', 'transportadora', 'transportadora.editar', 'Editar transportadoras', 'Permite alterar transportadoras.', 1230),
-    ('Transportadoras', 'transportadora', 'transportadora.desativar', 'Desativar transportadoras', 'Permite desativar transportadoras.', 1240),
 
     ('Caixa', 'caixa', 'caixa.visualizar', 'Visualizar caixa', 'Permite acessar o caixa.', 1310),
     ('Caixa', 'caixa', 'caixa.abrir', 'Abrir caixa', 'Permite abrir caixa operacional.', 1320),

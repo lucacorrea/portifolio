@@ -26,9 +26,7 @@ Acesse `http://localhost:8000/dashboard.php`.
 - `agenda.php`
 - `pecas.php`
 - `servicos.php`
-- `tecnicos.php` com título visual `Funcionários`
-- `fornecedores.php`
-- `transportadoras.php`
+- `funcionarios.php`
 - `caixa.php`
 - `faturamento.php`
 - `relatorios.php`
