@@ -22,12 +22,16 @@ document.addEventListener('DOMContentLoaded', () => {
   let zxingControls = null;
   let zxingLoading = null;
   let duplicateBarcode = '';
+  const lookupCache = new Map();
+  const lookupCacheTtl = 30000;
   const lookupMessages = {
     provider_not_configured: 'A integração externa ainda não foi configurada. Você pode cadastrar manualmente.',
     curl_unavailable: 'O servidor não possui suporte para consulta externa. Você pode cadastrar manualmente.',
     provider_timeout: 'A consulta demorou demais. Tente novamente ou continue manualmente.',
+    providers_unavailable: 'As bases externas estão temporariamente indisponíveis. Você pode cadastrar o produto manualmente.',
     provider_unavailable: 'A consulta externa está indisponível. Continue manualmente.',
     rate_limit: 'O limite de consultas foi atingido. Tente novamente depois.',
+    lookup_session_limit: 'O limite interno de consultas foi atingido. Você pode cadastrar manualmente.',
     product_not_found: 'Produto não encontrado na base externa. Preencha manualmente.',
     invalid_barcode: 'Código de barras inválido.'
   };
@@ -133,6 +137,63 @@ document.addEventListener('DOMContentLoaded', () => {
     messageBox.replaceChildren(card);
   }
 
+  function providersText(data) {
+    const providers = Array.isArray(data?.providers_checked) ? data.providers_checked.filter(Boolean) : [];
+    return providers.length ? `\nProvedores consultados: ${providers.join(', ')}.` : '';
+  }
+
+  function prepareManualFallback(barcode) {
+    fillField('productBarcode', barcode, true);
+    const sku = document.getElementById('productSku');
+    if (sku && !String(sku.value || '').trim()) {
+      fillField('productSku', barcode, true);
+    }
+    const source = document.getElementById('productDataSource');
+    if (source) source.value = 'manual';
+    duplicateBarcode = '';
+    if (saveButton) saveButton.disabled = false;
+  }
+
+  function focusProductName() {
+    const name = document.getElementById('productName');
+    name?.focus({ preventScroll: true });
+  }
+
+  function handleLookupPayload(data, ok, normalized) {
+    if (data.source === 'local' && data.exists) {
+      showExistingProduct(data.product, data.edit_url);
+      return;
+    }
+
+    if (!ok || !data.success) {
+      const code = String(data.code || 'provider_unavailable');
+      const message = data.message || lookupMessages[code] || lookupMessages.provider_unavailable;
+
+      if (code === 'product_not_found') {
+        prepareManualFallback(data.barcode || normalized);
+        setLookupState('warning', 'Produto não encontrado nas bases consultadas.\nComplete o cadastro manualmente.' + providersText(data));
+        focusProductName();
+        return;
+      }
+
+      if (['providers_unavailable', 'provider_timeout', 'provider_unavailable', 'rate_limit', 'lookup_session_limit', 'curl_unavailable', 'provider_not_configured'].includes(code)) {
+        prepareManualFallback(data.barcode || normalized);
+        setLookupState('warning', message + providersText(data));
+        return;
+      }
+
+      setLookupState(code === 'invalid_barcode' ? 'danger' : 'warning', message + providersText(data));
+      return;
+    }
+
+    duplicateBarcode = '';
+    if (saveButton) saveButton.disabled = false;
+    fillProductForm(data.product);
+    setLookupState('success', data.source === 'open_food_facts'
+      ? 'Produto encontrado no Open Food Facts. Confira os dados antes de salvar.'
+      : 'Produto encontrado. Confira os dados antes de salvar.');
+  }
+
   async function lookupBarcode(barcode, format = '') {
     const normalized = normalizeBarcode(barcode);
     if (!normalized) {
@@ -141,6 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (lookupInProgress) return;
+
+    const cached = lookupCache.get(normalized);
+    if (cached && Date.now() - cached.timestamp < lookupCacheTtl) {
+      handleLookupPayload(cached.data, cached.ok, normalized);
+      return;
+    }
 
     if (lookupController) lookupController.abort();
     lookupController = new AbortController();
@@ -172,31 +239,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (data.source === 'local' && data.exists) {
-        showExistingProduct(data.product, data.edit_url);
+        lookupCache.set(normalized, { timestamp: Date.now(), data, ok: response.ok });
+        handleLookupPayload(data, response.ok, normalized);
         return;
       }
 
-      if (!response.ok || !data.success) {
-        if (data.code === 'product_not_found') {
-          fillField('productBarcode', data.barcode || normalized, true);
-          duplicateBarcode = '';
-          if (saveButton) saveButton.disabled = false;
-          setLookupState('warning', data.message || lookupMessages.product_not_found);
-          return;
-        }
-
-        const code = String(data.code || '');
-        const message = data.message || lookupMessages[code] || lookupMessages.provider_unavailable;
-        setLookupState(code === 'invalid_barcode' ? 'danger' : 'warning', message);
-        return;
-      }
-
-      duplicateBarcode = '';
-      if (saveButton) saveButton.disabled = false;
-      fillProductForm(data.product);
-      setLookupState('success', data.source === 'open_food_facts'
-        ? 'Produto encontrado no Open Food Facts. Confira os dados antes de salvar.'
-        : 'Produto encontrado. Confira os dados antes de salvar.');
+      lookupCache.set(normalized, { timestamp: Date.now(), data, ok: response.ok });
+      handleLookupPayload(data, response.ok, normalized);
     } catch (error) {
       if (error.name !== 'AbortError') {
         setLookupState('warning', 'A consulta externa está indisponível. Continue manualmente.');

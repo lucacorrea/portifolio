@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Integrations;
 
+use App\Contracts\BarcodeProductProviderInterface;
 use App\Core\Env;
-use RuntimeException;
 
-final class OpenFoodFactsClient
+final class OpenFoodFactsClient implements BarcodeProductProviderInterface
 {
     private string $baseUrl;
     private string $userAgent;
@@ -17,21 +17,33 @@ final class OpenFoodFactsClient
     {
         $this->baseUrl = rtrim((string)($baseUrl ?? Env::get('OPENFOODFACTS_BASE_URL', 'https://world.openfoodfacts.org/api/v3.6')), '/');
         $this->userAgent = trim((string)($userAgent ?? Env::get('OPENFOODFACTS_USER_AGENT', '')));
-        $this->timeout = max(1, min(20, (int)($timeout ?? Env::int('PRODUCT_LOOKUP_TIMEOUT', 8))));
+        $this->timeout = max(1, min(30, (int)($timeout ?? Env::int('PRODUCT_LOOKUP_TIMEOUT', 10))));
+    }
+
+    public function name(): string
+    {
+        return 'open_food_facts';
+    }
+
+    public function isConfigured(): bool
+    {
+        return $this->userAgent !== '' && str_starts_with($this->baseUrl, 'https://');
     }
 
     public function lookup(string $barcode): array
     {
-        if (!str_starts_with($this->baseUrl, 'https://')) {
-            $this->fail('provider_not_configured', ['host' => (string)parse_url($this->baseUrl, PHP_URL_HOST)]);
-        }
+        $startedAt = microtime(true);
+        $host = (string)parse_url($this->baseUrl, PHP_URL_HOST);
+        $context = [
+            'host' => $this->safeHost($host),
+            'http_status' => null,
+            'content_type' => '',
+            'elapsed_ms' => 0,
+            'url' => '',
+        ];
 
-        if ($this->userAgent === '') {
-            $this->fail('provider_not_configured', ['host' => (string)parse_url($this->baseUrl, PHP_URL_HOST)]);
-        }
-
-        if (!function_exists('curl_init')) {
-            $this->fail('curl_unavailable', ['host' => (string)parse_url($this->baseUrl, PHP_URL_HOST)]);
+        if (!$this->isConfigured()) {
+            return $this->result('unavailable', 'provider_not_configured', [], $context, $startedAt);
         }
 
         $fields = implode(',', [
@@ -51,10 +63,17 @@ final class OpenFoodFactsClient
         ]);
 
         $url = $this->baseUrl . '/product/' . rawurlencode($barcode) . '.json?fields=' . rawurlencode($fields);
+        $context['url'] = $url;
+
+        if (!function_exists('curl_init')) {
+            return $this->result('unavailable', 'curl_unavailable', [], $context, $startedAt);
+        }
+
+        $responseHeaders = [];
         $ch = curl_init($url);
 
         if ($ch === false) {
-            $this->fail('network_error', ['host' => (string)parse_url($this->baseUrl, PHP_URL_HOST)]);
+            return $this->result('unavailable', 'network_error', [], $context, $startedAt);
         }
 
         $options = [
@@ -64,7 +83,16 @@ final class OpenFoodFactsClient
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_HTTPHEADER => ['Accept: application/json'],
             CURLOPT_USERAGENT => $this->userAgent,
-            CURLOPT_HEADER => true,
+            CURLOPT_HEADERFUNCTION => static function ($curl, string $headerLine) use (&$responseHeaders): int {
+                $length = strlen($headerLine);
+                $parts = explode(':', $headerLine, 2);
+
+                if (count($parts) === 2) {
+                    $responseHeaders[strtolower(trim($parts[0]))] = trim($parts[1]);
+                }
+
+                return $length;
+            },
         ];
 
         if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTPS')) {
@@ -77,112 +105,128 @@ final class OpenFoodFactsClient
 
         curl_setopt_array($ch, $options);
         $raw = curl_exec($ch);
-        $curlError = curl_error($ch);
         $curlErrno = curl_errno($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $contentType = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        $headerSize = (int)curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
-        $context = [
-            'errno' => $curlErrno,
-            'curl_error' => $curlError,
-            'http_status' => $httpCode,
-            'content_type' => $contentType,
-            'host' => (string)parse_url($this->baseUrl, PHP_URL_HOST),
-        ];
+        $context['errno'] = $curlErrno;
+        $context['http_status'] = $httpCode;
+        $context['content_type'] = $this->safeHeaderValue($contentType);
+        $context['retry_after'] = $this->retryAfter($responseHeaders['retry-after'] ?? null);
 
         if (defined('CURLE_OPERATION_TIMEDOUT') && $curlErrno === CURLE_OPERATION_TIMEDOUT) {
-            $this->fail('timeout', $context);
+            return $this->result('unavailable', 'timeout', [], $context, $startedAt);
         }
 
-        $sslErrors = [];
-        if (defined('CURLE_SSL_CONNECT_ERROR')) {
-            $sslErrors[] = CURLE_SSL_CONNECT_ERROR;
-        }
-        if (defined('CURLE_PEER_FAILED_VERIFICATION')) {
-            $sslErrors[] = CURLE_PEER_FAILED_VERIFICATION;
-        }
-        if (defined('CURLE_SSL_CACERT')) {
-            $sslErrors[] = CURLE_SSL_CACERT;
-        }
-
-        if (in_array($curlErrno, $sslErrors, true)) {
-            $this->fail('ssl_error', $context);
+        if ($this->isSslError($curlErrno)) {
+            return $this->result('unavailable', 'ssl_error', [], $context, $startedAt);
         }
 
         if ($raw === false || $curlErrno !== 0) {
-            $this->fail('network_error', $context);
+            return $this->result('unavailable', 'network_error', [], $context, $startedAt);
         }
 
-        $body = substr((string)$raw, $headerSize);
-
         if ($httpCode === 404) {
-            return ['found' => false, 'product' => []];
+            return $this->result('not_found', 'product_not_found', [], $context, $startedAt);
         }
 
         if ($httpCode === 429) {
-            $this->fail('rate_limit', $context);
+            return $this->result('rate_limit', 'rate_limit', [], $context, $startedAt);
         }
 
         if ($httpCode >= 500 || $httpCode === 0) {
-            $this->fail('provider_unavailable', $context);
+            return $this->result('unavailable', 'provider_unavailable', [], $context, $startedAt);
         }
 
         if ($httpCode < 200 || $httpCode >= 300) {
-            $this->fail('unexpected_http_status', $context);
+            return $this->result('unavailable', 'unexpected_http_status', [], $context, $startedAt);
         }
 
         if ($contentType !== '' && stripos($contentType, 'application/json') === false) {
-            $this->fail('invalid_content_type', $context);
+            return $this->result('unavailable', 'invalid_content_type', [], $context, $startedAt);
         }
 
-        $decoded = json_decode($body, true);
+        $decoded = json_decode((string)$raw, true);
         if (!is_array($decoded)) {
-            $this->fail('invalid_json', $context);
+            return $this->result('unavailable', 'invalid_json', [], $context, $startedAt);
         }
 
         if (isset($decoded['status']) && (int)$decoded['status'] === 0) {
-            return ['found' => false, 'product' => []];
+            return $this->result('not_found', 'product_not_found', [], $context, $startedAt);
         }
 
         $product = $decoded['product'] ?? null;
         if (!is_array($product)) {
-            $this->fail('invalid_json', $context);
+            return $this->result('unavailable', 'invalid_json', [], $context, $startedAt);
         }
 
+        $context['api_status'] = isset($decoded['status']) ? (int)$decoded['status'] : null;
+        $context['api_code'] = (string)($decoded['code'] ?? $barcode);
+
+        return $this->result('found', '', $product, $context, $startedAt);
+    }
+
+    private function result(string $status, string $reason, array $product, array $context, float $startedAt): array
+    {
+        $elapsedMs = (int)round((microtime(true) - $startedAt) * 1000);
+
         return [
-            'found' => true,
+            'status' => $status,
+            'provider' => $this->name(),
             'product' => $product,
-            'code' => (string)($decoded['code'] ?? $barcode),
+            'reason' => $reason,
+            'retry_after' => $context['retry_after'] ?? null,
+            'http_status' => $context['http_status'] ?? null,
+            'content_type' => $context['content_type'] ?? '',
+            'elapsed_ms' => $elapsedMs,
+            'url' => $context['url'] ?? '',
+            'host' => $context['host'] ?? '',
+            'errno' => $context['errno'] ?? null,
+            'api_status' => $context['api_status'] ?? null,
+            'api_code' => $context['api_code'] ?? '',
         ];
     }
 
-    private function fail(string $reason, array $context = [])
+    private function retryAfter(?string $value): ?int
     {
-        $safeContext = [
-            'errno' => isset($context['errno']) ? (int)$context['errno'] : null,
-            'http_status' => isset($context['http_status']) ? (int)$context['http_status'] : null,
-            'content_type' => isset($context['content_type']) ? substr(preg_replace('/[\r\n]+/', ' ', (string)$context['content_type']) ?? '', 0, 120) : '',
-            'host' => isset($context['host']) ? preg_replace('/[^a-z0-9.-]/i', '', (string)$context['host']) : '',
-        ];
-
-        if (isset($context['curl_error']) && $context['curl_error'] !== '') {
-            $safeContext['curl_error'] = substr(preg_replace('/[\r\n]+/', ' ', (string)$context['curl_error']) ?? '', 0, 180);
+        if ($value === null || trim($value) === '') {
+            return null;
         }
 
-        if (function_exists('log_app_message')) {
-            \log_app_message(sprintf(
-                "[%s] Open Food Facts lookup failure: reason=%s errno=%s http_status=%s content_type=%s host=%s\n",
-                date('Y-m-d H:i:s'),
-                $reason,
-                (string)($safeContext['errno'] ?? ''),
-                (string)($safeContext['http_status'] ?? ''),
-                (string)($safeContext['content_type'] ?? ''),
-                (string)($safeContext['host'] ?? '')
-            ));
+        $value = trim($value);
+        if (ctype_digit($value)) {
+            return max(0, (int)$value);
         }
 
-        throw new RuntimeException($reason);
+        $timestamp = strtotime($value);
+        if ($timestamp === false) {
+            return null;
+        }
+
+        return max(0, $timestamp - time());
+    }
+
+    private function isSslError(int $curlErrno): bool
+    {
+        $sslErrors = [];
+
+        foreach (['CURLE_SSL_CONNECT_ERROR', 'CURLE_PEER_FAILED_VERIFICATION', 'CURLE_SSL_CACERT'] as $constant) {
+            if (defined($constant)) {
+                $sslErrors[] = constant($constant);
+            }
+        }
+
+        return in_array($curlErrno, $sslErrors, true);
+    }
+
+    private function safeHeaderValue(string $value): string
+    {
+        return substr(preg_replace('/[\r\n]+/', ' ', $value) ?? '', 0, 120);
+    }
+
+    private function safeHost(string $host): string
+    {
+        return preg_replace('/[^a-z0-9.-]/i', '', strtolower($host)) ?? '';
     }
 }

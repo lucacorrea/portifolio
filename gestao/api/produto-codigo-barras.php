@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../backend/bootstrap.php';
 
+use App\Core\Env;
 use App\Repositories\ProductRepository;
 use App\Security\Auth;
 use App\Security\Csrf;
@@ -34,16 +35,22 @@ function barcodeLookupNormalize(string $barcode): string
     return function_exists('mb_substr') ? mb_substr($barcode, 0, 80) : substr($barcode, 0, 80);
 }
 
-function barcodeLookupExternalAllowed(): bool
+function barcodeLookupInternalAllowed(): bool
 {
+    $limit = max(0, Env::int('PRODUCT_LOOKUP_SESSION_LIMIT', 0));
+    if ($limit === 0) {
+        return true;
+    }
+
+    $windowSeconds = max(1, Env::int('PRODUCT_LOOKUP_WINDOW_SECONDS', 300));
     $now = time();
     $bucket = $_SESSION['product_barcode_lookup'] ?? ['start' => $now, 'count' => 0];
 
-    if (!is_array($bucket) || ($now - (int)($bucket['start'] ?? 0)) > 300) {
+    if (!is_array($bucket) || ($now - (int)($bucket['start'] ?? 0)) > $windowSeconds) {
         $bucket = ['start' => $now, 'count' => 0];
     }
 
-    if ((int)($bucket['count'] ?? 0) >= 20) {
+    if ((int)($bucket['count'] ?? 0) >= $limit) {
         $_SESSION['product_barcode_lookup'] = $bucket;
         return false;
     }
@@ -52,6 +59,34 @@ function barcodeLookupExternalAllowed(): bool
     $_SESSION['product_barcode_lookup'] = $bucket;
 
     return true;
+}
+
+function barcodeLookupProvidersChecked(array $attempts): array
+{
+    $providers = [];
+
+    foreach ($attempts as $attempt) {
+        $provider = preg_replace('/[^0-9A-Za-z_.:-]/', '', (string)($attempt['provider'] ?? '')) ?? '';
+        if ($provider !== '') {
+            $providers[] = $provider;
+        }
+    }
+
+    return array_values(array_unique($providers));
+}
+
+function barcodeLookupAttemptReasons(array $attempts): array
+{
+    $reasons = [];
+
+    foreach ($attempts as $attempt) {
+        $reason = preg_replace('/[^0-9A-Za-z_.:-]/', '', (string)($attempt['reason'] ?? '')) ?? '';
+        if ($reason !== '') {
+            $reasons[] = $reason;
+        }
+    }
+
+    return array_values(array_unique($reasons));
 }
 
 $empresaId = 0;
@@ -112,11 +147,11 @@ try {
         ]);
     }
 
-    if (!barcodeLookupExternalAllowed()) {
+    if (!barcodeLookupInternalAllowed()) {
         barcodeLookupJson([
             'success' => false,
-            'code' => 'rate_limit',
-            'message' => 'O serviço externo atingiu o limite de consultas. Tente novamente depois ou cadastre manualmente.',
+            'code' => 'lookup_session_limit',
+            'message' => 'O limite interno de consultas foi atingido. Continue o cadastro manualmente.',
         ], 429);
     }
 
@@ -127,9 +162,48 @@ try {
         barcodeLookupJson([
             'success' => false,
             'code' => 'product_not_found',
-            'message' => $result['message'],
+            'message' => 'Produto não encontrado nas bases consultadas. Complete o cadastro manualmente.',
             'barcode' => $result['barcode'] ?? $barcode,
-        ], 404);
+            'providers_checked' => barcodeLookupProvidersChecked($result['attempts'] ?? []),
+        ]);
+    }
+
+    if (($result['source'] ?? '') === 'rate_limit') {
+        barcodeLookupJson([
+            'success' => false,
+            'code' => 'rate_limit',
+            'message' => 'O serviço externo atingiu o limite de consultas. Tente novamente depois ou cadastre manualmente.',
+            'barcode' => $result['barcode'] ?? $barcode,
+            'providers_checked' => barcodeLookupProvidersChecked($result['attempts'] ?? []),
+            'retry_after' => $result['retry_after'] ?? null,
+        ], 429);
+    }
+
+    if (($result['source'] ?? '') === 'unavailable') {
+        $reasons = barcodeLookupAttemptReasons($result['attempts'] ?? []);
+        $code = 'providers_unavailable';
+        $message = 'Não foi possível consultar as bases externas agora. Continue o cadastro manualmente.';
+        $status = 503;
+
+        if ($reasons && count(array_diff($reasons, ['provider_not_configured'])) === 0) {
+            $code = 'provider_not_configured';
+            $message = 'A integração externa ainda não foi configurada. Continue o cadastro manualmente.';
+        } elseif (in_array('curl_unavailable', $reasons, true)) {
+            $code = 'curl_unavailable';
+            $message = 'O servidor não possui suporte para consulta externa. Continue o cadastro manualmente.';
+        } elseif (in_array('timeout', $reasons, true)) {
+            $code = 'provider_timeout';
+            $message = 'A consulta externa demorou demais. Tente novamente ou continue manualmente.';
+            $status = 504;
+        }
+
+        barcodeLookupJson([
+            'success' => false,
+            'code' => $code,
+            'message' => $message,
+            'barcode' => $result['barcode'] ?? $barcode,
+            'providers_checked' => barcodeLookupProvidersChecked($result['attempts'] ?? []),
+        ], $status);
     }
 
     barcodeLookupJson([
@@ -138,6 +212,7 @@ try {
         'exists' => (bool)($result['exists'] ?? false),
         'message' => $result['message'],
         'product' => $result['product'],
+        'providers_checked' => barcodeLookupProvidersChecked($result['attempts'] ?? []),
     ]);
 } catch (InvalidArgumentException $e) {
     barcodeLookupJson([
