@@ -29,8 +29,9 @@ function barcodeLookupInput(): array
 function barcodeLookupNormalize(string $barcode): string
 {
     $barcode = preg_replace('/[\x00-\x1F\x7F\s-]+/u', '', $barcode) ?? '';
+    $barcode = trim($barcode);
 
-    return mb_substr(trim($barcode), 0, 80);
+    return function_exists('mb_substr') ? mb_substr($barcode, 0, 80) : substr($barcode, 0, 80);
 }
 
 function barcodeLookupExternalAllowed(): bool
@@ -52,6 +53,9 @@ function barcodeLookupExternalAllowed(): bool
 
     return true;
 }
+
+$empresaId = 0;
+$barcode = '';
 
 try {
     if (!Auth::check()) {
@@ -142,9 +146,42 @@ try {
         'message' => $e->getMessage() ?: 'Código de barras inválido.',
     ], 422);
 } catch (RuntimeException $e) {
-    $code = $e->getMessage();
-    if ($code === 'rate_limit') {
-        log_app_message('[' . date('Y-m-d H:i:s') . "] Open Food Facts rate limit atingido.\n");
+    $reason = $e->getMessage();
+    $safeBarcode = preg_replace('/[^0-9A-Za-z_-]/', '', $barcode) ?? '';
+
+    log_app_message(sprintf(
+        "[%s] Product lookup failure: reason=%s empresa_id=%d barcode=%s\n",
+        date('Y-m-d H:i:s'),
+        preg_replace('/[^0-9A-Za-z_-]/', '', $reason) ?? 'unknown',
+        $empresaId,
+        $safeBarcode
+    ));
+
+    if ($reason === 'provider_not_configured') {
+        barcodeLookupJson([
+            'success' => false,
+            'code' => 'provider_not_configured',
+            'message' => 'A integração externa ainda não foi configurada. Continue o cadastro manualmente.',
+        ], 503);
+    }
+
+    if ($reason === 'curl_unavailable') {
+        barcodeLookupJson([
+            'success' => false,
+            'code' => 'curl_unavailable',
+            'message' => 'O servidor não possui suporte para consulta externa. Continue o cadastro manualmente.',
+        ], 503);
+    }
+
+    if ($reason === 'timeout') {
+        barcodeLookupJson([
+            'success' => false,
+            'code' => 'provider_timeout',
+            'message' => 'A consulta externa demorou demais. Tente novamente ou continue manualmente.',
+        ], 504);
+    }
+
+    if ($reason === 'rate_limit') {
         barcodeLookupJson([
             'success' => false,
             'code' => 'rate_limit',

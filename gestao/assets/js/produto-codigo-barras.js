@@ -22,6 +22,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let zxingControls = null;
   let zxingLoading = null;
   let duplicateBarcode = '';
+  const lookupMessages = {
+    provider_not_configured: 'A integração externa ainda não foi configurada. Você pode cadastrar manualmente.',
+    curl_unavailable: 'O servidor não possui suporte para consulta externa. Você pode cadastrar manualmente.',
+    provider_timeout: 'A consulta demorou demais. Tente novamente ou continue manualmente.',
+    provider_unavailable: 'A consulta externa está indisponível. Continue manualmente.',
+    rate_limit: 'O limite de consultas foi atingido. Tente novamente depois.',
+    product_not_found: 'Produto não encontrado na base externa. Preencha manualmente.',
+    invalid_barcode: 'Código de barras inválido.'
+  };
 
   if (!barcodeInput || !lookupButton || !scanButton || !messageBox || !form) {
     return;
@@ -172,11 +181,13 @@ document.addEventListener('DOMContentLoaded', () => {
           fillField('productBarcode', data.barcode || normalized, true);
           duplicateBarcode = '';
           if (saveButton) saveButton.disabled = false;
-          setLookupState('warning', data.message || 'Produto não encontrado na base externa. Preencha manualmente.');
+          setLookupState('warning', data.message || lookupMessages.product_not_found);
           return;
         }
 
-        setLookupState(data.code === 'invalid_barcode' ? 'danger' : 'warning', data.message || 'A consulta externa está indisponível. Continue manualmente.');
+        const code = String(data.code || '');
+        const message = data.message || lookupMessages[code] || lookupMessages.provider_unavailable;
+        setLookupState(code === 'invalid_barcode' ? 'danger' : 'warning', message);
         return;
       }
 

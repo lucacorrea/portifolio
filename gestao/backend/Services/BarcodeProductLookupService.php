@@ -68,7 +68,7 @@ final class BarcodeProductLookupService
             return $barcode;
         }
 
-        return mb_substr($barcode, 0, 80);
+        return $this->limitText($barcode, 80);
     }
 
     private function validateBarcode(string $barcode, string $format): void
@@ -226,6 +226,11 @@ final class BarcodeProductLookupService
         $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/u', '', $value) ?? '';
         $value = trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
 
-        return mb_substr($value, 0, $maxLength);
+        return $this->limitText($value, $maxLength);
+    }
+
+    private function limitText(string $value, int $maxLength): string
+    {
+        return function_exists('mb_substr') ? mb_substr($value, 0, $maxLength) : substr($value, 0, $maxLength);
     }
 }

@@ -23,15 +23,15 @@ final class OpenFoodFactsClient
     public function lookup(string $barcode): array
     {
         if (!str_starts_with($this->baseUrl, 'https://')) {
-            throw new RuntimeException('provider_unavailable');
+            $this->fail('provider_not_configured', ['host' => (string)parse_url($this->baseUrl, PHP_URL_HOST)]);
         }
 
         if ($this->userAgent === '') {
-            throw new RuntimeException('provider_unavailable');
+            $this->fail('provider_not_configured', ['host' => (string)parse_url($this->baseUrl, PHP_URL_HOST)]);
         }
 
         if (!function_exists('curl_init')) {
-            throw new RuntimeException('provider_unavailable');
+            $this->fail('curl_unavailable', ['host' => (string)parse_url($this->baseUrl, PHP_URL_HOST)]);
         }
 
         $fields = implode(',', [
@@ -50,11 +50,11 @@ final class OpenFoodFactsClient
             'manufacturing_places_tags',
         ]);
 
-        $url = $this->baseUrl . '/product/' . rawurlencode($barcode) . '?fields=' . rawurlencode($fields);
+        $url = $this->baseUrl . '/product/' . rawurlencode($barcode) . '.json?fields=' . rawurlencode($fields);
         $ch = curl_init($url);
 
         if ($ch === false) {
-            throw new RuntimeException('provider_unavailable');
+            $this->fail('network_error', ['host' => (string)parse_url($this->baseUrl, PHP_URL_HOST)]);
         }
 
         $options = [
@@ -71,16 +71,48 @@ final class OpenFoodFactsClient
             $options[CURLOPT_PROTOCOLS] = CURLPROTO_HTTPS;
         }
 
+        if (defined('CURLOPT_REDIR_PROTOCOLS') && defined('CURLPROTO_HTTPS')) {
+            $options[CURLOPT_REDIR_PROTOCOLS] = CURLPROTO_HTTPS;
+        }
+
         curl_setopt_array($ch, $options);
         $raw = curl_exec($ch);
-        $errno = curl_errno($ch);
-        $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $curlError = curl_error($ch);
+        $curlErrno = curl_errno($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $contentType = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         $headerSize = (int)curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
-        if ($raw === false || $errno !== 0) {
-            throw new RuntimeException('provider_unavailable');
+        $context = [
+            'errno' => $curlErrno,
+            'curl_error' => $curlError,
+            'http_status' => $httpCode,
+            'content_type' => $contentType,
+            'host' => (string)parse_url($this->baseUrl, PHP_URL_HOST),
+        ];
+
+        if (defined('CURLE_OPERATION_TIMEDOUT') && $curlErrno === CURLE_OPERATION_TIMEDOUT) {
+            $this->fail('timeout', $context);
+        }
+
+        $sslErrors = [];
+        if (defined('CURLE_SSL_CONNECT_ERROR')) {
+            $sslErrors[] = CURLE_SSL_CONNECT_ERROR;
+        }
+        if (defined('CURLE_PEER_FAILED_VERIFICATION')) {
+            $sslErrors[] = CURLE_PEER_FAILED_VERIFICATION;
+        }
+        if (defined('CURLE_SSL_CACERT')) {
+            $sslErrors[] = CURLE_SSL_CACERT;
+        }
+
+        if (in_array($curlErrno, $sslErrors, true)) {
+            $this->fail('ssl_error', $context);
+        }
+
+        if ($raw === false || $curlErrno !== 0) {
+            $this->fail('network_error', $context);
         }
 
         $body = substr((string)$raw, $headerSize);
@@ -90,34 +122,67 @@ final class OpenFoodFactsClient
         }
 
         if ($httpCode === 429) {
-            throw new RuntimeException('rate_limit');
+            $this->fail('rate_limit', $context);
         }
 
         if ($httpCode >= 500 || $httpCode === 0) {
-            throw new RuntimeException('provider_unavailable');
+            $this->fail('provider_unavailable', $context);
         }
 
         if ($httpCode < 200 || $httpCode >= 300) {
-            throw new RuntimeException('provider_unavailable');
+            $this->fail('unexpected_http_status', $context);
         }
 
         if ($contentType !== '' && stripos($contentType, 'application/json') === false) {
-            throw new RuntimeException('provider_unavailable');
+            $this->fail('invalid_content_type', $context);
         }
 
         $decoded = json_decode($body, true);
         if (!is_array($decoded)) {
-            throw new RuntimeException('provider_unavailable');
+            $this->fail('invalid_json', $context);
         }
 
-        if (($decoded['status'] ?? 0) !== 1 || !is_array($decoded['product'] ?? null)) {
+        if (isset($decoded['status']) && (int)$decoded['status'] === 0) {
             return ['found' => false, 'product' => []];
+        }
+
+        $product = $decoded['product'] ?? null;
+        if (!is_array($product)) {
+            $this->fail('invalid_json', $context);
         }
 
         return [
             'found' => true,
-            'product' => $decoded['product'],
+            'product' => $product,
             'code' => (string)($decoded['code'] ?? $barcode),
         ];
+    }
+
+    private function fail(string $reason, array $context = [])
+    {
+        $safeContext = [
+            'errno' => isset($context['errno']) ? (int)$context['errno'] : null,
+            'http_status' => isset($context['http_status']) ? (int)$context['http_status'] : null,
+            'content_type' => isset($context['content_type']) ? substr(preg_replace('/[\r\n]+/', ' ', (string)$context['content_type']) ?? '', 0, 120) : '',
+            'host' => isset($context['host']) ? preg_replace('/[^a-z0-9.-]/i', '', (string)$context['host']) : '',
+        ];
+
+        if (isset($context['curl_error']) && $context['curl_error'] !== '') {
+            $safeContext['curl_error'] = substr(preg_replace('/[\r\n]+/', ' ', (string)$context['curl_error']) ?? '', 0, 180);
+        }
+
+        if (function_exists('log_app_message')) {
+            \log_app_message(sprintf(
+                "[%s] Open Food Facts lookup failure: reason=%s errno=%s http_status=%s content_type=%s host=%s\n",
+                date('Y-m-d H:i:s'),
+                $reason,
+                (string)($safeContext['errno'] ?? ''),
+                (string)($safeContext['http_status'] ?? ''),
+                (string)($safeContext['content_type'] ?? ''),
+                (string)($safeContext['host'] ?? '')
+            ));
+        }
+
+        throw new RuntimeException($reason);
     }
 }
