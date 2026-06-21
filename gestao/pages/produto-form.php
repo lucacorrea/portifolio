@@ -7,7 +7,6 @@ require_once __DIR__ . '/../backend/bootstrap.php';
 use App\Repositories\SettingsRepository;
 use App\Security\Auth;
 use App\Security\Csrf;
-use App\Services\ExternalProductImageService;
 use App\Services\ProductService;
 
 Auth::requireLogin();
@@ -66,23 +65,6 @@ function productFormImageUrl(mixed $image): string
     }
 
     return '../assets/img/prod-placeholder.svg';
-}
-
-function productExternalImagePreviewUrl(mixed $url): string
-{
-    $url = trim((string)$url);
-    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
-
-    if (
-        $url !== ''
-        && filter_var($url, FILTER_VALIDATE_URL) !== false
-        && str_starts_with($url, 'https://')
-        && ($host === 'images.openfoodfacts.org' || $host === 'world.openfoodfacts.org' || str_ends_with($host, '.openfoodfacts.org'))
-    ) {
-        return $url;
-    }
-
-    return '';
 }
 
 function storeProductImage(int $empresaId, string $currentImage): array
@@ -178,16 +160,12 @@ function productFormData(array $source, array $fallback = []): array
         'lot',
         'expiry',
         'image',
-        'externalImageUrl',
-        'source',
     ];
     $data = [];
 
     foreach ($fields as $field) {
         $data[$field] = $source[$field] ?? $fallback[$field] ?? '';
     }
-
-    $data['source'] = in_array((string)$data['source'], ['manual', 'open_food_facts', 'cosmos'], true) ? $data['source'] : 'manual';
 
     return $data;
 }
@@ -269,21 +247,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $currentImage = (string)($existingProduct['image'] ?? '');
         $formData['image'] = $currentImage;
         [$image, $uploadedAbsolutePath] = storeProductImage($empresaId, $currentImage);
-        $externalImageUrl = (string)($_POST['externalImageUrl'] ?? '');
-
-        if ($uploadedAbsolutePath === null && trim($externalImageUrl) !== '') {
-            try {
-                $downloaded = (new ExternalProductImageService())->download($empresaId, $externalImageUrl);
-                if (is_array($downloaded)) {
-                    $image = (string)$downloaded['relativePath'];
-                    $uploadedAbsolutePath = (string)$downloaded['absolutePath'];
-                } else {
-                    log_app_message('[' . date('Y-m-d H:i:s') . "] Nao foi possivel baixar imagem externa do produto.\n");
-                }
-            } catch (Throwable $e) {
-                log_app_exception($e);
-            }
-        }
 
         $payload = [
             'id' => $productId,
@@ -305,8 +268,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'lot' => (string)($_POST['lot'] ?? ''),
             'expiry' => (string)($_POST['expiry'] ?? ''),
             'image' => $image,
-            'externalImageUrl' => $externalImageUrl,
-            'source' => (string)($_POST['source'] ?? 'manual'),
         ];
 
         $productService->save($empresaId, $payload);
@@ -334,10 +295,7 @@ if (!$canRenderForm) {
 $pageId = 'produto-form-server';
 $pageTitle = $isEditing ? 'Editar produto' : 'Novo produto';
 $activeMenu = 'produtos';
-$safeExternalPreview = productExternalImagePreviewUrl($formData['externalImageUrl'] ?? '');
-$previewUrl = $safeExternalPreview !== '' && (($formData['image'] ?? '') === '' || ($formData['image'] ?? '') === 'prod-placeholder.svg')
-    ? $safeExternalPreview
-    : productFormImageUrl($formData['image'] ?? '');
+$previewUrl = productFormImageUrl($formData['image'] ?? '');
 require_once __DIR__ . '/layout/header.php';
 ?>
 
@@ -373,11 +331,10 @@ require_once __DIR__ . '/layout/header.php';
   .product-scanner-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 12px; }
   .product-scanner-actions .ghost-btn { width: auto; min-width: 130px; }
   @media (max-width: 620px) {
-    .product-barcode-actions { grid-template-columns: 1fr 1fr; }
-    .product-barcode-actions input { grid-column: 1 / -1; }
+    .product-barcode-actions { grid-template-columns: 1fr; }
   }
   @media (min-width: 621px) {
-    .product-barcode-actions { grid-template-columns: minmax(0, 1fr) auto auto; }
+    .product-barcode-actions { grid-template-columns: minmax(0, 1fr) auto; }
     .product-barcode-actions .secondary-btn { width: auto; padding: 0 14px; }
   }
   @media (min-width: 720px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -403,8 +360,6 @@ require_once __DIR__ . '/layout/header.php';
     <form method="post" enctype="multipart/form-data" class="form-card">
       <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
       <input type="hidden" name="id" value="<?= (int)($formData['id'] ?? 0) ?>">
-      <input type="hidden" id="productExternalImageUrl" name="externalImageUrl" value="<?= e($formData['externalImageUrl']) ?>">
-      <input type="hidden" id="productDataSource" name="source" value="<?= e($formData['source']) ?>">
 
       <div class="product-form-preview">
         <img id="productPreview" src="<?= e($previewUrl) ?>" alt="Prévia do produto">
@@ -428,10 +383,9 @@ require_once __DIR__ . '/layout/header.php';
             <label for="productBarcode">Código de barras / GTIN</label>
             <div class="product-barcode-actions">
               <input id="productBarcode" name="barcode" maxlength="80" inputmode="numeric" autocomplete="off" value="<?= e($formData['barcode']) ?>">
-              <button id="lookupBarcodeButton" type="button" class="secondary-btn">Consultar</button>
               <button id="scanBarcodeButton" type="button" class="secondary-btn">Escanear</button>
             </div>
-            <p class="product-form-help">Digite ou escaneie EAN, UPC ou GTIN.</p>
+            <p class="product-form-help">Digite ou escaneie o código do produto.</p>
             <div id="barcodeLookupMessage" class="product-lookup-message" aria-live="polite" hidden></div>
           </div>
           <div class="field"><label for="productCategory">Categoria</label><input id="productCategory" name="category" maxlength="120" value="<?= e($formData['category']) ?>" required></div>
