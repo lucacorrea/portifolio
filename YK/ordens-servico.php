@@ -10,5 +10,6 @@ $primaryActionTarget = '#modal-os';
 $primaryActionPermission = 'os.criar';
 $requiredPermission = 'os.visualizar';
 $pageContent = __DIR__ . '/pages/ordens-servico.php';
+$pageScripts = ['assets/js/ordens-servico.js'];
 
 require __DIR__ . '/includes/shell.php';

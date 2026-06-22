@@ -12,6 +12,8 @@ try {
     if ($operation === 'cancel') {
         $application->authorization()->requirePermission('agenda.cancelar');
         $application->serviceOrderManagement()->cancel(os_posted_positive_int('id'));
+    } elseif ($operation === 'finalize') {
+        $application->serviceOrderManagement()->finalize(os_posted_positive_int('id'));
     } elseif (isset($map[$operation])) {
         $application->serviceOrderManagement()->changeStatus(os_posted_positive_int('id'), $map[$operation]);
     } else {
