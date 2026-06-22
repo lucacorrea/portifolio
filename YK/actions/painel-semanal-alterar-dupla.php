@@ -13,9 +13,9 @@ try {
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('team', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
-    painel_semanal_redirect($application, 'painel-semanal.php?modal=team');
+    painel_semanal_redirect($application, painel_semanal_return_target('team'));
 } catch (Throwable $exception) {
     error_log('Weekly team failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível alterar a dupla.');
 }
-painel_semanal_redirect($application);
+painel_semanal_redirect($application, painel_semanal_return_target());

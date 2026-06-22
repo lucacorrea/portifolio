@@ -9,3 +9,24 @@ function agenda_redirect(App\Core\Application $application, string $target = 'ag
     header('Location: ' . $application->redirect()->applicationUrl($target), true, 303);
     exit;
 }
+
+function agenda_return_target(?string $modal = null): string
+{
+    $view = (string) ($_POST['return_view'] ?? 'day');
+    if (!in_array($view, ['day', 'week'], true)) {
+        $view = 'day';
+    }
+
+    $date = (string) ($_POST['return_date'] ?? date('Y-m-d'));
+    $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+    if (!$parsed || $parsed->format('Y-m-d') !== $date) {
+        $date = date('Y-m-d');
+    }
+
+    $query = ['view' => $view, 'date' => $date];
+    if ($modal !== null && $modal !== '') {
+        $query['modal'] = $modal;
+    }
+
+    return 'agenda.php?' . http_build_query($query);
+}

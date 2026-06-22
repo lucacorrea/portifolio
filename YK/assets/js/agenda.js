@@ -1,6 +1,18 @@
 document.addEventListener('DOMContentLoaded', function () {
   'use strict';
 
+  const pageDataNode = document.getElementById('agenda-page-data');
+  const pageData = pageDataNode ? JSON.parse(pageDataNode.textContent || '{}') : {};
+  const recoveryModal = pageData.recoveryModal || new URLSearchParams(window.location.search).get('modal');
+  const recoveryData = pageData.recoveryData || {};
+  const recoveryError = pageData.recoveryError || '';
+  const statusOperations = {
+    agendada: ['start_travel', 'start_execution', 'wait_part', 'cancel'],
+    em_deslocamento: ['start_execution', 'wait_part', 'cancel'],
+    em_execucao: ['wait_part', 'finalize', 'cancel'],
+    aguardando_peca: ['start_execution', 'cancel'],
+  };
+
   function toLocalInput(value) {
     if (!value) return '';
     return String(value).replace(' ', 'T').slice(0, 16);
@@ -19,6 +31,31 @@ document.addEventListener('DOMContentLoaded', function () {
     const supportValue = support.value;
     support.querySelectorAll('option').forEach(function (option) { option.disabled = option.value !== '' && option.value === primaryValue; });
     primary.querySelectorAll('option').forEach(function (option) { option.disabled = option.value !== '' && option.value === supportValue; });
+  }
+
+  function filterStatusOptions(select, status) {
+    if (!select) return;
+    const allowed = statusOperations[status] || ['start_execution'];
+    let first = '';
+    select.querySelectorAll('option').forEach(function (option) {
+      const visible = allowed.includes(option.value);
+      option.hidden = !visible;
+      option.disabled = !visible;
+      if (visible && first === '') first = option.value;
+    });
+    select.value = allowed.includes(select.value) ? select.value : first;
+    setValue('agenda-status-operation', select.value);
+  }
+
+  function showRecoveryError(modal) {
+    if (!recoveryError || !modal) return;
+    const body = modal.querySelector('.modal-body');
+    if (!body) return;
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger';
+    alert.setAttribute('role', 'alert');
+    alert.textContent = recoveryError;
+    body.prepend(alert);
   }
 
   document.querySelectorAll('.js-primary-employee,.js-support-employee').forEach(function (select) {
@@ -64,16 +101,60 @@ document.addEventListener('DOMContentLoaded', function () {
     button.addEventListener('click', function () {
       setValue('agenda-status-id', button.dataset.orderId);
       const select = document.getElementById('agenda-status-select');
-      const operation = button.dataset.operation || 'start_execution';
       if (select) {
-        select.value = operation;
+        filterStatusOptions(select, button.dataset.currentStatus || '');
         setValue('agenda-status-operation', select.value);
         select.onchange = function () { setValue('agenda-status-operation', select.value); };
       } else {
-        setValue('agenda-status-operation', operation);
+        setValue('agenda-status-operation', button.dataset.operation || 'start_execution');
       }
       const message = document.getElementById('agenda-status-message');
       if (message) message.textContent = 'Escolha a operação de status para esta OS.';
     });
   });
+
+  function restoreRecovery() {
+    if (!recoveryModal || !window.bootstrap) return;
+    const modalMap = {
+      reminder: 'modal-lembrete',
+      reminder_edit: 'modal-lembrete-edit',
+      reschedule: 'modal-agenda-schedule',
+      team: 'modal-agenda-team',
+      status: 'modal-agenda-status',
+      cancel: 'modal-lembrete-cancel',
+    };
+    const modal = document.getElementById(modalMap[recoveryModal]);
+    if (!modal) return;
+
+    setValue('reminder-edit-id', recoveryData.id);
+    setValue('reminder-edit-title', recoveryData.title);
+    setValue('reminder-edit-description', recoveryData.description);
+    setValue('reminder-edit-start', toLocalInput(recoveryData.start));
+    setValue('reminder-edit-end', toLocalInput(recoveryData.end));
+    const createReminder = modal.querySelector('form');
+    if (recoveryModal === 'reminder' && createReminder) {
+      const title = createReminder.querySelector('[name="title"]');
+      const description = createReminder.querySelector('[name="description"]');
+      const start = createReminder.querySelector('[name="start"]');
+      const end = createReminder.querySelector('[name="end"]');
+      if (title) title.value = recoveryData.title || '';
+      if (description) description.value = recoveryData.description || '';
+      if (start) start.value = toLocalInput(recoveryData.start);
+      if (end) end.value = toLocalInput(recoveryData.end);
+    }
+    setValue('agenda-schedule-id', recoveryData.id);
+    setValue('agenda-schedule-start', toLocalInput(recoveryData.agendado_inicio));
+    setValue('agenda-schedule-end', toLocalInput(recoveryData.agendado_fim));
+    setValue('agenda-team-id', recoveryData.id);
+    setValue('agenda-team-primary', recoveryData.funcionario_principal_id);
+    setValue('agenda-team-support', recoveryData.funcionario_apoio_id);
+    setValue('agenda-status-id', recoveryData.id);
+    setValue('agenda-status-operation', recoveryData.operation);
+    setValue('reminder-cancel-id', recoveryData.id);
+    updateEmployeeOptions(modal);
+    showRecoveryError(modal);
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+  }
+
+  restoreRecovery();
 });

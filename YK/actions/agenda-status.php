@@ -6,6 +6,7 @@ require __DIR__ . '/agenda-action-common.php';
 
 os_require_post_request();
 [$application, $session] = os_action_context('agenda.editar');
+$redirectTarget = agenda_return_target();
 try {
     $operation = (string) ($_POST['operation'] ?? '');
     $map = ['start_travel' => 'em_deslocamento', 'start_execution' => 'em_execucao', 'wait_part' => 'aguardando_peca'];
@@ -21,9 +22,11 @@ try {
     }
     $session->flash('success', 'Status atualizado.');
 } catch (InvalidArgumentException $exception) {
+    os_store_form_recovery('status', $_POST, $exception->getMessage());
+    $redirectTarget = agenda_return_target('status');
     $session->flash('danger', $exception->getMessage());
 } catch (Throwable $exception) {
     error_log('Agenda status failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível alterar o status.');
 }
-agenda_redirect($application);
+agenda_redirect($application, $redirectTarget);

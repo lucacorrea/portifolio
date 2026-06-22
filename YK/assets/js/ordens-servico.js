@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const pageData = dataNode ? JSON.parse(dataNode.textContent || '{}') : {};
   const serviceOptions = pageData.services || [];
   const productOptions = pageData.products || [];
+  const recoveryModal = pageData.recoveryModal || new URLSearchParams(window.location.search).get('modal');
+  const recoveryData = pageData.recoveryData || {};
 
   function parseNumber(value) {
     value = String(value || '0').replace(/\s/g, '');
@@ -101,6 +103,62 @@ document.addEventListener('DOMContentLoaded', function () {
     recalc(form);
   }
 
+  function hasRecoveredItems(data) {
+    return ['services', 'products', 'others'].some(function (key) {
+      return Array.isArray(data[key]) && data[key].length > 0;
+    });
+  }
+
+  function restoreItems(form, data) {
+    form.querySelectorAll('.os-items').forEach(function (box) { box.replaceChildren(); });
+    (data.services || []).forEach(function (item) { addRow(form, 'servico', item); });
+    (data.products || []).forEach(function (item) { addRow(form, 'produto', item); });
+    (data.others || []).forEach(function (item) { addRow(form, 'outro', item); });
+    recalc(form);
+  }
+
+  function restoreOrderForm(form, data) {
+    [
+      ['os-id', 'id'],
+      ['os-client', 'client_id'],
+      ['os-budget-id', 'budget_id'],
+      ['os-status', 'status'],
+      ['os-priority', 'priority'],
+      ['os-equipment-type', 'equipment_type'],
+      ['os-equipment-brand', 'equipment_brand'],
+      ['os-equipment-model', 'equipment_model'],
+      ['os-equipment-capacity', 'equipment_capacity'],
+      ['os-equipment-serial-number', 'equipment_serial_number'],
+      ['os-equipment-environment', 'equipment_environment'],
+      ['os-equipment-location', 'equipment_location'],
+      ['os-reported-problem', 'reported_problem'],
+      ['os-identified-problem', 'identified_problem'],
+      ['os-diagnosis', 'diagnosis'],
+      ['os-solution', 'solution'],
+      ['os-recommendation', 'recommendation'],
+      ['os-internal-notes', 'internal_notes'],
+      ['os-notes', 'notes'],
+      ['os-primary', 'funcionario_principal_id'],
+      ['os-support', 'funcionario_apoio_id'],
+      ['os-scheduled-start', 'agendado_inicio'],
+      ['os-scheduled-end', 'agendado_fim'],
+    ].forEach(function (pair) {
+      setValue(pair[0], data[pair[1]]);
+    });
+    if (hasRecoveredItems(data)) restoreItems(form, data);
+    updateEmployeeOptions(form);
+    recalc(form);
+  }
+
+  function restoreTeamForm(data) {
+    setValue('os-team-id', data.id);
+    setValue('os-team-primary', data.funcionario_principal_id);
+    setValue('os-team-support', data.funcionario_apoio_id);
+    setValue('os-team-start', toLocalInput(data.agendado_inicio));
+    setValue('os-team-end', toLocalInput(data.agendado_fim));
+    updateEmployeeOptions(document.getElementById('modal-os-team'));
+  }
+
   function updateEmployeeOptions(scope) {
     const primary = scope.querySelector('.js-primary-employee');
     const support = scope.querySelector('.js-support-employee');
@@ -122,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
     form.querySelectorAll('.js-os-discount,.js-os-increase').forEach(function (input) {
       input.addEventListener('input', function () { recalc(form); });
     });
-    if (!form.querySelector('.os-item-row')) addRow(form, 'servico');
+    if (!form.querySelector('.os-item-row') && !(hasRecoveredItems(recoveryData) && (recoveryModal === 'create' || recoveryModal === 'edit'))) addRow(form, 'servico');
   });
 
   async function loadOrder(id) {
@@ -227,8 +285,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  if (pageData.recoveryModal === 'create' || new URLSearchParams(window.location.search).get('modal') === 'create') {
+  if ((recoveryModal === 'create' || recoveryModal === 'edit') && window.bootstrap) {
     const modal = document.getElementById('modal-os');
-    if (modal && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modal).show();
+    if (modal) {
+      const form = modal.querySelector('form');
+      if (form) restoreOrderForm(form, recoveryData);
+      document.getElementById('modal-os-title').textContent = recoveryModal === 'edit' ? 'Editar OS' : 'Nova OS';
+      bootstrap.Modal.getOrCreateInstance(modal).show();
+    }
+  }
+
+  if (recoveryModal === 'team' && window.bootstrap) {
+    restoreTeamForm(recoveryData);
+    const modal = document.getElementById('modal-os-team');
+    if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
   }
 });

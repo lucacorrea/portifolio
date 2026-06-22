@@ -15,9 +15,9 @@ try {
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('reschedule', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
-    painel_semanal_redirect($application, 'painel-semanal.php?modal=reschedule');
+    painel_semanal_redirect($application, painel_semanal_return_target('reschedule'));
 } catch (Throwable $exception) {
     error_log('Weekly reschedule failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível alterar horário.');
 }
-painel_semanal_redirect($application);
+painel_semanal_redirect($application, painel_semanal_return_target());

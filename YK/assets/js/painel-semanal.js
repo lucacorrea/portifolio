@@ -1,6 +1,18 @@
 document.addEventListener('DOMContentLoaded', function () {
   'use strict';
 
+  const pageDataNode = document.getElementById('weekly-page-data');
+  const pageData = pageDataNode ? JSON.parse(pageDataNode.textContent || '{}') : {};
+  const recoveryModal = pageData.recoveryModal || new URLSearchParams(window.location.search).get('modal');
+  const recoveryData = pageData.recoveryData || {};
+  const recoveryError = pageData.recoveryError || '';
+  const statusOperations = {
+    agendada: ['start_travel', 'start_execution', 'wait_part'],
+    em_deslocamento: ['start_execution', 'wait_part'],
+    em_execucao: ['wait_part', 'finalize'],
+    aguardando_peca: ['start_execution'],
+  };
+
   function toLocalInput(value) {
     if (!value) return '';
     return String(value).replace(' ', 'T').slice(0, 16);
@@ -19,6 +31,31 @@ document.addEventListener('DOMContentLoaded', function () {
     const supportValue = support.value;
     support.querySelectorAll('option').forEach(function (option) { option.disabled = option.value !== '' && option.value === primaryValue; });
     primary.querySelectorAll('option').forEach(function (option) { option.disabled = option.value !== '' && option.value === supportValue; });
+  }
+
+  function filterStatusOptions(select, status) {
+    if (!select) return;
+    const allowed = statusOperations[status] || ['start_execution'];
+    let first = '';
+    select.querySelectorAll('option').forEach(function (option) {
+      const visible = allowed.includes(option.value);
+      option.hidden = !visible;
+      option.disabled = !visible;
+      if (visible && first === '') first = option.value;
+    });
+    select.value = allowed.includes(select.value) ? select.value : first;
+    setValue('week-status-operation', select.value);
+  }
+
+  function showRecoveryError(modal) {
+    if (!recoveryError || !modal) return;
+    const body = modal.querySelector('.modal-body');
+    if (!body) return;
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger';
+    alert.setAttribute('role', 'alert');
+    alert.textContent = recoveryError;
+    body.prepend(alert);
   }
 
   document.querySelectorAll('.js-primary-employee,.js-support-employee').forEach(function (select) {
@@ -47,9 +84,45 @@ document.addEventListener('DOMContentLoaded', function () {
       setValue('week-status-id', button.dataset.orderId);
       const select = document.getElementById('week-status-select');
       if (select) {
+        filterStatusOptions(select, button.dataset.currentStatus || '');
         setValue('week-status-operation', select.value);
         select.onchange = function () { setValue('week-status-operation', select.value); };
       }
     });
   });
+
+  document.querySelectorAll('.js-week-cancel').forEach(function (button) {
+    button.addEventListener('click', function () {
+      setValue('week-cancel-id', button.dataset.orderId);
+      const message = document.getElementById('week-cancel-message');
+      if (message) message.textContent = 'Cancelar a OS ' + (button.dataset.orderNumber || '') + '?';
+    });
+  });
+
+  function restoreRecovery() {
+    if (!recoveryModal || !window.bootstrap) return;
+    const modalMap = {
+      reschedule: 'modal-week-schedule',
+      team: 'modal-week-team',
+      status: 'modal-week-status',
+      cancel: 'modal-week-cancel',
+    };
+    const modal = document.getElementById(modalMap[recoveryModal]);
+    if (!modal) return;
+
+    setValue('week-schedule-id', recoveryData.id);
+    setValue('week-schedule-start', toLocalInput(recoveryData.agendado_inicio));
+    setValue('week-schedule-end', toLocalInput(recoveryData.agendado_fim));
+    setValue('week-team-id', recoveryData.id);
+    setValue('week-team-primary', recoveryData.funcionario_principal_id);
+    setValue('week-team-support', recoveryData.funcionario_apoio_id);
+    setValue('week-status-id', recoveryData.id);
+    setValue('week-status-operation', recoveryData.operation);
+    setValue('week-cancel-id', recoveryData.id);
+    updateEmployeeOptions(modal);
+    showRecoveryError(modal);
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+  }
+
+  restoreRecovery();
 });

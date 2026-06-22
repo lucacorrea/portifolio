@@ -14,9 +14,9 @@ try {
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('team', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
-    agenda_redirect($application, 'agenda.php?modal=team');
+    agenda_redirect($application, agenda_return_target('team'));
 } catch (Throwable $exception) {
     error_log('Agenda team failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível alterar a dupla.');
 }
-agenda_redirect($application);
+agenda_redirect($application, agenda_return_target());

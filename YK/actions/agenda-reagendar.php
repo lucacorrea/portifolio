@@ -16,9 +16,9 @@ try {
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('reschedule', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
-    agenda_redirect($application, 'agenda.php?modal=reschedule');
+    agenda_redirect($application, agenda_return_target('reschedule'));
 } catch (Throwable $exception) {
     error_log('Agenda reschedule failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível reagendar.');
 }
-agenda_redirect($application);
+agenda_redirect($application, agenda_return_target());

@@ -52,6 +52,8 @@ function os_label_priority(string $priority): string { return ['baixa'=>'Baixa',
 function os_badge_priority(string $priority): string { return ['baixa'=>'gray','media'=>'blue','alta'=>'amber','urgente'=>'red'][$priority] ?? 'blue'; }
 function os_money(string $value): string { return money($value); }
 function os_dt(?string $value): string { if ($value === null || $value === '') return 'Não agendada'; try { return (new DateTimeImmutable($value))->format('d/m/Y H:i'); } catch (Throwable) { return 'Não agendada'; } }
+function os_equipment_label(ServiceOrder $order): string { $parts = array_filter([$order->equipmentType(), $order->equipmentBrand(), $order->equipmentModel(), $order->equipmentCapacity()], static fn(?string $value): bool => $value !== null && $value !== ''); return $parts === [] ? 'Não informado' : implode(' ', $parts); }
+function os_schedule_label(ServiceOrder $order): string { if ($order->scheduledStart() === null || $order->scheduledEnd() === null) return 'Não agendada'; try { return (new DateTimeImmutable($order->scheduledStart()))->format('d/m/Y H:i') . ' até ' . (new DateTimeImmutable($order->scheduledEnd()))->format('H:i'); } catch (Throwable) { return 'Não agendada'; } }
 function os_input_value(?array $recovery, string $modal, string $key, string $default = ''): string { $data = $recovery !== null && ($recovery['modal'] ?? '') === $modal ? ($recovery['data'] ?? []) : []; $value = is_array($data) ? ($data[$key] ?? $default) : $default; return is_scalar($value) ? (string) $value : $default; }
 
 $clientOptions = array_map(static fn(Client $client): array => ['id'=>$client->id(), 'name'=>$client->name(), 'active'=>$client->status()==='ativo'], $clients);
@@ -91,10 +93,10 @@ $productOptions = array_map(static fn(Product $product): array => ['id'=>$produc
         <tr>
             <td><strong><?= h($order->displayNumber()) ?></strong></td>
             <td><?= h($order->clientName()) ?><br><small class="text-muted">CLI-<?= h(str_pad((string) $order->clientId(), 6, '0', STR_PAD_LEFT)) ?></small></td>
-            <td><?= h($order->displayEquipment()) ?></td>
+            <td><?= h(os_equipment_label($order)) ?></td>
             <td><?= h($order->mainService() ?? '-') ?></td>
             <td><?php if ($order->primaryEmployeeId() === null && $order->supportEmployeeId() === null): ?>Sem equipe<?php else: ?><small>Principal: <?= h($order->displayPrimaryEmployee() ?? '-') ?></small><br><small>Apoio: <?= h($order->displaySupportEmployee() ?? '-') ?></small><?php endif; ?></td>
-            <td><?= h($order->displaySchedule()) ?></td>
+            <td><?= h(os_schedule_label($order)) ?></td>
             <td><span class="badge-soft badge-<?= h(os_badge_priority($order->priority())) ?>"><?= h($order->displayPriority()) ?></span></td>
             <td><span class="badge-soft badge-<?= h(os_badge_status($order->status())) ?>"><?= h($order->displayStatus()) ?></span></td>
             <?php if ($canViewValues): ?><td><?= h(os_money($order->total())) ?></td><?php endif; ?>
@@ -149,4 +151,4 @@ function os_select_options(array $items, string $selected = '', bool $onlyActive
 
 <div class="modal fade" id="modal-os-status" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/os-status.php"><div class="modal-header"><h2 class="modal-title fs-5" id="os-status-title">Alterar status</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><input type="hidden" name="id" id="os-status-id"><input type="hidden" name="operation" id="os-status-operation"><p id="os-status-message"></p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Confirmar</button></div></form></div></div>
 
-<script type="application/json" id="os-page-data"><?= json_encode(['services'=>$serviceOptions,'products'=>$productOptions,'recoveryModal'=>$recovery['modal'] ?? ($_GET['modal'] ?? null),'recoveryData'=>$recovery['data'] ?? []], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>
+<script type="application/json" id="os-page-data"><?= json_encode(['services'=>$serviceOptions,'products'=>$productOptions,'recoveryModal'=>$recovery['modal'] ?? ($_GET['modal'] ?? null),'recoveryData'=>$recovery['data'] ?? []], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>
