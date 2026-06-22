@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Manual operacional do SIGAS Coari.">
+    <title>SIGAS Coari — Manual do Sistema</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
+</head>
+<body data-page="manual">
+    <div class="app-shell">
+        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
+        <div class="app-main">
+            <header class="app-topbar" id="appTopbar"></header>
+            <main class="app-content manual-page">
+                <header class="page-header"><div><div class="eyebrow"><i class="bi bi-book"></i>Documentação operacional</div><h1>Manual do Sistema</h1><p>Leitura rápida dos fluxos, campos, status e regras de integração do SIGAS.</p></div><div class="page-actions"><button class="btn btn-light" type="button" onclick="window.print()"><i class="bi bi-printer"></i>Imprimir manual</button></div></header>
+
+                <div class="manual-layout">
+                    <aside class="manual-nav"><strong>Nesta página</strong><a href="#inicio">Visão geral</a><a href="#cadastro">Cadastro ANEXO</a><a href="#pessoas">Pessoas e prontuários</a><a href="#status">Status</a><a href="#integracao">Integração SEMTH</a><a href="#documentos">Documentos</a><a href="#permissoes">Permissões</a><a href="#glossario">Glossário</a></aside>
+                    <div class="manual-content">
+                        <section id="inicio" class="manual-section"><div class="manual-section-icon"><i class="bi bi-signpost-split"></i></div><div><span class="card-kicker">Visão geral</span><h2>Fluxo principal do atendimento</h2><ol class="manual-flow"><li><strong>Consultar CPF ou documento</strong><span>Confirma se a pessoa existe no SIGAS ou no SEMTH.</span></li><li><strong>Abrir ou criar prontuário</strong><span>Duplicidade no SIGAS bloqueia novo cadastro.</span></li><li><strong>Registrar demanda</strong><span>A solicitação atual não sobrescreve o histórico.</span></li><li><strong>Realizar atendimento ou concessão</strong><span>Cada ação fica vinculada ao prontuário.</span></li><li><strong>Acompanhar e revisar</strong><span>Atualizações cadastrais ficam separadas dos eventos de atendimento.</span></li></ol></div></section>
+
+                        <section id="cadastro" class="manual-section"><div class="manual-section-icon"><i class="bi bi-file-earmark-person"></i></div><div><span class="card-kicker">Cadastro ANEXO</span><h2>Como preencher o formulário</h2><p>O formulário foi organizado em sete etapas para reduzir erros e campos duplicados.</p><div class="manual-table"><div><strong>1. Identificação</strong><span>CPF, nome, RG, nascimento e contatos.</span></div><div><strong>2. Endereço</strong><span>Residência, território e unidade de referência.</span></div><div><strong>3. Socioeconômico</strong><span>Trabalho, renda, PCD e benefícios.</span></div><div><strong>4. Família</strong><span>Cônjuge e demais moradores em uma única composição.</span></div><div><strong>5. Habitação</strong><span>Imóvel, infraestrutura e entorno.</span></div><div><strong>6. Demanda</strong><span>Motivo atual, prioridade, resumo e encaminhamento.</span></div><div><strong>7. Documentos</strong><span>Anexos necessários e revisão final.</span></div></div><div class="manual-note"><i class="bi bi-lightbulb"></i><span>Renda familiar, quantidade de moradores e renda per capita são calculadas pelo sistema. Não precisam ser digitadas novamente.</span></div></div></section>
+
+                        <section id="pessoas" class="manual-section"><div class="manual-section-icon"><i class="bi bi-people"></i></div><div><span class="card-kicker">Pessoas e prontuários</span><h2>Como ler a listagem</h2><p>A listagem apresenta o responsável familiar. Familiares, solicitações, atendimentos e documentos são acessados dentro do prontuário.</p><ul class="manual-bullets"><li><strong>Prontuário ANX:</strong> registro criado e editável no SIGAS.</li><li><strong>Referência SEMTH:</strong> dado externo consultado somente para conferência.</li><li><strong>SIGAS + SEMTH:</strong> prontuário local com código de referência do sistema anterior.</li><li><strong>Divergência:</strong> dados incompatíveis que exigem revisão humana.</li></ul></div></section>
+
+                        <section id="status" class="manual-section"><div class="manual-section-icon"><i class="bi bi-tags"></i></div><div><span class="card-kicker">Status</span><h2>Significado das situações</h2><div class="status-explanation-grid"><div><span class="status-badge status-success">Regular</span><p>Cadastro completo e sem pendência identificada.</p></div><div><span class="status-badge status-warning">Em revisão</span><p>Cadastro precisa ser atualizado ou conferido.</p></div><div><span class="status-badge status-danger">Pendente</span><p>Há documento, dado obrigatório ou divergência bloqueante.</p></div><div><span class="status-badge status-neutral">Somente leitura</span><p>Registro externo que não pode ser alterado pelo SIGAS.</p></div></div></div></section>
+
+                        <section id="integracao" class="manual-section"><div class="manual-section-icon"><i class="bi bi-database-lock"></i></div><div><span class="card-kicker">Integração SEMTH</span><h2>Separação entre os sistemas</h2><div class="integration-rule-table"><div><strong>SIGAS</strong><span>Cria e altera somente os próprios prontuários, solicitações e atendimentos.</span></div><div><strong>SEMTH / ANEXO atual</strong><span>É consultado com acesso somente leitura para evitar duplicidade.</span></div><div><strong>Vinculação</strong><span>Armazena apenas o código externo e os metadados necessários à conferência.</span></div><div><strong>Divergência</strong><span>Nunca é corrigida automaticamente em uma das bases.</span></div></div></div></section>
+
+                        <section id="documentos" class="manual-section"><div class="manual-section-icon"><i class="bi bi-files"></i></div><div><span class="card-kicker">Documentos</span><h2>Regras de anexação</h2><ul class="manual-bullets"><li>Anexe somente documentos necessários para a finalidade do atendimento.</li><li>Formatos previstos: PDF, JPG, PNG e WEBP.</li><li>Limite demonstrativo: 10 MB por arquivo.</li><li>Documentos do SEMTH não são copiados automaticamente para o SIGAS.</li><li>A visualização futura deverá respeitar perfil, finalidade e auditoria.</li></ul></div></section>
+
+                        <section id="permissoes" class="manual-section"><div class="manual-section-icon"><i class="bi bi-person-lock"></i></div><div><span class="card-kicker">Permissões</span><h2>Ações por perfil</h2><div class="manual-permission-table"><div class="head"><span>Ação</span><span>Atendente</span><span>Técnico</span><span>Gestor</span></div><div><span>Consultar prontuário</span><b>Sim</b><b>Sim</b><b>Sim</b></div><div><span>Criar cadastro</span><b>Sim</b><b>Sim</b><b>Sim</b></div><div><span>Registrar avaliação social</span><b>Não</b><b>Sim</b><b>Sim</b></div><div><span>Autorizar concessão</span><b>Não</b><b>Conforme perfil</b><b>Sim</b></div><div><span>Gerenciar usuários</span><b>Não</b><b>Não</b><b>Sim</b></div><div><span>Alterar SEMTH</span><b>Não</b><b>Não</b><b>Não</b></div></div></div></section>
+
+                        <section id="glossario" class="manual-section"><div class="manual-section-icon"><i class="bi bi-journal-text"></i></div><div><span class="card-kicker">Glossário</span><h2>Termos usados no sistema</h2><dl class="manual-glossary"><div><dt>Prontuário</dt><dd>Conjunto organizado de dados da pessoa, família, solicitações, atendimentos e documentos.</dd></div><div><dt>Responsável familiar</dt><dd>Pessoa utilizada como referência principal do núcleo familiar.</dd></div><div><dt>Demanda</dt><dd>Necessidade apresentada no atendimento atual.</dd></div><div><dt>Solicitação</dt><dd>Pedido formal de serviço, benefício, orientação ou encaminhamento.</dd></div><div><dt>Referência externa</dt><dd>Código que relaciona o prontuário SIGAS a um registro existente no SEMTH sem misturar as bases.</dd></div></dl></div></section>
+                    </div>
+                </div>
+            </main>
+            <footer class="app-footer"><span>Manual demonstrativo do SIGAS Coari.</span><span>SEMAS Coari/AM</span></footer>
+        </div>
+        <div id="bottomNavigation"></div>
+    </div>
+    <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+</html>

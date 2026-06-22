@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Listagem organizada de pessoas e prontuários ANEXO do SIGAS Coari.">
+    <title>SIGAS Coari — Pessoas e Prontuários</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
+</head>
+<body data-page="pessoas">
+    <div class="app-shell">
+        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
+        <div class="app-main">
+            <header class="app-topbar" id="appTopbar"></header>
+
+            <main class="app-content">
+                <header class="page-header">
+                    <div>
+                        <div class="eyebrow"><i class="bi bi-people"></i>Atendimento social</div>
+                        <h1>Pessoas e prontuários</h1>
+                        <p>Uma única listagem para localizar o responsável familiar, consultar o núcleo familiar e abrir o prontuário ANEXO.</p>
+                    </div>
+                    <div class="page-actions">
+                        <a class="btn btn-light" href="consulta-documento.html"><i class="bi bi-person-bounding-box"></i>Consultar documento</a>
+                        <a class="btn btn-primary" href="cadastro-anexo.html"><i class="bi bi-person-plus"></i>Novo Cadastro ANEXO</a>
+                    </div>
+                </header>
+
+                <section class="list-guidance-banner" aria-label="Como funciona a listagem">
+                    <div><i class="bi bi-info-circle"></i><span><strong>Cadastro e família ficam no mesmo prontuário.</strong> A origem indica onde o registro principal está armazenado. Dados do SEMTH permanecem somente leitura.</span></div>
+                    <a href="manual-sistema.html#pessoas">Entender a listagem <i class="bi bi-arrow-right"></i></a>
+                </section>
+
+                <section class="compact-stats people-stats" aria-label="Indicadores de pessoas">
+                    <div class="compact-stat"><span>Prontuários SIGAS</span><strong>18.452</strong><small>Registros próprios</small></div>
+                    <div class="compact-stat"><span>Referências SEMTH</span><strong>1.284</strong><small>Somente leitura</small></div>
+                    <div class="compact-stat"><span>Em acompanhamento</span><strong>2.916</strong><small>Ativos na rede</small></div>
+                    <div class="compact-stat"><span>Revisão necessária</span><strong>74</strong><small>Dados pendentes</small></div>
+                </section>
+
+                <form class="filter-bar people-filter-bar" id="peopleFilterForm" aria-label="Filtros de pessoas">
+                    <div class="filter-row">
+                        <div class="people-search-field"><label class="form-label" for="peopleSearch">Pesquisar</label><div class="search-field"><i class="bi bi-search"></i><input class="form-control" id="peopleSearch" type="search" placeholder="Nome, CPF, NIS ou número do prontuário"></div></div>
+                        <div><label class="form-label" for="peopleStatus">Situação</label><select class="form-select" id="peopleStatus"><option value="">Todas</option><option value="regular">Regular</option><option value="revisao">Em revisão</option><option value="pendente">Pendente</option></select></div>
+                        <div><label class="form-label" for="peopleSource">Origem</label><select class="form-select" id="peopleSource"><option value="">Todas</option><option value="sigas">SIGAS</option><option value="linked">SIGAS + SEMTH</option><option value="semth">Referência SEMTH</option></select></div>
+                        <div><label class="form-label" for="peopleUnit">Unidade</label><select class="form-select" id="peopleUnit"><option value="">Todas</option><option value="sede">SEMAS Sede</option><option value="cras1">CRAS 1</option><option value="cras2">CRAS 2</option><option value="creas">CREAS</option><option value="casa">Casa do Cidadão</option></select></div>
+                        <div class="filter-actions"><button class="btn btn-light" id="clearPeopleFilters" type="button"><i class="bi bi-arrow-counterclockwise"></i>Limpar</button><button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i>Aplicar</button></div>
+                    </div>
+                </form>
+
+                <section class="content-card table-card people-table-card" aria-labelledby="peopleTableTitle">
+                    <div class="table-toolbar">
+                        <div><h2 class="fs-6 mb-1" id="peopleTableTitle">Prontuários encontrados</h2><div class="table-toolbar-info" id="peopleResultSummary">Carregando registros…</div></div>
+                        <div class="table-toolbar-actions"><label for="peoplePageSize">Exibir</label><select class="form-select form-select-sm" id="peoplePageSize"><option value="5">5 por página</option><option value="10" selected>10 por página</option><option value="20">20 por página</option></select><button class="btn btn-light btn-sm" type="button" data-demo-action="exportar listagem"><i class="bi bi-download"></i>Exportar</button></div>
+                    </div>
+
+                    <div class="table-responsive desktop-records">
+                        <table class="data-table people-data-table" id="peopleTable">
+                            <thead><tr><th>Prontuário</th><th>Responsável familiar</th><th>Contato</th><th>Unidade</th><th>Origem</th><th>Situação</th><th>Atualização</th><th class="text-end">Ação</th></tr></thead>
+                            <tbody>
+                                <tr data-person-row data-search="maria da silva 456789 anx000125" data-status="regular" data-source="linked" data-unit="casa"><td><strong>ANX-000125</strong><small>5 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">MS</span><div><strong>Maria da Silva</strong><span>CPF: ***.456.789-** · NIS: ***8900</span></div></div></td><td><strong>(97) *****-4321</strong><small>São Sebastião</small></td><td>Casa do Cidadão</td><td><span class="source-badge source-linked"><i class="bi bi-link-45deg"></i>SIGAS + SEMTH</span></td><td><span class="status-badge status-success"><i class="bi bi-check-circle"></i>Regular</span></td><td>18/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                                <tr data-person-row data-search="antonio pereira 222333 anx000126" data-status="revisao" data-source="sigas" data-unit="cras1"><td><strong>ANX-000126</strong><small>3 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">AP</span><div><strong>Antônio Pereira</strong><span>CPF: ***.222.333-** · NIS: ***3311</span></div></div></td><td><strong>(97) *****-1190</strong><small>Chagas Aguiar</small></td><td>CRAS 1</td><td><span class="source-badge source-local"><i class="bi bi-database-check"></i>SIGAS</span></td><td><span class="status-badge status-warning"><i class="bi bi-arrow-repeat"></i>Em revisão</span></td><td>17/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                                <tr data-person-row data-search="joana lima oliveira 654321 semth009842" data-status="pendente" data-source="semth" data-unit="sede"><td><strong>REF-009842</strong><small>Referência externa</small></td><td><div class="record-person"><span class="mini-avatar legacy">JL</span><div><strong>Joana Lima de Oliveira</strong><span>CPF: ***.654.321-** · sem NIS local</span></div></div></td><td><strong>(97) *****-8712</strong><small>Centro</small></td><td>SEMAS Sede</td><td><span class="source-badge source-legacy"><i class="bi bi-database-lock"></i>SEMTH</span></td><td><span class="status-badge status-neutral"><i class="bi bi-lock"></i>Somente leitura</span></td><td>12/06/2026</td><td class="text-end"><a class="btn btn-light btn-sm" href="integracao-semth.html#consulta"><i class="bi bi-arrow-left-right"></i>Comparar</a></td></tr>
+                                <tr data-person-row data-search="francisca costa 666777 anx000128" data-status="pendente" data-source="linked" data-unit="cras2"><td><strong>ANX-000128</strong><small>4 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">FC</span><div><strong>Francisca Costa dos Santos</strong><span>CPF: ***.666.777-** · NIS: ***5402</span></div></div></td><td><strong>(97) *****-3018</strong><small>Liberdade</small></td><td>CRAS 2</td><td><span class="source-badge source-linked"><i class="bi bi-exclamation-diamond"></i>Divergência</span></td><td><span class="status-badge status-danger"><i class="bi bi-exclamation-circle"></i>Pendente</span></td><td>18/06/2026</td><td class="text-end"><a class="btn btn-light btn-sm" href="integracao-semth.html#divergencias"><i class="bi bi-shield-exclamation"></i>Revisar</a></td></tr>
+                                <tr data-person-row data-search="carlos eduardo souza 989010 anx000129" data-status="regular" data-source="sigas" data-unit="cras1"><td><strong>ANX-000129</strong><small>2 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">CS</span><div><strong>Carlos Eduardo Souza</strong><span>CPF: ***.989.010-** · NIS: ***1850</span></div></div></td><td><strong>(97) *****-7723</strong><small>Duque de Caxias</small></td><td>CRAS 1</td><td><span class="source-badge source-local"><i class="bi bi-database-check"></i>SIGAS</span></td><td><span class="status-badge status-success"><i class="bi bi-check-circle"></i>Regular</span></td><td>16/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                                <tr data-person-row data-search="lucia marques 122234 anx000130" data-status="regular" data-source="sigas" data-unit="creas"><td><strong>ANX-000130</strong><small>6 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">LM</span><div><strong>Lúcia Marques</strong><span>CPF: ***.122.234-** · NIS: ***7143</span></div></div></td><td><strong>(97) *****-4619</strong><small>Itamarati</small></td><td>CREAS</td><td><span class="source-badge source-local"><i class="bi bi-database-check"></i>SIGAS</span></td><td><span class="status-badge status-success"><i class="bi bi-check-circle"></i>Regular</span></td><td>15/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                                <tr data-person-row data-search="pedro almeida 778899 anx000131" data-status="revisao" data-source="linked" data-unit="casa"><td><strong>ANX-000131</strong><small>1 pessoa</small></td><td><div class="record-person"><span class="mini-avatar">PA</span><div><strong>Pedro Almeida</strong><span>CPF: ***.778.899-** · NIS: ***0092</span></div></div></td><td><strong>(97) *****-9140</strong><small>Centro</small></td><td>Casa do Cidadão</td><td><span class="source-badge source-linked"><i class="bi bi-link-45deg"></i>SIGAS + SEMTH</span></td><td><span class="status-badge status-warning"><i class="bi bi-arrow-repeat"></i>Em revisão</span></td><td>14/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                                <tr data-person-row data-search="raimunda nascimento 445566 anx000132" data-status="regular" data-source="sigas" data-unit="cras2"><td><strong>ANX-000132</strong><small>5 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">RN</span><div><strong>Raimunda Nascimento</strong><span>CPF: ***.445.566-** · NIS: ***6620</span></div></div></td><td><strong>(97) *****-0084</strong><small>Pera</small></td><td>CRAS 2</td><td><span class="source-badge source-local"><i class="bi bi-database-check"></i>SIGAS</span></td><td><span class="status-badge status-success"><i class="bi bi-check-circle"></i>Regular</span></td><td>13/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                                <tr data-person-row data-search="jose rodrigues 101112 anx000133" data-status="pendente" data-source="sigas" data-unit="sede"><td><strong>ANX-000133</strong><small>4 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">JR</span><div><strong>José Rodrigues</strong><span>CPF: ***.101.112-** · NIS pendente</span></div></div></td><td><strong>(97) *****-2155</strong><small>Santa Efigênia</small></td><td>SEMAS Sede</td><td><span class="source-badge source-local"><i class="bi bi-database-check"></i>SIGAS</span></td><td><span class="status-badge status-danger"><i class="bi bi-exclamation-circle"></i>Pendente</span></td><td>12/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                                <tr data-person-row data-search="eliana santos 909192 anx000134" data-status="regular" data-source="linked" data-unit="cras1"><td><strong>ANX-000134</strong><small>3 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">ES</span><div><strong>Eliana Santos</strong><span>CPF: ***.909.192-** · NIS: ***1341</span></div></div></td><td><strong>(97) *****-7800</strong><small>São Sebastião</small></td><td>CRAS 1</td><td><span class="source-badge source-linked"><i class="bi bi-link-45deg"></i>SIGAS + SEMTH</span></td><td><span class="status-badge status-success"><i class="bi bi-check-circle"></i>Regular</span></td><td>11/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                                <tr data-person-row data-search="marcos silva 313233 anx000135" data-status="revisao" data-source="sigas" data-unit="creas"><td><strong>ANX-000135</strong><small>2 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">MS</span><div><strong>Marcos Silva</strong><span>CPF: ***.313.233-** · NIS: ***7612</span></div></div></td><td><strong>(97) *****-5520</strong><small>Itamarati</small></td><td>CREAS</td><td><span class="source-badge source-local"><i class="bi bi-database-check"></i>SIGAS</span></td><td><span class="status-badge status-warning"><i class="bi bi-arrow-repeat"></i>Em revisão</span></td><td>10/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                                <tr data-person-row data-search="ana claudia ferreira 141516 anx000136" data-status="regular" data-source="sigas" data-unit="casa"><td><strong>ANX-000136</strong><small>7 pessoas</small></td><td><div class="record-person"><span class="mini-avatar">AF</span><div><strong>Ana Cláudia Ferreira</strong><span>CPF: ***.141.516-** · NIS: ***4460</span></div></div></td><td><strong>(97) *****-9021</strong><small>Liberdade</small></td><td>Casa do Cidadão</td><td><span class="source-badge source-local"><i class="bi bi-database-check"></i>SIGAS</span></td><td><span class="status-badge status-success"><i class="bi bi-check-circle"></i>Regular</span></td><td>09/06/2026</td><td class="text-end"><a class="btn btn-primary btn-sm" href="registro.html"><i class="bi bi-folder2-open"></i>Abrir prontuário</a></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <section class="mobile-records" id="peopleMobileList" aria-label="Pessoas no celular"></section>
+                    <div class="state-panel" id="peopleEmptyState" hidden><i class="bi bi-search"></i><h3>Nenhum prontuário encontrado</h3><p>Revise os filtros ou faça uma consulta por CPF antes de iniciar um novo cadastro.</p></div>
+
+                    <div class="pagination-bar">
+                        <span id="peoplePaginationInfo">—</span>
+                        <nav aria-label="Paginação da lista"><button class="btn btn-light btn-sm" id="peoplePrevPage" type="button"><i class="bi bi-chevron-left"></i>Anterior</button><div class="pagination-pages" id="peoplePaginationPages"></div><button class="btn btn-light btn-sm" id="peopleNextPage" type="button">Próxima<i class="bi bi-chevron-right"></i></button></nav>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="app-footer"><span>Dados demonstrativos utilizados apenas para prototipação.</span><span>SIGAS Coari — SEMAS Coari/AM</span></footer>
+        </div>
+        <div id="bottomNavigation"></div>
+    </div>
+
+    <a class="btn btn-primary floating-action" href="cadastro-anexo.html" aria-label="Novo Cadastro ANEXO"><i class="bi bi-plus-lg"></i></a>
+    <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/integration-demo.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script src="assets/js/listagem-pessoas.js"></script>
+</body>
+</html>

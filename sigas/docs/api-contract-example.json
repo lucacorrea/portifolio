@@ -1,0 +1,35 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/identidades/comparar",
+    "body": {
+      "cpf": "12345678909",
+      "finalidade": "prevencao_duplicidade"
+    }
+  },
+  "response": {
+    "comparison_id": "cmp_20260622_000184",
+    "decision": "create-reference",
+    "sigas": {
+      "found": false,
+      "person_id": null
+    },
+    "semth": {
+      "found": true,
+      "access_mode": "read_only",
+      "legacy_id": "SEMTH-009842",
+      "name": "Joana Lima de Oliveira",
+      "birth_date": "1992-08-22",
+      "updated_at": "2026-06-12T10:14:00-04:00"
+    },
+    "allowed_actions": [
+      "create_local_reference",
+      "start_sigas_service"
+    ],
+    "blocked_actions": [
+      "update_semth",
+      "delete_semth",
+      "create_duplicate_person"
+    ]
+  }
+}

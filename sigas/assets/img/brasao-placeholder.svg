@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 112" role="img" aria-labelledby="title desc">
+  <title id="title">Brasão institucional ilustrativo</title>
+  <desc id="desc">Escudo verde com rio, estrela e folhas, criado apenas para prototipação.</desc>
+  <defs>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#176b3a"/>
+      <stop offset="1" stop-color="#0b351c"/>
+    </linearGradient>
+  </defs>
+  <path d="M48 4 86 18v32c0 25-15 45-38 58C25 95 10 75 10 50V18L48 4Z" fill="url(#shield)" stroke="#d99218" stroke-width="3"/>
+  <path d="M19 51c16-11 29-10 39-3 8 6 15 6 24 1v14c-10 5-18 4-26-2-10-7-21-8-37 2V51Z" fill="#fff" opacity=".92"/>
+  <path d="m48 19 3.3 6.6 7.3 1.1-5.3 5.1 1.3 7.2-6.6-3.4-6.6 3.4 1.3-7.2-5.3-5.1 7.3-1.1L48 19Z" fill="#f4c34e"/>
+  <path d="M28 72c8 6 15 10 20 13 5-3 12-7 20-13" fill="none" stroke="#d99218" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Cadastro socioassistencial ANEXO do SIGAS Coari.">
+    <title>SIGAS Coari — Cadastro ANEXO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
+</head>
+<body data-page="cadastro-anexo">
+    <div class="app-shell">
+        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
+        <div class="app-main">
+            <header class="app-topbar" id="appTopbar"></header>
+
+            <main class="app-content form-page" data-anexo-form>
+                <nav class="page-breadcrumb" aria-label="Navegação estrutural">
+                    <a href="pessoas.html"><i class="bi bi-arrow-left"></i>Pessoas e prontuários</a>
+                    <span>/</span>
+                    <span>Cadastro ANEXO</span>
+                </nav>
+
+                <header class="page-header anexo-page-header">
+                    <div>
+                        <div class="eyebrow"><i class="bi bi-file-earmark-person"></i>Prontuário socioassistencial</div>
+                        <h1>Cadastro ANEXO</h1>
+                        <p>Formulário reorganizado a partir do sistema ANEXO atual, com linguagem mais clara, menos repetição e validação entre SIGAS e SEMTH.</p>
+                    </div>
+                    <div class="page-actions">
+                        <span class="draft-state" id="draftState"><i class="bi bi-cloud-check"></i>Rascunho não salvo</span>
+                        <button class="btn btn-light" type="button" data-save-anexo-draft><i class="bi bi-floppy"></i>Salvar rascunho</button>
+                    </div>
+                </header>
+
+                <section class="form-governance-banner" aria-label="Regra de integração">
+                    <span class="form-governance-icon"><i class="bi bi-database-lock"></i></span>
+                    <div>
+                        <strong>O SEMTH é consultado somente para conferência.</strong>
+                        <p>Este cadastro grava apenas na base do SIGAS. Nenhum dado do sistema ANEXO/SEMTH será alterado automaticamente.</p>
+                    </div>
+                    <a href="integracao-semth.html" class="btn btn-light btn-sm"><i class="bi bi-info-circle"></i>Ver regras</a>
+                </section>
+
+                <section class="anexo-progress-card" aria-label="Progresso do cadastro">
+                    <div class="anexo-progress-summary">
+                        <div><span id="anexoProgressLabel">Etapa 1 de 7</span><strong id="anexoProgressTitle">Identificação</strong></div>
+                        <span id="anexoProgressPercent">14%</span>
+                    </div>
+                    <div class="progress" role="progressbar" aria-label="Progresso do formulário" aria-valuemin="0" aria-valuemax="100" aria-valuenow="14">
+                        <div class="progress-bar" id="anexoProgressBar"></div>
+                    </div>
+                    <nav class="anexo-stepper" aria-label="Etapas do cadastro">
+                        <button class="anexo-step active" type="button" data-anexo-step="0" aria-current="step"><span>1</span><small>Identificação</small></button>
+                        <button class="anexo-step" type="button" data-anexo-step="1"><span>2</span><small>Endereço</small></button>
+                        <button class="anexo-step" type="button" data-anexo-step="2"><span>3</span><small>Socioeconômico</small></button>
+                        <button class="anexo-step" type="button" data-anexo-step="3"><span>4</span><small>Família</small></button>
+                        <button class="anexo-step" type="button" data-anexo-step="4"><span>5</span><small>Habitação</small></button>
+                        <button class="anexo-step" type="button" data-anexo-step="5"><span>6</span><small>Demanda</small></button>
+                        <button class="anexo-step" type="button" data-anexo-step="6"><span>7</span><small>Documentos</small></button>
+                    </nav>
+                </section>
+
+                <form id="anexoForm" novalidate>
+                    <div class="anexo-layout">
+                        <div class="anexo-form-column">
+                            <section class="anexo-panel active" data-anexo-panel="0" aria-labelledby="stepIdentityTitle">
+                                <div class="anexo-section-heading">
+                                    <div><span class="section-number">01</span><div><h2 id="stepIdentityTitle">Identificação do responsável familiar</h2><p>Comece pelo CPF para verificar se já existe cadastro no SIGAS ou referência no SEMTH.</p></div></div>
+                                    <span class="required-legend"><b>*</b> Campo obrigatório</span>
+                                </div>
+
+                                <div class="identity-gate" id="identityGate">
+                                    <div class="identity-gate-main">
+                                        <div class="field-grow">
+                                            <label class="form-label required" for="anexoCpf">CPF</label>
+                                            <input class="form-control form-control-lg" id="anexoCpf" name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off" required>
+                                            <div class="invalid-feedback">Informe um CPF com 11 números.</div>
+                                            <small class="form-text">O CPF é usado somente para prevenção de duplicidade.</small>
+                                        </div>
+                                        <button class="btn btn-primary btn-lg" id="validateAnexoCpf" type="button"><i class="bi bi-search"></i>Consultar bases</button>
+                                    </div>
+                                    <div class="identity-gate-result" id="identityGateResult" hidden>
+                                        <span class="identity-gate-status" id="identityGateIcon"><i class="bi bi-shield-check"></i></span>
+                                        <div><strong id="identityGateTitle"></strong><p id="identityGateText"></p></div>
+                                        <span class="status-badge" id="identityGateBadge"></span>
+                                    </div>
+                                </div>
+
+                                <fieldset id="identityFields" disabled>
+                                    <div class="form-grid form-grid-spacious mt-4">
+                                        <div class="field-8"><label class="form-label required" for="anexoNome">Nome completo</label><input class="form-control" id="anexoNome" name="nome" type="text" required></div>
+                                        <div class="field-4"><label class="form-label" for="anexoNis">NIS</label><input class="form-control" id="anexoNis" name="nis" inputmode="numeric" maxlength="11" placeholder="Somente números"></div>
+                                        <div class="field-4"><label class="form-label required" for="anexoRg">RG</label><input class="form-control" id="anexoRg" name="rg" type="text" required></div>
+                                        <div class="field-4"><label class="form-label" for="anexoRgEmissao">Data de emissão</label><input class="form-control" id="anexoRgEmissao" name="rg_emissao" type="date"></div>
+                                        <div class="field-4"><label class="form-label" for="anexoRgUf">UF do RG</label><select class="form-select" id="anexoRgUf" name="rg_uf"><option value="">Selecione</option><option>AM</option><option>AC</option><option>PA</option><option>RO</option><option>RR</option><option>SP</option><option>RJ</option><option>Outro</option></select></div>
+                                        <div class="field-4"><label class="form-label required" for="anexoNascimento">Data de nascimento</label><input class="form-control" id="anexoNascimento" name="data_nascimento" type="date" required></div>
+                                        <div class="field-4"><label class="form-label" for="anexoGenero">Gênero</label><select class="form-select" id="anexoGenero" name="genero"><option value="">Selecione</option><option>Feminino</option><option>Masculino</option><option>Outro</option><option>Prefere não informar</option></select></div>
+                                        <div class="field-4"><label class="form-label" for="anexoEstadoCivil">Estado civil</label><select class="form-select" id="anexoEstadoCivil" name="estado_civil"><option value="">Selecione</option><option>Solteiro(a)</option><option>Casado(a)</option><option>União estável</option><option>Separado(a)</option><option>Divorciado(a)</option><option>Viúvo(a)</option><option>Outro</option></select></div>
+                                        <div class="field-6"><label class="form-label" for="anexoNaturalidade">Naturalidade</label><input class="form-control" id="anexoNaturalidade" name="naturalidade" placeholder="Ex.: Coari/AM"></div>
+                                        <div class="field-6"><label class="form-label" for="anexoNacionalidade">Nacionalidade</label><input class="form-control" id="anexoNacionalidade" name="nacionalidade" value="Brasileiro(a)"></div>
+                                        <div class="field-6"><label class="form-label required" for="anexoTelefone">Telefone principal</label><input class="form-control" id="anexoTelefone" name="telefone" type="tel" inputmode="tel" placeholder="(97) 99999-9999" required></div>
+                                        <div class="field-6"><label class="form-label" for="anexoTelefoneAlternativo">Telefone alternativo</label><input class="form-control" id="anexoTelefoneAlternativo" name="telefone_alternativo" type="tel" inputmode="tel" placeholder="(97) 99999-9999"></div>
+                                    </div>
+
+                                    <div class="system-fields mt-4">
+                                        <div><span>Data do cadastro</span><strong id="systemDate">—</strong></div>
+                                        <div><span>Hora</span><strong id="systemTime">—</strong></div>
+                                        <div><span>Responsável</span><strong>Maria Oliveira</strong></div>
+                                        <div><span>Origem</span><strong id="identityOrigin">SIGAS</strong></div>
+                                    </div>
+                                </fieldset>
+                            </section>
+
+                            <section class="anexo-panel" data-anexo-panel="1" aria-labelledby="stepAddressTitle" hidden>
+                                <div class="anexo-section-heading"><div><span class="section-number">02</span><div><h2 id="stepAddressTitle">Endereço e referência territorial</h2><p>Dados usados para encaminhamento à unidade de referência e visitas domiciliares.</p></div></div></div>
+                                <div class="form-grid form-grid-spacious">
+                                    <div class="field-8"><label class="form-label required" for="anexoEndereco">Logradouro</label><input class="form-control" id="anexoEndereco" name="endereco" placeholder="Rua, avenida, estrada ou comunidade" required></div>
+                                    <div class="field-4"><label class="form-label required" for="anexoNumero">Número</label><input class="form-control" id="anexoNumero" name="numero" placeholder="S/N quando não houver" required></div>
+                                    <div class="field-6"><label class="form-label required" for="anexoBairro">Bairro ou comunidade</label><select class="form-select" id="anexoBairro" name="bairro_id" required><option value="">Selecione</option><option>Centro</option><option>Chagas Aguiar</option><option>Duque de Caxias</option><option>Itamarati</option><option>Liberdade</option><option>Pera</option><option>Santa Efigênia</option><option>São Sebastião</option><option>Zona rural / comunidade</option></select></div>
+                                    <div class="field-6"><label class="form-label" for="anexoComplemento">Complemento</label><input class="form-control" id="anexoComplemento" name="complemento" placeholder="Casa, lote, bloco ou apartamento"></div>
+                                    <div class="field-8"><label class="form-label" for="anexoReferencia">Ponto de referência</label><input class="form-control" id="anexoReferencia" name="referencia" placeholder="Próximo a escola, igreja ou comércio"></div>
+                                    <div class="field-2"><label class="form-label" for="anexoTempoAnos">Anos no local</label><input class="form-control" id="anexoTempoAnos" name="tempo_anos" type="number" min="0" max="99"></div>
+                                    <div class="field-2"><label class="form-label" for="anexoTempoMeses">Meses</label><input class="form-control" id="anexoTempoMeses" name="tempo_meses" type="number" min="0" max="11"></div>
+                                    <div class="field-6"><label class="form-label" for="anexoGrupoTradicional">Grupo tradicional</label><select class="form-select" id="anexoGrupoTradicional" name="grupo_tradicional" data-toggle-other="#anexoGrupoOutro"><option value="">Não se aplica / não informado</option><option>Indígena</option><option>Quilombola</option><option>Cigano</option><option>Ribeirinho</option><option>Extrativista</option><option value="Outros">Outros</option></select></div>
+                                    <div class="field-6 conditional-field" id="anexoGrupoOutro" hidden><label class="form-label" for="anexoGrupoOutroInput">Qual grupo?</label><input class="form-control" id="anexoGrupoOutroInput" name="grupo_outros"></div>
+                                    <div class="field-6"><label class="form-label required" for="anexoUnidade">Unidade de referência</label><select class="form-select" id="anexoUnidade" name="unidade" required><option value="">Selecione</option><option>SEMAS — Sede Administrativa</option><option>CRAS 1</option><option>CRAS 2</option><option>CREAS</option><option>Casa do Cidadão</option></select></div>
+                                    <div class="field-6"><label class="form-label" for="anexoTerritorio">Território de acompanhamento</label><input class="form-control" id="anexoTerritorio" name="territorio" placeholder="Preenchimento automático futuro"></div>
+                                </div>
+                            </section>
+
+                            <section class="anexo-panel" data-anexo-panel="2" aria-labelledby="stepSocialTitle" hidden>
+                                <div class="anexo-section-heading"><div><span class="section-number">03</span><div><h2 id="stepSocialTitle">Situação socioeconômica e benefícios</h2><p>Organização das informações de renda, trabalho, deficiência e benefícios já recebidos.</p></div></div></div>
+
+                                <div class="form-subsection">
+                                    <div class="form-subsection-title"><i class="bi bi-briefcase"></i><div><strong>Trabalho e renda individual</strong><span>Informações declaradas pelo responsável familiar.</span></div></div>
+                                    <div class="form-grid form-grid-spacious">
+                                        <div class="field-4"><label class="form-label required" for="anexoTrabalho">Situação de trabalho</label><select class="form-select" id="anexoTrabalho" name="trabalho" required data-toggle-value="Empregado(a)" data-toggle-target="#workplaceField"><option value="">Selecione</option><option>Empregado(a)</option><option>Autônomo(a)</option><option>Desempregado(a)</option><option>Aposentado(a)</option><option>Pensionista</option><option>Beneficiário(a) do BPC</option><option>Trabalho informal</option><option>Não exerce atividade remunerada</option></select></div>
+                                        <div class="field-4 conditional-field" id="workplaceField" hidden><label class="form-label" for="anexoLocalTrabalho">Local de trabalho</label><input class="form-control" id="anexoLocalTrabalho" name="local_trabalho"></div>
+                                        <div class="field-4"><label class="form-label" for="anexoRendaIndividual">Renda individual mensal</label><input class="form-control money-field" id="anexoRendaIndividual" name="renda_individual" inputmode="decimal" placeholder="R$ 0,00"></div>
+                                        <div class="field-4"><label class="form-label" for="anexoFaixaRenda">Faixa de renda declarada</label><select class="form-select" id="anexoFaixaRenda" name="renda_mensal_faixa"><option value="">Selecione</option><option>Sem renda</option><option>Até 1/4 do salário mínimo</option><option>De 1/4 a 1/2 salário mínimo</option><option>De 1/2 a 1 salário mínimo</option><option>Acima de 1 salário mínimo</option></select></div>
+                                    </div>
+                                </div>
+
+                                <div class="form-subsection">
+                                    <div class="form-subsection-title"><i class="bi bi-universal-access"></i><div><strong>Deficiência e benefícios continuados</strong><span>Informe somente quando houver comprovação ou autodeclaração registrada.</span></div></div>
+                                    <div class="benefit-toggle-grid">
+                                        <article class="benefit-toggle-card"><div><strong>Pessoa com deficiência</strong><span>Responsável familiar possui deficiência?</span></div><select class="form-select" id="anexoPcd" name="pcd" data-toggle-value="Sim" data-toggle-target="#pcdTypeField"><option>Não</option><option>Sim</option></select></article>
+                                        <article class="benefit-toggle-card"><div><strong>BPC</strong><span>Benefício de Prestação Continuada</span></div><select class="form-select" id="anexoBpc" name="bpc" data-toggle-value="Sim" data-toggle-target="#bpcValueField"><option>Não</option><option>Sim</option></select></article>
+                                        <article class="benefit-toggle-card"><div><strong>Bolsa Família</strong><span>Programa de transferência de renda</span></div><select class="form-select" id="anexoPbf" name="pbf" data-toggle-value="Sim" data-toggle-target="#pbfValueField"><option>Não</option><option>Sim</option></select></article>
+                                        <article class="benefit-toggle-card"><div><strong>Benefício municipal</strong><span>Benefício pago pelo município</span></div><select class="form-select" id="anexoBeneficioMunicipal" name="beneficio_municipal" data-toggle-value="Sim" data-toggle-target="#municipalValueField"><option>Não</option><option>Sim</option></select></article>
+                                        <article class="benefit-toggle-card"><div><strong>Benefício estadual</strong><span>Benefício pago pelo Estado</span></div><select class="form-select" id="anexoBeneficioEstadual" name="beneficio_estadual" data-toggle-value="Sim" data-toggle-target="#estadualValueField"><option>Não</option><option>Sim</option></select></article>
+                                    </div>
+                                    <div class="form-grid form-grid-spacious mt-3">
+                                        <div class="field-6 conditional-field" id="pcdTypeField" hidden><label class="form-label" for="anexoPcdTipo">Tipo de deficiência</label><input class="form-control" id="anexoPcdTipo" name="pcd_tipo"></div>
+                                        <div class="field-3 conditional-field" id="bpcValueField" hidden><label class="form-label" for="anexoBpcValor">Valor do BPC</label><input class="form-control money-field" id="anexoBpcValor" name="bpc_valor" inputmode="decimal" placeholder="R$ 0,00"></div>
+                                        <div class="field-3 conditional-field" id="pbfValueField" hidden><label class="form-label" for="anexoPbfValor">Valor do Bolsa Família</label><input class="form-control money-field" id="anexoPbfValor" name="pbf_valor" inputmode="decimal" placeholder="R$ 0,00"></div>
+                                        <div class="field-3 conditional-field" id="municipalValueField" hidden><label class="form-label" for="anexoBeneficioMunicipalValor">Valor municipal</label><input class="form-control money-field" id="anexoBeneficioMunicipalValor" name="beneficio_municipal_valor" inputmode="decimal" placeholder="R$ 0,00"></div>
+                                        <div class="field-3 conditional-field" id="estadualValueField" hidden><label class="form-label" for="anexoBeneficioEstadualValor">Valor estadual</label><input class="form-control money-field" id="anexoBeneficioEstadualValor" name="beneficio_estadual_valor" inputmode="decimal" placeholder="R$ 0,00"></div>
+                                    </div>
+                                </div>
+
+                                <div class="household-calculation">
+                                    <div class="household-calculation-head"><div><strong>Resumo calculado da família</strong><span>Valores atualizados conforme os integrantes cadastrados na próxima etapa.</span></div><i class="bi bi-calculator"></i></div>
+                                    <div class="household-calculation-grid">
+                                        <div><span>Moradores</span><strong id="calcResidents">1</strong></div>
+                                        <div><span>Renda familiar</span><strong id="calcFamilyIncome">R$ 0,00</strong></div>
+                                        <div><span>Renda per capita</span><strong id="calcPerCapita">R$ 0,00</strong></div>
+                                        <div><span>Pessoas com deficiência</span><strong id="calcPcd">0</strong></div>
+                                    </div>
+                                    <input type="hidden" id="anexoTotalMoradores" name="total_moradores" value="1">
+                                    <input type="hidden" id="anexoRendaFamiliar" name="renda_familiar" value="0">
+                                    <input type="hidden" id="anexoTotalRendimentos" name="total_rendimentos" value="0">
+                                    <input type="hidden" id="anexoTotalPcd" name="total_pcd" value="0">
+                                </div>
+                            </section>
+
+                            <section class="anexo-panel" data-anexo-panel="3" aria-labelledby="stepFamilyTitle" hidden>
+                                <div class="anexo-section-heading"><div><span class="section-number">04</span><div><h2 id="stepFamilyTitle">Composição familiar</h2><p>Inclua cônjuge, filhos, dependentes e demais moradores. O responsável já é contabilizado automaticamente.</p></div></div><button class="btn btn-primary btn-sm" type="button" data-add-family-member><i class="bi bi-person-plus"></i>Adicionar integrante</button></div>
+
+                                <div class="family-member-empty" id="familyMemberEmpty"><i class="bi bi-people"></i><strong>Nenhum integrante adicional</strong><p>Adicione somente as pessoas que residem no mesmo domicílio.</p><button class="btn btn-light" type="button" data-add-family-member><i class="bi bi-plus-lg"></i>Adicionar primeiro integrante</button></div>
+                                <div class="family-members-list" id="familyMembersList"></div>
+
+                                <template id="familyMemberTemplate">
+                                    <article class="family-member-card" data-family-member>
+                                        <div class="family-member-card-head"><div><span class="family-member-index">Integrante</span><strong data-member-title>Novo integrante</strong></div><button class="btn btn-light btn-sm text-danger" type="button" data-remove-family-member><i class="bi bi-trash"></i>Remover</button></div>
+                                        <div class="form-grid">
+                                            <div class="field-6"><label class="form-label required">Nome completo</label><input class="form-control member-name" name="fam_nome[]" required></div>
+                                            <div class="field-3"><label class="form-label required">Parentesco</label><select class="form-select" name="fam_parentesco[]" required><option value="">Selecione</option><option>Cônjuge</option><option>Filho(a)</option><option>Enteado(a)</option><option>Pai/Mãe</option><option>Neto(a)</option><option>Irmão/Irmã</option><option>Outro</option></select></div>
+                                            <div class="field-3"><label class="form-label">Nascimento</label><input class="form-control" name="fam_nasc[]" type="date"></div>
+                                            <div class="field-3"><label class="form-label">CPF</label><input class="form-control cpf-field" name="fam_cpf[]" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
+                                            <div class="field-3"><label class="form-label">NIS</label><input class="form-control" name="fam_nis[]" inputmode="numeric"></div>
+                                            <div class="field-3"><label class="form-label">Escolaridade</label><select class="form-select" name="fam_escolaridade[]"><option value="">Selecione</option><option>Não alfabetizado</option><option>Fundamental incompleto</option><option>Fundamental completo</option><option>Médio incompleto</option><option>Médio completo</option><option>Superior</option><option>Não se aplica</option></select></div>
+                                            <div class="field-3"><label class="form-label">Renda mensal</label><input class="form-control money-field member-income" name="fam_renda[]" inputmode="decimal" placeholder="R$ 0,00"></div>
+                                            <div class="field-3"><label class="form-label">PCD</label><select class="form-select member-pcd" name="fam_pcd[]"><option>Não</option><option>Sim</option></select></div>
+                                            <div class="field-3"><label class="form-label">BPC</label><select class="form-select" name="fam_bpc[]"><option>Não</option><option>Sim</option></select></div>
+                                            <div class="field-6"><label class="form-label">Ocupação / situação</label><input class="form-control" name="fam_ocupacao[]" placeholder="Ex.: estudante, autônomo, aposentado"></div>
+                                            <div class="field-12"><label class="form-label">Observação</label><input class="form-control" name="fam_obs[]" placeholder="Informação relevante para o acompanhamento"></div>
+                                        </div>
+                                    </article>
+                                </template>
+
+                                <div class="family-summary-strip">
+                                    <div><span>Total de pessoas no domicílio</span><strong id="familyTotalPeople">1</strong></div>
+                                    <div><span>Renda familiar calculada</span><strong id="familyTotalIncome">R$ 0,00</strong></div>
+                                    <div><span>Renda per capita</span><strong id="familyPerCapita">R$ 0,00</strong></div>
+                                </div>
+                            </section>
+
+                            <section class="anexo-panel" data-anexo-panel="4" aria-labelledby="stepHousingTitle" hidden>
+                                <div class="anexo-section-heading"><div><span class="section-number">05</span><div><h2 id="stepHousingTitle">Habitação e infraestrutura</h2><p>Condições do imóvel e acesso a serviços essenciais.</p></div></div></div>
+                                <div class="form-grid form-grid-spacious">
+                                    <div class="field-4"><label class="form-label required" for="anexoSituacaoImovel">Situação do imóvel</label><select class="form-select" id="anexoSituacaoImovel" name="situacao_imovel" required data-toggle-values="Alugado,Financiado" data-toggle-target="#housingValueField"><option value="">Selecione</option><option>Próprio</option><option>Alugado</option><option>Cedido</option><option>Financiado</option><option>Ocupação</option><option>Situação de rua</option><option>Outro</option></select></div>
+                                    <div class="field-4 conditional-field" id="housingValueField" hidden><label class="form-label" for="anexoSituacaoImovelValor">Valor mensal</label><input class="form-control money-field" id="anexoSituacaoImovelValor" name="situacao_imovel_valor" inputmode="decimal" placeholder="R$ 0,00"></div>
+                                    <div class="field-4"><label class="form-label required" for="anexoTipoMoradia">Tipo de moradia</label><select class="form-select" id="anexoTipoMoradia" name="tipo_moradia" required><option value="">Selecione</option><option>Alvenaria</option><option>Madeira</option><option>Mista</option><option>Palafita</option><option>Improvisada</option><option>Coletiva</option><option>Outro</option></select></div>
+                                    <div class="field-4"><label class="form-label" for="anexoAbastecimento">Abastecimento de água</label><select class="form-select" id="anexoAbastecimento" name="abastecimento"><option value="">Selecione</option><option>Rede pública</option><option>Poço</option><option>Rio / igarapé</option><option>Cisterna</option><option>Carro-pipa</option><option>Outro</option></select></div>
+                                    <div class="field-4"><label class="form-label" for="anexoIluminacao">Energia / iluminação</label><select class="form-select" id="anexoIluminacao" name="iluminacao"><option value="">Selecione</option><option>Rede pública com medidor</option><option>Rede pública sem medidor</option><option>Gerador</option><option>Energia solar</option><option>Sem energia</option><option>Outro</option></select></div>
+                                    <div class="field-4"><label class="form-label" for="anexoEsgoto">Esgotamento sanitário</label><select class="form-select" id="anexoEsgoto" name="esgoto"><option value="">Selecione</option><option>Rede pública</option><option>Fossa séptica</option><option>Fossa rudimentar</option><option>Vala</option><option>Rio / igarapé</option><option>Sem instalação</option></select></div>
+                                    <div class="field-4"><label class="form-label" for="anexoLixo">Destino do lixo</label><select class="form-select" id="anexoLixo" name="lixo"><option value="">Selecione</option><option>Coleta pública</option><option>Queimado</option><option>Enterrado</option><option>Terreno / área aberta</option><option>Rio / igarapé</option><option>Outro</option></select></div>
+                                    <div class="field-8"><label class="form-label" for="anexoEntorno">Características do entorno</label><select class="form-select" id="anexoEntorno" name="entorno" multiple size="4"><option>Via pavimentada</option><option>Área alagável</option><option>Risco de deslizamento</option><option>Difícil acesso</option><option>Próximo a equipamento público</option><option>Sem iluminação pública</option><option>Sem coleta regular</option></select><small class="form-text">Use Ctrl ou toque prolongado para selecionar mais de uma opção.</small></div>
+                                    <div class="field-4"><label class="form-label" for="anexoQuartos">Quantidade de cômodos</label><input class="form-control" id="anexoQuartos" name="comodos" type="number" min="0" max="30"></div>
+                                    <div class="field-12"><label class="form-label" for="anexoHabitacaoObs">Observações sobre a moradia</label><textarea class="form-control" id="anexoHabitacaoObs" name="habitacao_observacao" rows="3" placeholder="Registre riscos, necessidades de adaptação ou condições relevantes"></textarea></div>
+                                </div>
+                            </section>
+
+                            <section class="anexo-panel" data-anexo-panel="5" aria-labelledby="stepDemandTitle" hidden>
+                                <div class="anexo-section-heading"><div><span class="section-number">06</span><div><h2 id="stepDemandTitle">Demanda e avaliação inicial</h2><p>Registre o motivo do atendimento sem misturar a demanda atual com o histórico da pessoa.</p></div></div></div>
+                                <div class="form-grid form-grid-spacious">
+                                    <div class="field-6"><label class="form-label required" for="anexoCategoria">Tipo de demanda</label><select class="form-select" id="anexoCategoria" name="categoria_entrevista" required><option value="">Selecione</option><option>Atendimento ao prefeito</option><option>Emprego</option><option>Cesta de alimentos</option><option>Auxílio-natalidade</option><option>Auxílio-funeral</option><option>Documentação civil</option><option>Passagem</option><option>Aluguel social</option><option>Encaminhamento à rede</option><option>Orientação social</option><option>Outra demanda</option></select></div>
+                                    <div class="field-3"><label class="form-label required" for="anexoPrioridade">Prioridade</label><select class="form-select" id="anexoPrioridade" name="prioridade" required><option>Normal</option><option>Alta</option><option>Urgente</option></select></div>
+                                    <div class="field-3"><label class="form-label" for="anexoOrigemAtendimento">Canal de entrada</label><select class="form-select" id="anexoOrigemAtendimento" name="origem_atendimento"><option>Atendimento presencial</option><option>Visita domiciliar</option><option>Encaminhamento</option><option>Busca ativa</option><option>Telefone</option><option>Outro</option></select></div>
+                                    <div class="field-6"><label class="form-label" for="anexoTipificacao">Tipificação / serviço relacionado</label><select class="form-select" id="anexoTipificacao" name="tipificacao"><option value="">Selecione quando aplicável</option><option>PAIF</option><option>PAEFI</option><option>Serviço de Convivência</option><option>Proteção Social Básica</option><option>Proteção Social Especial</option><option>Benefício eventual</option><option>Cadastro e orientação</option></select></div>
+                                    <div class="field-6"><label class="form-label" for="anexoEncaminhamento">Encaminhamento inicial</label><select class="form-select" id="anexoEncaminhamento" name="encaminhamento"><option value="">Nenhum neste momento</option><option>CRAS</option><option>CREAS</option><option>Saúde</option><option>Educação</option><option>Habitação</option><option>Emprego e renda</option><option>Defensoria / Justiça</option><option>Outro</option></select></div>
+                                    <div class="field-12"><label class="form-label required" for="anexoResumoCaso">Resumo objetivo da situação</label><textarea class="form-control" id="anexoResumoCaso" name="resumo_caso" rows="5" maxlength="1500" required placeholder="Descreva a demanda, contexto atual, necessidade apresentada e encaminhamento inicial. Evite julgamentos e informações sem relação com o atendimento."></textarea><div class="textarea-counter"><span>Use linguagem técnica, objetiva e respeitosa.</span><strong><span id="caseSummaryCount">0</span>/1500</strong></div></div>
+                                    <div class="field-12"><label class="form-label" for="anexoObservacoesRestritas">Observação interna restrita</label><textarea class="form-control" id="anexoObservacoesRestritas" name="observacao_restrita" rows="3" placeholder="Visível somente para perfis autorizados"></textarea><small class="form-text"><i class="bi bi-lock"></i> Não será exibida em relatórios operacionais comuns.</small></div>
+                                </div>
+                            </section>
+
+                            <section class="anexo-panel" data-anexo-panel="6" aria-labelledby="stepDocumentsTitle" hidden>
+                                <div class="anexo-section-heading"><div><span class="section-number">07</span><div><h2 id="stepDocumentsTitle">Documentos e revisão</h2><p>Anexe somente os documentos necessários e confirme os dados antes de concluir.</p></div></div></div>
+
+                                <div class="document-category-grid">
+                                    <label class="document-category-card" for="docIdentity"><span><i class="bi bi-person-vcard"></i></span><div><strong>Documento de identificação</strong><small>RG, CPF ou outro documento oficial</small></div><input id="docIdentity" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-document-input="Identificação"></label>
+                                    <label class="document-category-card" for="docResidence"><span><i class="bi bi-house-check"></i></span><div><strong>Comprovante de residência</strong><small>Conta, declaração ou documento equivalente</small></div><input id="docResidence" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-document-input="Residência"></label>
+                                    <label class="document-category-card" for="docIncome"><span><i class="bi bi-cash-coin"></i></span><div><strong>Comprovante de renda</strong><small>Quando necessário ao atendimento</small></div><input id="docIncome" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-document-input="Renda"></label>
+                                    <label class="document-category-card" for="docOther"><span><i class="bi bi-files"></i></span><div><strong>Outro documento</strong><small>Laudo, certidão ou encaminhamento</small></div><input id="docOther" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-document-input="Outro"></label>
+                                </div>
+                                <div class="selected-documents" id="selectedDocuments"><div class="selected-documents-empty"><i class="bi bi-paperclip"></i>Nenhum documento selecionado.</div></div>
+
+                                <div class="review-card mt-4">
+                                    <div class="review-card-head"><div><span>Revisão do cadastro</span><strong>Confira os dados essenciais</strong></div><button class="btn btn-light btn-sm" type="button" data-go-first-step><i class="bi bi-pencil"></i>Revisar identificação</button></div>
+                                    <div class="review-grid" id="anexoReviewGrid"></div>
+                                </div>
+
+                                <div class="form-check certification-check mt-4">
+                                    <input class="form-check-input" id="anexoCertification" type="checkbox" required>
+                                    <label class="form-check-label" for="anexoCertification">Confirmo que os dados foram conferidos com a pessoa atendida e que os documentos anexados são necessários para a finalidade informada.</label>
+                                    <div class="invalid-feedback">Confirme a conferência antes de concluir.</div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <aside class="anexo-side-column" aria-label="Orientações do formulário">
+                            <section class="anexo-side-card sticky-help">
+                                <div class="anexo-side-card-head"><i class="bi bi-compass"></i><div><strong>Orientação da etapa</strong><span id="stepHelpTitle">Identificação</span></div></div>
+                                <p id="stepHelpText">Valide primeiro o CPF. O restante do formulário só será liberado quando não houver duplicidade bloqueante.</p>
+                                <ul class="step-checklist" id="stepChecklist">
+                                    <li><i class="bi bi-circle"></i>CPF consultado nas duas bases</li>
+                                    <li><i class="bi bi-circle"></i>Nome completo conferido</li>
+                                    <li><i class="bi bi-circle"></i>Telefone informado</li>
+                                </ul>
+                            </section>
+
+                            <section class="anexo-side-card">
+                                <div class="anexo-side-card-head"><i class="bi bi-shield-check"></i><div><strong>Boas práticas</strong><span>Leitura e privacidade</span></div></div>
+                                <ul class="plain-guidance-list">
+                                    <li>Não copie informações desnecessárias do SEMTH.</li>
+                                    <li>Use termos objetivos no resumo do caso.</li>
+                                    <li>Evite anexar documentos sem relação com a demanda.</li>
+                                    <li>Confirme o telefone antes de concluir.</li>
+                                </ul>
+                            </section>
+
+                            <section class="anexo-side-card support-card">
+                                <i class="bi bi-question-circle"></i>
+                                <strong>Dúvida durante o cadastro?</strong>
+                                <p>Consulte o manual operacional com explicação de campos, status e regras de integração.</p>
+                                <a class="btn btn-light btn-sm w-100" href="manual-sistema.html#cadastro"><i class="bi bi-book"></i>Abrir manual</a>
+                            </section>
+                        </aside>
+                    </div>
+
+                    <div class="anexo-form-actions">
+                        <div><button class="btn btn-light" id="anexoPrevious" type="button" disabled><i class="bi bi-arrow-left"></i>Anterior</button></div>
+                        <div class="anexo-form-actions-center"><span id="anexoActionHint">Valide o CPF para iniciar.</span></div>
+                        <div class="d-flex gap-2"><button class="btn btn-light" type="button" data-save-anexo-draft><i class="bi bi-floppy"></i><span class="optional">Salvar rascunho</span></button><button class="btn btn-primary" id="anexoNext" type="button" disabled>Próxima etapa<i class="bi bi-arrow-right"></i></button><button class="btn btn-success d-none" id="anexoFinish" type="submit"><i class="bi bi-check2-circle"></i>Concluir cadastro</button></div>
+                    </div>
+                </form>
+            </main>
+
+            <footer class="app-footer"><span>Dados demonstrativos utilizados apenas para prototipação.</span><span>SIGAS Coari — SEMAS Coari/AM</span></footer>
+        </div>
+        <div id="bottomNavigation"></div>
+    </div>
+
+    <div class="modal fade" id="anexoSuccessModal" tabindex="-1" aria-labelledby="anexoSuccessTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><span class="success-modal-icon"><i class="bi bi-check2"></i></span><h2 class="fs-4 mt-3" id="anexoSuccessTitle">Cadastro concluído</h2><p class="text-secondary">O prontuário ANEXO foi criado somente na base demonstrativa do SIGAS. A base SEMTH permaneceu inalterada.</p><div class="success-protocol"><span>Protocolo gerado</span><strong>ANX-2026-001284</strong></div><div class="d-grid gap-2 mt-4"><a class="btn btn-primary" href="registro.html"><i class="bi bi-person-lines-fill"></i>Abrir prontuário</a><a class="btn btn-light" href="pessoas.html">Voltar para a listagem</a></div></div></div></div>
+    </div>
+
+    <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/integration-demo.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script src="assets/js/cadastro-anexo.js"></script>
+</body>
+</html>
