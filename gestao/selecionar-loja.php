@@ -19,10 +19,7 @@ if (!$user) {
 }
 
 $context = new CompanyContextService();
-$companies = array_filter(
-    $context->availableCompanies((int)$user['id']),
-    fn (array $company): bool => (string)$company['nivel'] === 'admin'
-);
+$companies = $context->availableCompanies((int)$user['id']);
 
 if (!$companies) {
     Auth::logout();

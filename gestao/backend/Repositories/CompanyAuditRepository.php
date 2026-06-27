@@ -20,7 +20,8 @@ final class CompanyAuditRepository
         int $usuarioId,
         ?int $empresaOrigemId,
         int $empresaDestinoId,
-        string $acao
+        string $acao,
+        array $detalhes = []
     ): void {
         $stmt = $this->db->prepare(
             'INSERT INTO empresa_contexto_auditoria (
@@ -29,14 +30,16 @@ final class CompanyAuditRepository
                 empresa_destino_id,
                 acao,
                 ip,
-                user_agent
+                user_agent,
+                detalhes
              ) VALUES (
                 :usuario_id,
                 :empresa_origem_id,
                 :empresa_destino_id,
                 :acao,
                 :ip,
-                :user_agent
+                :user_agent,
+                :detalhes
              )'
         );
 
@@ -47,6 +50,7 @@ final class CompanyAuditRepository
             ':acao' => $acao,
             ':ip' => $_SERVER['REMOTE_ADDR'] ?? null,
             ':user_agent' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
+            ':detalhes' => $detalhes !== [] ? json_encode($detalhes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
         ]);
     }
 }

@@ -26,6 +26,22 @@ final class UserRepository
         return $this->findIdentityByEmail($email);
     }
 
+    public function findIdentityById(int $id): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT u.id, u.empresa_id, u.nome, u.email, u.senha_hash, u.nivel, u.ativo,
+                    u.telefone, u.ultimo_login_em, u.criado_em, u.atualizado_em
+             FROM usuarios u
+             WHERE u.id = :id
+             LIMIT 1'
+        );
+
+        $stmt->execute([':id' => $id]);
+        $user = $stmt->fetch();
+
+        return $user ?: null;
+    }
+
     public function findIdentityByEmail(string $email): ?array
     {
         $stmt = $this->db->prepare(
@@ -43,6 +59,36 @@ final class UserRepository
         $user = $stmt->fetch();
 
         return $user ?: null;
+    }
+
+    public function findExistingOwnersByEmails(array $emails): array
+    {
+        $emails = array_values(array_unique(array_filter(array_map(
+            static fn (string $email): string => mb_strtolower(trim($email)),
+            $emails
+        ))));
+
+        if ($emails === []) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach ($emails as $index => $email) {
+            $key = ':email_' . $index;
+            $placeholders[] = $key;
+            $params[$key] = $email;
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT id, empresa_id, nome, email, telefone, nivel, ativo
+             FROM usuarios
+             WHERE email IN (' . implode(',', $placeholders) . ')
+             ORDER BY email ASC'
+        );
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
     }
 
     public function findById(int $id, int $empresaId): ?array
@@ -185,6 +231,22 @@ final class UserRepository
         ]);
 
         return (int)$this->db->lastInsertId();
+    }
+
+    public function updatePrimaryCompany(int $id, int $empresaId): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE usuarios
+             SET empresa_id = :empresa_id,
+                 nivel = CASE WHEN nivel = "admin" THEN nivel ELSE nivel END
+             WHERE id = :id
+             LIMIT 1'
+        );
+
+        $stmt->execute([
+            ':id' => $id,
+            ':empresa_id' => $empresaId,
+        ]);
     }
 
     public function update(int $id, int $empresaId, array $data): bool

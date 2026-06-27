@@ -79,12 +79,7 @@ final class CompanyContextService
     public function requiresSelection(int $usuarioId): bool
     {
         $companies = $this->availableCompanies($usuarioId);
-        $adminCompanies = array_filter(
-            $companies,
-            fn (array $company): bool => (string)$company['nivel'] === 'admin'
-        );
-
-        return count($adminCompanies) > 1;
+        return count($companies) > 1;
     }
 
     public function availableCompanies(int $usuarioId): array

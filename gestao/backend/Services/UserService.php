@@ -36,6 +36,7 @@ final class UserService
 
         $this->validateNome($nome);
         $this->validateEmail($email);
+        (new PlatformAuthorizationService())->assertEmailNotReservedForCommonUser($email);
         $this->validateSenhaCriacao($senha);
         $this->validateNivel($nivel);
         $this->validateAtivo($ativo);
@@ -93,6 +94,7 @@ final class UserService
 
         $this->validateNome($nome);
         $this->validateEmail($email);
+        (new PlatformAuthorizationService())->assertEmailNotReservedForCommonUser($email, $id);
         $this->validateNivel($nivel);
         $this->validateAtivo($ativo);
 

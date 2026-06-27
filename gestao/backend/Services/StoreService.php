@@ -34,7 +34,7 @@ final class StoreService
 
     public function listChildren(int $usuarioId, int $empresaAtivaId): array
     {
-        $this->access->assertAdmin($usuarioId, $empresaAtivaId);
+        $this->access->assertCanCreateFilial($usuarioId, $empresaAtivaId);
 
         return $this->stores->findChildren($empresaAtivaId);
     }
@@ -45,11 +45,10 @@ final class StoreService
         array $data,
         ?array $logoFile = null
     ): int {
-        $this->access->assertAdmin($usuarioId, $empresaAtivaId);
-        $parent = $this->stores->findById($empresaAtivaId);
+        $parent = $this->access->assertCanCreateFilial($usuarioId, $empresaAtivaId);
 
-        if (!$parent || (int)$parent['ativo'] !== 1) {
-            throw new RuntimeException('Empresa pai inválida ou inativa.');
+        if (empty($parent['admin_principal_usuario_id']) && !(new PlatformAuthorizationService())->isPlatformOwner($usuarioId)) {
+            throw new RuntimeException('A matriz precisa possuir um administrador principal antes de criar filiais.');
         }
 
         $payload = $this->validateStoreData($empresaAtivaId, $data);
@@ -59,7 +58,10 @@ final class StoreService
         try {
             $storeId = $this->stores->create($empresaAtivaId, $payload);
 
-            $this->memberships->createMembership($usuarioId, $storeId, 'admin', false);
+            if (!empty($parent['admin_principal_usuario_id'])) {
+                $this->memberships->createMembership((int)$parent['admin_principal_usuario_id'], $storeId, 'admin', false);
+            }
+            (new PlatformOwnerProvisioningService($this->db))->linkExistingOwnersToCompany($storeId);
             $this->createDefaultSettings($storeId, $payload);
 
             if ($this->hasUploadedFile($logoFile)) {
@@ -68,7 +70,7 @@ final class StoreService
                 $this->touchBranding($storeId);
             }
 
-            $this->audit->record($usuarioId, $empresaAtivaId, $storeId, 'criar_loja');
+            $this->audit->record($usuarioId, $empresaAtivaId, $storeId, 'criar_filial');
             $this->db->commit();
 
             return $storeId;
@@ -92,8 +94,7 @@ final class StoreService
         array $data,
         ?array $logoFile = null
     ): bool {
-        $this->access->assertAdmin($usuarioId, $empresaAtivaId);
-        $store = $this->access->assertChildOf($empresaAtivaId, $lojaId);
+        $store = $this->access->assertCanManageFilial($usuarioId, $empresaAtivaId, $lojaId);
         $payload = $this->validateStoreData($empresaAtivaId, $data, $lojaId);
         $newLogo = null;
         $oldLogo = trim((string)($store['logo'] ?? ''));
@@ -108,7 +109,7 @@ final class StoreService
                 $this->touchBranding($lojaId);
             }
 
-            $this->audit->record($usuarioId, $empresaAtivaId, $lojaId, 'editar_loja');
+            $this->audit->record($usuarioId, $empresaAtivaId, $lojaId, 'editar_filial');
             $this->db->commit();
 
             if ($newLogo !== null && $oldLogo !== '' && $oldLogo !== $newLogo) {
@@ -141,13 +142,12 @@ final class StoreService
 
     private function setStoreActive(int $usuarioId, int $empresaAtivaId, int $lojaId, bool $active): bool
     {
-        $this->access->assertAdmin($usuarioId, $empresaAtivaId);
-        $this->access->assertChildOf($empresaAtivaId, $lojaId);
+        $this->access->assertCanManageFilial($usuarioId, $empresaAtivaId, $lojaId);
 
         $this->db->beginTransaction();
         try {
             $updated = $this->stores->setActive($empresaAtivaId, $lojaId, $active);
-            $this->audit->record($usuarioId, $empresaAtivaId, $lojaId, $active ? 'ativar_loja' : 'inativar_loja');
+            $this->audit->record($usuarioId, $empresaAtivaId, $lojaId, $active ? 'ativar_filial' : 'inativar_filial');
             $this->db->commit();
 
             return $updated;
@@ -170,11 +170,11 @@ final class StoreService
         $endereco = trim((string)($data['endereco'] ?? ''));
 
         if ($nome === '' || mb_strlen($nome) < 2) {
-            throw new InvalidArgumentException('Informe o nome da loja com pelo menos 2 caracteres.');
+            throw new InvalidArgumentException('Informe o nome da filial com pelo menos 2 caracteres.');
         }
 
         if (mb_strlen($nome) > 180) {
-            throw new InvalidArgumentException('O nome da loja deve ter no máximo 180 caracteres.');
+            throw new InvalidArgumentException('O nome da filial deve ter no máximo 180 caracteres.');
         }
 
         if ($nomeFantasia !== '' && mb_strlen($nomeFantasia) > 180) {
@@ -186,7 +186,7 @@ final class StoreService
         }
 
         if ($codigo !== '' && $this->stores->codeExists($empresaPaiId, $codigo, $ignoreId)) {
-            throw new InvalidArgumentException('Já existe uma loja com este código nesta empresa.');
+            throw new InvalidArgumentException('Já existe uma filial com este código nesta matriz.');
         }
 
         if ($cpfCnpj !== '' && mb_strlen($cpfCnpj) > 20) {

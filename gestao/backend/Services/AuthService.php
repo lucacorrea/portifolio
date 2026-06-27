@@ -45,6 +45,8 @@ final class AuthService
             return $this->result(false, 'Usuário sem permissão de acesso.');
         }
 
+        (new PlatformOwnerProvisioningService($this->users->connection()))->synchronizeUserAccess((int)$user['id']);
+
         $context = new CompanyContextService(
             new UserCompanyRepository($this->users->connection())
         );
@@ -60,12 +62,7 @@ final class AuthService
         $this->users->updateLastLogin((int)$user['id']);
         $this->users->auditLogin((int)$user['id'], $email, true, 'Login realizado');
 
-        $adminCompanies = array_filter(
-            $companies,
-            fn (array $company): bool => (string)$company['nivel'] === 'admin'
-        );
-
-        if (count($adminCompanies) > 1) {
+        if (count($companies) > 1) {
             Session::regenerate();
             Session::put('user.id', (int)$user['id']);
             Session::put('user.empresa_principal_id', (int)$user['empresa_id']);

@@ -19,11 +19,14 @@ final class StoreRepository
     public function findById(int $empresaId): ?array
     {
         $stmt = $this->db->prepare(
-            "SELECT id, empresa_pai_id, COALESCE(tipo, 'matriz') AS tipo, codigo,
-                    nome, nome_fantasia, cpf_cnpj, telefone, endereco, logo, ativo,
-                    criado_em, atualizado_em
+            "SELECT e.id, e.empresa_pai_id, COALESCE(e.tipo, 'matriz') AS tipo, e.codigo,
+                    e.nome, e.nome_fantasia, e.cpf_cnpj, e.telefone, e.endereco, e.logo,
+                    e.admin_principal_usuario_id, e.ativo, e.criado_em, e.atualizado_em,
+                    u.nome AS admin_nome, u.email AS admin_email
              FROM empresas
-             WHERE id = :id
+             e
+             LEFT JOIN usuarios u ON u.id = e.admin_principal_usuario_id
+             WHERE e.id = :id
              LIMIT 1"
         );
 
@@ -41,6 +44,7 @@ final class StoreRepository
                     criado_em, atualizado_em
              FROM empresas
              WHERE empresa_pai_id = :empresa_pai_id
+               AND COALESCE(tipo, 'matriz') = 'loja'
              ORDER BY ativo DESC, nome_fantasia ASC, nome ASC"
         );
 
@@ -58,6 +62,7 @@ final class StoreRepository
              FROM empresas
              WHERE id = :id
                AND empresa_pai_id = :empresa_pai_id
+               AND COALESCE(tipo, 'matriz') = 'loja'
              LIMIT 1"
         );
 
@@ -83,6 +88,7 @@ final class StoreRepository
                 cpf_cnpj,
                 telefone,
                 endereco,
+                admin_principal_usuario_id,
                 ativo
              ) VALUES (
                 :empresa_pai_id,
@@ -93,6 +99,7 @@ final class StoreRepository
                 :cpf_cnpj,
                 :telefone,
                 :endereco,
+                NULL,
                 1
              )"
         );
@@ -113,7 +120,7 @@ final class StoreRepository
     public function update(int $empresaPaiId, int $lojaId, array $data): bool
     {
         $stmt = $this->db->prepare(
-            'UPDATE empresas
+            "UPDATE empresas
              SET codigo = :codigo,
                  nome = :nome,
                  nome_fantasia = :nome_fantasia,
@@ -122,7 +129,8 @@ final class StoreRepository
                  endereco = :endereco
              WHERE id = :id
                AND empresa_pai_id = :empresa_pai_id
-             LIMIT 1'
+               AND COALESCE(tipo, 'matriz') = 'loja'
+             LIMIT 1"
         );
 
         $stmt->execute([
@@ -159,11 +167,12 @@ final class StoreRepository
     public function setActive(int $empresaPaiId, int $lojaId, bool $ativo): bool
     {
         $stmt = $this->db->prepare(
-            'UPDATE empresas
+            "UPDATE empresas
              SET ativo = :ativo
              WHERE id = :id
                AND empresa_pai_id = :empresa_pai_id
-             LIMIT 1'
+               AND COALESCE(tipo, 'matriz') = 'loja'
+             LIMIT 1"
         );
 
         $stmt->execute([

@@ -2,7 +2,17 @@
 $prefix = $prefix ?? '../';
 $activeMenu = $activeMenu ?? '';
 $footerUser = \App\Security\Auth::user();
-$footerIsAdmin = ($footerUser['nivel'] ?? '') === 'admin';
+$footerCanManageFiliais = false;
+if ($footerUser) {
+    try {
+        $footerCanManageFiliais = (new \App\Services\StoreAccessService(
+            new \App\Repositories\UserCompanyRepository(),
+            new \App\Repositories\StoreRepository()
+        ))->canCreateFilial((int)$footerUser['id'], (int)($footerUser['empresa_id'] ?? 0));
+    } catch (\Throwable) {
+        $footerCanManageFiliais = false;
+    }
+}
 ?>
     </section>
     <nav class="bottom-nav" aria-label="Navegação principal">
@@ -37,10 +47,10 @@ $footerIsAdmin = ($footerUser['nivel'] ?? '') === 'admin';
         <svg viewBox="0 0 24 24"><path d="M5 19V5"/><path d="M5 19h14"/><path d="M9 16v-5"/><path d="M13 16V8"/><path d="M17 16v-3"/></svg>
         <span>Relatórios</span>
       </a>
-      <?php if ($footerIsAdmin): ?>
+      <?php if ($footerCanManageFiliais): ?>
       <a class="side-nav-only <?= $activeMenu === 'lojas' ? 'active' : '' ?>" href="<?= $prefix ?>pages/lojas.php">
         <svg viewBox="0 0 24 24"><path d="M4 10h16"/><path d="M5 10l1-5h12l1 5"/><path d="M6 10v9h12v-9"/><path d="M9 19v-5h6v5"/></svg>
-        <span>Lojas</span>
+        <span>Filiais</span>
       </a>
       <?php endif; ?>
     </nav>

@@ -37,7 +37,12 @@ try {
     $memberships = new UserCompanyRepository();
     $membership = $memberships->findMembership((int)$user['id'], (int)$empresaId);
 
-    if (!$membership || (string)$membership['nivel'] !== 'admin') {
+    if (
+        !$membership
+        || (int)$membership['usuario_ativo'] !== 1
+        || (int)$membership['vinculo_ativo'] !== 1
+        || (int)$membership['empresa_ativa'] !== 1
+    ) {
         http_response_code(403);
         exit('Acesso negado.');
     }

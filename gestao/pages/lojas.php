@@ -8,10 +8,10 @@ use App\Repositories\StoreRepository;
 use App\Security\Auth;
 use App\Security\Csrf;
 use App\Services\CompanyBrandService;
+use App\Services\MatrixAdminService;
 use App\Services\StoreService;
 
 Auth::requireLogin();
-Auth::requireRole(['admin']);
 
 $user = Auth::user();
 
@@ -25,6 +25,7 @@ $empresaId = (int)$user['empresa_id'];
 $storeService = new StoreService();
 $storeRepository = new StoreRepository();
 $brandService = new CompanyBrandService();
+$matrixAdminService = new MatrixAdminService();
 
 function redirectStores(string $type, string $message): void
 {
@@ -60,10 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $logoFile = $_FILES['logo'] ?? null;
 
         match ($action) {
-            'criar_loja' => $storeService->createStore($usuarioId, $empresaId, $_POST, is_array($logoFile) ? $logoFile : null),
-            'editar_loja' => $storeService->updateStore($usuarioId, $empresaId, $storeId, $_POST, is_array($logoFile) ? $logoFile : null),
-            'ativar_loja' => $storeService->activateStore($usuarioId, $empresaId, $storeId),
-            'inativar_loja' => $storeService->deactivateStore($usuarioId, $empresaId, $storeId),
+            'criar_filial', 'criar_loja' => $storeService->createStore($usuarioId, $empresaId, $_POST, is_array($logoFile) ? $logoFile : null),
+            'editar_filial', 'editar_loja' => $storeService->updateStore($usuarioId, $empresaId, $storeId, $_POST, is_array($logoFile) ? $logoFile : null),
+            'ativar_filial', 'ativar_loja' => $storeService->activateStore($usuarioId, $empresaId, $storeId),
+            'inativar_filial', 'inativar_loja' => $storeService->deactivateStore($usuarioId, $empresaId, $storeId),
             default => throw new RuntimeException('Ação inválida.'),
         };
 
@@ -77,14 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 try {
     $activeCompany = $storeRepository->findById($empresaId) ?? [];
     $stores = $storeService->listChildren($usuarioId, $empresaId);
+    $primaryAdmin = $matrixAdminService->findPrimaryAdmin($empresaId);
 } catch (Throwable $e) {
     log_app_exception($e);
-    $activeCompany = [];
-    $stores = [];
-    $_SESSION['lojas_flash'] = [
-        'type' => 'danger',
-        'message' => $e->getMessage(),
-    ];
+    http_response_code(403);
+    exit(e($e->getMessage()));
 }
 
 $flash = $_SESSION['lojas_flash'] ?? null;
@@ -94,7 +92,7 @@ $csrfToken = Csrf::token();
 $activeBrand = $brandService->getForCompany($empresaId, '../');
 
 $pageId = 'lojas';
-$pageTitle = 'Lojas';
+$pageTitle = 'Filiais';
 $activeMenu = 'lojas';
 
 require_once __DIR__ . '/layout/header.php';
@@ -329,10 +327,11 @@ require_once __DIR__ . '/layout/header.php';
       <?php endif; ?>
     </div>
     <div class="stores-copy">
-      <h1>Lojas</h1>
-      <p>Empresa ativa: <?= e(storeDisplayName($activeCompany)) ?></p>
+      <h1>Filiais</h1>
+      <p>Matriz ativa: <?= e(storeDisplayName($activeCompany)) ?></p>
+      <p>Administrador principal: <?= $primaryAdmin ? e((string)$primaryAdmin['nome']) . ' · ' . e((string)$primaryAdmin['email']) : 'Pendente de definição' ?></p>
       <div class="stores-badges">
-        <span class="store-badge"><?= e(($activeCompany['tipo'] ?? 'matriz') === 'loja' ? 'Loja' : 'Matriz') ?></span>
+        <span class="store-badge">Matriz</span>
         <span class="store-badge success">Ativa</span>
       </div>
     </div>
@@ -348,10 +347,10 @@ require_once __DIR__ . '/layout/header.php';
   <?php endif; ?>
 
   <section class="store-form-panel" aria-labelledby="createStoreTitle">
-    <h2 id="createStoreTitle">Cadastrar nova loja</h2>
+    <h2 id="createStoreTitle">Cadastrar nova filial</h2>
     <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-      <input type="hidden" name="acao" value="criar_loja">
+      <input type="hidden" name="acao" value="criar_filial">
       <div class="store-form-grid">
         <div class="store-field">
           <label for="nome">Nome *</label>
@@ -383,14 +382,14 @@ require_once __DIR__ . '/layout/header.php';
         </div>
       </div>
       <div class="store-actions">
-        <button class="store-btn" type="submit">Cadastrar nova loja</button>
+        <button class="store-btn" type="submit">Cadastrar filial</button>
       </div>
     </form>
   </section>
 
-  <section class="stores-grid" aria-label="Subempresas diretas">
+  <section class="stores-grid" aria-label="Filiais diretas">
     <?php if (!$stores): ?>
-      <div class="store-empty">Nenhuma loja cadastrada para a empresa atual.</div>
+      <div class="store-empty">Nenhuma filial cadastrada para a matriz atual.</div>
     <?php endif; ?>
 
     <?php foreach ($stores as $store): ?>
@@ -415,16 +414,16 @@ require_once __DIR__ . '/layout/header.php';
           <?php if (!empty($store['endereco'])): ?><p>Endereço: <?= e((string)$store['endereco']) ?></p><?php endif; ?>
           <p>Criada em <?= e(storeDate($store['criado_em'] ?? null)) ?></p>
           <div class="stores-badges">
-            <span class="store-badge">Loja</span>
+            <span class="store-badge">Filial</span>
             <span class="store-badge <?= $isActive ? 'success' : 'danger' ?>"><?= $isActive ? 'Ativa' : 'Inativa' ?></span>
           </div>
         </div>
 
         <details class="store-form-panel">
-          <summary>Editar loja</summary>
+          <summary>Editar filial</summary>
           <form method="post" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-            <input type="hidden" name="acao" value="editar_loja">
+            <input type="hidden" name="acao" value="editar_filial">
             <input type="hidden" name="loja_id" value="<?= (int)$store['id'] ?>">
             <div class="store-form-grid">
               <div class="store-field">
@@ -474,7 +473,7 @@ require_once __DIR__ . '/layout/header.php';
           <form method="post">
             <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
             <input type="hidden" name="loja_id" value="<?= (int)$store['id'] ?>">
-            <input type="hidden" name="acao" value="<?= $isActive ? 'inativar_loja' : 'ativar_loja' ?>">
+            <input type="hidden" name="acao" value="<?= $isActive ? 'inativar_filial' : 'ativar_filial' ?>">
             <button
               class="store-btn <?= $isActive ? 'danger' : 'success' ?>"
               type="submit"
