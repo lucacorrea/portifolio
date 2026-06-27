@@ -303,6 +303,12 @@
 </div>
 
 <!-- Modal Fechar Caixa -->
+<style>
+    #tableFechamento th:nth-child(4),
+    #tableFechamento td:nth-child(4) {
+        display: none;
+    }
+</style>
 <div class="modal fade" id="modalFecharCaixa" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <form action="caixa.php?action=fechar" method="POST" class="modal-content border-0 shadow-lg">
@@ -319,8 +325,8 @@
                                 <thead class="bg-light">
                                     <tr>
                                         <th class="ps-3">TIPO PAGAMENTOS</th>
-                                        <th class="text-center">SISTEMA</th>
-                                        <th class="text-center">INFORMADO</th>
+                                        <th class="text-center">FEITO NO SISTEMA</th>
+                                        <th class="pe-3 text-center">CONFERIDO</th>
                                         <th class="pe-3 text-end">DIFERENÇA</th>
                                     </tr>
                                 </thead>
@@ -342,14 +348,11 @@
                                         <td style="width: 150px;">
                                             <div class="input-group input-group-sm">
                                                 <span class="input-group-text bg-white border-end-0">R$</span>
-                                                <input type="number" step="0.01" value="0.00" name="breakdown[<?= $metodo ?>]" 
+                                                <input type="number" step="0.01" value="<?= number_format((float)$calculado, 2, '.', '') ?>" name="breakdown[<?= $metodo ?>]" 
                                                        class="form-control form-control-sm informed-input text-end border-start-0 fw-bold" 
                                                        data-metodo="<?= $metodo ?>"
                                                        oninput="calcularDiferenca('<?= $metodo ?>')">
                                             </div>
-                                        </td>
-                                        <td class="pe-3 text-end fw-bold">
-                                            <span class="diff-val text-muted" id="diff-<?= str_replace(' ', '-', $metodo) ?>">R$ 0,00</span>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -358,11 +361,13 @@
                                     <tr>
                                         <td class="ps-3">TOTAIS:</td>
                                         <td class="text-center" id="total-sistema">R$ <?= number_format($detailedSummary['total_vendas'], 2, ',', '.') ?></td>
-                                        <td class="text-center" id="total-informado">R$ 0,00</td>
-                                        <td class="pe-3 text-end" id="total-diferenca">R$ 0,00</td>
+                                        <td class="text-center" id="total-informado">R$ <?= number_format($detailedSummary['total_vendas'], 2, ',', '.') ?></td>
                                     </tr>
                                 </tfoot>
                             </table>
+                        </div>
+                        <div id="fechamento-status" class="alert alert-success mt-3 mb-0 small fw-semibold" role="alert">
+                            Tudo conferido. Se algum valor estiver diferente, ajuste o campo conferido antes de fechar o caixa.
                         </div>
                     </div>
 
@@ -413,41 +418,78 @@
 </div>
 
 <script>
+function formatarMoedaFechamento(valor) {
+    return 'R$ ' + valor.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
 function calcularDiferenca(metodo) {
-    const input = document.querySelector(`input[name="breakdown[${metodo}]"]`);
-    const calcVal = parseFloat(document.querySelector(`input[name="calculado[${metodo}]"]`).value);
-    const infVal = parseFloat(input.value) || 0;
-    const diff = infVal - calcVal;
-    
-    const diffSpan = document.getElementById(`diff-${metodo.replace(/ /g, '-')}`);
-    diffSpan.innerText = 'R$ ' + diff.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-    
-    if (diff > 0) {
-        diffSpan.className = 'diff-val text-success';
-    } else if (diff < 0) {
-        diffSpan.className = 'diff-val text-danger';
-    } else {
-        diffSpan.className = 'diff-val text-muted';
-    }
-    
     atualizarTotaisFechamento();
 }
 
 function atualizarTotaisFechamento() {
     let totalInf = 0;
+    let totalCalc = 0;
+    const divergencias = [];
+
     document.querySelectorAll('.informed-input').forEach(input => {
-        totalInf += parseFloat(input.value) || 0;
+        const metodo = input.dataset.metodo;
+        const calcInput = document.querySelector(`input[name="calculado[${metodo}]"]`);
+        const calcVal = parseFloat(calcInput ? calcInput.value : 0) || 0;
+        const infVal = parseFloat(input.value) || 0;
+        const diff = infVal - calcVal;
+
+        totalCalc += calcVal;
+        totalInf += infVal;
+
+        if (Math.abs(diff) >= 0.005) {
+            divergencias.push({
+                metodo,
+                diff,
+                texto: `${metodo}: ${diff > 0 ? 'sobrou' : 'faltou'} ${formatarMoedaFechamento(Math.abs(diff))}`
+            });
+        }
     });
-    
-    const totalCalc = <?= (float)$detailedSummary['total_vendas'] ?>;
+
     const totalDiff = totalInf - totalCalc;
-    
-    document.getElementById('total-informado').innerText = 'R$ ' + totalInf.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-    
-    const diffLabel = document.getElementById('total-diferenca');
-    diffLabel.innerText = 'R$ ' + totalDiff.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-    diffLabel.className = 'pe-3 text-end ' + (totalDiff >= 0 ? (totalDiff > 0 ? 'text-success' : 'text-muted') : 'text-danger');
+
+    const totalSistema = document.getElementById('total-sistema');
+    if (totalSistema) {
+        totalSistema.innerText = formatarMoedaFechamento(totalCalc);
+    }
+
+    const totalInformado = document.getElementById('total-informado');
+    if (totalInformado) {
+        totalInformado.innerText = formatarMoedaFechamento(totalInf);
+    }
+
+    const saldoFinal = document.getElementById('label-saldo-final');
+    const dinheiroInput = document.querySelector('input[name="breakdown[DINHEIRO]"]');
+    if (saldoFinal && dinheiroInput) {
+        const abertura = <?= (float)$caixaAberto['valor_abertura'] ?>;
+        const suprimentos = <?= (float)$detailedSummary['suprimento'] ?>;
+        const sangrias = <?= (float)$detailedSummary['sangria'] ?>;
+        const dinheiroInformado = parseFloat(dinheiroInput.value) || 0;
+        saldoFinal.innerText = formatarMoedaFechamento(abertura + dinheiroInformado + suprimentos - sangrias);
+    }
+
+    const status = document.getElementById('fechamento-status');
+    if (!status) return;
+
+    if (divergencias.length === 0) {
+        status.className = 'alert alert-success mt-3 mb-0 small fw-semibold';
+        status.innerText = 'Tudo conferido. Os valores informados batem com o que foi feito no sistema.';
+        return;
+    }
+
+    const resumoTotal = Math.abs(totalDiff) < 0.005
+        ? 'As divergencias se compensam no total, mas existe diferenca por forma de pagamento.'
+        : `No total ${totalDiff > 0 ? 'sobrou' : 'faltou'} ${formatarMoedaFechamento(Math.abs(totalDiff))}.`;
+
+    status.className = 'alert alert-warning mt-3 mb-0 small fw-semibold';
+    status.innerHTML = `<div class="fw-bold mb-1">Atencao: ha divergencia na conferencia.</div><div>${resumoTotal}</div><div class="mt-1">${divergencias.map(d => d.texto).join(' &bull; ')}</div>`;
 }
+
+document.addEventListener('DOMContentLoaded', atualizarTotaisFechamento);
 </script>
 
 <?php endif; ?>
