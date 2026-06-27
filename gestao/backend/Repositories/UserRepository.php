@@ -11,18 +11,27 @@ final class UserRepository
 {
     private PDO $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::connection();
+        $this->db = $db ?? Database::connection();
+    }
+
+    public function connection(): PDO
+    {
+        return $this->db;
     }
 
     public function findByEmail(string $email): ?array
     {
+        return $this->findIdentityByEmail($email);
+    }
+
+    public function findIdentityByEmail(string $email): ?array
+    {
         $stmt = $this->db->prepare(
             'SELECT u.id, u.empresa_id, u.nome, u.email, u.senha_hash, u.nivel, u.ativo,
-                    e.nome AS empresa_nome, e.ativo AS empresa_ativa
+                    u.ultimo_login_em, u.criado_em, u.atualizado_em
              FROM usuarios u
-             INNER JOIN empresas e ON e.id = u.empresa_id
              WHERE u.email = :email
              LIMIT 1'
         );
@@ -39,10 +48,24 @@ final class UserRepository
     public function findById(int $id, int $empresaId): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, empresa_id, nome, email, telefone, nivel, ativo, ultimo_login_em, criado_em, atualizado_em
-             FROM usuarios
-             WHERE id = :id
-               AND empresa_id = :empresa_id
+            'SELECT
+                u.id,
+                u.empresa_id AS empresa_principal_id,
+                ue.empresa_id,
+                u.nome,
+                u.email,
+                u.telefone,
+                ue.nivel,
+                ue.ativo,
+                u.ativo AS usuario_ativo,
+                ue.principal,
+                u.ultimo_login_em,
+                u.criado_em,
+                u.atualizado_em
+             FROM usuarios u
+             INNER JOIN usuario_empresas ue ON ue.usuario_id = u.id
+             WHERE u.id = :id
+               AND ue.empresa_id = :empresa_id
              LIMIT 1'
         );
 
@@ -59,10 +82,24 @@ final class UserRepository
     public function findByCompany(int $empresaId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, empresa_id, nome, email, telefone, nivel, ativo, ultimo_login_em, criado_em, atualizado_em
-             FROM usuarios
-             WHERE empresa_id = :empresa_id
-             ORDER BY ativo DESC, nome ASC'
+            'SELECT
+                u.id,
+                u.empresa_id AS empresa_principal_id,
+                ue.empresa_id,
+                u.nome,
+                u.email,
+                u.telefone,
+                ue.nivel,
+                ue.ativo,
+                u.ativo AS usuario_ativo,
+                ue.principal,
+                u.ultimo_login_em,
+                u.criado_em,
+                u.atualizado_em
+             FROM usuario_empresas ue
+             INNER JOIN usuarios u ON u.id = ue.usuario_id
+             WHERE ue.empresa_id = :empresa_id
+             ORDER BY ue.ativo DESC, u.nome ASC'
         );
 
         $stmt->execute([
@@ -74,14 +111,17 @@ final class UserRepository
 
     public function emailExists(string $email, int $empresaId, ?int $ignoreUserId = null): bool
     {
+        return $this->emailExistsGlobally($email, $ignoreUserId);
+    }
+
+    public function emailExistsGlobally(string $email, ?int $ignoreUserId = null): bool
+    {
         $sql = 'SELECT COUNT(*) 
                 FROM usuarios 
-                WHERE email = :email 
-                  AND empresa_id = :empresa_id';
+                WHERE email = :email';
 
         $params = [
             ':email' => mb_strtolower(trim($email)),
-            ':empresa_id' => $empresaId,
         ];
 
         if ($ignoreUserId !== null) {
@@ -91,6 +131,23 @@ final class UserRepository
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
+
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    public function isLinkedToCompany(int $usuarioId, int $empresaId): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*)
+             FROM usuario_empresas
+             WHERE usuario_id = :usuario_id
+               AND empresa_id = :empresa_id'
+        );
+
+        $stmt->execute([
+            ':usuario_id' => $usuarioId,
+            ':empresa_id' => $empresaId,
+        ]);
 
         return (int)$stmt->fetchColumn() > 0;
     }
@@ -136,20 +193,28 @@ final class UserRepository
             'UPDATE usuarios
              SET nome = :nome,
                  email = :email,
-                 telefone = :telefone,
-                 nivel = :nivel,
-                 ativo = :ativo
+                 telefone = :telefone
              WHERE id = :id
-               AND empresa_id = :empresa_id
              LIMIT 1'
         );
 
         $stmt->execute([
             ':id' => $id,
-            ':empresa_id' => $empresaId,
             ':nome' => trim((string)$data['nome']),
             ':email' => mb_strtolower(trim((string)$data['email'])),
             ':telefone' => $data['telefone'] ?? null,
+        ]);
+
+        $this->db->prepare(
+            'UPDATE usuario_empresas
+             SET nivel = :nivel,
+                 ativo = :ativo
+             WHERE usuario_id = :usuario_id
+               AND empresa_id = :empresa_id
+             LIMIT 1'
+        )->execute([
+            ':usuario_id' => $id,
+            ':empresa_id' => $empresaId,
             ':nivel' => $data['nivel'],
             ':ativo' => (int)($data['ativo'] ?? 1),
         ]);
@@ -163,13 +228,11 @@ final class UserRepository
             'UPDATE usuarios
              SET senha_hash = :senha_hash
              WHERE id = :id
-               AND empresa_id = :empresa_id
              LIMIT 1'
         );
 
         $stmt->execute([
             ':id' => $id,
-            ':empresa_id' => $empresaId,
             ':senha_hash' => $senhaHash,
         ]);
 
@@ -179,9 +242,9 @@ final class UserRepository
     public function activate(int $id, int $empresaId): bool
     {
         $stmt = $this->db->prepare(
-            'UPDATE usuarios
+            'UPDATE usuario_empresas
              SET ativo = 1
-             WHERE id = :id
+             WHERE usuario_id = :id
                AND empresa_id = :empresa_id
              LIMIT 1'
         );
@@ -197,9 +260,9 @@ final class UserRepository
     public function deactivate(int $id, int $empresaId): bool
     {
         $stmt = $this->db->prepare(
-            'UPDATE usuarios
+            'UPDATE usuario_empresas
              SET ativo = 0
-             WHERE id = :id
+             WHERE usuario_id = :id
                AND empresa_id = :empresa_id
              LIMIT 1'
         );

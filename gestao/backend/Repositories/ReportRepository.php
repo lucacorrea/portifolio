@@ -153,7 +153,6 @@ final class ReportRepository
             FROM vendas v
             LEFT JOIN usuarios u
                    ON u.id = v.usuario_id
-                  AND u.empresa_id = v.empresa_id
             LEFT JOIN pagamentos p ON p.venda_id = v.id
             $where
               AND v.status <> 'cancelada'
@@ -208,7 +207,6 @@ final class ReportRepository
                   AND c.empresa_id = v.empresa_id
             LEFT JOIN usuarios u
                    ON u.id = v.usuario_id
-                  AND u.empresa_id = v.empresa_id
             LEFT JOIN pagamentos p ON p.venda_id = v.id
             $where
             ORDER BY v.criado_em DESC, v.id DESC

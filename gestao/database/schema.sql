@@ -3,6 +3,9 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 CREATE TABLE IF NOT EXISTS empresas (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    empresa_pai_id BIGINT UNSIGNED NULL,
+    tipo ENUM('matriz','loja') NOT NULL DEFAULT 'matriz',
+    codigo VARCHAR(50) NULL,
     nome VARCHAR(180) NOT NULL,
     nome_fantasia VARCHAR(180) NULL,
     cpf_cnpj VARCHAR(20) NULL,
@@ -13,7 +16,11 @@ CREATE TABLE IF NOT EXISTS empresas (
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    KEY idx_empresas_ativo (ativo)
+    KEY idx_empresas_ativo (ativo),
+    KEY idx_empresas_pai (empresa_pai_id),
+    KEY idx_empresas_pai_ativo (empresa_pai_id, ativo),
+    UNIQUE KEY uk_empresas_pai_codigo (empresa_pai_id, codigo),
+    CONSTRAINT fk_empresas_pai FOREIGN KEY (empresa_pai_id) REFERENCES empresas(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -48,6 +55,40 @@ CREATE TABLE IF NOT EXISTS login_auditoria (
     KEY idx_login_email (email),
     KEY idx_login_criado (criado_em),
     CONSTRAINT fk_login_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS usuario_empresas (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    usuario_id BIGINT UNSIGNED NOT NULL,
+    empresa_id BIGINT UNSIGNED NOT NULL,
+    nivel ENUM('admin','gerente','operador','estoquista','leitor') NOT NULL,
+    principal TINYINT(1) NOT NULL DEFAULT 0,
+    ativo TINYINT(1) NOT NULL DEFAULT 1,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_usuario_empresa (usuario_id, empresa_id),
+    KEY idx_usuario_empresas_usuario (usuario_id, ativo),
+    KEY idx_usuario_empresas_empresa (empresa_id, ativo),
+    CONSTRAINT fk_usuario_empresas_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_usuario_empresas_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS empresa_contexto_auditoria (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    usuario_id BIGINT UNSIGNED NOT NULL,
+    empresa_origem_id BIGINT UNSIGNED NULL,
+    empresa_destino_id BIGINT UNSIGNED NOT NULL,
+    acao ENUM('login','selecionar','trocar','criar_loja','editar_loja','ativar_loja','inativar_loja','vincular_usuario','remover_vinculo') NOT NULL,
+    ip VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_empresa_contexto_usuario (usuario_id, criado_em),
+    KEY idx_empresa_contexto_destino (empresa_destino_id, criado_em),
+    CONSTRAINT fk_empresa_contexto_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_empresa_contexto_origem FOREIGN KEY (empresa_origem_id) REFERENCES empresas(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_empresa_contexto_destino FOREIGN KEY (empresa_destino_id) REFERENCES empresas(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS categorias (

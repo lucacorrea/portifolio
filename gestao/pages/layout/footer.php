@@ -1,6 +1,8 @@
 <?php
 $prefix = $prefix ?? '../';
 $activeMenu = $activeMenu ?? '';
+$footerUser = \App\Security\Auth::user();
+$footerIsAdmin = ($footerUser['nivel'] ?? '') === 'admin';
 ?>
     </section>
     <nav class="bottom-nav" aria-label="Navegação principal">
@@ -19,7 +21,7 @@ $activeMenu = $activeMenu ?? '';
         <svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg>
         <span>Produtos</span>
       </a>
-      <a class="<?= $activeMenu === 'mais' ? 'active' : '' ?>" href="<?= $prefix ?>pages/mais.php">
+      <a class="<?= in_array($activeMenu, ['mais', 'lojas'], true) ? 'active' : '' ?>" href="<?= $prefix ?>pages/mais.php">
         <svg viewBox="0 0 24 24"><path d="M12 5v.01"/><path d="M12 12v.01"/><path d="M12 19v.01"/></svg>
         <span>Mais</span>
       </a>
@@ -35,6 +37,12 @@ $activeMenu = $activeMenu ?? '';
         <svg viewBox="0 0 24 24"><path d="M5 19V5"/><path d="M5 19h14"/><path d="M9 16v-5"/><path d="M13 16V8"/><path d="M17 16v-3"/></svg>
         <span>Relatórios</span>
       </a>
+      <?php if ($footerIsAdmin): ?>
+      <a class="side-nav-only <?= $activeMenu === 'lojas' ? 'active' : '' ?>" href="<?= $prefix ?>pages/lojas.php">
+        <svg viewBox="0 0 24 24"><path d="M4 10h16"/><path d="M5 10l1-5h12l1 5"/><path d="M6 10v9h12v-9"/><path d="M9 19v-5h6v5"/></svg>
+        <span>Lojas</span>
+      </a>
+      <?php endif; ?>
     </nav>
     <div class="modal-backdrop" id="modalBackdrop" hidden>
       <section class="modal-card" id="modalCard" role="dialog" aria-modal="true"></section>

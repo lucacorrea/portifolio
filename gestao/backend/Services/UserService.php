@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Repositories\UserRepository;
+use App\Repositories\UserCompanyRepository;
 use App\Security\Password;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 
 final class UserService
 {
@@ -38,18 +40,40 @@ final class UserService
         $this->validateNivel($nivel);
         $this->validateAtivo($ativo);
 
-        if ($this->users->emailExists($email, $empresaId)) {
-            throw new InvalidArgumentException('Este e-mail já está cadastrado para esta empresa.');
+        if ($this->users->emailExistsGlobally($email)) {
+            throw new InvalidArgumentException('Este e-mail já possui uma conta. Use a opção de vincular usuário existente.');
         }
 
-        return $this->users->create($empresaId, [
-            'nome' => $nome,
-            'email' => $email,
-            'telefone' => $telefone !== '' ? $telefone : null,
-            'senha_hash' => Password::hash($senha),
-            'nivel' => $nivel,
-            'ativo' => $ativo,
-        ]);
+        $db = $this->users->connection();
+        $memberships = new UserCompanyRepository($db);
+
+        $db->beginTransaction();
+        try {
+            $userId = $this->users->create($empresaId, [
+                'nome' => $nome,
+                'email' => $email,
+                'telefone' => $telefone !== '' ? $telefone : null,
+                'senha_hash' => Password::hash($senha),
+                'nivel' => $nivel,
+                'ativo' => 1,
+            ]);
+
+            $memberships->createMembership($userId, $empresaId, $nivel, true);
+
+            if ($ativo === 0) {
+                $memberships->deactivate($userId, $empresaId);
+            }
+
+            $db->commit();
+
+            return $userId;
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+
+            throw $e;
+        }
     }
 
     public function update(int $id, int $empresaId, array $data): bool
@@ -72,7 +96,7 @@ final class UserService
         $this->validateNivel($nivel);
         $this->validateAtivo($ativo);
 
-        if ($this->users->emailExists($email, $empresaId, $id)) {
+        if ($this->users->emailExistsGlobally($email, $id)) {
             throw new InvalidArgumentException('Este e-mail já está sendo usado por outro usuário.');
         }
 

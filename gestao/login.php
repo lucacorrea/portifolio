@@ -11,7 +11,8 @@ use App\Security\Auth;
 use App\Security\Csrf;
 
 if (Auth::check()) {
-  Response::redirect('index.php');
+  $currentUser = Auth::user();
+  Response::redirect(!empty($currentUser['company_selection_pending']) ? 'selecionar-loja.php' : 'index.php');
 }
 
 $request = new Request();
@@ -27,10 +28,14 @@ if ($request->isPost()) {
   if (!Csrf::validate((string)$request->post('csrf_token', ''))) {
     $error = 'Sessão expirada. Atualize a página e tente novamente.';
   } else {
-    [$ok, $message, $user] = Auth::attempt($email, $senha);
+    $result = Auth::attempt($email, $senha);
+    $ok = (bool)($result['success'] ?? false);
+    $message = (string)($result['message'] ?? 'Não foi possível concluir o login.');
 
-    if ($ok && $user) {
-      Auth::login($user);
+    if ($ok) {
+      if (!empty($result['requires_selection'])) {
+        Response::redirect('selecionar-loja.php');
+      }
 
       $safeNext = str_starts_with($next, '/') || str_contains($next, '://') ? 'index.php' : $next;
       Response::redirect($safeNext);

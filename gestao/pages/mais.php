@@ -7,6 +7,7 @@ require_once __DIR__ . '/../backend/bootstrap.php';
 use App\Security\Auth;
 
 Auth::requireLogin();
+$user = Auth::user();
 
 $pageId = 'mais';
 $pageTitle = 'Mais';
@@ -65,6 +66,15 @@ $menuItems = [
     ],
 ];
 
+if (($user['nivel'] ?? '') === 'admin') {
+    array_splice($menuItems, 6, 0, [[
+        'title' => 'Lojas',
+        'description' => 'Crie, configure e acesse suas empresas e filiais.',
+        'href' => 'lojas.php',
+        'icon' => 'store',
+    ]]);
+}
+
 function moreMenuIcon(string $icon): string
 {
     return match ($icon) {
@@ -74,6 +84,7 @@ function moreMenuIcon(string $icon): string
         'users' => '<path d="M16 11a4 4 0 1 0-8 0"/><path d="M4 20a8 8 0 0 1 16 0"/>',
         'wallet' => '<path d="M5 8h14v10H5z"/><path d="M7 11h10"/><path d="M8 15h4"/>',
         'box' => '<path d="m4 8 8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/>',
+        'store' => '<path d="M4 10h16"/><path d="M5 10l1-5h12l1 5"/><path d="M6 10v9h12v-9"/><path d="M9 19v-5h6v5"/><path d="M8 10v2"/><path d="M12 10v2"/><path d="M16 10v2"/>',
         'settings' => '<path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M4 12h2"/><path d="M18 12h2"/><path d="M12 4v2"/><path d="M12 18v2"/>',
         default => '<path d="M4 11.5 12 5l8 6.5V20H4z"/>',
     };
