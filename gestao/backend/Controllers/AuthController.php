@@ -17,18 +17,21 @@ final class AuthController
             Response::json(['success' => false, 'message' => 'Sessão expirada.'], 419);
         }
 
-        [$ok, $message, $user] = Auth::attempt(
+        $result = Auth::attempt(
             (string)$request->post('email', ''),
             (string)$request->post('senha', '')
         );
 
-        if (!$ok || !$user) {
-            Response::json(['success' => false, 'message' => $message], 401);
+        if (empty($result['success'])) {
+            Response::json(['success' => false, 'message' => (string)$result['message']], 401);
         }
 
-        Auth::login($user);
-
-        Response::json(['success' => true, 'message' => $message]);
+        Response::json([
+            'success' => true,
+            'message' => (string)$result['message'],
+            'requires_selection' => (bool)($result['requires_selection'] ?? false),
+            'companies' => $result['companies'] ?? [],
+        ]);
     }
 
     public function logout(): void

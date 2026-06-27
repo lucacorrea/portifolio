@@ -5,8 +5,21 @@ declare(strict_types=1);
 require_once __DIR__ . '/../backend/bootstrap.php';
 
 use App\Security\Auth;
+use App\Repositories\StoreRepository;
+use App\Repositories\UserCompanyRepository;
+use App\Services\PlatformAuthorizationService;
+use App\Services\StoreAccessService;
 
 Auth::requireLogin();
+$user = Auth::user();
+$platformAuth = new PlatformAuthorizationService();
+$storeAccess = new StoreAccessService(new UserCompanyRepository(), new StoreRepository());
+$isPlatformOwner = $platformAuth->isPlatformOwner((int)($user['id'] ?? 0));
+$canManageFiliais = false;
+
+if ($user) {
+    $canManageFiliais = $storeAccess->canCreateFilial((int)$user['id'], (int)($user['empresa_id'] ?? 0));
+}
 
 $pageId = 'mais';
 $pageTitle = 'Mais';
@@ -65,6 +78,24 @@ $menuItems = [
     ],
 ];
 
+if ($isPlatformOwner) {
+    array_splice($menuItems, 6, 0, [[
+        'title' => 'Matrizes',
+        'description' => 'Cadastre e gerencie as empresas principais da plataforma.',
+        'href' => 'matrizes.php',
+        'icon' => 'building',
+    ]]);
+}
+
+if ($canManageFiliais) {
+    array_splice($menuItems, 6, 0, [[
+        'title' => 'Filiais',
+        'description' => 'Crie, configure e acesse as filiais da matriz ativa.',
+        'href' => 'lojas.php',
+        'icon' => 'store',
+    ]]);
+}
+
 function moreMenuIcon(string $icon): string
 {
     return match ($icon) {
@@ -74,6 +105,8 @@ function moreMenuIcon(string $icon): string
         'users' => '<path d="M16 11a4 4 0 1 0-8 0"/><path d="M4 20a8 8 0 0 1 16 0"/>',
         'wallet' => '<path d="M5 8h14v10H5z"/><path d="M7 11h10"/><path d="M8 15h4"/>',
         'box' => '<path d="m4 8 8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/>',
+        'building' => '<path d="M4 21V5a2 2 0 0 1 2-2h9v18"/><path d="M15 8h3a2 2 0 0 1 2 2v11"/><path d="M8 7h3"/><path d="M8 11h3"/><path d="M8 15h3"/><path d="M3 21h18"/>',
+        'store' => '<path d="M4 10h16"/><path d="M5 10l1-5h12l1 5"/><path d="M6 10v9h12v-9"/><path d="M9 19v-5h6v5"/><path d="M8 10v2"/><path d="M12 10v2"/><path d="M16 10v2"/>',
         'settings' => '<path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M4 12h2"/><path d="M18 12h2"/><path d="M12 4v2"/><path d="M12 18v2"/>',
         default => '<path d="M4 11.5 12 5l8 6.5V20H4z"/>',
     };

@@ -4,10 +4,28 @@ declare(strict_types=1);
 require_once __DIR__ . '/backend/bootstrap.php';
 
 use App\Security\Auth;
+use App\Repositories\UserCompanyRepository;
+use App\Services\CompanyContextService;
 use App\Services\DashboardService;
 
 Auth::requireLogin();
 $user = Auth::user();
+
+$requestedPwaCompanyId = filter_input(INPUT_GET, 'empresa', FILTER_VALIDATE_INT);
+if (($requestedPwaCompanyId ?? 0) > 0 && (int)($user['empresa_id'] ?? 0) !== (int)$requestedPwaCompanyId) {
+  try {
+    $memberships = new UserCompanyRepository();
+    $membership = $memberships->findMembership((int)$user['id'], (int)$requestedPwaCompanyId);
+
+    if ($membership && (string)$membership['nivel'] === 'admin') {
+      (new CompanyContextService($memberships))->activate((int)$user['id'], (int)$requestedPwaCompanyId, 'trocar');
+      $user = Auth::user();
+    }
+  } catch (Throwable $e) {
+    log_app_exception($e);
+  }
+}
+
 $empresaId = (int)($user['empresa_id'] ?? 0);
 $dashboardService = new DashboardService();
 function dashboardMoney(mixed $value): string

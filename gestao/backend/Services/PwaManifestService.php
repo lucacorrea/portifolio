@@ -40,9 +40,10 @@ final class PwaManifestService
         }
 
         return [
+            'id' => './app/empresa/' . $empresaId,
             'name' => $appName,
             'short_name' => $shortName,
-            'start_url' => './index.php?source=pwa',
+            'start_url' => './index.php?source=pwa&empresa=' . $empresaId,
             'scope' => './',
             'display' => 'standalone',
             'orientation' => 'portrait',

@@ -78,7 +78,6 @@ final class SaleRepository
                   AND c.empresa_id = v.empresa_id
             LEFT JOIN usuarios u
                    ON u.id = v.usuario_id
-                  AND u.empresa_id = v.empresa_id
             WHERE {$where}
         ");
 
@@ -187,7 +186,6 @@ final class SaleRepository
                   AND c.empresa_id = v.empresa_id
             LEFT JOIN usuarios u
                    ON u.id = v.usuario_id
-                  AND u.empresa_id = v.empresa_id
             LEFT JOIN cliente_contas cc
                    ON cc.venda_id = v.id
                   AND cc.empresa_id = v.empresa_id
@@ -268,7 +266,6 @@ final class SaleRepository
                   AND c.empresa_id = v.empresa_id
             LEFT JOIN usuarios u
                    ON u.id = v.usuario_id
-                  AND u.empresa_id = v.empresa_id
             WHERE v.empresa_id = :empresa_id
               AND v.id = :venda_id
             LIMIT 1
@@ -558,7 +555,6 @@ final class SaleRepository
              FROM vendas v
              LEFT JOIN usuarios u
                     ON u.id = v.usuario_id
-                   AND u.empresa_id = v.empresa_id
              LEFT JOIN clientes c
                     ON c.id = v.cliente_id
                    AND c.empresa_id = v.empresa_id
