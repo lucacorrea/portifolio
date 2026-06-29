@@ -193,7 +193,6 @@ class CaixaController extends BaseController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $caixaId = $_POST['caixa_id'];
-            $valorInformado = $_POST['valor_fechamento'] ?? 0;
             $justificativa = $_POST['justificativa'] ?? '';
             $breakdownInformed = $_POST['breakdown'] ?? [];
 
@@ -207,37 +206,53 @@ class CaixaController extends BaseController {
 
             $detailed = $cashierModel->getDetailedSummary($caixaId);
             $resumoFinal = [];
-            $totalInformado = 0;
+            $totalCalculado = 0;
+            $totalInformadoPagamentos = 0;
+            $temDivergencia = false;
+            $metodos = ['A PRAZO', 'CARTAO', 'DINHEIRO', 'PIX'];
 
-            foreach ($detailed['breakdown'] as $metodo => $calculado) {
-                $informado = (float)($breakdownInformed[$metodo] ?? 0);
+            foreach ($metodos as $metodo) {
+                $calculado = (float)($detailed['breakdown'][$metodo] ?? 0);
+                $informado = array_key_exists($metodo, $breakdownInformed)
+                    ? (float)str_replace(',', '.', (string)$breakdownInformed[$metodo])
+                    : $calculado;
                 $diferenca = $informado - $calculado;
                 $resumoFinal[$metodo] = [
                     'calculado' => $calculado,
                     'informado' => $informado,
                     'diferenca' => $diferenca
                 ];
-                $totalInformado += $informado;
+                $totalCalculado += $calculado;
+                $totalInformadoPagamentos += $informado;
+
+                if (abs($diferenca) >= 0.005) {
+                    $temDivergencia = true;
+                }
             }
 
-            // Total informado deve bater com o que foi digitado no "Valor Físico" ou ser usado o acumulado
-            // Se o usuário mandou o breakdown, confiamos nele para a soma total também
-            $totalSistema = $caixa['valor_abertura'] + $detailed['saldo']; // Saldo inclui suprimento/sangria
-            $diferencaTotal = $totalInformado - $totalSistema;
+            // Pagamentos conferidos ficam no resumo; valor_fechamento guarda o saldo final da gaveta.
+            $dinheiroInformado = $resumoFinal['DINHEIRO']['informado'] ?? 0;
+            $saldoFinalSistema = (float)$caixa['valor_abertura'] + (float)$detailed['saldo'];
+            $saldoFinalInformado = (float)$caixa['valor_abertura'] + $dinheiroInformado + (float)$detailed['suprimento'] - (float)$detailed['sangria'];
+            $diferencaPagamentos = $totalInformadoPagamentos - $totalCalculado;
+            $diferencaGaveta = $saldoFinalInformado - $saldoFinalSistema;
 
             $cashierModel->update($caixaId, [
-                'valor_fechamento' => $totalInformado,
+                'valor_fechamento' => $saldoFinalInformado,
                 'status' => 'fechado',
                 'data_fechamento' => date('Y-m-d H:i:s'),
                 'observacao' => $justificativa,
                 'resumo_fechamento' => json_encode($resumoFinal)
             ]);
 
-            if ($diferencaTotal != 0) {
+            if ($temDivergencia || abs($diferencaPagamentos) >= 0.005 || abs($diferencaGaveta) >= 0.005) {
                 $this->logAction('divergencia_caixa', 'caixas', $caixaId, null, [
-                    'sistema' => $totalSistema,
-                    'informado' => $totalInformado,
-                    'diferenca' => $diferencaTotal,
+                    'total_pagamentos_sistema' => $totalCalculado,
+                    'total_pagamentos_informado' => $totalInformadoPagamentos,
+                    'diferenca_pagamentos' => $diferencaPagamentos,
+                    'saldo_gaveta_sistema' => $saldoFinalSistema,
+                    'saldo_gaveta_informado' => $saldoFinalInformado,
+                    'diferenca_gaveta' => $diferencaGaveta,
                     'justificativa' => $justificativa,
                     'detalhes' => $resumoFinal
                 ]);

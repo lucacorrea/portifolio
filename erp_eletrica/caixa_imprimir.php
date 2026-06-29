@@ -25,9 +25,50 @@ $isFechado = $caixa['status'] === 'fechado';
 $resumoDeth = !empty($caixa['resumo_fechamento']) ? json_decode($caixa['resumo_fechamento'], true) : null;
 
 // Totais para o rodapé da nota
-$totalSistema = $caixa['valor_abertura'] + ($summary['saldo'] ?? 0);
-$totalInformado = $caixa['valor_fechamento'] ?? 0;
-$diferencaTotal = $totalInformado - $totalSistema;
+if (!function_exists('caixa_fmt_moeda')) {
+    function caixa_fmt_moeda($valor) {
+        return 'R$' . number_format((float)$valor, 2, ',', '.');
+    }
+}
+
+$metodosObrigatorios = ['A PRAZO', 'CARTAO', 'DINHEIRO', 'PIX'];
+$breakdownParaMostrar = [];
+$totalCalculadoPagamentos = 0;
+$totalInformadoPagamentos = 0;
+$divergencias = [];
+
+foreach ($metodosObrigatorios as $metodo) {
+    $calc = (float)($summary['breakdown'][$metodo] ?? 0);
+    $inf = $calc;
+
+    if (is_array($resumoDeth) && isset($resumoDeth[$metodo]) && is_array($resumoDeth[$metodo])) {
+        $calc = (float)($resumoDeth[$metodo]['calculado'] ?? $calc);
+        $inf = (float)($resumoDeth[$metodo]['informado'] ?? $calc);
+    }
+
+    $diff = $inf - $calc;
+    $breakdownParaMostrar[$metodo] = [
+        'calculado' => $calc,
+        'informado' => $inf,
+        'diferenca' => $diff
+    ];
+
+    $totalCalculadoPagamentos += $calc;
+    $totalInformadoPagamentos += $inf;
+
+    if (abs($diff) >= 0.005) {
+        $divergencias[] = [
+            'metodo' => $metodo,
+            'diferenca' => $diff
+        ];
+    }
+}
+
+$dinheiroInformado = $breakdownParaMostrar['DINHEIRO']['informado'] ?? (float)($summary['breakdown']['DINHEIRO'] ?? 0);
+$saldoFinalSistema = (float)$caixa['valor_abertura'] + (float)($summary['saldo'] ?? 0);
+$saldoFinalInformado = (float)$caixa['valor_abertura'] + $dinheiroInformado + (float)($summary['suprimento'] ?? 0) - (float)($summary['sangria'] ?? 0);
+$diferencaPagamentos = $totalInformadoPagamentos - $totalCalculadoPagamentos;
+$diferencaGaveta = $saldoFinalInformado - $saldoFinalSistema;
 
 ?>
 <!DOCTYPE html>
@@ -57,6 +98,18 @@ $diferencaTotal = $totalInformado - $totalSistema;
         .fs-small { font-size: 10px; }
         .fs-large { font-size: 13px; }
         .col-3 { display: inline-block; width: 32%; }
+        .payment-grid {
+            display: grid;
+            grid-template-columns: 1fr 23mm 23mm;
+            gap: 2mm;
+            align-items: baseline;
+        }
+        .payment-grid span:nth-child(2),
+        .payment-grid span:nth-child(3) {
+            text-align: right;
+            white-space: nowrap;
+        }
+        .mt-1 { margin-top: 3px; }
         @media print {
             .no-print { display: none; }
         }
@@ -84,80 +137,79 @@ $diferencaTotal = $totalInformado - $totalSistema;
     <div class="hr" style="border-top: 2px solid #000;"></div>
 
     <div class="fw-bold">RESUMO VENDAS</div>
-    <div class="flex fw-bold">
-        <span>FORMA PAGTO</span>
-        <span>VALOR-R$</span>
+    <div class="payment-grid fw-bold">
+        <span>FORMA</span>
+        <span>FEITO</span>
+        <span>CONF.</span>
     </div>
 
     <div class="hr"></div>
 
-    <!-- We will build the breakdown to guarantee all methods are shown -->
-    <?php 
-    $metodosObrigatorios = ['A PRAZO', 'CARTAO', 'DINHEIRO', 'PIX'];
-    $breakdownParaMostrar = [];
-    
-    foreach ($metodosObrigatorios as $metodo) {
-        if ($resumoDeth && isset($resumoDeth[$metodo])) {
-            $breakdownParaMostrar[$metodo] = $resumoDeth[$metodo];
-        } else {
-            $calc = $summary['breakdown'][$metodo] ?? 0;
-            // Se o caixa tá fechado mas não tem no resumo_fechamento, informamos o mesmo valor ou 0? 
-            // Se não tem no resumo, foi fechado antes, ou o informado foi 0.
-            // Para manter igual ao "zerado", deixamos informado = 0.
-            $inf = 0; 
-            if (!$isFechado) {
-                // Se estiver aberto ainda mostrando uma parcial, mostramos informado = calculado
-                $inf = $calc;
-            }
-            $breakdownParaMostrar[$metodo] = [
-                'calculado' => $calc,
-                'informado' => $inf,
-                'diferenca' => $inf - $calc
-            ];
-        }
-    }
-    ?>
-
     <?php foreach ($breakdownParaMostrar as $metodo => $vals): ?>
-    <div class="fw-bold fs-small mt-1"><?= $metodo ?></div>
-    <div class="flex fw-bold" style="padding-left: 20mm;">
-        <span style="width: 33%; text-align: right;">R$<?= number_format($vals['calculado'], 2, ',', '.') ?></span>
-        <span style="width: 33%; text-align: right;">R$<?= number_format($vals['informado'], 2, ',', '.') ?></span>
-        <span style="width: 33%; text-align: right;">R$<?= number_format($vals['diferenca'], 2, ',', '.') ?></span>
+    <div class="payment-grid fw-bold fs-small mt-1">
+        <span><?= $metodo ?></span>
+        <span><?= caixa_fmt_moeda($vals['calculado']) ?></span>
+        <span><?= caixa_fmt_moeda($vals['informado']) ?></span>
     </div>
     <?php endforeach; ?>
 
 
     <div class="hr"></div>
 
-    <div class="flex fw-bold">
+    <div class="payment-grid fw-bold">
         <span>TOTAIS:</span>
-        <div style="display: flex; gap: 8px; justify-content: flex-end; width: 70%;">
-            <span style="width: 33%; text-align: right;">R$<?= number_format($summary['total_vendas'], 2, ',', '.') ?></span>
-            <span style="width: 33%; text-align: right;">R$<?= number_format($totalInformado - $caixa['valor_abertura'] - ($summary['suprimento'] ?? 0) + ($summary['sangria'] ?? 0), 2, ',', '.') ?></span>
-            <span style="width: 33%; text-align: right;">R$<?= number_format($diferencaTotal, 2, ',', '.') ?></span>
-        </div>
+        <span><?= caixa_fmt_moeda($totalCalculadoPagamentos) ?></span>
+        <span><?= caixa_fmt_moeda($totalInformadoPagamentos) ?></span>
     </div>
+
+    <div class="hr"></div>
+    <div class="fw-bold">CONFERENCIA</div>
+    <?php if (empty($divergencias)): ?>
+        <div class="fw-bold fs-small">OK - valores conferidos batem com o sistema.</div>
+    <?php else: ?>
+        <?php foreach ($divergencias as $div): ?>
+            <div class="fw-bold fs-small">
+                <?= $div['metodo'] ?>:
+                <?= $div['diferenca'] > 0 ? 'SOBRA' : 'FALTA' ?>
+                <?= caixa_fmt_moeda(abs($div['diferenca'])) ?>
+            </div>
+        <?php endforeach; ?>
+        <div class="fs-small">
+            Total pagamentos:
+            <?php if (abs($diferencaPagamentos) < 0.005): ?>
+                divergencias compensadas
+            <?php else: ?>
+                <?= $diferencaPagamentos > 0 ? 'SOBRA' : 'FALTA' ?>
+                <?= caixa_fmt_moeda(abs($diferencaPagamentos)) ?>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 
     <div class="hr"></div>
     <div class="fw-bold mb-1">TOTAIS</div>
     
     <div class="flex">
-        <span class="fw-bold">DINHEIRO</span>
-        <span class="fw-bold">R$<?= number_format($summary['breakdown']['DINHEIRO'] ?? 0, 2, ',', '.') ?></span>
+        <span class="fw-bold">DINHEIRO CONF.</span>
+        <span class="fw-bold"><?= caixa_fmt_moeda($dinheiroInformado) ?></span>
     </div>
     <div class="flex">
         <span class="fw-bold">SUPRIMENTO</span>
-        <span class="fw-bold">R$<?= number_format($summary['suprimento'] ?? 0, 2, ',', '.') ?></span>
+        <span class="fw-bold"><?= caixa_fmt_moeda($summary['suprimento'] ?? 0) ?></span>
     </div>
     <div class="flex">
         <span class="fw-bold">SANGRIA</span>
-        <span class="fw-bold">R$<?= number_format($summary['sangria'] ?? 0, 2, ',', '.') ?></span>
+        <span class="fw-bold"><?= caixa_fmt_moeda($summary['sangria'] ?? 0) ?></span>
     </div>
     <div class="flex">
-        <span class="fw-bold">SALDO</span>
-        <span class="fw-bold">R$<?= number_format($caixa['valor_abertura'] + $summary['saldo'], 2, ',', '.') ?></span>
+        <span class="fw-bold">SALDO GAVETA</span>
+        <span class="fw-bold"><?= caixa_fmt_moeda($saldoFinalInformado) ?></span>
     </div>
+    <?php if (abs($diferencaGaveta) >= 0.005): ?>
+    <div class="flex fs-small">
+        <span>Esperado sistema</span>
+        <span><?= caixa_fmt_moeda($saldoFinalSistema) ?></span>
+    </div>
+    <?php endif; ?>
 
     <div class="hr"></div>
     <div class="fw-bold">RECEBIMENTOS</div>
