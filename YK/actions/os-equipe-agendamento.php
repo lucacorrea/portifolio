@@ -9,7 +9,9 @@ require __DIR__ . '/os-action-common.php';
 
 os_require_post_request();
 
-$hasTeam = trim((string) ($_POST['funcionario_principal_id'] ?? '')) !== '' || trim((string) ($_POST['funcionario_apoio_id'] ?? '')) !== '';
+$hasTeam = isset($_POST['team_members'])
+    || trim((string) ($_POST['funcionario_principal_id'] ?? '')) !== ''
+    || trim((string) ($_POST['funcionario_apoio_id'] ?? '')) !== '';
 $hasSchedule = trim((string) ($_POST['agendado_inicio'] ?? '')) !== '' || trim((string) ($_POST['agendado_fim'] ?? '')) !== '';
 $permission = $hasTeam && !$hasSchedule ? 'os.alterar_equipe' : 'os.agendar';
 [$application, $session] = os_action_context($permission);
@@ -21,7 +23,9 @@ try {
     $id = os_posted_positive_int('id');
     $service = $application->serviceOrderManagement();
     if ($hasTeam && $hasSchedule) {
-        $service->assignTeamAndSchedule($id, ServiceOrderTeamData::fromArray($_POST), ServiceOrderScheduleData::fromArray($_POST));
+        $schedule = ServiceOrderScheduleData::fromArray($_POST);
+        if ($schedule === null) throw new InvalidArgumentException('Informe o agendamento.');
+        $service->assignTeamAndSchedule($id, ServiceOrderTeamData::fromArray($_POST), $schedule);
     } elseif ($hasTeam) {
         $service->reassignTeam($id, ServiceOrderTeamData::fromArray($_POST));
     } else {

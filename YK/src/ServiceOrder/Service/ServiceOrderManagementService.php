@@ -7,9 +7,11 @@ namespace App\ServiceOrder\Service;
 use App\Catalog\Repository\ProductRepository;
 use App\Catalog\Repository\ServiceRepository;
 use App\CRM\Repository\ClientRepository;
+use App\Sales\Repository\BudgetRepository;
 use App\ServiceOrder\DTO\ServiceOrderFormData;
 use App\ServiceOrder\DTO\ServiceOrderScheduleData;
 use App\ServiceOrder\DTO\ServiceOrderTeamData;
+use App\ServiceOrder\DTO\ServiceOrderTeamMemberData;
 use App\ServiceOrder\Entity\ServiceOrder;
 use App\ServiceOrder\Entity\ServiceOrderItem;
 use App\ServiceOrder\Repository\ServiceOrderRepository;
@@ -41,13 +43,21 @@ final class ServiceOrderManagementService
         private readonly EmployeeRepository $employees,
         private readonly ClientRepository $clients,
         private readonly ServiceRepository $services,
-        private readonly ProductRepository $products
+        private readonly ProductRepository $products,
+        private readonly ?BudgetRepository $budgets = null
     ) {
     }
 
     /** @return ServiceOrder[] */
     public function listOrders(array $filters = []): array { return $this->orders->findAll($filters); }
     public function orderSummary(): array { return $this->orders->summary(); }
+
+    /** @return array<int,array<string,mixed>> */
+    public function availableApprovedBudgets(): array
+    {
+        if ($this->budgets === null) return [];
+        return $this->budgets->availableApprovedForServiceOrder();
+    }
 
     public function getOrder(int $id): ServiceOrder
     {
@@ -63,18 +73,99 @@ final class ServiceOrderManagementService
         return $this->orders->findItems($id);
     }
 
+    public function getOrderTeamMembers(int $id): array
+    {
+        $this->getOrder($id);
+        return $this->orders->findTeamMembers($id);
+    }
+
+    /** @param ServiceOrder[] $orders @return array<int,array> */
+    public function teamMembersForOrders(array $orders): array
+    {
+        return $this->orders->findTeamMembersForOrders(
+            array_map(static fn(ServiceOrder $order): int => $order->id(), $orders)
+        );
+    }
+
     public function createOrder(ServiceOrderFormData $data, ?ServiceOrderTeamData $team, ?ServiceOrderScheduleData $schedule): ServiceOrder
     {
         return $this->transactional(function () use ($data, $team, $schedule): ServiceOrder {
             $this->validateReferences($data);
             $this->validateStateRequirements($data->status(), $team, $schedule);
-            if ($team !== null) $this->validateEmployees($team);
-            if ($team !== null && $schedule !== null) $this->validateConflicts(null, $team, $schedule);
+            if ($team !== null && $team->hasMembers()) $this->validateEmployees($team);
+            if ($team !== null && $team->hasMembers() && $schedule !== null) $this->validateConflicts(null, $team, $schedule);
 
             return $this->orders->create(
                 $data,
                 $team?->primaryEmployeeId(),
-                $team?->supportEmployeeId(),
+                $team?->firstSupportEmployeeId(),
+                $schedule?->start(),
+                $schedule?->end()
+            );
+        });
+    }
+
+    public function createOrderFromApprovedBudget(int $budgetId, ?ServiceOrderTeamData $team, ?ServiceOrderScheduleData $schedule, bool $draft): ServiceOrder
+    {
+        if ($this->budgets === null) {
+            throw new InvalidArgumentException('Integração de orçamento indisponível.');
+        }
+
+        return $this->transactional(function () use ($budgetId, $team, $schedule, $draft): ServiceOrder {
+            $budget = $this->budgets->lockById($budgetId);
+            if ($budget === null) {
+                throw new InvalidArgumentException('Orçamento não encontrado.');
+            }
+            if ($budget->status() !== 'aprovado') {
+                throw new InvalidArgumentException('Somente orçamento aprovado pode gerar OS.');
+            }
+            if ($this->orders->hasOperationalOrderForBudget($budgetId)) {
+                throw new InvalidArgumentException('Este orçamento já possui uma OS operacional vinculada.');
+            }
+
+            $budgetItems = $this->budgets->findItems($budgetId);
+            if ($budgetItems === []) {
+                throw new InvalidArgumentException('Orçamento aprovado sem itens não pode gerar OS.');
+            }
+
+            $status = $draft ? 'rascunho' : ($schedule === null ? 'aguardando_agendamento' : 'agendada');
+            $items = [];
+            foreach ($budgetItems as $item) {
+                $items[] = [
+                    'type' => $item->type(),
+                    'origin' => 'orcamento',
+                    'reference_id' => $item->referenceId(),
+                    'budget_item_id' => $item->id(),
+                    'description' => $item->description(),
+                    'unit' => $item->unit(),
+                    'quantity' => $item->quantity(),
+                    'unit_price' => $item->unitPrice(),
+                    'discount' => $item->discount(),
+                ];
+            }
+
+            $data = ServiceOrderFormData::fromArray([
+                'client_id' => $budget->clientId(),
+                'budget_id' => $budget->id(),
+                'status' => $status,
+                'priority' => 'media',
+                'discount' => $budget->discount(),
+                'increase' => $budget->increase(),
+                'items' => $items,
+            ]);
+
+            $this->validateStateRequirements($data->status(), $team, $schedule);
+            if ($team !== null && $team->hasMembers()) {
+                $this->validateEmployees($team);
+            }
+            if ($team !== null && $team->hasMembers() && $schedule !== null) {
+                $this->validateConflicts(null, $team, $schedule);
+            }
+
+            return $this->orders->create(
+                $data,
+                $team?->primaryEmployeeId(),
+                $team?->firstSupportEmployeeId(),
                 $schedule?->start(),
                 $schedule?->end()
             );
@@ -94,9 +185,9 @@ final class ServiceOrderManagementService
     {
         $this->transactional(function () use ($orderId, $data): void {
             $order = $this->requireLockedOrder($orderId);
-            $this->validateEmployees($data);
+            if ($data->hasMembers()) $this->validateEmployees($data);
             $this->validateConflictIfScheduled($order, $data);
-            $this->orders->updateTeam($orderId, $data->primaryEmployeeId(), $data->supportEmployeeId());
+            $this->orders->replaceTeam($orderId, $data);
         });
     }
 
@@ -124,7 +215,7 @@ final class ServiceOrderManagementService
             $this->requireLockedOrder($orderId);
             $this->validateEmployees($team);
             $this->validateConflicts($orderId, $team, $schedule);
-            $this->orders->updateTeam($orderId, $team->primaryEmployeeId(), $team->supportEmployeeId());
+            $this->orders->replaceTeam($orderId, $team);
             $this->orders->updateSchedule($orderId, $schedule->start(), $schedule->end());
         });
     }
@@ -197,14 +288,17 @@ final class ServiceOrderManagementService
 
     private function validateEmployees(ServiceOrderTeamData $team): void
     {
-        if ($this->employees->findById($team->primaryEmployeeId()) === null) throw new InvalidArgumentException('Funcionário principal não encontrado.');
-        if ($this->employees->findById($team->supportEmployeeId()) === null) throw new InvalidArgumentException('Funcionário de apoio não encontrado.');
+        foreach ($team->members() as $member) {
+            if ($this->employees->findById($member->employeeId()) === null) {
+                throw new InvalidArgumentException('Funcionário da equipe não encontrado.');
+            }
+        }
     }
 
     private function validateStateRequirements(string $status, ?ServiceOrderTeamData $team, ?ServiceOrderScheduleData $schedule): void
     {
-        if (in_array($status, self::STATUS_REQUIRES_TEAM_AND_SCHEDULE, true) && ($team === null || $schedule === null)) {
-            throw new InvalidArgumentException('Informe equipe completa e agendamento para esse status.');
+        if (in_array($status, self::STATUS_REQUIRES_TEAM_AND_SCHEDULE, true) && ($team === null || !$team->hasMembers() || $team->primaryEmployeeId() === null || $schedule === null)) {
+            throw new InvalidArgumentException('Informe equipe com responsável principal e agendamento para esse status.');
         }
     }
 
@@ -227,7 +321,7 @@ final class ServiceOrderManagementService
 
     private function validateConflicts(?int $orderId, ServiceOrderTeamData $team, ServiceOrderScheduleData $schedule): void
     {
-        $conflicts = $this->orders->employeeConflictNames([$team->primaryEmployeeId(), $team->supportEmployeeId()], $schedule->start(), $schedule->end(), $orderId);
+        $conflicts = $this->orders->employeeConflictNames($team->employeeIds(), $schedule->start(), $schedule->end(), $orderId);
         if ($conflicts === []) return;
         throw new InvalidArgumentException(
             count($conflicts) === 1
@@ -238,11 +332,26 @@ final class ServiceOrderManagementService
 
     private function teamFromOrder(ServiceOrder $order): ServiceOrderTeamData
     {
-        return new ServiceOrderTeamData((int) $order->primaryEmployeeId(), (int) $order->supportEmployeeId());
+        $members = [];
+        foreach ($this->orders->findTeamMembers($order->id()) as $member) {
+            $members[] = new ServiceOrderTeamMemberData($member->employeeId(), $member->role(), $member->primary());
+        }
+
+        if ($members !== []) {
+            return new ServiceOrderTeamData($members);
+        }
+
+        return ServiceOrderTeamData::fromArray([
+            'funcionario_principal_id' => $order->primaryEmployeeId(),
+            'funcionario_apoio_id' => $order->supportEmployeeId(),
+        ]);
     }
 
     private function validateTeamForScheduledOrder(ServiceOrderTeamData $team): void
     {
+        if (!$team->hasMembers() || $team->primaryEmployeeId() === null) {
+            throw new InvalidArgumentException('Informe pelo menos um funcionário e um responsável principal para agendar.');
+        }
         $this->validateEmployees($team);
     }
 

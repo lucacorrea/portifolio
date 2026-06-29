@@ -6,8 +6,10 @@ namespace App\ServiceOrder\Repository;
 
 use App\ServiceOrder\DTO\ServiceOrderFormData;
 use App\ServiceOrder\DTO\ServiceOrderItemData;
+use App\ServiceOrder\DTO\ServiceOrderTeamData;
 use App\ServiceOrder\Entity\ServiceOrder;
 use App\ServiceOrder\Entity\ServiceOrderItem;
+use App\ServiceOrder\Entity\ServiceOrderTeamMember;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use PDO;
@@ -60,6 +62,24 @@ final class ServiceOrderRepository
         return $orders[0] ?? null;
     }
 
+    public function hasOperationalOrderForBudget(int $budgetId): bool
+    {
+        $this->assertPositiveId($budgetId);
+        $statement = $this->connection->prepare(
+            "SELECT id
+               FROM ordens_servico
+              WHERE orcamento_id = :budget_id
+                AND (
+                    status <> 'cancelada'
+                    OR (status = 'cancelada' AND orcamento_liberado = 0)
+                )
+              LIMIT 1
+              FOR UPDATE"
+        );
+        $statement->execute(['budget_id' => $budgetId]);
+        return $statement->fetch() !== false;
+    }
+
     public function lockById(int $id): ?ServiceOrder
     {
         $this->assertPositiveId($id);
@@ -72,7 +92,7 @@ final class ServiceOrderRepository
     {
         $this->assertPositiveId($orderId);
         $statement = $this->connection->prepare(
-            'SELECT id, ordem_servico_id, tipo, referencia_id, descricao, unidade, quantidade,
+            'SELECT id, ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade,
                     valor_unitario, desconto, subtotal, ordem
                FROM ordem_servico_itens
               WHERE ordem_servico_id = :id
@@ -97,7 +117,7 @@ final class ServiceOrderRepository
         }
 
         $statement = $this->connection->prepare(
-            'SELECT id, ordem_servico_id, tipo, referencia_id, descricao, unidade, quantidade,
+            'SELECT id, ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade,
                     valor_unitario, desconto, subtotal, ordem
                FROM ordem_servico_itens
               WHERE ordem_servico_id IN (' . implode(', ', $placeholders) . ')
@@ -142,6 +162,12 @@ final class ServiceOrderRepository
         $this->connection->prepare('UPDATE ordens_servico SET numero = :number WHERE id = :id')
             ->execute(['number' => sprintf('OS-%06d', $id), 'id' => $id]);
         $this->replaceItems($id, $data->items());
+        if ($primaryEmployeeId !== null || $supportEmployeeId !== null) {
+            $this->replaceTeam($id, ServiceOrderTeamData::fromArray([
+                'funcionario_principal_id' => $primaryEmployeeId,
+                'funcionario_apoio_id' => $supportEmployeeId,
+            ]));
+        }
 
         $order = $this->findById($id);
         if ($order === null) throw new InvalidArgumentException('OS não encontrada após cadastro.');
@@ -192,15 +218,17 @@ final class ServiceOrderRepository
         $this->connection->prepare('DELETE FROM ordem_servico_itens WHERE ordem_servico_id = :id')->execute(['id' => $orderId]);
         $statement = $this->connection->prepare(
             'INSERT INTO ordem_servico_itens
-                (ordem_servico_id, tipo, referencia_id, descricao, unidade, quantidade, valor_unitario, desconto, subtotal, ordem)
+                (ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade, valor_unitario, desconto, subtotal, ordem)
              VALUES
-                (:order_id, :type, :reference_id, :description, :unit, :quantity, :unit_price, :discount, :subtotal, :order_index)'
+                (:order_id, :type, :origin, :reference_id, :budget_item_id, :description, :unit, :quantity, :unit_price, :discount, :subtotal, :order_index)'
         );
         foreach ($items as $item) {
             $statement->execute([
                 'order_id' => $orderId,
                 'type' => $item->type(),
+                'origin' => $item->origin(),
                 'reference_id' => $item->referenceId(),
+                'budget_item_id' => $item->budgetItemId(),
                 'description' => $item->description(),
                 'unit' => $item->unit(),
                 'quantity' => $item->quantity(),
@@ -248,8 +276,10 @@ final class ServiceOrderRepository
 
         $sql = 'SELECT DISTINCT f.id, f.nome
                   FROM funcionarios f
+                  JOIN ordem_servico_funcionarios osf
+                    ON osf.funcionario_id = f.id AND osf.ativo = 1
                   JOIN ordens_servico os
-                    ON os.funcionario_principal_id = f.id OR os.funcionario_apoio_id = f.id
+                    ON os.id = osf.ordem_servico_id
                  WHERE f.id IN (' . implode(', ', $employeePlaceholders) . ')
                    AND os.status IN (' . implode(', ', $statusPlaceholders) . ')
                    AND os.agendado_inicio IS NOT NULL
@@ -275,13 +305,94 @@ final class ServiceOrderRepository
     public function updateTeam(int $orderId, int $primaryEmployeeId, int $supportEmployeeId): void
     {
         $this->assertPositiveId($orderId);
+        $this->replaceTeam($orderId, ServiceOrderTeamData::fromArray([
+            'funcionario_principal_id' => $primaryEmployeeId,
+            'funcionario_apoio_id' => $supportEmployeeId,
+        ]));
+    }
+
+    public function replaceTeam(int $orderId, ServiceOrderTeamData $team): void
+    {
+        $this->assertPositiveId($orderId);
+        $this->connection->prepare(
+            'UPDATE ordem_servico_funcionarios
+                SET ativo = 0, removido_em = CURRENT_TIMESTAMP
+              WHERE ordem_servico_id = :order_id AND ativo = 1'
+        )->execute(['order_id' => $orderId]);
+
+        $statement = $this->connection->prepare(
+            'INSERT INTO ordem_servico_funcionarios
+                (ordem_servico_id, funcionario_id, funcao, principal, ativo, adicionado_em, removido_em)
+             VALUES
+                (:order_id, :employee_id, :role, :primary_member, 1, CURRENT_TIMESTAMP, NULL)
+             ON DUPLICATE KEY UPDATE
+                funcao = VALUES(funcao),
+                principal = VALUES(principal),
+                ativo = 1,
+                adicionado_em = CURRENT_TIMESTAMP,
+                removido_em = NULL'
+        );
+
+        foreach ($team->members() as $member) {
+            $statement->execute([
+                'order_id' => $orderId,
+                'employee_id' => $member->employeeId(),
+                'role' => $member->role(),
+                'primary_member' => $member->primary() ? 1 : 0,
+            ]);
+        }
+
         $statement = $this->connection->prepare(
             'UPDATE ordens_servico
                 SET funcionario_principal_id = :primary_employee_id,
                     funcionario_apoio_id = :support_employee_id
               WHERE id = :order_id'
         );
-        $statement->execute(['order_id' => $orderId, 'primary_employee_id' => $primaryEmployeeId, 'support_employee_id' => $supportEmployeeId]);
+        $statement->execute([
+            'order_id' => $orderId,
+            'primary_employee_id' => $team->primaryEmployeeId(),
+            'support_employee_id' => $team->firstSupportEmployeeId(),
+        ]);
+    }
+
+    /** @param int[] $orderIds @return array<int,ServiceOrderTeamMember[]> */
+    public function findTeamMembersForOrders(array $orderIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $orderIds), static fn(int $id): bool => $id > 0)));
+        if ($ids === []) return [];
+
+        $placeholders = [];
+        $params = [];
+        foreach ($ids as $index => $id) {
+            $key = 'id_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $id;
+        }
+
+        $statement = $this->connection->prepare(
+            'SELECT osf.id, osf.ordem_servico_id, osf.funcionario_id, f.codigo AS funcionario_codigo,
+                    f.nome AS funcionario_nome, osf.funcao, osf.principal, osf.ativo
+               FROM ordem_servico_funcionarios osf
+               JOIN funcionarios f ON f.id = osf.funcionario_id
+              WHERE osf.ativo = 1
+                AND osf.ordem_servico_id IN (' . implode(', ', $placeholders) . ')
+              ORDER BY osf.ordem_servico_id ASC, osf.principal DESC, f.nome ASC'
+        );
+        $statement->execute($params);
+
+        $grouped = [];
+        foreach ($statement->fetchAll() as $row) {
+            $member = ServiceOrderTeamMember::fromArray($row);
+            $grouped[$member->orderId()][] = $member;
+        }
+
+        return $grouped;
+    }
+
+    /** @return ServiceOrderTeamMember[] */
+    public function findTeamMembers(int $orderId): array
+    {
+        return $this->findTeamMembersForOrders([$orderId])[$orderId] ?? [];
     }
 
     public function updateSchedule(int $orderId, DateTimeImmutable $start, DateTimeImmutable $end): void
@@ -332,7 +443,7 @@ final class ServiceOrderRepository
         }
         $employeeId = trim((string) ($filters['employee_id'] ?? ''));
         if ($employeeId !== '') {
-            $where[] = '(os.funcionario_principal_id = :employee_id OR os.funcionario_apoio_id = :employee_id)';
+            $where[] = 'EXISTS (SELECT 1 FROM ordem_servico_funcionarios osf_filter WHERE osf_filter.ordem_servico_id = os.id AND osf_filter.ativo = 1 AND osf_filter.funcionario_id = :employee_id)';
             $params['employee_id'] = (int) $employeeId;
         }
         if (trim((string) ($filters['date_from'] ?? '')) !== '') {

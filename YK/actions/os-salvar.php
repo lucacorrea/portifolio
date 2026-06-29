@@ -14,13 +14,23 @@ $isEditing = trim((string) ($_POST['id'] ?? '')) !== '';
 try {
     $payload = $_POST;
     $payload['items'] = os_items_from_post();
-    $data = ServiceOrderFormData::fromArray($payload, $isEditing);
     $service = $application->serviceOrderManagement();
 
     if ($isEditing) {
+        $data = ServiceOrderFormData::fromArray($payload, true);
         $service->updateOrder(os_posted_positive_int('id'), $data);
         $session->flash('success', 'OS atualizada com sucesso.');
+    } elseif (($payload['creation_mode'] ?? 'manual') === 'budget') {
+        $application->authorization()->requirePermission('orcamento.converter_os');
+        $order = $service->createOrderFromApprovedBudget(
+            os_posted_positive_int('budget_id'),
+            os_optional_team_from_post(),
+            os_optional_schedule_from_post(),
+            trim((string) ($payload['save_as_draft'] ?? '')) !== ''
+        );
+        $session->flash('success', 'OS cadastrada a partir do orçamento com o número ' . $order->displayNumber() . '.');
     } else {
+        $data = ServiceOrderFormData::fromArray($payload, false);
         $order = $service->createOrder($data, os_optional_team_from_post(), os_optional_schedule_from_post());
         $session->flash('success', 'OS cadastrada com o número ' . $order->displayNumber() . '.');
     }

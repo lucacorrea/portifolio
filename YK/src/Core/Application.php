@@ -266,7 +266,8 @@ final class Application
                 new EmployeeRepository($connection),
                 new ClientRepository($connection),
                 new ServiceRepository($connection),
-                new ProductRepository($connection)
+                new ProductRepository($connection),
+                new BudgetRepository($connection)
             );
         }
 

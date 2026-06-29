@@ -31,6 +31,44 @@ final class BudgetRepository
         return $budgets[0] ?? null;
     }
 
+    public function lockById(int $id): ?Budget
+    {
+        $this->assertPositiveId($id);
+        $budgets = $this->selectBudgets(['o.id = :id'], ['id' => $id], 'o.id DESC', true);
+        return $budgets[0] ?? null;
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public function availableApprovedForServiceOrder(): array
+    {
+        $statement = $this->connection->query(
+            "SELECT o.id, o.numero, o.cliente_id, c.nome AS cliente_nome, o.aprovado_em,
+                    o.total, COUNT(i.id) AS itens_total,
+                    GROUP_CONCAT(CASE WHEN i.tipo = 'servico' THEN i.descricao ELSE NULL END ORDER BY i.ordem SEPARATOR ', ') AS servicos_resumo
+               FROM orcamentos o
+               JOIN clientes c ON c.id = o.cliente_id
+               JOIN orcamento_itens i ON i.orcamento_id = o.id
+              WHERE o.status = 'aprovado'
+                AND NOT EXISTS (
+                    SELECT 1
+                      FROM ordens_servico os
+                     WHERE os.orcamento_id = o.id
+                       AND os.status <> 'cancelada'
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                      FROM ordens_servico os
+                     WHERE os.orcamento_id = o.id
+                       AND os.status = 'cancelada'
+                       AND os.orcamento_liberado = 0
+                )
+              GROUP BY o.id, o.numero, o.cliente_id, c.nome, o.aprovado_em, o.total
+              ORDER BY o.aprovado_em DESC, o.id DESC"
+        );
+
+        return $statement->fetchAll();
+    }
+
     /** @return BudgetItem[] */
     public function findItems(int $budgetId): array
     {
@@ -206,7 +244,7 @@ final class BudgetRepository
     }
 
     /** @param array<int,string> $where @return Budget[] */
-    private function selectBudgets(array $where, array $params, string $orderBy): array
+    private function selectBudgets(array $where, array $params, string $orderBy, bool $forUpdate = false): array
     {
         $sql = 'SELECT o.id, o.numero, o.cliente_id, c.codigo AS cliente_codigo, c.nome AS cliente_nome,
                        c.documento AS cliente_documento,
@@ -224,6 +262,7 @@ final class BudgetRepository
                          o.subtotal_outros, o.desconto, o.acrescimo, o.total, o.aprovado_em,
                          o.recusado_em, o.criado_em, o.atualizado_em
                   ORDER BY ' . $orderBy;
+        if ($forUpdate) $sql .= ' FOR UPDATE';
         $statement = $this->connection->prepare($sql);
         $statement->execute($params);
         return array_map(static fn(array $row): Budget => Budget::fromArray($row), $statement->fetchAll());
