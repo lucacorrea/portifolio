@@ -26,14 +26,16 @@ $recovery = os_consume_form_recovery();
 $weekGroups = $orderService->weekSchedule($weekStart, $filters);
 $orders = [];
 foreach ($weekGroups as $dayOrders) foreach ($dayOrders as $order) $orders[] = $order;
+$teamsByOrder = $orderService->teamMembersForOrders($orders);
 
 $summary = ['agendada'=>0,'em_deslocamento'=>0,'em_execucao'=>0,'aguardando_peca'=>0,'finalizada'=>0,'urgente'=>0];
 $teams = [];
 foreach ($orders as $order) {
     if (isset($summary[$order->status()])) $summary[$order->status()]++;
     if ($order->priority() === 'urgente') $summary['urgente']++;
-    if ($order->primaryEmployeeId() !== null && $order->supportEmployeeId() !== null) {
-        $ids = [$order->primaryEmployeeId(), $order->supportEmployeeId()];
+    $members = $teamsByOrder[$order->id()] ?? [];
+    if ($members !== []) {
+        $ids = array_map(static fn($member): int => $member->employeeId(), $members);
         sort($ids);
         $teams[implode('-', $ids)] = true;
     }
@@ -48,6 +50,8 @@ $canCancel = $authorization->can('painel_semanal.cancelar');
 function weekly_status_label(string $status): string { return ['agendada'=>'Agendada','em_deslocamento'=>'Em deslocamento','em_execucao'=>'Em execução','aguardando_peca'=>'Aguardando peça','finalizada'=>'Finalizada','cancelada'=>'Cancelada','aberta'=>'Aberta','aguardando_agendamento'=>'Aguardando agendamento'][$status] ?? $status; }
 function weekly_priority_label(string $priority): string { return ['baixa'=>'Baixa','media'=>'Média','alta'=>'Alta','urgente'=>'Urgente'][$priority] ?? 'Média'; }
 function weekly_time(?string $start, ?string $end): string { try { return (new DateTimeImmutable((string) $start))->format('H:i') . '–' . (new DateTimeImmutable((string) $end))->format('H:i'); } catch (Throwable) { return '-'; } }
+function weekly_team_name(array $members): string { if ($members === []) return 'Equipe nao definida'; return implode(' / ', array_map(static fn($member): string => $member->displayLine(), $members)); }
+function weekly_team_lines(array $members): string { if ($members === []) return '<span>Equipe nao definida</span>'; return implode('', array_map(static fn($member): string => '<span>' . h($member->displayLine()) . '</span>', $members)); }
 $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday'=>'Quinta','Friday'=>'Sexta','Saturday'=>'Sábado','Sunday'=>'Domingo'];
 ?>
 
@@ -59,7 +63,7 @@ $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday
     ['Aguardando peça', (string) $summary['aguardando_peca'], 'bi-box-seam', '#D97706', 'pendências'],
     ['Finalizadas', (string) $summary['finalizada'], 'bi-check2-circle', '#15803D', 'concluídas'],
     ['Urgentes', (string) $summary['urgente'], 'bi-exclamation-triangle', '#DC2626', 'prioridade urgente'],
-    ['Duplas utilizadas', (string) count($teams), 'bi-people', '#2563EB', 'sem repetição'],
+    ['Equipes utilizadas', (string) count($teams), 'bi-people', '#2563EB', 'sem repetição'],
 ]); ?>
 
 <form class="filter-bar" method="get" action="painel-semanal.php">
@@ -82,7 +86,7 @@ $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday
                 <header class="week-day-header"><strong><?= h($days[$day->format('l')]) ?></strong><span><?= h($day->format('d/m')) ?></span></header>
                 <div class="week-day-body">
                     <?php if ($dayOrders === []): ?><div class="week-empty-state">Sem atendimentos</div><?php else: ?>
-                        <?php $byTeam = []; foreach ($dayOrders as $order) { $byTeam[$order->displayTeam()][] = $order; } ?>
+                        <?php $byTeam = []; foreach ($dayOrders as $order) { $byTeam[weekly_team_name($teamsByOrder[$order->id()] ?? [])][] = $order; } ?>
                         <?php foreach ($byTeam as $teamName => $teamOrders): ?>
                             <section class="team-group"><header class="team-group-header"><div class="team-info"><strong class="team-names"><?= h($teamName) ?></strong><span class="team-role"><?= h(count($teamOrders) . ' atendimento' . (count($teamOrders) === 1 ? '' : 's')) ?></span></div></header>
                                 <?php foreach ($teamOrders as $order): ?>
@@ -91,7 +95,7 @@ $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday
                                         <strong class="week-service-os"><?= h($order->displayNumber()) ?></strong>
                                         <div class="week-service-client"><?= h($order->clientName()) ?></div>
                                         <div class="week-service-title"><?= h($order->mainService() ?? 'Serviço não informado') ?></div>
-                                        <div class="week-service-details"><span><?= h($order->displayEquipment()) ?></span><span>Principal: <?= h($order->displayPrimaryEmployee() ?? '-') ?></span><span>Apoio: <?= h($order->displaySupportEmployee() ?? '-') ?></span></div>
+                                        <div class="week-service-details"><span><?= h($order->displayEquipment()) ?></span><?= weekly_team_lines($teamsByOrder[$order->id()] ?? []) ?></div>
                                         <div class="week-service-meta"><span class="priority-label"><?= h(weekly_priority_label($order->priority())) ?></span><span><?= h(weekly_status_label($order->status())) ?></span></div>
                                         <div class="mt-2 d-flex justify-content-end">
                                             <div class="dropdown table-action-dropdown">
@@ -99,7 +103,7 @@ $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday
                                                 <ul class="dropdown-menu dropdown-menu-end">
                                                     <?php if ($canEdit): ?><li><a class="dropdown-item" href="ordens-servico.php?search=<?= h(rawurlencode($order->displayNumber())) ?>"><i class="bi bi-eye"></i> Abrir OS</a></li><?php endif; ?>
                                                     <?php if ($canSchedule): ?><li><button class="dropdown-item js-week-schedule" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-start="<?= h($order->scheduledStart() ?? '') ?>" data-end="<?= h($order->scheduledEnd() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-week-schedule"><i class="bi bi-calendar-event"></i> Reagendar</button></li><?php endif; ?>
-                                                    <?php if ($canTeam): ?><li><button class="dropdown-item js-week-team" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-primary-id="<?= h((string) ($order->primaryEmployeeId() ?? '')) ?>" data-support-id="<?= h((string) ($order->supportEmployeeId() ?? '')) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-team"><i class="bi bi-people"></i> Alterar dupla</button></li><?php endif; ?>
+                                                    <?php if ($canTeam): ?><li><button class="dropdown-item js-week-team" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-primary-id="<?= h((string) ($order->primaryEmployeeId() ?? '')) ?>" data-support-id="<?= h((string) ($order->supportEmployeeId() ?? '')) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-team"><i class="bi bi-people"></i> Alterar equipe</button></li><?php endif; ?>
                                                     <?php if ($canStatus && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-week-status" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-current-status="<?= h($order->status()) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-status"><i class="bi bi-arrow-repeat"></i> Alterar status</button></li><?php endif; ?>
                                                     <?php if ($canCancel && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item text-danger js-week-cancel" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-cancel"><i class="bi bi-x-circle"></i> Cancelar</button></li><?php endif; ?>
                                                 </ul>

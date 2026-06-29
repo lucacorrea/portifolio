@@ -233,6 +233,44 @@ final class ServiceOrderManagementService
     public function finalize(int $orderId): void { $this->changeStatus($orderId, 'finalizada'); }
     public function cancel(int $orderId): void { $this->changeStatus($orderId, 'cancelada'); }
 
+    public function cancelWithDetails(int $orderId, string $option, string $reason, ?string $notes, int $userId): void
+    {
+        $this->transactional(function () use ($orderId, $option, $reason, $notes, $userId): void {
+            $order = $this->requireLockedOrder($orderId);
+            if (in_array($order->status(), ['finalizada', 'cancelada'], true)) {
+                throw new InvalidArgumentException('OS finalizada ou cancelada não pode ser cancelada novamente.');
+            }
+            if (!in_array($option, ['definitivo', 'liberar_orcamento', 'criar_substituta'], true)) {
+                throw new InvalidArgumentException('Destino do orçamento inválido.');
+            }
+            $reason = $this->cleanText($reason, 150, 'motivo');
+            $notes = $notes === null ? null : $this->cleanOptionalText($notes, 1000);
+            $releaseBudget = in_array($option, ['liberar_orcamento', 'criar_substituta'], true) ? 1 : 0;
+
+            $this->connection->prepare(
+                'INSERT INTO ordem_servico_cancelamentos
+                    (ordem_servico_id, opcao, motivo, observacao, orcamento_liberado, cancelado_por)
+                 VALUES
+                    (:order_id, :option, :reason, :notes, :release_budget, :user_id)'
+            )->execute([
+                'order_id' => $orderId,
+                'option' => $option,
+                'reason' => $reason,
+                'notes' => $notes,
+                'release_budget' => $releaseBudget,
+                'user_id' => $userId,
+            ]);
+
+            $this->connection->prepare(
+                "UPDATE ordens_servico
+                    SET status = 'cancelada',
+                        cancelada_em = COALESCE(cancelada_em, CURRENT_TIMESTAMP),
+                        orcamento_liberado = :release_budget
+                  WHERE id = :order_id"
+            )->execute(['order_id' => $orderId, 'release_budget' => $releaseBudget]);
+        });
+    }
+
     public function reopen(int $orderId): void
     {
         $this->transactional(function () use ($orderId): void {
@@ -360,6 +398,25 @@ final class ServiceOrderManagementService
         if (!isset(self::TRANSITIONS[$from]) || !in_array($to, self::TRANSITIONS[$from], true)) {
             throw new InvalidArgumentException('Transição de status não permitida.');
         }
+    }
+
+    private function cleanText(string $value, int $max, string $field): string
+    {
+        $value = trim($value);
+        if ($value === '' || str_contains($value, "\0") || $value !== strip_tags($value) || mb_strlen($value) > $max) {
+            throw new InvalidArgumentException('Informe ' . $field . ' válido.');
+        }
+        return $value;
+    }
+
+    private function cleanOptionalText(string $value, int $max): ?string
+    {
+        $value = trim($value);
+        if ($value === '') return null;
+        if (str_contains($value, "\0") || mb_strlen($value) > $max) {
+            throw new InvalidArgumentException('Observação inválida.');
+        }
+        return $value;
     }
 
     /** @template T @param callable():T $callback @return T */

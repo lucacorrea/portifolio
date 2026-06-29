@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const pageData = dataNode ? JSON.parse(dataNode.textContent || '{}') : {};
   const serviceOptions = pageData.services || [];
   const productOptions = pageData.products || [];
+  const employeeOptions = pageData.employees || [];
   const recoveryModal = pageData.recoveryModal || new URLSearchParams(window.location.search).get('modal');
   const recoveryData = pageData.recoveryData || {};
 
@@ -32,6 +33,69 @@ document.addEventListener('DOMContentLoaded', function () {
     row.querySelectorAll('[data-field]').forEach(function (input) {
       input.name = group + '[' + index + '][' + input.dataset.field + ']';
     });
+  }
+
+  function teamField(row, name) {
+    return row.querySelector('[data-team-field="' + name + '"]');
+  }
+
+  function setTeamNames(container) {
+    container.querySelectorAll('.os-team-member-row').forEach(function (row, index) {
+      row.querySelectorAll('[data-team-field]').forEach(function (input) {
+        input.name = 'team_members[' + index + '][' + input.dataset.teamField + ']';
+      });
+      const radio = teamField(row, 'principal');
+      if (radio) radio.name = 'team_members[' + index + '][principal]';
+    });
+  }
+
+  function updateTeamDuplicates(container) {
+    const values = Array.from(container.querySelectorAll('[data-team-field="funcionario_id"]')).map(function (select) { return select.value; });
+    container.querySelectorAll('[data-team-field="funcionario_id"]').forEach(function (select) {
+      select.querySelectorAll('option').forEach(function (option) {
+        option.disabled = option.value !== '' && option.value !== select.value && values.includes(option.value);
+      });
+    });
+  }
+
+  function addTeamMember(form, member) {
+    const template = document.getElementById('os-team-member-template');
+    const container = form.querySelector('[data-team-members]');
+    if (!template || !container) return;
+
+    const row = template.content.firstElementChild.cloneNode(true);
+    const employeeSelect = teamField(row, 'funcionario_id');
+    employeeOptions.forEach(function (employee) {
+      employeeSelect.appendChild(new Option(employee.name, employee.id));
+    });
+
+    employeeSelect.value = member?.employee_id || '';
+    teamField(row, 'funcao').value = member?.role || member?.funcao || 'Técnico';
+    teamField(row, 'principal').checked = Boolean(member?.primary || member?.principal);
+
+    row.querySelector('.js-os-remove-team-member').addEventListener('click', function () {
+      row.remove();
+      setTeamNames(container);
+      updateTeamDuplicates(container);
+    });
+    row.addEventListener('change', function () {
+      setTeamNames(container);
+      updateTeamDuplicates(container);
+    });
+
+    container.appendChild(row);
+    if (!container.querySelector('[data-team-field="principal"]:checked')) {
+      teamField(row, 'principal').checked = true;
+    }
+    setTeamNames(container);
+    updateTeamDuplicates(container);
+  }
+
+  function restoreTeamMembers(form, members) {
+    const container = form.querySelector('[data-team-members]');
+    if (!container) return;
+    container.replaceChildren();
+    (members || []).forEach(function (member) { addTeamMember(form, member); });
   }
 
   function optionsFor(type) {
@@ -138,40 +202,52 @@ document.addEventListener('DOMContentLoaded', function () {
       ['os-recommendation', 'recommendation'],
       ['os-internal-notes', 'internal_notes'],
       ['os-notes', 'notes'],
-      ['os-primary', 'funcionario_principal_id'],
-      ['os-support', 'funcionario_apoio_id'],
       ['os-scheduled-start', 'agendado_inicio'],
       ['os-scheduled-end', 'agendado_fim'],
     ].forEach(function (pair) {
       setValue(pair[0], data[pair[1]]);
     });
+    setValue('os-creation-mode', data.creation_mode || 'manual');
     if (hasRecoveredItems(data)) restoreItems(form, data);
-    updateEmployeeOptions(form);
+    restoreTeamMembers(form, data.team_members || data.equipe || legacyTeamFromData(data));
+    updateBudgetMode(form);
     recalc(form);
   }
 
   function restoreTeamForm(data) {
     setValue('os-team-id', data.id);
-    setValue('os-team-primary', data.funcionario_principal_id);
-    setValue('os-team-support', data.funcionario_apoio_id);
     setValue('os-team-start', toLocalInput(data.agendado_inicio));
     setValue('os-team-end', toLocalInput(data.agendado_fim));
-    updateEmployeeOptions(document.getElementById('modal-os-team'));
+    restoreTeamMembers(document.getElementById('modal-os-team'), data.team_members || data.equipe || legacyTeamFromData(data));
   }
 
-  function updateEmployeeOptions(scope) {
-    const primary = scope.querySelector('.js-primary-employee');
-    const support = scope.querySelector('.js-support-employee');
-    if (!primary || !support) return;
-    const primaryValue = primary.value;
-    const supportValue = support.value;
-    support.querySelectorAll('option').forEach(function (option) { option.disabled = option.value !== '' && option.value === primaryValue; });
-    primary.querySelectorAll('option').forEach(function (option) { option.disabled = option.value !== '' && option.value === supportValue; });
+  function legacyTeamFromData(data) {
+    const members = [];
+    if (data.funcionario_principal_id) members.push({ employee_id: data.funcionario_principal_id, role: 'Responsável técnico', primary: true });
+    if (data.funcionario_apoio_id) members.push({ employee_id: data.funcionario_apoio_id, role: 'Técnico', primary: false });
+    return members;
   }
 
-  document.querySelectorAll('.js-primary-employee,.js-support-employee').forEach(function (select) {
-    select.addEventListener('change', function () { updateEmployeeOptions(select.closest('form') || document); });
-  });
+  function updateBudgetMode(form) {
+    const mode = document.getElementById('os-creation-mode')?.value || 'manual';
+    const budget = document.getElementById('os-budget-id');
+    const client = document.getElementById('os-client');
+    const preview = document.getElementById('os-budget-preview');
+    const fromBudget = mode === 'budget';
+    if (budget) budget.required = fromBudget;
+    if (client) client.disabled = fromBudget;
+    form.querySelectorAll('[data-os-items], .js-os-add-item, .js-os-discount, .js-os-increase').forEach(function (element) {
+      element.classList.toggle('d-none', fromBudget);
+    });
+    if (preview) {
+      const selected = budget?.selectedOptions?.[0];
+      preview.classList.toggle('d-none', !fromBudget || !selected || !selected.value);
+      preview.textContent = selected && selected.value ? ('Orçamento selecionado: ' + selected.textContent + (selected.dataset.summary ? ' | Serviços: ' + selected.dataset.summary : '')) : '';
+    }
+    if (fromBudget && budget?.selectedOptions?.[0]?.dataset.clientId) {
+      setValue('os-client', budget.selectedOptions[0].dataset.clientId);
+    }
+  }
 
   document.querySelectorAll('.js-os-form').forEach(function (form) {
     form.querySelectorAll('.js-os-add-item').forEach(function (button) {
@@ -180,7 +256,20 @@ document.addEventListener('DOMContentLoaded', function () {
     form.querySelectorAll('.js-os-discount,.js-os-increase').forEach(function (input) {
       input.addEventListener('input', function () { recalc(form); });
     });
+    form.querySelectorAll('.js-os-add-team-member').forEach(function (button) {
+      button.addEventListener('click', function () { addTeamMember(form); });
+    });
+    document.getElementById('os-creation-mode')?.addEventListener('change', function () { updateBudgetMode(form); });
+    document.getElementById('os-budget-id')?.addEventListener('change', function () { updateBudgetMode(form); });
     if (!form.querySelector('.os-item-row') && !(hasRecoveredItems(recoveryData) && (recoveryModal === 'create' || recoveryModal === 'edit'))) addRow(form, 'servico');
+    updateBudgetMode(form);
+  });
+
+  document.querySelectorAll('form:not(.js-os-form) .js-os-add-team-member').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const form = button.closest('form');
+      if (form) addTeamMember(form);
+    });
   });
 
   async function loadOrder(id) {
@@ -254,13 +343,11 @@ document.addEventListener('DOMContentLoaded', function () {
       setValue('os-recommendation', order.recommendation);
       setValue('os-internal-notes', order.internal_notes);
       setValue('os-notes', order.notes);
-      setValue('os-primary', order.primary_employee_id);
-      setValue('os-support', order.support_employee_id);
       setValue('os-scheduled-start', toLocalInput(order.scheduled_start));
       setValue('os-scheduled-end', toLocalInput(order.scheduled_end));
       setValue('os-status', 'aberta');
       data.items.forEach(function (item) { addRow(form, item.type, item); });
-      updateEmployeeOptions(form);
+      restoreTeamMembers(form, data.team || legacyTeamFromData(order));
       recalc(form);
     });
   });
@@ -268,11 +355,11 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('.js-os-team').forEach(function (button) {
     button.addEventListener('click', function () {
       setValue('os-team-id', button.dataset.orderId);
-      setValue('os-team-primary', button.dataset.primaryId);
-      setValue('os-team-support', button.dataset.supportId);
       setValue('os-team-start', toLocalInput(button.dataset.start));
       setValue('os-team-end', toLocalInput(button.dataset.end));
-      updateEmployeeOptions(document.getElementById('modal-os-team'));
+      let team = [];
+      try { team = JSON.parse(button.dataset.team || '[]'); } catch (error) { team = []; }
+      restoreTeamMembers(document.getElementById('modal-os-team'), team);
     });
   });
 
@@ -282,6 +369,18 @@ document.addEventListener('DOMContentLoaded', function () {
       setValue('os-status-operation', button.dataset.operation);
       document.getElementById('os-status-title').textContent = button.dataset.label || 'Alterar status';
       document.getElementById('os-status-message').textContent = 'Confirmar operação "' + (button.dataset.label || 'alterar status') + '"?';
+    });
+  });
+
+  document.querySelectorAll('.js-os-finalize').forEach(function (button) {
+    button.addEventListener('click', function () {
+      setValue('os-finalize-id', button.dataset.orderId);
+    });
+  });
+
+  document.querySelectorAll('.js-os-cancel').forEach(function (button) {
+    button.addEventListener('click', function () {
+      setValue('os-cancel-id', button.dataset.orderId);
     });
   });
 

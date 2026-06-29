@@ -11,6 +11,7 @@ try {
     $canViewValues = $application->authorization()->can('os.visualizar_valores');
     $order = $application->serviceOrderManagement()->getOrder(os_positive_int($_GET['id'] ?? null));
     $items = $application->serviceOrderManagement()->getOrderItems($order->id());
+    $team = $application->serviceOrderManagement()->getOrderTeamMembers($order->id());
     $payload = [
         'order' => [
             'id' => $order->id(),
@@ -39,9 +40,15 @@ try {
             'priority' => $order->priority(),
         ],
         'items' => array_map(static fn($item): array => [
-            'id' => $item->id(), 'type' => $item->type(), 'reference_id' => $item->referenceId(), 'description' => $item->description(),
+            'id' => $item->id(), 'type' => $item->type(), 'origin' => $item->origin(), 'reference_id' => $item->referenceId(), 'budget_item_id' => $item->budgetItemId(), 'description' => $item->description(),
             'unit' => $item->unit(), 'quantity' => $item->quantity(), 'unit_price' => $item->unitPrice(), 'discount' => $item->discount(), 'subtotal' => $item->subtotal(),
         ], $items),
+        'team' => array_map(static fn($member): array => [
+            'employee_id' => $member->employeeId(),
+            'role' => $member->role(),
+            'primary' => $member->primary(),
+            'display' => $member->displayLine(),
+        ], $team),
     ];
     if ($canViewValues) {
         $payload['order'] += ['services_subtotal' => $order->servicesSubtotal(), 'products_subtotal' => $order->productsSubtotal(), 'others_subtotal' => $order->othersSubtotal(), 'discount' => $order->discount(), 'increase' => $order->increase(), 'total' => $order->total()];

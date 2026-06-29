@@ -29,6 +29,8 @@ VALUES
     ('Ordens de Serviço', 'os', 'os.imprimir', 'Imprimir ordens de serviço', 'Permite imprimir ordens de serviço.', 300),
     ('Ordens de Serviço', 'os', 'os.excluir', 'Excluir ordens de serviço', 'Permite excluir ordens de serviço.', 310),
     ('Ordens de Serviço', 'os', 'os.visualizar_valores', 'Visualizar valores da OS', 'Permite visualizar valores financeiros da ordem de serviço.', 320),
+    ('Ordens de Serviço', 'os', 'os.emitir_comprovante', 'Emitir comprovante de OS', 'Permite emitir comprovante não fiscal de serviço.', 330),
+    ('Ordens de Serviço', 'os', 'os.finalizar_com_pagamento', 'Finalizar OS com pagamento', 'Permite finalizar OS registrando pagamento e saldo pendente.', 340),
 
     ('Orçamentos', 'orcamento', 'orcamento.visualizar', 'Visualizar orçamentos', 'Permite acessar orçamentos.', 410),
     ('Orçamentos', 'orcamento', 'orcamento.criar', 'Criar orçamentos', 'Permite cadastrar novos orçamentos.', 420),
@@ -67,6 +69,7 @@ VALUES
     ('Estoque', 'estoque', 'estoque.saida', 'Registrar saída de estoque', 'Permite registrar saídas de estoque.', 830),
     ('Estoque', 'estoque', 'estoque.ajustar', 'Ajustar estoque', 'Permite realizar ajustes manuais de estoque.', 840),
     ('Estoque', 'estoque', 'estoque.visualizar_historico', 'Visualizar histórico de estoque', 'Permite consultar movimentações de estoque.', 850),
+    ('Estoque', 'estoque', 'estoque.autorizar_saldo_negativo', 'Autorizar saldo negativo', 'Permite autorizar baixa de produto acima do saldo disponível.', 860),
 
     ('Serviços', 'servico', 'servico.visualizar', 'Visualizar serviços', 'Permite acessar serviços cadastrados.', 910),
     ('Serviços', 'servico', 'servico.criar', 'Criar serviços', 'Permite cadastrar serviços.', 920),
@@ -94,6 +97,13 @@ VALUES
     ('Financeiro', 'financeiro', 'financeiro.criar_lancamento', 'Criar lançamento financeiro', 'Permite criar lançamentos financeiros.', 1540),
     ('Financeiro', 'financeiro', 'financeiro.editar_lancamento', 'Editar lançamento financeiro', 'Permite alterar lançamentos financeiros.', 1550),
     ('Financeiro', 'financeiro', 'financeiro.estornar', 'Estornar financeiro', 'Permite estornar lançamentos financeiros.', 1560),
+    ('Financeiro', 'contas_receber', 'contas_receber.visualizar', 'Visualizar contas a receber', 'Permite acessar a carteira de contas a receber.', 1570),
+    ('Financeiro', 'contas_receber', 'contas_receber.registrar_pagamento', 'Registrar pagamento de conta', 'Permite registrar pagamentos posteriores de OS.', 1580),
+    ('Financeiro', 'contas_receber', 'contas_receber.alterar_vencimento', 'Alterar vencimento de conta', 'Permite alterar vencimentos de contas a receber.', 1590),
+    ('Financeiro', 'contas_receber', 'contas_receber.configurar_lembrete', 'Configurar lembrete de conta', 'Permite configurar lembretes de cobrança.', 1600),
+    ('Financeiro', 'contas_receber', 'contas_receber.registrar_contato', 'Registrar contato de cobrança', 'Permite registrar contatos com clientes.', 1605),
+    ('Financeiro', 'contas_receber', 'contas_receber.negociar', 'Registrar negociação de conta', 'Permite registrar negociações de saldo pendente.', 1606),
+    ('Financeiro', 'contas_receber', 'contas_receber.estornar_pagamento', 'Estornar pagamento de conta', 'Permite estornar pagamentos preservando histórico.', 1607),
 
     ('Fiscal', 'nota_fiscal', 'nota_fiscal.visualizar', 'Visualizar notas fiscais', 'Permite acessar notas fiscais.', 1610),
     ('Fiscal', 'nota_fiscal', 'nota_fiscal.emitir', 'Emitir notas fiscais', 'Permite emitir notas fiscais.', 1620),

@@ -27,6 +27,7 @@ $eventType = (string) ($_GET['event_type'] ?? 'all');
 if (!in_array($eventType, ['all', 'service_order', 'reminder'], true)) $eventType = 'all';
 
 $orders = $eventType === 'reminder' ? [] : $orderService->calendarBetween($periodStart, $periodEnd, $filters);
+$teamsByOrder = $orderService->teamMembersForOrders($orders);
 $reminders = $eventType === 'service_order' ? [] : $agendaService->listRemindersBetween($periodStart, $periodEnd);
 $clients = $clientService->listClients();
 $employees = $employeeService->listEmployees();
@@ -52,11 +53,12 @@ function agenda_event_time(?string $start, ?string $end = null): string { try { 
 function agenda_status_badge(string $status): string { return ['agendada'=>'teal','em_deslocamento'=>'purple','em_execucao'=>'green','aguardando_peca'=>'amber','finalizada'=>'green','cancelada'=>'red','ativo'=>'blue'][$status] ?? 'gray'; }
 function agenda_label_status(string $status): string { return ['agendada'=>'Agendada','em_deslocamento'=>'Em deslocamento','em_execucao'=>'Em execução','aguardando_peca'=>'Aguardando peça','finalizada'=>'Finalizada','cancelada'=>'Cancelada'][$status] ?? $status; }
 function agenda_priority_badge(string $priority): string { return ['baixa'=>'gray','media'=>'blue','alta'=>'amber','urgente'=>'red'][$priority] ?? 'blue'; }
+function agenda_team_lines(array $members): string { if ($members === []) return '<span>Equipe não definida</span>'; return implode('', array_map(static fn($member): string => '<span>' . h($member->displayLine()) . '</span>', $members)); }
 
 $scheduledCount = count(array_filter($orders, static fn($order): bool => $order->status() === 'agendada'));
 $runningCount = count(array_filter($orders, static fn($order): bool => $order->status() === 'em_execucao'));
 $urgentCount = count(array_filter($orders, static fn($order): bool => $order->priority() === 'urgente'));
-$withoutTeam = count(array_filter($orders, static fn($order): bool => $order->primaryEmployeeId() === null || $order->supportEmployeeId() === null));
+$withoutTeam = count(array_filter($orders, static fn($order): bool => ($GLOBALS['teamsByOrder'][$order->id()] ?? []) === []));
 ?>
 
 <div class="page-body agenda-page">
@@ -91,7 +93,7 @@ $withoutTeam = count(array_filter($orders, static fn($order): bool => $order->pr
                     <strong class="week-service-os"><?= h($order->displayNumber()) ?></strong>
                     <div class="week-service-client"><?= h($order->clientName()) ?></div>
                     <div class="week-service-title"><?= h($order->mainService() ?? 'Serviço não informado') ?></div>
-                    <div class="week-service-details"><span>Principal: <?= h($order->displayPrimaryEmployee() ?? '-') ?></span><span>Apoio: <?= h($order->displaySupportEmployee() ?? '-') ?></span></div>
+                    <div class="week-service-details"><?= agenda_team_lines($teamsByOrder[$order->id()] ?? []) ?></div>
                     <div class="week-service-meta"><span class="badge-soft badge-<?= h(agenda_status_badge($order->status())) ?>"><?= h($order->displayStatus()) ?></span><span class="badge-soft badge-<?= h(agenda_priority_badge($order->priority())) ?>"><?= h($order->displayPriority()) ?></span></div>
                     <div class="mt-2 d-flex justify-content-end">
                         <div class="dropdown table-action-dropdown">
@@ -99,7 +101,7 @@ $withoutTeam = count(array_filter($orders, static fn($order): bool => $order->pr
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <?php if ($canViewOs): ?><li><a class="dropdown-item" href="ordens-servico.php?search=<?= h(rawurlencode($order->displayNumber())) ?>"><i class="bi bi-eye"></i> Abrir OS</a></li><?php endif; ?>
                                 <?php if ($canReSchedule): ?><li><button class="dropdown-item js-agenda-schedule" data-order-id="<?= h((string) $order->id()) ?>" data-start="<?= h($order->scheduledStart() ?? '') ?>" data-end="<?= h($order->scheduledEnd() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-agenda-schedule" type="button"><i class="bi bi-calendar-event"></i> Reagendar</button></li><?php endif; ?>
-                                <?php if ($canTeam): ?><li><button class="dropdown-item js-agenda-team" data-order-id="<?= h((string) $order->id()) ?>" data-primary-id="<?= h((string) ($order->primaryEmployeeId() ?? '')) ?>" data-support-id="<?= h((string) ($order->supportEmployeeId() ?? '')) ?>" data-bs-toggle="modal" data-bs-target="#modal-agenda-team" type="button"><i class="bi bi-people"></i> Alterar dupla</button></li><?php endif; ?>
+                                <?php if ($canTeam): ?><li><button class="dropdown-item js-agenda-team" data-order-id="<?= h((string) $order->id()) ?>" data-primary-id="<?= h((string) ($order->primaryEmployeeId() ?? '')) ?>" data-support-id="<?= h((string) ($order->supportEmployeeId() ?? '')) ?>" data-bs-toggle="modal" data-bs-target="#modal-agenda-team" type="button"><i class="bi bi-people"></i> Alterar equipe</button></li><?php endif; ?>
                                 <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-agenda-status" data-order-id="<?= h((string) $order->id()) ?>" data-current-status="<?= h($order->status()) ?>" data-bs-toggle="modal" data-bs-target="#modal-agenda-status" type="button"><i class="bi bi-arrow-repeat"></i> Alterar status</button></li><?php endif; ?>
                             </ul>
                         </div>

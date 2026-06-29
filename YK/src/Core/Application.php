@@ -16,14 +16,21 @@ use App\Catalog\Repository\ProductRepository;
 use App\Catalog\Repository\ServiceRepository;
 use App\Catalog\Service\ProductManagementService;
 use App\Catalog\Service\ServiceManagementService;
+use App\Company\Service\CompanySettingsService;
 use App\CRM\Repository\ClientRepository;
 use App\CRM\Service\ClientManagementService;
+use App\Finance\Service\AccountsReceivableManagementService;
+use App\Finance\Service\CashManagementService;
+use App\Finance\Service\PaymentManagementService;
+use App\Inventory\Service\InventoryManagementService;
 use App\Security\CsrfTokenManager;
+use App\Security\PrivilegedAuthorizationService;
 use App\Security\SafeRedirect;
 use App\Security\SessionManager;
 use App\Schedule\Repository\AgendaReminderRepository;
 use App\Schedule\Service\AgendaManagementService;
 use App\ServiceOrder\Repository\ServiceOrderRepository;
+use App\ServiceOrder\Service\ServiceOrderFinalizationService;
 use App\ServiceOrder\Service\ServiceOrderManagementService;
 use App\Sales\Repository\BudgetRepository;
 use App\Sales\Service\BudgetManagementService;
@@ -57,6 +64,13 @@ final class Application
     private ?ServiceOrderManagementService $serviceOrderManagement = null;
 
     private ?AgendaManagementService $agendaManagement = null;
+    private ?InventoryManagementService $inventoryManagement = null;
+    private ?CashManagementService $cashManagement = null;
+    private ?AccountsReceivableManagementService $accountsReceivableManagement = null;
+    private ?PaymentManagementService $paymentManagement = null;
+    private ?CompanySettingsService $companySettings = null;
+    private ?PrivilegedAuthorizationService $privilegedAuthorization = null;
+    private ?ServiceOrderFinalizationService $serviceOrderFinalization = null;
 
     private ?SafeRedirect $redirect = null;
 
@@ -285,6 +299,85 @@ final class Application
         }
 
         return $this->agendaManagement;
+    }
+
+    public function inventoryManagement(): InventoryManagementService
+    {
+        if ($this->inventoryManagement === null) {
+            $this->inventoryManagement = new InventoryManagementService($this->database->connection());
+        }
+
+        return $this->inventoryManagement;
+    }
+
+    public function cashManagement(): CashManagementService
+    {
+        if ($this->cashManagement === null) {
+            $this->cashManagement = new CashManagementService($this->database->connection());
+        }
+
+        return $this->cashManagement;
+    }
+
+    public function accountsReceivableManagement(): AccountsReceivableManagementService
+    {
+        if ($this->accountsReceivableManagement === null) {
+            $this->accountsReceivableManagement = new AccountsReceivableManagementService(
+                $this->database->connection(),
+                $this->cashManagement()
+            );
+        }
+
+        return $this->accountsReceivableManagement;
+    }
+
+    public function paymentManagement(): PaymentManagementService
+    {
+        if ($this->paymentManagement === null) {
+            $this->paymentManagement = new PaymentManagementService(
+                $this->accountsReceivableManagement()
+            );
+        }
+
+        return $this->paymentManagement;
+    }
+
+    public function companySettings(): CompanySettingsService
+    {
+        if ($this->companySettings === null) {
+            $this->companySettings = new CompanySettingsService($this->database->connection());
+        }
+
+        return $this->companySettings;
+    }
+
+    public function privilegedAuthorization(): PrivilegedAuthorizationService
+    {
+        if ($this->privilegedAuthorization === null) {
+            $connection = $this->database->connection();
+            $this->privilegedAuthorization = new PrivilegedAuthorizationService(
+                new UserRepository($connection),
+                new ProfilePermissionRepository($connection)
+            );
+        }
+
+        return $this->privilegedAuthorization;
+    }
+
+    public function serviceOrderFinalization(): ServiceOrderFinalizationService
+    {
+        if ($this->serviceOrderFinalization === null) {
+            $connection = $this->database->connection();
+            $this->serviceOrderFinalization = new ServiceOrderFinalizationService(
+                $connection,
+                new ServiceOrderRepository($connection),
+                $this->inventoryManagement(),
+                $this->cashManagement(),
+                $this->accountsReceivableManagement()
+            );
+        }
+
+        return $this->serviceOrderFinalization;
     }
 
     public function redirect(): SafeRedirect

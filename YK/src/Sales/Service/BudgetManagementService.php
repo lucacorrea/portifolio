@@ -34,6 +34,14 @@ final class BudgetManagementService
         return $this->budgets->summary();
     }
 
+    /** @param Budget[] $budgets @return array<int,array{id:int,numero:string,status:string}> */
+    public function operationalOrdersByBudget(array $budgets): array
+    {
+        return $this->budgets->operationalOrdersByBudget(
+            array_map(static fn(Budget $budget): int => $budget->id(), $budgets)
+        );
+    }
+
     public function getBudget(int $id): Budget
     {
         $budget = $this->budgets->findById($id);

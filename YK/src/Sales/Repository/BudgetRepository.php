@@ -69,6 +69,37 @@ final class BudgetRepository
         return $statement->fetchAll();
     }
 
+    /** @param int[] $budgetIds @return array<int,array{id:int,numero:string,status:string}> */
+    public function operationalOrdersByBudget(array $budgetIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $budgetIds), static fn(int $id): bool => $id > 0)));
+        if ($ids === []) return [];
+        $placeholders = [];
+        $params = [];
+        foreach ($ids as $index => $id) {
+            $key = 'id_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $id;
+        }
+        $statement = $this->connection->prepare(
+            "SELECT orcamento_id, id, numero, status
+               FROM ordens_servico
+              WHERE orcamento_id IN (" . implode(', ', $placeholders) . ")
+                AND (
+                    status <> 'cancelada'
+                    OR (status = 'cancelada' AND orcamento_liberado = 0)
+                )
+              ORDER BY id DESC"
+        );
+        $statement->execute($params);
+        $map = [];
+        foreach ($statement->fetchAll() as $row) {
+            $budgetId = (int) $row['orcamento_id'];
+            $map[$budgetId] ??= ['id' => (int) $row['id'], 'numero' => (string) $row['numero'], 'status' => (string) $row['status']];
+        }
+        return $map;
+    }
+
     /** @return BudgetItem[] */
     public function findItems(int $budgetId): array
     {

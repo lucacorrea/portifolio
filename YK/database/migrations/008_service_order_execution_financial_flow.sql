@@ -7,17 +7,17 @@
 SET NAMES utf8mb4;
 
 ALTER TABLE ordem_servico_itens
-    ADD COLUMN origem ENUM('orcamento', 'manual', 'finalizacao') NOT NULL DEFAULT 'manual' AFTER tipo,
-    ADD COLUMN orcamento_item_id INT UNSIGNED NULL AFTER referencia_id,
-    ADD KEY idx_os_itens_origem (origem),
-    ADD KEY idx_os_itens_orcamento_item (orcamento_item_id);
+    ADD COLUMN IF NOT EXISTS origem ENUM('orcamento', 'manual', 'finalizacao') NOT NULL DEFAULT 'manual' AFTER tipo,
+    ADD COLUMN IF NOT EXISTS orcamento_item_id INT UNSIGNED NULL AFTER referencia_id,
+    ADD KEY IF NOT EXISTS idx_os_itens_origem (origem),
+    ADD KEY IF NOT EXISTS idx_os_itens_orcamento_item (orcamento_item_id);
 
 ALTER TABLE ordens_servico
-    ADD COLUMN orcamento_liberado TINYINT(1) NOT NULL DEFAULT 0 AFTER orcamento_id,
-    ADD COLUMN ordem_substituta_id INT UNSIGNED NULL AFTER orcamento_liberado,
-    ADD COLUMN valor_aprovado_orcamento DECIMAL(12,2) NULL AFTER total,
-    ADD KEY idx_os_orcamento_operacional (orcamento_id, status, orcamento_liberado),
-    ADD KEY idx_os_substituta (ordem_substituta_id);
+    ADD COLUMN IF NOT EXISTS orcamento_liberado TINYINT(1) NOT NULL DEFAULT 0 AFTER orcamento_id,
+    ADD COLUMN IF NOT EXISTS ordem_substituta_id INT UNSIGNED NULL AFTER orcamento_liberado,
+    ADD COLUMN IF NOT EXISTS valor_aprovado_orcamento DECIMAL(12,2) NULL AFTER total,
+    ADD KEY IF NOT EXISTS idx_os_orcamento_operacional (orcamento_id, status, orcamento_liberado),
+    ADD KEY IF NOT EXISTS idx_os_substituta (ordem_substituta_id);
 
 CREATE TABLE IF NOT EXISTS ordem_servico_funcionarios (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
