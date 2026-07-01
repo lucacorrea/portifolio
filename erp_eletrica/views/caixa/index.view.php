@@ -332,8 +332,11 @@
                                 </thead>
                                 <tbody>
                                     <?php 
-                                    $metodos = ['A PRAZO', 'CARTAO', 'DINHEIRO', 'PIX'];
                                     $breakdown = ($detailedSummary && is_array($detailedSummary['breakdown'])) ? $detailedSummary['breakdown'] : [];
+                                    $metodos = ['A PRAZO', 'CARTAO CREDITO', 'CARTAO DEBITO', 'DINHEIRO', 'PIX'];
+                                    if (!empty($breakdown['CARTAO'])) {
+                                        array_splice($metodos, 3, 0, 'CARTAO');
+                                    }
 
                                     foreach ($metodos as $metodo): 
                                         $calculado = $breakdown[$metodo] ?? 0;

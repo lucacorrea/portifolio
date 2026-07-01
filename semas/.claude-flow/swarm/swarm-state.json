@@ -1,0 +1,24 @@
+{
+  "swarms": {
+    "swarm-1782133265591-5rseno": {
+      "swarmId": "swarm-1782133265591-5rseno",
+      "topology": "hierarchical",
+      "maxAgents": 4,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical",
+        "maxAgents": 4,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-06-22T13:01:05.591Z",
+      "updatedAt": "2026-06-22T13:01:05.591Z",
+      "pid": 20456
+    }
+  },
+  "version": "3.0.0"
+}

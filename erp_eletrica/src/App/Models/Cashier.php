@@ -14,6 +14,35 @@ class Cashier extends BaseModel {
         return $stmt->fetch();
     }
 
+    private function sumByAliases(array $source, array $aliases): float {
+        $total = 0.0;
+        foreach ($aliases as $alias) {
+            $total += (float)($source[$alias] ?? 0);
+        }
+        return $total;
+    }
+
+    private function normalizePaymentMethod($method): string {
+        $key = strtoupper(trim((string)$method));
+        $key = str_replace(['-', ' '], '_', $key);
+
+        $map = [
+            'CARTAO_CREDITO' => 'CARTAO_CREDITO',
+            'CARTAO_CRED' => 'CARTAO_CREDITO',
+            'CREDITO' => 'CARTAO_CREDITO',
+            'CARTAO_DEBITO' => 'CARTAO_DEBITO',
+            'CARTAO_DEB' => 'CARTAO_DEBITO',
+            'DEBITO' => 'CARTAO_DEBITO',
+            'CARTAO' => 'CARTAO',
+            'DINHEIRO' => 'DINHEIRO',
+            'PIX' => 'PIX',
+            'FIADO' => 'FIADO',
+            'A_PRAZO' => 'FIADO',
+        ];
+
+        return $map[$key] ?? $key;
+    }
+
     public function getDetailedSummary($caixaId) {
         $stmtOp = $this->db->prepare("SELECT operador_id, data_abertura, data_fechamento, filial_id FROM caixas WHERE id = ?");
         $stmtOp->execute([$caixaId]);
@@ -52,6 +81,42 @@ class Cashier extends BaseModel {
         $stmtPagos->execute($paramsTimePagos);
         $pagosPorForma = $stmtPagos->fetchAll(\PDO::FETCH_KEY_PAIR);
 
+        $multiPorForma = [];
+        try {
+            $hasMultiDetalhes = (bool)$this->db->query("SHOW COLUMNS FROM vendas LIKE 'multi_detalhes'")->fetch();
+        } catch (\Exception $e) {
+            $hasMultiDetalhes = false;
+        }
+
+        if ($hasMultiDetalhes) {
+            $sqlMulti = "
+                SELECT multi_detalhes, COALESCE(troco, 0) as troco
+                FROM vendas
+                WHERE filial_id = ? $whereTime AND status = 'concluido' AND forma_pagamento = 'multiplo'
+            ";
+            $stmtMulti = $this->db->prepare($sqlMulti);
+            $stmtMulti->execute($paramsTime);
+
+            foreach ($stmtMulti->fetchAll() as $multi) {
+                $detalhes = json_decode($multi['multi_detalhes'] ?? '', true);
+                if (!is_array($detalhes)) continue;
+
+                $troco = (float)($multi['troco'] ?? 0);
+                foreach ($detalhes as $metodo => $valor) {
+                    $valor = (float)$valor;
+                    if ($valor <= 0) continue;
+
+                    $key = $this->normalizePaymentMethod($metodo);
+                    if ($key === 'DINHEIRO' && $troco > 0) {
+                        $valor = max(0, $valor - $troco);
+                        $troco = 0;
+                    }
+
+                    $multiPorForma[$key] = ($multiPorForma[$key] ?? 0) + $valor;
+                }
+            }
+        }
+
         // 3. Movimentações
         $sqlMov = "
             SELECT 
@@ -71,6 +136,25 @@ class Cashier extends BaseModel {
             'DINHEIRO' => (float)($vendasPorForma['DINHEIRO'] ?? 0) + (float)($pagosPorForma['DINHEIRO'] ?? 0),
             'PIX' => (float)($vendasPorForma['PIX'] ?? 0) + (float)($pagosPorForma['PIX'] ?? 0)
         ];
+
+        $cartaoCreditoAliases = ['CARTAO_CREDITO', 'CARTAO CREDITO', 'CREDITO'];
+        $cartaoDebitoAliases = ['CARTAO_DEBITO', 'CARTAO DEBITO', 'DEBITO'];
+        $cartaoGenericoAliases = ['CARTAO'];
+        $cartaoGenerico = $this->sumByAliases($vendasPorForma, $cartaoGenericoAliases)
+            + $this->sumByAliases($pagosPorForma, $cartaoGenericoAliases)
+            + (float)($multiPorForma['CARTAO'] ?? 0);
+
+        $mapped = [
+            'A PRAZO' => (float)($vendasPorForma['FIADO'] ?? 0) + (float)($vendasPorForma['A PRAZO'] ?? 0) + (float)($multiPorForma['FIADO'] ?? 0),
+            'CARTAO CREDITO' => $this->sumByAliases($vendasPorForma, $cartaoCreditoAliases) + $this->sumByAliases($pagosPorForma, $cartaoCreditoAliases) + (float)($multiPorForma['CARTAO_CREDITO'] ?? 0),
+            'CARTAO DEBITO' => $this->sumByAliases($vendasPorForma, $cartaoDebitoAliases) + $this->sumByAliases($pagosPorForma, $cartaoDebitoAliases) + (float)($multiPorForma['CARTAO_DEBITO'] ?? 0),
+            'DINHEIRO' => (float)($vendasPorForma['DINHEIRO'] ?? 0) + (float)($pagosPorForma['DINHEIRO'] ?? 0) + (float)($multiPorForma['DINHEIRO'] ?? 0),
+            'PIX' => (float)($vendasPorForma['PIX'] ?? 0) + (float)($pagosPorForma['PIX'] ?? 0) + (float)($multiPorForma['PIX'] ?? 0)
+        ];
+
+        if ($cartaoGenerico > 0) {
+            $mapped['CARTAO'] = $cartaoGenerico;
+        }
 
         // Totais e Saldo
         $totalVendido = array_sum($mapped);
@@ -95,7 +179,7 @@ class Cashier extends BaseModel {
         return [
             'vendas_dinheiro' => $detailed['breakdown']['DINHEIRO'],
             'vendas_pix' => $detailed['breakdown']['PIX'],
-            'vendas_cartao' => $detailed['breakdown']['CARTAO'],
+            'vendas_cartao' => ($detailed['breakdown']['CARTAO CREDITO'] ?? 0) + ($detailed['breakdown']['CARTAO DEBITO'] ?? 0) + ($detailed['breakdown']['CARTAO'] ?? 0),
             'vendas_boleto' => 0,
             'vendas_fiado' => $detailed['breakdown']['A PRAZO'],
             'entradas_fiado_dinheiro' => 0,
