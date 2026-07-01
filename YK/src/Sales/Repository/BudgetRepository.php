@@ -31,6 +31,75 @@ final class BudgetRepository
         return $budgets[0] ?? null;
     }
 
+    public function lockById(int $id): ?Budget
+    {
+        $this->assertPositiveId($id);
+        $budgets = $this->selectBudgets(['o.id = :id'], ['id' => $id], 'o.id DESC', true);
+        return $budgets[0] ?? null;
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public function availableApprovedForServiceOrder(): array
+    {
+        $statement = $this->connection->query(
+            "SELECT o.id, o.numero, o.cliente_id, c.nome AS cliente_nome, o.aprovado_em,
+                    o.total, COUNT(i.id) AS itens_total,
+                    GROUP_CONCAT(CASE WHEN i.tipo = 'servico' THEN i.descricao ELSE NULL END ORDER BY i.ordem SEPARATOR ', ') AS servicos_resumo
+               FROM orcamentos o
+               JOIN clientes c ON c.id = o.cliente_id
+               JOIN orcamento_itens i ON i.orcamento_id = o.id
+              WHERE o.status = 'aprovado'
+                AND NOT EXISTS (
+                    SELECT 1
+                      FROM ordens_servico os
+                     WHERE os.orcamento_id = o.id
+                       AND os.status <> 'cancelada'
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                      FROM ordens_servico os
+                     WHERE os.orcamento_id = o.id
+                       AND os.status = 'cancelada'
+                       AND os.orcamento_liberado = 0
+                )
+              GROUP BY o.id, o.numero, o.cliente_id, c.nome, o.aprovado_em, o.total
+              ORDER BY o.aprovado_em DESC, o.id DESC"
+        );
+
+        return $statement->fetchAll();
+    }
+
+    /** @param int[] $budgetIds @return array<int,array{id:int,numero:string,status:string}> */
+    public function operationalOrdersByBudget(array $budgetIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $budgetIds), static fn(int $id): bool => $id > 0)));
+        if ($ids === []) return [];
+        $placeholders = [];
+        $params = [];
+        foreach ($ids as $index => $id) {
+            $key = 'id_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $id;
+        }
+        $statement = $this->connection->prepare(
+            "SELECT orcamento_id, id, numero, status
+               FROM ordens_servico
+              WHERE orcamento_id IN (" . implode(', ', $placeholders) . ")
+                AND (
+                    status <> 'cancelada'
+                    OR (status = 'cancelada' AND orcamento_liberado = 0)
+                )
+              ORDER BY id DESC"
+        );
+        $statement->execute($params);
+        $map = [];
+        foreach ($statement->fetchAll() as $row) {
+            $budgetId = (int) $row['orcamento_id'];
+            $map[$budgetId] ??= ['id' => (int) $row['id'], 'numero' => (string) $row['numero'], 'status' => (string) $row['status']];
+        }
+        return $map;
+    }
+
     /** @return BudgetItem[] */
     public function findItems(int $budgetId): array
     {
@@ -206,7 +275,7 @@ final class BudgetRepository
     }
 
     /** @param array<int,string> $where @return Budget[] */
-    private function selectBudgets(array $where, array $params, string $orderBy): array
+    private function selectBudgets(array $where, array $params, string $orderBy, bool $forUpdate = false): array
     {
         $sql = 'SELECT o.id, o.numero, o.cliente_id, c.codigo AS cliente_codigo, c.nome AS cliente_nome,
                        c.documento AS cliente_documento,
@@ -224,6 +293,7 @@ final class BudgetRepository
                          o.subtotal_outros, o.desconto, o.acrescimo, o.total, o.aprovado_em,
                          o.recusado_em, o.criado_em, o.atualizado_em
                   ORDER BY ' . $orderBy;
+        if ($forUpdate) $sql .= ' FOR UPDATE';
         $statement = $this->connection->prepare($sql);
         $statement->execute($params);
         return array_map(static fn(array $row): Budget => Budget::fromArray($row), $statement->fetchAll());

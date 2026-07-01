@@ -38,6 +38,25 @@
       "createdAt": "2026-06-22T17:37:39.156Z",
       "updatedAt": "2026-06-22T17:37:39.156Z",
       "pid": 13788
+    },
+    "swarm-1782618195342-cn1tf7": {
+      "swarmId": "swarm-1782618195342-cn1tf7",
+      "topology": "hierarchical",
+      "maxAgents": 9,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical",
+        "maxAgents": 9,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-06-28T03:43:15.342Z",
+      "updatedAt": "2026-06-28T03:43:15.342Z",
+      "pid": 15720
     }
   },
   "version": "3.0.0"

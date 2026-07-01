@@ -26,7 +26,7 @@ $targets = [
 try {
     $id = os_posted_positive_int('id');
     $service = $application->serviceOrderManagement();
-    if ($operation === 'finalize') $service->finalize($id);
+    if ($operation === 'finalize') throw new InvalidArgumentException('Use o fluxo de finalização com execução, estoque e pagamento.');
     elseif ($operation === 'cancel') $service->cancel($id);
     elseif ($operation === 'reopen') $service->reopen($id);
     elseif (isset($targets[$operation])) $service->changeStatus($id, $targets[$operation]);

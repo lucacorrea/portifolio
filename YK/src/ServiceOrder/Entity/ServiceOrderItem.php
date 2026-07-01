@@ -10,7 +10,9 @@ final class ServiceOrderItem
         private readonly int $id,
         private readonly int $orderId,
         private readonly string $type,
+        private readonly string $origin,
         private readonly ?int $referenceId,
+        private readonly ?int $budgetItemId,
         private readonly string $description,
         private readonly string $unit,
         private readonly string $quantity,
@@ -27,7 +29,9 @@ final class ServiceOrderItem
             (int) ($data['id'] ?? 0),
             (int) ($data['ordem_servico_id'] ?? 0),
             (string) ($data['tipo'] ?? 'outro'),
+            (string) ($data['origem'] ?? 'manual'),
             isset($data['referencia_id']) ? (int) $data['referencia_id'] : null,
+            isset($data['orcamento_item_id']) ? (int) $data['orcamento_item_id'] : null,
             (string) ($data['descricao'] ?? ''),
             (string) ($data['unidade'] ?? 'un'),
             (string) ($data['quantidade'] ?? '1.000'),
@@ -41,7 +45,9 @@ final class ServiceOrderItem
     public function id(): int { return $this->id; }
     public function orderId(): int { return $this->orderId; }
     public function type(): string { return $this->type; }
+    public function origin(): string { return $this->origin; }
     public function referenceId(): ?int { return $this->referenceId; }
+    public function budgetItemId(): ?int { return $this->budgetItemId; }
     public function description(): string { return $this->description; }
     public function unit(): string { return $this->unit; }
     public function quantity(): string { return $this->quantity; }

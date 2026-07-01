@@ -84,6 +84,10 @@ function os_items_from_post(): array
 
 function os_optional_team_from_post(): ?App\ServiceOrder\DTO\ServiceOrderTeamData
 {
+    if (isset($_POST['team_members']) || isset($_POST['equipe'])) {
+        return App\ServiceOrder\DTO\ServiceOrderTeamData::fromArray($_POST);
+    }
+
     $primary = trim((string) ($_POST['funcionario_principal_id'] ?? ''));
     $support = trim((string) ($_POST['funcionario_apoio_id'] ?? ''));
     if ($primary === '' && $support === '') return null;

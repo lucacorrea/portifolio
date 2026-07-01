@@ -2,12 +2,8 @@
 $pageKey = 'caixa';
 $activePage = 'caixa';
 $pageTitle = 'Caixa';
-$pageSubtitle = 'Venda avulsa e movimentações visuais';
-$primaryActionLabel = 'Venda Avulsa';
-$primaryActionIcon = 'bi-cart-plus';
-$primaryActionTarget = '#modal-venda';
-$primaryActionPermission = 'caixa.registrar_venda';
+$pageSubtitle = 'Movimentacoes reais do dia';
 $requiredPermission = 'caixa.visualizar';
-$pageContent = __DIR__ . '/pages/operational.php';
+$pageContent = __DIR__ . '/pages/caixa.php';
 
 require __DIR__ . '/includes/shell.php';

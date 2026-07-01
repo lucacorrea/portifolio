@@ -83,6 +83,13 @@ $navGroups = [
             'permission' => 'caixa.visualizar',
         ],
         [
+            'key' => 'contas-receber',
+            'label' => 'Contas a Receber',
+            'icon' => 'bi-wallet2',
+            'href' => 'contas-receber.php',
+            'permission' => 'contas_receber.visualizar',
+        ],
+        [
             'key' => 'faturamento',
             'label' => 'Notas e Faturamento',
             'icon' => 'bi-receipt-cutoff',

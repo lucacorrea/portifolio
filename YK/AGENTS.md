@@ -1,13 +1,20 @@
 # AGENTS.md
 
 - Menus de ações de tabelas devem usar `table-action-dropdown` e o portal global em `assets/js/osmais-app.js`; não prenda `.dropdown-menu` ao overflow da tabela nem resolva removendo `overflow-x` dos painéis.
-- Orçamentos não possuem responsável, funcionário ou dupla.
+- Orçamentos não possuem funcionários.
 - A equipe operacional é definida somente na Ordem de Serviço.
-- Cada OS pode possuir funcionário principal e funcionário de apoio.
-- Agenda e Serviços da Semana são projeções das Ordens de Serviço agendadas e nunca devem duplicar o atendimento em tabelas próprias.
-- Ordens de Serviço são a fonte única dos atendimentos.
-- Agenda e Serviços da Semana projetam dados de ordens_servico.
-- Não criar tabelas duplicadas para atendimentos.
-- A equipe possui funcionário principal e funcionário de apoio.
-- Os dois funcionários devem ser distintos.
-- Conflitos de horário são validados pelo ServiceOrderManagementService.
+- Uma OS pode ser criada sem equipe.
+- Uma OS pode possuir um, dois ou mais funcionários.
+- Cada integrante possui função operacional.
+- Quando houver equipe, exatamente um integrante deve ser o responsável principal.
+- Para agendar, a OS deve possuir pelo menos um funcionário e um principal.
+- Todos os integrantes devem ser considerados na validação de conflito.
+- Agenda e Serviços da Semana são projeções das OS.
+- Orçamentos aprovados podem gerar uma OS operacional por vez.
+- Finalizar uma OS é uma operação transacional.
+- Produtos utilizados na finalização geram movimentação de estoque.
+- Pagamentos geram movimentação de Caixa.
+- Saldo pendente gera Conta a Receber.
+- Pagamentos e movimentações financeiras nunca são apagados; correções usam estorno.
+- Comprovante de serviço é documento não fiscal.
+- Dropdown de ações usa table-action-dropdown e portal global.
