@@ -549,7 +549,7 @@
                 <div id="viewCupomError" class="alert alert-danger d-none mb-0"></div>
             </div>
             <div class="modal-footer bg-white border-0">
-                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Voltar</button>
             </div>
         </div>
     </div>
