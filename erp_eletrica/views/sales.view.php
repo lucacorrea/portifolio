@@ -448,6 +448,9 @@
                 </div>
                 
                 <div class="d-grid gap-2">
+                    <button class="btn btn-outline-dark fw-bold py-3" id="btnManageViewCupom" onclick="visualizarCupom(activeManageId)">
+                        <i class="fas fa-eye me-2"></i>VISUALIZAR
+                    </button>
                     <button class="btn btn-outline-primary fw-bold py-3" id="btnManageCupom" onclick="imprimirCupom(activeManageId)">
                         <i class="fas fa-receipt me-2"></i>IMPRIMIR CUPOM
                     </button>
@@ -472,6 +475,86 @@
 </div>
 
 <!-- Modal: Pesquisar Vendas (Histórico) -->
+<!-- Modal: Visualizar Cupom -->
+<div class="modal fade" id="modalViewCupom" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white border-0 shadow-sm">
+                <h5 class="modal-title fw-bold text-white">
+                    <i class="fas fa-eye me-2 text-white"></i>Visualizar Cupom <span>#</span><span id="viewCupomId"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light p-4">
+                <div id="viewCupomLoading" class="text-center py-5 text-primary fw-bold">
+                    <span class="spinner-border spinner-border-sm me-2"></span>Carregando cupom...
+                </div>
+                <div id="viewCupomContent" class="d-none">
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="text-muted small">Cliente</div>
+                                    <div class="fw-bold" id="viewCupomCliente">-</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-muted small">Data</div>
+                                    <div class="fw-bold" id="viewCupomData">-</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-muted small">Status</div>
+                                    <div class="fw-bold" id="viewCupomStatus">-</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="text-muted small">Forma de pagamento</div>
+                                    <div class="fw-bold" id="viewCupomPagamento">-</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="text-muted small">Vendedor</div>
+                                    <div class="fw-bold" id="viewCupomVendedor">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white fw-bold">
+                            <i class="fas fa-list me-2 text-primary"></i>Itens da venda
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Produto</th>
+                                        <th class="text-center">Qtd</th>
+                                        <th class="text-end">Unitário</th>
+                                        <th class="pe-3 text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="viewCupomItens"></tbody>
+                                <tfoot class="table-light">
+                                    <tr id="viewCupomDescontoRow" class="d-none">
+                                        <td colspan="3" class="text-end fw-bold">Desconto</td>
+                                        <td class="pe-3 text-end fw-bold text-danger" id="viewCupomDesconto">R$ 0,00</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="text-end fw-bold fs-5">TOTAL</td>
+                                        <td class="pe-3 text-end fw-bold fs-5 text-primary" id="viewCupomTotal">R$ 0,00</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="viewCupomError" class="alert alert-danger d-none mb-0"></div>
+            </div>
+            <div class="modal-footer bg-white border-0">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalSearchSales" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
@@ -798,6 +881,7 @@ let currentPvCode = null;
 let activeManageId = null;
 let cameFromSearch = false;
 let pendingManageSale = null;
+let reopenSaleManagerAfterView = false;
 let selectedCustomerId = null;
 let selectedCustomerName = null;
 let selectedCustomerCPF = null;
@@ -2344,6 +2428,156 @@ function imprimirCupom(id) {
     window.open('recibo_venda.php?id=' + id, '_blank', 'width=400,height=600');
 }
 
+function viewCupomMoney(value) {
+    return 'R$ ' + (parseFloat(value) || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function viewCupomQty(value) {
+    return (parseFloat(value) || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 3
+    });
+}
+
+function viewCupomEscape(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+
+function viewCupomPaymentLabel(method) {
+    const key = String(method || '').toLowerCase();
+    const labels = {
+        dinheiro: 'Dinheiro',
+        pix: 'PIX',
+        cartao_credito: 'Cartão de Crédito',
+        credito: 'Cartão de Crédito',
+        cartao_debito: 'Cartão de Débito',
+        debito: 'Cartão de Débito',
+        boleto: 'Boleto',
+        fiado: 'A Prazo',
+        multiplo: 'Pagamento Múltiplo'
+    };
+    return labels[key] || key.replace(/_/g, ' ').toUpperCase();
+}
+
+function viewCupomPaymentHtml(sale) {
+    if (sale.forma_pagamento === 'multiplo' && sale.multi_detalhes) {
+        let detalhes = {};
+        try {
+            detalhes = typeof sale.multi_detalhes === 'string' ? JSON.parse(sale.multi_detalhes) : sale.multi_detalhes;
+        } catch (e) {
+            detalhes = {};
+        }
+
+        const linhas = Object.entries(detalhes)
+            .filter(([, valor]) => (parseFloat(valor) || 0) > 0)
+            .map(([metodo, valor]) => `
+                <div class="d-flex justify-content-between gap-3">
+                    <span>${viewCupomEscape(viewCupomPaymentLabel(metodo))}</span>
+                    <span>${viewCupomMoney(valor)}</span>
+                </div>
+            `);
+
+        if (linhas.length > 0) {
+            return `<div class="small">${linhas.join('')}</div>`;
+        }
+    }
+
+    return viewCupomEscape(viewCupomPaymentLabel(sale.forma_pagamento));
+}
+
+async function visualizarCupom(id) {
+    if (!id) return;
+
+    const modalEl = document.getElementById('modalViewCupom');
+    const loading = document.getElementById('viewCupomLoading');
+    const content = document.getElementById('viewCupomContent');
+    const error = document.getElementById('viewCupomError');
+    const tbody = document.getElementById('viewCupomItens');
+
+    document.getElementById('viewCupomId').innerText = id;
+    loading.classList.remove('d-none');
+    content.classList.add('d-none');
+    error.classList.add('d-none');
+    error.innerText = '';
+    tbody.innerHTML = '';
+
+    try {
+        const res = await fetch(`vendas.php?action=get_sale_detail&id=${encodeURIComponent(id)}`);
+        if (!res.ok) throw new Error('Não foi possível buscar a venda.');
+
+        const data = await res.json();
+        if (!data.success || !data.sale) {
+            throw new Error(data.error || 'Venda não encontrada.');
+        }
+
+        const sale = data.sale;
+        document.getElementById('viewCupomCliente').innerText = sale.cliente_nome || 'Consumidor Final';
+        document.getElementById('viewCupomData').innerText = sale.data_formatada || '-';
+        document.getElementById('viewCupomStatus').innerHTML = `<span class="badge bg-${sale.status === 'cancelado' ? 'danger' : 'success'}">${viewCupomEscape(String(sale.status || '').toUpperCase())}</span>`;
+        document.getElementById('viewCupomPagamento').innerHTML = viewCupomPaymentHtml(sale);
+        document.getElementById('viewCupomVendedor').innerText = sale.vendedor_nome || '-';
+
+        if (!sale.itens || sale.itens.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Nenhum item encontrado nesta venda.</td></tr>';
+        } else {
+            sale.itens.forEach(item => {
+                const subtotal = parseFloat(item.subtotal ?? ((parseFloat(item.quantidade) || 0) * (parseFloat(item.preco_unitario) || 0))) || 0;
+                const codigo = item.codigo ? `<div class="extra-small text-muted">Cód: ${viewCupomEscape(item.codigo)}</div>` : '';
+                const unidade = item.unidade ? ` ${viewCupomEscape(item.unidade)}` : '';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="ps-3">
+                        <div class="fw-bold">${viewCupomEscape(item.produto_nome || item.nome || 'Produto')}</div>
+                        ${codigo}
+                    </td>
+                    <td class="text-center">${viewCupomQty(item.quantidade)}${unidade}</td>
+                    <td class="text-end">${viewCupomMoney(item.preco_unitario)}</td>
+                    <td class="pe-3 text-end fw-bold">${viewCupomMoney(subtotal)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        const desconto = parseFloat(sale.desconto_total || 0);
+        const descontoRow = document.getElementById('viewCupomDescontoRow');
+        if (desconto > 0) {
+            descontoRow.classList.remove('d-none');
+            document.getElementById('viewCupomDesconto').innerText = '- ' + viewCupomMoney(desconto);
+        } else {
+            descontoRow.classList.add('d-none');
+        }
+
+        document.getElementById('viewCupomTotal').innerText = viewCupomMoney(sale.valor_total);
+
+        loading.classList.add('d-none');
+        content.classList.remove('d-none');
+    } catch (err) {
+        loading.classList.add('d-none');
+        error.classList.remove('d-none');
+        error.innerText = err.message || 'Erro ao visualizar o cupom.';
+    }
+
+    reopenSaleManagerAfterView = true;
+    const managerEl = document.getElementById('modalSaleManager');
+    const managerModal = managerEl ? bootstrap.Modal.getOrCreateInstance(managerEl) : null;
+    if (managerModal && managerEl.classList.contains('show')) {
+        managerModal.hide();
+        setTimeout(() => bootstrap.Modal.getOrCreateInstance(modalEl).show(), 120);
+    } else {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
 function imprimirA4(id) {
     window.open('nfce/danfe_a4.php?venda_id=' + id, '_blank', 'width=900,height=900');
 }
@@ -2414,6 +2648,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }, 150);
+        });
+    }
+
+    const viewCupomEl = document.getElementById('modalViewCupom');
+    if (viewCupomEl) {
+        viewCupomEl.addEventListener('hidden.bs.modal', function () {
+            if (!reopenSaleManagerAfterView) return;
+            reopenSaleManagerAfterView = false;
+
+            setTimeout(() => {
+                const openModals = document.querySelectorAll('.modal.show');
+                if (activeManageId && openModals.length === 0) {
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaleManager')).show();
+                }
+            }, 120);
         });
     }
 
