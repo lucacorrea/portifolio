@@ -302,20 +302,20 @@ if (!function_exists('erp_product_image_url')) {
 <!-- Modals -->
 <div class="modal fade" id="stockUnitsModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-info text-white border-0">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header text-white border-0 py-3 px-4" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
                 <h5 class="modal-title fw-bold text-white">
                     <i class="fas fa-warehouse me-2"></i>Estoque por Unidade
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4 bg-light">
-                <div id="stockUnitsLoading" class="text-center py-5 fw-bold text-info">
+            <div class="modal-body p-4" style="background-color: #fafbfc;">
+                <div id="stockUnitsLoading" class="text-center py-5 fw-bold text-primary">
                     <span class="spinner-border spinner-border-sm me-2"></span>Carregando saldos...
                 </div>
 
                 <div id="stockUnitsContent" class="d-none">
-                    <div class="card border-0 shadow-sm mb-3">
+                    <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
                         <div class="card-body">
                             <div class="text-muted small">Produto</div>
                             <h6 class="fw-bold mb-1" id="stockUnitsProductName">-</h6>
@@ -323,7 +323,7 @@ if (!function_exists('erp_product_image_url')) {
                         </div>
                     </div>
 
-                    <div class="table-responsive bg-white rounded border">
+                    <div class="table-responsive bg-white border shadow-sm" style="border-radius: 12px; overflow: hidden;">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
@@ -345,8 +345,8 @@ if (!function_exists('erp_product_image_url')) {
 
                 <div id="stockUnitsError" class="alert alert-danger d-none mb-0"></div>
             </div>
-            <div class="modal-footer bg-white border-0">
-                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Fechar</button>
+            <div class="modal-footer bg-white border-0 px-4 pb-4">
+                <button type="button" class="btn btn-primary px-4 fw-bold rounded-pill" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
