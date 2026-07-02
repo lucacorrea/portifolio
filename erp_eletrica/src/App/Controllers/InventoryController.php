@@ -183,6 +183,31 @@ class InventoryController extends BaseController {
         }
     }
 
+    public function stockByUnit() {
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $id = (int)($_GET['id'] ?? 0);
+            if ($id <= 0) {
+                echo json_encode(['success' => false, 'error' => 'Produto invalido.']);
+                exit;
+            }
+
+            $model = new \App\Models\Product();
+            $data = $model->getStockByUnit($id);
+
+            if (!$data) {
+                echo json_encode(['success' => false, 'error' => 'Produto nao encontrado.']);
+                exit;
+            }
+
+            echo json_encode(['success' => true] + $data);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Erro ao consultar estoque: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
     public function replicateCatalog() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             validateCsrf($_POST['csrf_token'] ?? '');

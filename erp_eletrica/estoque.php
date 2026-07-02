@@ -32,6 +32,10 @@ switch ($action) {
         \App\Services\AuthService::checkPermission('estoque', 'visualizar');
         $controller->problems();
         break;
+    case 'stock_by_unit':
+        \App\Services\AuthService::checkPermission('estoque', 'visualizar');
+        $controller->stockByUnit();
+        break;
     case 'save_problem':
         \App\Services\AuthService::checkPermission('estoque', 'editar');
         $controller->saveProblem();

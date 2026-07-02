@@ -87,6 +87,50 @@ class Product extends BaseModel {
         return ['Fios e Cabos', 'Iluminação', 'Disjuntores', 'Tomadas e Interruptores', 'Eletrodutos', 'Ferramentas', 'Outros'];
     }
 
+    public function getStockByUnit($id) {
+        $stmtProduct = $this->db->prepare("
+            SELECT id, codigo, nome, unidade, estoque_minimo
+            FROM {$this->table}
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $stmtProduct->execute([(int)$id]);
+        $product = $stmtProduct->fetch();
+
+        if (!$product) {
+            return null;
+        }
+
+        $stmtUnits = $this->db->prepare("
+            SELECT
+                f.id as filial_id,
+                f.nome as filial_nome,
+                f.principal,
+                COALESCE(ef.quantidade, 0) as quantidade,
+                COALESCE(ef.estoque_minimo, p.estoque_minimo, 0) as estoque_minimo
+            FROM filiais f
+            CROSS JOIN produtos p
+            LEFT JOIN estoque_filiais ef
+                ON ef.filial_id = f.id
+               AND ef.produto_id = p.id
+            WHERE p.id = ?
+            ORDER BY f.principal DESC, f.nome ASC
+        ");
+        $stmtUnits->execute([(int)$id]);
+        $units = $stmtUnits->fetchAll();
+
+        $total = 0;
+        foreach ($units as $unit) {
+            $total += (float)($unit['quantidade'] ?? 0);
+        }
+
+        return [
+            'product' => $product,
+            'units' => $units,
+            'total' => $total
+        ];
+    }
+
     public function getCriticalStock($filialId = null) {
         if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
         
