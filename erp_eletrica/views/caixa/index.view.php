@@ -158,7 +158,12 @@
                             <td><?= formatarMoeda($c['valor_abertura']) ?></td>
                             <td><?= $c['valor_fechamento'] ? formatarMoeda($c['valor_fechamento']) : '-' ?></td>
                             <td class="pe-4 text-end">
-                                <a href="caixa.php?action=detalhes&id=<?= $c['id'] ?>" class="btn btn-sm btn-outline-primary" title="Ver detalhes"><i class="fas fa-eye"></i></a>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="AÃ§Ãµes do caixa">
+                                    <a href="caixa.php?action=detalhes&id=<?= $c['id'] ?>" class="btn btn-outline-primary" title="Ver detalhes"><i class="fas fa-eye"></i></a>
+                                    <?php if ($c['status'] === 'fechado'): ?>
+                                        <a href="caixa_imprimir.php?id=<?= (int)$c['id'] ?>" target="_blank" class="btn btn-outline-dark" title="Imprimir fechamento"><i class="fas fa-print"></i></a>
+                                    <?php endif; ?>
+                                </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
