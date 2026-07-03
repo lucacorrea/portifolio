@@ -57,7 +57,17 @@ INSERT INTO permissoes (nome, slug, descricao, modulo, ativo) VALUES
 ('Editar configurações', 'configuracoes.editar', 'Permite alterar configurações do sistema.', 'configuracoes', 1),
 ('Visualizar arquivos', 'arquivos.visualizar', 'Permite visualizar arquivos autorizados.', 'arquivos', 1),
 ('Enviar arquivos', 'arquivos.enviar', 'Permite enviar arquivos autorizados.', 'arquivos', 1),
-('Remover arquivos', 'arquivos.remover', 'Permite remover arquivos autorizados.', 'arquivos', 1)
+('Remover arquivos', 'arquivos.remover', 'Permite remover arquivos autorizados.', 'arquivos', 1),
+('Visualizar Comida na Mesa', 'comida_mesa.visualizar', 'Permite visualizar o módulo Comida na Mesa.', 'comida_mesa', 1),
+('Consultar CPF no Comida na Mesa', 'comida_mesa.consultar_cpf', 'Permite consultar CPF para operações do programa.', 'comida_mesa', 1),
+('Cadastrar no Comida na Mesa', 'comida_mesa.cadastrar', 'Permite cadastrar famílias e inscrições do programa.', 'comida_mesa', 1),
+('Editar Comida na Mesa', 'comida_mesa.editar', 'Permite editar cadastros e inscrições do programa.', 'comida_mesa', 1),
+('Registrar entrega do Comida na Mesa', 'comida_mesa.entregar', 'Permite registrar entregas do programa.', 'comida_mesa', 1),
+('Cancelar entrega do Comida na Mesa', 'comida_mesa.cancelar_entrega', 'Permite cancelar entregas do programa.', 'comida_mesa', 1),
+('Visualizar documentos do Comida na Mesa', 'comida_mesa.documentos_visualizar', 'Permite visualizar documentos vinculados ao programa.', 'comida_mesa', 1),
+('Enviar documentos do Comida na Mesa', 'comida_mesa.documentos_enviar', 'Permite enviar documentos vinculados ao programa.', 'comida_mesa', 1),
+('Visualizar histórico do Comida na Mesa', 'comida_mesa.historico_visualizar', 'Permite visualizar histórico do programa.', 'comida_mesa', 1),
+('Gerenciar competências do Comida na Mesa', 'comida_mesa.competencias_gerenciar', 'Permite gerenciar competências do programa.', 'comida_mesa', 1)
 ON DUPLICATE KEY UPDATE
     nome = VALUES(nome),
     descricao = VALUES(descricao),
@@ -101,7 +111,17 @@ JOIN permissoes p ON p.slug IN (
     'relatorios.visualizar',
     'arquivos.visualizar',
     'arquivos.enviar',
-    'arquivos.remover'
+    'arquivos.remover',
+    'comida_mesa.visualizar',
+    'comida_mesa.consultar_cpf',
+    'comida_mesa.cadastrar',
+    'comida_mesa.editar',
+    'comida_mesa.entregar',
+    'comida_mesa.cancelar_entrega',
+    'comida_mesa.documentos_visualizar',
+    'comida_mesa.documentos_enviar',
+    'comida_mesa.historico_visualizar',
+    'comida_mesa.competencias_gerenciar'
 )
 WHERE n.slug = 'gestor';
 
@@ -120,7 +140,15 @@ JOIN permissoes p ON p.slug IN (
     'atendimentos.criar',
     'atendimentos.editar',
     'arquivos.visualizar',
-    'arquivos.enviar'
+    'arquivos.enviar',
+    'comida_mesa.visualizar',
+    'comida_mesa.consultar_cpf',
+    'comida_mesa.cadastrar',
+    'comida_mesa.editar',
+    'comida_mesa.entregar',
+    'comida_mesa.documentos_visualizar',
+    'comida_mesa.documentos_enviar',
+    'comida_mesa.historico_visualizar'
 )
 WHERE n.slug = 'tecnico';
 
@@ -137,7 +165,14 @@ JOIN permissoes p ON p.slug IN (
     'atendimentos.visualizar',
     'atendimentos.criar',
     'arquivos.visualizar',
-    'arquivos.enviar'
+    'arquivos.enviar',
+    'comida_mesa.visualizar',
+    'comida_mesa.consultar_cpf',
+    'comida_mesa.cadastrar',
+    'comida_mesa.entregar',
+    'comida_mesa.documentos_visualizar',
+    'comida_mesa.documentos_enviar',
+    'comida_mesa.historico_visualizar'
 )
 WHERE n.slug = 'atendente';
 
@@ -149,7 +184,10 @@ JOIN permissoes p ON p.slug IN (
     'perfil.visualizar',
     'prontuarios.visualizar',
     'atendimentos.visualizar',
-    'arquivos.visualizar'
+    'arquivos.visualizar',
+    'comida_mesa.visualizar',
+    'comida_mesa.documentos_visualizar',
+    'comida_mesa.historico_visualizar'
 )
 WHERE n.slug = 'leitura';
 

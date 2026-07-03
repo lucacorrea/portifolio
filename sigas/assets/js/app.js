@@ -660,6 +660,7 @@ const SIGAS = {
     initSourceOwnership() {
         const table = this.qs('#beneficiaryTable');
         if (!table) return;
+        if (document.body?.dataset.page === 'modulo') return;
         const header = this.qs('thead tr', table);
         if (header && !this.qs('[data-source-column]', header)) {
             const th = document.createElement('th');
