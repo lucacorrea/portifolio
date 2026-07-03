@@ -130,10 +130,10 @@ function e(mixed $value): string
             --primary-soft: #e9f5ed;
 
             --accent: #d99b27;
-            --accent-soft: #fff0c9;
+            --accent-soft: #f9d88e;
 
-            --background: #111311;
-            --canvas: #f7f5ed;
+            --page-background: #111311;
+            --canvas-background: #f5f2e9;
             --surface: #ffffff;
             --surface-soft: #f7f9f8;
 
@@ -142,13 +142,17 @@ function e(mixed $value): string
             --text-muted: #929b95;
 
             --border: #e4e8e5;
-            --border-strong: #d4dcd7;
+            --border-strong: #d3dcd6;
 
             --danger: #b42318;
             --danger-soft: #fff1ef;
             --danger-border: #f2c9c5;
 
-            --shadow: 0 30px 75px rgba(20, 33, 25, 0.15);
+            --shadow-card:
+                0 30px 75px rgba(20, 33, 25, 0.15);
+
+            --shadow-canvas:
+                0 18px 60px rgba(0, 0, 0, 0.28);
         }
 
         *,
@@ -160,7 +164,7 @@ function e(mixed $value): string
         html {
             min-width: 320px;
             min-height: 100%;
-            background: var(--background);
+            background: var(--page-background);
         }
 
         body {
@@ -175,7 +179,7 @@ function e(mixed $value): string
                 BlinkMacSystemFont,
                 "Segoe UI",
                 sans-serif;
-            background: var(--background);
+            background: var(--page-background);
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
         }
@@ -193,6 +197,11 @@ function e(mixed $value): string
 
         a {
             color: inherit;
+        }
+
+        :focus-visible {
+            outline: 0;
+            box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.17);
         }
 
         .sigas-skip-link {
@@ -213,11 +222,6 @@ function e(mixed $value): string
             left: 14px;
         }
 
-        :focus-visible {
-            outline: 0;
-            box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.17);
-        }
-
         .sigas-auth-page {
             min-height: 100vh;
             padding: 42px;
@@ -230,18 +234,23 @@ function e(mixed $value): string
             margin: 0 auto;
             overflow: hidden;
             background:
-                radial-gradient(circle at 50% 42%,
-                    rgba(255, 255, 255, 0.98),
-                    rgba(248, 247, 241, 0.94) 52%,
-                    rgba(243, 241, 231, 0.98));
+                radial-gradient(circle at 50% 35%,
+                    rgba(255, 255, 255, 0.93),
+                    rgba(247, 245, 237, 0.88) 48%,
+                    rgba(242, 239, 229, 0.98)),
+                var(--canvas-background);
             border-radius: 2px;
-            box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+            box-shadow: var(--shadow-canvas);
         }
+
+        /*
+         * Cabeçalho
+         */
 
         .sigas-auth-header {
             position: relative;
             z-index: 20;
-            min-height: 86px;
+            min-height: 88px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -279,12 +288,6 @@ function e(mixed $value): string
             font-size: 9px;
         }
 
-        .sigas-header-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
         .sigas-header-status {
             display: inline-flex;
             align-items: center;
@@ -298,14 +301,22 @@ function e(mixed $value): string
             border-radius: 999px;
         }
 
+        /*
+         * Área central
+         */
+
         .sigas-auth-stage {
             position: relative;
-            z-index: 5;
+            z-index: 8;
             min-height: calc(100vh - 230px);
             display: grid;
             place-items: center;
-            padding: 26px 28px 70px;
+            padding: 26px 28px 72px;
         }
+
+        /*
+         * Card de login
+         */
 
         .sigas-login-card {
             position: relative;
@@ -313,9 +324,9 @@ function e(mixed $value): string
             width: min(390px, 100%);
             padding: 34px;
             background: rgba(255, 255, 255, 0.985);
-            border: 1px solid rgba(225, 231, 227, 0.95);
+            border: 1px solid rgba(225, 231, 227, 0.96);
             border-radius: 24px;
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-card);
         }
 
         .sigas-login-heading {
@@ -350,6 +361,10 @@ function e(mixed $value): string
             color: var(--text-secondary);
             font-size: 11px;
         }
+
+        /*
+         * Formulário
+         */
 
         .sigas-login-form {
             display: grid;
@@ -422,8 +437,7 @@ function e(mixed $value): string
             outline: 0;
             transition:
                 border-color 0.18s ease,
-                box-shadow 0.18s ease,
-                background 0.18s ease;
+                box-shadow 0.18s ease;
         }
 
         .sigas-input-shell input::placeholder {
@@ -471,6 +485,10 @@ function e(mixed $value): string
             background: var(--primary-soft);
         }
 
+        /*
+         * Validação
+         */
+
         .sigas-field-error,
         .sigas-caps-warning {
             display: none;
@@ -509,19 +527,13 @@ function e(mixed $value): string
             border-radius: 11px;
         }
 
-        .sigas-login-feedback:not(:empty) {
+        .sigas-login-feedback.is-error {
             display: grid;
         }
 
-        .sigas-login-feedback.is-error {
-            color: var(--danger);
-        }
-
-        .sigas-login-feedback.is-success {
-            color: var(--primary);
-            background: var(--primary-soft);
-            border-color: #d1e5d7;
-        }
+        /*
+         * Botão
+         */
 
         .sigas-login-submit {
             width: 100%;
@@ -618,6 +630,121 @@ function e(mixed $value): string
             text-decoration: underline;
         }
 
+        /*
+         * Ilustração baixada
+         */
+
+        .sigas-login-artwork {
+            position: absolute;
+            top: 51%;
+            right: 5.5%;
+            z-index: 4;
+            width: min(390px, 29vw);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .sigas-login-artwork-image {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 470px;
+            object-fit: contain;
+        }
+
+        /*
+         * Elementos decorativos do lado esquerdo
+         */
+
+        .sigas-decoration-left {
+            position: absolute;
+            top: 50%;
+            left: 7%;
+            z-index: 3;
+            width: 265px;
+            height: 330px;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .sigas-decoration-card {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.76);
+            border: 1px solid rgba(20, 83, 45, 0.18);
+        }
+
+        .sigas-decoration-card::before,
+        .sigas-decoration-card::after {
+            content: "";
+            position: absolute;
+            left: 17px;
+            height: 1px;
+            background: rgba(23, 34, 28, 0.34);
+        }
+
+        .sigas-decoration-card::before {
+            top: 20px;
+            width: 47px;
+        }
+
+        .sigas-decoration-card::after {
+            top: 34px;
+            width: 34px;
+        }
+
+        .sigas-decoration-card-one {
+            top: 60px;
+            left: 35px;
+            width: 90px;
+            height: 64px;
+        }
+
+        .sigas-decoration-card-two {
+            right: 12px;
+            bottom: 10px;
+            width: 72px;
+            height: 86px;
+        }
+
+        .sigas-decoration-block {
+            position: absolute;
+            bottom: 12px;
+            left: 6px;
+            width: 72px;
+            height: 102px;
+            background:
+                radial-gradient(circle at 18px 18px, #111512 0 4px, transparent 5px),
+                radial-gradient(circle at 50px 28px, #111512 0 4px, transparent 5px),
+                radial-gradient(circle at 28px 52px, #111512 0 4px, transparent 5px),
+                radial-gradient(circle at 55px 72px, #111512 0 4px, transparent 5px),
+                var(--accent-soft);
+        }
+
+        .sigas-decoration-line {
+            position: absolute;
+            top: 12px;
+            right: 22px;
+            width: 100px;
+            height: 56px;
+            border-top: 1.5px solid rgba(23, 34, 28, 0.4);
+            border-radius: 50%;
+            transform: rotate(10deg);
+        }
+
+        .sigas-decoration-circle {
+            position: absolute;
+            top: 142px;
+            right: 25px;
+            width: 9px;
+            height: 9px;
+            border: 1.5px solid rgba(20, 83, 45, 0.42);
+            border-radius: 50%;
+        }
+
+        /*
+         * Rodapé
+         */
+
         .sigas-auth-footer {
             position: absolute;
             right: 0;
@@ -636,190 +763,9 @@ function e(mixed $value): string
             color: #c0c7c2;
         }
 
-        /* =====================================================
-           ILUSTRAÇÕES DE PESSOAS
-           ===================================================== */
-
-        .sigas-scene {
-            position: absolute;
-            z-index: 2;
-            pointer-events: none;
-        }
-
-        .sigas-scene-left {
-            top: 51%;
-            left: 5.5%;
-            width: 310px;
-            max-width: 25vw;
-            transform: translateY(-50%);
-        }
-
-        .sigas-scene-right {
-            top: 51%;
-            right: 5%;
-            width: 340px;
-            max-width: 27vw;
-            transform: translateY(-50%);
-        }
-
-        .sigas-people-illustration {
-            width: 100%;
-            height: auto;
-            display: block;
-            overflow: visible;
-        }
-
-        .scene-ground,
-        .scene-card,
-        .scene-card-line,
-        .scene-line,
-        .scene-small-dot,
-        .scene-platform,
-        .scene-platform-line,
-        .document-sheet,
-        .document-line,
-        .paper,
-        .paper-line,
-        .person-arm,
-        .person-leg,
-        .person-shoe,
-        .person-pattern {
-            vector-effect: non-scaling-stroke;
-        }
-
-        .scene-ground {
-            stroke: rgba(20, 83, 45, 0.18);
-            stroke-width: 1.4;
-        }
-
-        .scene-card {
-            fill: rgba(255, 255, 255, 0.7);
-            stroke: rgba(23, 34, 28, 0.28);
-            stroke-width: 1.2;
-        }
-
-        .scene-card-line {
-            stroke: rgba(23, 34, 28, 0.42);
-            stroke-width: 1.2;
-            stroke-linecap: round;
-        }
-
-        .scene-pattern {
-            fill: #e6b451;
-        }
-
-        .scene-pattern-dot {
-            fill: #111512;
-        }
-
-        .scene-line {
-            fill: none;
-            stroke: rgba(23, 34, 28, 0.4);
-            stroke-width: 1.2;
-            stroke-linecap: round;
-        }
-
-        .scene-small-dot {
-            fill: none;
-            stroke: rgba(23, 34, 28, 0.45);
-            stroke-width: 1.2;
-        }
-
-        .person-skin {
-            fill: #fff;
-            stroke: #111512;
-            stroke-width: 1.6;
-        }
-
-        .person-hair {
-            fill: #101310;
-        }
-
-        .person-body-dark {
-            fill: #121512;
-        }
-
-        .person-body-green {
-            fill: var(--primary);
-        }
-
-        .person-pattern {
-            fill: none;
-            stroke: rgba(255, 255, 255, 0.25);
-            stroke-width: 1.1;
-            stroke-linecap: round;
-        }
-
-        .person-arm {
-            fill: none;
-            stroke: #111512;
-            stroke-width: 9;
-            stroke-linecap: round;
-        }
-
-        .person-arm-light {
-            fill: none;
-            stroke: #fff;
-            stroke-width: 16;
-            stroke-linecap: round;
-        }
-
-        .document-sheet,
-        .paper {
-            fill: #fff;
-            stroke: rgba(17, 21, 18, 0.38);
-            stroke-width: 1.2;
-        }
-
-        .document-line,
-        .paper-line {
-            stroke: rgba(17, 21, 18, 0.38);
-            stroke-width: 1.1;
-            stroke-linecap: round;
-        }
-
-        .person-leg {
-            fill: none;
-            stroke: #fff;
-            stroke-width: 18;
-            stroke-linecap: round;
-        }
-
-        .person-leg-fill {
-            fill: #fff;
-            stroke: #111512;
-            stroke-width: 1.4;
-        }
-
-        .person-shoe {
-            fill: none;
-            stroke: #101310;
-            stroke-width: 12;
-            stroke-linecap: round;
-        }
-
-        .scene-platform {
-            fill: #fff;
-            stroke: rgba(17, 21, 18, 0.35);
-            stroke-width: 1.2;
-        }
-
-        .scene-platform-line {
-            stroke: rgba(17, 21, 18, 0.35);
-            stroke-width: 1.2;
-        }
-
-        .people-left {
-            opacity: 0.94;
-        }
-
-        .people-right {
-            opacity: 0.97;
-        }
-
-        /* =====================================================
-           TOAST
-           ===================================================== */
+        /*
+         * Toast
+         */
 
         .sigas-toast-container {
             position: fixed;
@@ -863,19 +809,19 @@ function e(mixed $value): string
             cursor: pointer;
         }
 
-        /* =====================================================
-           RESPONSIVIDADE
-           ===================================================== */
+        /*
+         * Responsividade
+         */
 
         @media (max-width: 1180px) {
-            .sigas-scene-left {
-                left: 0;
-                transform: translateY(-50%) scale(0.86);
+            .sigas-decoration-left {
+                left: 1%;
+                transform: translateY(-50%) scale(0.85);
             }
 
-            .sigas-scene-right {
+            .sigas-login-artwork {
                 right: 0;
-                transform: translateY(-50%) scale(0.86);
+                transform: translateY(-50%) scale(0.88);
             }
         }
 
@@ -892,16 +838,17 @@ function e(mixed $value): string
                 padding-inline: 28px;
             }
 
-            .sigas-scene {
+            .sigas-decoration-left,
+            .sigas-login-artwork {
                 opacity: 0.2;
             }
 
-            .sigas-scene-left {
-                left: -110px;
+            .sigas-decoration-left {
+                left: -100px;
             }
 
-            .sigas-scene-right {
-                right: -120px;
+            .sigas-login-artwork {
+                right: -115px;
             }
         }
 
@@ -952,7 +899,8 @@ function e(mixed $value): string
                 border-radius: 20px;
             }
 
-            .sigas-scene {
+            .sigas-decoration-left,
+            .sigas-login-artwork {
                 display: none;
             }
 
@@ -1041,206 +989,49 @@ function e(mixed $value): string
 
                 <span class="sigas-auth-brand-copy">
                     <strong>SIGAS COARI</strong>
-                    <span>Secretaria Municipal de Assistência Social</span>
+
+                    <span>
+                        Secretaria Municipal de Assistência Social
+                    </span>
                 </span>
             </a>
 
-            <div class="sigas-header-actions">
-                <span class="sigas-header-status">
-                    <i class="bi bi-shield-lock" aria-hidden="true"></i>
-                    Acesso institucional
-                </span>
-            </div>
+            <span class="sigas-header-status">
+                <i
+                    class="bi bi-shield-lock"
+                    aria-hidden="true"></i>
+
+                Acesso institucional
+            </span>
         </header>
 
-        <!-- Ilustração esquerda -->
-        <div class="sigas-scene sigas-scene-left" aria-hidden="true">
-            <svg
-                class="sigas-people-illustration people-left"
-                viewBox="0 0 360 330"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg">
+        <div
+            class="sigas-decoration-left"
+            aria-hidden="true">
 
-                <path class="scene-ground" d="M20 294H338" />
+            <span
+                class="sigas-decoration-card
+                       sigas-decoration-card-one">
+            </span>
 
-                <rect
-                    class="scene-card"
-                    x="32"
-                    y="76"
-                    width="92"
-                    height="62"
-                    rx="2" />
+            <span
+                class="sigas-decoration-card
+                       sigas-decoration-card-two">
+            </span>
 
-                <path class="scene-card-line" d="M50 98H105" />
-                <path class="scene-card-line" d="M50 114H96" />
-
-                <rect
-                    class="scene-pattern"
-                    x="44"
-                    y="210"
-                    width="74"
-                    height="84"
-                    rx="1" />
-
-                <circle class="scene-pattern-dot" cx="63" cy="229" r="4.5" />
-                <circle class="scene-pattern-dot" cx="91" cy="230" r="4.5" />
-                <circle class="scene-pattern-dot" cx="74" cy="252" r="4.5" />
-                <circle class="scene-pattern-dot" cx="101" cy="265" r="4.5" />
-                <circle class="scene-pattern-dot" cx="59" cy="278" r="4.5" />
-
-                <path
-                    class="scene-line"
-                    d="M10 52C28 70 45 69 60 49C75 29 87 43 94 54C103 68 113 61 124 50" />
-
-                <path
-                    class="scene-line"
-                    d="M246 215C263 233 280 233 296 214C309 198 320 207 328 216" />
-
-                <circle class="scene-small-dot" cx="282" cy="85" r="5" />
-                <circle class="scene-small-dot" cx="307" cy="161" r="6" />
-
-                <g>
-                    <path
-                        class="person-skin"
-                        d="M213 75C230 75 244 89 244 106C244 123 230 137 213 137C196 137 182 123 182 106C182 89 196 75 213 75Z" />
-
-                    <path
-                        class="person-hair"
-                        d="M182 107C179 87 194 69 215 69C236 69 249 84 250 104C240 93 228 91 215 98C203 105 192 107 182 107Z" />
-
-                    <path
-                        class="person-body-dark"
-                        d="M177 145C191 134 235 134 249 147C259 170 261 204 255 239H169C165 204 167 168 177 145Z" />
-
-                    <path class="person-pattern" d="M191 151L238 231" />
-                    <path class="person-pattern" d="M236 151L187 230" />
-                    <path class="person-pattern" d="M179 174L252 174" />
-                    <path class="person-pattern" d="M172 202L257 202" />
-
-                    <path
-                        class="person-arm"
-                        d="M177 160C154 171 138 192 129 218" />
-
-                    <path
-                        class="person-arm"
-                        d="M247 161C269 176 281 197 286 221" />
-
-                    <rect
-                        class="document-sheet"
-                        x="112"
-                        y="205"
-                        width="88"
-                        height="61"
-                        rx="4" />
-
-                    <path class="document-line" d="M130 224H181" />
-                    <path class="document-line" d="M130 240H169" />
-                    <path class="document-line" d="M130 252H177" />
-
-                    <path class="person-leg" d="M192 237L165 291" />
-                    <path class="person-leg" d="M232 237L264 291" />
-
-                    <path class="person-shoe" d="M153 295H188" />
-                    <path class="person-shoe" d="M252 295H287" />
-                </g>
-            </svg>
+            <span class="sigas-decoration-block"></span>
+            <span class="sigas-decoration-line"></span>
+            <span class="sigas-decoration-circle"></span>
         </div>
 
-        <!-- Ilustração direita -->
-        <div class="sigas-scene sigas-scene-right" aria-hidden="true">
-            <svg
-                class="sigas-people-illustration people-right"
-                viewBox="0 0 390 340"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg">
+        <div
+            class="sigas-login-artwork"
+            aria-hidden="true">
 
-                <path class="scene-ground" d="M24 302H365" />
-
-                <rect
-                    class="scene-card"
-                    x="28"
-                    y="83"
-                    width="82"
-                    height="54"
-                    rx="2" />
-
-                <path class="scene-card-line" d="M45 103H92" />
-                <path class="scene-card-line" d="M45 118H85" />
-
-                <rect
-                    class="scene-pattern"
-                    x="302"
-                    y="222"
-                    width="70"
-                    height="80"
-                    rx="1" />
-
-                <circle class="scene-pattern-dot" cx="320" cy="241" r="4.5" />
-                <circle class="scene-pattern-dot" cx="348" cy="241" r="4.5" />
-                <circle class="scene-pattern-dot" cx="333" cy="264" r="4.5" />
-                <circle class="scene-pattern-dot" cx="354" cy="281" r="4.5" />
-                <circle class="scene-pattern-dot" cx="315" cy="288" r="4.5" />
-
-                <path
-                    class="scene-line"
-                    d="M265 93C281 111 297 111 312 93C325 78 337 89 345 98" />
-
-                <circle class="scene-small-dot" cx="340" cy="67" r="4.5" />
-                <circle class="scene-small-dot" cx="83" cy="173" r="5" />
-
-                <g>
-                    <rect
-                        class="scene-platform"
-                        x="204"
-                        y="211"
-                        width="79"
-                        height="91" />
-
-                    <path class="scene-platform-line" d="M204 211H283" />
-
-                    <path
-                        class="person-skin"
-                        d="M200 69C216 69 229 82 229 98C229 114 216 127 200 127C184 127 171 114 171 98C171 82 184 69 200 69Z" />
-
-                    <path
-                        class="person-hair"
-                        d="M171 99C168 78 184 62 204 64C214 53 231 62 229 77C246 81 251 103 242 118C229 106 218 103 205 109C191 116 179 110 171 99Z" />
-
-                    <path
-                        class="person-body-dark"
-                        d="M177 133C194 122 226 126 242 143C234 171 229 190 236 211H179C170 182 168 157 177 133Z" />
-
-                    <path class="person-pattern" d="M191 136L232 205" />
-                    <path class="person-pattern" d="M228 137L185 204" />
-                    <path class="person-pattern" d="M176 165L239 165" />
-
-                    <path
-                        class="person-arm"
-                        d="M179 148C154 159 135 177 123 198" />
-
-                    <path
-                        class="person-arm"
-                        d="M238 151C259 167 270 185 276 205" />
-
-                    <path
-                        class="paper"
-                        d="M98 188L184 202L169 234L83 217L98 188Z" />
-
-                    <path class="paper-line" d="M111 202L157 210" />
-                    <path class="paper-line" d="M107 214L145 221" />
-
-                    <path
-                        class="person-leg-fill"
-                        d="M180 210C155 228 129 250 101 281L125 296C155 271 184 250 210 226L180 210Z" />
-
-                    <path
-                        class="person-leg-fill"
-                        d="M214 210C228 235 244 260 263 289L288 276C273 247 258 224 241 207L214 210Z" />
-
-                    <path class="person-shoe" d="M90 284L124 304" />
-                    <path class="person-shoe" d="M263 292L298 274" />
-                </g>
-            </svg>
+            <img
+                class="sigas-login-artwork-image"
+                src="assets/img/login-assistencia.svg"
+                alt="">
         </div>
 
         <main
@@ -1441,7 +1232,10 @@ function e(mixed $value): string
 
         <footer class="sigas-auth-footer">
             <span>Prefeitura Municipal de Coari</span>
-            <span>Secretaria Municipal de Assistência Social</span>
+
+            <span>
+                Secretaria Municipal de Assistência Social
+            </span>
         </footer>
     </div>
 
