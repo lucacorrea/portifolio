@@ -23,7 +23,7 @@ final class Csrf
     {
         Session::start();
 
-        if (!is_string($token) || $token === '') {
+        if (!is_string($token) || trim($token) === '') {
             return false;
         }
 
@@ -34,6 +34,17 @@ final class Csrf
         }
 
         return hash_equals($stored, $token);
+    }
+
+    public static function validateAndConsume(?string $token, string $form = 'default'): bool
+    {
+        if (!self::validate($token, $form)) {
+            return false;
+        }
+
+        unset($_SESSION[self::SESSION_KEY][$form]);
+
+        return true;
     }
 
     public static function validateAndRotate(?string $token, string $form = 'default'): bool
