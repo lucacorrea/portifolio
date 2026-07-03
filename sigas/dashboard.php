@@ -140,7 +140,7 @@ $frontendContext = [
                                 <div class="program-metric"><strong>4</strong><span>Polos ativos</span></div>
                             </div>
                         </div>
-                        <div class="program-actions"><a class="btn btn-program-light" href="modulo.html"><i class="bi bi-arrow-up-right-square"></i>Abrir programa</a><button class="btn btn-program-outline" type="button" data-bs-toggle="modal" data-bs-target="#deliveryModal"><i class="bi bi-check2-square"></i>Registrar entrega</button></div>
+                        <div class="program-actions"><a class="btn btn-program-light" href="modulo.php"><i class="bi bi-arrow-up-right-square"></i>Abrir programa</a><button class="btn btn-program-outline" type="button" data-bs-toggle="modal" data-bs-target="#deliveryModal"><i class="bi bi-check2-square"></i>Registrar entrega</button></div>
                     </article>
 
                     <article class="content-card col-span-3">
@@ -186,7 +186,7 @@ $frontendContext = [
                     </article>
 
                     <article class="content-card col-span-5">
-                        <div class="card-heading"><div><div class="card-kicker">Movimentações recentes</div><h2>Últimos atendimentos</h2></div><a class="card-link" href="modulo.html">Abrir histórico</a></div>
+                        <div class="card-heading"><div><div class="card-kicker">Movimentações recentes</div><h2>Últimos atendimentos</h2></div><a class="card-link" href="modulo.php">Abrir histórico</a></div>
                         <div class="activity-list">
                             <div class="activity-item"><span class="mini-avatar">FS</span><div class="item-main"><strong>Francisca Santos</strong><span>Atualização cadastral concluída</span></div><div class="item-side">14:32<br><span class="status-badge status-success">Concluído</span></div></div>
                             <div class="activity-item"><span class="mini-avatar">JL</span><div class="item-main"><strong>João Lima</strong><span>Solicitação de benefício eventual</span></div><div class="item-side">13:48<br><span class="status-badge status-info">Em análise</span></div></div>

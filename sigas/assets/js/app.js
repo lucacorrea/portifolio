@@ -37,7 +37,7 @@ const SIGAS = {
             ]],
             ['Programas e Benefícios', [
                 ['beneficios.html', 'gift', 'Programas e Benefícios', 'beneficios'],
-                ['modulo.html', 'basket2', 'Comida na Mesa / Entregas', 'modulo', true]
+                ['modulo.php', 'basket2', 'Comida na Mesa / Entregas', 'modulo', true]
             ]],
             ['Rede Socioassistencial', [
                 ['unidades.html', 'buildings', 'Unidades', 'unidades']
@@ -216,12 +216,15 @@ const SIGAS = {
     },
     initFilters() {
         const form = this.qs('#filterForm');
+        if (!form || form.hasAttribute('data-server-filter')) {
+            return;
+        }
+
         const advanced = this.qs('#advancedFilters');
         const table = this.qs('#beneficiaryTable');
         const loading = this.qs('#tableLoading');
         const empty = this.qs('#emptyState');
         const error = this.qs('#errorState');
-        if (!form) return;
         this.qsa('[data-toggle-advanced]').forEach(button => button.addEventListener('click', () => {
             advanced?.classList.toggle('show');
             const expanded = advanced?.classList.contains('show') || false;

@@ -66,7 +66,7 @@ sigas-coari/
 ├── solicitacoes.html
 ├── atendimentos.html
 ├── beneficios.html
-├── modulo.html
+├── modulo.php
 ├── unidades.html
 ├── integracao-semth.html
 ├── relatorios.html
