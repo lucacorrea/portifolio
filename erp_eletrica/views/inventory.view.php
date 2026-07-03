@@ -368,10 +368,12 @@ if (!function_exists('erp_product_image_url')) {
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">Código Interno *</label>
                             <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" oninput="toggleProductCodeViews(this.value)">
+                            <small class="text-muted extra-small">Nao use codigo de barras aqui.</small>
                         </div>
                         <div class="col-md-4 group-extra-codes">
                             <label class="form-label small fw-bold">Cód. de Barras (EAN)</label>
                             <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="Opcional">
+                            <small class="text-muted extra-small">Use este campo para codigo de barras.</small>
                         </div>
                         <div class="col-md-5 group-extra-codes">
                             <label class="form-label small fw-bold">QR Code</label>

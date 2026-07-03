@@ -9,6 +9,43 @@ class Product extends BaseModel {
         return $code === '' || (ctype_digit($code) && (int)$code > 0 && (int)$code < 10000);
     }
 
+    private function onlyDigits($value): string {
+        return preg_replace('/\D+/', '', trim((string)$value));
+    }
+
+    private function isEmptyGtin($value): bool {
+        $value = strtoupper(trim((string)$value));
+        return $value === '' || $value === 'SEM GTIN' || $value === 'SEMGTIN' || $value === '0';
+    }
+
+    private function isBarcodeLikeCode($value): bool {
+        $value = trim((string)$value);
+        $digits = $this->onlyDigits($value);
+
+        return $digits === $value && strlen($digits) >= 8 && strlen($digits) <= 14;
+    }
+
+    private function prepareProductCodes(array &$data): void {
+        $data['codigo'] = trim((string)($data['codigo'] ?? ''));
+        $data['cean'] = trim((string)($data['cean'] ?? ''));
+
+        if ($this->isEmptyGtin($data['cean'])) {
+            $data['cean'] = 'SEM GTIN';
+        } else {
+            $data['cean'] = $this->onlyDigits($data['cean']);
+        }
+
+        // Se o operador colocou um EAN/codigo de barras no campo Codigo Interno,
+        // move para o campo fiscal correto e gera o proximo codigo interno.
+        if (
+            $this->isBarcodeLikeCode($data['codigo']) &&
+            ($this->isEmptyGtin($data['cean']) || $this->onlyDigits($data['cean']) === $data['codigo'])
+        ) {
+            $data['cean'] = $data['codigo'];
+            $data['codigo'] = (string)$this->getNextCode();
+        }
+    }
+
     public function all($order = "nome ASC") {
         $filialId = $_SESSION['filial_id'] ?? 1;
         // Só a Matriz (ID 1) vê o catálogo global completo. Filiais veem apenas seu estoque local.
@@ -362,6 +399,7 @@ class Product extends BaseModel {
         $hasFornecedor    = true;
 
         $filialId = $_SESSION['filial_id'] ?? 1;
+        $this->prepareProductCodes($data);
 
         if (!empty($data['id'])) {
             // --- UPDATE ---

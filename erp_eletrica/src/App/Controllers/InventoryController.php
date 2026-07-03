@@ -139,15 +139,17 @@ class InventoryController extends BaseController {
             $isEdit = isset($data['id']) && !empty($data['id']);
             try {
                 $savedId = $model->save($data);
-                if (!$isEdit && $savedId) {
-                    $savedProduct = $model->find($savedId);
+                $productIdForMessage = $isEdit ? (int)$data['id'] : (int)$savedId;
+                if ($productIdForMessage > 0) {
+                    $savedProduct = $model->find($productIdForMessage);
                     if ($savedProduct) {
                         $data['codigo'] = $savedProduct['codigo'] ?? ($data['codigo'] ?? '');
+                        $data['nome'] = $savedProduct['nome'] ?? ($data['nome'] ?? '');
                     }
                 }
             } catch (\PDOException $e) {
                 if ($e->getCode() === '23000' && stripos($e->getMessage(), 'codigo') !== false) {
-                    $this->redirect('estoque.php?error=' . urlencode('Este codigo acabou de ser usado por outro usuario. Atualize a pagina e tente salvar novamente.'));
+                    $this->redirect('estoque.php?error=' . urlencode('Este codigo interno ja existe em outro produto. Se esse numero for codigo de barras, informe no campo Cod. de Barras (EAN).'));
                 }
                 throw $e;
             } catch (\Exception $e) {
