@@ -253,7 +253,11 @@ if (!function_exists('erp_product_image_url')) {
                             <div class="fw-bold text-success">V: <?= formatarMoeda($p['preco_venda']) ?></div>
                         </td>
                         <td class="text-end pe-4">
-                            <div class="dropstart">
+                            <div class="d-inline-flex align-items-center gap-2">
+                                <button class="btn btn-outline-info btn-sm border shadow-sm" type="button" title="Ver estoque por unidade" onclick="openStockUnits(<?= (int)$p['id'] ?>)">
+                                    <i class="fas fa-warehouse"></i>
+                                </button>
+                                <div class="dropstart">
                                 <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
@@ -280,6 +284,7 @@ if (!function_exists('erp_product_image_url')) {
                                         <i class="fas fa-trash me-2"></i>Excluir
                                     </a></li>
                                 </ul>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -295,6 +300,58 @@ if (!function_exists('erp_product_image_url')) {
 </div>
 
 <!-- Modals -->
+<div class="modal fade" id="stockUnitsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header text-white border-0 py-3 px-4" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+                <h5 class="modal-title fw-bold text-white">
+                    <i class="fas fa-warehouse me-2"></i>Estoque por Unidade
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" style="background-color: #fafbfc;">
+                <div id="stockUnitsLoading" class="text-center py-5 fw-bold text-primary">
+                    <span class="spinner-border spinner-border-sm me-2"></span>Carregando saldos...
+                </div>
+
+                <div id="stockUnitsContent" class="d-none">
+                    <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
+                        <div class="card-body">
+                            <div class="text-muted small">Produto</div>
+                            <h6 class="fw-bold mb-1" id="stockUnitsProductName">-</h6>
+                            <div class="small text-muted" id="stockUnitsProductCode">-</div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive bg-white border shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Unidade / Filial</th>
+                                    <th class="text-center">Tipo</th>
+                                    <th class="text-end">Quantidade</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockUnitsRows"></tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="2" class="ps-3 fw-bold">TOTAL GERAL</td>
+                                    <td class="pe-3 text-end fw-bold text-primary" id="stockUnitsTotal">0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="stockUnitsError" class="alert alert-danger d-none mb-0"></div>
+            </div>
+            <div class="modal-footer bg-white border-0 px-4 pb-4">
+                <button type="button" class="btn btn-primary px-4 fw-bold rounded-pill" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="newProductModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <form class="modal-content" action="estoque.php?action=save" method="POST" enctype="multipart/form-data">
@@ -311,10 +368,12 @@ if (!function_exists('erp_product_image_url')) {
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">Código Interno *</label>
                             <input type="text" name="codigo" class="form-control shadow-sm" required id="edit_codigo" style="font-family: 'Roboto Mono';" oninput="toggleProductCodeViews(this.value)">
+                            <small class="text-muted extra-small">Nao use codigo de barras aqui.</small>
                         </div>
                         <div class="col-md-4 group-extra-codes">
                             <label class="form-label small fw-bold">Cód. de Barras (EAN)</label>
                             <input type="text" name="cean" id="edit_cean" class="form-control shadow-sm" placeholder="Opcional">
+                            <small class="text-muted extra-small">Use este campo para codigo de barras.</small>
                         </div>
                         <div class="col-md-5 group-extra-codes">
                             <label class="form-label small fw-bold">QR Code</label>
@@ -918,6 +977,83 @@ function openProblemModal(productId, productName) {
     document.getElementById('prob_produto_id').value = productId;
     document.getElementById('prob_produto_nome').value = productName;
     modal.show();
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, function(char) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[char];
+    });
+}
+
+async function openStockUnits(productId) {
+    const modalEl = document.getElementById('stockUnitsModal');
+    const loading = document.getElementById('stockUnitsLoading');
+    const content = document.getElementById('stockUnitsContent');
+    const error = document.getElementById('stockUnitsError');
+    const rows = document.getElementById('stockUnitsRows');
+
+    loading.classList.remove('d-none');
+    content.classList.add('d-none');
+    error.classList.add('d-none');
+    error.innerText = '';
+    rows.innerHTML = '';
+
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+    try {
+        const response = await fetch(`estoque.php?action=stock_by_unit&id=${encodeURIComponent(productId)}`);
+        if (!response.ok) {
+            throw new Error('Erro ao consultar o estoque.');
+        }
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Nao foi possivel consultar o estoque.');
+        }
+
+        const product = data.product || {};
+        const productUnit = product.unidade || 'UN';
+        document.getElementById('stockUnitsProductName').innerText = product.nome || 'Produto';
+        document.getElementById('stockUnitsProductCode').innerText = `Codigo: ${product.codigo || '-'} | Unidade: ${productUnit}`;
+
+        const units = data.units || [];
+        if (!units.length) {
+            rows.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Nenhuma unidade encontrada.</td></tr>';
+        } else {
+            units.forEach(unit => {
+                const quantity = parseFloat(unit.quantidade || 0);
+                const isMain = parseInt(unit.principal || 0, 10) === 1;
+                const tr = document.createElement('tr');
+
+                tr.innerHTML = `
+                    <td class="ps-3">
+                        <div class="fw-bold">${escapeHtml(unit.filial_nome || 'Unidade')}</div>
+                        <div class="text-muted extra-small">ID #${escapeHtml(unit.filial_id || '-')}</div>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge ${isMain ? 'bg-primary' : 'bg-secondary'}">${isMain ? 'MATRIZ' : 'FILIAL'}</span>
+                    </td>
+                    <td class="pe-3 text-end fw-bold text-dark">${formatQty(quantity)} ${escapeHtml(productUnit)}</td>
+                `;
+
+                rows.appendChild(tr);
+            });
+        }
+
+        document.getElementById('stockUnitsTotal').innerText = `${formatQty(data.total || 0)} ${productUnit}`;
+        loading.classList.add('d-none');
+        content.classList.remove('d-none');
+    } catch (err) {
+        loading.classList.add('d-none');
+        error.classList.remove('d-none');
+        error.innerText = err.message || 'Erro ao consultar o estoque.';
+    }
 }
 
 

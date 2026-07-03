@@ -31,7 +31,10 @@ if (!function_exists('caixa_fmt_moeda')) {
     }
 }
 
-$metodosObrigatorios = ['A PRAZO', 'CARTAO', 'DINHEIRO', 'PIX'];
+$metodosObrigatorios = ['A PRAZO', 'CARTAO CREDITO', 'CARTAO DEBITO', 'DINHEIRO', 'PIX'];
+if ((float)($summary['breakdown']['CARTAO'] ?? 0) > 0 || (is_array($resumoDeth) && isset($resumoDeth['CARTAO']))) {
+    array_splice($metodosObrigatorios, 3, 0, 'CARTAO');
+}
 $breakdownParaMostrar = [];
 $totalCalculadoPagamentos = 0;
 $totalInformadoPagamentos = 0;
@@ -69,6 +72,10 @@ $saldoFinalSistema = (float)$caixa['valor_abertura'] + (float)($summary['saldo']
 $saldoFinalInformado = (float)$caixa['valor_abertura'] + $dinheiroInformado + (float)($summary['suprimento'] ?? 0) - (float)($summary['sangria'] ?? 0);
 $diferencaPagamentos = $totalInformadoPagamentos - $totalCalculadoPagamentos;
 $diferencaGaveta = $saldoFinalInformado - $saldoFinalSistema;
+$labelsPagamento = [
+    'CARTAO CREDITO' => 'CREDITO',
+    'CARTAO DEBITO' => 'DEBITO',
+];
 
 ?>
 <!DOCTYPE html>
@@ -147,7 +154,7 @@ $diferencaGaveta = $saldoFinalInformado - $saldoFinalSistema;
 
     <?php foreach ($breakdownParaMostrar as $metodo => $vals): ?>
     <div class="payment-grid fw-bold fs-small mt-1">
-        <span><?= $metodo ?></span>
+        <span><?= $labelsPagamento[$metodo] ?? $metodo ?></span>
         <span><?= caixa_fmt_moeda($vals['calculado']) ?></span>
         <span><?= caixa_fmt_moeda($vals['informado']) ?></span>
     </div>
@@ -169,7 +176,7 @@ $diferencaGaveta = $saldoFinalInformado - $saldoFinalSistema;
     <?php else: ?>
         <?php foreach ($divergencias as $div): ?>
             <div class="fw-bold fs-small">
-                <?= $div['metodo'] ?>:
+                <?= $labelsPagamento[$div['metodo']] ?? $div['metodo'] ?>:
                 <?= $div['diferenca'] > 0 ? 'SOBRA' : 'FALTA' ?>
                 <?= caixa_fmt_moeda(abs($div['diferenca'])) ?>
             </div>

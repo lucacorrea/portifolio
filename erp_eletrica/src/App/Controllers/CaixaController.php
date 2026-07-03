@@ -209,7 +209,10 @@ class CaixaController extends BaseController {
             $totalCalculado = 0;
             $totalInformadoPagamentos = 0;
             $temDivergencia = false;
-            $metodos = ['A PRAZO', 'CARTAO', 'DINHEIRO', 'PIX'];
+            $metodos = ['A PRAZO', 'CARTAO CREDITO', 'CARTAO DEBITO', 'DINHEIRO', 'PIX'];
+            if (!empty($detailed['breakdown']['CARTAO']) || array_key_exists('CARTAO', $breakdownInformed)) {
+                array_splice($metodos, 3, 0, 'CARTAO');
+            }
 
             foreach ($metodos as $metodo) {
                 $calculado = (float)($detailed['breakdown'][$metodo] ?? 0);

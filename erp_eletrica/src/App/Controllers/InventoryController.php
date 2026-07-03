@@ -137,17 +137,36 @@ class InventoryController extends BaseController {
             }
 
             $isEdit = isset($data['id']) && !empty($data['id']);
+            $codigoInformado = trim((string)($data['codigo'] ?? ''));
+            $codigoSomenteNumeros = preg_replace('/\D+/', '', $codigoInformado);
+            $pareceCodigoBarras = ($codigoInformado === $codigoSomenteNumeros && strlen($codigoSomenteNumeros) >= 8 && strlen($codigoSomenteNumeros) <= 14);
+
+            if ($codigoInformado !== '' && !$pareceCodigoBarras) {
+                $produtoComMesmoCodigo = $model->findByInternalCode($codigoInformado, $isEdit ? (int)$data['id'] : null);
+                if ($produtoComMesmoCodigo) {
+                    $msg = sprintf(
+                        'O codigo interno %s ja pertence ao produto "%s" (ID #%s). Para corrigir, abra esse produto ou escolha outro codigo interno.',
+                        $codigoInformado,
+                        $produtoComMesmoCodigo['nome'] ?? 'sem nome',
+                        $produtoComMesmoCodigo['id'] ?? '-'
+                    );
+                    $this->redirect('estoque.php?error=' . urlencode($msg));
+                }
+            }
+
             try {
                 $savedId = $model->save($data);
-                if (!$isEdit && $savedId) {
-                    $savedProduct = $model->find($savedId);
+                $productIdForMessage = $isEdit ? (int)$data['id'] : (int)$savedId;
+                if ($productIdForMessage > 0) {
+                    $savedProduct = $model->find($productIdForMessage);
                     if ($savedProduct) {
                         $data['codigo'] = $savedProduct['codigo'] ?? ($data['codigo'] ?? '');
+                        $data['nome'] = $savedProduct['nome'] ?? ($data['nome'] ?? '');
                     }
                 }
             } catch (\PDOException $e) {
                 if ($e->getCode() === '23000' && stripos($e->getMessage(), 'codigo') !== false) {
-                    $this->redirect('estoque.php?error=' . urlencode('Este codigo acabou de ser usado por outro usuario. Atualize a pagina e tente salvar novamente.'));
+                    $this->redirect('estoque.php?error=' . urlencode('Este codigo interno ja existe em outro produto. Se esse numero for codigo de barras, informe no campo Cod. de Barras (EAN).'));
                 }
                 throw $e;
             } catch (\Exception $e) {
@@ -181,6 +200,31 @@ class InventoryController extends BaseController {
             $model->delete($id);
             $this->redirect('estoque.php?msg=Material excluído com sucesso');
         }
+    }
+
+    public function stockByUnit() {
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $id = (int)($_GET['id'] ?? 0);
+            if ($id <= 0) {
+                echo json_encode(['success' => false, 'error' => 'Produto invalido.']);
+                exit;
+            }
+
+            $model = new \App\Models\Product();
+            $data = $model->getStockByUnit($id);
+
+            if (!$data) {
+                echo json_encode(['success' => false, 'error' => 'Produto nao encontrado.']);
+                exit;
+            }
+
+            echo json_encode(['success' => true] + $data);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Erro ao consultar estoque: ' . $e->getMessage()]);
+        }
+        exit;
     }
 
     public function replicateCatalog() {

@@ -9,6 +9,43 @@ class Product extends BaseModel {
         return $code === '' || (ctype_digit($code) && (int)$code > 0 && (int)$code < 10000);
     }
 
+    private function onlyDigits($value): string {
+        return preg_replace('/\D+/', '', trim((string)$value));
+    }
+
+    private function isEmptyGtin($value): bool {
+        $value = strtoupper(trim((string)$value));
+        return $value === '' || $value === 'SEM GTIN' || $value === 'SEMGTIN' || $value === '0';
+    }
+
+    private function isBarcodeLikeCode($value): bool {
+        $value = trim((string)$value);
+        $digits = $this->onlyDigits($value);
+
+        return $digits === $value && strlen($digits) >= 8 && strlen($digits) <= 14;
+    }
+
+    private function prepareProductCodes(array &$data): void {
+        $data['codigo'] = trim((string)($data['codigo'] ?? ''));
+        $data['cean'] = trim((string)($data['cean'] ?? ''));
+
+        if ($this->isEmptyGtin($data['cean'])) {
+            $data['cean'] = 'SEM GTIN';
+        } else {
+            $data['cean'] = $this->onlyDigits($data['cean']);
+        }
+
+        // Se o operador colocou um EAN/codigo de barras no campo Codigo Interno,
+        // move para o campo fiscal correto e gera o proximo codigo interno.
+        if (
+            $this->isBarcodeLikeCode($data['codigo']) &&
+            ($this->isEmptyGtin($data['cean']) || $this->onlyDigits($data['cean']) === $data['codigo'])
+        ) {
+            $data['cean'] = $data['codigo'];
+            $data['codigo'] = (string)$this->getNextCode();
+        }
+    }
+
     public function all($order = "nome ASC") {
         $filialId = $_SESSION['filial_id'] ?? 1;
         // Só a Matriz (ID 1) vê o catálogo global completo. Filiais veem apenas seu estoque local.
@@ -85,6 +122,66 @@ class Product extends BaseModel {
 
     public function getCategories() {
         return ['Fios e Cabos', 'Iluminação', 'Disjuntores', 'Tomadas e Interruptores', 'Eletrodutos', 'Ferramentas', 'Outros'];
+    }
+
+    public function findByInternalCode($code, $ignoreId = null) {
+        $sql = "SELECT id, codigo, nome, cean
+                FROM {$this->table}
+                WHERE codigo = ?";
+        $params = [trim((string)$code)];
+
+        if (!empty($ignoreId)) {
+            $sql .= " AND id <> ?";
+            $params[] = (int)$ignoreId;
+        }
+
+        $sql .= " LIMIT 1";
+
+        return $this->query($sql, $params)->fetch();
+    }
+
+    public function getStockByUnit($id) {
+        $stmtProduct = $this->db->prepare("
+            SELECT id, codigo, nome, unidade, estoque_minimo
+            FROM {$this->table}
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $stmtProduct->execute([(int)$id]);
+        $product = $stmtProduct->fetch();
+
+        if (!$product) {
+            return null;
+        }
+
+        $stmtUnits = $this->db->prepare("
+            SELECT
+                f.id as filial_id,
+                f.nome as filial_nome,
+                f.principal,
+                COALESCE(ef.quantidade, 0) as quantidade,
+                COALESCE(ef.estoque_minimo, p.estoque_minimo, 0) as estoque_minimo
+            FROM filiais f
+            CROSS JOIN produtos p
+            LEFT JOIN estoque_filiais ef
+                ON ef.filial_id = f.id
+               AND ef.produto_id = p.id
+            WHERE p.id = ?
+            ORDER BY f.principal DESC, f.nome ASC
+        ");
+        $stmtUnits->execute([(int)$id]);
+        $units = $stmtUnits->fetchAll();
+
+        $total = 0;
+        foreach ($units as $unit) {
+            $total += (float)($unit['quantidade'] ?? 0);
+        }
+
+        return [
+            'product' => $product,
+            'units' => $units,
+            'total' => $total
+        ];
     }
 
     public function getCriticalStock($filialId = null) {
@@ -318,6 +415,7 @@ class Product extends BaseModel {
         $hasFornecedor    = true;
 
         $filialId = $_SESSION['filial_id'] ?? 1;
+        $this->prepareProductCodes($data);
 
         if (!empty($data['id'])) {
             // --- UPDATE ---
