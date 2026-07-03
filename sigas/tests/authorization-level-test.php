@@ -230,7 +230,7 @@ function policy_for(AuthorizationService $authorization, int $activeAdministrato
 
 $basePermissions = [
     1 => ['usuarios.alterar_nivel', 'usuarios.promover_administrador', 'usuarios.bloquear', 'usuarios.editar'],
-    2 => ['usuarios.alterar_nivel', 'usuarios.bloquear', 'usuarios.editar'],
+    2 => ['usuarios.alterar_nivel', 'usuarios.bloquear', 'usuarios.editar', 'prontuarios.editar'],
     3 => [],
     4 => ['usuarios.promover_administrador', 'usuarios.aprovar'],
     5 => [],
@@ -256,7 +256,8 @@ assert_true(!$authorization->isSupport($manager), 'Gestor nao e Suporte');
 assert_true(!$authorization->isAdministrator($custom), 'nivel personalizado com promover nao vira Administrador');
 assert_true(!$authorization->isSupport($custom), 'nivel personalizado com aprovar nao vira Suporte');
 assert_true($authorization->canAccessOperationalSector($admin, 999), 'Administrador ativo possui escopo global de setor');
-assert_true(!$authorization->canAccessOperationalSector($support, 999), 'Suporte nao possui escopo operacional global');
+assert_true($authorization->canAccessOperationalSector($support, 999), 'Suporte ativo possui escopo operacional global');
+assert_true($authorization->can($support, 'prontuarios.editar'), 'Suporte com permissao operacional pode editar prontuarios');
 assert_true($authorization->canAccessOperationalSector($manager, 30), 'Gestor acessa proprio setor');
 assert_true(!$authorization->canAccessOperationalSector($manager, 31), 'Gestor nao acessa outro setor');
 

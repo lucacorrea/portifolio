@@ -41,12 +41,8 @@ final class AuthorizationService
             return false;
         }
 
-        if ($this->isAdministrator($user)) {
+        if ($this->isAdministrator($user) || $this->isSupport($user)) {
             return true;
-        }
-
-        if ($this->isSupport($user)) {
-            return false;
         }
 
         return $user->setorId === $sectorId;

@@ -17,7 +17,7 @@ ON DUPLICATE KEY UPDATE
 
 INSERT INTO niveis_acesso (nome, slug, descricao, prioridade, ativo) VALUES
 ('Administrador', 'administrador', 'Acesso integral aos módulos e configurações do sistema.', 10, 1),
-('Suporte', 'suporte', 'Administração de contas, sessões e auditoria de autenticação.', 20, 1),
+('Suporte', 'suporte', 'Superusuário técnico com acesso global aos módulos operacionais, usuários, auditoria, configurações e diagnósticos.', 20, 1),
 ('Gestor', 'gestor', 'Gestão operacional do próprio setor.', 30, 1),
 ('Técnico', 'tecnico', 'Atuação técnica nos registros do próprio setor.', 40, 1),
 ('Atendente', 'atendente', 'Atendimento e cadastro básico no próprio setor.', 50, 1),
@@ -79,25 +79,10 @@ WHERE n.slug = 'administrador'
 INSERT INTO nivel_permissoes (nivel_id, permissao_id)
 SELECT n.id, p.id
 FROM niveis_acesso n
-JOIN permissoes p ON p.slug IN (
-    'dashboard.visualizar',
-    'usuarios.visualizar',
-    'usuarios.aprovar',
-    'usuarios.rejeitar',
-    'usuarios.editar',
-    'usuarios.bloquear',
-    'usuarios.desbloquear',
-    'usuarios.alterar_setor',
-    'usuarios.alterar_nivel',
-    'usuarios.redefinir_senha',
-    'usuarios.encerrar_sessao',
-    'auditoria.autenticacao_visualizar',
-    'auditoria.usuarios_visualizar',
-    'perfil.visualizar',
-    'perfil.editar',
-    'perfil.alterar_senha'
-)
-WHERE n.slug = 'suporte';
+CROSS JOIN permissoes p
+WHERE n.slug = 'suporte'
+  AND n.ativo = 1
+  AND p.ativo = 1;
 
 INSERT INTO nivel_permissoes (nivel_id, permissao_id)
 SELECT n.id, p.id

@@ -40,9 +40,13 @@ As regras não devem depender do nome exibido do setor.
 
 O seed cria permissões para dashboard, usuários, auditoria, perfil, prontuários, atendimentos, relatórios, configurações e arquivos.
 
-O administrador recebe todas as permissões.
+O administrador recebe todas as permissões e governa a hierarquia de acesso.
 
-O suporte recebe permissões de usuários, auditoria de autenticação/usuários, encerramento de sessão e próprio perfil. O suporte não recebe permissões operacionais de prontuários, atendimentos, arquivos ou relatórios.
+O suporte recebe acesso técnico e operacional global. Ele pode acessar todos os setores e módulos operacionais para reproduzir erros, validar cadastros, consultar documentos e prestar suporte aos usuários.
+
+O suporte continua sem ser Administrador: não pode promover Administradores nem atribuir os níveis `administrador` ou `suporte`.
+
+Novas permissões de módulos devem ser concedidas tanto ao `administrador` quanto ao `suporte`.
 
 Gestor, técnico, atendente e leitura recebem permissões operacionais progressivas por setor, sem gestão global de usuários.
 
