@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Domain\UserStatus;
+
 final class Validator
 {
-    /** @var list<string> */
-    private const USER_STATUSES = ['pendente', 'ativo', 'bloqueado', 'rejeitado', 'inativo'];
-
     public static function onlyDigits(string $value): string
     {
         return preg_replace('/\D+/', '', $value) ?? '';
@@ -59,12 +58,12 @@ final class Validator
 
     public static function userStatus(string $status): bool
     {
-        return in_array($status, self::USER_STATUSES, true);
+        return UserStatus::tryFrom($status) instanceof UserStatus;
     }
 
     /** @return list<string> */
     public static function userStatuses(): array
     {
-        return self::USER_STATUSES;
+        return array_map(static fn (UserStatus $status): string => $status->value, UserStatus::cases());
     }
 }

@@ -8,6 +8,7 @@ use App\Config\DatabaseConfig;
 use PDO;
 use PDOException;
 use RuntimeException;
+use Throwable;
 
 final class Database
 {
@@ -34,5 +35,29 @@ final class Database
         }
 
         return self::$connection;
+    }
+
+    public static function transaction(callable $callback): mixed
+    {
+        $pdo = self::connection();
+
+        if ($pdo->inTransaction()) {
+            throw new RuntimeException('Nested database transactions are not supported.');
+        }
+
+        $pdo->beginTransaction();
+
+        try {
+            $result = $callback($pdo);
+            $pdo->commit();
+
+            return $result;
+        } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            throw $exception;
+        }
     }
 }

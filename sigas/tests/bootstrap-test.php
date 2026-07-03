@@ -62,13 +62,17 @@ file_put_contents($envFile, implode(PHP_EOL, [
     'SESSION_NAME=SIGAS_TEST_SESSION',
     'SESSION_LIFETIME=7200',
     'SESSION_IDLE_TIMEOUT=1800',
+    'SESSION_COOKIE_PATH=/sigas',
+    'TRUST_PROXY_HEADERS=false',
     'PRIVATE_BASE_PATH=' . $private,
     'SIGAS_IMAGE_PATH=' . $imageRoot,
     'SIGAS_DOCUMENT_PATH=' . $documentRoot,
     'SIGAS_LOG_PATH=' . $logRoot,
     'MAX_IMAGE_SIZE=5242880',
     'MAX_DOCUMENT_SIZE=10485760',
+    'INSTALLATION_ENABLED=false',
     'INSTALLATION_KEY=chave_teste',
+    'INSTALLATION_LOCK_PATH=' . $private . DIRECTORY_SEPARATOR . 'installation.lock',
 ]));
 
 putenv('SIGAS_ENV_PATH=' . $envFile);

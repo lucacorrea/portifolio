@@ -1,5 +1,7 @@
 SET NAMES utf8mb4;
 
+START TRANSACTION;
+
 INSERT INTO setores (nome, slug, descricao, ativo) VALUES
 ('SEMAS — Sede Administrativa', 'semas-sede', 'Sede administrativa da Secretaria Municipal de Assistência Social.', 1),
 ('CRAS 1', 'cras-1', 'Centro de Referência de Assistência Social 1.', 1),
@@ -62,13 +64,19 @@ ON DUPLICATE KEY UPDATE
     modulo = VALUES(modulo),
     ativo = VALUES(ativo);
 
-INSERT IGNORE INTO nivel_permissoes (nivel_id, permissao_id)
+DELETE np
+FROM nivel_permissoes np
+INNER JOIN niveis_acesso n ON n.id = np.nivel_id
+WHERE n.slug IN ('administrador', 'suporte', 'gestor', 'tecnico', 'atendente', 'leitura');
+
+INSERT INTO nivel_permissoes (nivel_id, permissao_id)
 SELECT n.id, p.id
 FROM niveis_acesso n
 CROSS JOIN permissoes p
-WHERE n.slug = 'administrador';
+WHERE n.slug = 'administrador'
+  AND p.ativo = 1;
 
-INSERT IGNORE INTO nivel_permissoes (nivel_id, permissao_id)
+INSERT INTO nivel_permissoes (nivel_id, permissao_id)
 SELECT n.id, p.id
 FROM niveis_acesso n
 JOIN permissoes p ON p.slug IN (
@@ -91,7 +99,7 @@ JOIN permissoes p ON p.slug IN (
 )
 WHERE n.slug = 'suporte';
 
-INSERT IGNORE INTO nivel_permissoes (nivel_id, permissao_id)
+INSERT INTO nivel_permissoes (nivel_id, permissao_id)
 SELECT n.id, p.id
 FROM niveis_acesso n
 JOIN permissoes p ON p.slug IN (
@@ -112,7 +120,7 @@ JOIN permissoes p ON p.slug IN (
 )
 WHERE n.slug = 'gestor';
 
-INSERT IGNORE INTO nivel_permissoes (nivel_id, permissao_id)
+INSERT INTO nivel_permissoes (nivel_id, permissao_id)
 SELECT n.id, p.id
 FROM niveis_acesso n
 JOIN permissoes p ON p.slug IN (
@@ -131,7 +139,7 @@ JOIN permissoes p ON p.slug IN (
 )
 WHERE n.slug = 'tecnico';
 
-INSERT IGNORE INTO nivel_permissoes (nivel_id, permissao_id)
+INSERT INTO nivel_permissoes (nivel_id, permissao_id)
 SELECT n.id, p.id
 FROM niveis_acesso n
 JOIN permissoes p ON p.slug IN (
@@ -148,7 +156,7 @@ JOIN permissoes p ON p.slug IN (
 )
 WHERE n.slug = 'atendente';
 
-INSERT IGNORE INTO nivel_permissoes (nivel_id, permissao_id)
+INSERT INTO nivel_permissoes (nivel_id, permissao_id)
 SELECT n.id, p.id
 FROM niveis_acesso n
 JOIN permissoes p ON p.slug IN (
@@ -159,3 +167,5 @@ JOIN permissoes p ON p.slug IN (
     'arquivos.visualizar'
 )
 WHERE n.slug = 'leitura';
+
+COMMIT;

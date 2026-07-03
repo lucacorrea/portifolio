@@ -48,10 +48,12 @@ Gestor, técnico, atendente e leitura recebem permissões operacionais progressi
 
 ## Primeiro administrador
 
-O arquivo `database/create-first-admin.php` é temporário. Ele exige:
+O arquivo público temporário `instalacao/index.php` chama `app/Services/FirstAdminService.php`. Ele exige:
 
 - método POST;
+- `INSTALLATION_ENABLED=true`;
 - `INSTALLATION_KEY` definida no `.env`;
+- ausência do lock privado definido em `INSTALLATION_LOCK_PATH`;
 - CSRF;
 - inexistência de administrador anterior;
 - transação;
@@ -59,4 +61,12 @@ O arquivo `database/create-first-admin.php` é temporário. Ele exige:
 - senha marcada para troca obrigatória;
 - registro em auditoria.
 
-Após o uso, o arquivo deve ser removido ou bloqueado.
+Após o uso, o lock privado é criado, `INSTALLATION_ENABLED` deve voltar para `false` e a pasta pública `instalacao/` deve ser removida.
+
+## Seed e evolução
+
+`schema.sql` é destinado à criação inicial do banco.
+
+`seed.sql` sincroniza os níveis padrão (`administrador`, `suporte`, `gestor`, `tecnico`, `atendente`, `leitura`) de forma determinística: remove somente os vínculos desses níveis em `nivel_permissoes` e recria a matriz oficial.
+
+Alterações posteriores em produção devem ser feitas por migrations versionadas, não por edição manual destrutiva do schema inicial.

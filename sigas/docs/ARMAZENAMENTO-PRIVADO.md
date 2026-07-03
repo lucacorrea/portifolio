@@ -20,7 +20,7 @@ Os arquivos serão organizados por ano e mês:
 2026/07
 ```
 
-Essa estrutura é gerada por `Storage::buildRelativeDirectory()`.
+Essa estrutura é gerada por `Storage::buildRelativeDirectory()` e criada somente por `Storage::ensureImageDirectory()` ou `Storage::ensureDocumentDirectory()`.
 
 ## Regras de caminho
 
@@ -29,6 +29,8 @@ A classe `Storage` rejeita caminhos com:
 - `..`
 - byte nulo;
 - `://`
+- caminhos absolutos;
+- letras de unidade;
 - resolução fora da raiz privada configurada.
 
 O banco deve armazenar apenas caminho relativo interno, nunca caminho absoluto da hospedagem.

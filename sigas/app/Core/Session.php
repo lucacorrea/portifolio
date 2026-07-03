@@ -14,12 +14,13 @@ final class Session
 
         $name = (string) Environment::get('SESSION_NAME', 'SIGAS_SESSION');
         $lifetime = Environment::int('SESSION_LIFETIME', 7200);
+        $cookiePath = self::cookiePath();
         $secure = self::isHttps();
 
         session_name($name);
         session_set_cookie_params([
             'lifetime' => $lifetime,
-            'path' => '/',
+            'path' => $cookiePath,
             'domain' => '',
             'secure' => $secure,
             'httponly' => true,
@@ -58,7 +59,14 @@ final class Session
 
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+            setcookie(session_name(), '', [
+                'expires' => time() - 42000,
+                'path' => $params['path'],
+                'domain' => $params['domain'],
+                'secure' => (bool) $params['secure'],
+                'httponly' => (bool) $params['httponly'],
+                'samesite' => $params['samesite'] ?? 'Lax',
+            ]);
         }
 
         session_destroy();
@@ -113,7 +121,28 @@ final class Session
 
     private static function isHttps(): bool
     {
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (isset($_SERVER['SERVER_PORT']) && (string) $_SERVER['SERVER_PORT'] === '443');
+        if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (string) $_SERVER['SERVER_PORT'] === '443')) {
+            return true;
+        }
+
+        if (!Environment::bool('TRUST_PROXY_HEADERS', false)) {
+            return false;
+        }
+
+        $forwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+
+        return is_string($forwardedProto) && strtolower($forwardedProto) === 'https';
+    }
+
+    private static function cookiePath(): string
+    {
+        $path = (string) Environment::get('SESSION_COOKIE_PATH', '/');
+
+        if ($path === '' || !str_starts_with($path, '/')) {
+            throw new \RuntimeException('Invalid session cookie path.');
+        }
+
+        return $path;
     }
 }

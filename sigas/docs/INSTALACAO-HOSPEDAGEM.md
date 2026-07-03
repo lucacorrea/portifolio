@@ -27,9 +27,12 @@ O nome `uplouds` deve ser mantido.
 6. Defina permissões de pasta como `0750` ou `0755`, conforme permitido pela hospedagem.
 7. Importe `database/schema.sql` pelo phpMyAdmin.
 8. Importe `database/seed.sql` pelo phpMyAdmin.
-9. Use `database/create-first-admin.php` somente de forma temporária e protegida para criar o primeiro administrador.
-10. Remova ou bloqueie o instalador após o uso.
-11. Ative HTTPS no domínio ou subdomínio.
+9. Ative temporariamente `INSTALLATION_ENABLED=true` no `.env` real.
+10. Acesse `instalacao/index.php` somente para criar o primeiro administrador.
+11. Após o sucesso, o sistema cria o lock privado definido em `INSTALLATION_LOCK_PATH`.
+12. Defina `INSTALLATION_ENABLED=false`.
+13. Remova a pasta pública `instalacao/`.
+14. Ative HTTPS no domínio ou subdomínio.
 
 ## Observações de segurança
 
@@ -38,3 +41,4 @@ O nome `uplouds` deve ser mantido.
 - Não deixe `database/`, `app/` ou `tests/` acessíveis pela web.
 - Não altere os arquivos HTML, CSS e JavaScript do protótipo nesta etapa.
 - O host do banco deve ser o valor informado pela hospedagem.
+- Se a hospedagem não permitir `Options -Indexes`, remova apenas essa linha do `.htaccess` e mantenha os bloqueios de arquivos e diretórios.

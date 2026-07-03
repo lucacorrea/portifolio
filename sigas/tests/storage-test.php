@@ -85,22 +85,41 @@ $outside = $base . DIRECTORY_SEPARATOR . 'fora.pdf';
 file_put_contents($outside, 'x');
 assert_true(!Storage::isInsideRoot($outside, $documentRoot), 'caminho fora da raiz rejeitado');
 
-$created = $documentRoot . DIRECTORY_SEPARATOR . Storage::buildRelativeDirectory(new DateTimeImmutable('2026-07-03'));
-Storage::ensureDirectory($created);
+$created = Storage::ensureDocumentDirectory(Storage::buildRelativeDirectory(new DateTimeImmutable('2026-07-03')));
 assert_true(is_dir($created), 'cria diretorio anual mensal');
 
-$fileAsDirectory = $base . DIRECTORY_SEPARATOR . 'arquivo';
+$fileAsDirectory = $documentRoot . DIRECTORY_SEPARATOR . 'arquivo';
 file_put_contents($fileAsDirectory, 'x');
 
 $notDirectoryThrown = false;
 
 try {
-    Storage::ensureDirectory($fileAsDirectory);
+    Storage::ensureDocumentDirectory('arquivo');
 } catch (Throwable) {
     $notDirectoryThrown = true;
 }
 
 assert_true($notDirectoryThrown, 'arquivo nao e aceito como diretorio');
+
+$absoluteThrown = false;
+
+try {
+    Storage::ensureDocumentDirectory($base . DIRECTORY_SEPARATOR . 'absoluto');
+} catch (Throwable) {
+    $absoluteThrown = true;
+}
+
+assert_true($absoluteThrown, 'caminho absoluto bloqueado');
+
+$separatorThrown = false;
+
+try {
+    Storage::ensureDocumentDirectory('2026\\..\\fora');
+} catch (Throwable) {
+    $separatorThrown = true;
+}
+
+assert_true($separatorThrown, 'separador alternativo com traversal bloqueado');
 
 @unlink($outside);
 @unlink($fileAsDirectory);
