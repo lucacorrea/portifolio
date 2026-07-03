@@ -2,6 +2,7 @@
 
 const SIGAS = {
     page: document.body.dataset.page || 'login',
+    context: window.SIGAS_CONTEXT || {},
     qs(selector, context = document) { return context.querySelector(selector); },
     qsa(selector, context = document) { return [...context.querySelectorAll(selector)]; },
     escapeHTML(value = '') {
@@ -22,9 +23,10 @@ const SIGAS = {
         instance.show();
     },
     sidebarMarkup() {
+        const dashboardUrl = this.context.urls?.dashboard || 'dashboard.php';
         const sections = [
             ['Principal', [
-                ['dashboard.html', 'speedometer2', 'Visão Geral', 'dashboard']
+                [dashboardUrl, 'speedometer2', 'Visão Geral', 'dashboard']
             ]],
             ['Atendimento Social', [
                 ['consulta-documento.html', 'person-bounding-box', 'Consultar CPF / Documento', 'consulta'],
@@ -51,19 +53,29 @@ const SIGAS = {
         const recordPages = ['registro'];
         return `
             <button class="btn btn-light btn-icon sidebar-close" type="button" data-sidebar-close aria-label="Fechar menu"><i class="bi bi-x-lg"></i></button>
-            <a class="sidebar-brand" href="dashboard.html" aria-label="SIGAS Coari - Página inicial">
+            <a class="sidebar-brand" href="${this.escapeHTML(dashboardUrl)}" aria-label="SIGAS Coari - Página inicial">
                 <img src="assets/img/brasao-placeholder.svg" alt="Brasão institucional ilustrativo">
                 <div><strong>SIGAS COARI</strong><small>Gestão da Assistência Social</small></div>
             </a>
             <div class="sidebar-scroll">
                 ${sections.map(([title, items]) => `<section class="nav-section"><h2 class="nav-section-title">${title}</h2><nav class="sidebar-nav" aria-label="${title}">${items.map(([href, icon, label, key, featured]) => {
                     const active = this.page === key || (recordPages.includes(this.page) && key === 'pessoas');
-                    return `<a href="${href}" class="sidebar-link ${active ? 'active' : ''}" ${active ? 'aria-current="page"' : ''} title="${label}"><i class="bi bi-${icon}"></i><span>${label}</span>${featured ? '<b class="food-marker" aria-label="Ação prioritária"></b>' : ''}</a>`;
+                    return `<a href="${this.escapeHTML(href)}" class="sidebar-link ${active ? 'active' : ''}" ${active ? 'aria-current="page"' : ''} title="${label}"><i class="bi bi-${icon}"></i><span>${label}</span>${featured ? '<b class="food-marker" aria-label="Ação prioritária"></b>' : ''}</a>`;
                 }).join('')}</nav></section>`).join('')}
             </div>
             <div class="sidebar-footer"><strong>SIGAS Coari v1.1</strong><br>Estrutura demonstrativa organizada</div>`;
     },
     topbarMarkup() {
+        const user = this.context.user || {};
+        const urls = this.context.urls || {};
+        const csrf = this.context.csrf || {};
+        const initials = user.initials || 'U';
+        const name = user.name || 'Usuário';
+        const jobTitle = user.jobTitle || 'Usuário';
+        const sector = user.sector || 'Sem setor';
+        const logoutUrl = urls.logout || 'sair.php';
+        const logoutToken = csrf.logout || '';
+
         return `
             <button class="btn btn-light btn-icon" type="button" data-sidebar-toggle aria-label="Abrir ou recolher menu" aria-expanded="false"><i class="bi bi-list"></i></button>
             <div class="topbar-search">
@@ -71,7 +83,7 @@ const SIGAS = {
                 <input class="form-control" id="globalSearch" type="search" placeholder="Pesquisar CPF, nome, protocolo ou solicitação" aria-label="Pesquisa global">
                 <span class="search-shortcut">Ctrl K</span>
             </div>
-            <button class="unit-chip" type="button" data-bs-toggle="tooltip" title="Unidade de trabalho atual"><i class="bi bi-building"></i><span>SEMAS — Sede Administrativa</span></button>
+            <button class="unit-chip" type="button" data-bs-toggle="tooltip" title="Unidade de trabalho atual"><i class="bi bi-building"></i><span>${this.escapeHTML(sector)}</span></button>
             <div class="dropdown">
                 <button class="btn btn-light btn-icon topbar-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notificações"><i class="bi bi-bell"></i><span class="notification-dot"></span></button>
                 <div class="dropdown-menu dropdown-menu-end p-2 notification-menu">
@@ -83,20 +95,26 @@ const SIGAS = {
             </div>
             <div class="dropdown">
                 <button class="user-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu do usuário">
-                    <span class="avatar">MO</span><span class="user-meta"><strong>Maria Oliveira</strong><span>Assistente Social</span></span><i class="bi bi-chevron-down small text-secondary"></i>
+                    <span class="avatar">${this.escapeHTML(initials)}</span><span class="user-meta"><strong>${this.escapeHTML(name)}</strong><span>${this.escapeHTML(jobTitle)}</span></span><i class="bi bi-chevron-down small text-secondary"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="perfil-usuario.html"><i class="bi bi-person me-2"></i>Meu perfil</a></li>
                     <li><a class="dropdown-item" href="configuracoes.html"><i class="bi bi-sliders me-2"></i>Preferências</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="index.html"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+                    <li>
+                        <form method="post" action="${this.escapeHTML(logoutUrl)}">
+                            <input type="hidden" name="_csrf" value="${this.escapeHTML(logoutToken)}">
+                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Sair</button>
+                        </form>
+                    </li>
                 </ul>
             </div>`;
     },
     bottomNavMarkup() {
+        const dashboardUrl = this.context.urls?.dashboard || 'dashboard.php';
         const programPages = ['modulo', 'beneficios', 'cidadania', 'crianca', 'natalidade', 'funeral', 'outros'];
         return `<nav class="bottom-navigation" aria-label="Navegação móvel">
-            <a href="dashboard.html" class="${this.page === 'dashboard' ? 'active' : ''}"><i class="bi bi-house"></i><span>Início</span></a>
+            <a href="${this.escapeHTML(dashboardUrl)}" class="${this.page === 'dashboard' ? 'active' : ''}"><i class="bi bi-house"></i><span>Início</span></a>
             <a href="pessoas.html" class="${['consulta','pessoas','registro'].includes(this.page) ? 'active' : ''}"><i class="bi bi-people"></i><span>Pessoas</span></a>
             <a href="cadastro-anexo.html" class="new-action ${this.page === 'cadastro-anexo' ? 'active' : ''}" aria-label="Novo Cadastro ANEXO"><i class="bi bi-plus-lg"></i><span>Novo</span></a>
             <a href="beneficios.html" class="${programPages.includes(this.page) ? 'active' : ''}"><i class="bi bi-gift"></i><span>Benefícios</span></a>
@@ -127,20 +145,22 @@ const SIGAS = {
             toggle.setAttribute('aria-label', hidden ? 'Ocultar senha' : 'Mostrar senha');
         });
         form.addEventListener('submit', event => {
-            event.preventDefault();
             const identity = this.qs('#loginIdentity');
             const validIdentity = identity.value.trim().length >= 5;
-            const validPassword = password.value.length >= 4;
+            const validPassword = password.value.length >= 8;
             identity.classList.toggle('is-invalid', !validIdentity);
             password.classList.toggle('is-invalid', !validPassword);
-            feedback.className = `login-feedback show ${validIdentity && validPassword ? 'text-success' : 'text-danger'}`;
-            feedback.textContent = validIdentity && validPassword ? 'Credenciais demonstrativas validadas. Redirecionando…' : 'Preencha uma identificação válida e uma senha com pelo menos 4 caracteres.';
-            if (validIdentity && validPassword) {
-                const button = this.qs('button[type="submit"]', form);
-                button.disabled = true;
-                button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Entrando';
-                window.setTimeout(() => { window.location.href = 'dashboard.html'; }, 650);
+
+            if (!validIdentity || !validPassword) {
+                event.preventDefault();
+                feedback.className = 'login-feedback show text-danger';
+                feedback.textContent = 'Preencha uma identificação válida e uma senha com pelo menos 8 caracteres.';
+                return;
             }
+
+            const button = this.qs('button[type="submit"]', form);
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Verificando';
         });
     },
     initSidebar() {

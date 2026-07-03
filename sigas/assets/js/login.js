@@ -97,13 +97,13 @@
     });
 
     form.addEventListener("submit", (event) => {
-        event.preventDefault();
         clearFeedback();
 
         const identityValid = setFieldValidity(identity);
         const passwordValid = setFieldValidity(password);
 
         if (!identityValid || !passwordValid) {
+            event.preventDefault();
             feedback.textContent = "Revise os campos destacados para continuar.";
             feedback.classList.add("is-error");
             (identityValid ? password : identity).focus();
@@ -113,11 +113,6 @@
         submit.disabled = true;
         submit.classList.add("is-loading");
         submit.setAttribute("aria-busy", "true");
-        feedback.textContent = "Acesso validado. Abrindo o painel...";
-        feedback.classList.add("is-success");
-
-        window.setTimeout(() => {
-            window.location.href = "dashboard.html";
-        }, 900);
+        feedback.textContent = "Verificando...";
     });
 })();

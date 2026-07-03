@@ -1,3 +1,67 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\Csrf;
+use App\Core\Database;
+use App\Core\Logger;
+use App\Core\Session;
+use App\Exceptions\AuthenticationException;
+use App\Repositories\AccessLevelRepository;
+use App\Repositories\AuditLogRepository;
+use App\Repositories\UserRepository;
+use App\Repositories\UserSessionRepository;
+use App\Services\AuditService;
+use App\Services\AuthService;
+
+require_once __DIR__ . '/bootstrap.php';
+
+$pdo = Database::connection();
+$authService = new AuthService(
+    new UserRepository($pdo),
+    new UserSessionRepository($pdo),
+    new AccessLevelRepository($pdo),
+    new AuditService(new AuditLogRepository($pdo))
+);
+
+if ($authService->currentUser() !== null) {
+    header('Location: dashboard.php');
+    exit;
+}
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $identity = isset($_POST['identity']) && is_string($_POST['identity']) ? trim($_POST['identity']) : '';
+    $password = isset($_POST['password']) && is_string($_POST['password']) ? $_POST['password'] : '';
+    $token = isset($_POST['_csrf']) && is_string($_POST['_csrf']) ? $_POST['_csrf'] : null;
+
+    if (!Csrf::validateAndConsume($token, 'login')) {
+        Logger::security('Invalid CSRF token on login.');
+        Session::flash('login_error', 'Requisição inválida. Tente novamente.');
+        Session::flash('login_identity', $identity);
+        header('Location: index.php');
+        exit;
+    }
+
+    try {
+        $authService->attempt($identity, $password);
+        header('Location: dashboard.php');
+        exit;
+    } catch (AuthenticationException $exception) {
+        Session::flash('login_error', $exception->getMessage());
+        Session::flash('login_identity', $identity);
+        header('Location: index.php');
+        exit;
+    }
+}
+
+$loginError = Session::flash('login_error');
+$loginIdentity = Session::flash('login_identity') ?? '';
+
+function e(mixed $value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -41,7 +105,8 @@
                     <p>Entre com sua conta para acessar os serviços, programas e atendimentos da assistência social municipal.</p>
                 </div>
 
-                <form id="loginForm" class="sigas-login-form" novalidate>
+                <form id="loginForm" class="sigas-login-form" method="post" action="index.php" novalidate>
+                    <?= Csrf::input('login') ?>
                     <div class="sigas-form-group">
                         <label class="sigas-visually-hidden" for="loginIdentity">CPF ou e-mail</label>
                         <div class="sigas-input-shell">
@@ -55,6 +120,7 @@
                                 placeholder="CPF ou e-mail"
                                 required
                                 minlength="5"
+                                value="<?= e($loginIdentity) ?>"
                                 aria-describedby="identityError">
                         </div>
                         <p id="identityError" class="sigas-field-error">Informe um CPF ou e-mail válido.</p>
@@ -71,7 +137,7 @@
                                 autocomplete="current-password"
                                 placeholder="Senha"
                                 required
-                                minlength="4"
+                                minlength="8"
                                 aria-describedby="passwordError capsLockWarning">
                             <button
                                 class="sigas-password-toggle"
@@ -86,12 +152,12 @@
                             <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
                             Caps Lock está ativado.
                         </p>
-                        <p id="passwordError" class="sigas-field-error">Informe uma senha com pelo menos quatro caracteres.</p>
+                        <p id="passwordError" class="sigas-field-error">Informe uma senha com pelo menos oito caracteres.</p>
                     </div>
 
                     <div class="sigas-login-options">
                         <label class="sigas-remember-option" for="keepConnected">
-                            <input id="keepConnected" type="checkbox">
+                            <input id="keepConnected" type="checkbox" disabled>
                             <span>Manter conectado</span>
                         </label>
                         <a href="#" data-demo-action="recuperação de senha">Esqueci minha senha</a>
@@ -108,7 +174,7 @@
                         </span>
                     </button>
 
-                    <p id="loginFeedback" class="sigas-login-feedback" role="status" aria-live="polite"></p>
+                    <p id="loginFeedback" class="sigas-login-feedback<?= is_string($loginError) && $loginError !== '' ? ' is-error' : '' ?>" role="status" aria-live="polite"><?= e($loginError ?? '') ?></p>
                 </form>
 
                 <div class="sigas-login-support">
@@ -125,8 +191,6 @@
                 <small>Prefeitura Municipal de Coari · SEMAS</small>
             </footer>
         </section>
-
-        <p class="sigas-prototype-note">Dados demonstrativos utilizados apenas para prototipação.</p>
     </main>
 
     <div class="sigas-toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>

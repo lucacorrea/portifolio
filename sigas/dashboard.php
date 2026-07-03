@@ -1,3 +1,63 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\Csrf;
+use App\Core\Database;
+use App\Repositories\AccessLevelRepository;
+use App\Repositories\AuditLogRepository;
+use App\Repositories\SectorRepository;
+use App\Repositories\UserRepository;
+use App\Repositories\UserSessionRepository;
+use App\Services\AuditService;
+use App\Services\AuthService;
+
+require_once __DIR__ . '/bootstrap.php';
+
+$pdo = Database::connection();
+$userRepository = new UserRepository($pdo);
+$sessionRepository = new UserSessionRepository($pdo);
+$accessLevelRepository = new AccessLevelRepository($pdo);
+$auditService = new AuditService(new AuditLogRepository($pdo));
+$authService = new AuthService($userRepository, $sessionRepository, $accessLevelRepository, $auditService);
+$user = $authService->requireUser();
+$level = $user->nivelId === null ? null : $accessLevelRepository->findById($user->nivelId);
+$sector = $user->setorId === null ? null : (new SectorRepository($pdo))->findById($user->setorId);
+
+function sigas_initials(string $name): string
+{
+    $parts = preg_split('/\s+/', trim($name)) ?: [];
+    $letters = '';
+
+    foreach ($parts as $part) {
+        if ($part !== '') {
+            $letters .= mb_substr($part, 0, 1);
+        }
+
+        if (mb_strlen($letters) >= 2) {
+            break;
+        }
+    }
+
+    return mb_strtoupper($letters !== '' ? $letters : 'U');
+}
+
+$frontendContext = [
+    'user' => [
+        'name' => $user->nome,
+        'initials' => sigas_initials($user->nome),
+        'jobTitle' => $user->cargo ?: ($level?->nome ?? 'Usuário'),
+        'sector' => $sector?->nome ?: 'Sem setor',
+    ],
+    'urls' => [
+        'dashboard' => 'dashboard.php',
+        'logout' => 'sair.php',
+    ],
+    'csrf' => [
+        'logout' => Csrf::token('logout'),
+    ],
+];
+?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -193,6 +253,17 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="assets/js/integration-demo.js"></script>
+    <script>
+window.SIGAS_CONTEXT = <?= json_encode(
+    $frontendContext,
+    JSON_UNESCAPED_UNICODE
+    | JSON_UNESCAPED_SLASHES
+    | JSON_HEX_TAG
+    | JSON_HEX_AMP
+    | JSON_HEX_APOS
+    | JSON_HEX_QUOT
+) ?>;
+    </script>
     <script src="assets/js/app.js"></script>
 </body>
 </html>

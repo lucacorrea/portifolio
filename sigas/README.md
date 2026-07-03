@@ -57,8 +57,9 @@ O arquivo `cadastro-anexo.html` contém sete etapas:
 
 ```text
 sigas-coari/
-├── index.html
-├── dashboard.html
+├── index.php
+├── dashboard.php
+├── sair.php
 ├── cadastro-anexo.html
 ├── pessoas.html
 ├── registro.html
@@ -100,8 +101,8 @@ sigas-coari/
 
 ## Execução
 
-Abra `index.html` em um servidor web local. Bootstrap, Bootstrap Icons, Chart.js e Google Fonts são carregados por CDN.
+Abra `index.php` em um servidor web com PHP e o `.env` real configurado. Bootstrap, Bootstrap Icons, Chart.js e Google Fonts são carregados por CDN.
 
 ## Limitação do protótipo
 
-Não existe backend nesta versão. Consultas, gravações, uploads e rascunhos são demonstrativos. O rascunho do formulário utiliza `localStorage` do navegador.
+O login e o dashboard já usam backend PHP, sessão persistente e banco. As demais páginas ainda preservam fluxos demonstrativos; consultas, gravações, uploads e rascunhos dessas áreas continuam simulados.

@@ -12,6 +12,7 @@ use App\DTO\UserData;
 use App\DTO\UserFilter;
 use App\Exceptions\RepositoryException;
 use App\Models\User;
+use DateTimeInterface;
 use PDO;
 use PDOException;
 
@@ -211,6 +212,61 @@ final class UserRepository
             return (int) $stmt->fetchColumn();
         } catch (PDOException $exception) {
             throw $this->fail('countByStatus', 'Falha ao contar usuários.', $exception);
+        }
+    }
+
+    public function registerFailedLogin(int $userId, int $attempts, ?DateTimeInterface $blockedUntil): void
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'UPDATE usuarios
+                 SET tentativas_login = :tentativas_login, bloqueado_ate = :bloqueado_ate
+                 WHERE id = :id AND excluido_em IS NULL'
+            );
+            $stmt->execute([
+                'id' => $userId,
+                'tentativas_login' => $attempts,
+                'bloqueado_ate' => $blockedUntil?->format('Y-m-d H:i:s'),
+            ]);
+        } catch (PDOException $exception) {
+            throw $this->fail('registerFailedLogin', 'Falha ao registrar tentativa de login.', $exception);
+        }
+    }
+
+    public function registerSuccessfulLogin(int $userId, ?string $ip): void
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'UPDATE usuarios
+                 SET tentativas_login = 0,
+                     bloqueado_ate = NULL,
+                     ultimo_login_em = NOW(),
+                     ultimo_login_ip = :ultimo_login_ip
+                 WHERE id = :id AND excluido_em IS NULL'
+            );
+            $stmt->execute([
+                'id' => $userId,
+                'ultimo_login_ip' => $ip,
+            ]);
+        } catch (PDOException $exception) {
+            throw $this->fail('registerSuccessfulLogin', 'Falha ao registrar login.', $exception);
+        }
+    }
+
+    public function clearExpiredLoginLock(int $userId): void
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'UPDATE usuarios
+                 SET tentativas_login = 0, bloqueado_ate = NULL
+                 WHERE id = :id
+                   AND excluido_em IS NULL
+                   AND bloqueado_ate IS NOT NULL
+                   AND bloqueado_ate <= NOW()'
+            );
+            $stmt->execute(['id' => $userId]);
+        } catch (PDOException $exception) {
+            throw $this->fail('clearExpiredLoginLock', 'Falha ao limpar bloqueio de login.', $exception);
         }
     }
 
