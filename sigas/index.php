@@ -734,10 +734,6 @@ function e(mixed $value): string
                     href="index.php"
                     aria-label="SIGAS Coari — Página de acesso">
 
-                    <img
-                        src="assets/img/brasao-placeholder.svg"
-                        alt="Brasão institucional do SIGAS Coari">
-
                     <span class="sigas-brand-copy">
                         <strong>SIGAS COARI</strong>
 
@@ -748,9 +744,7 @@ function e(mixed $value): string
                 </a>
 
                 <header class="sigas-login-heading">
-                    <h1 id="loginTitle">
-                        Acesso ao sistema
-                    </h1>
+                   
 
                     <p>
                         Informe seus dados para continuar.
