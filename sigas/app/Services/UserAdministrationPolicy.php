@@ -24,6 +24,12 @@ final class UserAdministrationPolicy
 
     public function assertCanBlock(User $operator, User $target): void
     {
+        $this->authorization->requirePermission($operator, 'usuarios.bloquear');
+
+        if (!$this->authorization->canManageUser($operator, $target, 'usuarios.bloquear')) {
+            throw new AuthorizationException('Usuário não autorizado a bloquear esta conta.');
+        }
+
         if ($operator->id === $target->id) {
             throw new AuthorizationException('Usuário não pode bloquear a própria conta.');
         }
@@ -33,6 +39,13 @@ final class UserAdministrationPolicy
 
     public function assertCanInactivate(User $operator, User $target): void
     {
+        // Permissão temporária: criar `usuarios.inativar` em uma migração futura.
+        $this->authorization->requirePermission($operator, 'usuarios.editar');
+
+        if (!$this->authorization->canManageUser($operator, $target, 'usuarios.editar')) {
+            throw new AuthorizationException('Usuário não autorizado a inativar esta conta.');
+        }
+
         if ($operator->id === $target->id) {
             throw new AuthorizationException('Usuário não pode inativar a própria conta.');
         }
@@ -46,7 +59,7 @@ final class UserAdministrationPolicy
             throw new AuthorizationException('Nível não autorizado.');
         }
 
-        if ($operator->id === $target->id && $this->isSupportUser($operator)) {
+        if ($operator->id === $target->id && $this->authorization->isSupport($operator)) {
             throw new AuthorizationException('Suporte não pode alterar o próprio nível.');
         }
 
@@ -58,7 +71,7 @@ final class UserAdministrationPolicy
             throw new AuthorizationException('Promoção para suporte negada.');
         }
 
-        if ($target->status === UserStatus::ACTIVE && $this->authorization->canPromoteAdministrator($target) && $newLevel->slug !== AccessLevelSlug::ADMINISTRATOR->value) {
+        if ($target->status === UserStatus::ACTIVE && $this->authorization->isAdministrator($target) && $newLevel->slug !== AccessLevelSlug::ADMINISTRATOR->value) {
             $this->protectLastAdministrator($target, null);
         }
     }
@@ -143,7 +156,7 @@ final class UserAdministrationPolicy
 
     private function protectLastAdministrator(User $target, ?UserStatus $newStatus): void
     {
-        if ($target->nivelId === null || $target->status !== UserStatus::ACTIVE || !$this->authorization->canPromoteAdministrator($target)) {
+        if ($target->nivelId === null || $target->status !== UserStatus::ACTIVE || !$this->authorization->isAdministrator($target)) {
             return;
         }
 
@@ -152,9 +165,4 @@ final class UserAdministrationPolicy
         }
     }
 
-    private function isSupportUser(User $user): bool
-    {
-        return $this->authorization->can($user, 'usuarios.aprovar')
-            && !$this->authorization->canPromoteAdministrator($user);
-    }
 }

@@ -8,11 +8,17 @@ use App\Domain\AccessLevelSlug;
 use App\Exceptions\AuthorizationException;
 use App\Models\AccessLevel;
 use App\Models\User;
+use App\Repositories\AccessLevelRepository;
 
 final class AuthorizationService
 {
-    public function __construct(private readonly PermissionService $permissions)
-    {
+    /** @var array<int, AccessLevel|null> */
+    private array $levelCache = [];
+
+    public function __construct(
+        private readonly PermissionService $permissions,
+        private readonly AccessLevelRepository $accessLevels,
+    ) {
     }
 
     public function can(User $user, string $permission): bool
@@ -68,31 +74,55 @@ final class AuthorizationService
             return false;
         }
 
-        if ($targetLevel->slug === AccessLevelSlug::ADMINISTRATOR->value) {
-            return $this->canPromoteAdministrator($operator);
-        }
-
         if ($this->isSupport($operator)) {
             return !in_array($targetLevel->slug, [AccessLevelSlug::SUPPORT->value, AccessLevelSlug::ADMINISTRATOR->value], true);
         }
 
-        return $this->isAdministrator($operator);
+        if (!$this->isAdministrator($operator)) {
+            return false;
+        }
+
+        if ($targetLevel->slug === AccessLevelSlug::ADMINISTRATOR->value) {
+            return $this->canPromoteAdministrator($operator);
+        }
+
+        return true;
     }
 
     public function canPromoteAdministrator(User $operator): bool
     {
-        return $this->can($operator, 'usuarios.promover_administrador');
+        return $this->isAdministrator($operator)
+            && $this->can($operator, 'usuarios.promover_administrador');
     }
 
-    private function isAdministrator(User $user): bool
+    public function isAdministrator(User $user): bool
     {
-        return $user->nivelId !== null && $this->permissions->hasPermission($user->nivelId, 'usuarios.promover_administrador');
+        $level = $this->levelFor($user);
+
+        return $level !== null
+            && $level->ativo
+            && $level->slug === AccessLevelSlug::ADMINISTRATOR->value;
     }
 
-    private function isSupport(User $user): bool
+    public function isSupport(User $user): bool
     {
-        return $user->nivelId !== null
-            && $this->permissions->hasPermission($user->nivelId, 'usuarios.aprovar')
-            && !$this->isAdministrator($user);
+        $level = $this->levelFor($user);
+
+        return $level !== null
+            && $level->ativo
+            && $level->slug === AccessLevelSlug::SUPPORT->value;
+    }
+
+    private function levelFor(User $user): ?AccessLevel
+    {
+        if ($user->nivelId === null) {
+            return null;
+        }
+
+        if (!array_key_exists($user->nivelId, $this->levelCache)) {
+            $this->levelCache[$user->nivelId] = $this->accessLevels->findById($user->nivelId);
+        }
+
+        return $this->levelCache[$user->nivelId];
     }
 }
