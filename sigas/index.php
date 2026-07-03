@@ -746,9 +746,7 @@ function e(mixed $value): string
                 <header class="sigas-login-heading">
                    
 
-                    <p>
-                        Informe seus dados para continuar.
-                    </p>
+                   
                 </header>
 
                 <form
