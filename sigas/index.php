@@ -1005,24 +1005,7 @@ function e(mixed $value): string
             </span>
         </header>
 
-        <div
-            class="sigas-decoration-left"
-            aria-hidden="true">
-
-            <span
-                class="sigas-decoration-card
-                       sigas-decoration-card-one">
-            </span>
-
-            <span
-                class="sigas-decoration-card
-                       sigas-decoration-card-two">
-            </span>
-
-            <span class="sigas-decoration-block"></span>
-            <span class="sigas-decoration-line"></span>
-            <span class="sigas-decoration-circle"></span>
-        </div>
+      
 
         <div
             class="sigas-login-artwork"
