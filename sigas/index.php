@@ -87,7 +87,6 @@ function e(mixed $value): string
 ?>
 <!doctype html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="utf-8">
 
@@ -99,15 +98,11 @@ function e(mixed $value): string
         name="description"
         content="Acesso institucional ao SIGAS Coari.">
 
-    <meta
-        name="theme-color"
-        content="#14532d">
+    <meta name="theme-color" content="#14532d">
 
     <title>SIGAS Coari — Acesso</title>
 
-    <link
-        rel="preconnect"
-        href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
 
     <link
         rel="preconnect"
@@ -126,33 +121,24 @@ function e(mixed $value): string
         :root {
             --primary: #14532d;
             --primary-hover: #0f4425;
-            --primary-dark: #0b351c;
             --primary-soft: #e9f5ed;
 
-            --accent: #d99b27;
-            --accent-soft: #f9d88e;
-
-            --page-background: #111311;
-            --canvas-background: #f5f2e9;
+            --background: #edf1ef;
             --surface: #ffffff;
             --surface-soft: #f7f9f8;
 
             --text: #17221c;
             --text-secondary: #66736b;
-            --text-muted: #929b95;
+            --text-muted: #8b958f;
 
-            --border: #e4e8e5;
-            --border-strong: #d3dcd6;
+            --border: #e2e8e4;
+            --border-strong: #cfd9d2;
 
             --danger: #b42318;
             --danger-soft: #fff1ef;
             --danger-border: #f2c9c5;
 
-            --shadow-card:
-                0 30px 75px rgba(20, 33, 25, 0.15);
-
-            --shadow-canvas:
-                0 18px 60px rgba(0, 0, 0, 0.28);
+            --shadow: 0 20px 55px rgba(21, 45, 30, 0.10);
         }
 
         *,
@@ -161,16 +147,16 @@ function e(mixed $value): string
             box-sizing: border-box;
         }
 
-        html {
-            min-width: 320px;
-            min-height: 100%;
-            background: var(--page-background);
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
         }
 
         body {
             min-width: 320px;
-            min-height: 100vh;
-            margin: 0;
             color: var(--text);
             font-family:
                 "Inter",
@@ -179,7 +165,13 @@ function e(mixed $value): string
                 BlinkMacSystemFont,
                 "Segoe UI",
                 sans-serif;
-            background: var(--page-background);
+            background:
+                radial-gradient(
+                    circle at top,
+                    rgba(255, 255, 255, 0.92),
+                    transparent 42%
+                ),
+                var(--background);
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
         }
@@ -189,19 +181,13 @@ function e(mixed $value): string
             font: inherit;
         }
 
-        button,
-        input,
-        a {
-            -webkit-tap-highlight-color: transparent;
-        }
-
         a {
             color: inherit;
         }
 
         :focus-visible {
             outline: 0;
-            box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.17);
+            box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.16);
         }
 
         .sigas-skip-link {
@@ -223,57 +209,53 @@ function e(mixed $value): string
         }
 
         .sigas-auth-page {
-            min-height: 100vh;
-            padding: 42px;
+            width: 100%;
+            height: 100dvh;
+            display: grid;
+            place-items: center;
+            padding: 18px;
         }
 
-        .sigas-auth-canvas {
+        .sigas-auth-shell {
+            width: min(100%, 420px);
+        }
+
+        .sigas-login-card {
             position: relative;
-            width: min(1480px, 100%);
-            min-height: calc(100vh - 84px);
-            margin: 0 auto;
             overflow: hidden;
-            background:
-                radial-gradient(circle at 50% 35%,
-                    rgba(255, 255, 255, 0.93),
-                    rgba(247, 245, 237, 0.88) 48%,
-                    rgba(242, 239, 229, 0.98)),
-                var(--canvas-background);
-            border-radius: 2px;
-            box-shadow: var(--shadow-canvas);
+            padding: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
         }
 
-        /*
-         * Cabeçalho
-         */
+        .sigas-login-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            left: 0;
+            height: 4px;
+            background: var(--primary);
+        }
 
-        .sigas-auth-header {
-            position: relative;
-            z-index: 20;
-            min-height: 88px;
+        .sigas-brand {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 24px;
-            padding: 22px 52px;
-        }
-
-        .sigas-auth-brand {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            color: var(--text);
+            justify-content: center;
+            gap: 11px;
+            margin-bottom: 22px;
             text-decoration: none;
         }
 
-        .sigas-auth-brand img {
-            width: 40px;
-            height: 46px;
-            flex: 0 0 auto;
+        .sigas-brand img {
+            width: 42px;
+            height: 48px;
             object-fit: contain;
         }
 
-        .sigas-auth-brand-copy strong {
+        .sigas-brand-copy strong {
             display: block;
             font-size: 15px;
             font-weight: 800;
@@ -281,94 +263,37 @@ function e(mixed $value): string
             letter-spacing: -0.03em;
         }
 
-        .sigas-auth-brand-copy span {
+        .sigas-brand-copy span {
             display: block;
             margin-top: 3px;
             color: var(--text-secondary);
             font-size: 9px;
-        }
-
-        .sigas-header-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            padding: 9px 13px;
-            color: var(--primary);
-            font-size: 10px;
-            font-weight: 750;
-            background: var(--primary-soft);
-            border: 1px solid #d1e5d7;
-            border-radius: 999px;
-        }
-
-        /*
-         * Área central
-         */
-
-        .sigas-auth-stage {
-            position: relative;
-            z-index: 8;
-            min-height: calc(100vh - 230px);
-            display: grid;
-            place-items: center;
-            padding: 26px 28px 72px;
-        }
-
-        /*
-         * Card de login
-         */
-
-        .sigas-login-card {
-            position: relative;
-            z-index: 15;
-            width: min(390px, 100%);
-            padding: 34px;
-            background: rgba(255, 255, 255, 0.985);
-            border: 1px solid rgba(225, 231, 227, 0.96);
-            border-radius: 24px;
-            box-shadow: var(--shadow-card);
+            line-height: 1.35;
         }
 
         .sigas-login-heading {
-            margin-bottom: 26px;
+            margin-bottom: 22px;
             text-align: center;
-        }
-
-        .sigas-login-symbol {
-            width: 45px;
-            height: 45px;
-            display: grid;
-            place-items: center;
-            margin: 0 auto 14px;
-            color: var(--primary);
-            font-size: 20px;
-            background: var(--primary-soft);
-            border: 1px solid #d1e5d7;
-            border-radius: 14px;
         }
 
         .sigas-login-heading h1 {
             margin: 0;
             font-size: 24px;
             font-weight: 780;
-            line-height: 1.15;
-            letter-spacing: -0.045em;
+            line-height: 1.18;
+            letter-spacing: -0.04em;
         }
 
-        .sigas-login-heading span {
-            display: block;
-            margin-top: 7px;
+        .sigas-login-heading p {
+            margin: 7px 0 0;
             color: var(--text-secondary);
-            font-size: 11px;
+            font-size: 12px;
+            line-height: 1.5;
         }
-
-        /*
-         * Formulário
-         */
 
         .sigas-login-form {
             display: grid;
-            gap: 16px;
+            gap: 15px;
         }
 
         .sigas-form-group {
@@ -379,7 +304,7 @@ function e(mixed $value): string
         .sigas-label-row label {
             display: block;
             margin-bottom: 7px;
-            color: #435048;
+            color: #3f4b44;
             font-size: 11px;
             font-weight: 700;
         }
@@ -426,7 +351,7 @@ function e(mixed $value): string
 
         .sigas-input-shell input {
             width: 100%;
-            min-height: 46px;
+            height: 46px;
             padding: 10px 44px 10px 41px;
             color: var(--text);
             font-size: 12px;
@@ -437,20 +362,21 @@ function e(mixed $value): string
             outline: 0;
             transition:
                 border-color 0.18s ease,
-                box-shadow 0.18s ease;
+                box-shadow 0.18s ease,
+                background 0.18s ease;
         }
 
         .sigas-input-shell input::placeholder {
-            color: #9ca59f;
+            color: #9aa39d;
         }
 
         .sigas-input-shell input:hover {
-            border-color: #c4d0c8;
+            border-color: #bcc9c1;
         }
 
         .sigas-input-shell input:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.1);
+            box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.10);
         }
 
         .sigas-input-shell input[aria-invalid="true"] {
@@ -485,10 +411,6 @@ function e(mixed $value): string
             background: var(--primary-soft);
         }
 
-        /*
-         * Validação
-         */
-
         .sigas-field-error,
         .sigas-caps-warning {
             display: none;
@@ -496,7 +418,7 @@ function e(mixed $value): string
             gap: 5px;
             margin: 7px 3px 0;
             font-size: 10px;
-            line-height: 1.4;
+            line-height: 1.35;
         }
 
         .sigas-field-error {
@@ -518,31 +440,27 @@ function e(mixed $value): string
             align-items: flex-start;
             gap: 8px;
             margin: 0;
-            padding: 11px 12px;
+            padding: 10px 11px;
             color: var(--danger);
-            font-size: 11px;
+            font-size: 10px;
             line-height: 1.45;
             background: var(--danger-soft);
             border: 1px solid var(--danger-border);
-            border-radius: 11px;
+            border-radius: 10px;
         }
 
         .sigas-login-feedback.is-error {
             display: grid;
         }
 
-        /*
-         * Botão
-         */
-
         .sigas-login-submit {
             width: 100%;
-            min-height: 46px;
+            height: 46px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 9px;
-            margin-top: 2px;
+            margin-top: 1px;
             padding: 10px 16px;
             color: #fff;
             font-size: 12px;
@@ -551,7 +469,7 @@ function e(mixed $value): string
             border: 1px solid var(--primary);
             border-radius: 11px;
             cursor: pointer;
-            box-shadow: 0 9px 20px rgba(20, 83, 45, 0.17);
+            box-shadow: 0 8px 18px rgba(20, 83, 45, 0.16);
             transition:
                 background 0.18s ease,
                 transform 0.18s ease,
@@ -560,7 +478,7 @@ function e(mixed $value): string
 
         .sigas-login-submit:hover {
             background: var(--primary-hover);
-            box-shadow: 0 11px 24px rgba(20, 83, 45, 0.22);
+            box-shadow: 0 10px 22px rgba(20, 83, 45, 0.20);
             transform: translateY(-1px);
         }
 
@@ -615,7 +533,7 @@ function e(mixed $value): string
             justify-content: center;
             flex-wrap: wrap;
             gap: 4px;
-            margin-top: 21px;
+            margin-top: 18px;
             color: var(--text-secondary);
             font-size: 10px;
         }
@@ -630,169 +548,50 @@ function e(mixed $value): string
             text-decoration: underline;
         }
 
-        /*
-         * Ilustração baixada
-         */
-
-        .sigas-login-artwork {
-            position: absolute;
-            top: 51%;
-            right: 5.5%;
-            z-index: 4;
-            width: min(390px, 29vw);
-            transform: translateY(-50%);
-            pointer-events: none;
-        }
-
-        .sigas-login-artwork-image {
-            display: block;
-            width: 100%;
-            height: auto;
-            max-height: 470px;
-            object-fit: contain;
-        }
-
-        /*
-         * Elementos decorativos do lado esquerdo
-         */
-
-        .sigas-decoration-left {
-            position: absolute;
-            top: 50%;
-            left: 7%;
-            z-index: 3;
-            width: 265px;
-            height: 330px;
-            transform: translateY(-50%);
-            pointer-events: none;
-        }
-
-        .sigas-decoration-card {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.76);
-            border: 1px solid rgba(20, 83, 45, 0.18);
-        }
-
-        .sigas-decoration-card::before,
-        .sigas-decoration-card::after {
-            content: "";
-            position: absolute;
-            left: 17px;
-            height: 1px;
-            background: rgba(23, 34, 28, 0.34);
-        }
-
-        .sigas-decoration-card::before {
-            top: 20px;
-            width: 47px;
-        }
-
-        .sigas-decoration-card::after {
-            top: 34px;
-            width: 34px;
-        }
-
-        .sigas-decoration-card-one {
-            top: 60px;
-            left: 35px;
-            width: 90px;
-            height: 64px;
-        }
-
-        .sigas-decoration-card-two {
-            right: 12px;
-            bottom: 10px;
-            width: 72px;
-            height: 86px;
-        }
-
-        .sigas-decoration-block {
-            position: absolute;
-            bottom: 12px;
-            left: 6px;
-            width: 72px;
-            height: 102px;
-            background:
-                radial-gradient(circle at 18px 18px, #111512 0 4px, transparent 5px),
-                radial-gradient(circle at 50px 28px, #111512 0 4px, transparent 5px),
-                radial-gradient(circle at 28px 52px, #111512 0 4px, transparent 5px),
-                radial-gradient(circle at 55px 72px, #111512 0 4px, transparent 5px),
-                var(--accent-soft);
-        }
-
-        .sigas-decoration-line {
-            position: absolute;
-            top: 12px;
-            right: 22px;
-            width: 100px;
-            height: 56px;
-            border-top: 1.5px solid rgba(23, 34, 28, 0.4);
-            border-radius: 50%;
-            transform: rotate(10deg);
-        }
-
-        .sigas-decoration-circle {
-            position: absolute;
-            top: 142px;
-            right: 25px;
-            width: 9px;
-            height: 9px;
-            border: 1.5px solid rgba(20, 83, 45, 0.42);
-            border-radius: 50%;
-        }
-
-        /*
-         * Rodapé
-         */
-
-        .sigas-auth-footer {
-            position: absolute;
-            right: 0;
-            bottom: 0;
-            left: 0;
-            z-index: 10;
-            padding: 0 30px 24px;
+        .sigas-login-footer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            margin-top: 18px;
+            padding-top: 16px;
             color: var(--text-muted);
-            font-size: 10px;
+            font-size: 9px;
+            line-height: 1.4;
             text-align: center;
+            border-top: 1px solid var(--border);
         }
 
-        .sigas-auth-footer span+span::before {
-            content: "•";
-            margin: 0 8px;
-            color: #c0c7c2;
+        .sigas-login-footer i {
+            color: var(--primary);
         }
-
-        /*
-         * Toast
-         */
 
         .sigas-toast-container {
             position: fixed;
-            top: 18px;
-            right: 18px;
+            top: 16px;
+            right: 16px;
             z-index: 9999;
             display: grid;
             gap: 10px;
         }
 
         .sigas-demo-toast {
-            width: min(350px, calc(100vw - 36px));
+            width: min(350px, calc(100vw - 32px));
             display: grid;
             grid-template-columns: auto 1fr auto;
             align-items: center;
             gap: 10px;
-            padding: 13px 14px;
+            padding: 12px 13px;
             color: var(--text);
             font-size: 11px;
             line-height: 1.45;
             background: #fff;
             border: 1px solid var(--border);
-            border-radius: 13px;
-            box-shadow: 0 18px 45px rgba(25, 33, 29, 0.15);
+            border-radius: 12px;
+            box-shadow: 0 16px 42px rgba(25, 33, 29, 0.14);
         }
 
-        .sigas-demo-toast>i {
+        .sigas-demo-toast > i {
             color: var(--primary);
         }
 
@@ -809,155 +608,102 @@ function e(mixed $value): string
             cursor: pointer;
         }
 
-        /*
-         * Responsividade
-         */
-
-        @media (max-width: 1180px) {
-            .sigas-decoration-left {
-                left: 1%;
-                transform: translateY(-50%) scale(0.85);
-            }
-
-            .sigas-login-artwork {
-                right: 0;
-                transform: translateY(-50%) scale(0.88);
-            }
-        }
-
-        @media (max-width: 920px) {
+        @media (max-width: 480px) {
             .sigas-auth-page {
-                padding: 20px;
-            }
-
-            .sigas-auth-canvas {
-                min-height: calc(100vh - 40px);
-            }
-
-            .sigas-auth-header {
-                padding-inline: 28px;
-            }
-
-            .sigas-decoration-left,
-            .sigas-login-artwork {
-                opacity: 0.2;
-            }
-
-            .sigas-decoration-left {
-                left: -100px;
-            }
-
-            .sigas-login-artwork {
-                right: -115px;
-            }
-        }
-
-        @media (max-width: 680px) {
-            .sigas-auth-page {
-                padding: 0;
-            }
-
-            .sigas-auth-canvas {
-                min-height: 100vh;
-                border-radius: 0;
-                box-shadow: none;
-            }
-
-            .sigas-auth-header {
-                min-height: 76px;
-                padding: 16px 18px;
-                border-bottom: 1px solid rgba(226, 232, 228, 0.82);
-            }
-
-            .sigas-auth-brand img {
-                width: 34px;
-                height: 40px;
-            }
-
-            .sigas-auth-brand-copy strong {
-                font-size: 14px;
-            }
-
-            .sigas-auth-brand-copy span {
-                max-width: 180px;
-                font-size: 9px;
-            }
-
-            .sigas-header-status {
-                display: none;
-            }
-
-            .sigas-auth-stage {
-                min-height: calc(100vh - 130px);
-                padding: 30px 16px 70px;
+                padding: 10px;
             }
 
             .sigas-login-card {
-                width: 100%;
-                max-width: 420px;
-                padding: 29px 22px;
-                border-radius: 20px;
+                padding: 23px 20px;
+                border-radius: 18px;
             }
 
-            .sigas-decoration-left,
-            .sigas-login-artwork {
-                display: none;
+            .sigas-brand {
+                margin-bottom: 18px;
             }
 
-            .sigas-auth-footer {
-                padding: 0 15px 18px;
-                font-size: 9px;
-            }
-        }
-
-        @media (max-width: 390px) {
-            .sigas-login-card {
-                padding: 26px 18px;
+            .sigas-login-heading {
+                margin-bottom: 18px;
             }
 
             .sigas-login-heading h1 {
                 font-size: 22px;
             }
 
-            .sigas-auth-footer span {
-                display: block;
-            }
-
-            .sigas-auth-footer span+span::before {
-                display: none;
-            }
-
-            .sigas-auth-footer span+span {
-                margin-top: 3px;
-            }
-
-            .sigas-label-row {
-                align-items: flex-end;
+            .sigas-login-heading p {
+                font-size: 11px;
             }
         }
 
-        @media (max-height: 710px) and (min-width: 681px) {
+        @media (max-height: 690px) {
             .sigas-auth-page {
-                padding: 18px;
-            }
-
-            .sigas-auth-canvas {
-                min-height: 674px;
-            }
-
-            .sigas-auth-stage {
-                min-height: 540px;
-                place-items: start center;
-                padding-top: 10px;
+                padding: 8px;
             }
 
             .sigas-login-card {
-                padding-block: 27px;
+                padding: 20px 24px;
+            }
+
+            .sigas-brand {
+                margin-bottom: 14px;
+            }
+
+            .sigas-brand img {
+                width: 36px;
+                height: 42px;
+            }
+
+            .sigas-login-heading {
+                margin-bottom: 16px;
+            }
+
+            .sigas-login-heading h1 {
+                font-size: 21px;
+            }
+
+            .sigas-login-form {
+                gap: 12px;
+            }
+
+            .sigas-login-support {
+                margin-top: 14px;
+            }
+
+            .sigas-login-footer {
+                margin-top: 14px;
+                padding-top: 12px;
+            }
+        }
+
+        @media (max-height: 570px) {
+            .sigas-brand-copy span,
+            .sigas-login-heading p,
+            .sigas-login-footer {
+                display: none;
+            }
+
+            .sigas-login-card {
+                padding: 16px 22px;
+            }
+
+            .sigas-brand {
+                margin-bottom: 10px;
+            }
+
+            .sigas-login-heading {
+                margin-bottom: 12px;
+            }
+
+            .sigas-login-form {
+                gap: 10px;
+            }
+
+            .sigas-login-support {
+                margin-top: 10px;
             }
         }
 
         @media (prefers-reduced-motion: reduce) {
-
             *,
             *::before,
             *::after {
@@ -969,75 +715,46 @@ function e(mixed $value): string
     </style>
 </head>
 
-<body class="sigas-auth-page" data-page="login">
-
+<body data-page="login">
     <a class="sigas-skip-link" href="#loginForm">
         Ir para o formulário de acesso
     </a>
 
-    <div class="sigas-auth-canvas">
+    <main
+        class="sigas-auth-page"
+        aria-labelledby="loginTitle">
 
-        <header class="sigas-auth-header">
-            <a
-                class="sigas-auth-brand"
-                href="index.php"
-                aria-label="SIGAS Coari — Página de acesso">
-
-                <img
-                    src="assets/img/brasao-placeholder.svg"
-                    alt="Brasão institucional do SIGAS Coari">
-
-                <span class="sigas-auth-brand-copy">
-                    <strong>SIGAS COARI</strong>
-
-                    <span>
-                        Secretaria Municipal de Assistência Social
-                    </span>
-                </span>
-            </a>
-
-            <span class="sigas-header-status">
-                <i
-                    class="bi bi-shield-lock"
-                    aria-hidden="true"></i>
-
-                Acesso institucional
-            </span>
-        </header>
-
-      
-
-        <div
-            class="sigas-login-artwork"
-            aria-hidden="true">
-
-            <img
-                class="sigas-login-artwork-image"
-                src="assets/img/login-assistencia.svg"
-                alt="">
-        </div>
-
-        <main
-            class="sigas-auth-stage"
-            aria-labelledby="loginTitle">
-
+        <div class="sigas-auth-shell">
             <section
                 class="sigas-login-card"
                 aria-label="Acesso ao SIGAS Coari">
 
-                <header class="sigas-login-heading">
-                    <span
-                        class="sigas-login-symbol"
-                        aria-hidden="true">
+                <a
+                    class="sigas-brand"
+                    href="index.php"
+                    aria-label="SIGAS Coari — Página de acesso">
 
-                        <i class="bi bi-person-lock"></i>
+                    <img
+                        src="assets/img/brasao-placeholder.svg"
+                        alt="Brasão institucional do SIGAS Coari">
+
+                    <span class="sigas-brand-copy">
+                        <strong>SIGAS COARI</strong>
+
+                        <span>
+                            Secretaria Municipal de Assistência Social
+                        </span>
                     </span>
+                </a>
 
+                <header class="sigas-login-heading">
                     <h1 id="loginTitle">
-                        Acessar o SIGAS
+                        Acesso ao sistema
                     </h1>
 
-                    <span>Área institucional</span>
+                    <p>
+                        Informe seus dados para continuar.
+                    </p>
                 </header>
 
                 <form
@@ -1210,17 +927,19 @@ function e(mixed $value): string
                         Falar com o suporte
                     </a>
                 </div>
+
+                <footer class="sigas-login-footer">
+                    <i
+                        class="bi bi-shield-check"
+                        aria-hidden="true"></i>
+
+                    <span>
+                        Ambiente institucional protegido e monitorado
+                    </span>
+                </footer>
             </section>
-        </main>
-
-        <footer class="sigas-auth-footer">
-            <span>Prefeitura Municipal de Coari</span>
-
-            <span>
-                Secretaria Municipal de Assistência Social
-            </span>
-        </footer>
-    </div>
+        </div>
+    </main>
 
     <div
         class="sigas-toast-container"
@@ -1231,5 +950,4 @@ function e(mixed $value): string
 
     <script src="assets/js/login.js?v=20260703"></script>
 </body>
-
 </html>
