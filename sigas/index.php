@@ -87,6 +87,7 @@ function e(mixed $value): string
 ?>
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="utf-8">
 
@@ -98,11 +99,15 @@ function e(mixed $value): string
         name="description"
         content="Acesso institucional ao SIGAS Coari.">
 
-    <meta name="theme-color" content="#14532d">
+    <meta
+        name="theme-color"
+        content="#14532d">
 
     <title>SIGAS Coari — Acesso</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com">
 
     <link
         rel="preconnect"
@@ -122,29 +127,28 @@ function e(mixed $value): string
             --primary: #14532d;
             --primary-hover: #0f4425;
             --primary-dark: #0b351c;
-            --primary-soft: #e7f3eb;
+            --primary-soft: #e9f5ed;
 
             --accent: #d99b27;
             --accent-soft: #fff0c9;
 
-            --background: #e9eeeb;
-            --canvas: #f8f7f2;
+            --background: #111311;
+            --canvas: #f7f5ed;
             --surface: #ffffff;
-            --surface-soft: #f6f8f7;
+            --surface-soft: #f7f9f8;
 
             --text: #17221c;
-            --text-secondary: #67736c;
+            --text-secondary: #66736b;
             --text-muted: #929b95;
 
-            --border: #e3e8e5;
-            --border-strong: #d3dcd6;
+            --border: #e4e8e5;
+            --border-strong: #d4dcd7;
 
             --danger: #b42318;
             --danger-soft: #fff1ef;
             --danger-border: #f2c9c5;
 
-            --shadow:
-                0 28px 70px rgba(23, 42, 31, 0.12);
+            --shadow: 0 30px 75px rgba(20, 33, 25, 0.15);
         }
 
         *,
@@ -173,6 +177,7 @@ function e(mixed $value): string
                 sans-serif;
             background: var(--background);
             -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
         }
 
         button,
@@ -180,11 +185,17 @@ function e(mixed $value): string
             font: inherit;
         }
 
+        button,
+        input,
+        a {
+            -webkit-tap-highlight-color: transparent;
+        }
+
         a {
             color: inherit;
         }
 
-        .skip-link {
+        .sigas-skip-link {
             position: fixed;
             top: 14px;
             left: -9999px;
@@ -198,48 +209,47 @@ function e(mixed $value): string
             border-radius: 10px;
         }
 
-        .skip-link:focus {
+        .sigas-skip-link:focus {
             left: 14px;
         }
 
         :focus-visible {
             outline: 0;
-            box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.16);
+            box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.17);
         }
 
-        .login-page {
+        .sigas-auth-page {
             min-height: 100vh;
-            padding: 28px;
+            padding: 42px;
         }
 
-        .login-canvas {
+        .sigas-auth-canvas {
             position: relative;
-            min-height: calc(100vh - 56px);
+            width: min(1480px, 100%);
+            min-height: calc(100vh - 84px);
+            margin: 0 auto;
             overflow: hidden;
             background:
-                radial-gradient(
-                    circle at 50% 38%,
-                    rgba(255, 255, 255, 0.96),
-                    rgba(248, 247, 242, 0.8) 48%,
-                    rgba(244, 243, 236, 0.96)
-                );
-            border: 1px solid rgba(255, 255, 255, 0.85);
-            border-radius: 28px;
-            box-shadow: 0 12px 42px rgba(26, 43, 33, 0.08);
+                radial-gradient(circle at 50% 42%,
+                    rgba(255, 255, 255, 0.98),
+                    rgba(248, 247, 241, 0.94) 52%,
+                    rgba(243, 241, 231, 0.98));
+            border-radius: 2px;
+            box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
         }
 
-        .login-header {
+        .sigas-auth-header {
             position: relative;
-            z-index: 10;
-            min-height: 88px;
+            z-index: 20;
+            min-height: 86px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 20px;
-            padding: 22px 44px;
+            gap: 24px;
+            padding: 22px 52px;
         }
 
-        .brand {
+        .sigas-auth-brand {
             display: inline-flex;
             align-items: center;
             gap: 12px;
@@ -247,27 +257,35 @@ function e(mixed $value): string
             text-decoration: none;
         }
 
-        .brand img {
+        .sigas-auth-brand img {
             width: 40px;
             height: 46px;
+            flex: 0 0 auto;
             object-fit: contain;
         }
 
-        .brand-copy strong {
+        .sigas-auth-brand-copy strong {
             display: block;
             font-size: 15px;
             font-weight: 800;
+            line-height: 1.2;
             letter-spacing: -0.03em;
         }
 
-        .brand-copy span {
+        .sigas-auth-brand-copy span {
             display: block;
             margin-top: 3px;
             color: var(--text-secondary);
-            font-size: 10px;
+            font-size: 9px;
         }
 
-        .header-badge {
+        .sigas-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sigas-header-status {
             display: inline-flex;
             align-items: center;
             gap: 7px;
@@ -276,74 +294,74 @@ function e(mixed $value): string
             font-size: 10px;
             font-weight: 750;
             background: var(--primary-soft);
-            border: 1px solid #d2e5d8;
+            border: 1px solid #d1e5d7;
             border-radius: 999px;
         }
 
-        .login-stage {
+        .sigas-auth-stage {
             position: relative;
             z-index: 5;
-            min-height: calc(100vh - 200px);
+            min-height: calc(100vh - 230px);
             display: grid;
             place-items: center;
-            padding: 28px 24px 54px;
+            padding: 26px 28px 70px;
         }
 
-        .login-card {
+        .sigas-login-card {
             position: relative;
-            z-index: 10;
-            width: min(410px, 100%);
-            padding: 36px;
-            background: rgba(255, 255, 255, 0.98);
-            border: 1px solid var(--border);
+            z-index: 15;
+            width: min(390px, 100%);
+            padding: 34px;
+            background: rgba(255, 255, 255, 0.985);
+            border: 1px solid rgba(225, 231, 227, 0.95);
             border-radius: 24px;
             box-shadow: var(--shadow);
         }
 
-        .login-heading {
-            margin-bottom: 27px;
+        .sigas-login-heading {
+            margin-bottom: 26px;
             text-align: center;
         }
 
-        .login-symbol {
-            width: 46px;
-            height: 46px;
+        .sigas-login-symbol {
+            width: 45px;
+            height: 45px;
             display: grid;
             place-items: center;
-            margin: 0 auto 15px;
+            margin: 0 auto 14px;
             color: var(--primary);
             font-size: 20px;
             background: var(--primary-soft);
-            border: 1px solid #d1e6d8;
+            border: 1px solid #d1e5d7;
             border-radius: 14px;
         }
 
-        .login-heading h1 {
+        .sigas-login-heading h1 {
             margin: 0;
-            font-size: 25px;
+            font-size: 24px;
             font-weight: 780;
             line-height: 1.15;
             letter-spacing: -0.045em;
         }
 
-        .login-heading span {
+        .sigas-login-heading span {
             display: block;
             margin-top: 7px;
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: 11px;
         }
 
-        .login-form {
+        .sigas-login-form {
             display: grid;
-            gap: 17px;
+            gap: 16px;
         }
 
-        .form-group {
+        .sigas-form-group {
             min-width: 0;
         }
 
-        .form-group label,
-        .label-row label {
+        .sigas-form-group label,
+        .sigas-label-row label {
             display: block;
             margin-bottom: 7px;
             color: #435048;
@@ -351,7 +369,7 @@ function e(mixed $value): string
             font-weight: 700;
         }
 
-        .label-row {
+        .sigas-label-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -359,37 +377,39 @@ function e(mixed $value): string
             margin-bottom: 7px;
         }
 
-        .label-row label {
+        .sigas-label-row label {
             margin: 0;
         }
 
-        .forgot-link {
+        .sigas-forgot-link {
             color: var(--primary);
             font-size: 10px;
             font-weight: 700;
             text-decoration: none;
         }
 
-        .forgot-link:hover {
+        .sigas-forgot-link:hover {
             text-decoration: underline;
         }
 
-        .input-shell {
+        .sigas-input-shell {
             position: relative;
         }
 
-        .input-icon {
+        .sigas-input-icon {
             position: absolute;
             top: 50%;
             left: 14px;
             z-index: 2;
+            display: grid;
+            place-items: center;
             color: var(--primary);
             font-size: 14px;
             pointer-events: none;
             transform: translateY(-50%);
         }
 
-        .input-shell input {
+        .sigas-input-shell input {
             width: 100%;
             min-height: 46px;
             padding: 10px 44px 10px 41px;
@@ -402,31 +422,33 @@ function e(mixed $value): string
             outline: 0;
             transition:
                 border-color 0.18s ease,
-                box-shadow 0.18s ease;
+                box-shadow 0.18s ease,
+                background 0.18s ease;
         }
 
-        .input-shell input::placeholder {
+        .sigas-input-shell input::placeholder {
             color: #9ca59f;
         }
 
-        .input-shell input:hover {
+        .sigas-input-shell input:hover {
             border-color: #c4d0c8;
         }
 
-        .input-shell input:focus {
+        .sigas-input-shell input:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.1);
         }
 
-        .input-shell input[aria-invalid="true"] {
+        .sigas-input-shell input[aria-invalid="true"] {
             border-color: var(--danger);
             box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.08);
         }
 
-        .password-toggle {
+        .sigas-password-toggle {
             position: absolute;
             top: 50%;
             right: 7px;
+            z-index: 3;
             width: 34px;
             height: 34px;
             display: grid;
@@ -438,16 +460,19 @@ function e(mixed $value): string
             border-radius: 9px;
             cursor: pointer;
             transform: translateY(-50%);
+            transition:
+                color 0.18s ease,
+                background 0.18s ease;
         }
 
-        .password-toggle:hover,
-        .password-toggle:focus-visible {
+        .sigas-password-toggle:hover,
+        .sigas-password-toggle:focus-visible {
             color: var(--primary);
             background: var(--primary-soft);
         }
 
-        .field-error,
-        .caps-warning {
+        .sigas-field-error,
+        .sigas-caps-warning {
             display: none;
             align-items: center;
             gap: 5px;
@@ -456,20 +481,20 @@ function e(mixed $value): string
             line-height: 1.4;
         }
 
-        .field-error {
+        .sigas-field-error {
             color: var(--danger);
         }
 
-        .caps-warning {
+        .sigas-caps-warning {
             color: #8a5b05;
         }
 
-        .form-group.is-invalid .field-error,
-        .caps-warning:not([hidden]) {
+        .sigas-form-group.is-invalid .sigas-field-error,
+        .sigas-caps-warning:not([hidden]) {
             display: flex;
         }
 
-        .login-feedback {
+        .sigas-login-feedback {
             display: none;
             grid-template-columns: auto 1fr;
             align-items: flex-start;
@@ -484,11 +509,21 @@ function e(mixed $value): string
             border-radius: 11px;
         }
 
-        .login-feedback:not(:empty) {
+        .sigas-login-feedback:not(:empty) {
             display: grid;
         }
 
-        .login-submit {
+        .sigas-login-feedback.is-error {
+            color: var(--danger);
+        }
+
+        .sigas-login-feedback.is-success {
+            color: var(--primary);
+            background: var(--primary-soft);
+            border-color: #d1e5d7;
+        }
+
+        .sigas-login-submit {
             width: 100%;
             min-height: 46px;
             display: inline-flex;
@@ -511,222 +546,282 @@ function e(mixed $value): string
                 box-shadow 0.18s ease;
         }
 
-        .login-submit:hover {
+        .sigas-login-submit:hover {
             background: var(--primary-hover);
             box-shadow: 0 11px 24px rgba(20, 83, 45, 0.22);
             transform: translateY(-1px);
         }
 
-        .login-submit:disabled {
+        .sigas-login-submit:active {
+            transform: translateY(0);
+        }
+
+        .sigas-login-submit:disabled {
             cursor: wait;
             opacity: 0.76;
             transform: none;
         }
 
-        .submit-loading {
+        .sigas-submit-icon {
+            display: inline-grid;
+            place-items: center;
+            font-size: 15px;
+        }
+
+        .sigas-submit-loading {
             display: none;
             align-items: center;
             gap: 8px;
         }
 
-        .login-submit.is-loading .submit-label,
-        .login-submit.is-loading .submit-icon {
+        .sigas-login-submit.is-loading .sigas-submit-label,
+        .sigas-login-submit.is-loading .sigas-submit-icon {
             display: none;
         }
 
-        .login-submit.is-loading .submit-loading {
+        .sigas-login-submit.is-loading .sigas-submit-loading {
             display: inline-flex;
         }
 
-        .spinner {
+        .sigas-spinner {
             width: 15px;
             height: 15px;
             border: 2px solid rgba(255, 255, 255, 0.34);
             border-top-color: #fff;
             border-radius: 50%;
-            animation: spin 0.7s linear infinite;
+            animation: sigas-spin 0.7s linear infinite;
         }
 
-        @keyframes spin {
+        @keyframes sigas-spin {
             to {
                 transform: rotate(360deg);
             }
         }
 
-        .login-support {
+        .sigas-login-support {
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
             gap: 4px;
-            margin-top: 22px;
+            margin-top: 21px;
             color: var(--text-secondary);
             font-size: 10px;
         }
 
-        .login-support a {
+        .sigas-login-support a {
             color: var(--primary);
             font-weight: 700;
             text-decoration: none;
         }
 
-        .login-support a:hover {
+        .sigas-login-support a:hover {
             text-decoration: underline;
         }
 
-        .login-footer {
+        .sigas-auth-footer {
             position: absolute;
             right: 0;
             bottom: 0;
             left: 0;
-            z-index: 6;
+            z-index: 10;
             padding: 0 30px 24px;
             color: var(--text-muted);
             font-size: 10px;
             text-align: center;
         }
 
-        .login-footer span + span::before {
+        .sigas-auth-footer span+span::before {
             content: "•";
             margin: 0 8px;
             color: #c0c7c2;
         }
 
-        /*
-         * Elementos visuais relacionados à assistência social.
-         */
+        /* =====================================================
+           ILUSTRAÇÕES DE PESSOAS
+           ===================================================== */
 
-        .scene {
+        .sigas-scene {
             position: absolute;
             z-index: 2;
             pointer-events: none;
         }
 
-        .scene-left {
-            top: 48%;
-            left: 11%;
-            width: 230px;
-            height: 280px;
+        .sigas-scene-left {
+            top: 51%;
+            left: 5.5%;
+            width: 310px;
+            max-width: 25vw;
             transform: translateY(-50%);
         }
 
-        .scene-right {
-            top: 48%;
-            right: 10%;
-            width: 250px;
-            height: 300px;
+        .sigas-scene-right {
+            top: 51%;
+            right: 5%;
+            width: 340px;
+            max-width: 27vw;
             transform: translateY(-50%);
         }
 
-        .scene-icon {
-            position: absolute;
-            display: grid;
-            place-items: center;
-            color: var(--primary);
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            box-shadow: 0 12px 35px rgba(29, 48, 37, 0.08);
+        .sigas-people-illustration {
+            width: 100%;
+            height: auto;
+            display: block;
+            overflow: visible;
         }
 
-        .scene-left .scene-icon:nth-child(1) {
-            top: 14px;
-            left: 70px;
-            width: 72px;
-            height: 72px;
-            font-size: 27px;
-            background: var(--primary-soft);
+        .scene-ground,
+        .scene-card,
+        .scene-card-line,
+        .scene-line,
+        .scene-small-dot,
+        .scene-platform,
+        .scene-platform-line,
+        .document-sheet,
+        .document-line,
+        .paper,
+        .paper-line,
+        .person-arm,
+        .person-leg,
+        .person-shoe,
+        .person-pattern {
+            vector-effect: non-scaling-stroke;
         }
 
-        .scene-left .scene-icon:nth-child(2) {
-            top: 128px;
-            left: 6px;
-            width: 64px;
-            height: 64px;
-            font-size: 23px;
+        .scene-ground {
+            stroke: rgba(20, 83, 45, 0.18);
+            stroke-width: 1.4;
         }
 
-        .scene-left .scene-icon:nth-child(3) {
-            right: 12px;
-            bottom: 12px;
-            width: 82px;
-            height: 82px;
-            color: #9a690d;
-            font-size: 28px;
-            background: var(--accent-soft);
-            border-color: #f1daa6;
+        .scene-card {
+            fill: rgba(255, 255, 255, 0.7);
+            stroke: rgba(23, 34, 28, 0.28);
+            stroke-width: 1.2;
         }
 
-        .scene-right .scene-icon:nth-child(1) {
-            top: 10px;
-            right: 22px;
-            width: 66px;
-            height: 66px;
-            font-size: 24px;
+        .scene-card-line {
+            stroke: rgba(23, 34, 28, 0.42);
+            stroke-width: 1.2;
+            stroke-linecap: round;
         }
 
-        .scene-right .scene-icon:nth-child(2) {
-            top: 100px;
-            left: 4px;
-            width: 92px;
-            height: 92px;
-            color: #9a690d;
-            font-size: 31px;
-            background: var(--accent-soft);
-            border-color: #f1daa6;
+        .scene-pattern {
+            fill: #e6b451;
         }
 
-        .scene-right .scene-icon:nth-child(3) {
-            right: 2px;
-            bottom: 12px;
-            width: 84px;
-            height: 84px;
-            font-size: 29px;
-            background: var(--primary-soft);
+        .scene-pattern-dot {
+            fill: #111512;
         }
 
         .scene-line {
-            position: absolute;
-            border: 1.5px solid rgba(20, 83, 45, 0.2);
-            border-right-color: transparent;
-            border-bottom-color: transparent;
-            border-radius: 50%;
+            fill: none;
+            stroke: rgba(23, 34, 28, 0.4);
+            stroke-width: 1.2;
+            stroke-linecap: round;
         }
 
-        .scene-left .scene-line {
-            right: 12px;
-            top: 90px;
-            width: 80px;
-            height: 55px;
-            transform: rotate(18deg);
+        .scene-small-dot {
+            fill: none;
+            stroke: rgba(23, 34, 28, 0.45);
+            stroke-width: 1.2;
         }
 
-        .scene-right .scene-line {
-            left: 82px;
-            bottom: 52px;
-            width: 100px;
-            height: 65px;
-            transform: rotate(-20deg);
+        .person-skin {
+            fill: #fff;
+            stroke: #111512;
+            stroke-width: 1.6;
         }
 
-        .scene-dot {
-            position: absolute;
-            width: 7px;
-            height: 7px;
-            border: 1.5px solid rgba(20, 83, 45, 0.35);
-            border-radius: 50%;
+        .person-hair {
+            fill: #101310;
         }
 
-        .scene-left .scene-dot {
-            right: 15px;
-            top: 38px;
+        .person-body-dark {
+            fill: #121512;
         }
 
-        .scene-right .scene-dot {
-            left: 118px;
-            top: 31px;
+        .person-body-green {
+            fill: var(--primary);
         }
 
-        .toast-container {
+        .person-pattern {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.25);
+            stroke-width: 1.1;
+            stroke-linecap: round;
+        }
+
+        .person-arm {
+            fill: none;
+            stroke: #111512;
+            stroke-width: 9;
+            stroke-linecap: round;
+        }
+
+        .person-arm-light {
+            fill: none;
+            stroke: #fff;
+            stroke-width: 16;
+            stroke-linecap: round;
+        }
+
+        .document-sheet,
+        .paper {
+            fill: #fff;
+            stroke: rgba(17, 21, 18, 0.38);
+            stroke-width: 1.2;
+        }
+
+        .document-line,
+        .paper-line {
+            stroke: rgba(17, 21, 18, 0.38);
+            stroke-width: 1.1;
+            stroke-linecap: round;
+        }
+
+        .person-leg {
+            fill: none;
+            stroke: #fff;
+            stroke-width: 18;
+            stroke-linecap: round;
+        }
+
+        .person-leg-fill {
+            fill: #fff;
+            stroke: #111512;
+            stroke-width: 1.4;
+        }
+
+        .person-shoe {
+            fill: none;
+            stroke: #101310;
+            stroke-width: 12;
+            stroke-linecap: round;
+        }
+
+        .scene-platform {
+            fill: #fff;
+            stroke: rgba(17, 21, 18, 0.35);
+            stroke-width: 1.2;
+        }
+
+        .scene-platform-line {
+            stroke: rgba(17, 21, 18, 0.35);
+            stroke-width: 1.2;
+        }
+
+        .people-left {
+            opacity: 0.94;
+        }
+
+        .people-right {
+            opacity: 0.97;
+        }
+
+        /* =====================================================
+           TOAST
+           ===================================================== */
+
+        .sigas-toast-container {
             position: fixed;
             top: 18px;
             right: 18px;
@@ -751,7 +846,7 @@ function e(mixed $value): string
             box-shadow: 0 18px 45px rgba(25, 33, 29, 0.15);
         }
 
-        .sigas-demo-toast > i {
+        .sigas-demo-toast>i {
             color: var(--primary);
         }
 
@@ -768,146 +863,153 @@ function e(mixed $value): string
             cursor: pointer;
         }
 
-        @media (max-width: 1100px) {
-            .scene-left {
-                left: 4%;
-                transform: translateY(-50%) scale(0.82);
+        /* =====================================================
+           RESPONSIVIDADE
+           ===================================================== */
+
+        @media (max-width: 1180px) {
+            .sigas-scene-left {
+                left: 0;
+                transform: translateY(-50%) scale(0.86);
             }
 
-            .scene-right {
-                right: 3%;
-                transform: translateY(-50%) scale(0.82);
-            }
-        }
-
-        @media (max-width: 850px) {
-            .login-page {
-                padding: 16px;
-            }
-
-            .login-canvas {
-                min-height: calc(100vh - 32px);
-                border-radius: 22px;
-            }
-
-            .login-header {
-                padding: 20px 24px;
-            }
-
-            .scene {
-                opacity: 0.35;
-            }
-
-            .scene-left {
-                left: -70px;
-            }
-
-            .scene-right {
-                right: -80px;
+            .sigas-scene-right {
+                right: 0;
+                transform: translateY(-50%) scale(0.86);
             }
         }
 
-        @media (max-width: 620px) {
-            .login-page {
+        @media (max-width: 920px) {
+            .sigas-auth-page {
+                padding: 20px;
+            }
+
+            .sigas-auth-canvas {
+                min-height: calc(100vh - 40px);
+            }
+
+            .sigas-auth-header {
+                padding-inline: 28px;
+            }
+
+            .sigas-scene {
+                opacity: 0.2;
+            }
+
+            .sigas-scene-left {
+                left: -110px;
+            }
+
+            .sigas-scene-right {
+                right: -120px;
+            }
+        }
+
+        @media (max-width: 680px) {
+            .sigas-auth-page {
                 padding: 0;
             }
 
-            .login-canvas {
+            .sigas-auth-canvas {
                 min-height: 100vh;
-                border: 0;
                 border-radius: 0;
                 box-shadow: none;
             }
 
-            .login-header {
+            .sigas-auth-header {
                 min-height: 76px;
                 padding: 16px 18px;
-                border-bottom: 1px solid rgba(227, 232, 229, 0.8);
+                border-bottom: 1px solid rgba(226, 232, 228, 0.82);
             }
 
-            .brand img {
+            .sigas-auth-brand img {
                 width: 34px;
                 height: 40px;
             }
 
-            .brand-copy strong {
+            .sigas-auth-brand-copy strong {
                 font-size: 14px;
             }
 
-            .brand-copy span {
+            .sigas-auth-brand-copy span {
                 max-width: 180px;
                 font-size: 9px;
             }
 
-            .header-badge {
+            .sigas-header-status {
                 display: none;
             }
 
-            .login-stage {
-                min-height: calc(100vh - 135px);
-                padding: 28px 16px 70px;
+            .sigas-auth-stage {
+                min-height: calc(100vh - 130px);
+                padding: 30px 16px 70px;
             }
 
-            .login-card {
+            .sigas-login-card {
                 width: 100%;
                 max-width: 420px;
-                padding: 28px 22px;
+                padding: 29px 22px;
                 border-radius: 20px;
             }
 
-            .scene {
+            .sigas-scene {
                 display: none;
             }
 
-            .login-footer {
+            .sigas-auth-footer {
                 padding: 0 15px 18px;
                 font-size: 9px;
             }
         }
 
-        @media (max-width: 380px) {
-            .login-card {
-                padding: 25px 18px;
+        @media (max-width: 390px) {
+            .sigas-login-card {
+                padding: 26px 18px;
             }
 
-            .login-heading h1 {
-                font-size: 23px;
+            .sigas-login-heading h1 {
+                font-size: 22px;
             }
 
-            .login-footer span {
+            .sigas-auth-footer span {
                 display: block;
             }
 
-            .login-footer span + span::before {
+            .sigas-auth-footer span+span::before {
                 display: none;
             }
 
-            .login-footer span + span {
+            .sigas-auth-footer span+span {
                 margin-top: 3px;
+            }
+
+            .sigas-label-row {
+                align-items: flex-end;
             }
         }
 
-        @media (max-height: 700px) and (min-width: 621px) {
-            .login-page {
-                padding: 16px;
+        @media (max-height: 710px) and (min-width: 681px) {
+            .sigas-auth-page {
+                padding: 18px;
             }
 
-            .login-canvas {
-                min-height: 670px;
+            .sigas-auth-canvas {
+                min-height: 674px;
             }
 
-            .login-stage {
+            .sigas-auth-stage {
                 min-height: 540px;
                 place-items: start center;
-                padding-top: 14px;
+                padding-top: 10px;
             }
 
-            .login-card {
-                padding-block: 28px;
+            .sigas-login-card {
+                padding-block: 27px;
             }
         }
 
         @media (prefers-reduced-motion: reduce) {
+
             *,
             *::before,
             *::after {
@@ -919,269 +1021,432 @@ function e(mixed $value): string
     </style>
 </head>
 
-<body data-page="login">
-    <a class="skip-link" href="#loginForm">
+<body class="sigas-auth-page" data-page="login">
+
+    <a class="sigas-skip-link" href="#loginForm">
         Ir para o formulário de acesso
     </a>
 
-    <div class="login-page">
-        <div class="login-canvas">
-            <header class="login-header">
-                <a
-                    class="brand"
-                    href="index.php"
-                    aria-label="SIGAS Coari — Página de acesso">
+    <div class="sigas-auth-canvas">
 
-                    <img
-                        src="assets/img/brasao-placeholder.svg"
-                        alt="Brasão institucional do SIGAS Coari">
+        <header class="sigas-auth-header">
+            <a
+                class="sigas-auth-brand"
+                href="index.php"
+                aria-label="SIGAS Coari — Página de acesso">
 
-                    <span class="brand-copy">
-                        <strong>SIGAS COARI</strong>
-                        <span>Secretaria Municipal de Assistência Social</span>
-                    </span>
-                </a>
+                <img
+                    src="assets/img/brasao-placeholder.svg"
+                    alt="Brasão institucional do SIGAS Coari">
 
-                <span class="header-badge">
+                <span class="sigas-auth-brand-copy">
+                    <strong>SIGAS COARI</strong>
+                    <span>Secretaria Municipal de Assistência Social</span>
+                </span>
+            </a>
+
+            <div class="sigas-header-actions">
+                <span class="sigas-header-status">
                     <i class="bi bi-shield-lock" aria-hidden="true"></i>
                     Acesso institucional
                 </span>
-            </header>
-
-            <div class="scene scene-left" aria-hidden="true">
-                <span class="scene-icon">
-                    <i class="bi bi-people"></i>
-                </span>
-
-                <span class="scene-icon">
-                    <i class="bi bi-file-earmark-check"></i>
-                </span>
-
-                <span class="scene-icon">
-                    <i class="bi bi-house-heart"></i>
-                </span>
-
-                <span class="scene-line"></span>
-                <span class="scene-dot"></span>
             </div>
+        </header>
 
-            <div class="scene scene-right" aria-hidden="true">
-                <span class="scene-icon">
-                    <i class="bi bi-person-check"></i>
-                </span>
+        <!-- Ilustração esquerda -->
+        <div class="sigas-scene sigas-scene-left" aria-hidden="true">
+            <svg
+                class="sigas-people-illustration people-left"
+                viewBox="0 0 360 330"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg">
 
-                <span class="scene-icon">
-                    <i class="bi bi-heart"></i>
-                </span>
+                <path class="scene-ground" d="M20 294H338" />
 
-                <span class="scene-icon">
-                    <i class="bi bi-shield-check"></i>
-                </span>
+                <rect
+                    class="scene-card"
+                    x="32"
+                    y="76"
+                    width="92"
+                    height="62"
+                    rx="2" />
 
-                <span class="scene-line"></span>
-                <span class="scene-dot"></span>
-            </div>
+                <path class="scene-card-line" d="M50 98H105" />
+                <path class="scene-card-line" d="M50 114H96" />
 
-            <main
-                class="login-stage"
-                aria-labelledby="loginTitle">
+                <rect
+                    class="scene-pattern"
+                    x="44"
+                    y="210"
+                    width="74"
+                    height="84"
+                    rx="1" />
 
-                <section
-                    class="login-card"
-                    aria-label="Acesso ao SIGAS Coari">
+                <circle class="scene-pattern-dot" cx="63" cy="229" r="4.5" />
+                <circle class="scene-pattern-dot" cx="91" cy="230" r="4.5" />
+                <circle class="scene-pattern-dot" cx="74" cy="252" r="4.5" />
+                <circle class="scene-pattern-dot" cx="101" cy="265" r="4.5" />
+                <circle class="scene-pattern-dot" cx="59" cy="278" r="4.5" />
 
-                    <header class="login-heading">
-                        <span class="login-symbol" aria-hidden="true">
-                            <i class="bi bi-person-lock"></i>
-                        </span>
+                <path
+                    class="scene-line"
+                    d="M10 52C28 70 45 69 60 49C75 29 87 43 94 54C103 68 113 61 124 50" />
 
-                        <h1 id="loginTitle">Acessar o SIGAS</h1>
+                <path
+                    class="scene-line"
+                    d="M246 215C263 233 280 233 296 214C309 198 320 207 328 216" />
 
-                        <span>Área institucional</span>
-                    </header>
+                <circle class="scene-small-dot" cx="282" cy="85" r="5" />
+                <circle class="scene-small-dot" cx="307" cy="161" r="6" />
 
-                    <form
-                        id="loginForm"
-                        class="login-form"
-                        method="post"
-                        action="index.php"
-                        novalidate>
+                <g>
+                    <path
+                        class="person-skin"
+                        d="M213 75C230 75 244 89 244 106C244 123 230 137 213 137C196 137 182 123 182 106C182 89 196 75 213 75Z" />
 
-                        <?= Csrf::input('login') ?>
+                    <path
+                        class="person-hair"
+                        d="M182 107C179 87 194 69 215 69C236 69 249 84 250 104C240 93 228 91 215 98C203 105 192 107 182 107Z" />
 
-                        <div
-                            id="loginFeedback"
-                            class="login-feedback<?= is_string($loginError) && $loginError !== '' ? ' is-error' : '' ?>"
-                            role="alert"
-                            aria-live="polite">
+                    <path
+                        class="person-body-dark"
+                        d="M177 145C191 134 235 134 249 147C259 170 261 204 255 239H169C165 204 167 168 177 145Z" />
 
-                            <?php if (is_string($loginError) && $loginError !== ''): ?>
-                                <i
-                                    class="bi bi-exclamation-circle"
-                                    aria-hidden="true"></i>
+                    <path class="person-pattern" d="M191 151L238 231" />
+                    <path class="person-pattern" d="M236 151L187 230" />
+                    <path class="person-pattern" d="M179 174L252 174" />
+                    <path class="person-pattern" d="M172 202L257 202" />
 
-                                <span><?= e($loginError) ?></span>
-                            <?php endif; ?>
+                    <path
+                        class="person-arm"
+                        d="M177 160C154 171 138 192 129 218" />
+
+                    <path
+                        class="person-arm"
+                        d="M247 161C269 176 281 197 286 221" />
+
+                    <rect
+                        class="document-sheet"
+                        x="112"
+                        y="205"
+                        width="88"
+                        height="61"
+                        rx="4" />
+
+                    <path class="document-line" d="M130 224H181" />
+                    <path class="document-line" d="M130 240H169" />
+                    <path class="document-line" d="M130 252H177" />
+
+                    <path class="person-leg" d="M192 237L165 291" />
+                    <path class="person-leg" d="M232 237L264 291" />
+
+                    <path class="person-shoe" d="M153 295H188" />
+                    <path class="person-shoe" d="M252 295H287" />
+                </g>
+            </svg>
+        </div>
+
+        <!-- Ilustração direita -->
+        <div class="sigas-scene sigas-scene-right" aria-hidden="true">
+            <svg
+                class="sigas-people-illustration people-right"
+                viewBox="0 0 390 340"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+
+                <path class="scene-ground" d="M24 302H365" />
+
+                <rect
+                    class="scene-card"
+                    x="28"
+                    y="83"
+                    width="82"
+                    height="54"
+                    rx="2" />
+
+                <path class="scene-card-line" d="M45 103H92" />
+                <path class="scene-card-line" d="M45 118H85" />
+
+                <rect
+                    class="scene-pattern"
+                    x="302"
+                    y="222"
+                    width="70"
+                    height="80"
+                    rx="1" />
+
+                <circle class="scene-pattern-dot" cx="320" cy="241" r="4.5" />
+                <circle class="scene-pattern-dot" cx="348" cy="241" r="4.5" />
+                <circle class="scene-pattern-dot" cx="333" cy="264" r="4.5" />
+                <circle class="scene-pattern-dot" cx="354" cy="281" r="4.5" />
+                <circle class="scene-pattern-dot" cx="315" cy="288" r="4.5" />
+
+                <path
+                    class="scene-line"
+                    d="M265 93C281 111 297 111 312 93C325 78 337 89 345 98" />
+
+                <circle class="scene-small-dot" cx="340" cy="67" r="4.5" />
+                <circle class="scene-small-dot" cx="83" cy="173" r="5" />
+
+                <g>
+                    <rect
+                        class="scene-platform"
+                        x="204"
+                        y="211"
+                        width="79"
+                        height="91" />
+
+                    <path class="scene-platform-line" d="M204 211H283" />
+
+                    <path
+                        class="person-skin"
+                        d="M200 69C216 69 229 82 229 98C229 114 216 127 200 127C184 127 171 114 171 98C171 82 184 69 200 69Z" />
+
+                    <path
+                        class="person-hair"
+                        d="M171 99C168 78 184 62 204 64C214 53 231 62 229 77C246 81 251 103 242 118C229 106 218 103 205 109C191 116 179 110 171 99Z" />
+
+                    <path
+                        class="person-body-dark"
+                        d="M177 133C194 122 226 126 242 143C234 171 229 190 236 211H179C170 182 168 157 177 133Z" />
+
+                    <path class="person-pattern" d="M191 136L232 205" />
+                    <path class="person-pattern" d="M228 137L185 204" />
+                    <path class="person-pattern" d="M176 165L239 165" />
+
+                    <path
+                        class="person-arm"
+                        d="M179 148C154 159 135 177 123 198" />
+
+                    <path
+                        class="person-arm"
+                        d="M238 151C259 167 270 185 276 205" />
+
+                    <path
+                        class="paper"
+                        d="M98 188L184 202L169 234L83 217L98 188Z" />
+
+                    <path class="paper-line" d="M111 202L157 210" />
+                    <path class="paper-line" d="M107 214L145 221" />
+
+                    <path
+                        class="person-leg-fill"
+                        d="M180 210C155 228 129 250 101 281L125 296C155 271 184 250 210 226L180 210Z" />
+
+                    <path
+                        class="person-leg-fill"
+                        d="M214 210C228 235 244 260 263 289L288 276C273 247 258 224 241 207L214 210Z" />
+
+                    <path class="person-shoe" d="M90 284L124 304" />
+                    <path class="person-shoe" d="M263 292L298 274" />
+                </g>
+            </svg>
+        </div>
+
+        <main
+            class="sigas-auth-stage"
+            aria-labelledby="loginTitle">
+
+            <section
+                class="sigas-login-card"
+                aria-label="Acesso ao SIGAS Coari">
+
+                <header class="sigas-login-heading">
+                    <span
+                        class="sigas-login-symbol"
+                        aria-hidden="true">
+
+                        <i class="bi bi-person-lock"></i>
+                    </span>
+
+                    <h1 id="loginTitle">
+                        Acessar o SIGAS
+                    </h1>
+
+                    <span>Área institucional</span>
+                </header>
+
+                <form
+                    id="loginForm"
+                    class="sigas-login-form"
+                    method="post"
+                    action="index.php"
+                    novalidate>
+
+                    <?= Csrf::input('login') ?>
+
+                    <div
+                        id="loginFeedback"
+                        class="sigas-login-feedback<?= is_string($loginError) && $loginError !== '' ? ' is-error' : '' ?>"
+                        role="alert"
+                        aria-live="polite">
+
+                        <?php if (is_string($loginError) && $loginError !== ''): ?>
+                            <i
+                                class="bi bi-exclamation-circle"
+                                aria-hidden="true"></i>
+
+                            <span><?= e($loginError) ?></span>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="sigas-form-group">
+                        <label for="loginIdentity">
+                            CPF ou e-mail
+                        </label>
+
+                        <div class="sigas-input-shell">
+                            <span
+                                class="sigas-input-icon"
+                                aria-hidden="true">
+
+                                <i class="bi bi-person"></i>
+                            </span>
+
+                            <input
+                                id="loginIdentity"
+                                name="identity"
+                                type="text"
+                                autocomplete="username"
+                                inputmode="email"
+                                placeholder="Digite seu CPF ou e-mail"
+                                required
+                                minlength="5"
+                                value="<?= e($loginIdentity) ?>"
+                                aria-describedby="identityError">
                         </div>
 
-                        <div class="form-group">
-                            <label for="loginIdentity">
-                                CPF ou e-mail
+                        <p
+                            id="identityError"
+                            class="sigas-field-error">
+
+                            <i
+                                class="bi bi-exclamation-circle"
+                                aria-hidden="true"></i>
+
+                            Informe um CPF ou e-mail válido.
+                        </p>
+                    </div>
+
+                    <div class="sigas-form-group">
+                        <div class="sigas-label-row">
+                            <label for="loginPassword">
+                                Senha
                             </label>
 
-                            <div class="input-shell">
-                                <span
-                                    class="input-icon"
-                                    aria-hidden="true">
+                            <a
+                                href="#"
+                                class="sigas-forgot-link"
+                                data-demo-action="recuperação de senha">
 
-                                    <i class="bi bi-person"></i>
-                                </span>
-
-                                <input
-                                    id="loginIdentity"
-                                    name="identity"
-                                    type="text"
-                                    autocomplete="username"
-                                    inputmode="email"
-                                    placeholder="Digite seu CPF ou e-mail"
-                                    required
-                                    minlength="5"
-                                    value="<?= e($loginIdentity) ?>"
-                                    aria-describedby="identityError">
-                            </div>
-
-                            <p
-                                id="identityError"
-                                class="field-error">
-
-                                <i
-                                    class="bi bi-exclamation-circle"
-                                    aria-hidden="true"></i>
-
-                                Informe um CPF ou e-mail válido.
-                            </p>
+                                Esqueci minha senha
+                            </a>
                         </div>
 
-                        <div class="form-group">
-                            <div class="label-row">
-                                <label for="loginPassword">
-                                    Senha
-                                </label>
+                        <div class="sigas-input-shell">
+                            <span
+                                class="sigas-input-icon"
+                                aria-hidden="true">
 
-                                <a
-                                    href="#"
-                                    class="forgot-link"
-                                    data-demo-action="recuperação de senha">
+                                <i class="bi bi-lock"></i>
+                            </span>
 
-                                    Esqueci minha senha
-                                </a>
-                            </div>
+                            <input
+                                id="loginPassword"
+                                name="password"
+                                type="password"
+                                autocomplete="current-password"
+                                placeholder="Digite sua senha"
+                                required
+                                minlength="8"
+                                aria-describedby="passwordError capsLockWarning">
 
-                            <div class="input-shell">
-                                <span
-                                    class="input-icon"
-                                    aria-hidden="true">
-
-                                    <i class="bi bi-lock"></i>
-                                </span>
-
-                                <input
-                                    id="loginPassword"
-                                    name="password"
-                                    type="password"
-                                    autocomplete="current-password"
-                                    placeholder="Digite sua senha"
-                                    required
-                                    minlength="8"
-                                    aria-describedby="passwordError capsLockWarning">
-
-                                <button
-                                    class="password-toggle"
-                                    id="passwordToggle"
-                                    type="button"
-                                    aria-label="Mostrar senha"
-                                    aria-pressed="false">
-
-                                    <i
-                                        class="bi bi-eye"
-                                        aria-hidden="true"></i>
-                                </button>
-                            </div>
-
-                            <p
-                                id="capsLockWarning"
-                                class="caps-warning"
-                                role="status"
-                                aria-live="polite"
-                                hidden>
+                            <button
+                                class="sigas-password-toggle"
+                                id="passwordToggle"
+                                type="button"
+                                aria-label="Mostrar senha"
+                                aria-pressed="false">
 
                                 <i
-                                    class="bi bi-exclamation-triangle"
+                                    class="bi bi-eye"
                                     aria-hidden="true"></i>
-
-                                Caps Lock está ativado.
-                            </p>
-
-                            <p
-                                id="passwordError"
-                                class="field-error">
-
-                                <i
-                                    class="bi bi-exclamation-circle"
-                                    aria-hidden="true"></i>
-
-                                Informe uma senha com pelo menos oito caracteres.
-                            </p>
+                            </button>
                         </div>
 
-                        <button
-                            class="login-submit"
-                            id="loginSubmit"
-                            type="submit">
+                        <p
+                            id="capsLockWarning"
+                            class="sigas-caps-warning"
+                            role="status"
+                            aria-live="polite"
+                            hidden>
 
-                            <span class="submit-label">
-                                Entrar
-                            </span>
+                            <i
+                                class="bi bi-exclamation-triangle"
+                                aria-hidden="true"></i>
 
-                            <span
-                                class="submit-icon"
-                                aria-hidden="true">
+                            Caps Lock está ativado.
+                        </p>
 
-                                <i class="bi bi-arrow-right"></i>
-                            </span>
+                        <p
+                            id="passwordError"
+                            class="sigas-field-error">
 
-                            <span
-                                class="submit-loading"
-                                aria-hidden="true">
+                            <i
+                                class="bi bi-exclamation-circle"
+                                aria-hidden="true"></i>
 
-                                <span class="spinner"></span>
-                                Verificando...
-                            </span>
-                        </button>
-                    </form>
-
-                    <div class="login-support">
-                        <span>Problemas para acessar?</span>
-
-                        <a
-                            href="#"
-                            data-demo-action="suporte técnico">
-
-                            Falar com o suporte
-                        </a>
+                            Informe uma senha com pelo menos oito caracteres.
+                        </p>
                     </div>
-                </section>
-            </main>
 
-            <footer class="login-footer">
-                <span>Prefeitura Municipal de Coari</span>
-                <span>Secretaria Municipal de Assistência Social</span>
-            </footer>
-        </div>
+                    <button
+                        class="sigas-login-submit"
+                        id="loginSubmit"
+                        type="submit">
+
+                        <span class="sigas-submit-label">
+                            Entrar
+                        </span>
+
+                        <span
+                            class="sigas-submit-icon"
+                            aria-hidden="true">
+
+                            <i class="bi bi-arrow-right"></i>
+                        </span>
+
+                        <span
+                            class="sigas-submit-loading"
+                            aria-hidden="true">
+
+                            <span class="sigas-spinner"></span>
+                            Verificando...
+                        </span>
+                    </button>
+                </form>
+
+                <div class="sigas-login-support">
+                    <span>Problemas para acessar?</span>
+
+                    <a
+                        href="#"
+                        data-demo-action="suporte técnico">
+
+                        Falar com o suporte
+                    </a>
+                </div>
+            </section>
+        </main>
+
+        <footer class="sigas-auth-footer">
+            <span>Prefeitura Municipal de Coari</span>
+            <span>Secretaria Municipal de Assistência Social</span>
+        </footer>
     </div>
 
     <div
-        class="toast-container"
+        class="sigas-toast-container"
         id="toastContainer"
         aria-live="polite"
         aria-atomic="true">
@@ -1189,4 +1454,5 @@ function e(mixed $value): string
 
     <script src="assets/js/login.js?v=20260703"></script>
 </body>
+
 </html>
