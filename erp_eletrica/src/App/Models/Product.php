@@ -124,6 +124,22 @@ class Product extends BaseModel {
         return ['Fios e Cabos', 'Iluminação', 'Disjuntores', 'Tomadas e Interruptores', 'Eletrodutos', 'Ferramentas', 'Outros'];
     }
 
+    public function findByInternalCode($code, $ignoreId = null) {
+        $sql = "SELECT id, codigo, nome, cean
+                FROM {$this->table}
+                WHERE codigo = ?";
+        $params = [trim((string)$code)];
+
+        if (!empty($ignoreId)) {
+            $sql .= " AND id <> ?";
+            $params[] = (int)$ignoreId;
+        }
+
+        $sql .= " LIMIT 1";
+
+        return $this->query($sql, $params)->fetch();
+    }
+
     public function getStockByUnit($id) {
         $stmtProduct = $this->db->prepare("
             SELECT id, codigo, nome, unidade, estoque_minimo

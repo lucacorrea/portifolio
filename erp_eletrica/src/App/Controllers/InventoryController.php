@@ -137,6 +137,23 @@ class InventoryController extends BaseController {
             }
 
             $isEdit = isset($data['id']) && !empty($data['id']);
+            $codigoInformado = trim((string)($data['codigo'] ?? ''));
+            $codigoSomenteNumeros = preg_replace('/\D+/', '', $codigoInformado);
+            $pareceCodigoBarras = ($codigoInformado === $codigoSomenteNumeros && strlen($codigoSomenteNumeros) >= 8 && strlen($codigoSomenteNumeros) <= 14);
+
+            if ($codigoInformado !== '' && !$pareceCodigoBarras) {
+                $produtoComMesmoCodigo = $model->findByInternalCode($codigoInformado, $isEdit ? (int)$data['id'] : null);
+                if ($produtoComMesmoCodigo) {
+                    $msg = sprintf(
+                        'O codigo interno %s ja pertence ao produto "%s" (ID #%s). Para corrigir, abra esse produto ou escolha outro codigo interno.',
+                        $codigoInformado,
+                        $produtoComMesmoCodigo['nome'] ?? 'sem nome',
+                        $produtoComMesmoCodigo['id'] ?? '-'
+                    );
+                    $this->redirect('estoque.php?error=' . urlencode($msg));
+                }
+            }
+
             try {
                 $savedId = $model->save($data);
                 $productIdForMessage = $isEdit ? (int)$data['id'] : (int)$savedId;
