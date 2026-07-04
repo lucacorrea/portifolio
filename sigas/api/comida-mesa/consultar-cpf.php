@@ -6,6 +6,7 @@ use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\Logger;
 use App\Core\Validator;
+use App\Integrations\Anexo\AnexoIntegrationService;
 use App\Repositories\AccessLevelRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\ComidaMesaRepository;
@@ -81,7 +82,10 @@ try {
     }
 
     $service = new ComidaMesaService(new ComidaMesaRepository($pdo));
-    respond_json(200, $service->consultCpf($cpf, $competenceId));
+    $payload = $service->consultCpf($cpf, $competenceId);
+    $payload['anexo'] = (new AnexoIntegrationService())->consultCpf($cpf);
+
+    respond_json(200, $payload);
 } catch (Throwable $exception) {
     Logger::application('Comida Mesa CPF consultation failed.', [
         'type' => $exception::class,

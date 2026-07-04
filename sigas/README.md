@@ -7,7 +7,7 @@ Sistema institucional da Secretaria Municipal de Assistência Social de Coari/AM
 Esta versão concentra a navegação exposta ao operador nos fluxos já funcionais do SIGAS.
 
 - o SIGAS mantém sua própria base de dados;
-- o SEMTH é consultado somente para prevenir duplicidade;
+- o ANEXO é consultado somente para prevenir duplicidade;
 - nenhum sistema altera automaticamente o outro;
 - o menu principal mostra apenas entradas operacionais prontas para uso;
 - as páginas HTML antigas continuam no repositório como referência de prototipação.
@@ -17,7 +17,7 @@ Esta versão concentra a navegação exposta ao operador nos fluxos já funciona
 - `dashboard.php`: entrada autenticada e atalhos para os fluxos funcionais.
 - `consulta-documento.php`: consulta por CPF e registro, cancelamento ou reativação de entrega mensal.
 - `modulo.php`: beneficiários, cadastro, competências, documentos e histórico do COARI Comida na Mesa.
-- `modulo.php?action=new`: abertura direta do formulário de nova inscrição, respeitando permissões.
+- `modulo.php?action=new`: abre a consulta de CPF antes do formulário; com CPF validado, exibe a página de nova inscrição.
 
 ## Páginas de prototipação
 
@@ -63,6 +63,16 @@ sigas-coari/
 ## Consulta por CPF
 
 `consulta-documento.php` consulta CPFs reais no banco do SIGAS, identifica pessoa, família e inscrição no Comida na Mesa, exibe a competência selecionada e permite registrar, cancelar ou reativar a entrega mensal conforme permissões e regras do backend.
+
+## Integração ANEXO
+
+A integração com o ANEXO usa conexão MySQL somente leitura e configuração externa em:
+
+```text
+/home/u784961086/configuracao/anexo/conect/.env
+```
+
+O arquivo real não deve ser criado dentro do repositório. Use `docs/ANEXO-ENV.example` como modelo seguro e mantenha o usuário MySQL com permissão apenas de `SELECT`.
 
 ## Execução
 

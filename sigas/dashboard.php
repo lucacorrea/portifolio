@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Core\Csrf;
 use App\Core\Database;
+use App\Integrations\Anexo\AnexoIntegrationService;
 use App\Repositories\AccessLevelRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\SectorRepository;
@@ -23,6 +24,12 @@ $authService = new AuthService($userRepository, $sessionRepository, $accessLevel
 $user = $authService->requireUser();
 $level = $user->nivelId === null ? null : $accessLevelRepository->findById($user->nivelId);
 $sector = $user->setorId === null ? null : (new SectorRepository($pdo))->findById($user->setorId);
+$anexoSummary = (new AnexoIntegrationService())->summary();
+$anexoCountLabel = is_int($anexoSummary['count'] ?? null)
+    ? number_format((int) $anexoSummary['count'], 0, ',', '.')
+    : 'Indisponível';
+$anexoCountCardLabel = is_int($anexoSummary['count'] ?? null) ? $anexoCountLabel : '—';
+$anexoStatusLabel = ($anexoSummary['available'] ?? false) ? 'Consulta ativa' : 'Sem conexão no momento';
 
 function sigas_initials(string $name): string
 {
@@ -94,21 +101,21 @@ $frontendContext = [
                 <section class="integration-strip" aria-label="Situação das bases de dados">
                     <div class="integration-strip-main">
                         <span class="integration-strip-icon"><i class="bi bi-database-lock"></i></span>
-                        <div><strong>Integração SEMTH em modo somente leitura</strong><span>O SIGAS consulta o sistema atual para evitar cadastros duplicados, sem alterar nenhum dado legado.</span></div>
+                        <div><strong>Integração ANEXO em modo somente leitura</strong><span>O SIGAS consulta o banco do ANEXO para evitar duplicidade, sem alterar nenhum dado externo.</span></div>
                     </div>
                     <div class="integration-strip-metrics">
-                        <span><strong>15.230</strong> referências consultáveis</span>
-                        <span><strong>1.842</strong> registros vinculados</span>
-                        <span class="text-danger"><strong>12</strong> divergências para revisar</span>
+                        <span><strong><?= htmlspecialchars($anexoCountLabel, ENT_QUOTES, 'UTF-8') ?></strong> pessoas no ANEXO</span>
+                        <span><strong><?= htmlspecialchars($anexoStatusLabel, ENT_QUOTES, 'UTF-8') ?></strong></span>
+                        <span><strong>SELECT</strong> usuário somente leitura</span>
                     </div>
                     <a class="btn btn-light btn-sm" href="consulta-documento.php"><i class="bi bi-arrow-up-right-square"></i>Consultar CPF / Entrega</a>
                 </section>
 
                 <section class="dashboard-grid" aria-label="Indicadores principais">
                     <article class="stat-card stat-card-featured col-span-3">
-                        <div class="stat-card-head"><span class="stat-card-title">Pessoas cadastradas</span><span class="stat-icon"><i class="bi bi-people"></i></span></div>
-                        <strong class="stat-value">18.452</strong>
-                        <div class="stat-footer"><span class="stat-trend positive"><i class="bi bi-arrow-up-right"></i>+6,8% no mês</span><a href="consulta-documento.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
+                        <div class="stat-card-head"><span class="stat-card-title">Pessoas no ANEXO</span><span class="stat-icon"><i class="bi bi-people"></i></span></div>
+                        <strong class="stat-value"><?= htmlspecialchars($anexoCountCardLabel, ENT_QUOTES, 'UTF-8') ?></strong>
+                        <div class="stat-footer"><span class="stat-trend <?= ($anexoSummary['available'] ?? false) ? 'positive' : 'warning' ?>"><i class="bi bi-database-lock"></i><?= htmlspecialchars($anexoStatusLabel, ENT_QUOTES, 'UTF-8') ?></span><a href="consulta-documento.php">Consultar <i class="bi bi-arrow-right"></i></a></div>
                     </article>
                     <article class="stat-card col-span-3">
                         <div class="stat-card-head"><span class="stat-card-title">Famílias cadastradas</span><span class="stat-icon"><i class="bi bi-house-heart"></i></span></div>

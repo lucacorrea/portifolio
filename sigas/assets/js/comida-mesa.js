@@ -221,16 +221,63 @@
         let controller = null;
 
         const render = (html) => { result.innerHTML = html; };
+        const anexoSeed = (anexo) => {
+            const person = anexo?.person || {};
+            return {
+                cpf: maskCpf(person.cpf || ""),
+                nome: person.name || "",
+                telefone: person.phone || "",
+                nis: person.nis || "",
+                rg: person.rg || "",
+                data_nascimento: person.birth_date || "",
+                zona: person.district ? "urbana" : "rural",
+                logradouro: person.street || "",
+                numero: person.number || "",
+                complemento: person.complement || "",
+                bairro: person.district || "",
+                ponto_referencia: person.reference_point || "",
+                quantidade_membros: person.members_count || 1,
+                renda_familiar: person.family_income || "",
+                observacao: person.summary ? `Referência ANEXO: ${person.summary}` : "",
+                status: "em_analise",
+                prioridade: "normal"
+            };
+        };
+        const anexoPanel = (anexo) => {
+            if (!anexo) return "";
+            if (!anexo.available) {
+                return statePanel("database-x", "ANEXO indisponível", anexo.message || "A consulta ao ANEXO não interrompe o SIGAS.", "warning");
+            }
+            if (!anexo.found) {
+                return statePanel("database", "ANEXO consultado", "CPF não localizado na base ANEXO.", "info");
+            }
+            const person = anexo.person || {};
+            const details = [
+                ["Nome", person.name],
+                ["CPF", person.cpf_masked],
+                ["NIS", person.nis],
+                ["Telefone", person.phone],
+                ["Bairro", person.district],
+                ["Nascimento", person.birth_date],
+                ["Membros", person.members_count],
+                ["Renda familiar", person.family_income]
+            ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== "");
+            return `
+                ${statePanel("database-check", "Cadastro localizado no ANEXO", "Os dados abaixo são somente leitura e podem preencher a inscrição do Comida na Mesa.", "info")}
+                <dl class="small mt-3 mb-0">${details.map(([label, value]) => `<dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value)}</dd>`).join("")}</dl>
+            `;
+        };
         const renderResponse = (data) => {
             if (!data?.ok) { render(statePanel("exclamation-octagon", "Consulta indisponível", data?.error || "Não foi possível consultar.", "warning")); return; }
+            const anexoHtml = anexoPanel(data.anexo);
             if (data.state === "inscrito") {
-                render(`${statePanel("person-check", "Pessoa já inscrita", "Abra a visualização completa para acompanhar a família.", "success")}<button class="btn btn-primary w-100 mt-3" type="button" data-open-detail data-registration-id="${escapeHTML(data.registration?.id)}">Visualizar inscrição</button>`);
+                render(`${statePanel("person-check", "Pessoa já inscrita", "Abra a visualização completa para acompanhar a família.", "success")}${anexoHtml}<button class="btn btn-primary w-100 mt-3" type="button" data-open-detail data-registration-id="${escapeHTML(data.registration?.id)}">Visualizar inscrição</button>`);
             } else if (data.state === "pessoa_sem_inscricao") {
-                pendingRegistration = { cpf: data.cpf || "", name: data.person?.name || "" };
-                render(`${statePanel("person-plus", "Pessoa localizada sem inscrição", "Continue o cadastro usando os dados já existentes.", "info")}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>Continuar cadastro</button>`);
+                pendingRegistration = data.anexo?.found ? anexoSeed(data.anexo) : { cpf: data.cpf || "", nome: data.person?.name || "" };
+                render(`${statePanel("person-plus", "Pessoa localizada sem inscrição", "Continue o cadastro usando os dados já existentes.", "info")}${anexoHtml}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>Continuar cadastro</button>`);
             } else {
-                pendingRegistration = { cpf: data.cpf || "", name: "" };
-                render(`${statePanel("search", "Pessoa não localizada", "Inicie um cadastro novo para este CPF.", "warning")}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>Iniciar novo cadastro</button>`);
+                pendingRegistration = data.anexo?.found ? anexoSeed(data.anexo) : { cpf: data.cpf || "", nome: "" };
+                render(`${statePanel("search", "Pessoa não localizada no SIGAS", "Inicie um cadastro novo para este CPF.", "warning")}${anexoHtml}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>${data.anexo?.found ? "Preencher inscrição com ANEXO" : "Iniciar novo cadastro"}</button>`);
             }
         };
 
@@ -241,10 +288,22 @@
             if (start) {
                 const seed = {
                     cpf: maskCpf(pendingRegistration?.cpf || ""),
-                    nome: pendingRegistration?.name || "",
+                    nome: pendingRegistration?.nome || pendingRegistration?.name || "",
+                    telefone: pendingRegistration?.telefone || "",
+                    nis: pendingRegistration?.nis || "",
+                    rg: pendingRegistration?.rg || "",
+                    data_nascimento: pendingRegistration?.data_nascimento || "",
+                    zona: pendingRegistration?.zona || "urbana",
+                    logradouro: pendingRegistration?.logradouro || "",
+                    numero: pendingRegistration?.numero || "",
+                    complemento: pendingRegistration?.complemento || "",
+                    bairro: pendingRegistration?.bairro || "",
+                    ponto_referencia: pendingRegistration?.ponto_referencia || "",
+                    quantidade_membros: pendingRegistration?.quantidade_membros || 1,
+                    renda_familiar: pendingRegistration?.renda_familiar || "",
+                    observacao: pendingRegistration?.observacao || "",
                     status: "em_analise",
                     prioridade: "normal",
-                    quantidade_membros: 1
                 };
                 if (qs("[data-registration-page]")) {
                     registrationForm.open(seed);
