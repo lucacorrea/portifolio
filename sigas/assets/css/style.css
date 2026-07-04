@@ -1023,6 +1023,14 @@ button, a, input, select, textarea { outline: none; }
     background: var(--surface-soft);
 }
 
+.lookup-result-stack {
+    display: block;
+}
+
+.lookup-result-item:not(:last-child) {
+    margin-bottom: 12px;
+}
+
 .anexo-lookup-card dl {
     display: grid;
     grid-template-columns: 82px minmax(0, 1fr);
@@ -1045,6 +1053,40 @@ button, a, input, select, textarea { outline: none; }
     min-width: 0;
     color: var(--text-primary);
     overflow-wrap: anywhere;
+}
+
+.anexo-lookup-actions {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.anexo-detail-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 8px 11px;
+    border: 1px solid #bfd8c8;
+    border-radius: 10px;
+    background: #fff;
+    color: var(--primary);
+    font-size: .78rem;
+    font-weight: 750;
+    line-height: 1.2;
+    transition: background .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+
+.anexo-detail-link:hover,
+.anexo-detail-link:focus {
+    border-color: #9fc4ad;
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+    box-shadow: 0 6px 16px rgba(20, 83, 45, .08);
+}
+
+.anexo-detail-link i {
+    font-size: .9rem;
 }
 
 .anexo-detail-hero {

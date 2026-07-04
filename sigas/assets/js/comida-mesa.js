@@ -371,22 +371,29 @@
                 ${statePanel("database-check", "Cadastro localizado no ANEXO", "Os dados abaixo são somente leitura e podem preencher a inscrição do Comida na Mesa.", "info")}
                 <div class="anexo-lookup-card">
                     <dl>${descriptionList([["Nome", person.name], ["Endereço", addressOf(person)]])}</dl>
-                    <button class="btn btn-link p-0" type="button" data-open-anexo-detail>Visualizar dados completos</button>
+                    <div class="anexo-lookup-actions">
+                        <button class="anexo-detail-link" type="button" data-open-anexo-detail>
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                            <span>Visualizar dados completos</span>
+                        </button>
+                    </div>
                 </div>
             `;
         };
+        const lookupStack = (panels) => `<div class="lookup-result-stack">${panels.filter(Boolean).map((panel) => `<div class="lookup-result-item">${panel}</div>`).join("")}</div>`;
         const renderResponse = (data) => {
             if (!data?.ok) { render(statePanel("exclamation-octagon", "Consulta indisponível", data?.error || "Não foi possível consultar.", "warning")); return; }
             currentAnexo = data.anexo?.found ? data.anexo : null;
-            const anexoHtml = anexoPanel(data.anexo);
+            const anexoFound = Boolean(data.anexo?.found);
+            const anexoHtml = anexoFound ? anexoPanel(data.anexo) : "";
             if (data.state === "inscrito") {
-                render(`${statePanel("person-check", "Pessoa já inscrita", "Abra a visualização completa para acompanhar a família.", "success")}${anexoHtml}<button class="btn btn-primary w-100 mt-3" type="button" data-open-detail data-registration-id="${escapeHTML(data.registration?.id)}">Visualizar inscrição</button>`);
+                render(`${lookupStack([statePanel("person-check", "Pessoa já inscrita", "Abra a visualização completa para acompanhar a família.", "success"), anexoHtml])}<button class="btn btn-primary w-100 mt-3" type="button" data-open-detail data-registration-id="${escapeHTML(data.registration?.id)}">Visualizar inscrição</button>`);
             } else if (data.state === "pessoa_sem_inscricao") {
                 pendingRegistration = data.anexo?.found ? anexoSeed(data.anexo) : { cpf: data.cpf || "", nome: data.person?.name || "" };
-                render(`${statePanel("person-plus", "Pessoa localizada sem inscrição", "Continue o cadastro usando os dados já existentes.", "info")}${anexoHtml}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>Continuar cadastro</button>`);
+                render(`${lookupStack([statePanel("person-plus", "Pessoa localizada sem inscrição", "Continue o cadastro usando os dados já existentes.", "info"), anexoHtml])}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>Continuar cadastro</button>`);
             } else {
                 pendingRegistration = data.anexo?.found ? anexoSeed(data.anexo) : { cpf: data.cpf || "", nome: "" };
-                render(`${statePanel("search", "Pessoa não localizada no SIGAS", "Inicie um cadastro novo para este CPF.", "warning")}${anexoHtml}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>${data.anexo?.found ? "Preencher inscrição com ANEXO" : "Iniciar novo cadastro"}</button>`);
+                render(`${lookupStack([anexoHtml || statePanel("search", "Pessoa não localizada no SIGAS", "Inicie um cadastro novo para este CPF.", "warning")])}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>${anexoFound ? "Preencher inscrição com ANEXO" : "Iniciar novo cadastro"}</button>`);
             }
         };
 
