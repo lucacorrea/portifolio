@@ -96,7 +96,7 @@
         const fillFromDetail = (data) => open({
             inscricao_id: data.id,
             nome: data.nome,
-            cpf: data.cpf,
+            cpf: data.cpf_completo || data.cpf_mascarado,
             telefone: data.telefone,
             nis: data.nis,
             rg: data.rg,
@@ -296,4 +296,24 @@
             button.setAttribute("aria-expanded", String(advanced?.classList.contains("show") || false));
         });
     });
+
+    (() => {
+        const params = new URLSearchParams(window.location.search);
+        const action = params.get("action");
+        const id = params.get("id");
+        const cpf = params.get("cpf");
+
+        if (action === "new") {
+            registrationForm.open({ cpf: maskCpf(cpf || ""), status: "em_analise", prioridade: "normal", quantidade_membros: 1 });
+        } else if (action === "view" && /^\d+$/.test(id || "")) {
+            detailViewer.load(id);
+        } else if (action === "edit" && /^\d+$/.test(id || "")) {
+            detailViewer.load(id, { edit: true });
+        } else if (action === "delivery" && /^\d+$/.test(id || "")) {
+            const trigger = qs(`[data-open-delivery][data-registration-id="${CSS.escape(id)}"]`);
+            trigger?.click();
+        } else if (action === "competence") {
+            qs("[data-open-competence]")?.click();
+        }
+    })();
 })();

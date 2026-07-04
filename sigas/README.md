@@ -61,6 +61,7 @@ sigas-coari/
 ├── dashboard.php
 ├── sair.php
 ├── cadastro-anexo.html
+├── consulta-documento.php
 ├── pessoas.html
 ├── registro.html
 ├── solicitacoes.html
@@ -89,15 +90,9 @@ sigas-coari/
     └── semth-readonly-user.sql
 ```
 
-## CPFs demonstrativos
+## Consulta por CPF
 
-| CPF | Resultado |
-|---|---|
-| `123.456.789-09` | já existe no SIGAS; cadastro bloqueado |
-| `987.654.321-00` | existe somente no SEMTH; referência local permitida |
-| `111.222.333-44` | registros já vinculados; cadastro bloqueado |
-| `555.666.777-88` | divergência; revisão obrigatória |
-| outro CPF com 11 números | novo cadastro permitido |
+`consulta-documento.php` consulta CPFs reais no banco do SIGAS, identifica pessoa, família e inscrição no Comida na Mesa, exibe a competência selecionada e permite registrar, cancelar ou reativar a entrega mensal conforme permissões e regras do backend.
 
 ## Execução
 
@@ -105,4 +100,4 @@ Abra `index.php` em um servidor web com PHP e o `.env` real configurado. Bootstr
 
 ## Limitação do protótipo
 
-O login e o dashboard já usam backend PHP, sessão persistente e banco. As demais páginas ainda preservam fluxos demonstrativos; consultas, gravações, uploads e rascunhos dessas áreas continuam simulados.
+O login, o dashboard, `modulo.php` e `consulta-documento.php` usam backend PHP, sessão persistente, permissões e banco. Algumas páginas HTML antigas ainda preservam fluxos demonstrativos fora do módulo Comida na Mesa.

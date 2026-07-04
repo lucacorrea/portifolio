@@ -157,7 +157,7 @@ $frontendContext = [
                         <div class="card-heading"><div><div class="card-kicker">Operações</div><h2>Atalhos rápidos</h2></div></div>
                         <div class="quick-actions">
                             <a class="quick-action" href="cadastro-anexo.html"><i class="bi bi-file-earmark-person"></i><span>Novo Cadastro ANEXO</span></a>
-                            <a class="quick-action" href="consulta-documento.html"><i class="bi bi-person-bounding-box"></i><span>Consultar documento</span></a>
+                            <a class="quick-action" href="consulta-documento.php"><i class="bi bi-person-bounding-box"></i><span>Consultar documento</span></a>
                             <button class="quick-action" type="button" data-demo-action="nova solicitação"><i class="bi bi-file-earmark-plus"></i><span>Nova solicitação</span></button>
                             <button class="quick-action" type="button" data-bs-toggle="modal" data-bs-target="#deliveryModal"><i class="bi bi-basket2"></i><span>Registrar entrega</span></button>
                             <button class="quick-action" type="button" data-demo-action="agendar visita"><i class="bi bi-calendar2-plus"></i><span>Agendar visita</span></button>

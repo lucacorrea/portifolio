@@ -29,7 +29,7 @@ const SIGAS = {
                 [dashboardUrl, 'speedometer2', 'Visão Geral', 'dashboard']
             ]],
             ['Atendimento Social', [
-                ['consulta-documento.html', 'person-bounding-box', 'Consultar CPF / Documento', 'consulta'],
+                ['consulta-documento.php', 'person-bounding-box', 'Consultar CPF / Documento', 'consulta'],
                 ['cadastro-anexo.html', 'file-earmark-person', 'Novo Cadastro ANEXO', 'cadastro-anexo'],
                 ['pessoas.html', 'people', 'Pessoas e Prontuários', 'pessoas'],
                 ['solicitacoes.html', 'inboxes', 'Solicitações', 'solicitacoes'],

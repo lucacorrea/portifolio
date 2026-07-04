@@ -101,6 +101,15 @@ final class ComidaMesaService
         }
 
         $delivery = $this->deliveryStatusForRow($row, $competence);
+        $eligibility = $this->deliveryEligibility(
+            [
+                'status' => (string) $row['inscricao_status'],
+                'polo_id' => $row['polo_id'] ?? null,
+                'polo_ativo' => $row['polo_ativo'] ?? null,
+            ],
+            $competence,
+            $row['entrega_id'] === null ? null : ['status' => $row['entrega_status']]
+        );
 
         return [
             'ok' => true,
@@ -111,10 +120,27 @@ final class ComidaMesaService
                 'id' => (int) $row['inscricao_id'],
                 'status' => (string) $row['inscricao_status'],
                 'status_label' => $this->programStatusLabel((string) $row['inscricao_status']),
+                'priority' => (string) ($row['prioridade'] ?? 'normal'),
+                'pole_id' => $row['polo_id'] === null ? null : (int) $row['polo_id'],
                 'pole' => $row['polo_nome'] === null ? null : (string) $row['polo_nome'],
+                'family_code' => $family['code'] ?? null,
             ],
-            'competence' => $competence === null ? null : ['id' => (int) $competence['id'], 'label' => $this->formatCompetence((int) $competence['mes'], (int) $competence['ano'])],
-            'delivery' => ['status' => $delivery['status'], 'status_label' => $delivery['label'], 'delivered_at' => $delivery['delivered_at']],
+            'competence' => $competence === null ? null : [
+                'id' => (int) $competence['id'],
+                'label' => $this->formatCompetence((int) $competence['mes'], (int) $competence['ano']),
+                'status' => (string) $competence['status'],
+                'inicio_entregas' => $competence['inicio_entregas'] ?? null,
+                'fim_entregas' => $competence['fim_entregas'] ?? null,
+            ],
+            'delivery' => [
+                'id' => $row['entrega_id'] === null ? null : (int) $row['entrega_id'],
+                'status' => $delivery['status'],
+                'status_label' => $delivery['label'],
+                'delivered_at' => $delivery['delivered_at'],
+                'receiver_name' => $row['recebedor_nome'] ?? null,
+                'cancellation_reason' => $row['motivo_cancelamento'] ?? null,
+            ],
+            'eligibility' => $eligibility,
         ];
     }
 
@@ -240,7 +266,7 @@ final class ComidaMesaService
 
         return $this->repository->transaction(function (ComidaMesaRepository $repo) use ($data, $userId, $audit): array {
             $registration = $repo->lockRegistrationForDelivery($data->registrationId);
-            $competence = $repo->findCompetenceById($data->competenceId);
+            $competence = $repo->lockCompetenceForDelivery($data->competenceId);
 
             if ($registration === null) {
                 throw $this->problem('Inscrição não localizada.', 404);
@@ -316,7 +342,11 @@ final class ComidaMesaService
             throw $this->problem('Inscrição não localizada.', 404);
         }
 
-        $row['cpf_mascarado'] = $canEditCpf ? $this->formatCpf((string) $row['cpf']) : $this->maskCpf((string) $row['cpf']);
+        if ($canEditCpf) {
+            $row['cpf_completo'] = $this->formatCpf((string) $row['cpf']);
+        }
+        $row['cpf_mascarado'] = $this->maskCpf((string) $row['cpf']);
+        unset($row['cpf']);
         foreach ($row['integrantes'] as &$member) {
             $member['cpf_mascarado'] = $this->maskCpf((string) $member['cpf']);
             unset($member['cpf']);
@@ -324,6 +354,35 @@ final class ComidaMesaService
         unset($member);
 
         return $row;
+    }
+
+    /** @param array<string,mixed> $registration @param array<string,mixed>|null $competence @param array<string,mixed>|null $delivery @return array<string,mixed> */
+    public function deliveryEligibility(array $registration, ?array $competence, ?array $delivery): array
+    {
+        $registrationStatus = (string) ($registration['status'] ?? $registration['inscricao_status'] ?? '');
+        if ($registrationStatus !== 'ativa') {
+            return ['allowed' => false, 'action' => 'none', 'reason' => 'Inscrição não está ativa.'];
+        }
+        if ($competence === null) {
+            return ['allowed' => false, 'action' => 'none', 'reason' => 'Nenhuma competência selecionada.'];
+        }
+        if (($competence['status'] ?? null) !== 'aberta') {
+            return ['allowed' => false, 'action' => 'none', 'reason' => 'Competência não está aberta.'];
+        }
+        if (empty($registration['polo_id']) || (int) ($registration['polo_ativo'] ?? 1) !== 1) {
+            return ['allowed' => false, 'action' => 'none', 'reason' => 'Inscrição sem polo ativo.'];
+        }
+        if ($delivery === null || empty($delivery['status'])) {
+            return ['allowed' => true, 'action' => 'register', 'reason' => null];
+        }
+        if (($delivery['status'] ?? null) === 'cancelada') {
+            return ['allowed' => true, 'action' => 'reactivate', 'reason' => null];
+        }
+        if (($delivery['status'] ?? null) === 'entregue') {
+            return ['allowed' => false, 'action' => 'cancel', 'reason' => 'Esta família já recebeu a cesta nesta competência.'];
+        }
+
+        return ['allowed' => false, 'action' => 'none', 'reason' => 'Situação de entrega indisponível.'];
     }
 
     public function maskCpf(string $cpf): string

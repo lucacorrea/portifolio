@@ -56,6 +56,19 @@ final class ComidaMesaRepository
     }
 
     /** @return array<string,mixed>|null */
+    public function lockCompetenceForDelivery(int $competenceId): ?array
+    {
+        return $this->fetchOne(
+            'SELECT id, ano, mes, status, inicio_entregas, fim_entregas
+             FROM comida_mesa_competencias
+             WHERE id = :id
+             LIMIT 1
+             FOR UPDATE',
+            ['id' => $competenceId]
+        );
+    }
+
+    /** @return array<string,mixed>|null */
     public function findCompetenceByMonth(int $year, int $month, ?int $exceptId = null): ?array
     {
         $where = 'ano = :ano AND mes = :mes';
@@ -186,8 +199,9 @@ final class ComidaMesaRepository
                 CASE WHEN f.responsavel_pessoa_id = p.id THEN 'responsavel'
                      WHEN fm.pessoa_id IS NOT NULL THEN 'integrante'
                      ELSE 'sem_familia' END AS vinculo_familiar,
-                i.id AS inscricao_id, i.status AS inscricao_status, polo.nome AS polo_nome,
-                entrega.id AS entrega_id, entrega.status AS entrega_status, entrega.entregue_em AS entrega_data
+                i.id AS inscricao_id, i.status AS inscricao_status, i.prioridade, i.polo_id, polo.nome AS polo_nome, polo.ativo AS polo_ativo,
+                entrega.id AS entrega_id, entrega.status AS entrega_status, entrega.entregue_em AS entrega_data,
+                entrega.recebedor_nome, entrega.motivo_cancelamento
              FROM pessoas p
              LEFT JOIN familias f ON f.id = (
                 SELECT fam.id
@@ -643,6 +657,10 @@ final class ComidaMesaRepository
             'type' => $exception::class,
             'code' => $exception->getCode(),
         ]);
+
+        if ((string) $exception->getCode() === '23000') {
+            return new RepositoryException('Esta família já recebeu ou possui registro nesta competência.', 409, $exception);
+        }
 
         return new RepositoryException($message, 0, $exception);
     }
