@@ -603,6 +603,22 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
         </div>
     </div>
 
+    <div class="modal fade" id="anexoDetailModal" tabindex="-1" aria-labelledby="anexoDetailTitle" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <div class="eyebrow mb-1"><i class="bi bi-database-check"></i>ANEXO</div>
+                        <h2 class="modal-title fs-5" id="anexoDetailTitle">Dados completos do cadastro</h2>
+                        <p class="modal-subtitle">Consulta somente leitura da base ANEXO.</p>
+                    </div>
+                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" data-anexo-detail-content></div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="registrationFormModal" tabindex="-1" aria-labelledby="registrationFormTitle" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form id="registrationForm" action="api/comida-mesa/salvar-cadastro.php" method="post" novalidate>
             <div class="modal-header"><div><div class="eyebrow mb-1"><i class="bi bi-person-vcard"></i>Inscrição</div><h2 class="modal-title fs-5" id="registrationFormTitle">Nova inscrição</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div>

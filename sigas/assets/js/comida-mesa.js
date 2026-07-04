@@ -218,9 +218,88 @@
         const cpf = qs("#cpfLookupInput", root);
         const result = qs("#cpfLookupResult", root);
         const submit = qs("[data-cpf-submit]", root);
+        const anexoDetailContent = qs("[data-anexo-detail-content]");
         let controller = null;
+        let currentAnexo = null;
 
         const render = (html) => { result.innerHTML = html; };
+        const valueOrFallback = (value, fallback = "Não informado") => {
+            const text = String(value ?? "").trim();
+            return text === "" ? fallback : text;
+        };
+        const formatDate = (value) => {
+            const text = String(value ?? "").trim();
+            const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}:\d{2}))?/);
+            return match ? `${match[3]}/${match[2]}/${match[1]}${match[4] ? ` ${match[4]}` : ""}` : valueOrFallback(text);
+        };
+        const formatMoney = (value) => {
+            if (value === null || value === undefined || String(value).trim() === "") return "Não informado";
+            const text = String(value).trim();
+            const number = Number(text.includes(",") ? text.replace(/\./g, "").replace(",", ".") : text);
+            if (Number.isNaN(number)) return String(value);
+            return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        };
+        const addressOf = (person = {}) => [person.street, person.number, person.complement, person.district]
+            .map((value) => valueOrFallback(value))
+            .filter((value) => value !== "Não informado")
+            .join(", ") || "Endereço não informado";
+        const descriptionList = (items) => items.map(([label, value]) => `<dt>${escapeHTML(label)}</dt><dd>${escapeHTML(valueOrFallback(value))}</dd>`).join("");
+        const anexoStatusClass = (request = {}) => request.assigned ? "success" : String(request.status || "").toLowerCase().includes("cancel") ? "danger" : "info";
+        const renderAnexoDetail = (anexo) => {
+            if (!anexoDetailContent || !anexo?.found) return;
+            const person = anexo.person || {};
+            const family = Array.isArray(anexo.familiares) ? anexo.familiares : [];
+            const requests = Array.isArray(anexo.solicitacoes) ? anexo.solicitacoes : [];
+            const assignedCount = requests.filter((item) => item.assigned || Number(item.deliveries_count || 0) > 0).length;
+            const familyHtml = family.map((item) => `
+                <li class="list-group-item">
+                    <strong>${escapeHTML(valueOrFallback(item.name))}</strong>
+                    <small>${escapeHTML(valueOrFallback(item.relationship))} · ${escapeHTML(formatDate(item.birth_date))} · ${escapeHTML(valueOrFallback(item.schooling))}</small>
+                </li>
+            `).join("");
+            const requestsHtml = requests.map((item) => {
+                const assigned = item.assigned || Number(item.deliveries_count || 0) > 0;
+                const lastDelivery = item.last_delivery_date ? `${formatDate(item.last_delivery_date)} ${valueOrFallback(item.last_delivery_time, "")}`.trim() : "Sem entrega registrada";
+                return `
+                    <article class="anexo-request-card">
+                        <div class="anexo-request-head">
+                            <div>
+                                <strong>${escapeHTML(valueOrFallback(item.type_name, item.type_id ? `Ajuda #${item.type_id}` : "Tipo não informado"))}</strong>
+                                <span>${escapeHTML(valueOrFallback(item.type_category, "Categoria não informada"))} · ${escapeHTML(formatDate(item.requested_at))}</span>
+                            </div>
+                            <span class="status-badge status-${anexoStatusClass(item)}">${escapeHTML(assigned ? "Atribuída" : valueOrFallback(item.status, "Sem status"))}</span>
+                        </div>
+                        <p>${escapeHTML(valueOrFallback(item.summary, "Resumo não informado"))}</p>
+                        <dl>${descriptionList([["Status", item.status], ["Criado por", item.created_by], ["Origem", item.origin], ["Entregas", item.deliveries_count], ["Última entrega", lastDelivery]])}</dl>
+                    </article>
+                `;
+            }).join("");
+
+            anexoDetailContent.innerHTML = `
+                <section class="anexo-detail-hero">
+                    <div>
+                        <span class="status-badge status-info"><i class="bi bi-database-check"></i>Somente leitura</span>
+                        <h3>${escapeHTML(valueOrFallback(person.name))}</h3>
+                        <p>${escapeHTML(addressOf(person))}</p>
+                    </div>
+                    <div class="anexo-detail-stats">
+                        <div><span>Solicitações</span><strong>${requests.length}</strong></div>
+                        <div><span>Atribuídas</span><strong>${assignedCount}</strong></div>
+                        <div><span>Familiares</span><strong>${family.length}</strong></div>
+                    </div>
+                </section>
+                <div class="row g-3 mt-1">
+                    <div class="col-lg-4"><section class="anexo-detail-section"><h3>Identificação</h3><dl>${descriptionList([["CPF", person.cpf_masked], ["NIS", person.nis], ["RG", person.rg], ["Nascimento", formatDate(person.birth_date)], ["Telefone", person.phone], ["Gênero", person.gender], ["Estado civil", person.marital_status], ["Naturalidade", person.birthplace]])}</dl></section></div>
+                    <div class="col-lg-4"><section class="anexo-detail-section"><h3>Endereço e renda</h3><dl>${descriptionList([["Endereço", addressOf(person)], ["Referência", person.reference_point], ["Membros", person.members_count], ["Famílias", person.families_count], ["Renda familiar", formatMoney(person.family_income)], ["Cadastro", formatDate(person.created_at)], ["Atualização", formatDate(person.updated_at)]])}</dl></section></div>
+                    <div class="col-lg-4"><section class="anexo-detail-section"><h3>Cônjuge e caso</h3><dl>${descriptionList([["Cônjuge", person.spouse_name], ["CPF do cônjuge", person.spouse_cpf], ["NIS do cônjuge", person.spouse_nis], ["RG do cônjuge", person.spouse_rg], ["Nascimento", formatDate(person.spouse_birth_date)], ["Responsável", person.created_by], ["Resumo", person.summary]])}</dl></section></div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-lg-5"><section class="anexo-detail-section"><h3>Familiares</h3><ul class="list-group anexo-family-list">${familyHtml || '<li class="list-group-item">Sem familiares cadastrados.</li>'}</ul></section></div>
+                    <div class="col-lg-7"><section class="anexo-detail-section"><h3>Solicitações</h3><div class="anexo-request-list">${requestsHtml || '<div class="alert-soft info"><i class="bi bi-inbox"></i><div><strong>Nenhuma solicitação</strong><br><span>Não há solicitações registradas para este cadastro.</span></div></div>'}</div></section></div>
+                </div>
+            `;
+            modal("#anexoDetailModal")?.show();
+        };
         const anexoSeed = (anexo) => {
             const person = anexo?.person || {};
             return {
@@ -252,23 +331,17 @@
                 return statePanel("database", "ANEXO consultado", "CPF não localizado na base ANEXO.", "info");
             }
             const person = anexo.person || {};
-            const details = [
-                ["Nome", person.name],
-                ["CPF", person.cpf_masked],
-                ["NIS", person.nis],
-                ["Telefone", person.phone],
-                ["Bairro", person.district],
-                ["Nascimento", person.birth_date],
-                ["Membros", person.members_count],
-                ["Renda familiar", person.family_income]
-            ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== "");
             return `
                 ${statePanel("database-check", "Cadastro localizado no ANEXO", "Os dados abaixo são somente leitura e podem preencher a inscrição do Comida na Mesa.", "info")}
-                <dl class="small mt-3 mb-0">${details.map(([label, value]) => `<dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value)}</dd>`).join("")}</dl>
+                <div class="anexo-lookup-card">
+                    <dl>${descriptionList([["Nome", person.name], ["Endereço", addressOf(person)]])}</dl>
+                    <button class="btn btn-link p-0" type="button" data-open-anexo-detail>Visualizar dados completos</button>
+                </div>
             `;
         };
         const renderResponse = (data) => {
             if (!data?.ok) { render(statePanel("exclamation-octagon", "Consulta indisponível", data?.error || "Não foi possível consultar.", "warning")); return; }
+            currentAnexo = data.anexo?.found ? data.anexo : null;
             const anexoHtml = anexoPanel(data.anexo);
             if (data.state === "inscrito") {
                 render(`${statePanel("person-check", "Pessoa já inscrita", "Abra a visualização completa para acompanhar a família.", "success")}${anexoHtml}<button class="btn btn-primary w-100 mt-3" type="button" data-open-detail data-registration-id="${escapeHTML(data.registration?.id)}">Visualizar inscrição</button>`);
@@ -284,6 +357,10 @@
         cpf.value = maskCpf(cpf.value);
         cpf.addEventListener("input", () => { cpf.value = maskCpf(cpf.value); cpf.classList.remove("is-invalid"); });
         document.addEventListener("click", (event) => {
+            if (event.target.closest("[data-open-anexo-detail]")) {
+                renderAnexoDetail(currentAnexo);
+                return;
+            }
             const start = event.target.closest("[data-start-registration]");
             if (start) {
                 const seed = {
