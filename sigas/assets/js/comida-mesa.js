@@ -253,7 +253,6 @@
                 </div>
             </div>
         `;
-        const anexoStatusClass = (request = {}) => request.assigned ? "success" : String(request.status || "").toLowerCase().includes("cancel") ? "danger" : "info";
         const renderAnexoDetail = (anexo) => {
             if (!anexoDetailContent || !anexo?.found) return;
             const person = anexo.person || {};
@@ -274,29 +273,24 @@
                     <article class="anexo-help-card">
                         <div class="anexo-request-head">
                             <div>
-                                <strong>${escapeHTML(valueOrFallback(item.type_name, item.type_id ? `Ajuda #${item.type_id}` : "Tipo não informado"))}</strong>
-                                <span>${escapeHTML(valueOrFallback(item.type_category, "Categoria não informada"))} &middot; ${escapeHTML(deliveredAt)}</span>
+                                <strong>Ajuda recebida</strong>
+                                <span>${escapeHTML(deliveredAt)}</span>
                             </div>
                             <span class="status-badge status-success">Entregue</span>
                         </div>
-                        <dl class="anexo-data-list anexo-data-list--compact">${descriptionList([["Quantidade", item.quantity], ["Valor", formatMoney(item.applied_value)], ["Responsável", item.responsible], ["Solicitação", item.request_id ? `#${item.request_id}` : "Sem vínculo"], ["CPF no registro", item.person_cpf], ["Observação", item.observation]])}</dl>
                     </article>
                 `;
             }).join("");
             const requestsHtml = requests.map((item) => {
-                const assigned = item.assigned || Number(item.deliveries_count || 0) > 0;
-                const lastDelivery = item.last_delivery_date ? `${formatDate(item.last_delivery_date)} ${valueOrFallback(item.last_delivery_time, "")}`.trim() : "Sem entrega registrada";
                 return `
                     <article class="anexo-request-card">
                         <div class="anexo-request-head">
                             <div>
                                 <strong>${escapeHTML(valueOrFallback(item.type_name, item.type_id ? `Ajuda #${item.type_id}` : "Tipo não informado"))}</strong>
-                                <span>${escapeHTML(valueOrFallback(item.type_category, "Categoria não informada"))} · ${escapeHTML(formatDate(item.requested_at))}</span>
+                                <span>${escapeHTML(formatDate(item.requested_at))}</span>
                             </div>
-                            <span class="status-badge status-${anexoStatusClass(item)}">${escapeHTML(assigned ? "Atribuída" : valueOrFallback(item.status, "Sem status"))}</span>
                         </div>
                         <p>${escapeHTML(valueOrFallback(item.summary, "Resumo não informado"))}</p>
-                        <dl class="anexo-data-list anexo-data-list--compact">${descriptionList([["Status", item.status], ["Criado por", item.created_by], ["Origem", item.origin], ["Entregas", item.deliveries_count], ["Última entrega", lastDelivery]])}</dl>
                     </article>
                 `;
             }).join("");

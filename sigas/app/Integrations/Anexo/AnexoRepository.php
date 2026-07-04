@@ -87,14 +87,8 @@ final class AnexoRepository
     public function entregasPorPessoa(int $solicitanteId, string $cpf): array
     {
         return $this->fetchAll(
-            "SELECT e.id, e.ajuda_tipo_id, e.pessoa_id, e.pessoa_cpf, e.familia_id,
-                    e.data_entrega, e.hora_entrega, e.quantidade, e.valor_aplicado,
-                    e.responsavel, e.observacao, e.entregue, e.created_at, e.solicitacao_id,
-                    at.nome AS ajuda_nome, at.categoria AS ajuda_categoria,
-                    s.status AS solicitacao_status
+            "SELECT e.id, e.data_entrega, e.hora_entrega, e.entregue, e.created_at
              FROM ajudas_entregas e
-             LEFT JOIN ajudas_tipos at ON at.id = e.ajuda_tipo_id
-             LEFT JOIN solicitacoes s ON s.id = e.solicitacao_id
              WHERE (e.pessoa_id = :solicitante_id OR e.pessoa_cpf = :cpf)
                AND UPPER(e.entregue) = 'SIM'
              ORDER BY e.data_entrega DESC, e.hora_entrega DESC, e.id DESC
