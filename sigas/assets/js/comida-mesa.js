@@ -244,6 +244,15 @@
             .filter((value) => value !== "Não informado")
             .join(", ") || "Endereço não informado";
         const descriptionList = (items) => items.map(([label, value]) => `<dt>${escapeHTML(label)}</dt><dd>${escapeHTML(valueOrFallback(value))}</dd>`).join("");
+        const anexoCardHeading = (icon, title, description) => `
+            <div class="anexo-card-heading">
+                <span class="anexo-card-icon"><i class="bi ${icon}"></i></span>
+                <div>
+                    <h3 class="anexo-card-title">${title}</h3>
+                    <p class="anexo-card-description">${description}</p>
+                </div>
+            </div>
+        `;
         const anexoStatusClass = (request = {}) => request.assigned ? "success" : String(request.status || "").toLowerCase().includes("cancel") ? "danger" : "info";
         const renderAnexoDetail = (anexo) => {
             if (!anexoDetailContent || !anexo?.found) return;
@@ -252,9 +261,9 @@
             const requests = Array.isArray(anexo.solicitacoes) ? anexo.solicitacoes : [];
             const assignedCount = requests.filter((item) => item.assigned || Number(item.deliveries_count || 0) > 0).length;
             const familyHtml = family.map((item) => `
-                <li class="list-group-item">
-                    <strong>${escapeHTML(valueOrFallback(item.name))}</strong>
-                    <small>${escapeHTML(valueOrFallback(item.relationship))} · ${escapeHTML(formatDate(item.birth_date))} · ${escapeHTML(valueOrFallback(item.schooling))}</small>
+                <li class="anexo-family-item">
+                    <strong class="anexo-family-name">${escapeHTML(valueOrFallback(item.name))}</strong>
+                    <span class="anexo-family-meta">${escapeHTML(valueOrFallback(item.relationship))} &middot; ${escapeHTML(formatDate(item.birth_date))} &middot; ${escapeHTML(valueOrFallback(item.schooling))}</span>
                 </li>
             `).join("");
             const requestsHtml = requests.map((item) => {
@@ -270,32 +279,57 @@
                             <span class="status-badge status-${anexoStatusClass(item)}">${escapeHTML(assigned ? "Atribuída" : valueOrFallback(item.status, "Sem status"))}</span>
                         </div>
                         <p>${escapeHTML(valueOrFallback(item.summary, "Resumo não informado"))}</p>
-                        <dl>${descriptionList([["Status", item.status], ["Criado por", item.created_by], ["Origem", item.origin], ["Entregas", item.deliveries_count], ["Última entrega", lastDelivery]])}</dl>
+                        <dl class="anexo-data-list anexo-data-list--compact">${descriptionList([["Status", item.status], ["Criado por", item.created_by], ["Origem", item.origin], ["Entregas", item.deliveries_count], ["Última entrega", lastDelivery]])}</dl>
                     </article>
                 `;
             }).join("");
 
             anexoDetailContent.innerHTML = `
-                <section class="anexo-detail-hero">
-                    <div>
-                        <span class="status-badge status-info"><i class="bi bi-database-check"></i>Somente leitura</span>
-                        <h3>${escapeHTML(valueOrFallback(person.name))}</h3>
-                        <p>${escapeHTML(addressOf(person))}</p>
+                <div class="anexo-detail-layout">
+                    <section class="anexo-detail-hero">
+                        <div class="anexo-hero-main">
+                            <span class="status-badge status-info"><i class="bi bi-database-check"></i>Somente leitura</span>
+                            <h3>${escapeHTML(valueOrFallback(person.name))}</h3>
+                            <p>${escapeHTML(addressOf(person))}</p>
+                        </div>
+                        <div class="anexo-detail-stats">
+                            <div class="anexo-stat-card"><span>Solicitações</span><strong>${requests.length}</strong></div>
+                            <div class="anexo-stat-card"><span>Atribuídas</span><strong>${assignedCount}</strong></div>
+                            <div class="anexo-stat-card"><span>Familiares</span><strong>${family.length}</strong></div>
+                        </div>
+                    </section>
+
+                    <div class="anexo-information-grid">
+                        <section class="anexo-detail-card anexo-detail-card--identity">
+                            ${anexoCardHeading("bi-person-vcard", "Identificação", "Dados pessoais registrados no ANEXO.")}
+                            <dl class="anexo-data-list">${descriptionList([["CPF", person.cpf_masked], ["NIS", person.nis], ["RG", person.rg], ["Nascimento", formatDate(person.birth_date)], ["Telefone", person.phone], ["Gênero", person.gender], ["Estado civil", person.marital_status], ["Naturalidade", person.birthplace]])}</dl>
+                        </section>
+
+                        <section class="anexo-detail-card anexo-detail-card--address">
+                            ${anexoCardHeading("bi-house-door", "Endereço e renda", "Localização e composição socioeconômica.")}
+                            <dl class="anexo-data-list">${descriptionList([["Endereço", addressOf(person)], ["Referência", person.reference_point], ["Membros", person.members_count], ["Famílias", person.families_count], ["Renda familiar", formatMoney(person.family_income)], ["Cadastro", formatDate(person.created_at)], ["Atualização", formatDate(person.updated_at)]])}</dl>
+                        </section>
+
+                        <section class="anexo-detail-card anexo-detail-card--spouse">
+                            ${anexoCardHeading("bi-people", "Cônjuge", "Informações vinculadas ao responsável familiar.")}
+                            <dl class="anexo-data-list">${descriptionList([["Cônjuge", person.spouse_name], ["CPF do cônjuge", person.spouse_cpf], ["NIS do cônjuge", person.spouse_nis], ["RG do cônjuge", person.spouse_rg], ["Nascimento", formatDate(person.spouse_birth_date)], ["Responsável", person.created_by]])}</dl>
+                        </section>
+
+                        <section class="anexo-detail-card anexo-detail-card--summary">
+                            ${anexoCardHeading("bi-file-text", "Resumo do caso", "Descrição registrada durante o atendimento.")}
+                            <div class="anexo-case-summary">${escapeHTML(valueOrFallback(person.summary))}</div>
+                        </section>
+
+                        <section class="anexo-detail-card anexo-detail-card--family">
+                            ${anexoCardHeading("bi-diagram-3", "Familiares", "Composição familiar informada no ANEXO.")}
+                            ${familyHtml ? `<ul class="anexo-family-list">${familyHtml}</ul>` : '<div class="anexo-empty-state"><i class="bi bi-inbox"></i><span>Sem familiares cadastrados.</span></div>'}
+                        </section>
+
+                        <section class="anexo-detail-card anexo-detail-card--requests">
+                            ${anexoCardHeading("bi-journal-check", "Solicitações", "Histórico de solicitações registradas.")}
+                            <div class="anexo-request-list">${requestsHtml || '<div class="anexo-empty-state"><i class="bi bi-inbox"></i><span>Sem solicitações registradas.</span></div>'}</div>
+                        </section>
                     </div>
-                    <div class="anexo-detail-stats">
-                        <div><span>Solicitações</span><strong>${requests.length}</strong></div>
-                        <div><span>Atribuídas</span><strong>${assignedCount}</strong></div>
-                        <div><span>Familiares</span><strong>${family.length}</strong></div>
-                    </div>
-                </section>
-                <div class="row g-3 mt-1">
-                    <div class="col-lg-4"><section class="anexo-detail-section"><h3>Identificação</h3><dl>${descriptionList([["CPF", person.cpf_masked], ["NIS", person.nis], ["RG", person.rg], ["Nascimento", formatDate(person.birth_date)], ["Telefone", person.phone], ["Gênero", person.gender], ["Estado civil", person.marital_status], ["Naturalidade", person.birthplace]])}</dl></section></div>
-                    <div class="col-lg-4"><section class="anexo-detail-section"><h3>Endereço e renda</h3><dl>${descriptionList([["Endereço", addressOf(person)], ["Referência", person.reference_point], ["Membros", person.members_count], ["Famílias", person.families_count], ["Renda familiar", formatMoney(person.family_income)], ["Cadastro", formatDate(person.created_at)], ["Atualização", formatDate(person.updated_at)]])}</dl></section></div>
-                    <div class="col-lg-4"><section class="anexo-detail-section"><h3>Cônjuge e caso</h3><dl>${descriptionList([["Cônjuge", person.spouse_name], ["CPF do cônjuge", person.spouse_cpf], ["NIS do cônjuge", person.spouse_nis], ["RG do cônjuge", person.spouse_rg], ["Nascimento", formatDate(person.spouse_birth_date)], ["Responsável", person.created_by], ["Resumo", person.summary]])}</dl></section></div>
-                </div>
-                <div class="row g-3 mt-1">
-                    <div class="col-lg-5"><section class="anexo-detail-section"><h3>Familiares</h3><ul class="list-group anexo-family-list">${familyHtml || '<li class="list-group-item">Sem familiares cadastrados.</li>'}</ul></section></div>
-                    <div class="col-lg-7"><section class="anexo-detail-section"><h3>Solicitações</h3><div class="anexo-request-list">${requestsHtml || '<div class="alert-soft info"><i class="bi bi-inbox"></i><div><strong>Nenhuma solicitação</strong><br><span>Não há solicitações registradas para este cadastro.</span></div></div>'}</div></section></div>
                 </div>
             `;
             modal("#anexoDetailModal")?.show();

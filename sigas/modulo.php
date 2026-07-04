@@ -46,6 +46,7 @@ try {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
+    <link href="assets/css/anexo-detail-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/anexo-detail-modal.css')) ?>" rel="stylesheet">
 </head>
 <body data-page="modulo">
     <main class="container py-5">
@@ -360,6 +361,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
+    <link href="assets/css/anexo-detail-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/anexo-detail-modal.css')) ?>" rel="stylesheet">
 </head>
 <body data-page="modulo">
     <div class="app-shell">
@@ -603,8 +605,8 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
         </div>
     </div>
 
-    <div class="modal fade" id="anexoDetailModal" tabindex="-1" aria-labelledby="anexoDetailTitle" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal fade anexo-detail-modal" id="anexoDetailModal" tabindex="-1" aria-labelledby="anexoDetailTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable anexo-detail-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <div>
