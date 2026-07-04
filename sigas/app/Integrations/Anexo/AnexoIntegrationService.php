@@ -206,6 +206,7 @@ final class AnexoIntegrationService
     private function deliveryPayload(array $row): array
     {
         return [
+            'type_name' => $row['ajuda_nome'] === null ? null : (string) $row['ajuda_nome'],
             'delivered_date' => $row['data_entrega'] === null ? null : (string) $row['data_entrega'],
             'delivered_time' => $row['hora_entrega'] === null ? null : (string) $row['hora_entrega'],
             'delivered' => strtoupper((string) ($row['entregue'] ?? '')) === 'SIM',

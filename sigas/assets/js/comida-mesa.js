@@ -253,6 +253,13 @@
                 </div>
             </div>
         `;
+        const anexoRequestStatus = (item = {}) => {
+            const received = item.assigned || Number(item.deliveries_count || 0) > 0;
+            return {
+                label: received ? "Recebida" : valueOrFallback(item.status, "Sem status"),
+                className: received ? "success" : String(item.status || "").toLowerCase().includes("cancel") ? "danger" : "info",
+            };
+        };
         const renderAnexoDetail = (anexo) => {
             if (!anexoDetailContent || !anexo?.found) return;
             const person = anexo.person || {};
@@ -273,7 +280,7 @@
                     <article class="anexo-help-card">
                         <div class="anexo-request-head">
                             <div>
-                                <strong>Ajuda recebida</strong>
+                                <strong>${escapeHTML(valueOrFallback(item.type_name, "Ajuda recebida"))}</strong>
                                 <span>${escapeHTML(deliveredAt)}</span>
                             </div>
                             <span class="status-badge status-success">Entregue</span>
@@ -282,6 +289,7 @@
                 `;
             }).join("");
             const requestsHtml = requests.map((item) => {
+                const requestStatus = anexoRequestStatus(item);
                 return `
                     <article class="anexo-request-card">
                         <div class="anexo-request-head">
@@ -289,6 +297,7 @@
                                 <strong>${escapeHTML(valueOrFallback(item.type_name, item.type_id ? `Ajuda #${item.type_id}` : "Tipo não informado"))}</strong>
                                 <span>${escapeHTML(formatDate(item.requested_at))}</span>
                             </div>
+                            <span class="status-badge status-${requestStatus.className}">${escapeHTML(requestStatus.label)}</span>
                         </div>
                         <p>${escapeHTML(valueOrFallback(item.summary, "Resumo não informado"))}</p>
                     </article>
