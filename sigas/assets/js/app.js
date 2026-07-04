@@ -28,26 +28,10 @@ const SIGAS = {
             ['Principal', [
                 [dashboardUrl, 'speedometer2', 'Visão Geral', 'dashboard']
             ]],
-            ['Atendimento Social', [
-                ['consulta-documento.php', 'person-bounding-box', 'Consultar CPF / Documento', 'consulta'],
-                ['cadastro-anexo.html', 'file-earmark-person', 'Novo Cadastro ANEXO', 'cadastro-anexo'],
-                ['pessoas.html', 'people', 'Pessoas e Prontuários', 'pessoas'],
-                ['solicitacoes.html', 'inboxes', 'Solicitações', 'solicitacoes'],
-                ['atendimentos.html', 'clipboard2-pulse', 'Atendimentos', 'atendimentos']
-            ]],
-            ['Programas e Benefícios', [
-                ['beneficios.html', 'gift', 'Programas e Benefícios', 'beneficios'],
-                ['modulo.php', 'basket2', 'Comida na Mesa / Entregas', 'modulo', true]
-            ]],
-            ['Rede Socioassistencial', [
-                ['unidades.html', 'buildings', 'Unidades', 'unidades']
-            ]],
-            ['Gestão', [
-                ['relatorios.html', 'bar-chart', 'Relatórios', 'relatorios'],
-                ['integracao-semth.html', 'database-lock', 'Integração SEMTH', 'integracao'],
-                ['usuarios.html', 'person-gear', 'Usuários', 'usuarios'],
-                ['configuracoes.html', 'sliders', 'Configurações', 'configuracoes'],
-                ['manual-sistema.html', 'book', 'Manual do Sistema', 'manual']
+            ['Comida na Mesa', [
+                ['consulta-documento.php', 'person-bounding-box', 'Consultar CPF / Registrar entrega', 'consulta'],
+                ['modulo.php?action=new', 'person-plus', 'Nova inscrição', 'modulo-new'],
+                ['modulo.php', 'basket2', 'Beneficiários e competências', 'modulo', true]
             ]]
         ];
         const recordPages = ['registro'];
@@ -59,11 +43,14 @@ const SIGAS = {
             </a>
             <div class="sidebar-scroll">
                 ${sections.map(([title, items]) => `<section class="nav-section"><h2 class="nav-section-title">${title}</h2><nav class="sidebar-nav" aria-label="${title}">${items.map(([href, icon, label, key, featured]) => {
-                    const active = this.page === key || (recordPages.includes(this.page) && key === 'pessoas');
+                    const params = new URLSearchParams(window.location.search);
+                    const active = key === 'modulo-new'
+                        ? this.page === 'modulo' && params.get('action') === 'new'
+                        : this.page === key || (recordPages.includes(this.page) && key === 'modulo');
                     return `<a href="${this.escapeHTML(href)}" class="sidebar-link ${active ? 'active' : ''}" ${active ? 'aria-current="page"' : ''} title="${label}"><i class="bi bi-${icon}"></i><span>${label}</span>${featured ? '<b class="food-marker" aria-label="Ação prioritária"></b>' : ''}</a>`;
                 }).join('')}</nav></section>`).join('')}
             </div>
-            <div class="sidebar-footer"><strong>SIGAS Coari v1.1</strong><br>Estrutura demonstrativa organizada</div>`;
+            <div class="sidebar-footer"><strong>SIGAS Coari v1.1</strong><br>Gestão integrada da Assistência Social</div>`;
     },
     topbarMarkup() {
         const user = this.context.user || {};
@@ -99,7 +86,7 @@ const SIGAS = {
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="perfil-usuario.html"><i class="bi bi-person me-2"></i>Meu perfil</a></li>
-                    <li><a class="dropdown-item" href="configuracoes.html"><i class="bi bi-sliders me-2"></i>Preferências</a></li>
+                    <li><a class="dropdown-item" href="dashboard.php"><i class="bi bi-sliders me-2"></i>Preferências</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <form method="post" action="${this.escapeHTML(logoutUrl)}">
@@ -112,12 +99,12 @@ const SIGAS = {
     },
     bottomNavMarkup() {
         const dashboardUrl = this.context.urls?.dashboard || 'dashboard.php';
-        const programPages = ['modulo', 'beneficios', 'cidadania', 'crianca', 'natalidade', 'funeral', 'outros'];
+        const params = new URLSearchParams(window.location.search);
         return `<nav class="bottom-navigation" aria-label="Navegação móvel">
             <a href="${this.escapeHTML(dashboardUrl)}" class="${this.page === 'dashboard' ? 'active' : ''}"><i class="bi bi-house"></i><span>Início</span></a>
-            <a href="pessoas.html" class="${['consulta','pessoas','registro'].includes(this.page) ? 'active' : ''}"><i class="bi bi-people"></i><span>Pessoas</span></a>
-            <a href="cadastro-anexo.html" class="new-action ${this.page === 'cadastro-anexo' ? 'active' : ''}" aria-label="Novo Cadastro ANEXO"><i class="bi bi-plus-lg"></i><span>Novo</span></a>
-            <a href="beneficios.html" class="${programPages.includes(this.page) ? 'active' : ''}"><i class="bi bi-gift"></i><span>Benefícios</span></a>
+            <a href="consulta-documento.php" class="${this.page === 'consulta' ? 'active' : ''}"><i class="bi bi-search"></i><span>Consultar</span></a>
+            <a href="modulo.php?action=new" class="new-action ${this.page === 'modulo' && params.get('action') === 'new' ? 'active' : ''}" aria-label="Nova inscrição"><i class="bi bi-plus-lg"></i><span>Novo</span></a>
+            <a href="modulo.php" class="${this.page === 'modulo' && params.get('action') !== 'new' ? 'active' : ''}"><i class="bi bi-basket2"></i><span>Beneficiários</span></a>
             <button type="button" data-sidebar-toggle><i class="bi bi-three-dots"></i><span>Mais</span></button>
         </nav>`;
     },
@@ -199,7 +186,7 @@ const SIGAS = {
                     this.showToast('Digite um termo para pesquisar.', 'danger');
                     return;
                 }
-                window.location.href = `pessoas.html?q=${encodeURIComponent(term)}`;
+                window.location.href = `consulta-documento.php?q=${encodeURIComponent(term)}`;
             }
         });
     },
@@ -500,13 +487,13 @@ const SIGAS = {
                 openLink.href = 'registro.html';
                 openLink.innerHTML = '<i class="bi bi-person-lines-fill"></i>Abrir cadastro SIGAS';
             } else if (result.decision === 'create-reference') {
-                openLink.href = 'cadastro-anexo.html';
+                openLink.href = 'modulo.php?action=new';
                 openLink.innerHTML = '<i class="bi bi-link-45deg"></i>Vincular ao SIGAS';
             } else if (result.decision === 'review-conflict') {
-                openLink.href = 'integracao-semth.html#divergencias';
+                openLink.href = 'consulta-documento.php';
                 openLink.innerHTML = '<i class="bi bi-exclamation-diamond"></i>Revisar divergência';
             } else {
-                openLink.href = 'cadastro-anexo.html';
+                openLink.href = 'modulo.php?action=new';
                 openLink.innerHTML = '<i class="bi bi-person-plus"></i>Iniciar cadastro';
             }
         };
@@ -695,7 +682,7 @@ const SIGAS = {
                 if (checkbox) { checkbox.disabled = true; checkbox.setAttribute('aria-label', 'Registro SEMTH somente leitura'); }
                 this.qsa('button', row).forEach(button => { button.disabled = true; button.title = 'O SIGAS não altera registros do SEMTH'; });
                 const view = this.qs('a[href="registro.html"]', row);
-                if (view) { view.href = 'integracao-semth.html#consulta'; view.title = 'Visualizar referência SEMTH'; }
+                if (view) { view.href = 'consulta-documento.php'; view.title = 'Visualizar referência SEMTH'; }
             }
         });
         this.qsa('.mobile-record-card').forEach((card, index) => {
@@ -712,7 +699,7 @@ const SIGAS = {
                 card.classList.add('legacy-readonly-row');
                 this.qsa('button', card).forEach(button => { button.disabled = true; });
                 const view = this.qs('a[href="registro.html"]', card);
-                if (view) { view.href = 'integracao-semth.html#consulta'; view.innerHTML = '<i class="bi bi-eye"></i>Consultar'; }
+                if (view) { view.href = 'consulta-documento.php'; view.innerHTML = '<i class="bi bi-eye"></i>Consultar'; }
             }
         });
     },
@@ -865,7 +852,7 @@ const SIGAS = {
                     this.qs('[data-scan-reset]')?.click();
                     return;
                 }
-                window.location.href = 'cadastro-anexo.html';
+                window.location.href = 'modulo.php?action=new';
             }
             const upload = event.target.closest('.document-upload');
             if (upload) {
@@ -919,8 +906,8 @@ const SIGAS = {
             const modal = this.qs('#editRegistrationModal');
             if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
         }
-        if (window.location.hash === '#novo' && this.page !== 'cadastro-anexo') {
-            window.location.replace('cadastro-anexo.html');
+        if (window.location.hash === '#novo' && this.page !== 'modulo') {
+            window.location.replace('modulo.php?action=new');
         }
     }
 };

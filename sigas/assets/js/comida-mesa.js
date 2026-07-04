@@ -78,6 +78,11 @@
     };
 
     const reloadPreservingFilters = () => window.location.assign(window.location.href);
+    const denyDeepLink = () => {
+        if (window.SIGAS?.showToast) {
+            window.SIGAS.showToast("Acesso negado para esta ação.", "danger");
+        }
+    };
 
     const registrationForm = (() => {
         const form = qs("#registrationForm");
@@ -97,7 +102,7 @@
 
         const fillFromDetail = (data) => open({
             inscricao_id: data.id,
-            versao_atualizacao: data.atualizado_em,
+            versao_atualizacao: data.versao_atualizacao,
             nome: data.nome,
             cpf: data.cpf_completo || data.cpf_mascarado,
             telefone: data.telefone,
@@ -361,17 +366,37 @@
         const cpf = params.get("cpf");
 
         if (action === "new") {
+            if (!permissions.create) {
+                denyDeepLink();
+                return;
+            }
             registrationForm.open({ cpf: maskCpf(cpf || ""), status: "em_analise", prioridade: "normal", quantidade_membros: 1 });
         } else if (action === "view" && /^\d+$/.test(id || "")) {
             detailViewer.load(id);
         } else if (action === "edit" && /^\d+$/.test(id || "")) {
+            if (!permissions.edit) {
+                denyDeepLink();
+                return;
+            }
             detailViewer.load(id, { edit: true });
         } else if (action === "delivery" && /^\d+$/.test(id || "")) {
+            if (!permissions.deliver) {
+                denyDeepLink();
+                return;
+            }
             const trigger = qs(`[data-open-delivery][data-registration-id="${CSS.escape(id)}"]`);
             trigger?.click();
         } else if (action === "competence") {
+            if (!permissions.manageCompetences) {
+                denyDeepLink();
+                return;
+            }
             qs("[data-open-edit-competence]")?.click();
         } else if (action === "new-competence") {
+            if (!permissions.manageCompetences) {
+                denyDeepLink();
+                return;
+            }
             qs("[data-open-new-competence]")?.click();
         }
     })();

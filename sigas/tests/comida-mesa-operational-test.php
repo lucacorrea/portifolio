@@ -36,6 +36,102 @@ function assert_true(bool $condition, string $message): void
     }
 }
 
+final class ComidaMesaDetailMemoryPdo extends PDO
+{
+    /** @var list<ComidaMesaDetailMemoryStatement> */
+    public array $statements = [];
+
+    /** @param array<string,mixed> $fixtures */
+    public function __construct(private readonly array $fixtures = [])
+    {
+    }
+
+    public function prepare(string $query, array $options = []): PDOStatement|false
+    {
+        $statement = new ComidaMesaDetailMemoryStatement($this, $query);
+        $this->statements[] = $statement;
+
+        return $statement;
+    }
+
+    /** @return list<array<string,mixed>> */
+    public function rowsFor(ComidaMesaDetailMemoryStatement $statement): array
+    {
+        $sql = strtolower(preg_replace('/\s+/', ' ', trim($statement->sql)) ?? $statement->sql);
+
+        if (str_contains($sql, 'from comida_mesa_inscricoes i') && str_contains($sql, 'inner join familias f')) {
+            return isset($this->fixtures['detail_registration']) ? [$this->fixtures['detail_registration']] : [];
+        }
+
+        if (str_contains($sql, 'from comida_mesa_entregas e')) {
+            return $this->fixtures['detail_deliveries'] ?? [];
+        }
+
+        if (str_contains($sql, 'from familia_membros fm inner join pessoas p')) {
+            return $this->fixtures['detail_members'] ?? [];
+        }
+
+        if (str_contains($sql, 'from comida_mesa_documentos d')) {
+            return $this->fixtures['detail_documents'] ?? [];
+        }
+
+        if (str_contains($sql, 'from comida_mesa_historico h')) {
+            return $this->fixtures['detail_history'] ?? [];
+        }
+
+        return [];
+    }
+}
+
+final class ComidaMesaDetailMemoryStatement extends PDOStatement
+{
+    /** @var array<string,array{value:mixed,type:int}> */
+    public array $bindings = [];
+    /** @var list<array<string,mixed>> */
+    private array $rows = [];
+    private int $cursor = 0;
+
+    public function __construct(
+        private readonly ComidaMesaDetailMemoryPdo $pdo,
+        public readonly string $sql,
+    ) {
+    }
+
+    public function bindValue(string|int $param, mixed $value, int $type = PDO::PARAM_STR): bool
+    {
+        $this->bindings[$this->normalizeParam($param)] = ['value' => $value, 'type' => $type];
+
+        return true;
+    }
+
+    public function execute(?array $params = null): bool
+    {
+        foreach ($params ?? [] as $key => $value) {
+            $this->bindValue(is_int($key) ? $key : ':' . ltrim((string) $key, ':'), $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+
+        $this->rows = $this->pdo->rowsFor($this);
+        $this->cursor = 0;
+
+        return true;
+    }
+
+    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed
+    {
+        return $this->rows[$this->cursor++] ?? false;
+    }
+
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array
+    {
+        return $this->rows;
+    }
+
+    private function normalizeParam(string|int $param): string
+    {
+        return is_int($param) ? (string) $param : ':' . ltrim($param, ':');
+    }
+}
+
 $detailRegistration = [
     'id' => 8,
     'familia_id' => 5,
@@ -63,13 +159,15 @@ $detailRegistration = [
     'prioridade' => 'alta',
     'data_inscricao' => '2026-07-01',
     'data_aprovacao' => '2026-07-02 08:00:00',
+    'criado_em' => '2026-07-01 08:00:00',
     'atualizado_em' => '2026-07-03 08:00:00',
+    'versao_atualizacao' => '2026-07-03 08:00:00',
     'polo_id' => 2,
     'observacao' => null,
     'motivo_suspensao' => null,
 ];
 
-$pdo = new ComidaMesaMemoryPdo([
+$pdo = new ComidaMesaDetailMemoryPdo([
     'detail_registration' => $detailRegistration,
     'detail_members' => [
         ['id' => 1, 'nome' => 'Maria Responsavel', 'cpf' => '12345678909', 'parentesco' => 'responsavel', 'responsavel' => 1, 'renda_mensal' => null, 'criado_em' => '2026-07-01'],
@@ -101,11 +199,29 @@ assert_same($detail['documentos'][0]['tamanho_formatado'], '2,0 KB', 'documento 
 assert_same($detail['historico'][0]['before'], [], 'historico com JSON anterior invalido vira array vazio');
 assert_same($detail['historico'][0]['after'], ['status' => 'ativa'], 'historico com JSON novo valido e decodificado');
 assert_true(isset($detail['historico'][0]['changes'][0]), 'historico invalido nao interrompe calculo de mudancas');
+assert_same($detail['versao_atualizacao'], '2026-07-03 08:00:00', 'detalhe retorna versao_atualizacao baseada na ultima atualizacao');
 
 $withoutCpfPermission = $service->detail(8, false, false, false);
 assert_true(!array_key_exists('cpf_completo', $withoutCpfPermission), 'detalhe sem permissao nao retorna CPF completo');
 assert_same($withoutCpfPermission['documentos'], [], 'detalhe respeita ausencia de permissao para documentos');
 assert_same($withoutCpfPermission['historico'], [], 'detalhe respeita ausencia de permissao para historico');
+
+$firstVersionRegistration = $detailRegistration;
+$firstVersionRegistration['atualizado_em'] = null;
+$firstVersionRegistration['versao_atualizacao'] = '2026-07-01 08:00:00';
+$firstVersion = (new ComidaMesaService(new ComidaMesaRepository(new ComidaMesaDetailMemoryPdo([
+    'detail_registration' => $firstVersionRegistration,
+    'detail_members' => [],
+    'detail_deliveries' => [],
+    'detail_documents' => [],
+    'detail_history' => [],
+]))))->detail(8, true, false, false);
+assert_same($firstVersion['versao_atualizacao'], '2026-07-01 08:00:00', 'detalhe retorna versao_atualizacao baseada no criado_em quando atualizado_em e nulo');
+
+$comidaMesaJs = file_get_contents(dirname(__DIR__) . '/assets/js/comida-mesa.js');
+assert_true($comidaMesaJs !== false, 'teste consegue ler JS do modulo Comida na Mesa');
+assert_true(str_contains((string) $comidaMesaJs, 'versao_atualizacao: data.versao_atualizacao'), 'JS preenche versao_atualizacao usando data.versao_atualizacao');
+assert_true(!str_contains((string) $comidaMesaJs, 'versao_atualizacao: data.atualizado_em'), 'JS nao usa data.atualizado_em como versao do formulario');
 
 @unlink($logDir . DIRECTORY_SEPARATOR . 'application.log');
 @rmdir($logDir);

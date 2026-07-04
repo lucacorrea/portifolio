@@ -227,7 +227,8 @@ final class ComidaMesaRepository
     public function detail(int $registrationId, bool $includeDocuments, bool $includeHistory): ?array
     {
         $registration = $this->fetchOne(
-            "SELECT i.*, f.codigo AS familia_codigo, f.responsavel_pessoa_id, f.zona, f.logradouro, f.numero, f.complemento,
+            "SELECT i.*, COALESCE(i.atualizado_em, i.criado_em) AS versao_atualizacao,
+                    f.codigo AS familia_codigo, f.responsavel_pessoa_id, f.zona, f.logradouro, f.numero, f.complemento,
                     f.bairro, f.comunidade, f.ponto_referencia, f.cep, f.quantidade_membros, f.renda_familiar,
                     p.nome, p.cpf, p.nis, p.rg, p.data_nascimento, p.telefone, p.email, polo.nome AS polo_nome
              FROM comida_mesa_inscricoes i
@@ -378,7 +379,8 @@ final class ComidaMesaRepository
     public function lockRegistrationForEdit(int $registrationId): ?array
     {
         return $this->fetchOne(
-            'SELECT *
+            'SELECT *,
+                COALESCE(atualizado_em, criado_em) AS versao_atualizacao
              FROM comida_mesa_inscricoes
              WHERE id = :id
              LIMIT 1

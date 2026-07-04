@@ -101,29 +101,29 @@ $frontendContext = [
                         <span><strong>1.842</strong> registros vinculados</span>
                         <span class="text-danger"><strong>12</strong> divergências para revisar</span>
                     </div>
-                    <a class="btn btn-light btn-sm" href="integracao-semth.html"><i class="bi bi-arrow-up-right-square"></i>Acompanhar integração</a>
+                    <a class="btn btn-light btn-sm" href="consulta-documento.php"><i class="bi bi-arrow-up-right-square"></i>Consultar CPF / Entrega</a>
                 </section>
 
                 <section class="dashboard-grid" aria-label="Indicadores principais">
                     <article class="stat-card stat-card-featured col-span-3">
                         <div class="stat-card-head"><span class="stat-card-title">Pessoas cadastradas</span><span class="stat-icon"><i class="bi bi-people"></i></span></div>
                         <strong class="stat-value">18.452</strong>
-                        <div class="stat-footer"><span class="stat-trend positive"><i class="bi bi-arrow-up-right"></i>+6,8% no mês</span><a href="pessoas.html">Abrir <i class="bi bi-arrow-right"></i></a></div>
+                        <div class="stat-footer"><span class="stat-trend positive"><i class="bi bi-arrow-up-right"></i>+6,8% no mês</span><a href="consulta-documento.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
                     </article>
                     <article class="stat-card col-span-3">
                         <div class="stat-card-head"><span class="stat-card-title">Famílias cadastradas</span><span class="stat-icon"><i class="bi bi-house-heart"></i></span></div>
                         <strong class="stat-value">7.830</strong>
-                        <div class="stat-footer"><span class="stat-trend positive"><i class="bi bi-plus-circle"></i>+184 neste mês</span><a href="pessoas.html">Abrir <i class="bi bi-arrow-right"></i></a></div>
+                        <div class="stat-footer"><span class="stat-trend positive"><i class="bi bi-plus-circle"></i>+184 neste mês</span><a href="modulo.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
                     </article>
                     <article class="stat-card col-span-3">
                         <div class="stat-card-head"><span class="stat-card-title">Solicitações abertas</span><span class="stat-icon"><i class="bi bi-inboxes"></i></span></div>
                         <strong class="stat-value">328</strong>
-                        <div class="stat-footer"><span class="stat-trend warning"><i class="bi bi-clock"></i>74 aguardando análise</span><a href="solicitacoes.html">Abrir <i class="bi bi-arrow-right"></i></a></div>
+                        <div class="stat-footer"><span class="stat-trend warning"><i class="bi bi-clock"></i>74 aguardando análise</span><a href="modulo.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
                     </article>
                     <article class="stat-card col-span-3">
                         <div class="stat-card-head"><span class="stat-card-title">Atendimentos hoje</span><span class="stat-icon"><i class="bi bi-clipboard2-pulse"></i></span></div>
                         <strong class="stat-value">146</strong>
-                        <div class="stat-footer"><span class="stat-trend warning"><i class="bi bi-exclamation-circle"></i>18 prioritários</span><a href="atendimentos.html">Abrir <i class="bi bi-arrow-right"></i></a></div>
+                        <div class="stat-footer"><span class="stat-trend warning"><i class="bi bi-exclamation-circle"></i>18 prioritários</span><a href="consulta-documento.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
                     </article>
 
                     <article class="program-card col-span-6">
@@ -140,11 +140,11 @@ $frontendContext = [
                                 <div class="program-metric"><strong>4</strong><span>Polos ativos</span></div>
                             </div>
                         </div>
-                        <div class="program-actions"><a class="btn btn-program-light" href="modulo.php"><i class="bi bi-arrow-up-right-square"></i>Abrir programa</a><button class="btn btn-program-outline" type="button" data-bs-toggle="modal" data-bs-target="#deliveryModal"><i class="bi bi-check2-square"></i>Registrar entrega</button></div>
+                        <div class="program-actions"><a class="btn btn-program-light" href="modulo.php"><i class="bi bi-arrow-up-right-square"></i>Abrir programa</a><a class="btn btn-program-outline" href="consulta-documento.php"><i class="bi bi-check2-square"></i>Consultar e registrar entrega</a></div>
                     </article>
 
                     <article class="content-card col-span-3">
-                        <div class="card-heading"><div><div class="card-kicker">Fila de análise</div><h2>Solicitações prioritárias</h2></div><a class="card-link" href="solicitacoes.html">Ver todas</a></div>
+                        <div class="card-heading"><div><div class="card-kicker">Fila de análise</div><h2>Solicitações prioritárias</h2></div><a class="card-link" href="modulo.php">Ver beneficiários</a></div>
                         <div class="priority-list">
                             <div class="priority-item"><span class="mini-avatar">MS</span><div class="item-main"><strong>Mariana Souza</strong><span>Auxílio-Natalidade</span></div><div class="item-side"><span class="item-priority"><i class="bi bi-flag-fill"></i>Alta</span><br>2h 18min</div></div>
                             <div class="priority-item"><span class="mini-avatar">JP</span><div class="item-main"><strong>José Pereira</strong><span>Benefício eventual</span></div><div class="item-side"><span class="item-priority"><i class="bi bi-flag-fill"></i>Alta</span><br>3h 06min</div></div>
@@ -156,10 +156,10 @@ $frontendContext = [
                     <article class="content-card col-span-3">
                         <div class="card-heading"><div><div class="card-kicker">Operações</div><h2>Atalhos rápidos</h2></div></div>
                         <div class="quick-actions">
-                            <a class="quick-action" href="cadastro-anexo.html"><i class="bi bi-file-earmark-person"></i><span>Novo Cadastro ANEXO</span></a>
-                            <a class="quick-action" href="consulta-documento.php"><i class="bi bi-person-bounding-box"></i><span>Consultar documento</span></a>
+                            <a class="quick-action" href="modulo.php?action=new"><i class="bi bi-person-plus"></i><span>Nova inscrição</span></a>
+                            <a class="quick-action" href="consulta-documento.php"><i class="bi bi-person-bounding-box"></i><span>Consultar CPF / Entrega</span></a>
                             <button class="quick-action" type="button" data-demo-action="nova solicitação"><i class="bi bi-file-earmark-plus"></i><span>Nova solicitação</span></button>
-                            <button class="quick-action" type="button" data-bs-toggle="modal" data-bs-target="#deliveryModal"><i class="bi bi-basket2"></i><span>Registrar entrega</span></button>
+                            <a class="quick-action" href="consulta-documento.php"><i class="bi bi-basket2"></i><span>Registrar entrega</span></a>
                             <button class="quick-action" type="button" data-demo-action="agendar visita"><i class="bi bi-calendar2-plus"></i><span>Agendar visita</span></button>
                             <button class="quick-action wide" type="button" data-demo-action="gerar relatório"><i class="bi bi-file-earmark-bar-graph"></i><span>Gerar relatório consolidado</span></button>
                         </div>
@@ -230,21 +230,6 @@ $frontendContext = [
                     <div><label class="form-label" for="serviceNotes">Observações</label><textarea class="form-control" id="serviceNotes" rows="4" placeholder="Registre as informações iniciais"></textarea></div>
                 </div>
                 <div class="modal-footer"><button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="button" data-submit-demo="Atendimento registrado com sucesso."><i class="bi bi-check2"></i>Registrar atendimento</button></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="deliveryModal" tabindex="-1" aria-labelledby="deliveryTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header"><div><div class="eyebrow mb-1"><i class="bi bi-basket2"></i>Comida na Mesa</div><h2 class="modal-title fs-5" id="deliveryTitle">Registrar entrega</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-                <div class="modal-body">
-                    <div class="alert-soft warning mb-3"><i class="bi bi-exclamation-triangle"></i><div>Confirme a identidade do responsável e a competência antes de concluir.</div></div>
-                    <div class="mb-3"><label class="form-label" for="deliveryCode">Código da família</label><input class="form-control" id="deliveryCode" type="text" value="CM-000125" required></div>
-                    <div class="row g-3"><div class="col-sm-6"><label class="form-label" for="deliveryMonth">Competência</label><select class="form-select" id="deliveryMonth" required><option>Junho de 2026</option></select></div><div class="col-sm-6"><label class="form-label" for="deliveryPole">Polo</label><select class="form-select" id="deliveryPole" required><option>São Sebastião</option><option>Centro</option><option>Itamarati</option></select></div></div>
-                    <div class="mt-3"><label class="form-label" for="deliveryReceiver">Nome do recebedor</label><input class="form-control" id="deliveryReceiver" type="text" value="Maria da Silva" required></div>
-                </div>
-                <div class="modal-footer"><button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="button" data-submit-demo="Entrega confirmada com sucesso."><i class="bi bi-check2-circle"></i>Confirmar entrega</button></div>
             </div>
         </div>
     </div>

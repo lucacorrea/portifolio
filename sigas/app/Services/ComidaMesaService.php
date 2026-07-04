@@ -159,7 +159,7 @@ final class ComidaMesaService
                 if ($locked === null) {
                     throw $this->problem('Inscrição não localizada.', 404);
                 }
-                $currentVersion = $this->normalizeVersion($locked['atualizado_em'] ?? null);
+                $currentVersion = $this->normalizeVersion($locked['versao_atualizacao'] ?? null);
                 if ($data->updateVersion === null || $currentVersion !== $this->normalizeVersion($data->updateVersion)) {
                     throw $this->problem('Este cadastro foi alterado por outro usuário. Recarregue os dados antes de salvar novamente.', 409);
                 }

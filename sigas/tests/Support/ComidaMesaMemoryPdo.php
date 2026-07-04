@@ -183,8 +183,20 @@ final class ComidaMesaMemoryPdo extends PDO
             return $this->singleFixture('default_competence');
         }
 
-        if (str_contains($sql, 'select i.*, f.codigo as familia_codigo')) {
+        if (str_contains($sql, 'from comida_mesa_inscricoes i') && str_contains($sql, 'inner join familias f')) {
             return $this->singleFixture('detail_registration');
+        }
+
+        if (str_contains($sql, 'select * from pessoas where cpf = :cpf')) {
+            return $this->singleFixture('person_by_cpf');
+        }
+
+        if (str_contains($sql, 'from familias f') && str_contains($sql, 'left join familia_membros fm')) {
+            return $this->singleFixture('family_link');
+        }
+
+        if (str_contains($sql, 'select * from comida_mesa_inscricoes where familia_id = :familia_id')) {
+            return $this->singleFixture('registration_by_family');
         }
 
         if (str_contains($sql, 'from comida_mesa_entregas e')) {
