@@ -27,6 +27,7 @@ function assert_not_contains_text(string $haystack, string $needle, string $mess
 $root = dirname(__DIR__);
 $appJsPath = $root . '/assets/js/app.js';
 $dashboardPath = $root . '/dashboard.php';
+$modulePath = $root . '/modulo.php';
 $convertedPages = [
     'atendimentos',
     'beneficios',
@@ -55,6 +56,7 @@ $convertedPages = [
 
 $appJs = file_get_contents($appJsPath);
 $dashboard = file_get_contents($dashboardPath);
+$module = file_get_contents($modulePath);
 
 if ($appJs === false) {
     $failures++;
@@ -66,6 +68,12 @@ if ($dashboard === false) {
     $failures++;
     echo 'FAIL: nao foi possivel ler dashboard.php' . PHP_EOL;
     $dashboard = '';
+}
+
+if ($module === false) {
+    $failures++;
+    echo 'FAIL: nao foi possivel ler modulo.php' . PHP_EOL;
+    $module = '';
 }
 
 assert_contains_text($appJs, "['consulta-documento.php', 'person-bounding-box', 'Consultar CPF / Registrar entrega', 'consulta']", 'sidebar aponta consulta operacional');
@@ -97,6 +105,12 @@ assert_not_contains_text($dashboard, 'id="deliveryModal"', 'dashboard nao declar
 assert_not_contains_text($dashboard, 'CM-000125', 'dashboard nao mantem codigo ficticio no fluxo de entrega');
 assert_not_contains_text($dashboard, 'Maria da Silva', 'dashboard nao mantem recebedor ficticio no fluxo de entrega');
 assert_not_contains_text($dashboard, 'Entrega confirmada com sucesso', 'dashboard nao mantem submit demo de entrega');
+
+assert_contains_text($module, '$isNewRegistrationPage = $action === \'new\';', 'modulo reconhece pagina propria de nova inscricao');
+assert_contains_text($module, 'data-registration-page', 'modulo renderiza tela dedicada para nova inscricao');
+assert_contains_text($module, 'href="modulo.php?action=new"', 'modulo navega para nova inscricao por link');
+assert_not_contains_text($module, 'id="newRegistrationModal"', 'modulo nao declara modal de nova inscricao');
+assert_not_contains_text($module, 'data-bs-target="#newRegistrationModal"', 'modulo nao abre modal para nova inscricao');
 
 foreach ($convertedPages as $page) {
     $path = $root . '/' . $page . '.php';

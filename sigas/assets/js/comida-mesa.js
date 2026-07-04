@@ -10,7 +10,10 @@
     const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
     const digits = (value) => String(value || "").replace(/\D+/g, "");
     const escapeHTML = (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-    const modal = (id) => bootstrap.Modal.getOrCreateInstance(qs(id));
+    const modal = (id) => {
+        const element = qs(id);
+        return element ? bootstrap.Modal.getOrCreateInstance(element) : null;
+    };
 
     const statePanel = (icon, title, text, tone = "info") => `
         <div class="alert-soft ${tone}"><i class="bi bi-${icon}" aria-hidden="true"></i><div><strong>${escapeHTML(title)}</strong><br><span>${escapeHTML(text)}</span></div></div>
@@ -86,18 +89,25 @@
 
     const registrationForm = (() => {
         const form = qs("#registrationForm");
-        if (!form) return {};
+        if (!form) return { open: () => {}, fillFromDetail: () => {} };
+        const pageMode = Boolean(form.closest("[data-registration-page]"));
 
         const open = (seed = {}) => {
             form.reset();
             clearFields(form);
             setAlert(form, "");
-            qs("#registrationFormTitle").textContent = seed.inscricao_id ? "Editar inscrição" : "Nova inscrição";
+            const title = qs("#registrationFormTitle");
+            if (title) title.textContent = seed.inscricao_id ? "Editar inscrição" : "Nova inscrição";
             Object.entries(seed).forEach(([key, value]) => {
                 const field = qs(`[name="${CSS.escape(key)}"]`, form);
                 if (field) field.value = value ?? "";
             });
-            modal("#registrationFormModal").show();
+            if (pageMode) {
+                form.scrollIntoView({ behavior: "smooth", block: "start" });
+                qs('[name="nome"], [name="cpf"]', form)?.focus({ preventScroll: true });
+                return;
+            }
+            modal("#registrationFormModal")?.show();
         };
 
         const fillFromDetail = (data) => open({
@@ -135,7 +145,12 @@
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
             const result = await submitJson(form);
-            if (result) reloadPreservingFilters();
+            if (!result) return;
+            if (pageMode && !qs('[name="inscricao_id"]', form)?.value) {
+                window.location.assign("modulo.php");
+                return;
+            }
+            reloadPreservingFilters();
         });
 
         return { open, fillFromDetail };
@@ -219,11 +234,12 @@
             }
         };
 
+        cpf.value = maskCpf(cpf.value);
         cpf.addEventListener("input", () => { cpf.value = maskCpf(cpf.value); cpf.classList.remove("is-invalid"); });
         document.addEventListener("click", (event) => {
             const start = event.target.closest("[data-start-registration]");
             if (start) {
-                modal("#newRegistrationModal").hide();
+                modal("#newRegistrationModal")?.hide();
                 registrationForm.open({
                     cpf: maskCpf(pendingRegistration?.cpf || ""),
                     nome: pendingRegistration?.name || "",

@@ -180,6 +180,9 @@ function location_label(array $row): string
     return $parts === [] ? 'Sem localidade' : implode(' - ', array_map('strval', $parts));
 }
 
+$action = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action'] : '';
+$isNewRegistrationPage = $action === 'new';
+$prefillCpf = isset($_GET['cpf']) && is_string($_GET['cpf']) ? $_GET['cpf'] : '';
 $items = $registrations->getItems();
 $total = $registrations->getTotal();
 $page = $registrations->getPage();
@@ -272,6 +275,77 @@ $deliveryStatuses = [
     'bloqueada' => 'Bloqueada',
     'indisponivel' => 'Não disponível',
 ];
+
+function render_registration_form_fields(array $poles, array $programStatuses, string $csrfToken): void
+{
+    ?>
+    <div class="registration-form-body">
+        <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+        <input type="hidden" name="inscricao_id">
+        <input type="hidden" name="versao_atualizacao">
+        <div data-form-alert></div>
+
+        <section class="registration-section" aria-labelledby="registrationResponsibleTitle">
+            <div class="registration-section-heading">
+                <span class="section-number">1</span>
+                <div>
+                    <h3 id="registrationResponsibleTitle">Responsável familiar</h3>
+                    <p>Identificação principal usada para prevenir duplicidade e localizar o núcleo familiar.</p>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label required">Nome</label><input class="form-control" name="nome" autocomplete="name" required></div>
+                <div class="col-md-3"><label class="form-label required">CPF</label><input class="form-control" name="cpf" inputmode="numeric" autocomplete="off" required></div>
+                <div class="col-md-3"><label class="form-label required">Telefone</label><input class="form-control" name="telefone" inputmode="tel" autocomplete="tel" required></div>
+                <div class="col-md-3"><label class="form-label">NIS</label><input class="form-control" name="nis" inputmode="numeric"></div>
+                <div class="col-md-3"><label class="form-label">RG</label><input class="form-control" name="rg"></div>
+                <div class="col-md-3"><label class="form-label">Nascimento</label><input class="form-control" name="data_nascimento" type="date"></div>
+                <div class="col-md-3"><label class="form-label">E-mail</label><input class="form-control" name="email" type="email" autocomplete="email"></div>
+            </div>
+        </section>
+
+        <section class="registration-section" aria-labelledby="registrationFamilyTitle">
+            <div class="registration-section-heading">
+                <span class="section-number">2</span>
+                <div>
+                    <h3 id="registrationFamilyTitle">Família e endereço</h3>
+                    <p>Dados territoriais, composição resumida e referência de localização para a logística do programa.</p>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3"><label class="form-label">Zona</label><select class="form-select" name="zona"><option value="urbana">Urbana</option><option value="rural">Rural</option></select></div>
+                <div class="col-md-5"><label class="form-label">Logradouro</label><input class="form-control" name="logradouro" autocomplete="address-line1"></div>
+                <div class="col-md-2"><label class="form-label">Número</label><input class="form-control" name="numero"></div>
+                <div class="col-md-2"><label class="form-label">CEP</label><input class="form-control" name="cep" inputmode="numeric" autocomplete="postal-code"></div>
+                <div class="col-md-4"><label class="form-label">Bairro</label><input class="form-control" name="bairro"></div>
+                <div class="col-md-4"><label class="form-label">Comunidade</label><input class="form-control" name="comunidade"></div>
+                <div class="col-md-4"><label class="form-label">Complemento</label><input class="form-control" name="complemento" autocomplete="address-line2"></div>
+                <div class="col-md-6"><label class="form-label">Ponto de referência</label><input class="form-control" name="ponto_referencia"></div>
+                <div class="col-md-3"><label class="form-label">Membros</label><input class="form-control" name="quantidade_membros" type="number" min="1" value="1"></div>
+                <div class="col-md-3"><label class="form-label">Renda familiar</label><input class="form-control" name="renda_familiar" inputmode="decimal"></div>
+            </div>
+        </section>
+
+        <section class="registration-section" aria-labelledby="registrationProgramTitle">
+            <div class="registration-section-heading">
+                <span class="section-number">3</span>
+                <div>
+                    <h3 id="registrationProgramTitle">Inscrição no programa</h3>
+                    <p>Situação operacional, polo de retirada, prioridade e observações internas da inscrição.</p>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3"><label class="form-label">Polo</label><select class="form-select" name="polo_id"><option value="">Sem polo</option><?php foreach ($poles as $pole): ?><option value="<?= e($pole['id']) ?>"><?= e($pole['nome']) ?></option><?php endforeach; ?></select></div>
+                <div class="col-md-3"><label class="form-label">Situação</label><select class="form-select" name="status"><?php foreach ($programStatuses as $value => $label): ?><option value="<?= e($value) ?>"><?= e($label) ?></option><?php endforeach; ?></select></div>
+                <div class="col-md-3"><label class="form-label">Prioridade</label><select class="form-select" name="prioridade"><option value="normal">Normal</option><option value="alta">Alta</option><option value="baixa">Baixa</option></select></div>
+                <div class="col-md-3"><label class="form-label">Data da inscrição</label><input class="form-control" name="data_inscricao" type="date" value="<?= e(date('Y-m-d')) ?>"></div>
+                <div class="col-md-6"><label class="form-label">Motivo suspensão/bloqueio</label><input class="form-control" name="motivo_suspensao"></div>
+                <div class="col-md-6"><label class="form-label">Observação</label><textarea class="form-control" name="observacao" rows="2"></textarea></div>
+            </div>
+        </section>
+    </div>
+    <?php
+}
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -297,17 +371,76 @@ $deliveryStatuses = [
                     <div class="module-hero-content">
                         <div>
                             <div class="eyebrow text-warning mb-1"><i class="bi bi-star-fill"></i>Programa prioritário</div>
-                            <h1 id="moduleTitle">Coari Comida na Mesa</h1>
-                            <p>Gestão de famílias beneficiárias, inscrições, entregas mensais, polos e ocorrências.</p>
+                            <h1 id="moduleTitle"><?= $isNewRegistrationPage ? 'Nova inscrição' : 'Coari Comida na Mesa' ?></h1>
+                            <p><?= $isNewRegistrationPage ? 'Cadastro operacional de famílias no Programa Coari Comida na Mesa, com validação por CPF e salvamento no banco do SIGAS.' : 'Gestão de famílias beneficiárias, inscrições, entregas mensais, polos e ocorrências.' ?></p>
                         </div>
                         <div class="module-hero-actions page-actions">
-                            <button class="btn btn-light" type="button"<?= $canManageCompetences ? ' data-open-new-competence' : ' disabled title="Sem permissão para gerenciar competências"' ?>><i class="bi bi-calendar-plus"></i><span class="optional">Nova competência</span></button>
-                            <button class="btn btn-light" type="button"<?= ($canManageCompetences && $currentCompetenceId !== null) ? ' data-open-edit-competence' : ' disabled title="Selecione uma competência para editar"' ?>><i class="bi bi-calendar-check"></i><span class="optional">Editar competência</span></button>
-                            <button class="btn btn-warning" type="button"<?= ($canConsultCpf && $canCreate) ? ' data-bs-toggle="modal" data-bs-target="#newRegistrationModal"' : ' disabled title="Sem permissão para nova inscrição"' ?>><i class="bi bi-plus-lg"></i>Nova inscrição</button>
+                            <?php if ($isNewRegistrationPage): ?>
+                                <a class="btn btn-light" href="modulo.php"><i class="bi bi-arrow-left"></i>Voltar para beneficiários</a>
+                            <?php else: ?>
+                                <button class="btn btn-light" type="button"<?= $canManageCompetences ? ' data-open-new-competence' : ' disabled title="Sem permissão para gerenciar competências"' ?>><i class="bi bi-calendar-plus"></i><span class="optional">Nova competência</span></button>
+                                <button class="btn btn-light" type="button"<?= ($canManageCompetences && $currentCompetenceId !== null) ? ' data-open-edit-competence' : ' disabled title="Selecione uma competência para editar"' ?>><i class="bi bi-calendar-check"></i><span class="optional">Editar competência</span></button>
+                                <?php if ($canConsultCpf && $canCreate): ?>
+                                    <a class="btn btn-warning" href="modulo.php?action=new"><i class="bi bi-plus-lg"></i>Nova inscrição</a>
+                                <?php else: ?>
+                                    <button class="btn btn-warning" type="button" disabled title="Sem permissão para nova inscrição"><i class="bi bi-plus-lg"></i>Nova inscrição</button>
+                                <?php endif; ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </section>
 
+                <?php if ($isNewRegistrationPage): ?>
+                    <?php if (!$canConsultCpf || !$canCreate): ?>
+                        <section class="content-card">
+                            <div class="state-panel show">
+                                <i class="bi bi-shield-lock"></i>
+                                <h2>Sem permissão para nova inscrição</h2>
+                                <p>Seu usuário não possui as permissões necessárias para consultar CPF e cadastrar famílias no programa.</p>
+                                <a class="btn btn-primary mt-3" href="modulo.php"><i class="bi bi-arrow-left"></i>Voltar ao módulo</a>
+                            </div>
+                        </section>
+                    <?php else: ?>
+                        <section class="registration-page registration-page-grid" data-registration-page aria-labelledby="registrationFormTitle">
+                            <aside class="content-card registration-lookup-card" data-comida-mesa-consulta>
+                                <div class="card-heading">
+                                    <div>
+                                        <div class="card-kicker">Validação inicial</div>
+                                        <h2>Consultar CPF</h2>
+                                        <p>Use a consulta antes de cadastrar para localizar inscrições existentes ou reaproveitar dados já cadastrados.</p>
+                                    </div>
+                                </div>
+                                <form id="cpfLookupForm" method="post" action="api/comida-mesa/consultar-cpf.php">
+                                    <input type="hidden" name="_csrf" value="<?= e($cpfToken) ?>">
+                                    <input type="hidden" name="competencia_id" value="<?= e($currentCompetenceId) ?>">
+                                    <div class="mb-3">
+                                        <label class="form-label required" for="cpfLookupInput">CPF</label>
+                                        <input class="form-control" id="cpfLookupInput" name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" value="<?= e($prefillCpf) ?>" required>
+                                        <div class="invalid-feedback">Informe um CPF com 11 números.</div>
+                                    </div>
+                                    <button class="btn btn-primary w-100" type="submit" data-cpf-submit><i class="bi bi-search"></i>Consultar CPF</button>
+                                    <div id="cpfLookupResult" class="mt-3" aria-live="polite"></div>
+                                </form>
+                            </aside>
+
+                            <form class="content-card registration-page-form" id="registrationForm" action="api/comida-mesa/salvar-cadastro.php" method="post" novalidate>
+                                <div class="registration-form-header">
+                                    <div>
+                                        <div class="card-kicker">Cadastro operacional</div>
+                                        <h2 id="registrationFormTitle">Nova inscrição</h2>
+                                        <p>Preencha os dados mínimos da família, defina a situação inicial e salve a inscrição no SIGAS.</p>
+                                    </div>
+                                    <span class="status-badge status-info"><i class="bi bi-database-check"></i>Banco SIGAS</span>
+                                </div>
+                                <?php render_registration_form_fields($poles, $programStatuses, (string) $frontendContext['csrf']['salvarCadastro']); ?>
+                                <div class="registration-form-actions">
+                                    <a class="btn btn-light" href="modulo.php">Cancelar</a>
+                                    <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i>Salvar inscrição</button>
+                                </div>
+                            </form>
+                        </section>
+                    <?php endif; ?>
+                <?php else: ?>
                 <section data-tabs-group aria-label="Áreas do programa">
                     <nav class="module-tabs" aria-label="Navegação interna do módulo">
                         <button class="module-tab active" type="button" data-tab-target="beneficiaries" aria-current="page">Beneficiários</button>
@@ -438,50 +571,36 @@ $deliveryStatuses = [
                     </div>
 
                 </section>
+                <?php endif; ?>
             </main>
             <footer class="app-footer"><span>Dados carregados do banco do SIGAS.</span><span>SIGAS Coari - SEMAS Coari/AM</span></footer>
         </div>
         <div id="bottomNavigation"></div>
     </div>
 
-    <button class="btn btn-primary floating-action" type="button"<?= ($canConsultCpf && $canCreate) ? ' data-bs-toggle="modal" data-bs-target="#newRegistrationModal"' : ' disabled title="Sem permissão para nova inscrição"' ?> aria-label="Nova inscrição"><i class="bi bi-plus-lg"></i></button>
+    <?php if (!$isNewRegistrationPage): ?>
+    <?php if ($canConsultCpf && $canCreate): ?>
+        <a class="btn btn-primary floating-action" href="modulo.php?action=new" aria-label="Nova inscrição"><i class="bi bi-plus-lg"></i></a>
+    <?php else: ?>
+        <button class="btn btn-primary floating-action" type="button" disabled title="Sem permissão para nova inscrição" aria-label="Nova inscrição"><i class="bi bi-plus-lg"></i></button>
+    <?php endif; ?>
     <button class="btn btn-light mobile-filter-fab" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterOffcanvas" aria-controls="filterOffcanvas" aria-label="Abrir filtros"><i class="bi bi-funnel"></i></button>
 
     <div class="offcanvas offcanvas-end" tabindex="-1" id="filterOffcanvas" aria-labelledby="filterOffcanvasTitle">
         <div class="offcanvas-header"><div><div class="eyebrow mb-1"><i class="bi bi-funnel"></i>Pesquisa</div><h2 class="offcanvas-title fs-5" id="filterOffcanvasTitle">Filtrar beneficiários</h2></div><button class="btn-close" type="button" data-bs-dismiss="offcanvas" aria-label="Fechar"></button></div>
         <div class="offcanvas-body"><form method="get" action="modulo.php" data-server-filter><div class="mb-3"><label class="form-label" for="mobileSearch">Nome, CPF, NIS ou código</label><input class="form-control" id="mobileSearch" name="search" value="<?= e($filter->search) ?>" type="search"></div><div class="mb-3"><label class="form-label" for="mobileCompetence">Competência</label><select class="form-select" id="mobileCompetence" name="competencia_id"><option value="">Padrão</option><?php foreach ($competences as $item): ?><option value="<?= e($item['id']) ?>"<?= selected($currentCompetenceId, $item['id']) ?>><?= e($service->formatCompetence((int) $item['mes'], (int) $item['ano'])) ?></option><?php endforeach; ?></select></div><div class="mb-3"><label class="form-label" for="mobileProgramStatus">Situação no programa</label><select class="form-select" id="mobileProgramStatus" name="program_status"><option value="">Todas</option><?php foreach ($programStatuses as $value => $label): ?><option value="<?= e($value) ?>"<?= selected($filter->programStatus, $value) ?>><?= e($label) ?></option><?php endforeach; ?></select></div><div class="mb-3"><label class="form-label" for="mobileDeliveryStatus">Situação da entrega</label><select class="form-select" id="mobileDeliveryStatus" name="delivery_status"><option value="">Todas</option><?php foreach ($deliveryStatuses as $value => $label): ?><option value="<?= e($value) ?>"<?= selected($filter->deliveryStatus, $value) ?>><?= e($label) ?></option><?php endforeach; ?></select></div><div class="row g-3"><div class="col-6"><label class="form-label" for="mobileZone">Zona</label><input class="form-control" id="mobileZone" name="zone" value="<?= e($filter->zone) ?>"></div><div class="col-6"><label class="form-label" for="mobilePole">Polo</label><select class="form-select" id="mobilePole" name="pole_id"><option value="">Todos</option><?php foreach ($poles as $pole): ?><option value="<?= e($pole['id']) ?>"<?= selected($filter->poleId, $pole['id']) ?>><?= e($pole['nome']) ?></option><?php endforeach; ?></select></div></div><button class="btn btn-primary w-100 mt-4" type="submit"><i class="bi bi-funnel"></i>Aplicar filtros</button><a class="btn btn-light w-100 mt-2" href="modulo.php"><i class="bi bi-arrow-counterclockwise"></i>Limpar</a></form></div>
     </div>
+    <?php endif; ?>
 
-    <div class="modal fade" id="newRegistrationModal" tabindex="-1" aria-labelledby="newRegistrationTitle" aria-hidden="true" data-comida-mesa-consulta>
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header"><div><div class="eyebrow mb-1"><i class="bi bi-person-plus"></i>Programa prioritário</div><h2 class="modal-title fs-5" id="newRegistrationTitle">Consultar CPF para inscrição</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-                <form id="cpfLookupForm" method="post" action="api/comida-mesa/consultar-cpf.php">
-                    <div class="modal-body">
-                        <div class="alert-soft success mb-3"><i class="bi bi-info-circle"></i><div>Consulte o CPF para localizar inscrição existente ou iniciar cadastro.</div></div>
-                        <input type="hidden" name="_csrf" value="<?= e($cpfToken) ?>">
-                        <input type="hidden" name="competencia_id" value="<?= e($currentCompetenceId) ?>">
-                        <div class="mb-3"><label class="form-label" for="cpfLookupInput">CPF</label><input class="form-control" id="cpfLookupInput" name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" required><div class="invalid-feedback">Informe um CPF com 11 números.</div></div>
-                        <div id="cpfLookupResult" aria-live="polite"></div>
-                    </div>
-                    <div class="modal-footer"><button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="submit" data-cpf-submit><i class="bi bi-search"></i>Consultar</button></div>
-                </form>
-            </div>
-        </div>
-    </div>
-
+    <?php if (!$isNewRegistrationPage): ?>
     <div class="modal fade" id="registrationFormModal" tabindex="-1" aria-labelledby="registrationFormTitle" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form id="registrationForm" action="api/comida-mesa/salvar-cadastro.php" method="post" novalidate>
             <div class="modal-header"><div><div class="eyebrow mb-1"><i class="bi bi-person-vcard"></i>Inscrição</div><h2 class="modal-title fs-5" id="registrationFormTitle">Nova inscrição</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-            <div class="modal-body">
-                <input type="hidden" name="_csrf" value="<?= e($frontendContext['csrf']['salvarCadastro']) ?>"><input type="hidden" name="inscricao_id"><input type="hidden" name="versao_atualizacao">
-                <div data-form-alert></div>
-                <h3 class="fs-6">Responsável</h3><div class="row g-3 mb-3"><div class="col-md-6"><label class="form-label">Nome</label><input class="form-control" name="nome" required></div><div class="col-md-3"><label class="form-label">CPF</label><input class="form-control" name="cpf" inputmode="numeric" required></div><div class="col-md-3"><label class="form-label">Telefone</label><input class="form-control" name="telefone" inputmode="tel" required></div><div class="col-md-3"><label class="form-label">NIS</label><input class="form-control" name="nis"></div><div class="col-md-3"><label class="form-label">RG</label><input class="form-control" name="rg"></div><div class="col-md-3"><label class="form-label">Nascimento</label><input class="form-control" name="data_nascimento" type="date"></div><div class="col-md-3"><label class="form-label">E-mail</label><input class="form-control" name="email" type="email"></div></div>
-                <h3 class="fs-6">Família</h3><div class="row g-3 mb-3"><div class="col-md-3"><label class="form-label">Zona</label><select class="form-select" name="zona"><option value="urbana">Urbana</option><option value="rural">Rural</option></select></div><div class="col-md-5"><label class="form-label">Logradouro</label><input class="form-control" name="logradouro"></div><div class="col-md-2"><label class="form-label">Número</label><input class="form-control" name="numero"></div><div class="col-md-2"><label class="form-label">CEP</label><input class="form-control" name="cep"></div><div class="col-md-4"><label class="form-label">Bairro</label><input class="form-control" name="bairro"></div><div class="col-md-4"><label class="form-label">Comunidade</label><input class="form-control" name="comunidade"></div><div class="col-md-4"><label class="form-label">Complemento</label><input class="form-control" name="complemento"></div><div class="col-md-6"><label class="form-label">Ponto de referência</label><input class="form-control" name="ponto_referencia"></div><div class="col-md-3"><label class="form-label">Membros</label><input class="form-control" name="quantidade_membros" type="number" min="1" value="1"></div><div class="col-md-3"><label class="form-label">Renda familiar</label><input class="form-control" name="renda_familiar" inputmode="decimal"></div></div>
-                <h3 class="fs-6">Inscrição</h3><div class="row g-3"><div class="col-md-3"><label class="form-label">Polo</label><select class="form-select" name="polo_id"><option value="">Sem polo</option><?php foreach ($poles as $pole): ?><option value="<?= e($pole['id']) ?>"><?= e($pole['nome']) ?></option><?php endforeach; ?></select></div><div class="col-md-3"><label class="form-label">Situação</label><select class="form-select" name="status"><?php foreach ($programStatuses as $value => $label): ?><option value="<?= e($value) ?>"><?= e($label) ?></option><?php endforeach; ?></select></div><div class="col-md-3"><label class="form-label">Prioridade</label><select class="form-select" name="prioridade"><option value="normal">Normal</option><option value="alta">Alta</option><option value="baixa">Baixa</option></select></div><div class="col-md-3"><label class="form-label">Data da inscrição</label><input class="form-control" name="data_inscricao" type="date" value="<?= e(date('Y-m-d')) ?>"></div><div class="col-md-6"><label class="form-label">Motivo suspensão/bloqueio</label><input class="form-control" name="motivo_suspensao"></div><div class="col-md-6"><label class="form-label">Observação</label><textarea class="form-control" name="observacao" rows="2"></textarea></div></div>
-            </div><div class="modal-footer"><button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i>Salvar</button></div>
+            <?php render_registration_form_fields($poles, $programStatuses, (string) $frontendContext['csrf']['salvarCadastro']); ?>
+            <div class="modal-footer"><button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i>Salvar</button></div>
         </form></div></div>
     </div>
+    <?php endif; ?>
 
     <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailTitle" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><div><div class="eyebrow mb-1"><i class="bi bi-eye"></i>Detalhes</div><h2 class="modal-title fs-5" id="detailTitle">Detalhes da família</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body" data-detail-content><div class="state-panel show"><i class="bi bi-hourglass-split"></i><h3>Carregando</h3></div></div></div></div></div>
 

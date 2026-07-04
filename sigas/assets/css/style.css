@@ -336,6 +336,40 @@ button, a, input, select, textarea { outline: none; }
 .mobile-record-actions { display: flex; gap: 8px; }
 .mobile-filter-fab { display: none; }
 .floating-action { display: none; position: fixed; right: 20px; bottom: 82px; width: 52px; height: 52px; border-radius: 50%; z-index: 1025; box-shadow: 0 12px 28px rgba(20,83,45,.28); }
+.registration-page { display: grid; gap: 16px; }
+.registration-page-grid { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.registration-lookup-card { position: sticky; top: 88px; }
+.registration-page-form { padding: 0; overflow: hidden; }
+.registration-form-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #fbfdfb, #fff);
+}
+.registration-form-header h2 { margin: 0; font-size: 18px; letter-spacing: -.025em; }
+.registration-form-header p { margin: 5px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.45; }
+.registration-form-body { padding: 20px; }
+.registration-section { padding: 0 0 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.registration-section:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: 0; }
+.registration-section-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+.registration-section-heading h3 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+.registration-section-heading p { margin: 4px 0 0; color: var(--text-muted); font-size: 10.5px; line-height: 1.45; }
+.registration-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-soft);
+}
 
 .profile-header { padding: 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 15px; }
 .profile-avatar { width: 70px; height: 70px; border-radius: 20px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; font-size: 20px; font-weight: 850; border: 1px solid #d3e5d9; }
@@ -545,6 +579,12 @@ button, a, input, select, textarea { outline: none; }
     .mobile-records { display: grid; gap: 11px; }
     .floating-action { display: inline-flex; }
     .mobile-filter-fab { display: inline-flex; position: fixed; left: 14px; bottom: 82px; z-index: 1025; box-shadow: var(--shadow-md); }
+    .registration-page-grid { grid-template-columns: 1fr; }
+    .registration-lookup-card { position: static; }
+    .registration-form-header { flex-direction: column; padding: 16px; }
+    .registration-form-body { padding: 16px; }
+    .registration-form-actions { flex-direction: column-reverse; padding: 14px 16px; }
+    .registration-form-actions .btn { width: 100%; }
     .bottom-navigation { position: fixed; z-index: 1050; left: 0; right: 0; bottom: 0; height: 66px; display: flex; align-items: center; justify-content: space-around; padding: 7px 9px 8px; background: rgba(255,255,255,.98); border-top: 1px solid var(--border); box-shadow: 0 -7px 24px rgba(22,40,30,.07); backdrop-filter: blur(10px); }
     .profile-header { padding: 15px; gap: 12px; }
     .profile-avatar { width: 56px; height: 56px; border-radius: 16px; font-size: 16px; }
