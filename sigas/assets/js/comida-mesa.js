@@ -323,7 +323,9 @@
             };
         };
         const anexoPanel = (anexo) => {
-            if (!anexo) return "";
+            if (!anexo) {
+                return statePanel("database-exclamation", "ANEXO não retornado", "A API de consulta não enviou os dados do ANEXO. Verifique se o endpoint atualizado foi publicado.", "warning");
+            }
             if (!anexo.available) {
                 return statePanel("database-x", "ANEXO indisponível", anexo.message || "A consulta ao ANEXO não interrompe o SIGAS.", "warning");
             }

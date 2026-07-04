@@ -45,7 +45,7 @@ try {
     <title>SIGAS Coari - Acesso negado</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
 </head>
 <body data-page="modulo">
     <main class="container py-5">
@@ -359,7 +359,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
 </head>
 <body data-page="modulo">
     <div class="app-shell">
@@ -716,7 +716,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
     <script>
 window.SIGAS_CONTEXT = <?= json_encode($frontendContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
-    <script src="assets/js/app.js"></script>
-    <script src="assets/js/comida-mesa.js"></script>
+    <script src="assets/js/app.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/app.js')) ?>"></script>
+    <script src="assets/js/comida-mesa.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/comida-mesa.js')) ?>"></script>
 </body>
 </html>

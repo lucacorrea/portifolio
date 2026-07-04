@@ -72,7 +72,7 @@ final class AnexoRepository
         } catch (AnexoUnavailableException) {
             return $this->fetchAll(
                 "SELECT id, solicitante_id, ajuda_tipo_id, resumo_caso,
-                        data_solicitacao, status, created_by, origem,
+                        data_solicitacao, status, created_by, NULL AS origem,
                         NULL AS ajuda_nome, NULL AS ajuda_categoria,
                         0 AS entregas_count, NULL AS data_entrega, NULL AS hora_entrega
                  FROM solicitacoes
