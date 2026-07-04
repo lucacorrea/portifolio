@@ -45,15 +45,16 @@ final class AnexoRepository
     }
 
     /** @return list<array<string,mixed>> */
-    public function solicitacoes(int $solicitanteId): array
+    public function solicitacoes(int $solicitanteId, string $cpf): array
     {
         try {
             return $this->fetchAll(
                 "SELECT s.id, s.solicitante_id, s.ajuda_tipo_id, s.resumo_caso,
                         s.data_solicitacao, s.status, s.created_by, s.origem,
                         at.nome AS ajuda_nome, at.categoria AS ajuda_categoria,
-                        COALESCE(ent.entregas_count, 0) AS entregas_count,
-                        ent.data_entrega, ent.hora_entrega
+                        COALESCE(ent.entregas_count, ent_pessoa.entregas_count, 0) AS entregas_count,
+                        COALESCE(ent.data_entrega, ent_pessoa.data_entrega) AS data_entrega,
+                        COALESCE(ent.hora_entrega, ent_pessoa.hora_entrega) AS hora_entrega
                  FROM solicitacoes s
                  LEFT JOIN ajudas_tipos at ON at.id = s.ajuda_tipo_id
                  LEFT JOIN (
@@ -64,10 +65,23 @@ final class AnexoRepository
                       AND UPPER(entregue) = 'SIM'
                     GROUP BY solicitacao_id
                  ) ent ON ent.solicitacao_id = s.id
+                 LEFT JOIN (
+                    SELECT ajuda_tipo_id, COUNT(*) AS entregas_count,
+                           MAX(data_entrega) AS data_entrega, MAX(hora_entrega) AS hora_entrega
+                    FROM ajudas_entregas
+                    WHERE (pessoa_id = :solicitante_id_entrega OR pessoa_cpf = :cpf_entrega)
+                      AND UPPER(entregue) = 'SIM'
+                    GROUP BY ajuda_tipo_id
+                 ) ent_pessoa ON ent_pessoa.ajuda_tipo_id = s.ajuda_tipo_id
+                    AND (s.data_solicitacao IS NULL OR ent_pessoa.data_entrega >= DATE(s.data_solicitacao))
                  WHERE s.solicitante_id = :solicitante_id
                    AND COALESCE(s.origem, '') <> 'cadastro_duplicada'
                  ORDER BY s.data_solicitacao DESC, s.id DESC",
-                ['solicitante_id' => $solicitanteId]
+                [
+                    'solicitante_id' => $solicitanteId,
+                    'solicitante_id_entrega' => $solicitanteId,
+                    'cpf_entrega' => Validator::onlyDigits($cpf),
+                ]
             );
         } catch (AnexoUnavailableException) {
             return $this->fetchAll(

@@ -45,7 +45,7 @@ final class AnexoIntegrationService
                 'found' => true,
                 'person' => $this->personPayload($solicitante),
                 'familiares' => array_map([$this, 'familyMemberPayload'], $repository->familiares($id)),
-                'solicitacoes' => array_map([$this, 'requestPayload'], $repository->solicitacoes($id)),
+                'solicitacoes' => array_map([$this, 'requestPayload'], $repository->solicitacoes($id, (string) $solicitante['cpf'])),
                 'historico_ajudas' => $historicoAjudas,
                 'received_help' => $historicoAjudas !== [],
                 'received_help_count' => count($historicoAjudas),
