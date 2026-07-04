@@ -1,3 +1,13 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\PageContext;
+
+require_once __DIR__ . '/bootstrap.php';
+
+$frontendContext = PageContext::requireAuthenticatedFrontendContext();
+?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -20,7 +30,7 @@
 
             <main class="app-content form-page" data-anexo-form>
                 <nav class="page-breadcrumb" aria-label="Navegação estrutural">
-                    <a href="pessoas.html"><i class="bi bi-arrow-left"></i>Pessoas e prontuários</a>
+                    <a href="pessoas.php"><i class="bi bi-arrow-left"></i>Pessoas e prontuários</a>
                     <span>/</span>
                     <span>Cadastro ANEXO</span>
                 </nav>
@@ -43,7 +53,7 @@
                         <strong>O SEMTH é consultado somente para conferência.</strong>
                         <p>Este cadastro grava apenas na base do SIGAS. Nenhum dado do sistema ANEXO/SEMTH será alterado automaticamente.</p>
                     </div>
-                    <a href="integracao-semth.html" class="btn btn-light btn-sm"><i class="bi bi-info-circle"></i>Ver regras</a>
+                    <a href="integracao-semth.php" class="btn btn-light btn-sm"><i class="bi bi-info-circle"></i>Ver regras</a>
                 </section>
 
                 <section class="anexo-progress-card" aria-label="Progresso do cadastro">
@@ -289,7 +299,7 @@
                                 <i class="bi bi-question-circle"></i>
                                 <strong>Dúvida durante o cadastro?</strong>
                                 <p>Consulte o manual operacional com explicação de campos, status e regras de integração.</p>
-                                <a class="btn btn-light btn-sm w-100" href="manual-sistema.html#cadastro"><i class="bi bi-book"></i>Abrir manual</a>
+                                <a class="btn btn-light btn-sm w-100" href="manual-sistema.php#cadastro"><i class="bi bi-book"></i>Abrir manual</a>
                             </section>
                         </aside>
                     </div>
@@ -308,13 +318,15 @@
     </div>
 
     <div class="modal fade" id="anexoSuccessModal" tabindex="-1" aria-labelledby="anexoSuccessTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><span class="success-modal-icon"><i class="bi bi-check2"></i></span><h2 class="fs-4 mt-3" id="anexoSuccessTitle">Cadastro concluído</h2><p class="text-secondary">O prontuário ANEXO foi criado somente na base demonstrativa do SIGAS. A base SEMTH permaneceu inalterada.</p><div class="success-protocol"><span>Protocolo gerado</span><strong>ANX-2026-001284</strong></div><div class="d-grid gap-2 mt-4"><a class="btn btn-primary" href="registro.html"><i class="bi bi-person-lines-fill"></i>Abrir prontuário</a><a class="btn btn-light" href="pessoas.html">Voltar para a listagem</a></div></div></div></div>
+        <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><span class="success-modal-icon"><i class="bi bi-check2"></i></span><h2 class="fs-4 mt-3" id="anexoSuccessTitle">Cadastro concluído</h2><p class="text-secondary">O prontuário ANEXO foi criado somente na base demonstrativa do SIGAS. A base SEMTH permaneceu inalterada.</p><div class="success-protocol"><span>Protocolo gerado</span><strong>ANX-2026-001284</strong></div><div class="d-grid gap-2 mt-4"><a class="btn btn-primary" href="registro.php"><i class="bi bi-person-lines-fill"></i>Abrir prontuário</a><a class="btn btn-light" href="pessoas.php">Voltar para a listagem</a></div></div></div></div>
     </div>
 
     <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/integration-demo.js"></script>
+    <?= PageContext::script($frontendContext) ?>
     <script src="assets/js/app.js"></script>
     <script src="assets/js/cadastro-anexo.js"></script>
 </body>
 </html>
+

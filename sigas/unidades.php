@@ -1,3 +1,13 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\PageContext;
+
+require_once __DIR__ . '/bootstrap.php';
+
+$frontendContext = PageContext::requireAuthenticatedFrontendContext();
+?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -23,10 +33,10 @@
                 <section class="compact-stats"><div class="compact-stat"><span>Unidades ativas</span><strong>4</strong></div><div class="compact-stat"><span>Profissionais</span><strong>86</strong></div><div class="compact-stat"><span>Atendimentos no mês</span><strong>2.418</strong></div><div class="compact-stat"><span>Territórios cobertos</span><strong>19</strong></div></section>
 
                 <section class="unit-overview-grid" aria-label="Unidades cadastradas">
-                    <article class="unit-overview-card"><div class="unit-overview-head"><span class="unit-icon"><i class="bi bi-geo-alt"></i></span><span class="status-badge status-success">Ativa</span></div><h2>CRAS 1</h2><p>Proteção social básica e acompanhamento familiar no território de referência.</p><dl><div><dt>Famílias acompanhadas</dt><dd>824</dd></div><div><dt>Atendimentos no mês</dt><dd>612</dd></div><div><dt>Equipe</dt><dd>18 profissionais</dd></div></dl><a class="btn btn-light w-100" href="cras1.html">Abrir painel da unidade</a></article>
-                    <article class="unit-overview-card"><div class="unit-overview-head"><span class="unit-icon"><i class="bi bi-geo-alt"></i></span><span class="status-badge status-success">Ativa</span></div><h2>CRAS 2</h2><p>Proteção social básica, busca ativa e serviços de convivência territorial.</p><dl><div><dt>Famílias acompanhadas</dt><dd>706</dd></div><div><dt>Atendimentos no mês</dt><dd>548</dd></div><div><dt>Equipe</dt><dd>17 profissionais</dd></div></dl><a class="btn btn-light w-100" href="cras2.html">Abrir painel da unidade</a></article>
-                    <article class="unit-overview-card"><div class="unit-overview-head"><span class="unit-icon"><i class="bi bi-shield-check"></i></span><span class="status-badge status-success">Ativa</span></div><h2>CREAS</h2><p>Proteção social especial e acompanhamento de situações de violação de direitos.</p><dl><div><dt>Casos acompanhados</dt><dd>216</dd></div><div><dt>Atendimentos no mês</dt><dd>384</dd></div><div><dt>Equipe</dt><dd>22 profissionais</dd></div></dl><a class="btn btn-light w-100" href="creas.html">Abrir painel da unidade</a></article>
-                    <article class="unit-overview-card"><div class="unit-overview-head"><span class="unit-icon"><i class="bi bi-building"></i></span><span class="status-badge status-success">Ativa</span></div><h2>Casa do Cidadão</h2><p>Atendimento integrado, documentação, benefícios e orientação ao cidadão.</p><dl><div><dt>Cadastros vinculados</dt><dd>1.284</dd></div><div><dt>Atendimentos no mês</dt><dd>874</dd></div><div><dt>Equipe</dt><dd>29 profissionais</dd></div></dl><a class="btn btn-light w-100" href="casa.html">Abrir painel da unidade</a></article>
+                    <article class="unit-overview-card"><div class="unit-overview-head"><span class="unit-icon"><i class="bi bi-geo-alt"></i></span><span class="status-badge status-success">Ativa</span></div><h2>CRAS 1</h2><p>Proteção social básica e acompanhamento familiar no território de referência.</p><dl><div><dt>Famílias acompanhadas</dt><dd>824</dd></div><div><dt>Atendimentos no mês</dt><dd>612</dd></div><div><dt>Equipe</dt><dd>18 profissionais</dd></div></dl><a class="btn btn-light w-100" href="cras1.php">Abrir painel da unidade</a></article>
+                    <article class="unit-overview-card"><div class="unit-overview-head"><span class="unit-icon"><i class="bi bi-geo-alt"></i></span><span class="status-badge status-success">Ativa</span></div><h2>CRAS 2</h2><p>Proteção social básica, busca ativa e serviços de convivência territorial.</p><dl><div><dt>Famílias acompanhadas</dt><dd>706</dd></div><div><dt>Atendimentos no mês</dt><dd>548</dd></div><div><dt>Equipe</dt><dd>17 profissionais</dd></div></dl><a class="btn btn-light w-100" href="cras2.php">Abrir painel da unidade</a></article>
+                    <article class="unit-overview-card"><div class="unit-overview-head"><span class="unit-icon"><i class="bi bi-shield-check"></i></span><span class="status-badge status-success">Ativa</span></div><h2>CREAS</h2><p>Proteção social especial e acompanhamento de situações de violação de direitos.</p><dl><div><dt>Casos acompanhados</dt><dd>216</dd></div><div><dt>Atendimentos no mês</dt><dd>384</dd></div><div><dt>Equipe</dt><dd>22 profissionais</dd></div></dl><a class="btn btn-light w-100" href="creas.php">Abrir painel da unidade</a></article>
+                    <article class="unit-overview-card"><div class="unit-overview-head"><span class="unit-icon"><i class="bi bi-building"></i></span><span class="status-badge status-success">Ativa</span></div><h2>Casa do Cidadão</h2><p>Atendimento integrado, documentação, benefícios e orientação ao cidadão.</p><dl><div><dt>Cadastros vinculados</dt><dd>1.284</dd></div><div><dt>Atendimentos no mês</dt><dd>874</dd></div><div><dt>Equipe</dt><dd>29 profissionais</dd></div></dl><a class="btn btn-light w-100" href="casa.php">Abrir painel da unidade</a></article>
                 </section>
             </main>
             <footer class="app-footer"><span>Dados demonstrativos utilizados apenas para prototipação.</span><span>SIGAS Coari — SEMAS Coari/AM</span></footer>
@@ -35,6 +45,8 @@
     </div>
     <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <?= PageContext::script($frontendContext) ?>
     <script src="assets/js/app.js"></script>
 </body>
 </html>
+

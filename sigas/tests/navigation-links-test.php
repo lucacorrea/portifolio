@@ -27,6 +27,31 @@ function assert_not_contains_text(string $haystack, string $needle, string $mess
 $root = dirname(__DIR__);
 $appJsPath = $root . '/assets/js/app.js';
 $dashboardPath = $root . '/dashboard.php';
+$convertedPages = [
+    'atendimentos',
+    'beneficios',
+    'cadastro-anexo',
+    'casa',
+    'cidadania',
+    'configuracoes',
+    'cras1',
+    'cras2',
+    'creas',
+    'crianca',
+    'familias',
+    'funeral',
+    'integracao-semth',
+    'manual-sistema',
+    'natalidade',
+    'outros',
+    'perfil-usuario',
+    'pessoas',
+    'registro',
+    'relatorios',
+    'solicitacoes',
+    'unidades',
+    'usuarios',
+];
 
 $appJs = file_get_contents($appJsPath);
 $dashboard = file_get_contents($dashboardPath);
@@ -49,6 +74,10 @@ assert_contains_text($appJs, "['modulo.php', 'basket2', 'Beneficiários e compet
 assert_contains_text($appJs, '<a href="consulta-documento.php"', 'navegacao inferior aponta consulta operacional');
 assert_contains_text($appJs, '<a href="modulo.php?action=new"', 'navegacao inferior aponta nova inscricao operacional');
 assert_contains_text($appJs, '<a href="modulo.php"', 'navegacao inferior aponta beneficiarios operacional');
+assert_contains_text($appJs, 'href="perfil-usuario.php"', 'menu do usuario aponta perfil em PHP');
+assert_contains_text($appJs, "openLink.href = 'registro.php'", 'atalho de abertura aponta registro em PHP');
+assert_contains_text($appJs, 'a[href="registro.php"]', 'seletores de registro usam rota PHP');
+assert_not_contains_text($appJs, '.html', 'app.js nao referencia paginas HTML antigas');
 assert_not_contains_text($appJs, "window.location.href = 'cadastro-anexo.html'", 'atalho novo nao redireciona para cadastro-anexo antigo');
 assert_not_contains_text($appJs, "window.location.replace('cadastro-anexo.html')", 'hash novo nao redireciona para cadastro-anexo antigo');
 
@@ -68,6 +97,39 @@ assert_not_contains_text($dashboard, 'id="deliveryModal"', 'dashboard nao declar
 assert_not_contains_text($dashboard, 'CM-000125', 'dashboard nao mantem codigo ficticio no fluxo de entrega');
 assert_not_contains_text($dashboard, 'Maria da Silva', 'dashboard nao mantem recebedor ficticio no fluxo de entrega');
 assert_not_contains_text($dashboard, 'Entrega confirmada com sucesso', 'dashboard nao mantem submit demo de entrega');
+
+foreach ($convertedPages as $page) {
+    $path = $root . '/' . $page . '.php';
+    if (!is_file($path)) {
+        $failures++;
+        echo "FAIL: pagina convertida nao encontrada: {$page}.php" . PHP_EOL;
+        continue;
+    }
+
+    $content = file_get_contents($path);
+    if ($content === false) {
+        $failures++;
+        echo "FAIL: nao foi possivel ler {$page}.php" . PHP_EOL;
+        continue;
+    }
+
+    assert_contains_text($content, "require_once __DIR__ . '/bootstrap.php';", "{$page}.php carrega bootstrap");
+    assert_contains_text($content, 'PageContext::requireAuthenticatedFrontendContext()', "{$page}.php exige contexto autenticado");
+    assert_contains_text($content, 'PageContext::script($frontendContext)', "{$page}.php injeta SIGAS_CONTEXT antes do app.js");
+    assert_not_contains_text($content, '.html', "{$page}.php nao referencia paginas HTML antigas");
+
+    $htmlPath = $root . '/' . $page . '.html';
+    $htmlContent = file_get_contents($htmlPath);
+    if ($htmlContent === false) {
+        $failures++;
+        echo "FAIL: nao foi possivel ler stub {$page}.html" . PHP_EOL;
+        continue;
+    }
+
+    assert_contains_text($htmlContent, 'url=' . $page . '.php', "{$page}.html redireciona por meta refresh");
+    assert_contains_text($htmlContent, "window.location.replace('{$page}.php' + window.location.search + window.location.hash)", "{$page}.html preserva query e hash no redirecionamento");
+    assert_not_contains_text($htmlContent, 'id="appSidebar"', "{$page}.html nao mantem shell estatico antigo");
+}
 
 echo $failures === 0 ? 'PASS navigation-links-test' . PHP_EOL : "FAILURES: {$failures}" . PHP_EOL;
 exit($failures === 0 ? 0 : 1);

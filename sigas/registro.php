@@ -1,3 +1,13 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\PageContext;
+
+require_once __DIR__ . '/bootstrap.php';
+
+$frontendContext = PageContext::requireAuthenticatedFrontendContext();
+?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -19,7 +29,7 @@
             <header class="app-topbar" id="appTopbar"></header>
 
             <main class="app-content">
-                <a class="back-link" href="pessoas.html"><i class="bi bi-arrow-left"></i>Voltar para pessoas e prontuários</a>
+                <a class="back-link" href="pessoas.php"><i class="bi bi-arrow-left"></i>Voltar para pessoas e prontuários</a>
                 
 
                 <header class="profile-header">
@@ -32,7 +42,7 @@
                     <div class="profile-actions">
                         <button class="btn btn-light" type="button" data-bs-toggle="modal" data-bs-target="#occurrenceModal"><i class="bi bi-exclamation-circle"></i><span class="optional">Adicionar ocorrência</span></button>
                         <button class="btn btn-light" type="button" data-bs-toggle="modal" data-bs-target="#deliveryModal"><i class="bi bi-basket2"></i>Registrar entrega</button>
-                        <a class="btn btn-primary" href="cadastro-anexo.html?modo=editar"><i class="bi bi-pencil"></i>Editar Cadastro ANEXO</a>
+                        <a class="btn btn-primary" href="cadastro-anexo.php?modo=editar"><i class="bi bi-pencil"></i>Editar Cadastro ANEXO</a>
                         <div class="dropdown"><button class="btn btn-light btn-icon" type="button" data-bs-toggle="dropdown" aria-label="Mais ações"><i class="bi bi-three-dots"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><button class="dropdown-item" type="button" data-demo-action="imprimir ficha"><i class="bi bi-printer me-2"></i>Imprimir ficha</button></li><li><button class="dropdown-item" type="button" data-demo-action="exportar histórico"><i class="bi bi-download me-2"></i>Exportar histórico</button></li><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger" type="button" data-confirm-action="Bloquear temporariamente este registro?"><i class="bi bi-lock me-2"></i>Bloquear registro</button></li></ul></div>
                     </div>
                 </header>
@@ -43,7 +53,7 @@
                         <div class="ownership-source local"><span><i class="bi bi-database-check"></i>Base SIGAS</span><strong>PS-018452</strong><small>Leitura e edição autorizadas conforme perfil</small></div>
                         <div class="ownership-source legacy"><span><i class="bi bi-database-lock"></i>Base SEMTH</span><strong>SEMTH-009842</strong><small>Somente leitura · consultado em <span data-integration-time>—</span></small></div>
                     </div>
-                    <a class="btn btn-light btn-sm" href="integracao-semth.html#consulta"><i class="bi bi-arrow-left-right"></i>Comparar dados</a>
+                    <a class="btn btn-light btn-sm" href="integracao-semth.php#consulta"><i class="bi bi-arrow-left-right"></i>Comparar dados</a>
                 </section>
 
                 <section class="profile-summary-grid" aria-label="Resumo do prontuário">
@@ -221,6 +231,8 @@
     <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/integration-demo.js"></script>
+    <?= PageContext::script($frontendContext) ?>
     <script src="assets/js/app.js"></script>
 </body>
 </html>
+

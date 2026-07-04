@@ -85,7 +85,7 @@ const SIGAS = {
                     <span class="avatar">${this.escapeHTML(initials)}</span><span class="user-meta"><strong>${this.escapeHTML(name)}</strong><span>${this.escapeHTML(jobTitle)}</span></span><i class="bi bi-chevron-down small text-secondary"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="perfil-usuario.html"><i class="bi bi-person me-2"></i>Meu perfil</a></li>
+                    <li><a class="dropdown-item" href="perfil-usuario.php"><i class="bi bi-person me-2"></i>Meu perfil</a></li>
                     <li><a class="dropdown-item" href="dashboard.php"><i class="bi bi-sliders me-2"></i>Preferências</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
@@ -484,7 +484,7 @@ const SIGAS = {
             openLink.tabIndex = 0;
             openLink.removeAttribute('data-demo-action');
             if (['open-existing', 'open-linked'].includes(result.decision)) {
-                openLink.href = 'registro.html';
+                openLink.href = 'registro.php';
                 openLink.innerHTML = '<i class="bi bi-person-lines-fill"></i>Abrir cadastro SIGAS';
             } else if (result.decision === 'create-reference') {
                 openLink.href = 'modulo.php?action=new';
@@ -681,7 +681,7 @@ const SIGAS = {
                 const checkbox = this.qs('input[type="checkbox"]', row);
                 if (checkbox) { checkbox.disabled = true; checkbox.setAttribute('aria-label', 'Registro SEMTH somente leitura'); }
                 this.qsa('button', row).forEach(button => { button.disabled = true; button.title = 'O SIGAS não altera registros do SEMTH'; });
-                const view = this.qs('a[href="registro.html"]', row);
+                const view = this.qs('a[href="registro.php"]', row);
                 if (view) { view.href = 'consulta-documento.php'; view.title = 'Visualizar referência SEMTH'; }
             }
         });
@@ -698,7 +698,7 @@ const SIGAS = {
             if (source.type === 'legacy') {
                 card.classList.add('legacy-readonly-row');
                 this.qsa('button', card).forEach(button => { button.disabled = true; });
-                const view = this.qs('a[href="registro.html"]', card);
+                const view = this.qs('a[href="registro.php"]', card);
                 if (view) { view.href = 'consulta-documento.php'; view.innerHTML = '<i class="bi bi-eye"></i>Consultar'; }
             }
         });

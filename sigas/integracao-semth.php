@@ -1,3 +1,13 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\PageContext;
+
+require_once __DIR__ . '/bootstrap.php';
+
+$frontendContext = PageContext::requireAuthenticatedFrontendContext();
+?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -123,6 +133,8 @@
     <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/integration-demo.js"></script>
+    <?= PageContext::script($frontendContext) ?>
     <script src="assets/js/app.js"></script>
 </body>
 </html>
+

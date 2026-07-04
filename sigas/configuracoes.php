@@ -1,3 +1,13 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\PageContext;
+
+require_once __DIR__ . '/bootstrap.php';
+
+$frontendContext = PageContext::requireAuthenticatedFrontendContext();
+?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -34,7 +44,7 @@
                         </div>
                         <div class="setting-row"><div><strong>Consulta preventiva obrigatória</strong><span>Exigir comparação nas duas bases antes de liberar um novo cadastro.</span></div><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" checked disabled></div></div>
                         <div class="setting-row"><div><strong>Registrar consultas na auditoria</strong><span>Armazenar usuário, horário, CPF mascarado, resultado e finalidade.</span></div><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" checked></div></div>
-                        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mt-4"><span class="integration-health" data-integration-health><i class="bi bi-check-circle-fill"></i>Conectado em modo somente leitura</span><div class="d-flex gap-2"><button class="btn btn-light" type="button" data-integration-test><i class="bi bi-activity"></i>Testar leitura</button><a class="btn btn-primary" href="integracao-semth.html"><i class="bi bi-diagram-3"></i>Abrir painel</a></div></div>
+                        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mt-4"><span class="integration-health" data-integration-health><i class="bi bi-check-circle-fill"></i>Conectado em modo somente leitura</span><div class="d-flex gap-2"><button class="btn btn-light" type="button" data-integration-test><i class="bi bi-activity"></i>Testar leitura</button><a class="btn btn-primary" href="integracao-semth.php"><i class="bi bi-diagram-3"></i>Abrir painel</a></div></div>
                     </article>
                 </div></section>
             </main>
@@ -52,6 +62,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="assets/js/integration-demo.js"></script>
+    <?= PageContext::script($frontendContext) ?>
     <script src="assets/js/app.js"></script>
 </body>
 </html>
+
