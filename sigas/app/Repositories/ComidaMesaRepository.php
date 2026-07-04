@@ -161,13 +161,15 @@ final class ComidaMesaRepository
             $stmt = $this->pdo->prepare(
                 "SELECT i.id AS inscricao_id, f.id AS familia_id, f.codigo AS familia_codigo,
                     p.id AS pessoa_id, p.nome AS responsavel_nome, p.cpf, p.nis, f.zona, f.bairro, f.comunidade,
-                    i.polo_id, polo.nome AS polo_nome, i.status AS inscricao_status, i.prioridade, i.data_inscricao,
-                    i.atualizado_em, entrega.id AS entrega_id, entrega.status AS entrega_status, entrega.entregue_em AS entrega_data
+                    i.polo_id, polo.nome AS polo_nome, polo.ativo AS polo_ativo, i.status AS inscricao_status, i.prioridade, i.data_inscricao,
+                    i.atualizado_em, entrega.id AS entrega_id, entrega.status AS entrega_status, entrega.entregue_em AS entrega_data,
+                    entrega_operador.nome AS entrega_operador_nome
                  FROM comida_mesa_inscricoes i
                  INNER JOIN familias f ON f.id = i.familia_id
                  INNER JOIN pessoas p ON p.id = f.responsavel_pessoa_id
                  LEFT JOIN comida_mesa_polos polo ON polo.id = i.polo_id
                  {$deliveryJoin}
+                 LEFT JOIN usuarios entrega_operador ON entrega_operador.id = entrega.entregue_por
                  WHERE {$where}
                  ORDER BY CASE i.prioridade WHEN 'alta' THEN 1 WHEN 'normal' THEN 2 WHEN 'baixa' THEN 3 ELSE 4 END, p.nome, i.id
                  LIMIT :limit OFFSET :offset"
@@ -370,6 +372,19 @@ final class ComidaMesaRepository
     public function findRegistrationById(int $id): ?array
     {
         return $this->fetchOne('SELECT * FROM comida_mesa_inscricoes WHERE id = :id LIMIT 1', ['id' => $id]);
+    }
+
+    /** @return array<string,mixed>|null */
+    public function lockRegistrationForEdit(int $registrationId): ?array
+    {
+        return $this->fetchOne(
+            'SELECT *
+             FROM comida_mesa_inscricoes
+             WHERE id = :id
+             LIMIT 1
+             FOR UPDATE',
+            ['id' => $registrationId]
+        );
     }
 
     public function saveCompetence(array $data): int
@@ -659,9 +674,34 @@ final class ComidaMesaRepository
         ]);
 
         if ((string) $exception->getCode() === '23000') {
-            return new RepositoryException('Esta família já recebeu ou possui registro nesta competência.', 409, $exception);
+            return new RepositoryException($this->integrityConflictMessage($exception), 409, $exception);
         }
 
         return new RepositoryException($message, 0, $exception);
+    }
+
+    private function integrityConflictMessage(PDOException $exception): string
+    {
+        $haystack = strtolower(implode(' ', array_filter([
+            $exception->getMessage(),
+            isset($exception->errorInfo) ? implode(' ', array_map('strval', $exception->errorInfo)) : '',
+        ])));
+
+        $constraints = [
+            'uk_pessoas_cpf' => 'Já existe uma pessoa cadastrada com este CPF.',
+            'uk_familias_responsavel' => 'Esta pessoa já está vinculada como responsável de outra família.',
+            'uk_familias_codigo' => 'Já existe uma família com este código.',
+            'uk_comida_mesa_inscricoes_familia' => 'Esta família já possui inscrição no programa.',
+            'uk_comida_mesa_competencias_ano_mes' => 'Esta competência mensal já está cadastrada.',
+            'uk_comida_mesa_entrega_mensal' => 'Esta família já recebeu ou possui registro nesta competência.',
+        ];
+
+        foreach ($constraints as $constraint => $userMessage) {
+            if (str_contains($haystack, strtolower($constraint))) {
+                return $userMessage;
+            }
+        }
+
+        return 'Existe um conflito de integridade com os dados informados.';
     }
 }

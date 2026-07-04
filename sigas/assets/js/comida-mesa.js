@@ -4,6 +4,8 @@
     const context = window.SIGAS_CONTEXT?.comidaMesa || {};
     const csrf = window.SIGAS_CONTEXT?.csrf || {};
     const permissions = context.permissions || {};
+    const competences = new Map((context.competences || []).map((item) => [String(item.id), item]));
+    let pendingRegistration = null;
     const qs = (selector, root = document) => root.querySelector(selector);
     const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
     const digits = (value) => String(value || "").replace(/\D+/g, "");
@@ -95,6 +97,7 @@
 
         const fillFromDetail = (data) => open({
             inscricao_id: data.id,
+            versao_atualizacao: data.atualizado_em,
             nome: data.nome,
             cpf: data.cpf_completo || data.cpf_mascarado,
             telefone: data.telefone,
@@ -138,18 +141,22 @@
         let controller = null;
 
         const label = (value) => escapeHTML(value || "Não informado");
+        const description = (pairs) => pairs.map(([term, value]) => `<dt>${escapeHTML(term)}</dt><dd>${label(value)}</dd>`).join("");
         const render = (data) => {
-            const entregaRows = (data.entregas || []).map((item) => `<tr><td>${escapeHTML(String(item.mes).padStart(2, "0"))}/${escapeHTML(item.ano)}</td><td>${escapeHTML(item.status)}</td><td>${label(item.entregue_em)}</td><td>${label(item.polo_nome)}</td><td>${label(item.recebedor_nome)}</td><td>${label(item.operador_nome)}</td><td>${label(item.motivo_cancelamento)}</td></tr>`).join("");
+            const entregaRows = (data.entregas || []).map((item) => `<tr><td>${label(item.competencia_label)}</td><td>${label(item.status_label)}</td><td>${label(item.entregue_em_formatado)}</td><td>${label(item.polo_nome)}</td><td>${label(item.recebedor_nome)}</td><td>${label(item.recebedor_parentesco)}</td><td>${label(item.operador_nome)}</td><td>${label(item.cancelador_nome)}</td><td>${label(item.cancelada_em_formatada)}</td><td>${label(item.motivo_cancelamento)}</td></tr>`).join("");
             const members = (data.integrantes || []).map((item) => `<li class="list-group-item d-flex justify-content-between"><span>${label(item.nome)}<br><small>${label(item.parentesco)} · ${label(item.cpf_mascarado)}</small></span></li>`).join("");
-            const documents = (data.documentos || []).map((item) => `<li class="list-group-item d-flex justify-content-between align-items-center"><span>${label(item.tipo)}<br><small>${label(item.nome_original)} · ${label(item.mime_type)}</small></span><a class="btn btn-light btn-sm" href="api/comida-mesa/visualizar-documento.php?id=${encodeURIComponent(item.id)}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i>Abrir</a></li>`).join("");
-            const history = (data.historico || []).map((item) => `<li class="list-group-item"><strong>${label(item.acao)}</strong><br><span>${label(item.descricao)}</span><br><small>${label(item.usuario_nome)} · ${label(item.criado_em)}</small></li>`).join("");
+            const documents = (data.documentos || []).map((item) => `<li class="list-group-item d-flex justify-content-between align-items-center"><span>${label(item.tipo)}<br><small>${label(item.descricao)} · ${label(item.nome_original)} · ${label(item.mime_type)} · ${label(item.tamanho_formatado)} · ${label(item.criado_em_formatado)} · ${label(item.enviado_por_nome)}</small></span><a class="btn btn-light btn-sm" href="api/comida-mesa/visualizar-documento.php?id=${encodeURIComponent(item.id)}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i>Abrir</a></li>`).join("");
+            const history = (data.historico || []).map((item) => {
+                const changes = (item.changes || []).map((change) => `<li>${label(change.field)}: ${label(change.before)} &rarr; ${label(change.after)}</li>`).join("");
+                return `<li class="list-group-item"><strong>${label(item.acao)}</strong><br><span>${label(item.descricao)}</span><br><small>${label(item.usuario_nome)} · ${label(item.criado_em)}</small>${changes ? `<ul class="mt-2 mb-0">${changes}</ul>` : ""}</li>`;
+            }).join("");
             content.innerHTML = `
                 <div class="row g-3">
-                    <div class="col-lg-4"><h3 class="fs-6">Responsável</h3><dl class="small"><dt>Nome</dt><dd>${label(data.nome)}</dd><dt>CPF</dt><dd>${label(data.cpf_mascarado)}</dd><dt>NIS</dt><dd>${label(data.nis)}</dd><dt>Telefone</dt><dd>${label(data.telefone)}</dd><dt>E-mail</dt><dd>${label(data.email)}</dd></dl></div>
-                    <div class="col-lg-4"><h3 class="fs-6">Família</h3><dl class="small"><dt>Código</dt><dd>${label(data.familia_codigo)}</dd><dt>Endereço</dt><dd>${label([data.logradouro, data.numero, data.bairro, data.comunidade].filter(Boolean).join(", "))}</dd><dt>Referência</dt><dd>${label(data.ponto_referencia)}</dd><dt>Membros</dt><dd>${label(data.quantidade_membros)}</dd><dt>Renda</dt><dd>${label(data.renda_familiar)}</dd></dl></div>
-                    <div class="col-lg-4"><h3 class="fs-6">Inscrição</h3><dl class="small"><dt>Situação</dt><dd>${label(data.status)}</dd><dt>Prioridade</dt><dd>${label(data.prioridade)}</dd><dt>Polo</dt><dd>${label(data.polo_nome)}</dd><dt>Data</dt><dd>${label(data.data_inscricao)}</dd><dt>Motivo</dt><dd>${label(data.motivo_suspensao)}</dd></dl></div>
+                    <div class="col-lg-4"><h3 class="fs-6">Responsável</h3><dl class="small">${description([["Nome", data.nome], ["CPF", data.cpf_completo || data.cpf_mascarado], ["NIS", data.nis], ["RG", data.rg], ["Nascimento", data.data_nascimento], ["Telefone", data.telefone], ["E-mail", data.email]])}</dl></div>
+                    <div class="col-lg-4"><h3 class="fs-6">Família</h3><dl class="small">${description([["Código", data.familia_codigo], ["Zona", data.zona], ["Logradouro", data.logradouro], ["Número", data.numero], ["Complemento", data.complemento], ["Bairro", data.bairro], ["Comunidade", data.comunidade], ["Referência", data.ponto_referencia], ["CEP", data.cep], ["Membros", data.quantidade_membros], ["Renda", data.renda_familiar_formatada]])}</dl></div>
+                    <div class="col-lg-4"><h3 class="fs-6">Inscrição</h3><dl class="small">${description([["Situação", data.status_label], ["Prioridade", data.prioridade_label], ["Polo", data.polo_nome], ["Data de inscrição", data.data_inscricao_formatada], ["Data de aprovação", data.data_aprovacao_formatada], ["Observação", data.observacao], ["Motivo", data.motivo_suspensao], ["Atualização", data.atualizado_em_formatado]])}</dl></div>
                 </div>
-                <h3 class="fs-6 mt-3">Entregas</h3><div class="table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Operador</th><th>Cancelamento</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="7">Sem entregas registradas.</td></tr>'}</tbody></table></div>
+                <h3 class="fs-6 mt-3">Entregas</h3><div class="table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Parentesco</th><th>Operador</th><th>Cancelador</th><th>Cancelamento</th><th>Motivo</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="10">Sem entregas registradas.</td></tr>'}</tbody></table></div>
                 <div class="row g-3 mt-2"><div class="col-lg-4"><h3 class="fs-6">Integrantes</h3><ul class="list-group">${members || '<li class="list-group-item">Sem integrantes vinculados.</li>'}</ul></div><div class="col-lg-4"><h3 class="fs-6">Documentos</h3><ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul></div><div class="col-lg-4"><h3 class="fs-6">Histórico</h3><ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul></div></div>
             `;
         };
@@ -199,18 +206,27 @@
             if (data.state === "inscrito") {
                 render(`${statePanel("person-check", "Pessoa já inscrita", "Abra a visualização completa para acompanhar a família.", "success")}<button class="btn btn-primary w-100 mt-3" type="button" data-open-detail data-registration-id="${escapeHTML(data.registration?.id)}">Visualizar inscrição</button>`);
             } else if (data.state === "pessoa_sem_inscricao") {
-                render(`${statePanel("person-plus", "Pessoa localizada sem inscrição", "Continue o cadastro usando os dados já existentes.", "info")}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration data-cpf="${escapeHTML(data.cpf)}" data-name="${escapeHTML(data.person?.name)}">Continuar cadastro</button>`);
+                pendingRegistration = { cpf: data.cpf || "", name: data.person?.name || "" };
+                render(`${statePanel("person-plus", "Pessoa localizada sem inscrição", "Continue o cadastro usando os dados já existentes.", "info")}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>Continuar cadastro</button>`);
             } else {
-                render(`${statePanel("search", "Pessoa não localizada", "Inicie um cadastro novo para este CPF.", "warning")}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration data-cpf="${escapeHTML(data.cpf)}">Iniciar novo cadastro</button>`);
+                pendingRegistration = { cpf: data.cpf || "", name: "" };
+                render(`${statePanel("search", "Pessoa não localizada", "Inicie um cadastro novo para este CPF.", "warning")}<button class="btn btn-primary w-100 mt-3" type="button" data-start-registration>Iniciar novo cadastro</button>`);
             }
         };
 
         cpf.addEventListener("input", () => { cpf.value = maskCpf(cpf.value); cpf.classList.remove("is-invalid"); });
         document.addEventListener("click", (event) => {
-            const trigger = event.target.closest("[data-consult-cpf]");
-            if (trigger) { cpf.value = maskCpf(trigger.dataset.consultCpf || ""); render(""); }
             const start = event.target.closest("[data-start-registration]");
-            if (start) { modal("#newRegistrationModal").hide(); registrationForm.open({ cpf: maskCpf(start.dataset.cpf || ""), nome: start.dataset.name || "", status: "em_analise", prioridade: "normal", quantidade_membros: 1 }); }
+            if (start) {
+                modal("#newRegistrationModal").hide();
+                registrationForm.open({
+                    cpf: maskCpf(pendingRegistration?.cpf || ""),
+                    nome: pendingRegistration?.name || "",
+                    status: "em_analise",
+                    prioridade: "normal",
+                    quantidade_membros: 1
+                });
+            }
         });
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
@@ -240,9 +256,18 @@
             if (!trigger) return;
             form.reset();
             setAlert(form, "");
+            const isReactivate = trigger.dataset.deliveryAction === "reactivate";
             qs('[name="inscricao_id"]', form).value = trigger.dataset.registrationId || "";
             qs('[name="competencia_id"]', form).value = context.competenciaId || "";
-            qs("[data-delivery-family]", form).textContent = `${trigger.dataset.registrationName || "Família"} · ${trigger.dataset.familyCode || ""}`;
+            qs("#deliveryTitle").textContent = isReactivate ? "Reativar entrega" : "Registrar entrega";
+            qs("[data-delivery-submit]", form).innerHTML = isReactivate ? '<i class="bi bi-check2"></i>Confirmar reativação' : '<i class="bi bi-check2"></i>Confirmar entrega';
+            qs("[data-delivery-family]", form).textContent = isReactivate ? "Reativação de entrega" : "Registro de entrega";
+            qs("[data-delivery-summary]", form).textContent = context.competenceLabel || "Competência selecionada";
+            qs("[data-delivery-responsible]", form).textContent = trigger.dataset.registrationName || "Não informado";
+            qs("[data-delivery-code]", form).textContent = trigger.dataset.familyCode || "Não informado";
+            qs("[data-delivery-pole]", form).textContent = trigger.dataset.poleName || "Não informado";
+            qs('[name="recebedor_nome"]', form).value = trigger.dataset.registrationName || "";
+            qs('[name="recebedor_cpf"]', form).value = "";
             modal("#deliveryModal").show();
         });
         form.addEventListener("submit", async (event) => { event.preventDefault(); if (await submitJson(form)) reloadPreservingFilters(); });
@@ -258,7 +283,11 @@
             setAlert(form, "");
             qs('[name="inscricao_id"]', form).value = trigger.dataset.registrationId || "";
             qs('[name="competencia_id"]', form).value = context.competenciaId || "";
-            qs("[data-cancel-family]", form).textContent = `Família ${trigger.dataset.familyCode || ""} · ${context.competenciaId ? "competência selecionada" : "sem competência selecionada"}`;
+            qs("[data-cancel-responsible]", form).textContent = trigger.dataset.registrationName || "Não informado";
+            qs("[data-cancel-code]", form).textContent = trigger.dataset.familyCode || "Não informado";
+            qs("[data-cancel-pole]", form).textContent = trigger.dataset.poleName || "Não informado";
+            qs("[data-cancel-date]", form).textContent = trigger.dataset.deliveryDate || "Não informado";
+            qs("[data-cancel-operator]", form).textContent = trigger.dataset.deliveryOperator || "Não informado";
             modal("#cancelDeliveryModal").show();
         });
         form.addEventListener("submit", async (event) => { event.preventDefault(); if (await submitJson(form)) reloadPreservingFilters(); });
@@ -267,12 +296,40 @@
     const competenceForm = (() => {
         const form = qs("#competenceForm");
         if (!form) return;
-        document.addEventListener("click", (event) => {
-            if (!event.target.closest("[data-open-competence]")) return;
+        const fill = (item = null) => {
+            form.reset();
+            clearFields(form);
             setAlert(form, "");
+            qs("#competenceTitle").textContent = item ? "Editar competência selecionada" : "Nova competência";
+            qs('[name="competencia_id"]', form).value = item?.id || "";
+            qs('[name="mes"]', form).value = item?.month || new Date().getMonth() + 1;
+            qs('[name="ano"]', form).value = item?.year || new Date().getFullYear();
+            qs('[name="status"]', form).value = item?.status || "planejada";
+            qs('[name="inicio_entregas"]', form).value = item?.startsAt || "";
+            qs('[name="fim_entregas"]', form).value = item?.endsAt || "";
+            qs('[name="observacao"]', form).value = item?.observation || "";
             modal("#competenceModal").show();
+        };
+        document.addEventListener("click", (event) => {
+            if (event.target.closest("[data-open-new-competence]")) {
+                fill(null);
+                return;
+            }
+            if (event.target.closest("[data-open-edit-competence]")) {
+                fill(competences.get(String(context.competenciaId)) || null);
+            }
         });
-        form.addEventListener("submit", async (event) => { event.preventDefault(); if (await submitJson(form)) reloadPreservingFilters(); });
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const result = await submitJson(form);
+            if (!result) return;
+            const id = result.data?.id || result.id || qs('[name="competencia_id"]', form).value;
+            if (qs('[name="competencia_id"]', form).value === "" && id) {
+                window.location.assign(`modulo.php?competencia_id=${encodeURIComponent(id)}`);
+                return;
+            }
+            reloadPreservingFilters();
+        });
     })();
 
     const documentUpload = (() => {
@@ -313,7 +370,9 @@
             const trigger = qs(`[data-open-delivery][data-registration-id="${CSS.escape(id)}"]`);
             trigger?.click();
         } else if (action === "competence") {
-            qs("[data-open-competence]")?.click();
+            qs("[data-open-edit-competence]")?.click();
+        } else if (action === "new-competence") {
+            qs("[data-open-new-competence]")?.click();
         }
     })();
 })();

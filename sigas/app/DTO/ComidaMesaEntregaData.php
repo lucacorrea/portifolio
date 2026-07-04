@@ -45,7 +45,7 @@ final readonly class ComidaMesaEntregaData
 
     private static function nullableText(mixed $value, int $max): ?string
     {
-        $value = mb_substr(trim((string) $value), 0, $max);
+        $value = trim((string) $value);
 
         return $value === '' ? null : $value;
     }

@@ -10,6 +10,7 @@ use App\DTO\ComidaMesaCompetenciaData;
 use App\DTO\ComidaMesaEntregaData;
 use App\DTO\ComidaMesaFilter;
 use App\Repositories\ComidaMesaRepository;
+use App\Core\Logger;
 use DateTimeImmutable;
 use DateTimeZone;
 use RuntimeException;
@@ -154,6 +155,14 @@ final class ComidaMesaService
             $person = $repo->findPersonByCpf($data->cpf);
 
             if ($data->registrationId !== null) {
+                $locked = $repo->lockRegistrationForEdit($data->registrationId);
+                if ($locked === null) {
+                    throw $this->problem('Inscrição não localizada.', 404);
+                }
+                $currentVersion = $this->normalizeVersion($locked['atualizado_em'] ?? null);
+                if ($data->updateVersion === null || $currentVersion !== $this->normalizeVersion($data->updateVersion)) {
+                    throw $this->problem('Este cadastro foi alterado por outro usuário. Recarregue os dados antes de salvar novamente.', 409);
+                }
                 $before = $repo->detail($data->registrationId, false, false);
                 if ($before === null) {
                     throw $this->problem('Inscrição não localizada.', 404);
@@ -224,6 +233,10 @@ final class ComidaMesaService
     public function saveCompetence(ComidaMesaCompetenciaData $data, int $userId, AuditService $audit): int
     {
         $fields = [];
+        $fields += $data->fieldErrors;
+        if ($data->id !== null && $this->repository->findCompetenceById($data->id) === null) {
+            throw $this->problem('Competência não localizada.', 404);
+        }
         if ($data->month < 1 || $data->month > 12) {
             $fields['mes'] = 'Informe um mês entre 1 e 12.';
         }
@@ -285,6 +298,9 @@ final class ComidaMesaService
             if ($delivery !== null && (string) $delivery['status'] === 'entregue') {
                 throw $this->problem('Esta família já recebeu a cesta nesta competência.', 409);
             }
+            if ($delivery !== null && (string) $delivery['status'] !== 'cancelada') {
+                throw $this->problem('Situação de entrega indisponível para reativação.', 409);
+            }
 
             $payload = [
                 'inscricao_id' => $data->registrationId,
@@ -314,9 +330,12 @@ final class ComidaMesaService
 
     public function cancelDelivery(int $registrationId, int $competenceId, string $reason, int $userId, AuditService $audit): int
     {
-        $reason = mb_substr(trim($reason), 0, 255);
+        $reason = trim($reason);
         if (mb_strlen($reason) < 10) {
             throw $this->validation(['motivo' => 'Informe um motivo com pelo menos 10 caracteres.']);
+        }
+        if (mb_strlen($reason) > 255) {
+            throw $this->validation(['motivo' => 'Informe um motivo com no máximo 255 caracteres.']);
         }
 
         return $this->repository->transaction(function (ComidaMesaRepository $repo) use ($registrationId, $competenceId, $reason, $userId, $audit): int {
@@ -352,6 +371,27 @@ final class ComidaMesaService
             unset($member['cpf']);
         }
         unset($member);
+        $row['status_label'] = $this->programStatusLabel((string) $row['status']);
+        $row['prioridade_label'] = $this->priorityLabel((string) $row['prioridade']);
+        $row['data_inscricao_formatada'] = $this->formatDate($row['data_inscricao'] ?? null);
+        $row['data_aprovacao_formatada'] = $this->formatDate($row['data_aprovacao'] ?? null);
+        $row['atualizado_em_formatado'] = $this->formatDate($row['atualizado_em'] ?? null);
+        $row['renda_familiar_formatada'] = $this->formatMoney($row['renda_familiar'] ?? null);
+        $row['historico'] = array_map(fn (array $event): array => $this->formatHistoryEvent($event), $row['historico']);
+        $row['entregas'] = array_map(function (array $delivery): array {
+            $delivery['competencia_label'] = $this->formatCompetence((int) $delivery['mes'], (int) $delivery['ano']);
+            $delivery['status_label'] = $this->deliveryStatusLabel((string) $delivery['status']);
+            $delivery['entregue_em_formatado'] = $this->formatDate($delivery['entregue_em'] ?? null);
+            $delivery['cancelada_em_formatada'] = $this->formatDate($delivery['cancelada_em'] ?? null);
+
+            return $delivery;
+        }, $row['entregas']);
+        $row['documentos'] = array_map(function (array $document): array {
+            $document['tamanho_formatado'] = $this->formatBytes((int) ($document['tamanho'] ?? 0));
+            $document['criado_em_formatado'] = $this->formatDate($document['criado_em'] ?? null);
+
+            return $document;
+        }, $row['documentos']);
 
         return $row;
     }
@@ -360,17 +400,23 @@ final class ComidaMesaService
     public function deliveryEligibility(array $registration, ?array $competence, ?array $delivery): array
     {
         $registrationStatus = (string) ($registration['status'] ?? $registration['inscricao_status'] ?? '');
-        if ($registrationStatus !== 'ativa') {
-            return ['allowed' => false, 'action' => 'none', 'reason' => 'Inscrição não está ativa.'];
-        }
         if ($competence === null) {
             return ['allowed' => false, 'action' => 'none', 'reason' => 'Nenhuma competência selecionada.'];
+        }
+        if (($delivery['status'] ?? null) === 'entregue') {
+            return ['allowed' => true, 'action' => 'cancel', 'reason' => null];
+        }
+        if ($registrationStatus !== 'ativa') {
+            return ['allowed' => false, 'action' => 'none', 'reason' => 'Inscrição não está ativa.'];
         }
         if (($competence['status'] ?? null) !== 'aberta') {
             return ['allowed' => false, 'action' => 'none', 'reason' => 'Competência não está aberta.'];
         }
-        if (empty($registration['polo_id']) || (int) ($registration['polo_ativo'] ?? 1) !== 1) {
-            return ['allowed' => false, 'action' => 'none', 'reason' => 'Inscrição sem polo ativo.'];
+        if (empty($registration['polo_id'])) {
+            return ['allowed' => false, 'action' => 'none', 'reason' => 'Inscrição sem polo definido.'];
+        }
+        if ((int) ($registration['polo_ativo'] ?? 1) !== 1) {
+            return ['allowed' => false, 'action' => 'none', 'reason' => 'Polo da inscrição está inativo.'];
         }
         if ($delivery === null || empty($delivery['status'])) {
             return ['allowed' => true, 'action' => 'register', 'reason' => null];
@@ -378,10 +424,6 @@ final class ComidaMesaService
         if (($delivery['status'] ?? null) === 'cancelada') {
             return ['allowed' => true, 'action' => 'reactivate', 'reason' => null];
         }
-        if (($delivery['status'] ?? null) === 'entregue') {
-            return ['allowed' => false, 'action' => 'cancel', 'reason' => 'Esta família já recebeu a cesta nesta competência.'];
-        }
-
         return ['allowed' => false, 'action' => 'none', 'reason' => 'Situação de entrega indisponível.'];
     }
 
@@ -423,6 +465,9 @@ final class ComidaMesaService
         if (!empty($row['entrega_id']) && ($row['entrega_status'] ?? null) === 'entregue') {
             return ['status' => 'recebida', 'label' => 'Recebida', 'class' => 'status-success', 'icon' => 'bag-check', 'delivered_at' => $row['entrega_data'] ?? null];
         }
+        if (!empty($row['entrega_id']) && ($row['entrega_status'] ?? null) === 'cancelada') {
+            return ['status' => 'cancelada', 'label' => 'Entrega cancelada', 'class' => 'status-warning', 'icon' => 'arrow-counterclockwise', 'delivered_at' => $row['entrega_data'] ?? null];
+        }
         $status = (string) ($row['inscricao_status'] ?? '');
         if ($status === 'ativa') {
             return ['status' => 'aguardando', 'label' => 'Aguardando retirada', 'class' => 'status-warning', 'icon' => 'clock', 'delivered_at' => null];
@@ -437,14 +482,26 @@ final class ComidaMesaService
     private function validateRegistration(ComidaMesaCadastroData $data): void
     {
         $fields = [];
+        $fields += $data->fieldErrors;
         if (mb_strlen($data->name) < 3) {
             $fields['nome'] = 'Informe o nome completo.';
+        } elseif (mb_strlen($data->name) > 150) {
+            $fields['nome'] = 'Nome deve ter no máximo 150 caracteres.';
         }
         if (!Validator::cpf($data->cpf)) {
             $fields['cpf'] = 'CPF inválido.';
         }
-        if ($data->phone === null || strlen($data->phone) < 10) {
+        if ($data->phone === null || strlen($data->phone) < 10 || strlen($data->phone) > 30) {
             $fields['telefone'] = 'Informe um telefone válido.';
+        }
+        if ($data->nis !== null && strlen($data->nis) > 14) {
+            $fields['nis'] = 'NIS deve ter no máximo 14 dígitos.';
+        }
+        if ($data->rg !== null && mb_strlen($data->rg) > 30) {
+            $fields['rg'] = 'RG deve ter no máximo 30 caracteres.';
+        }
+        if ($data->email !== null && mb_strlen($data->email) > 180) {
+            $fields['email'] = 'E-mail deve ter no máximo 180 caracteres.';
         }
         if ($data->email !== null && !Validator::email($data->email)) {
             $fields['email'] = 'E-mail inválido.';
@@ -460,6 +517,11 @@ final class ComidaMesaService
         }
         if ($data->membersCount < 1) {
             $fields['quantidade_membros'] = 'A família deve ter pelo menos um membro.';
+        } elseif ($data->membersCount > 65535) {
+            $fields['quantidade_membros'] = 'Quantidade de membros inválida.';
+        }
+        if ($data->zipCode !== null && strlen($data->zipCode) > 8) {
+            $fields['cep'] = 'CEP deve ter no máximo 8 dígitos.';
         }
         if ($data->familyIncome !== null && $data->familyIncome < 0) {
             $fields['renda_familiar'] = 'Renda familiar não pode ser negativa.';
@@ -519,9 +581,17 @@ final class ComidaMesaService
         }
         if (mb_strlen($data->receiverName) < 3) {
             $fields['recebedor_nome'] = 'Informe o nome do recebedor.';
+        } elseif (mb_strlen($data->receiverName) > 150) {
+            $fields['recebedor_nome'] = 'Nome do recebedor deve ter no máximo 150 caracteres.';
         }
         if ($data->receiverCpf !== null && !Validator::cpf($data->receiverCpf)) {
             $fields['recebedor_cpf'] = 'CPF do recebedor inválido.';
+        }
+        if ($data->receiverKinship !== null && mb_strlen($data->receiverKinship) > 60) {
+            $fields['recebedor_parentesco'] = 'Parentesco deve ter no máximo 60 caracteres.';
+        }
+        if ($data->observation !== null && mb_strlen($data->observation) > 255) {
+            $fields['observacao'] = 'Observação deve ter no máximo 255 caracteres.';
         }
         if ($fields !== []) {
             throw $this->validation($fields);
@@ -554,6 +624,143 @@ final class ComidaMesaService
     private function nowManaus(): string
     {
         return (new DateTimeImmutable('now', new DateTimeZone('America/Manaus')))->format('Y-m-d H:i:s');
+    }
+
+    private function normalizeVersion(mixed $value): ?string
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+
+        try {
+            return (new DateTimeImmutable((string) $value))->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            return trim((string) $value);
+        }
+    }
+
+    private function priorityLabel(string $priority): string
+    {
+        return match ($priority) {
+            'alta' => 'Alta',
+            'normal' => 'Normal',
+            'baixa' => 'Baixa',
+            default => 'Não informada',
+        };
+    }
+
+    private function deliveryStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'entregue' => 'Entregue',
+            'cancelada' => 'Cancelada',
+            default => 'Não informado',
+        };
+    }
+
+    private function formatDate(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return (new DateTimeImmutable((string) $value))->format('d/m/Y H:i');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function formatMoney(mixed $value): ?string
+    {
+        return $value === null || $value === '' ? null : 'R$ ' . number_format((float) $value, 2, ',', '.');
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 1, ',', '.') . ' MB';
+        }
+
+        return number_format(max(1, $bytes) / 1024, 1, ',', '.') . ' KB';
+    }
+
+    /** @param array<string,mixed> $event @return array<string,mixed> */
+    private function formatHistoryEvent(array $event): array
+    {
+        $before = $this->decodeHistoryJson($event['dados_anteriores'] ?? null, (int) ($event['id'] ?? 0));
+        $after = $this->decodeHistoryJson($event['dados_novos'] ?? null, (int) ($event['id'] ?? 0));
+        $event['before'] = $before;
+        $event['after'] = $after;
+        $event['changes'] = $this->historyChanges($before, $after);
+        unset($event['dados_anteriores'], $event['dados_novos']);
+
+        return $event;
+    }
+
+    /** @return array<string,mixed> */
+    private function decodeHistoryJson(mixed $json, int $historyId): array
+    {
+        if ($json === null || $json === '') {
+            return [];
+        }
+
+        try {
+            $decoded = json_decode((string) $json, true, 512, JSON_THROW_ON_ERROR);
+            return is_array($decoded) ? $decoded : [];
+        } catch (\Throwable $exception) {
+            Logger::application('Comida Mesa history JSON decode failed.', ['history_id' => $historyId, 'type' => $exception::class]);
+            return [];
+        }
+    }
+
+    /** @param array<string,mixed> $before @param array<string,mixed> $after @return list<array<string,string>> */
+    private function historyChanges(array $before, array $after): array
+    {
+        $changes = [];
+        foreach (array_unique([...array_keys($before), ...array_keys($after)]) as $key) {
+            $old = $before[$key] ?? null;
+            $new = $after[$key] ?? null;
+            if ($old === $new) {
+                continue;
+            }
+            $changes[] = [
+                'field' => $this->historyFieldLabel((string) $key),
+                'before' => $this->historyValueLabel((string) $key, $old),
+                'after' => $this->historyValueLabel((string) $key, $new),
+            ];
+        }
+
+        return $changes;
+    }
+
+    private function historyFieldLabel(string $field): string
+    {
+        return match ($field) {
+            'status' => 'Situação',
+            'prioridade' => 'Prioridade',
+            'polo_id' => 'Polo',
+            'observacao' => 'Observação',
+            'motivo_suspensao' => 'Motivo',
+            'entrega_id' => 'Entrega',
+            'competencia_id' => 'Competência',
+            default => $field,
+        };
+    }
+
+    private function historyValueLabel(string $field, mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return 'Não informado';
+        }
+        if ($field === 'status') {
+            return $this->programStatusLabel((string) $value);
+        }
+        if ($field === 'prioridade') {
+            return $this->priorityLabel((string) $value);
+        }
+
+        return (string) $value;
     }
 
     private function validation(array $fields): RuntimeException

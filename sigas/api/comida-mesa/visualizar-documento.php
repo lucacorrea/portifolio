@@ -53,18 +53,36 @@ try {
     $id = isset($_GET['id']) && preg_match('/^\d+$/', (string) $_GET['id']) === 1 ? (int) $_GET['id'] : 0;
     $document = (new ComidaMesaDocumentService(new ComidaMesaRepository($pdo)))->resolveForView($id);
     $path = (string) $document['absolute_path'];
+    if (!is_readable($path)) {
+        Logger::application('Comida Mesa document file is not readable.', ['document_id' => $id]);
+        document_error(500, 'Não foi possível abrir o documento.');
+    }
+
     $filename = basename((string) $document['nome_original']);
     $filename = preg_replace('/[\x00-\x1F\x7F"\\\\]/u', '_', $filename) ?: 'documento';
+    $size = filesize($path);
+    if ($size === false) {
+        Logger::application('Comida Mesa document size failed.', ['document_id' => $id]);
+        document_error(500, 'Não foi possível abrir o documento.');
+    }
 
     header('Content-Type: ' . (string) $document['mime_type']);
-    header('Content-Length: ' . (string) filesize($path));
+    header('Content-Length: ' . (string) $size);
     header('X-Content-Type-Options: nosniff');
     header("Content-Disposition: inline; filename=\"documento\"; filename*=UTF-8''" . rawurlencode($filename));
     readfile($path);
     exit;
 } catch (RuntimeException $exception) {
-    document_error($exception->getCode() === 403 ? 403 : 404, 'Documento não encontrado.');
+    if (in_array($exception->getCode(), [403, 404], true)) {
+        document_error($exception->getCode(), 'Documento não encontrado.');
+    }
+
+    Logger::application('Comida Mesa document view runtime failed.', [
+        'type' => $exception::class,
+        'code' => $exception->getCode(),
+    ]);
+    document_error(500, 'Não foi possível abrir o documento.');
 } catch (Throwable $exception) {
     Logger::application('Comida Mesa document view failed.', ['type' => $exception::class, 'code' => $exception->getCode()]);
-    document_error(404, 'Documento não encontrado.');
+    document_error(500, 'Não foi possível abrir o documento.');
 }
