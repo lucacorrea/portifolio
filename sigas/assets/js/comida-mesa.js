@@ -239,14 +239,23 @@
         document.addEventListener("click", (event) => {
             const start = event.target.closest("[data-start-registration]");
             if (start) {
-                modal("#newRegistrationModal")?.hide();
-                registrationForm.open({
+                const seed = {
                     cpf: maskCpf(pendingRegistration?.cpf || ""),
                     nome: pendingRegistration?.name || "",
                     status: "em_analise",
                     prioridade: "normal",
                     quantidade_membros: 1
-                });
+                };
+                if (qs("[data-registration-page]")) {
+                    registrationForm.open(seed);
+                    return;
+                }
+                try {
+                    window.sessionStorage.setItem("sigas.registrationSeed", JSON.stringify(seed));
+                } catch (error) {
+                    // Session storage is optional; the CPF in the URL is enough to continue.
+                }
+                window.location.assign(`modulo.php?action=new&cpf=${encodeURIComponent(digits(seed.cpf))}`);
             }
         });
         form.addEventListener("submit", async (event) => {
@@ -382,11 +391,25 @@
         const cpf = params.get("cpf");
 
         if (action === "new") {
-            if (!permissions.create) {
+            if (!permissions.create || !permissions.consultCpf) {
                 denyDeepLink();
                 return;
             }
-            registrationForm.open({ cpf: maskCpf(cpf || ""), status: "em_analise", prioridade: "normal", quantidade_membros: 1 });
+            if (!cpf) {
+                modal("#newRegistrationModal")?.show();
+                return;
+            }
+            let seed = { cpf: maskCpf(cpf || ""), status: "em_analise", prioridade: "normal", quantidade_membros: 1 };
+            try {
+                const stored = JSON.parse(window.sessionStorage.getItem("sigas.registrationSeed") || "null");
+                if (stored && digits(stored.cpf) === digits(cpf)) {
+                    seed = { ...seed, ...stored, cpf: maskCpf(stored.cpf) };
+                    window.sessionStorage.removeItem("sigas.registrationSeed");
+                }
+            } catch (error) {
+                // Ignore invalid client-side draft data and continue with the CPF from the URL.
+            }
+            registrationForm.open(seed);
         } else if (action === "view" && /^\d+$/.test(id || "")) {
             detailViewer.load(id);
         } else if (action === "edit" && /^\d+$/.test(id || "")) {

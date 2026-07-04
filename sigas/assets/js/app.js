@@ -30,7 +30,6 @@ const SIGAS = {
             ]],
             ['Comida na Mesa', [
                 ['consulta-documento.php', 'person-bounding-box', 'Consultar CPF / Registrar entrega', 'consulta'],
-                ['modulo.php?action=new', 'person-plus', 'Nova inscrição', 'modulo-new'],
                 ['modulo.php', 'basket2', 'Beneficiários e competências', 'modulo', true]
             ]]
         ];
@@ -43,10 +42,7 @@ const SIGAS = {
             </a>
             <div class="sidebar-scroll">
                 ${sections.map(([title, items]) => `<section class="nav-section"><h2 class="nav-section-title">${title}</h2><nav class="sidebar-nav" aria-label="${title}">${items.map(([href, icon, label, key, featured]) => {
-                    const params = new URLSearchParams(window.location.search);
-                    const active = key === 'modulo-new'
-                        ? this.page === 'modulo' && params.get('action') === 'new'
-                        : this.page === key || (recordPages.includes(this.page) && key === 'modulo');
+                    const active = this.page === key || (recordPages.includes(this.page) && key === 'modulo');
                     return `<a href="${this.escapeHTML(href)}" class="sidebar-link ${active ? 'active' : ''}" ${active ? 'aria-current="page"' : ''} title="${label}"><i class="bi bi-${icon}"></i><span>${label}</span>${featured ? '<b class="food-marker" aria-label="Ação prioritária"></b>' : ''}</a>`;
                 }).join('')}</nav></section>`).join('')}
             </div>
@@ -99,12 +95,10 @@ const SIGAS = {
     },
     bottomNavMarkup() {
         const dashboardUrl = this.context.urls?.dashboard || 'dashboard.php';
-        const params = new URLSearchParams(window.location.search);
         return `<nav class="bottom-navigation" aria-label="Navegação móvel">
             <a href="${this.escapeHTML(dashboardUrl)}" class="${this.page === 'dashboard' ? 'active' : ''}"><i class="bi bi-house"></i><span>Início</span></a>
             <a href="consulta-documento.php" class="${this.page === 'consulta' ? 'active' : ''}"><i class="bi bi-search"></i><span>Consultar</span></a>
-            <a href="modulo.php?action=new" class="new-action ${this.page === 'modulo' && params.get('action') === 'new' ? 'active' : ''}" aria-label="Nova inscrição"><i class="bi bi-plus-lg"></i><span>Novo</span></a>
-            <a href="modulo.php" class="${this.page === 'modulo' && params.get('action') !== 'new' ? 'active' : ''}"><i class="bi bi-basket2"></i><span>Beneficiários</span></a>
+            <a href="modulo.php" class="${this.page === 'modulo' ? 'active' : ''}"><i class="bi bi-basket2"></i><span>Beneficiários</span></a>
             <button type="button" data-sidebar-toggle><i class="bi bi-three-dots"></i><span>Mais</span></button>
         </nav>`;
     },

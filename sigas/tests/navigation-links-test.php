@@ -77,11 +77,11 @@ if ($module === false) {
 }
 
 assert_contains_text($appJs, "['consulta-documento.php', 'person-bounding-box', 'Consultar CPF / Registrar entrega', 'consulta']", 'sidebar aponta consulta operacional');
-assert_contains_text($appJs, "['modulo.php?action=new', 'person-plus', 'Nova inscrição', 'modulo-new']", 'sidebar aponta nova inscricao operacional');
 assert_contains_text($appJs, "['modulo.php', 'basket2', 'Beneficiários e competências', 'modulo', true]", 'sidebar aponta modulo operacional');
 assert_contains_text($appJs, '<a href="consulta-documento.php"', 'navegacao inferior aponta consulta operacional');
-assert_contains_text($appJs, '<a href="modulo.php?action=new"', 'navegacao inferior aponta nova inscricao operacional');
 assert_contains_text($appJs, '<a href="modulo.php"', 'navegacao inferior aponta beneficiarios operacional');
+assert_not_contains_text($appJs, "['modulo.php?action=new', 'person-plus', 'Nova inscrição', 'modulo-new']", 'sidebar nao exibe nova inscricao como item de menu');
+assert_not_contains_text($appJs, '<a href="modulo.php?action=new" class="new-action', 'navegacao inferior nao exibe nova inscricao');
 assert_contains_text($appJs, 'href="perfil-usuario.php"', 'menu do usuario aponta perfil em PHP');
 assert_contains_text($appJs, "openLink.href = 'registro.php'", 'atalho de abertura aponta registro em PHP');
 assert_contains_text($appJs, 'a[href="registro.php"]', 'seletores de registro usam rota PHP');
@@ -106,11 +106,10 @@ assert_not_contains_text($dashboard, 'CM-000125', 'dashboard nao mantem codigo f
 assert_not_contains_text($dashboard, 'Maria da Silva', 'dashboard nao mantem recebedor ficticio no fluxo de entrega');
 assert_not_contains_text($dashboard, 'Entrega confirmada com sucesso', 'dashboard nao mantem submit demo de entrega');
 
-assert_contains_text($module, '$isNewRegistrationPage = $action === \'new\';', 'modulo reconhece pagina propria de nova inscricao');
+assert_contains_text($module, '$isNewRegistrationPage = $action === \'new\' && trim($prefillCpf) !== \'\';', 'modulo so abre pagina propria de inscricao depois de CPF informado');
 assert_contains_text($module, 'data-registration-page', 'modulo renderiza tela dedicada para nova inscricao');
-assert_contains_text($module, 'href="modulo.php?action=new"', 'modulo navega para nova inscricao por link');
-assert_not_contains_text($module, 'id="newRegistrationModal"', 'modulo nao declara modal de nova inscricao');
-assert_not_contains_text($module, 'data-bs-target="#newRegistrationModal"', 'modulo nao abre modal para nova inscricao');
+assert_contains_text($module, 'id="newRegistrationModal"', 'modulo declara modal de consulta antes da nova inscricao');
+assert_contains_text($module, 'data-bs-target="#newRegistrationModal"', 'modulo abre modal de consulta antes da nova inscricao');
 
 foreach ($convertedPages as $page) {
     $path = $root . '/' . $page . '.php';

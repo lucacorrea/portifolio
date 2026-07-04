@@ -181,8 +181,8 @@ function location_label(array $row): string
 }
 
 $action = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action'] : '';
-$isNewRegistrationPage = $action === 'new';
 $prefillCpf = isset($_GET['cpf']) && is_string($_GET['cpf']) ? $_GET['cpf'] : '';
+$isNewRegistrationPage = $action === 'new' && trim($prefillCpf) !== '';
 $items = $registrations->getItems();
 $total = $registrations->getTotal();
 $page = $registrations->getPage();
@@ -381,7 +381,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
                                 <button class="btn btn-light" type="button"<?= $canManageCompetences ? ' data-open-new-competence' : ' disabled title="Sem permissão para gerenciar competências"' ?>><i class="bi bi-calendar-plus"></i><span class="optional">Nova competência</span></button>
                                 <button class="btn btn-light" type="button"<?= ($canManageCompetences && $currentCompetenceId !== null) ? ' data-open-edit-competence' : ' disabled title="Selecione uma competência para editar"' ?>><i class="bi bi-calendar-check"></i><span class="optional">Editar competência</span></button>
                                 <?php if ($canConsultCpf && $canCreate): ?>
-                                    <a class="btn btn-warning" href="modulo.php?action=new"><i class="bi bi-plus-lg"></i>Nova inscrição</a>
+                                    <button class="btn btn-warning" type="button" data-bs-toggle="modal" data-bs-target="#newRegistrationModal"><i class="bi bi-plus-lg"></i>Nova inscrição</button>
                                 <?php else: ?>
                                     <button class="btn btn-warning" type="button" disabled title="Sem permissão para nova inscrição"><i class="bi bi-plus-lg"></i>Nova inscrição</button>
                                 <?php endif; ?>
@@ -401,28 +401,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
                             </div>
                         </section>
                     <?php else: ?>
-                        <section class="registration-page registration-page-grid" data-registration-page aria-labelledby="registrationFormTitle">
-                            <aside class="content-card registration-lookup-card" data-comida-mesa-consulta>
-                                <div class="card-heading">
-                                    <div>
-                                        <div class="card-kicker">Validação inicial</div>
-                                        <h2>Consultar CPF</h2>
-                                        <p>Use a consulta antes de cadastrar para localizar inscrições existentes ou reaproveitar dados já cadastrados.</p>
-                                    </div>
-                                </div>
-                                <form id="cpfLookupForm" method="post" action="api/comida-mesa/consultar-cpf.php">
-                                    <input type="hidden" name="_csrf" value="<?= e($cpfToken) ?>">
-                                    <input type="hidden" name="competencia_id" value="<?= e($currentCompetenceId) ?>">
-                                    <div class="mb-3">
-                                        <label class="form-label required" for="cpfLookupInput">CPF</label>
-                                        <input class="form-control" id="cpfLookupInput" name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" value="<?= e($prefillCpf) ?>" required>
-                                        <div class="invalid-feedback">Informe um CPF com 11 números.</div>
-                                    </div>
-                                    <button class="btn btn-primary w-100" type="submit" data-cpf-submit><i class="bi bi-search"></i>Consultar CPF</button>
-                                    <div id="cpfLookupResult" class="mt-3" aria-live="polite"></div>
-                                </form>
-                            </aside>
-
+                        <section class="registration-page" data-registration-page aria-labelledby="registrationFormTitle">
                             <form class="content-card registration-page-form" id="registrationForm" action="api/comida-mesa/salvar-cadastro.php" method="post" novalidate>
                                 <div class="registration-form-header">
                                     <div>
@@ -580,7 +559,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
 
     <?php if (!$isNewRegistrationPage): ?>
     <?php if ($canConsultCpf && $canCreate): ?>
-        <a class="btn btn-primary floating-action" href="modulo.php?action=new" aria-label="Nova inscrição"><i class="bi bi-plus-lg"></i></a>
+        <button class="btn btn-primary floating-action" type="button" data-bs-toggle="modal" data-bs-target="#newRegistrationModal" aria-label="Nova inscrição"><i class="bi bi-plus-lg"></i></button>
     <?php else: ?>
         <button class="btn btn-primary floating-action" type="button" disabled title="Sem permissão para nova inscrição" aria-label="Nova inscrição"><i class="bi bi-plus-lg"></i></button>
     <?php endif; ?>
@@ -593,6 +572,37 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
     <?php endif; ?>
 
     <?php if (!$isNewRegistrationPage): ?>
+    <div class="modal fade" id="newRegistrationModal" tabindex="-1" aria-labelledby="newRegistrationTitle" aria-hidden="true" data-comida-mesa-consulta>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <div class="eyebrow mb-1"><i class="bi bi-person-plus"></i>Programa prioritário</div>
+                        <h2 class="modal-title fs-5" id="newRegistrationTitle">Consultar CPF para inscrição</h2>
+                    </div>
+                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <form id="cpfLookupForm" method="post" action="api/comida-mesa/consultar-cpf.php">
+                    <div class="modal-body">
+                        <div class="alert-soft success mb-3"><i class="bi bi-info-circle"></i><div>Consulte o CPF antes de iniciar uma nova inscrição.</div></div>
+                        <input type="hidden" name="_csrf" value="<?= e($cpfToken) ?>">
+                        <input type="hidden" name="competencia_id" value="<?= e($currentCompetenceId) ?>">
+                        <div class="mb-3">
+                            <label class="form-label required" for="cpfLookupInput">CPF</label>
+                            <input class="form-control" id="cpfLookupInput" name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" value="<?= e($action === 'new' ? $prefillCpf : '') ?>" required>
+                            <div class="invalid-feedback">Informe um CPF com 11 números.</div>
+                        </div>
+                        <div id="cpfLookupResult" aria-live="polite"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancelar</button>
+                        <button class="btn btn-primary" type="submit" data-cpf-submit><i class="bi bi-search"></i>Consultar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="registrationFormModal" tabindex="-1" aria-labelledby="registrationFormTitle" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form id="registrationForm" action="api/comida-mesa/salvar-cadastro.php" method="post" novalidate>
             <div class="modal-header"><div><div class="eyebrow mb-1"><i class="bi bi-person-vcard"></i>Inscrição</div><h2 class="modal-title fs-5" id="registrationFormTitle">Nova inscrição</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
