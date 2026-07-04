@@ -259,13 +259,30 @@
             const person = anexo.person || {};
             const family = Array.isArray(anexo.familiares) ? anexo.familiares : [];
             const requests = Array.isArray(anexo.solicitacoes) ? anexo.solicitacoes : [];
-            const assignedCount = requests.filter((item) => item.assigned || Number(item.deliveries_count || 0) > 0).length;
+            const helpHistory = Array.isArray(anexo.historico_ajudas) ? anexo.historico_ajudas : [];
+            const receivedHelpCount = Number(anexo.received_help_count ?? helpHistory.length);
+            const receivedHelpLabel = receivedHelpCount > 0 ? `Sim, ${receivedHelpCount} registro${receivedHelpCount === 1 ? "" : "s"}` : "Não";
             const familyHtml = family.map((item) => `
                 <li class="anexo-family-item">
                     <strong class="anexo-family-name">${escapeHTML(valueOrFallback(item.name))}</strong>
                     <span class="anexo-family-meta">${escapeHTML(valueOrFallback(item.relationship))} &middot; ${escapeHTML(formatDate(item.birth_date))} &middot; ${escapeHTML(valueOrFallback(item.schooling))}</span>
                 </li>
             `).join("");
+            const helpHistoryHtml = helpHistory.map((item) => {
+                const deliveredAt = item.delivered_date ? `${formatDate(item.delivered_date)} ${valueOrFallback(item.delivered_time, "")}`.trim() : "Data não informada";
+                return `
+                    <article class="anexo-help-card">
+                        <div class="anexo-request-head">
+                            <div>
+                                <strong>${escapeHTML(valueOrFallback(item.type_name, item.type_id ? `Ajuda #${item.type_id}` : "Tipo não informado"))}</strong>
+                                <span>${escapeHTML(valueOrFallback(item.type_category, "Categoria não informada"))} &middot; ${escapeHTML(deliveredAt)}</span>
+                            </div>
+                            <span class="status-badge status-success">Entregue</span>
+                        </div>
+                        <dl class="anexo-data-list anexo-data-list--compact">${descriptionList([["Quantidade", item.quantity], ["Valor", formatMoney(item.applied_value)], ["Responsável", item.responsible], ["Solicitação", item.request_id ? `#${item.request_id}` : "Sem vínculo"], ["CPF no registro", item.person_cpf], ["Observação", item.observation]])}</dl>
+                    </article>
+                `;
+            }).join("");
             const requestsHtml = requests.map((item) => {
                 const assigned = item.assigned || Number(item.deliveries_count || 0) > 0;
                 const lastDelivery = item.last_delivery_date ? `${formatDate(item.last_delivery_date)} ${valueOrFallback(item.last_delivery_time, "")}`.trim() : "Sem entrega registrada";
@@ -294,7 +311,7 @@
                         </div>
                         <div class="anexo-detail-stats">
                             <div class="anexo-stat-card"><span>Solicitações</span><strong>${requests.length}</strong></div>
-                            <div class="anexo-stat-card"><span>Atribuídas</span><strong>${assignedCount}</strong></div>
+                            <div class="anexo-stat-card"><span>Entregas</span><strong>${receivedHelpCount}</strong></div>
                             <div class="anexo-stat-card"><span>Familiares</span><strong>${family.length}</strong></div>
                         </div>
                     </section>
@@ -318,6 +335,15 @@
                         <section class="anexo-detail-card anexo-detail-card--summary">
                             ${anexoCardHeading("bi-file-text", "Resumo do caso", "Descrição registrada durante o atendimento.")}
                             <div class="anexo-case-summary">${escapeHTML(valueOrFallback(person.summary))}</div>
+                        </section>
+
+                        <section class="anexo-detail-card anexo-detail-card--help-history">
+                            ${anexoCardHeading("bi-bag-check", "Histórico de ajudas recebidas", "Checagem por CPF e ID da pessoa no ANEXO.")}
+                            <div class="anexo-received-summary">
+                                <span class="status-badge status-${receivedHelpCount > 0 ? "success" : "neutral"}">${escapeHTML(receivedHelpCount > 0 ? "Já recebeu ajuda" : "Sem entrega confirmada")}</span>
+                                <strong>${escapeHTML(receivedHelpLabel)}</strong>
+                            </div>
+                            <div class="anexo-help-list">${helpHistoryHtml || '<div class="anexo-empty-state"><i class="bi bi-inbox"></i><span>Nenhuma ajuda entregue localizada para este CPF ou ID.</span></div>'}</div>
                         </section>
 
                         <section class="anexo-detail-card anexo-detail-card--family">
@@ -367,10 +393,11 @@
                 return statePanel("database", "ANEXO consultado", "CPF não localizado na base ANEXO.", "info");
             }
             const person = anexo.person || {};
+            const receivedHelpCount = Number(anexo.received_help_count ?? 0);
             return `
                 ${statePanel("database-check", "Cadastro localizado no ANEXO", "Os dados abaixo são somente leitura e podem preencher a inscrição do Comida na Mesa.", "info")}
                 <div class="anexo-lookup-card">
-                    <dl>${descriptionList([["Nome", person.name], ["Endereço", addressOf(person)]])}</dl>
+                    <dl>${descriptionList([["Nome", person.name], ["Endereço", addressOf(person)], ["Já recebeu ajuda", receivedHelpCount > 0 ? `Sim, ${receivedHelpCount} registro${receivedHelpCount === 1 ? "" : "s"}` : "Não localizado"]])}</dl>
                     <div class="anexo-lookup-actions">
                         <button class="anexo-detail-link" type="button" data-open-anexo-detail>
                             <i class="bi bi-eye" aria-hidden="true"></i>

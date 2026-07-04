@@ -160,6 +160,9 @@
 #anexoDetailModal .anexo-detail-card--summary {
     grid-column: 1 / -1;
 }
+#anexoDetailModal .anexo-detail-card--help-history {
+    grid-column: 1 / -1;
+}
 #anexoDetailModal .anexo-detail-card--family {
     grid-column: span 4;
 }
@@ -238,6 +241,11 @@
     white-space: pre-line;
     overflow-wrap: anywhere;
 }
+#anexoDetailModal .anexo-received-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; color: #243129; }
+#anexoDetailModal .anexo-received-summary strong { font-size: .94rem; line-height: 1.4; }
+#anexoDetailModal .anexo-help-list { display: grid; gap: 12px; }
+#anexoDetailModal .anexo-help-card { min-width: 0; padding: 15px 16px; border: 1px solid #dbe8df; border-radius: 13px; background: #f7fbf8; }
+#anexoDetailModal .anexo-help-card .anexo-request-head { margin-bottom: 12px; }
 #anexoDetailModal .anexo-family-list {
     display: grid;
     gap: 0;
@@ -358,6 +366,7 @@
         grid-column: span 1;
     }
     #anexoDetailModal .anexo-detail-card--summary,
+    #anexoDetailModal .anexo-detail-card--help-history,
     #anexoDetailModal .anexo-detail-card--requests {
         grid-column: 1 / -1;
     }
@@ -403,6 +412,7 @@
     }
     #anexoDetailModal .anexo-detail-card,
     #anexoDetailModal .anexo-detail-card--summary,
+    #anexoDetailModal .anexo-detail-card--help-history,
     #anexoDetailModal .anexo-detail-card--requests {
         grid-column: 1 / -1;
     }

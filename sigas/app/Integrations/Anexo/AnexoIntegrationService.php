@@ -34,6 +34,10 @@ final class AnexoIntegrationService
             }
 
             $id = (int) $solicitante['id'];
+            $historicoAjudas = array_map(
+                [$this, 'deliveryPayload'],
+                $repository->entregasPorPessoa($id, (string) $solicitante['cpf'])
+            );
 
             return [
                 'enabled' => true,
@@ -42,6 +46,10 @@ final class AnexoIntegrationService
                 'person' => $this->personPayload($solicitante),
                 'familiares' => array_map([$this, 'familyMemberPayload'], $repository->familiares($id)),
                 'solicitacoes' => array_map([$this, 'requestPayload'], $repository->solicitacoes($id)),
+                'historico_ajudas' => $historicoAjudas,
+                'received_help' => $historicoAjudas !== [],
+                'received_help_count' => count($historicoAjudas),
+                'last_help' => $historicoAjudas[0] ?? null,
                 'message' => 'CPF localizado no ANEXO.',
             ];
         } catch (Throwable $exception) {
@@ -191,6 +199,30 @@ final class AnexoIntegrationService
             'last_delivery_date' => $row['data_entrega'] === null ? null : (string) $row['data_entrega'],
             'last_delivery_time' => $row['hora_entrega'] === null ? null : (string) $row['hora_entrega'],
             'assigned' => isset($row['entregas_count']) && (int) $row['entregas_count'] > 0,
+        ];
+    }
+
+    /** @param array<string,mixed> $row @return array<string,mixed> */
+    private function deliveryPayload(array $row): array
+    {
+        return [
+            'id' => (int) $row['id'],
+            'type_id' => $row['ajuda_tipo_id'] === null ? null : (int) $row['ajuda_tipo_id'],
+            'type_name' => $row['ajuda_nome'] === null ? null : (string) $row['ajuda_nome'],
+            'type_category' => $row['ajuda_categoria'] === null ? null : (string) $row['ajuda_categoria'],
+            'person_id' => $row['pessoa_id'] === null ? null : (int) $row['pessoa_id'],
+            'person_cpf' => $row['pessoa_cpf'] === null ? null : $this->maskCpf((string) $row['pessoa_cpf']),
+            'family_id' => $row['familia_id'] === null ? null : (int) $row['familia_id'],
+            'delivered_date' => $row['data_entrega'] === null ? null : (string) $row['data_entrega'],
+            'delivered_time' => $row['hora_entrega'] === null ? null : (string) $row['hora_entrega'],
+            'quantity' => $row['quantidade'] === null ? null : (int) $row['quantidade'],
+            'applied_value' => $row['valor_aplicado'] === null ? null : (string) $row['valor_aplicado'],
+            'responsible' => $row['responsavel'] === null ? null : (string) $row['responsavel'],
+            'observation' => $row['observacao'] === null ? null : mb_substr((string) $row['observacao'], 0, 500),
+            'delivered' => strtoupper((string) ($row['entregue'] ?? '')) === 'SIM',
+            'created_at' => $row['created_at'] === null ? null : (string) $row['created_at'],
+            'request_id' => $row['solicitacao_id'] === null ? null : (int) $row['solicitacao_id'],
+            'request_status' => $row['solicitacao_status'] === null ? null : (string) $row['solicitacao_status'],
         ];
     }
 
