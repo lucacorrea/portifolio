@@ -64,6 +64,12 @@ sigas-coari/
 
 `consulta-documento.php` consulta CPFs reais no banco do SIGAS, identifica pessoa, família e inscrição no Comida na Mesa, exibe a competência selecionada e permite registrar, cancelar ou reativar a entrega mensal conforme permissões e regras do backend.
 
+### Leitura local de CPF por OCR
+
+A página `consulta-documento.php` também permite ler automaticamente o CPF impresso em identidade, CIN, RG, CNH ou imagem selecionada pelo operador. O reconhecimento usa Tesseract.js `7.0.0` carregado somente nessa página e executa todo o OCR no navegador.
+
+A fotografia não é enviada ao servidor, não é armazenada e não é adicionada a `FormData`. O texto bruto reconhecido também não é persistido. Somente um CPF matematicamente válido, confirmado automaticamente quando único ou escolhido pelo operador quando houver múltiplos candidatos, preenche o mesmo campo da consulta manual e segue pelo endpoint existente.
+
 ## Integração ANEXO
 
 A integração com o ANEXO usa conexão MySQL somente leitura e configuração externa em:

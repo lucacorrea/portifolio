@@ -59,6 +59,7 @@ if (!$authorization->can($user, 'comida_mesa.consultar_cpf')) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
 </head>
 <body data-page="consulta">
     <main class="container py-5">
@@ -143,28 +144,43 @@ $frontendContext = [
 
                 <div class="scan-notice" role="note">
                     <i class="bi bi-shield-lock"></i>
-                    <div><strong>Consulta oficial por CPF</strong><span>A câmera auxilia apenas na conferência visual. O CPF digitado e validado é a fonte da consulta.</span></div>
+                    <div><strong>Leitura automática e segura</strong><span>Posicione o lado do documento onde aparece o CPF. A imagem será processada somente neste dispositivo e não será enviada nem armazenada.</span></div>
                 </div>
 
                 <section class="scanner-layout" aria-label="Consulta por CPF">
                     <article class="content-card scanner-capture-card">
                         <div class="scanner-card-heading">
-                            <div><div class="card-kicker">Documento</div><h2>Conferência visual</h2><p>Abra a câmera se precisar ampliar o documento durante o atendimento.</p></div>
-                            <span class="scanner-security"><i class="bi bi-lock"></i>Não armazenado</span>
+                            <div><div class="card-kicker">Documento</div><h2>Escanear CPF do documento</h2><p>Fotografe o lado da identidade, CIN, RG ou CNH onde o número do CPF esteja impresso.</p></div>
+                            <span class="scanner-security"><i class="bi bi-cpu"></i>Processamento local</span>
                         </div>
                         <div class="camera-frame" id="cameraFrame">
                             <video id="scannerVideo" playsinline muted hidden aria-label="Visualização da câmera"></video>
                             <img id="scannerPreview" alt="Pré-visualização do documento capturado" hidden>
+                            <span class="ocr-scanning-line" id="ocrScanningLine" hidden></span>
                             <div class="camera-placeholder" id="cameraPlaceholder">
                                 <span><i class="bi bi-camera"></i></span>
-                                <strong>Câmera opcional</strong>
-                                <small>Confira o documento e informe o CPF abaixo para realizar a consulta.</small>
+                                <strong>Posicione todo o documento dentro da moldura, mantenha boa iluminação e evite reflexos.</strong>
+                                <small>Caso o CPF não apareça neste lado do documento, fotografe o verso ou digite o número manualmente.</small>
                             </div>
                             <div class="document-guide" aria-hidden="true"><i class="guide-corner top-left"></i><i class="guide-corner top-right"></i><i class="guide-corner bottom-left"></i><i class="guide-corner bottom-right"></i></div>
                         </div>
+                        <div class="ocr-status" id="ocrStatus" aria-live="polite" hidden>
+                            <div class="ocr-status-heading">
+                                <span data-ocr-title>Preparando leitura</span>
+                                <strong data-ocr-progress>0%</strong>
+                            </div>
+                            <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                                <div class="progress-bar" data-ocr-progress-bar></div>
+                            </div>
+                            <p data-ocr-message></p>
+                        </div>
+                        <div class="ocr-candidate-list" id="ocrCandidates" aria-live="polite" hidden></div>
                         <div class="camera-actions">
                             <button class="btn btn-primary btn-lg" id="openCameraButton" type="button"><i class="bi bi-camera"></i>Abrir câmera</button>
-                            <button class="btn btn-light btn-lg" id="captureDocumentButton" type="button" hidden><i class="bi bi-record-circle"></i>Capturar</button>
+                            <button class="btn btn-primary btn-lg" id="captureDocumentButton" type="button" hidden><i class="bi bi-upc-scan"></i>Ler CPF</button>
+                            <button class="btn btn-light btn-lg" id="retryOcrButton" type="button" hidden><i class="bi bi-arrow-repeat"></i>Fotografar novamente</button>
+                            <button class="btn btn-light btn-lg" id="chooseImageButton" type="button"><i class="bi bi-image"></i>Escolher imagem</button>
+                            <button class="btn btn-outline-danger btn-lg" id="cancelOcrButton" type="button" hidden><i class="bi bi-x-lg"></i>Cancelar leitura</button>
                             <input class="visually-hidden" id="documentImageInput" type="file" accept="image/*" capture="environment" aria-label="Selecionar ou fotografar documento">
                         </div>
                         <form class="manual-cpf-form mt-4" id="manualCpfForm" action="api/comida-mesa/consultar-cpf.php" method="post" novalidate>
@@ -175,6 +191,7 @@ $frontendContext = [
                                 <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i><span>Consultar</span></button>
                             </div>
                             <div class="invalid-feedback" id="manualCpfFeedback">Informe um CPF válido.</div>
+                            <p class="manual-cpf-help">Você também pode digitar o CPF manualmente.</p>
                         </form>
                     </article>
 
@@ -214,6 +231,8 @@ $frontendContext = [
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>window.SIGAS_CONTEXT = <?= json_encode($frontendContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
     <script src="assets/js/app.js"></script>
-    <script src="assets/js/consulta-documento.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js"></script>
+    <script src="assets/js/cpf-ocr.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/cpf-ocr.js')) ?>"></script>
+    <script src="assets/js/consulta-documento.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/consulta-documento.js')) ?>"></script>
 </body>
 </html>

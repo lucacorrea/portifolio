@@ -1,0 +1,220 @@
+.document-scan-page .scanner-layout {
+    align-items: start;
+}
+
+.document-scan-page .scanner-capture-card,
+.document-scan-page .scan-result-column {
+    min-width: 0;
+}
+
+.document-scan-page .camera-frame {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1.586 / 1;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: 18px;
+    background: #111827;
+}
+
+.document-scan-page .camera-frame video,
+.document-scan-page .camera-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #111827;
+}
+
+.document-scan-page .camera-placeholder {
+    max-width: 480px;
+    padding: 1.5rem;
+    text-align: center;
+    color: #e5e7eb;
+}
+
+.document-scan-page .camera-placeholder span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: .75rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .08);
+}
+
+.document-scan-page .camera-placeholder strong,
+.document-scan-page .camera-placeholder small {
+    display: block;
+}
+
+.document-scan-page .camera-placeholder small {
+    margin-top: .4rem;
+    color: #cbd5e1;
+}
+
+.document-scan-page .document-guide {
+    position: absolute;
+    inset: 8%;
+    pointer-events: none;
+}
+
+.document-scan-page .guide-corner {
+    position: absolute;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-color: rgba(255, 255, 255, .9);
+    border-style: solid;
+}
+
+.document-scan-page .guide-corner.top-left {
+    top: 0;
+    left: 0;
+    border-width: 3px 0 0 3px;
+}
+
+.document-scan-page .guide-corner.top-right {
+    top: 0;
+    right: 0;
+    border-width: 3px 3px 0 0;
+}
+
+.document-scan-page .guide-corner.bottom-left {
+    bottom: 0;
+    left: 0;
+    border-width: 0 0 3px 3px;
+}
+
+.document-scan-page .guide-corner.bottom-right {
+    right: 0;
+    bottom: 0;
+    border-width: 0 3px 3px 0;
+}
+
+.document-scan-page .ocr-scanning-line {
+    position: absolute;
+    right: 9%;
+    left: 9%;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+    box-shadow: 0 0 18px rgba(56, 189, 248, .75);
+    animation: sigas-ocr-scan 1.4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.document-scan-page .ocr-status {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid rgba(14, 165, 233, .25);
+    border-radius: 14px;
+    background: #f0f9ff;
+}
+
+.document-scan-page .ocr-status-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .65rem;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.document-scan-page .ocr-status .progress {
+    height: .65rem;
+    background: #dbeafe;
+}
+
+.document-scan-page .ocr-status .progress-bar {
+    width: 0%;
+    background: #0284c7;
+}
+
+.document-scan-page .ocr-status p {
+    margin: .65rem 0 0;
+    color: #475569;
+}
+
+.document-scan-page .ocr-candidate-list {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 14px;
+    background: #fff7ed;
+    color: #7c2d12;
+}
+
+.document-scan-page .ocr-candidate-list h3 {
+    margin: 0 0 .35rem;
+    font-size: 1rem;
+}
+
+.document-scan-page .ocr-candidate-list p {
+    margin: 0 0 .75rem;
+}
+
+.document-scan-page .ocr-candidate-list .ocr-candidate-actions,
+.document-scan-page .camera-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .65rem;
+}
+
+.document-scan-page .ocr-result-success {
+    border-color: rgba(22, 163, 74, .28);
+    background: #f0fdf4;
+}
+
+.document-scan-page .ocr-result-warning {
+    border-color: rgba(234, 88, 12, .28);
+    background: #fff7ed;
+}
+
+.document-scan-page .manual-cpf-help {
+    margin: .5rem 0 0;
+    color: #64748b;
+    font-size: .9rem;
+}
+
+@keyframes sigas-ocr-scan {
+    0% {
+        top: 12%;
+    }
+    50% {
+        top: 88%;
+    }
+    100% {
+        top: 12%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .document-scan-page .ocr-scanning-line {
+        animation: none;
+        top: 50%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .document-scan-page .scanner-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .document-scan-page .camera-actions > .btn,
+    .document-scan-page .ocr-candidate-list .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .document-scan-page .camera-frame {
+        min-height: 230px;
+    }
+
+    .document-scan-page .ocr-status-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .25rem;
+    }
+}
