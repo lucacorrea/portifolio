@@ -28,6 +28,7 @@ $canCreate = $authorization->can('produto.criar');
 $canEdit = $authorization->can('produto.editar');
 $canCost = $authorization->can('produto.visualizar_preco_custo');
 $canSale = $authorization->can('produto.visualizar_preco_venda');
+$canProfit = $canCost && $canSale && $authorization->can('financeiro.visualizar_lucro');
 $recovery = product_consume_form_recovery();
 
 function product_recovery_data(?array $recovery, string $modal): array
@@ -94,6 +95,11 @@ function product_decimal(string $value, int $scale = 3): string
     return number_format((float) $value, $scale, ',', '.');
 }
 
+function product_percent(?string $value): string
+{
+    return $value === null ? 'Não disponível' : number_format((float) $value, 2, ',', '.') . '%';
+}
+
 $createData = product_recovery_data($recovery, 'create');
 $createError = product_recovery_error($recovery, 'create');
 $editData = product_recovery_data($recovery, 'edit');
@@ -156,9 +162,10 @@ metric_grid([
             <table class="os-table products-table">
                 <thead>
                     <tr>
-                        <th>Código</th><th>Produto</th><th>Categoria</th><th>Fabricante</th><th>Unidade</th><th>Estoque</th><th>Estoque mínimo</th><th>Situação</th>
+                        <th>Código</th><th>Produto</th><th>NCM</th><th>Categoria</th><th>Fabricante</th><th>Unidade</th><th>Estoque</th><th>Estoque mínimo</th><th>Situação</th>
                         <?php if ($canCost): ?><th>Preço de custo</th><?php endif; ?>
                         <?php if ($canSale): ?><th>Preço de venda</th><?php endif; ?>
+                        <?php if ($canProfit): ?><th>Lucro unit.</th><th>Margem</th><th>Lucro estoque</th><?php endif; ?>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -168,6 +175,7 @@ metric_grid([
                         <tr>
                             <td><strong><?= h($product->displayCode()) ?></strong></td>
                             <td><?= h($product->name()) ?></td>
+                            <td><?= h($product->ncm() ?? '-') ?></td>
                             <td><?= h($product->category() ?? '-') ?></td>
                             <td><?= h($product->manufacturer() ?? '-') ?></td>
                             <td><?= h($product->unit()) ?></td>
@@ -176,6 +184,7 @@ metric_grid([
                             <td><span class="badge-soft badge-<?= h(product_stock_class($situation)) ?>"><?= h(product_stock_label($situation)) ?></span></td>
                             <?php if ($canCost): ?><td><?= h(money($product->costPrice())) ?></td><?php endif; ?>
                             <?php if ($canSale): ?><td><?= h(money($product->salePrice())) ?></td><?php endif; ?>
+                            <?php if ($canProfit): ?><td><?= h(money($product->unitProfit())) ?></td><td><?= h(product_percent($product->costMarginPercent())) ?></td><td><?= h(money($product->potentialStockProfit())) ?></td><?php endif; ?>
                             <td class="table-actions-cell">
                                 <div class="dropdown table-action-dropdown">
                                     <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do produto <?= h($product->name()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
@@ -188,9 +197,11 @@ metric_grid([
                                             data-product-category="<?= h($product->category() ?? '') ?>"
                                             data-product-manufacturer="<?= h($product->manufacturer() ?? '') ?>"
                                             data-product-unit="<?= h($product->unit()) ?>"
+                                            data-product-ncm="<?= h($product->ncm() ?? '') ?>"
                                             data-product-barcode="<?= h($product->barcode() ?? '') ?>"
                                             <?php if ($canCost): ?>data-product-cost-price="<?= h($product->costPrice()) ?>"<?php endif; ?>
                                             <?php if ($canSale): ?>data-product-sale-price="<?= h($product->salePrice()) ?>"<?php endif; ?>
+                                            <?php if ($canProfit): ?>data-product-unit-profit="<?= h($product->unitProfit()) ?>" data-product-margin="<?= h($product->costMarginPercent() ?? '') ?>" data-product-potential-profit="<?= h($product->potentialStockProfit()) ?>"<?php endif; ?>
                                             data-product-stock="<?= h($product->stock()) ?>"
                                             data-product-minimum-stock="<?= h($product->minimumStock()) ?>"
                                             data-product-location="<?= h($product->location() ?? '') ?>"
@@ -207,6 +218,7 @@ metric_grid([
                                                 data-product-category="<?= h($product->category() ?? '') ?>"
                                                 data-product-manufacturer="<?= h($product->manufacturer() ?? '') ?>"
                                                 data-product-unit="<?= h($product->unit()) ?>"
+                                                data-product-ncm="<?= h($product->ncm() ?? '') ?>"
                                                 data-product-barcode="<?= h($product->barcode() ?? '') ?>"
                                                 <?php if ($canCost): ?>data-product-cost-price="<?= h($product->costPrice()) ?>"<?php endif; ?>
                                                 <?php if ($canSale): ?>data-product-sale-price="<?= h($product->salePrice()) ?>"<?php endif; ?>
@@ -241,15 +253,16 @@ function product_form_fields(array $data, bool $canCost, bool $canSale, string $
             <div class="form-group"><label class="form-label">Fabricante</label><input class="form-control-os" id="<?= h($prefix) ?>-manufacturer" type="text" name="manufacturer" value="<?= h(product_value($data, 'manufacturer')) ?>" maxlength="100"></div>
             <div class="form-group"><label class="form-label">Unidade</label><input class="form-control-os" id="<?= h($prefix) ?>-unit" type="text" name="unit" value="<?= h(product_value($data, 'unit', 'un')) ?>" maxlength="20" required></div>
         </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">NCM</label><input class="form-control-os" id="<?= h($prefix) ?>-ncm" type="text" name="ncm" value="<?= h(product_value($data, 'ncm')) ?>" maxlength="8" inputmode="numeric" pattern="\d{0,8}"></div>
+            <div class="form-group"><label class="form-label">Código de barras</label><input class="form-control-os" id="<?= h($prefix) ?>-barcode" type="text" name="barcode" value="<?= h(product_value($data, 'barcode')) ?>" maxlength="100"></div>
+        </div>
         <div class="form-group"><label class="form-label">Descrição</label><textarea class="form-control-os" id="<?= h($prefix) ?>-description" name="description" rows="3"><?= h(product_value($data, 'description')) ?></textarea></div>
     </section>
     <section class="form-section">
         <h3 class="form-section-title">Estoque e valores</h3>
         <div class="form-row">
-            <div class="form-group"><label class="form-label">Código de barras</label><input class="form-control-os" id="<?= h($prefix) ?>-barcode" type="text" name="barcode" value="<?= h(product_value($data, 'barcode')) ?>" maxlength="100"></div>
             <div class="form-group"><label class="form-label">Localização</label><input class="form-control-os" id="<?= h($prefix) ?>-location" type="text" name="location" value="<?= h(product_value($data, 'location')) ?>" maxlength="100"></div>
-        </div>
-        <div class="form-row">
             <?php if ($canCost): ?><div class="form-group"><label class="form-label">Preço de custo</label><input class="form-control-os" id="<?= h($prefix) ?>-cost-price" type="text" name="cost_price" value="<?= h(product_value($data, 'cost_price', '0,00')) ?>"></div><?php endif; ?>
             <?php if ($canSale): ?><div class="form-group"><label class="form-label">Preço de venda</label><input class="form-control-os" id="<?= h($prefix) ?>-sale-price" type="text" name="sale_price" value="<?= h(product_value($data, 'sale_price', '0,00')) ?>"></div><?php endif; ?>
         </div>
@@ -265,7 +278,7 @@ function product_form_fields(array $data, bool $canCost, bool $canSale, string $
 <div class="modal fade" id="modal-produto" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/produto-salvar.php" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Novo produto</h2><p class="text-muted small mb-0">O código será gerado automaticamente.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><div class="alert alert-danger <?= $createError === null ? 'd-none' : '' ?>" id="create-product-form-error" role="alert"><?= h($createError ?? '') ?></div><?php product_form_fields($createData, $canCost, $canSale, 'create-product'); ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check-lg"></i> Salvar</button></div></form></div></div>
 <?php endif; ?>
 
-<div class="modal fade" id="modal-produto-view" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content visual-modal"><div class="modal-header"><div><h2 class="modal-title fs-5">Dados do produto</h2><p class="text-muted small mb-0" id="view-product-subtitle"></p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><section class="form-section"><h3 class="form-section-title">Identificação</h3><div class="form-row"><div class="form-group"><label class="form-label">Código</label><div class="form-control-os" id="view-product-code"></div></div><div class="form-group"><label class="form-label">Nome</label><div class="form-control-os" id="view-product-name"></div></div></div><div class="form-group"><label class="form-label">Descrição</label><div class="form-control-os" id="view-product-description"></div></div></section><section class="form-section"><h3 class="form-section-title">Dados comerciais</h3><div class="form-row"><div class="form-group"><label class="form-label">Categoria</label><div class="form-control-os" id="view-product-category"></div></div><div class="form-group"><label class="form-label">Fabricante</label><div class="form-control-os" id="view-product-manufacturer"></div></div></div><div class="form-row"><div class="form-group"><label class="form-label">Unidade</label><div class="form-control-os" id="view-product-unit"></div></div><div class="form-group"><label class="form-label">Código de barras</label><div class="form-control-os" id="view-product-barcode"></div></div></div><?php if ($canCost || $canSale): ?><div class="form-row"><?php if ($canCost): ?><div class="form-group"><label class="form-label">Preço de custo</label><div class="form-control-os" id="view-product-cost-price"></div></div><?php endif; ?><?php if ($canSale): ?><div class="form-group"><label class="form-label">Preço de venda</label><div class="form-control-os" id="view-product-sale-price"></div></div><?php endif; ?></div><?php endif; ?><div class="form-row"><div class="form-group"><label class="form-label">Estoque</label><div class="form-control-os" id="view-product-stock"></div></div><div class="form-group"><label class="form-label">Estoque mínimo</label><div class="form-control-os" id="view-product-minimum-stock"></div></div></div><div class="form-row"><div class="form-group"><label class="form-label">Localização</label><div class="form-control-os" id="view-product-location"></div></div><div class="form-group"><label class="form-label">Status</label><div class="form-control-os" id="view-product-status"></div></div></div></section></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Fechar</button></div></div></div></div>
+<div class="modal fade" id="modal-produto-view" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content visual-modal"><div class="modal-header"><div><h2 class="modal-title fs-5">Dados do produto</h2><p class="text-muted small mb-0" id="view-product-subtitle"></p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><section class="form-section"><h3 class="form-section-title">Identificação</h3><div class="form-row"><div class="form-group"><label class="form-label">Código</label><div class="form-control-os" id="view-product-code"></div></div><div class="form-group"><label class="form-label">Nome</label><div class="form-control-os" id="view-product-name"></div></div></div><div class="form-group"><label class="form-label">Descrição</label><div class="form-control-os" id="view-product-description"></div></div></section><section class="form-section"><h3 class="form-section-title">Dados comerciais</h3><div class="form-row"><div class="form-group"><label class="form-label">Categoria</label><div class="form-control-os" id="view-product-category"></div></div><div class="form-group"><label class="form-label">Fabricante</label><div class="form-control-os" id="view-product-manufacturer"></div></div></div><div class="form-row"><div class="form-group"><label class="form-label">Unidade</label><div class="form-control-os" id="view-product-unit"></div></div><div class="form-group"><label class="form-label">NCM</label><div class="form-control-os" id="view-product-ncm"></div></div></div><div class="form-row"><div class="form-group"><label class="form-label">Código de barras</label><div class="form-control-os" id="view-product-barcode"></div></div><div class="form-group"><label class="form-label">Status</label><div class="form-control-os" id="view-product-status"></div></div></div><?php if ($canCost || $canSale): ?><div class="form-row"><?php if ($canCost): ?><div class="form-group"><label class="form-label">Preço de custo</label><div class="form-control-os" id="view-product-cost-price"></div></div><?php endif; ?><?php if ($canSale): ?><div class="form-group"><label class="form-label">Preço de venda</label><div class="form-control-os" id="view-product-sale-price"></div></div><?php endif; ?></div><?php endif; ?><?php if ($canProfit): ?><div class="summary-box compact"><div><span>Lucro unitário</span><strong id="view-product-unit-profit"></strong></div><div><span>Margem sobre custo</span><strong id="view-product-margin"></strong></div><div><span>Lucro potencial do estoque</span><strong id="view-product-potential-profit"></strong></div></div><?php endif; ?><div class="form-row"><div class="form-group"><label class="form-label">Estoque</label><div class="form-control-os" id="view-product-stock"></div></div><div class="form-group"><label class="form-label">Estoque mínimo</label><div class="form-control-os" id="view-product-minimum-stock"></div></div></div><div class="form-row"><div class="form-group"><label class="form-label">Localização</label><div class="form-control-os" id="view-product-location"></div></div></div></section></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Fechar</button></div></div></div></div>
 
 <?php if ($canEdit): ?>
 <div class="modal fade" id="modal-produto-edit" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/produto-salvar.php" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Editar produto</h2><p class="text-muted small mb-0" id="edit-product-subtitle"><?= h(product_value($editData, 'code')) ?></p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><div class="alert alert-danger <?= $editError === null ? 'd-none' : '' ?>" id="edit-product-form-error" role="alert"><?= h($editError ?? '') ?></div><input type="hidden" name="id" id="edit-product-id" value="<?= h(product_value($editData, 'id')) ?>"><section class="form-section"><h3 class="form-section-title">Código</h3><input class="form-control-os" id="edit-product-code" type="text" value="<?= h(product_value($editData, 'code')) ?>" readonly></section><?php product_form_fields($editData, $canCost, $canSale, 'edit-product', true); ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check-lg"></i> Salvar</button></div></form></div></div>
@@ -277,15 +290,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const recoveryModal = <?= json_encode($recovery['modal'] ?? null, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
     const canCost = <?= $canCost ? 'true' : 'false' ?>;
     const canSale = <?= $canSale ? 'true' : 'false' ?>;
+    const canProfit = <?= $canProfit ? 'true' : 'false' ?>;
     function text(id, value) { const element = document.getElementById(id); if (element) { element.textContent = value || '-'; } }
     function val(id, value) { const element = document.getElementById(id); if (element) { element.value = value || ''; } }
     function moneyValue(value) { const number = Number.parseFloat(value || '0'); return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+    function percentValue(value) { const number = Number.parseFloat(value || ''); return Number.isFinite(number) ? number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : 'Não disponível'; }
     function fillProduct(prefix, data) {
-        val(prefix + '-id', data.productId); val(prefix + '-code', data.productCode); val(prefix + '-name', data.productName); val(prefix + '-description', data.productDescription); val(prefix + '-category', data.productCategory); val(prefix + '-manufacturer', data.productManufacturer); val(prefix + '-unit', data.productUnit); val(prefix + '-barcode', data.productBarcode); val(prefix + '-stock', data.productStock); val(prefix + '-minimum-stock', data.productMinimumStock); val(prefix + '-location', data.productLocation); val(prefix + '-status', data.productStatus || 'ativo'); if (canCost) { val(prefix + '-cost-price', data.productCostPrice); } if (canSale) { val(prefix + '-sale-price', data.productSalePrice); }
+        val(prefix + '-id', data.productId); val(prefix + '-code', data.productCode); val(prefix + '-name', data.productName); val(prefix + '-description', data.productDescription); val(prefix + '-category', data.productCategory); val(prefix + '-manufacturer', data.productManufacturer); val(prefix + '-unit', data.productUnit); val(prefix + '-ncm', data.productNcm); val(prefix + '-barcode', data.productBarcode); val(prefix + '-stock', data.productStock); val(prefix + '-minimum-stock', data.productMinimumStock); val(prefix + '-location', data.productLocation); val(prefix + '-status', data.productStatus || 'ativo'); if (canCost) { val(prefix + '-cost-price', data.productCostPrice); } if (canSale) { val(prefix + '-sale-price', data.productSalePrice); }
     }
     document.querySelectorAll('.js-product-view').forEach(function (button) {
         button.addEventListener('click', function () {
-            text('view-product-subtitle', button.dataset.productCode); text('view-product-code', button.dataset.productCode); text('view-product-name', button.dataset.productName); text('view-product-description', button.dataset.productDescription); text('view-product-category', button.dataset.productCategory); text('view-product-manufacturer', button.dataset.productManufacturer); text('view-product-unit', button.dataset.productUnit); text('view-product-barcode', button.dataset.productBarcode); if (canCost) { text('view-product-cost-price', moneyValue(button.dataset.productCostPrice)); } if (canSale) { text('view-product-sale-price', moneyValue(button.dataset.productSalePrice)); } text('view-product-stock', button.dataset.productStock); text('view-product-minimum-stock', button.dataset.productMinimumStock); text('view-product-location', button.dataset.productLocation); text('view-product-status', button.dataset.productStatus === 'ativo' ? 'Ativo' : 'Inativo');
+            text('view-product-subtitle', button.dataset.productCode); text('view-product-code', button.dataset.productCode); text('view-product-name', button.dataset.productName); text('view-product-description', button.dataset.productDescription); text('view-product-category', button.dataset.productCategory); text('view-product-manufacturer', button.dataset.productManufacturer); text('view-product-unit', button.dataset.productUnit); text('view-product-ncm', button.dataset.productNcm); text('view-product-barcode', button.dataset.productBarcode); if (canCost) { text('view-product-cost-price', moneyValue(button.dataset.productCostPrice)); } if (canSale) { text('view-product-sale-price', moneyValue(button.dataset.productSalePrice)); } if (canProfit) { text('view-product-unit-profit', moneyValue(button.dataset.productUnitProfit)); text('view-product-margin', percentValue(button.dataset.productMargin)); text('view-product-potential-profit', moneyValue(button.dataset.productPotentialProfit)); } text('view-product-stock', button.dataset.productStock); text('view-product-minimum-stock', button.dataset.productMinimumStock); text('view-product-location', button.dataset.productLocation); text('view-product-status', button.dataset.productStatus === 'ativo' ? 'Ativo' : 'Inativo');
         });
     });
     document.querySelectorAll('.js-product-edit').forEach(function (button) {

@@ -169,16 +169,30 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
     <?php else: ?>
         <div class="table-panel-wrap">
             <table class="os-table service-orders-table">
-                <thead><tr><th>OS</th><th>Cliente</th><th>Local</th><th>Funcionarios</th><th>Data do servico</th><th>Acoes</th></tr></thead>
+                <thead><tr><th>OS</th><th>Cliente</th><th>Local</th><th>Funcionarios</th><th>Data do servico</th><th>Status</th><th>Acoes</th></tr></thead>
                 <tbody>
                 <?php foreach ($orders as $order): ?>
                     <?php $team = $teamsByOrder[$order->id()] ?? []; ?>
                     <tr>
-                        <td><strong><?= h($order->displayNumber()) ?></strong><br><span class="badge-soft badge-<?= h(os_badge_status($order->status())) ?>"><?= h($order->displayStatus()) ?></span></td>
-                        <td><?= h($order->clientName()) ?><br><small class="text-muted">CLI-<?= h(str_pad((string) $order->clientId(), 6, '0', STR_PAD_LEFT)) ?></small></td>
+                        <td>
+                            <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?>
+                                <button class="table-inline-action js-os-edit" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os"><?= h($order->displayNumber()) ?></button>
+                            <?php else: ?>
+                                <strong><?= h($order->displayNumber()) ?></strong>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?>
+                                <button class="table-inline-action js-os-edit" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os"><?= h($order->clientName()) ?></button>
+                            <?php else: ?>
+                                <?= h($order->clientName()) ?>
+                            <?php endif; ?>
+                            <br><small class="text-muted">CLI-<?= h(str_pad((string) $order->clientId(), 6, '0', STR_PAD_LEFT)) ?></small>
+                        </td>
                         <td><?= h(os_location($order)) ?></td>
                         <td><?= os_team_cell($team) ?></td>
                         <td><?= os_schedule_cell($order) ?></td>
+                        <td><span class="badge-soft badge-<?= h(os_badge_status($order->status())) ?>"><?= h($order->displayStatus()) ?></span></td>
                         <td class="table-actions-cell">
                             <div class="dropdown table-action-dropdown">
                                 <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acoes da OS <?= h($order->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
@@ -230,4 +244,4 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 <div class="modal fade" id="modal-os-cancel" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><form class="modal-content visual-modal" method="post" action="actions/os-cancelar.php"><div class="modal-header"><h2 class="modal-title fs-5">Cancelar servico</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><input type="hidden" name="id" id="os-cancel-id"><div class="form-row"><div class="form-group"><label class="form-label">Destino do orcamento</label><select class="form-control-os" name="opcao" required><option value="definitivo">Cancelar definitivamente</option><option value="liberar_orcamento">Cancelar e liberar o orcamento</option><option value="criar_substituta">Cancelar e criar OS substituta</option></select></div><div class="form-group"><label class="form-label">Motivo</label><input class="form-control-os" name="motivo" required></div></div><div class="form-group"><label class="form-label">Observacao</label><textarea class="form-control-os" name="observacao"></textarea></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Voltar</button><button class="btn-modal-save" type="submit">Confirmar</button></div></form></div></div>
 <div class="modal fade" id="modal-os-status" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/os-status.php"><div class="modal-header"><h2 class="modal-title fs-5" id="os-status-title">Alterar status</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><input type="hidden" name="id" id="os-status-id"><input type="hidden" name="operation" id="os-status-operation"><p id="os-status-message"></p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Confirmar</button></div></form></div></div>
 
-<script type="application/json" id="os-page-data"><?= json_encode(['services' => $serviceOptions, 'products' => $productOptions, 'employees' => $employeeOptions, 'recoveryModal' => $recovery['modal'] ?? ($_GET['modal'] ?? null), 'recoveryData' => $recovery['data'] ?? []], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>
+<script type="application/json" id="os-page-data"><?= json_encode(['services' => $serviceOptions, 'products' => $productOptions, 'employees' => $employeeOptions, 'recoveryModal' => $recovery['modal'] ?? ($_GET['modal'] ?? null), 'recoveryData' => $recovery['data'] ?? [], 'recoveryError' => $recovery['error'] ?? null], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>

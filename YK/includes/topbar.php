@@ -8,8 +8,11 @@ $showPrimaryAction = !isset($primaryActionPermission) || $authorization->can((st
 
 <header class="topbar">
   <div class="topbar-left">
-    <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" data-sidebar-toggle>
+    <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false" data-sidebar-toggle>
       <i class="bi bi-list"></i>
+    </button>
+    <button class="tb-icon-btn desktop-sidebar-btn" type="button" title="Ocultar barra lateral" aria-label="Ocultar barra lateral" aria-expanded="true" data-sidebar-toggle>
+      <i class="bi bi-layout-sidebar-inset"></i>
     </button>
     <div>
       <nav class="breadcrumb-wrap" aria-label="breadcrumb">

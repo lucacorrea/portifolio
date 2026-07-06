@@ -2,18 +2,48 @@ document.addEventListener('DOMContentLoaded', () => {
   const sidebar = document.getElementById('app-sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
   const toggles = document.querySelectorAll('[data-sidebar-toggle]');
+  const sidebarPreferenceKey = 'yk.sidebar.collapsed';
+  const mobileMedia = window.matchMedia('(max-width: 920px)');
+
+  const syncSidebarToggles = () => {
+    const isMobile = mobileMedia.matches;
+    const isExpanded = isMobile
+      ? Boolean(sidebar?.classList.contains('is-open'))
+      : !document.body.classList.contains('sidebar-collapsed');
+
+    toggles.forEach((toggle) => {
+      toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+      if (!toggle.classList.contains('desktop-sidebar-btn')) return;
+      const label = isExpanded ? 'Ocultar barra lateral' : 'Exibir barra lateral';
+      toggle.setAttribute('aria-label', label);
+      toggle.setAttribute('title', label);
+      const icon = toggle.querySelector('i');
+      if (icon) icon.className = isExpanded ? 'bi bi-layout-sidebar-inset' : 'bi bi-layout-sidebar-inset-reverse';
+    });
+  };
+
+  if (!mobileMedia.matches && window.localStorage?.getItem(sidebarPreferenceKey) === '1') {
+    document.body.classList.add('sidebar-collapsed');
+  }
 
   const closeSidebar = () => {
     sidebar?.classList.remove('is-open');
     backdrop?.classList.remove('is-visible');
     document.body.classList.remove('sidebar-open');
+    syncSidebarToggles();
   };
 
   toggles.forEach((toggle) => {
     toggle.addEventListener('click', () => {
-      sidebar?.classList.toggle('is-open');
-      backdrop?.classList.toggle('is-visible');
-      document.body.classList.toggle('sidebar-open');
+      if (mobileMedia.matches) {
+        sidebar?.classList.toggle('is-open');
+        backdrop?.classList.toggle('is-visible');
+        document.body.classList.toggle('sidebar-open');
+      } else {
+        const collapsed = document.body.classList.toggle('sidebar-collapsed');
+        window.localStorage?.setItem(sidebarPreferenceKey, collapsed ? '1' : '0');
+      }
+      syncSidebarToggles();
     });
   });
 
@@ -24,6 +54,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.matchMedia('(max-width: 920px)').matches) closeSidebar();
     });
   });
+
+  mobileMedia.addEventListener?.('change', () => {
+    closeSidebar();
+    if (!mobileMedia.matches && window.localStorage?.getItem(sidebarPreferenceKey) === '1') {
+      document.body.classList.add('sidebar-collapsed');
+    }
+    syncSidebarToggles();
+  });
+  syncSidebarToggles();
 
   document.querySelectorAll('[title]').forEach((el) => {
     new bootstrap.Tooltip(el);

@@ -23,8 +23,11 @@ if ($permission === '') {
 try {
     $budgetId = budget_posted_positive_int('id');
     if ($operation === 'approve') {
-        $application->budgetManagement()->approveBudget($budgetId);
-        $session->flash('success', 'Orçamento aprovado com sucesso.');
+        $order = $application->serviceOrderManagement()->approveBudgetAndCreateOrder($budgetId);
+        $session->flash(
+            'success',
+            'Orçamento aprovado e OS criada automaticamente: ' . $order->displayNumber() . '.'
+        );
     } else {
         $application->budgetManagement()->rejectBudget($budgetId, $_POST['reason'] ?? null);
         $session->flash('success', 'Orçamento recusado com sucesso.');

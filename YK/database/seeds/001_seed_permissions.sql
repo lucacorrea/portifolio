@@ -80,6 +80,12 @@ VALUES
     ('Funcionários', 'funcionario', 'funcionario.visualizar', 'Visualizar funcionários', 'Permite acessar funcionários.', 1010),
     ('Funcionários', 'funcionario', 'funcionario.criar', 'Criar funcionários', 'Permite cadastrar funcionários.', 1020),
     ('Funcionários', 'funcionario', 'funcionario.editar', 'Editar funcionários', 'Permite alterar dados de funcionários.', 1030),
+    ('Funcionários', 'funcionario', 'funcionario.visualizar_salario', 'Visualizar salário', 'Permite visualizar salário de funcionários.', 1040),
+    ('Funcionários', 'funcionario', 'funcionario.editar_salario', 'Editar salário', 'Permite alterar salário de funcionários.', 1050),
+    ('Funcionários', 'funcionario', 'funcionario.visualizar_documentos', 'Visualizar documentos', 'Permite visualizar documentos de funcionários.', 1060),
+    ('Funcionários', 'funcionario', 'funcionario.editar_documentos', 'Editar documentos', 'Permite alterar documentos de funcionários.', 1070),
+    ('Funcionários', 'funcionario', 'funcionario.visualizar_dados_bancarios', 'Visualizar dados bancários', 'Permite visualizar dados bancários de funcionários.', 1080),
+    ('Funcionários', 'funcionario', 'funcionario.editar_dados_bancarios', 'Editar dados bancários', 'Permite alterar dados bancários de funcionários.', 1090),
 
     ('Caixa', 'caixa', 'caixa.visualizar', 'Visualizar caixa', 'Permite acessar o caixa.', 1310),
     ('Caixa', 'caixa', 'caixa.abrir', 'Abrir caixa', 'Permite abrir caixa operacional.', 1320),
@@ -99,6 +105,7 @@ VALUES
     ('Financeiro', 'financeiro', 'financeiro.estornar', 'Estornar financeiro', 'Permite estornar lançamentos financeiros.', 1560),
     ('Financeiro', 'contas_receber', 'contas_receber.visualizar', 'Visualizar contas a receber', 'Permite acessar a carteira de contas a receber.', 1570),
     ('Financeiro', 'contas_receber', 'contas_receber.registrar_pagamento', 'Registrar pagamento de conta', 'Permite registrar pagamentos posteriores de OS.', 1580),
+    ('Financeiro', 'contas_receber', 'contas_receber.baixa_lote', 'Baixa em lote', 'Permite registrar baixa em lote de contas do mesmo cliente.', 1585),
     ('Financeiro', 'contas_receber', 'contas_receber.alterar_vencimento', 'Alterar vencimento de conta', 'Permite alterar vencimentos de contas a receber.', 1590),
     ('Financeiro', 'contas_receber', 'contas_receber.configurar_lembrete', 'Configurar lembrete de conta', 'Permite configurar lembretes de cobrança.', 1600),
     ('Financeiro', 'contas_receber', 'contas_receber.registrar_contato', 'Registrar contato de cobrança', 'Permite registrar contatos com clientes.', 1605),
@@ -115,6 +122,7 @@ VALUES
     ('Fiscal', 'boleto', 'boleto.visualizar', 'Visualizar boletos', 'Permite acessar boletos.', 1680),
     ('Fiscal', 'boleto', 'boleto.gerar', 'Gerar boletos', 'Permite gerar boletos.', 1690),
     ('Fiscal', 'boleto', 'boleto.cancelar', 'Cancelar boletos', 'Permite cancelar boletos.', 1700),
+    ('Fiscal', 'boleto', 'boleto.registrar_pagamento', 'Registrar pagamento de boleto', 'Permite registrar pagamento interno de boleto sem simular retorno bancário.', 1710),
 
     ('Relatórios', 'relatorio', 'relatorio.operacional', 'Visualizar relatório operacional', 'Permite acessar relatórios operacionais.', 1810),
     ('Relatórios', 'relatorio', 'relatorio.financeiro', 'Visualizar relatório financeiro', 'Permite acessar relatórios financeiros.', 1820),

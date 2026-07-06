@@ -24,11 +24,12 @@ final class ProductRepository
         $search = trim((string) ($filters['search'] ?? ''));
 
         if ($search !== '') {
-            $where[] = '(codigo LIKE :search_code OR nome LIKE :search_name OR descricao LIKE :search_description OR fabricante LIKE :search_manufacturer OR codigo_barras LIKE :search_barcode)';
+            $where[] = '(codigo LIKE :search_code OR nome LIKE :search_name OR descricao LIKE :search_description OR fabricante LIKE :search_manufacturer OR ncm LIKE :search_ncm OR codigo_barras LIKE :search_barcode)';
             $params['search_code'] = '%' . $search . '%';
             $params['search_name'] = '%' . $search . '%';
             $params['search_description'] = '%' . $search . '%';
             $params['search_manufacturer'] = '%' . $search . '%';
+            $params['search_ncm'] = '%' . $search . '%';
             $params['search_barcode'] = '%' . $search . '%';
         }
 
@@ -52,7 +53,7 @@ final class ProductRepository
         }
 
         $sql = 'SELECT id, codigo, nome, descricao, categoria, fabricante, unidade,
-                       codigo_barras, preco_custo, preco_venda, estoque, estoque_minimo,
+                       ncm, codigo_barras, preco_custo, preco_venda, estoque, estoque_minimo,
                        localizacao, status, criado_em, atualizado_em
                   FROM produtos';
 
@@ -77,7 +78,7 @@ final class ProductRepository
 
         $statement = $this->connection->prepare(
             'SELECT id, codigo, nome, descricao, categoria, fabricante, unidade,
-                    codigo_barras, preco_custo, preco_venda, estoque, estoque_minimo,
+                    ncm, codigo_barras, preco_custo, preco_venda, estoque, estoque_minimo,
                     localizacao, status, criado_em, atualizado_em
                FROM produtos
               WHERE id = :id
@@ -116,10 +117,10 @@ final class ProductRepository
         try {
             $statement = $this->connection->prepare(
                 'INSERT INTO produtos
-                    (nome, descricao, categoria, fabricante, unidade, codigo_barras,
+                    (nome, descricao, categoria, fabricante, unidade, ncm, codigo_barras,
                      preco_custo, preco_venda, estoque, estoque_minimo, localizacao, status)
                  VALUES
-                    (:name, :description, :category, :manufacturer, :unit, :barcode,
+                    (:name, :description, :category, :manufacturer, :unit, :ncm, :barcode,
                      :cost_price, :sale_price, :stock, :minimum_stock, :location, :status)'
             );
             $this->bindForm($statement, $data);
@@ -162,6 +163,7 @@ final class ProductRepository
                     categoria = :category,
                     fabricante = :manufacturer,
                     unidade = :unit,
+                    ncm = :ncm,
                     codigo_barras = :barcode,
                     preco_custo = :cost_price,
                     preco_venda = :sale_price,
@@ -206,6 +208,7 @@ final class ProductRepository
         $statement->bindValue('category', $data->category());
         $statement->bindValue('manufacturer', $data->manufacturer());
         $statement->bindValue('unit', $data->unit());
+        $statement->bindValue('ncm', $data->ncm());
         $statement->bindValue('barcode', $data->barcode());
         $statement->bindValue('cost_price', $data->costPrice());
         $statement->bindValue('sale_price', $data->salePrice());

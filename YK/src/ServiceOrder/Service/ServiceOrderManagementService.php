@@ -172,6 +172,73 @@ final class ServiceOrderManagementService
         });
     }
 
+    public function approveBudgetAndCreateOrder(int $budgetId): ServiceOrder
+    {
+        if ($this->budgets === null) {
+            throw new InvalidArgumentException('Integração de orçamento indisponível.');
+        }
+
+        return $this->transactional(function () use ($budgetId): ServiceOrder {
+            $budget = $this->budgets->lockById($budgetId);
+            if ($budget === null) {
+                throw new InvalidArgumentException('Orçamento não encontrado.');
+            }
+            if ($budget->status() === 'recusado') {
+                throw new InvalidArgumentException('Orçamento recusado não pode ser aprovado.');
+            }
+            if ($this->orders->hasOperationalOrderForBudget($budgetId)) {
+                throw new InvalidArgumentException('Este orçamento já possui uma OS operacional vinculada.');
+            }
+
+            $budgetItems = $this->budgets->findItems($budgetId);
+            if ($budgetItems === []) {
+                throw new InvalidArgumentException('Não é possível aprovar orçamento sem itens.');
+            }
+
+            if ($budget->status() !== 'aprovado') {
+                $this->budgets->approve($budgetId);
+            }
+
+            $items = [];
+            foreach ($budgetItems as $item) {
+                $items[] = [
+                    'type' => $item->type(),
+                    'origin' => 'orcamento',
+                    'reference_id' => $item->referenceId(),
+                    'budget_item_id' => $item->id(),
+                    'description' => $item->description(),
+                    'unit' => $item->unit(),
+                    'quantity' => $item->quantity(),
+                    'unit_price' => $item->unitPrice(),
+                    'discount' => $item->discount(),
+                ];
+            }
+
+            $data = ServiceOrderFormData::fromArray([
+                'client_id' => $budget->clientId(),
+                'budget_id' => $budget->id(),
+                'status' => 'aguardando_agendamento',
+                'priority' => 'media',
+                'discount' => $budget->discount(),
+                'increase' => $budget->increase(),
+                'notes' => $budget->notes(),
+                'items' => $items,
+            ]);
+
+            $order = $this->orders->create($data, null, null, null, null);
+            $this->connection->prepare(
+                'UPDATE ordens_servico
+                    SET valor_aprovado_orcamento = :approved_value
+                  WHERE id = :order_id'
+            )->execute([
+                'approved_value' => $budget->total(),
+                'order_id' => $order->id(),
+            ]);
+
+            return $this->getOrder($order->id());
+        });
+    }
+
     public function updateOrder(int $id, ServiceOrderFormData $data): void
     {
         $this->transactional(function () use ($id, $data): void {
@@ -206,6 +273,9 @@ final class ServiceOrderManagementService
             $this->validateTeamForScheduledOrder($team);
             $this->validateConflicts($orderId, $team, $schedule);
             $this->orders->updateSchedule($orderId, $schedule->start(), $schedule->end());
+            if (in_array($order->status(), ['rascunho', 'aberta', 'aguardando_agendamento'], true)) {
+                $this->orders->updateStatus($orderId, 'agendada');
+            }
         });
     }
 
@@ -217,6 +287,7 @@ final class ServiceOrderManagementService
             $this->validateConflicts($orderId, $team, $schedule);
             $this->orders->replaceTeam($orderId, $team);
             $this->orders->updateSchedule($orderId, $schedule->start(), $schedule->end());
+            $this->orders->updateStatus($orderId, 'agendada');
         });
     }
 
@@ -268,6 +339,7 @@ final class ServiceOrderManagementService
                         orcamento_liberado = :release_budget
                   WHERE id = :order_id"
             )->execute(['order_id' => $orderId, 'release_budget' => $releaseBudget]);
+            $this->orders->syncOperationalBudgetKey($orderId);
         });
     }
 

@@ -90,12 +90,12 @@ final class AccountsReceivableManagementService
         $totalValue = $this->money($total);
         $receivedValue = $this->money($received);
         $balance = max(0.0, $totalValue - $receivedValue);
-        if ($balance <= 0.0) {
-            return null;
+        if ($receivedValue > $totalValue) {
+            throw new InvalidArgumentException('Valor recebido maior que o total da OS.');
         }
 
-        $status = $receivedValue > 0.0 ? 'parcial' : 'pendente';
-        if ($dueDate !== null && $dueDate !== '' && $dueDate < date('Y-m-d')) {
+        $status = $balance <= 0.0 ? 'paga' : ($receivedValue > 0.0 ? 'parcial' : 'pendente');
+        if ($balance > 0.0 && $dueDate !== null && $dueDate !== '' && $dueDate < date('Y-m-d')) {
             $status = 'vencida';
         }
 
@@ -126,7 +126,15 @@ final class AccountsReceivableManagementService
         ]);
 
         $id = (int) ($this->connection->lastInsertId() ?: $this->findIdByOrder($orderId));
-        $this->event($id, 'criacao', 'Conta a receber gerada pela finalização da OS.', number_format($balance, 2, '.', ''), $userId);
+        $this->event(
+            $id,
+            $status === 'paga' ? 'quitacao' : 'criacao',
+            $status === 'paga'
+                ? 'Conta a receber gerada como paga pela finalização da OS.'
+                : 'Conta a receber gerada pela finalização da OS.',
+            number_format($balance, 2, '.', ''),
+            $userId
+        );
         return $id;
     }
 

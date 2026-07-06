@@ -34,8 +34,17 @@ final class BudgetRepository
     public function lockById(int $id): ?Budget
     {
         $this->assertPositiveId($id);
-        $budgets = $this->selectBudgets(['o.id = :id'], ['id' => $id], 'o.id DESC', true);
-        return $budgets[0] ?? null;
+
+        $statement = $this->connection->prepare(
+            'SELECT id FROM orcamentos WHERE id = :id LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute(['id' => $id]);
+
+        if ($statement->fetch() === false) {
+            return null;
+        }
+
+        return $this->findById($id);
     }
 
     /** @return array<int,array<string,mixed>> */

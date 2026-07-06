@@ -16,6 +16,7 @@ final class Product
         private readonly ?string $category,
         private readonly ?string $manufacturer,
         private readonly string $unit,
+        private readonly ?string $ncm,
         private readonly ?string $barcode,
         private readonly string $costPrice,
         private readonly string $salePrice,
@@ -41,6 +42,7 @@ final class Product
             category: isset($data['categoria']) ? (string) $data['categoria'] : null,
             manufacturer: isset($data['fabricante']) ? (string) $data['fabricante'] : null,
             unit: (string) ($data['unidade'] ?? 'un'),
+            ncm: isset($data['ncm']) ? (string) $data['ncm'] : null,
             barcode: isset($data['codigo_barras']) ? (string) $data['codigo_barras'] : null,
             costPrice: (string) ($data['preco_custo'] ?? '0.00'),
             salePrice: (string) ($data['preco_venda'] ?? '0.00'),
@@ -61,6 +63,7 @@ final class Product
     public function category(): ?string { return $this->category; }
     public function manufacturer(): ?string { return $this->manufacturer; }
     public function unit(): string { return $this->unit; }
+    public function ncm(): ?string { return $this->ncm; }
     public function barcode(): ?string { return $this->barcode; }
     public function costPrice(): string { return $this->costPrice; }
     public function salePrice(): string { return $this->salePrice; }
@@ -85,5 +88,25 @@ final class Product
         }
 
         return 'em_estoque';
+    }
+
+    public function unitProfit(): string
+    {
+        return number_format((float) $this->salePrice - (float) $this->costPrice, 2, '.', '');
+    }
+
+    public function costMarginPercent(): ?string
+    {
+        $cost = (float) $this->costPrice;
+        if ($cost <= 0.0) {
+            return null;
+        }
+
+        return number_format((((float) $this->salePrice - $cost) / $cost) * 100, 2, '.', '');
+    }
+
+    public function potentialStockProfit(): string
+    {
+        return number_format((float) $this->unitProfit() * (float) $this->stock, 2, '.', '');
     }
 }
