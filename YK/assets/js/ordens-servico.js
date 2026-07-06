@@ -306,7 +306,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function setValue(id, value) {
     const el = document.getElementById(id);
-    if (el) el.value = value || '';
+    if (!el) return;
+    const normalized = value || '';
+    if (el.tagName === 'SELECT' && normalized && !Array.from(el.options).some(function (option) { return option.value === String(normalized); })) {
+      el.appendChild(new Option(String(normalized), String(normalized)));
+    }
+    el.value = normalized;
   }
 
   document.querySelectorAll('.js-os-view').forEach(function (button) {
@@ -371,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
       setValue('os-notes', order.notes);
       setValue('os-scheduled-start', toLocalInput(order.scheduled_start));
       setValue('os-scheduled-end', toLocalInput(order.scheduled_end));
-      setValue('os-status', 'aberta');
+      setValue('os-status', order.status || 'aberta');
       data.items.forEach(function (item) { addRow(form, item.type, item); });
       restoreTeamMembers(form, data.team || legacyTeamFromData(order));
       recalc(form);

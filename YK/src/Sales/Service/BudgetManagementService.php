@@ -74,10 +74,7 @@ final class BudgetManagementService
 
     public function approveBudget(int $id): void
     {
-        $budget = $this->getBudget($id);
-        if ($budget->status() === 'recusado') throw new InvalidArgumentException('Orçamento recusado não pode ser aprovado.');
-        if ($this->budgets->findItems($id) === []) throw new InvalidArgumentException('Não é possível aprovar orçamento sem itens.');
-        $this->budgets->approve($id);
+        throw new InvalidArgumentException('Aprovação de orçamento deve usar o fluxo que cria a OS automaticamente.');
     }
 
     public function rejectBudget(int $id, ?string $reason = null): void

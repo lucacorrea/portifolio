@@ -58,6 +58,13 @@ final class BudgetRepository
                JOIN clientes c ON c.id = o.cliente_id
                JOIN orcamento_itens i ON i.orcamento_id = o.id
               WHERE o.status = 'aprovado'
+                AND EXISTS (
+                    SELECT 1
+                      FROM ordens_servico os_liberada
+                     WHERE os_liberada.orcamento_id = o.id
+                       AND os_liberada.status = 'cancelada'
+                       AND os_liberada.orcamento_liberado = 1
+                )
                 AND NOT EXISTS (
                     SELECT 1
                       FROM ordens_servico os

@@ -9,7 +9,8 @@ require __DIR__ . '/os-action-common.php';
 
 os_require_post_request();
 
-$hasTeam = isset($_POST['team_members'])
+$hasTeam = isset($_POST['team_submitted'])
+    || isset($_POST['team_members'])
     || trim((string) ($_POST['funcionario_principal_id'] ?? '')) !== ''
     || trim((string) ($_POST['funcionario_apoio_id'] ?? '')) !== '';
 $hasSchedule = trim((string) ($_POST['agendado_inicio'] ?? '')) !== '' || trim((string) ($_POST['agendado_fim'] ?? '')) !== '';

@@ -82,6 +82,26 @@ final class ServiceOrderRepository
         return $statement->fetch() !== false;
     }
 
+    public function hasOtherOperationalOrderForBudget(int $budgetId, int $ignoreOrderId): bool
+    {
+        $this->assertPositiveId($budgetId);
+        $this->assertPositiveId($ignoreOrderId);
+        $statement = $this->connection->prepare(
+            "SELECT id
+               FROM ordens_servico
+              WHERE orcamento_id = :budget_id
+                AND id <> :ignore_order_id
+                AND (
+                    status <> 'cancelada'
+                    OR (status = 'cancelada' AND orcamento_liberado = 0)
+                )
+              LIMIT 1
+              FOR UPDATE"
+        );
+        $statement->execute(['budget_id' => $budgetId, 'ignore_order_id' => $ignoreOrderId]);
+        return $statement->fetch() !== false;
+    }
+
     public function lockById(int $id): ?ServiceOrder
     {
         $this->assertPositiveId($id);
@@ -415,6 +435,15 @@ final class ServiceOrderRepository
         }
         $statement = $this->connection->prepare('UPDATE ordens_servico SET ' . implode(', ', $sets) . ' WHERE id = :order_id');
         $statement->execute($params);
+        $this->syncOperationalBudgetKey($orderId);
+    }
+
+    public function markBudgetReleased(int $orderId, bool $released): void
+    {
+        $this->assertPositiveId($orderId);
+        $this->connection->prepare(
+            'UPDATE ordens_servico SET orcamento_liberado = :released WHERE id = :order_id'
+        )->execute(['order_id' => $orderId, 'released' => $released ? 1 : 0]);
         $this->syncOperationalBudgetKey($orderId);
     }
 
