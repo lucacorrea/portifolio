@@ -123,6 +123,7 @@ $frontendContext = [
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
 </head>
 <body data-page="consulta">
     <div class="app-shell">
@@ -144,25 +145,28 @@ $frontendContext = [
 
                 <div class="scan-notice" role="note">
                     <i class="bi bi-shield-lock"></i>
-                    <div><strong>Leitura automática e segura</strong><span>Posicione o lado do documento onde aparece o CPF. A imagem será processada somente neste dispositivo e não será enviada nem armazenada.</span></div>
+                    <div><strong>Leitura rápida do CPF</strong><span>Aproxime a câmera da linha onde aparece o CPF. Somente a área destacada será processada neste dispositivo.</span></div>
                 </div>
 
                 <section class="scanner-layout" aria-label="Consulta por CPF">
                     <article class="content-card scanner-capture-card">
                         <div class="scanner-card-heading">
-                            <div><div class="card-kicker">Documento</div><h2>Escanear CPF do documento</h2><p>Fotografe o lado da identidade, CIN, RG ou CNH onde o número do CPF esteja impresso.</p></div>
+                            <div><div class="card-kicker">Documento</div><h2>Aproxime o número do CPF</h2><p>Posicione somente a linha do CPF dentro da faixa destacada. Não é necessário enquadrar toda a identidade.</p></div>
                             <span class="scanner-security"><i class="bi bi-cpu"></i>Processamento local</span>
                         </div>
                         <div class="camera-frame" id="cameraFrame">
                             <video id="scannerVideo" playsinline muted hidden aria-label="Visualização da câmera"></video>
                             <img id="scannerPreview" alt="Pré-visualização do documento capturado" hidden>
-                            <span class="ocr-scanning-line" id="ocrScanningLine" hidden></span>
+                            <div class="cpf-scan-mask" aria-hidden="true"></div>
+                            <div class="cpf-scan-region" id="cpfScanRegion" aria-hidden="true" hidden>
+                                <span class="cpf-scan-label">CPF 000.000.000-00</span>
+                                <span class="cpf-scan-line"></span>
+                            </div>
                             <div class="camera-placeholder" id="cameraPlaceholder">
                                 <span><i class="bi bi-camera"></i></span>
-                                <strong>Posicione todo o documento dentro da moldura, mantenha boa iluminação e evite reflexos.</strong>
-                                <small>Caso o CPF não apareça neste lado do documento, fotografe o verso ou digite o número manualmente.</small>
+                                <strong>Abra a câmera e alinhe os 11 números do CPF dentro da faixa.</strong>
+                                <small>Caso o CPF não apareça neste lado do documento, reposicione ou digite o número manualmente.</small>
                             </div>
-                            <div class="document-guide" aria-hidden="true"><i class="guide-corner top-left"></i><i class="guide-corner top-right"></i><i class="guide-corner bottom-left"></i><i class="guide-corner bottom-right"></i></div>
                         </div>
                         <div class="ocr-status" id="ocrStatus" aria-live="polite" hidden>
                             <div class="ocr-status-heading">
@@ -178,13 +182,19 @@ $frontendContext = [
                         <div class="camera-actions">
                             <button class="btn btn-primary btn-lg" id="openCameraButton" type="button"><i class="bi bi-camera"></i>Abrir câmera</button>
                             <button class="btn btn-primary btn-lg" id="captureDocumentButton" type="button" hidden><i class="bi bi-upc-scan"></i>Ler CPF</button>
-                            <button class="btn btn-light btn-lg" id="retryOcrButton" type="button" hidden><i class="bi bi-arrow-repeat"></i>Fotografar novamente</button>
+                            <button class="btn btn-light btn-lg" id="retryOcrButton" type="button" hidden><i class="bi bi-arrow-repeat"></i>Reposicionar documento</button>
                             <button class="btn btn-light btn-lg" id="chooseImageButton" type="button"><i class="bi bi-image"></i>Escolher imagem</button>
-                            <button class="btn btn-outline-danger btn-lg" id="cancelOcrButton" type="button" hidden><i class="bi bi-x-lg"></i>Cancelar leitura</button>
+                            <button class="btn btn-light btn-lg" id="zoomInButton" type="button" hidden><i class="bi bi-zoom-in"></i>Aumentar zoom</button>
+                            <button class="btn btn-light btn-lg" id="zoomOutButton" type="button" hidden><i class="bi bi-zoom-out"></i>Diminuir zoom</button>
+                            <button class="btn btn-light btn-lg" id="moveImageUpButton" type="button" hidden><i class="bi bi-arrow-up"></i>Mover imagem para cima</button>
+                            <button class="btn btn-light btn-lg" id="moveImageDownButton" type="button" hidden><i class="bi bi-arrow-down"></i>Mover imagem para baixo</button>
+                            <button class="btn btn-outline-primary btn-lg" id="continueOcrButton" type="button" hidden><i class="bi bi-play"></i>Continuar leitura</button>
+                            <button class="btn btn-outline-danger btn-lg" id="cancelOcrButton" type="button" hidden><i class="bi bi-x-lg"></i>Parar leitura</button>
                             <input class="visually-hidden" id="documentImageInput" type="file" accept="image/*" capture="environment" aria-label="Selecionar ou fotografar documento">
                         </div>
                         <form class="manual-cpf-form mt-4" id="manualCpfForm" action="api/comida-mesa/consultar-cpf.php" method="post" novalidate>
                             <input type="hidden" name="_csrf" value="<?= e($frontendContext['csrf']['consultarCpf']) ?>">
+                            <input type="hidden" name="consulta_modo" value="entrega_rapida">
                             <label class="form-label" for="manualCpf">CPF da pessoa</label>
                             <div class="manual-cpf-row">
                                 <div class="input-icon-field"><i class="bi bi-person-vcard"></i><input class="form-control form-control-lg" id="manualCpf" name="cpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="14"></div>

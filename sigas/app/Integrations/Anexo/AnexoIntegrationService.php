@@ -10,14 +10,20 @@ use Throwable;
 
 final class AnexoIntegrationService
 {
-    private ?AnexoRepository $repository = null;
+    private ?object $repository = null;
     private ?string $configurationState = null;
+
+    public function __construct(?object $repository = null, ?string $configurationState = null)
+    {
+        $this->repository = $repository;
+        $this->configurationState = $configurationState;
+    }
 
     /** @return array<string,mixed> */
     public function consultCpf(string $cpf): array
     {
         $repository = $this->repository();
-        if (!$repository instanceof AnexoRepository) {
+        if ($repository === null) {
             return $this->unavailablePayload($this->configurationState ?? 'not_configured');
         }
 
@@ -63,6 +69,43 @@ final class AnexoIntegrationService
     }
 
     /** @return array<string,mixed> */
+    public function consultCpfBasic(string $cpf): array
+    {
+        $repository = $this->repository();
+        if ($repository === null) {
+            return $this->unavailablePayload($this->configurationState ?? 'not_configured');
+        }
+
+        try {
+            $solicitante = $repository->findSolicitanteByCpf($cpf);
+            if ($solicitante === null) {
+                return [
+                    'enabled' => true,
+                    'available' => true,
+                    'found' => false,
+                    'person' => null,
+                    'message' => 'CPF não localizado no ANEXO.',
+                ];
+            }
+
+            return [
+                'enabled' => true,
+                'available' => true,
+                'found' => true,
+                'person' => $this->basicPersonPayload($solicitante),
+                'message' => 'CPF localizado no ANEXO.',
+            ];
+        } catch (Throwable $exception) {
+            Logger::application('ANEXO basic CPF consultation unavailable.', [
+                'type' => $exception::class,
+                'code' => $exception->getCode(),
+            ]);
+
+            return $this->unavailablePayload('unavailable');
+        }
+    }
+
+    /** @return array<string,mixed> */
     public function summary(): array
     {
         $repository = $this->repository();
@@ -82,9 +125,9 @@ final class AnexoIntegrationService
         }
     }
 
-    private function repository(): ?AnexoRepository
+    private function repository(): ?object
     {
-        if ($this->repository instanceof AnexoRepository) {
+        if ($this->repository !== null) {
             return $this->repository;
         }
 
@@ -114,6 +157,18 @@ final class AnexoIntegrationService
 
             return null;
         }
+    }
+
+    /** @param array<string,mixed> $row @return array<string,mixed> */
+    private function basicPersonPayload(array $row): array
+    {
+        return [
+            'id' => (int) $row['id'],
+            'name' => (string) $row['nome'],
+            'cpf_masked' => $this->maskCpf((string) $row['cpf']),
+            'phone' => $row['telefone'] === null ? null : (string) $row['telefone'],
+            'district' => $row['bairro_nome'] === null ? null : (string) $row['bairro_nome'],
+        ];
     }
 
     /** @return array<string,mixed> */

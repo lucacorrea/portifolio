@@ -131,12 +131,33 @@
         return { state: "not_found", candidates: [] };
     };
 
+    const extractCpfFromNumericRegion = (text) => {
+        const normalized = String(text ?? "").replace(/\s+/g, " ").trim();
+        const seen = new Set();
+        const candidates = [];
+        const patterns = [
+            /(^|[^\d])(\d{3}\s*\.\s*\d{3}\s*\.\s*\d{3}\s*-\s*\d{2})(?=$|[^\d])/g,
+            /(^|[^\d])(\d{3}\s+\d{3}\s+\d{3}\s+\d{2})(?=$|[^\d])/g,
+            /(^|[^\d])(\d{11})(?=$|[^\d])/g,
+        ];
+        for (const pattern of patterns) {
+            for (const match of normalized.matchAll(pattern)) {
+                const cpf = onlyDigits(match[2]);
+                if (!isValidCpf(cpf) || seen.has(cpf)) continue;
+                seen.add(cpf);
+                candidates.push({ cpf, formatted: formatCpf(cpf) });
+            }
+        }
+        return candidates;
+    };
+
     return {
         onlyDigits,
         formatCpf,
         isValidCpf,
         normalizeOcrCandidate,
         extractCpfCandidates,
+        extractCpfFromNumericRegion,
         selectCpfResult,
     };
 });

@@ -1,3 +1,10 @@
+.document-scan-page {
+    --cpf-roi-x: 0.06;
+    --cpf-roi-y: 0.39;
+    --cpf-roi-width: 0.88;
+    --cpf-roi-height: 0.22;
+}
+
 .document-scan-page .scanner-layout {
     align-items: start;
 }
@@ -12,23 +19,34 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    aspect-ratio: 1.586 / 1;
+    aspect-ratio: 16 / 9;
     max-width: 100%;
     overflow: hidden;
-    border-radius: 18px;
-    background: #111827;
+    border-radius: 16px;
+    background: #0f172a;
+    touch-action: none;
 }
 
 .document-scan-page .camera-frame video,
 .document-scan-page .camera-frame img {
     width: 100%;
     height: 100%;
+    background: #0f172a;
+}
+
+.document-scan-page .camera-frame video {
+    object-fit: cover;
+}
+
+.document-scan-page .camera-frame img {
     object-fit: contain;
-    background: #111827;
+    transform-origin: center center;
+    will-change: transform;
 }
 
 .document-scan-page .camera-placeholder {
-    max-width: 480px;
+    z-index: 3;
+    max-width: 440px;
     padding: 1.5rem;
     text-align: center;
     color: #e5e7eb;
@@ -55,54 +73,74 @@
     color: #cbd5e1;
 }
 
-.document-scan-page .document-guide {
+.document-scan-page .cpf-scan-mask {
     position: absolute;
-    inset: 8%;
+    inset: 0;
+    z-index: 4;
     pointer-events: none;
+    background:
+        linear-gradient(to bottom, rgba(15, 23, 42, .68) 0 39%, transparent 39% 61%, rgba(15, 23, 42, .68) 61% 100%),
+        linear-gradient(to right, rgba(15, 23, 42, .68) 0 6%, transparent 6% 94%, rgba(15, 23, 42, .68) 94% 100%);
 }
 
-.document-scan-page .guide-corner {
+.document-scan-page .cpf-scan-region {
     position: absolute;
-    width: 2.2rem;
-    height: 2.2rem;
-    border-color: rgba(255, 255, 255, .9);
+    left: 6%;
+    top: 39%;
+    z-index: 5;
+    width: 88%;
+    height: 22%;
+    border: 2px solid rgba(56, 189, 248, .9);
+    border-radius: 12px;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .18), 0 0 24px rgba(56, 189, 248, .25);
+}
+
+.document-scan-page .cpf-scan-region::before,
+.document-scan-page .cpf-scan-region::after {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 22px;
+    border-color: #f8fafc;
     border-style: solid;
+    content: "";
 }
 
-.document-scan-page .guide-corner.top-left {
-    top: 0;
-    left: 0;
-    border-width: 3px 0 0 3px;
+.document-scan-page .cpf-scan-region::before {
+    left: -2px;
+    border-width: 3px 0 3px 3px;
+    border-radius: 12px 0 0 12px;
 }
 
-.document-scan-page .guide-corner.top-right {
-    top: 0;
-    right: 0;
-    border-width: 3px 3px 0 0;
+.document-scan-page .cpf-scan-region::after {
+    right: -2px;
+    border-width: 3px 3px 3px 0;
+    border-radius: 0 12px 12px 0;
 }
 
-.document-scan-page .guide-corner.bottom-left {
-    bottom: 0;
-    left: 0;
-    border-width: 0 0 3px 3px;
-}
-
-.document-scan-page .guide-corner.bottom-right {
-    right: 0;
-    bottom: 0;
-    border-width: 0 3px 3px 0;
-}
-
-.document-scan-page .ocr-scanning-line {
+.document-scan-page .cpf-scan-label {
     position: absolute;
-    right: 9%;
-    left: 9%;
-    height: 3px;
+    top: .35rem;
+    left: .7rem;
+    padding: .2rem .45rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, .74);
+    color: #e0f2fe;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+}
+
+.document-scan-page .cpf-scan-line {
+    position: absolute;
+    right: .7rem;
+    bottom: 50%;
+    left: .7rem;
+    height: 2px;
     border-radius: 999px;
     background: linear-gradient(90deg, transparent, #38bdf8, transparent);
-    box-shadow: 0 0 18px rgba(56, 189, 248, .75);
-    animation: sigas-ocr-scan 1.4s ease-in-out infinite;
-    pointer-events: none;
+    box-shadow: 0 0 14px rgba(56, 189, 248, .75);
 }
 
 .document-scan-page .ocr-status {
@@ -178,22 +216,9 @@
     font-size: .9rem;
 }
 
-@keyframes sigas-ocr-scan {
-    0% {
-        top: 12%;
-    }
-    50% {
-        top: 88%;
-    }
-    100% {
-        top: 12%;
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
-    .document-scan-page .ocr-scanning-line {
-        animation: none;
-        top: 50%;
+    .document-scan-page .cpf-scan-line {
+        box-shadow: none;
     }
 }
 
@@ -209,7 +234,7 @@
     }
 
     .document-scan-page .camera-frame {
-        min-height: 230px;
+        min-height: 220px;
     }
 
     .document-scan-page .ocr-status-heading {

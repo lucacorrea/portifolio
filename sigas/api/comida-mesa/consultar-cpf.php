@@ -69,6 +69,7 @@ try {
     }
 
     $cpf = isset($_POST['cpf']) && is_string($_POST['cpf']) ? Validator::onlyDigits($_POST['cpf']) : '';
+    $consultaModo = isset($_POST['consulta_modo']) && is_string($_POST['consulta_modo']) ? $_POST['consulta_modo'] : 'completa';
     $competenceId = isset($_POST['competencia_id']) && is_string($_POST['competencia_id']) && preg_match('/^\d+$/', $_POST['competencia_id']) === 1
         ? (int) $_POST['competencia_id']
         : null;
@@ -81,9 +82,18 @@ try {
         respond_json(422, ['ok' => false, 'error' => 'CPF inválido.']);
     }
 
+    if (!in_array($consultaModo, ['completa', 'entrega_rapida'], true)) {
+        respond_json(422, ['ok' => false, 'error' => 'Modo de consulta inválido.']);
+    }
+
     $service = new ComidaMesaService(new ComidaMesaRepository($pdo));
     $payload = $service->consultCpf($cpf, $competenceId);
-    $payload['anexo'] = (new AnexoIntegrationService())->consultCpf($cpf);
+    $anexo = new AnexoIntegrationService();
+    if ($consultaModo === 'completa') {
+        $payload['anexo'] = $anexo->consultCpf($cpf);
+    } elseif (($payload['state'] ?? '') !== 'inscrito') {
+        $payload['anexo'] = $anexo->consultCpfBasic($cpf);
+    }
 
     respond_json(200, $payload);
 } catch (Throwable $exception) {

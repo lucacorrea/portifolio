@@ -68,7 +68,9 @@ sigas-coari/
 
 A página `consulta-documento.php` também permite ler automaticamente o CPF impresso em identidade, CIN, RG, CNH ou imagem selecionada pelo operador. O reconhecimento usa Tesseract.js `7.0.0` carregado somente nessa página e executa todo o OCR no navegador.
 
-A fotografia não é enviada ao servidor, não é armazenada e não é adicionada a `FormData`. O texto bruto reconhecido também não é persistido. Somente um CPF matematicamente válido, confirmado automaticamente quando único ou escolhido pelo operador quando houver múltiplos candidatos, preenche o mesmo campo da consulta manual e segue pelo endpoint existente.
+O scanner rápido processa apenas uma faixa horizontal centralizada onde o operador posiciona a linha do CPF, sem analisar a identidade inteira. A câmera faz tentativas contínuas sobre essa região e consulta automaticamente o SIGAS quando encontra um CPF matematicamente válido.
+
+A fotografia não é enviada ao servidor, não é armazenada e não é adicionada a `FormData`. O texto bruto reconhecido também não é persistido. Somente um CPF matematicamente válido preenche o mesmo campo da consulta manual e segue pelo endpoint existente em modo `entrega_rapida`, que evita carregar relações completas do ANEXO quando a pessoa já está inscrita no SIGAS.
 
 ## Integração ANEXO
 
