@@ -238,10 +238,10 @@
                             { label: "Comunidade", value: data.comunidade, span: 3 },
                             { label: "Referência", value: data.ponto_referencia, span: 6 }
                         ], "beneficiary-detail-section--full")}
-                        ${detailListSection("IV. Integrantes", `<ul class="beneficiary-detail-list-cards">${members || '<li class="list-group-item">Sem integrantes vinculados.</li>'}</ul>`, "beneficiary-detail-section--four")}
-                        ${detailListSection("V. Histórico de entregas", `<div class="beneficiary-detail-table-card table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Parentesco</th><th>Operador</th><th>Cancelador</th><th>Cancelamento</th><th>Motivo</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="10">Sem entregas registradas.</td></tr>'}</tbody></table></div>`, "beneficiary-detail-section--eight")}
-                        ${detailListSection("VI. Documentos", `<ul class="beneficiary-detail-list-cards">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul>`, "beneficiary-detail-section--half")}
-                        ${detailListSection("VII. Histórico da inscrição", `<ul class="beneficiary-detail-list-cards">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul>`, "beneficiary-detail-section--half")}
+                        ${detailListSection("IV. Integrantes", `<ul class="beneficiary-detail-list-cards">${members || '<li class="list-group-item">Sem integrantes vinculados.</li>'}</ul>`, "beneficiary-detail-section--full")}
+                        ${detailListSection("V. Histórico de entregas", `<div class="beneficiary-detail-table-card table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Parentesco</th><th>Operador</th><th>Cancelador</th><th>Cancelamento</th><th>Motivo</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="10">Sem entregas registradas.</td></tr>'}</tbody></table></div>`, "beneficiary-detail-section--full")}
+                        ${detailListSection("VI. Documentos", `<ul class="beneficiary-detail-list-cards">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul>`, "beneficiary-detail-section--full")}
+                        ${detailListSection("VII. Histórico da inscrição", `<ul class="beneficiary-detail-list-cards">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul>`, "beneficiary-detail-section--full")}
                     </div>
                 </div>
             `;
@@ -390,8 +390,8 @@
                         ${detailDataSection("IV. Resumo do caso", [
                             { label: "Resumo", value: person.summary, span: 12 }
                         ], "beneficiary-detail-section--full")}
-                        ${detailListSection("V. Histórico de ajudas recebidas", `<div class="beneficiary-detail-list-cards">${helpHistoryHtml || '<div class="list-group-item">Nenhuma ajuda entregue localizada para este CPF ou ID.</div>'}</div>`, "beneficiary-detail-section--eight")}
-                        ${detailListSection("VI. Familiares", `<ul class="beneficiary-detail-list-cards">${familyHtml || '<li class="list-group-item">Sem familiares cadastrados.</li>'}</ul>`, "beneficiary-detail-section--four")}
+                        ${detailListSection("V. Histórico de ajudas recebidas", `<div class="beneficiary-detail-list-cards">${helpHistoryHtml || '<div class="list-group-item">Nenhuma ajuda entregue localizada para este CPF ou ID.</div>'}</div>`, "beneficiary-detail-section--full")}
+                        ${detailListSection("VI. Familiares", `<ul class="beneficiary-detail-list-cards">${familyHtml || '<li class="list-group-item">Sem familiares cadastrados.</li>'}</ul>`, "beneficiary-detail-section--full")}
                         ${detailListSection("VII. Solicitações", `<div class="beneficiary-detail-list-cards">${requestsHtml || '<div class="list-group-item">Sem solicitações registradas.</div>'}</div>`, "beneficiary-detail-section--full")}
                     </div>
                 </div>

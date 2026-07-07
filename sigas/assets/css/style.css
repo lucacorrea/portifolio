@@ -814,9 +814,6 @@ button, a, input, select, textarea { outline: none; }
 .beneficiary-detail-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .beneficiary-detail-section { grid-column: 1 / -1; min-width: 0; }
 .beneficiary-detail-section--full { grid-column: 1 / -1; }
-.beneficiary-detail-section--four { grid-column: span 4; }
-.beneficiary-detail-section--eight { grid-column: span 8; }
-.beneficiary-detail-section--half { grid-column: span 6; }
 .beneficiary-detail-section-title { margin: 0 0 10px; color: #243b73; font-size: 1rem; font-weight: 780; line-height: 1.25; letter-spacing: 0; }
 .beneficiary-detail-fields { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px 14px; margin: 0; }
 .beneficiary-detail-field { grid-column: span 3; min-width: 0; min-height: 80px; padding: 14px 15px; border: 1px solid #e5e9ee; border-radius: 10px; background: #fff; }
@@ -840,9 +837,6 @@ button, a, input, select, textarea { outline: none; }
     .scanner-layout { grid-template-columns: 1fr; }
     .scan-result-column { grid-template-columns: minmax(0,1fr) minmax(300px,.72fr); align-items: start; }
     .scan-result-card { grid-column: 1 / -1; }
-    .beneficiary-detail-section--four,
-    .beneficiary-detail-section--eight,
-    .beneficiary-detail-section--half { grid-column: 1 / -1; }
     .beneficiary-detail-field--span-2,
     .beneficiary-detail-field--span-3 { grid-column: span 4; }
 }
@@ -859,10 +853,7 @@ button, a, input, select, textarea { outline: none; }
     .scan-result-column { grid-template-columns: 1fr; gap: 12px; }
     .scan-result-card { grid-column: auto; }
     .beneficiary-detail-grid { grid-template-columns: 1fr; }
-    .beneficiary-detail-section,
-    .beneficiary-detail-section--four,
-    .beneficiary-detail-section--eight,
-    .beneficiary-detail-section--half { grid-column: auto; }
+    .beneficiary-detail-section { grid-column: auto; }
     .beneficiary-detail-fields { grid-template-columns: 1fr; }
     .beneficiary-detail-field,
     .beneficiary-detail-field--span-2,
