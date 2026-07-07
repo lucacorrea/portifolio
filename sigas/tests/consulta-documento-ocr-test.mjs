@@ -8,6 +8,7 @@ const ocr = require("../assets/js/cpf-ocr.js");
 const root = resolve(import.meta.dirname, "..");
 const php = readFileSync(resolve(root, "consulta-documento.php"), "utf8");
 const consultaJs = readFileSync(resolve(root, "assets/js/consulta-documento.js"), "utf8");
+const resultModalCss = readFileSync(resolve(root, "assets/css/consulta-result-modal.css"), "utf8");
 const api = readFileSync(resolve(root, "api/comida-mesa/consultar-cpf.php"), "utf8");
 const anexoService = readFileSync(resolve(root, "app/Integrations/Anexo/AnexoIntegrationService.php"), "utf8");
 
@@ -45,6 +46,12 @@ assert.match(php, /id="cpfScanRegion"/);
 assert.match(php, /class="cpf-scan-mask"/);
 assert.match(php, /name="consulta_modo"\s+value="entrega_rapida"/);
 assert.ok(php.indexOf("assets/css/style.css") < php.indexOf("assets/css/consulta-documento-ocr.css"));
+assert.match(php, /id="consultaResultModal"/);
+assert.match(php, /data-consulta-result-modal-body/);
+assert.match(php, /data-consulta-result-modal-footer/);
+assert.match(php, /assets\/css\/consulta-result-modal\.css\?v=/);
+assert.match(php, /filemtime\(__DIR__\s*\.\s*'\/assets\/css\/consulta-result-modal\.css'\)/);
+assert.ok(php.indexOf("assets/css/consulta-documento-ocr.css") < php.indexOf("assets/css/consulta-result-modal.css"));
 assert.ok(php.indexOf("tesseract.js@7.0.0") < php.indexOf("assets/js/cpf-ocr.js"));
 assert.ok(php.indexOf("assets/js/cpf-ocr.js") < php.indexOf("assets/js/consulta-documento.js"));
 
@@ -69,6 +76,21 @@ assert.match(consultaJs, /const releaseLocalMedia = \(\) => \{ resetInterface\(\
 assert.doesNotMatch(consultaJs, /localStorage|sessionStorage|indexedDB|IndexedDB|console\.log/);
 assert.doesNotMatch(consultaJs, /data-ocr-cpf/i);
 assert.doesNotMatch(consultaJs, /data-[a-z0-9-]*cpf[a-z0-9-]*=/i);
+assert.match(consultaJs, /const renderRegisteredCompact =/);
+assert.match(consultaJs, /const renderRegisteredModal =/);
+assert.match(consultaJs, /const openRegisteredModal =/);
+assert.match(consultaJs, /modal\("#consultaResultModal"\)\.show\(\)/);
+assert.match(consultaJs, /data-open-consulta-result/);
+assert.match(consultaJs, /const switchModal =/);
+assert.match(consultaJs, /consulta-beneficiary-meta[\s\S]*Família/);
+assert.match(consultaJs, /operationalCard\(field\.icon,\s*field\.label,\s*field\.value/);
+assert.match(consultaJs, /label:\s*"Situação"[\s\S]*label:\s*"Prioridade"[\s\S]*label:\s*"Polo"[\s\S]*label:\s*"Competência"[\s\S]*label:\s*"Entrega"/);
+assert.doesNotMatch(consultaJs, /<div class="verification-grid"><div><span>Família<\/span><strong>[\s\S]*<span>Situação<\/span>[\s\S]*<span>Prioridade<\/span>[\s\S]*<span>Polo<\/span>[\s\S]*<span>Competência<\/span>[\s\S]*<span>Entrega<\/span>/);
+assert.match(consultaJs, /CPF \$\{escapeHTML\(viewModel\.cpf\)\}/);
+assert.match(consultaJs, /escapeHTML\(viewModel\.name\)/);
+assert.match(consultaJs, /escapeHTML\(viewModel\.familyCode\)/);
+assert.match(consultaJs, /escapeHTML\(viewModel\.status\.text\)/);
+assert.match(consultaJs, /escapeHTML\(value\)/);
 assert.match(consultaJs, /ocrCandidateStore/);
 assert.match(consultaJs, /data-ocr-index/);
 assert.doesNotMatch(consultaJs, /fetch\([^)]*(Blob|blob|image|preview|canvas)/s);
@@ -82,5 +104,10 @@ assert.match(api, /consultCpfBasic\(\$cpf\)/);
 const basicBlock = anexoService.match(/public function consultCpfBasic[\s\S]*?public function summary/)?.[0] || "";
 assert.match(basicBlock, /findSolicitanteByCpf/);
 assert.doesNotMatch(basicBlock, /familiares\(|solicitacoes\(|entregasPorPessoa\(/);
+
+assert.match(resultModalCss, /#consultaResultModal \.consulta-result-dialog/);
+assert.match(resultModalCss, /width:\s*min\(960px,\s*calc\(100vw - 40px\)\)/);
+assert.match(resultModalCss, /\.document-scan-page \.consulta-compact-result/);
+assert.doesNotMatch(resultModalCss, /^\.modal\b|^\.modal-content\b|^\.modal-body\b|^\.btn\b|^\.card\b|^\.status-badge\b/m);
 
 console.log("consulta-documento OCR tests passed");

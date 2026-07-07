@@ -13,6 +13,7 @@
     const ids = ["#consultaResult", "#manualCpfForm", "#manualCpf", "#scannerVideo", "#scannerPreview", "#cameraPlaceholder", "#openCameraButton", "#captureDocumentButton", "#chooseImageButton", "#retryOcrButton", "#cancelOcrButton", "#documentImageInput", "#ocrStatus", "#ocrCandidates", "#cpfScanRegion", "[data-ocr-progress-bar]", "[data-ocr-progress]", "[data-ocr-title]", "[data-ocr-message]", "#continueOcrButton", "#zoomInButton", "#zoomOutButton", "#moveImageUpButton", "#moveImageDownButton"];
     const [result, form, cpfInput, video, preview, placeholder, openCamera, capture, chooseImage, retry, cancelOcr, fileInput, ocrStatus, ocrCandidates, scanRegion, progressBar, progressText, progressTitle, progressMessage, continueOcr, zoomIn, zoomOut, moveImageUp, moveImageDown] = ids.map((id) => qs(id));
     let currentCpf = "", currentData = null, controller = null, stream = null, objectUrl = "", selectedFile = null, ocrCandidateStore = [];
+    let consultRunId = 0, lastResultModalRegistrationId = null;
     let ocrState = "idle", ocrRunId = 0, ocrWorker = null, ocrWorkerPromise = null, workerReady = false, lastConsultedCpf = "";
     let liveScanRunning = false, liveScanBusy = false, liveScanAttempt = 0, lastScanFinishedAt = 0, lowConfidenceCpf = "", lowConfidenceHits = 0, scanTimer = 0;
     let cameraZoomTrack = null, cameraZoom = null, imageZoom = 1, imageOffsetY = 0, dragStartY = null, dragStartOffset = 0;
@@ -30,8 +31,10 @@
     };
     const panel = (icon, title, text, tone = "info") => `<div class="alert-soft ${tone}"><i class="bi bi-${icon}"></i><div><strong>${escapeHTML(title)}</strong><br><span>${escapeHTML(text)}</span></div></div>`;
     const button = (attrs, icon, text, cls = "btn btn-primary") => `<button class="${cls}" type="button" ${attrs}><i class="bi bi-${icon}"></i>${escapeHTML(text)}</button>`;
-    const setLoading = () => { result.hidden = false; result.innerHTML = `<div class="state-panel show"><i class="bi bi-hourglass-split"></i><h2>Consultando</h2><p>Buscando CPF no SIGAS.</p></div>`; };
+    const resetResultCardClass = () => { result.className = "content-card scan-result-empty"; };
+    const setLoading = () => { result.hidden = false; resetResultCardClass(); result.innerHTML = `<div class="state-panel show"><i class="bi bi-hourglass-split"></i><h2>Consultando</h2><p>Buscando CPF no SIGAS.</p></div>`; };
     const renderNotFound = (data) => {
+        resetResultCardClass();
         const action = permissions.create ? `<a class="btn btn-primary" href="modulo.php?action=new&cpf=${encodeURIComponent(currentCpf)}"><i class="bi bi-plus-lg"></i>Iniciar cadastro no Comida na Mesa</a>` : "";
         if (data?.anexo?.found) {
             result.innerHTML = `${panel("person-check", "Pessoa localizada no ANEXO, mas ainda não inscrita no Comida na Mesa.", data.anexo.person?.name || "CPF localizado no ANEXO.", "info")}<div class="result-actions mt-3">${action}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
@@ -40,19 +43,102 @@
         result.innerHTML = `${panel("search", "Pessoa não localizada no SIGAS", "Nenhuma pessoa foi encontrada para o CPF informado.", "warning")}<div class="result-actions mt-3">${action}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
     };
     const renderPersonWithoutRegistration = (data) => {
+        resetResultCardClass();
         const action = permissions.create ? `<a class="btn btn-primary" href="modulo.php?action=new&cpf=${encodeURIComponent(currentCpf)}"><i class="bi bi-plus-lg"></i>Criar inscrição</a>` : "";
         result.innerHTML = `<div class="result-status-header"><span class="result-avatar">${escapeHTML((data.person?.name || "P").slice(0, 2).toUpperCase())}</span><div><span class="result-overline">Pessoa localizada sem inscrição</span><h2>${escapeHTML(data.person?.name)}</h2><p>CPF: ${escapeHTML(fullCpf(data.person || data))}</p></div><span class="status-badge status-warning"><i class="bi bi-hourglass"></i>Sem inscrição</span></div><div class="verification-grid"><div><span>Vínculo familiar</span><strong>${escapeHTML(data.person?.vinculo_familiar || "sem_familia")}</strong></div><div><span>Família</span><strong>${escapeHTML(data.family?.code || "Sem família")}</strong></div></div><div class="result-actions">${action}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
     };
-    const renderRegistered = (data) => {
+    const initials = (name) => {
+        const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+        return (parts.length ? parts.slice(0, 2).map((part) => part[0]).join("") : "P").toUpperCase();
+    };
+    const statusMeta = (data) => {
+        if (!data.competence) return { className: "status-neutral", icon: "calendar-x", text: "Sem competência" };
+        const status = String(data.delivery?.status || data.delivery?.status_label || "").toLowerCase();
+        if (status.includes("receb")) return { className: "status-success", icon: "check-circle", text: "Recebida" };
+        if (status.includes("cancel")) return { className: "status-warning", icon: "arrow-counterclockwise", text: "Entrega cancelada" };
+        if (status.includes("bloque")) return { className: "status-danger", icon: "lock", text: "Bloqueada" };
+        if (status.includes("aguard")) return { className: "status-info", icon: "clock", text: "Aguardando retirada" };
+        return { className: "status-info", icon: "clock", text: data.delivery?.status_label || "Aguardando retirada" };
+    };
+    const ruleTone = (viewModel) => {
+        if (viewModel.canDelivery) return "success";
+        const reason = String(viewModel.eligibility.reason || "").toLowerCase();
+        if (reason.includes("bloque") || reason.includes("suspens") || reason.includes("não apt") || reason.includes("nao apt")) return "danger";
+        if (reason) return "warning";
+        return "info";
+    };
+    const registeredViewModel = (data, runId) => {
         const eligibility = data.eligibility || {};
         const canDelivery = permissions.deliver && eligibility.allowed && ["register", "reactivate"].includes(eligibility.action);
         const canCancel = permissions.cancelDelivery && eligibility.action === "cancel";
-        const deliveryText = data.delivery?.status_label || "Não informado";
-        const deliveryMeta = data.delivery?.delivered_at ? `${data.delivery.delivered_at}${data.delivery.receiver_name ? " · " + data.delivery.receiver_name : ""}` : (data.delivery?.cancellation_reason || eligibility.reason || "");
-        result.innerHTML = `<div class="result-status-header"><span class="result-avatar">${escapeHTML((data.person?.name || "P").slice(0, 2).toUpperCase())}</span><div><span class="result-overline">Pessoa inscrita</span><h2>${escapeHTML(data.person?.name)}</h2><p>CPF: ${escapeHTML(fullCpf(data.person || data))}</p></div><span class="status-badge ${data.delivery?.status === "recebida" ? "status-success" : "status-info"}"><i class="bi bi-basket2"></i>${escapeHTML(deliveryText)}</span></div><div class="verification-grid"><div><span>Família</span><strong>${escapeHTML(data.registration?.family_code || data.family?.code)}</strong></div><div><span>Situação</span><strong>${escapeHTML(data.registration?.status_label)}</strong></div><div><span>Prioridade</span><strong>${escapeHTML(data.registration?.priority)}</strong></div><div><span>Polo</span><strong>${escapeHTML(data.registration?.pole || "Sem polo")}</strong></div><div><span>Competência</span><strong>${escapeHTML(data.competence?.label || "Sem competência")}</strong></div><div><span>Entrega</span><strong>${escapeHTML(deliveryMeta || deliveryText)}</strong></div></div>${eligibility.reason ? panel("info-circle", "Regra operacional", eligibility.reason, "info") : ""}<div class="result-actions">${button(`data-open-detail data-registration-id="${escapeHTML(data.registration?.id)}"`, "eye", "Visualizar detalhes", "btn btn-light")}${permissions.edit ? `<a class="btn btn-light" href="modulo.php?action=edit&id=${encodeURIComponent(data.registration?.id)}"><i class="bi bi-pencil"></i>Editar</a>` : ""}${canDelivery ? button("data-open-delivery", "basket2", eligibility.action === "reactivate" ? "Reativar entrega" : "Registrar entrega") : ""}${canCancel ? button("data-open-cancel", "x-circle", "Cancelar entrega", "btn btn-danger") : ""}${!data.competence && permissions.manageCompetences ? '<a class="btn btn-light" href="modulo.php?action=competence"><i class="bi bi-calendar-plus"></i>Gerenciar competência</a>' : ""}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
+        const status = statusMeta(data);
+        return {
+            data,
+            runId,
+            registrationId: data.registration?.id || "",
+            name: data.person?.name || "Pessoa inscrita",
+            cpf: fullCpf(data.person || data),
+            familyCode: data.registration?.family_code || data.family?.code || "Sem família",
+            status,
+            eligibility,
+            canDelivery,
+            canCancel,
+            primaryText: eligibility.action === "reactivate" ? "Reativar entrega" : "Registrar entrega",
+            fields: [
+                { icon: "check-circle", label: "Situação", value: data.registration?.status_label || "Não informado", span: 2 },
+                { icon: "exclamation-diamond", label: "Prioridade", value: data.registration?.priority || "Não informado", span: 2 },
+                { icon: "geo-alt", label: "Polo", value: data.registration?.pole || "Sem polo", span: 2 },
+                { icon: "calendar3", label: "Competência", value: data.competence?.label || "Sem competência", span: 3 },
+                { icon: "basket2", label: "Entrega", value: data.delivery?.status_label || status.text || "Não informado", span: 3 },
+            ],
+        };
     };
-    const renderData = (data) => { currentData = data; if (data.state === "nao_localizado") renderNotFound(data); else if (data.state === "pessoa_sem_inscricao") renderPersonWithoutRegistration(data); else renderRegistered(data); };
+    const operationalCard = (icon, label, value, modifier = "") => `<div class="consulta-operational-card ${modifier}"><span class="consulta-operational-icon"><i class="bi bi-${icon}"></i></span><div><span class="consulta-operational-label">${escapeHTML(label)}</span><strong class="consulta-operational-value">${escapeHTML(value)}</strong></div></div>`;
+    const renderRegisteredCompact = (viewModel) => {
+        result.hidden = false;
+        result.className = "content-card consulta-compact-result";
+        result.innerHTML = `<div class="consulta-compact-head"><span class="consulta-compact-avatar">${escapeHTML(initials(viewModel.name))}</span><div><span>Pessoa inscrita</span><strong>${escapeHTML(viewModel.name)}</strong><small>CPF ${escapeHTML(viewModel.cpf)}</small></div></div><div class="consulta-compact-status"><span class="status-badge ${viewModel.status.className}"><i class="bi bi-${viewModel.status.icon}"></i>${escapeHTML(viewModel.status.text)}</span></div><button class="btn btn-primary w-100" type="button" data-open-consulta-result><i class="bi bi-eye"></i>Abrir resumo operacional</button><button class="btn btn-light w-100" type="button" data-reset-consulta><i class="bi bi-arrow-repeat"></i>Consultar outra pessoa</button>`;
+    };
+    const renderRulePanel = (viewModel) => {
+        const text = viewModel.eligibility.reason || "Beneficiário apto para receber a cesta desta competência.";
+        const tone = ruleTone(viewModel);
+        return `<section class="consulta-rule-panel consulta-rule-panel--${tone}"><span class="consulta-rule-icon"><i class="bi bi-info-circle"></i></span><div><strong>Regra operacional</strong><p>${escapeHTML(text)}</p></div></section>`;
+    };
+    const registeredActions = (viewModel) => {
+        const editAction = permissions.edit && viewModel.registrationId
+            ? `<a class="btn btn-light" href="modulo.php?action=edit&id=${encodeURIComponent(viewModel.registrationId)}"><i class="bi bi-pencil"></i>Editar</a>`
+            : "";
+        const detailAction = viewModel.registrationId
+            ? button(`data-open-detail data-registration-id="${escapeHTML(viewModel.registrationId)}"`, "eye", "Visualizar dados completos", "btn btn-light")
+            : "";
+        const competenceAction = !viewModel.data.competence && permissions.manageCompetences
+            ? '<a class="btn btn-light" href="modulo.php?action=competence"><i class="bi bi-calendar-plus"></i>Gerenciar competência</a>'
+            : "";
+        const deliveryAction = viewModel.canDelivery ? button("data-open-delivery", "basket2", viewModel.primaryText, "btn btn-primary") : "";
+        const cancelAction = viewModel.canCancel ? button("data-open-cancel", "x-circle", "Cancelar entrega", "btn btn-danger") : "";
+        return `<div class="consulta-result-footer-secondary">${detailAction}${editAction}${competenceAction}</div><div class="consulta-result-footer-primary">${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}${deliveryAction}${cancelAction}</div>`;
+    };
+    const renderRegisteredModal = (viewModel) => {
+        const body = qs("[data-consulta-result-modal-body]");
+        const footer = qs("[data-consulta-result-modal-footer]");
+        body.innerHTML = `<div class="consulta-beneficiary-layout"><section class="consulta-beneficiary-hero"><div class="consulta-beneficiary-main"><span class="consulta-beneficiary-avatar">${escapeHTML(initials(viewModel.name))}</span><div class="consulta-beneficiary-copy"><span class="consulta-beneficiary-overline">Pessoa inscrita</span><h3 class="consulta-beneficiary-name">${escapeHTML(viewModel.name)}</h3><div class="consulta-beneficiary-meta"><span><i class="bi bi-person-vcard"></i>CPF ${escapeHTML(viewModel.cpf)}</span><span><i class="bi bi-people"></i>Família ${escapeHTML(viewModel.familyCode)}</span></div></div></div><span class="status-badge ${viewModel.status.className}"><i class="bi bi-${viewModel.status.icon}"></i>${escapeHTML(viewModel.status.text)}</span></section><section class="consulta-operational-section"><h3 class="consulta-section-title">Dados operacionais</h3><div class="consulta-operational-grid">${viewModel.fields.map((field) => operationalCard(field.icon, field.label, field.value, `consulta-operational-card--span-${field.span}`)).join("")}</div></section>${renderRulePanel(viewModel)}</div>`;
+        footer.innerHTML = registeredActions(viewModel);
+    };
+    const openRegisteredModal = (viewModel) => {
+        const key = `${viewModel.runId}:${viewModel.registrationId || viewModel.cpf}`;
+        if (lastResultModalRegistrationId === key) return;
+        lastResultModalRegistrationId = key;
+        window.requestAnimationFrame(() => modal("#consultaResultModal").show());
+    };
+    const renderRegistered = (data, runId) => {
+        const viewModel = registeredViewModel(data, runId);
+        renderRegisteredCompact(viewModel);
+        renderRegisteredModal(viewModel);
+        openRegisteredModal(viewModel);
+    };
+    const renderData = (data, runId) => { currentData = data; if (data.state === "nao_localizado") renderNotFound(data); else if (data.state === "pessoa_sem_inscricao") renderPersonWithoutRegistration(data); else renderRegistered(data, runId); };
     const consult = async () => {
+        const runId = ++consultRunId;
         currentCpf = digits(cpfInput.value);
         if (currentCpf.length !== 11) { cpfInput.classList.add("is-invalid"); return; }
         cpfInput.classList.remove("is-invalid");
@@ -67,10 +153,10 @@
             const data = await response.json();
             if (current !== controller) return;
             root.dataset.lastHttpMs = String(Math.round(performance.now() - startedAt));
-            if (!response.ok || !data.ok) { result.innerHTML = panel("exclamation-triangle", "Consulta não realizada", data.error || "Revise o CPF informado.", "warning"); return; }
-            renderData(data);
+            if (!response.ok || !data.ok) { resetResultCardClass(); result.innerHTML = panel("exclamation-triangle", "Consulta não realizada", data.error || "Revise o CPF informado.", "warning"); return; }
+            renderData(data, runId);
         } catch (error) {
-            if (error.name !== "AbortError") result.innerHTML = panel("wifi-off", "Erro de comunicação", "Não foi possível consultar agora.", "warning");
+            if (error.name !== "AbortError") { resetResultCardClass(); result.innerHTML = panel("wifi-off", "Erro de comunicação", "Não foi possível consultar agora.", "warning"); }
         } finally {
             if (current === controller) submit.disabled = false;
         }
@@ -83,10 +169,27 @@
             const response = await fetch(formEl.action, { method: "POST", body: new FormData(formEl), headers: { Accept: "application/json" } });
             const data = await response.json();
             if (!response.ok || !data.ok) { setAlert(formEl, panel("exclamation-triangle", "Operação não concluída", data.error || "Revise os dados.", "warning")); await consult(); return false; }
+            const ownerModal = formEl.closest(".modal");
+            if (ownerModal?.classList.contains("show")) {
+                await new Promise((resolve) => {
+                    ownerModal.addEventListener("hidden.bs.modal", resolve, { once: true });
+                    bootstrap.Modal.getOrCreateInstance(ownerModal).hide();
+                });
+            }
             await consult(); return true;
         } catch (error) {
             setAlert(formEl, panel("wifi-off", "Erro de comunicação", "Não foi possível concluir.", "warning")); return false;
         } finally { submit.disabled = false; }
+    };
+    const switchModal = (currentSelector, nextCallback) => {
+        const currentElement = qs(currentSelector);
+        const currentModal = modal(currentSelector);
+        if (!currentElement.classList.contains("show")) {
+            nextCallback();
+            return;
+        }
+        currentElement.addEventListener("hidden.bs.modal", nextCallback, { once: true });
+        currentModal.hide();
     };
     const setProgress = (title, percent, message) => {
         const value = Math.max(0, Math.min(100, Math.round(percent)));
@@ -324,30 +427,58 @@
             }
             return;
         }
-        if (event.target.closest("[data-reset-consulta]")) { currentCpf = ""; currentData = null; cpfInput.value = ""; result.innerHTML = '<span class="result-empty-icon"><i class="bi bi-person-lines-fill"></i></span><h2>Resultado da consulta</h2><p>Informe o CPF para visualizar pessoa, família, inscrição, competência e situação da entrega.</p>'; resetInterface(); }
-        if (event.target.closest("[data-open-delivery]") && currentData) {
-            const formEl = qs("#consultaDeliveryForm"); formEl.reset(); setAlert(formEl, "");
-            qs('[name="inscricao_id"]', formEl).value = currentData.registration.id; qs('[name="competencia_id"]', formEl).value = currentData.competence?.id || "";
-            qs('[name="recebedor_nome"]', formEl).value = currentData.person?.name || ""; qs('[name="recebedor_cpf"]', formEl).value = maskCpf(currentCpf);
-            qs("[data-delivery-name]", formEl).textContent = currentData.person?.name || ""; qs("[data-delivery-family]", formEl).textContent = currentData.registration?.family_code || "";
-            qs("[data-delivery-competence]", formEl).textContent = currentData.competence?.label || ""; qs("[data-delivery-pole]", formEl).textContent = currentData.registration?.pole || ""; modal("#consultaDeliveryModal").show();
+        if (event.target.closest("[data-open-consulta-result]") && currentData) {
+            modal("#consultaResultModal").show();
+            return;
         }
-        if (event.target.closest("[data-open-cancel]") && currentData) { const formEl = qs("#consultaCancelForm"); formEl.reset(); setAlert(formEl, ""); qs('[name="inscricao_id"]', formEl).value = currentData.registration.id; qs('[name="competencia_id"]', formEl).value = currentData.competence?.id || ""; modal("#consultaCancelModal").show(); }
+        if (event.target.closest("[data-reset-consulta]")) {
+            const resetConsulta = () => {
+                currentCpf = "";
+                currentData = null;
+                lastResultModalRegistrationId = null;
+                cpfInput.value = "";
+                resetResultCardClass();
+                result.innerHTML = '<span class="result-empty-icon"><i class="bi bi-person-lines-fill"></i></span><h2>Resultado da consulta</h2><p>Informe o CPF para visualizar pessoa, família, inscrição, competência e situação da entrega.</p>';
+                qs("[data-consulta-result-modal-body]").innerHTML = "";
+                qs("[data-consulta-result-modal-footer]").innerHTML = "";
+                resetInterface();
+                setTimeout(() => (cpfInput || openCamera).focus(), 0);
+            };
+            switchModal("#consultaResultModal", resetConsulta);
+            return;
+        }
+        if (event.target.closest("[data-open-delivery]") && currentData) {
+            switchModal("#consultaResultModal", () => {
+                const formEl = qs("#consultaDeliveryForm"); formEl.reset(); setAlert(formEl, "");
+                qs('[name="inscricao_id"]', formEl).value = currentData.registration.id; qs('[name="competencia_id"]', formEl).value = currentData.competence?.id || "";
+                qs('[name="recebedor_nome"]', formEl).value = currentData.person?.name || ""; qs('[name="recebedor_cpf"]', formEl).value = maskCpf(currentCpf);
+                qs("[data-delivery-name]", formEl).textContent = currentData.person?.name || ""; qs("[data-delivery-family]", formEl).textContent = currentData.registration?.family_code || "";
+                qs("[data-delivery-competence]", formEl).textContent = currentData.competence?.label || ""; qs("[data-delivery-pole]", formEl).textContent = currentData.registration?.pole || ""; modal("#consultaDeliveryModal").show();
+            });
+            return;
+        }
+        if (event.target.closest("[data-open-cancel]") && currentData) {
+            switchModal("#consultaResultModal", () => { const formEl = qs("#consultaCancelForm"); formEl.reset(); setAlert(formEl, ""); qs('[name="inscricao_id"]', formEl).value = currentData.registration.id; qs('[name="competencia_id"]', formEl).value = currentData.competence?.id || ""; modal("#consultaCancelModal").show(); });
+            return;
+        }
         const detail = event.target.closest("[data-open-detail]");
         if (detail) {
-            const content = qs("[data-detail-content]"); content.innerHTML = panel("hourglass-split", "Carregando", "Buscando detalhes."); modal("#consultaDetailModal").show();
-            const response = await fetch(`api/comida-mesa/detalhar.php?id=${encodeURIComponent(detail.dataset.registrationId)}`, { headers: { Accept: "application/json" } });
-            const payload = await response.json();
-            if (!response.ok || !payload.ok) { content.innerHTML = panel("exclamation-triangle", "Detalhes indisponíveis", payload.error || "Tente novamente.", "warning"); return; }
-            const data = payload.data;
-            const deliveries = (data.entregas || []).map((item) => `<tr><td>${escapeHTML(String(item.mes).padStart(2, "0"))}/${escapeHTML(item.ano)}</td><td>${escapeHTML(item.status)}</td><td>${escapeHTML(item.entregue_em || "")}</td><td>${escapeHTML(item.recebedor_nome || "")}</td><td>${escapeHTML(item.motivo_cancelamento || "")}</td></tr>`).join("");
-            const documents = (data.documentos || []).map((item) => `<li class="list-group-item d-flex justify-content-between"><span>${escapeHTML(item.tipo)}<br><small>${escapeHTML(item.nome_original)}</small></span><a class="btn btn-light btn-sm" target="_blank" rel="noopener" href="api/comida-mesa/visualizar-documento.php?id=${encodeURIComponent(item.id)}">Abrir</a></li>`).join("");
-            const history = (data.historico || []).map((item) => `<li class="list-group-item"><strong>${escapeHTML(item.acao)}</strong><br><span>${escapeHTML(item.descricao || "")}</span><br><small>${escapeHTML(item.criado_em || "")}</small></li>`).join("");
-            content.innerHTML = `<div class="row g-3"><div class="col-md-4"><h3 class="fs-6">Responsável</h3><p><strong>${escapeHTML(data.nome)}</strong><br>CPF ${escapeHTML(fullCpf(data))}</p></div><div class="col-md-4"><h3 class="fs-6">Família</h3><p>${escapeHTML(data.familia_codigo)}<br>${escapeHTML([data.logradouro, data.numero, data.bairro, data.comunidade].filter(Boolean).join(", "))}</p></div><div class="col-md-4"><h3 class="fs-6">Inscrição</h3><p>${escapeHTML(data.status)}<br>${escapeHTML(data.polo_nome || "Sem polo")}</p></div></div><h3 class="fs-6 mt-3">Entregas</h3><div class="table-responsive"><table class="data-table"><tbody>${deliveries || '<tr><td>Sem entregas.</td></tr>'}</tbody></table></div><div class="row g-3 mt-2"><div class="col-md-6"><h3 class="fs-6">Documentos</h3><ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul></div><div class="col-md-6"><h3 class="fs-6">Histórico</h3><ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul></div></div>`;
+            const registrationId = detail.dataset.registrationId;
+            switchModal("#consultaResultModal", async () => {
+                const content = qs("[data-detail-content]"); content.innerHTML = panel("hourglass-split", "Carregando", "Buscando detalhes."); modal("#consultaDetailModal").show();
+                const response = await fetch(`api/comida-mesa/detalhar.php?id=${encodeURIComponent(registrationId)}`, { headers: { Accept: "application/json" } });
+                const payload = await response.json();
+                if (!response.ok || !payload.ok) { content.innerHTML = panel("exclamation-triangle", "Detalhes indisponíveis", payload.error || "Tente novamente.", "warning"); return; }
+                const data = payload.data;
+                const deliveries = (data.entregas || []).map((item) => `<tr><td>${escapeHTML(String(item.mes).padStart(2, "0"))}/${escapeHTML(item.ano)}</td><td>${escapeHTML(item.status)}</td><td>${escapeHTML(item.entregue_em || "")}</td><td>${escapeHTML(item.recebedor_nome || "")}</td><td>${escapeHTML(item.motivo_cancelamento || "")}</td></tr>`).join("");
+                const documents = (data.documentos || []).map((item) => `<li class="list-group-item d-flex justify-content-between"><span>${escapeHTML(item.tipo)}<br><small>${escapeHTML(item.nome_original)}</small></span><a class="btn btn-light btn-sm" target="_blank" rel="noopener" href="api/comida-mesa/visualizar-documento.php?id=${encodeURIComponent(item.id)}">Abrir</a></li>`).join("");
+                const history = (data.historico || []).map((item) => `<li class="list-group-item"><strong>${escapeHTML(item.acao)}</strong><br><span>${escapeHTML(item.descricao || "")}</span><br><small>${escapeHTML(item.criado_em || "")}</small></li>`).join("");
+                content.innerHTML = `<div class="row g-3"><div class="col-md-4"><h3 class="fs-6">Responsável</h3><p><strong>${escapeHTML(data.nome)}</strong><br>CPF ${escapeHTML(fullCpf(data))}</p></div><div class="col-md-4"><h3 class="fs-6">Família</h3><p>${escapeHTML(data.familia_codigo)}<br>${escapeHTML([data.logradouro, data.numero, data.bairro, data.comunidade].filter(Boolean).join(", "))}</p></div><div class="col-md-4"><h3 class="fs-6">Inscrição</h3><p>${escapeHTML(data.status)}<br>${escapeHTML(data.polo_nome || "Sem polo")}</p></div></div><h3 class="fs-6 mt-3">Entregas</h3><div class="table-responsive"><table class="data-table"><tbody>${deliveries || '<tr><td>Sem entregas.</td></tr>'}</tbody></table></div><div class="row g-3 mt-2"><div class="col-md-6"><h3 class="fs-6">Documentos</h3><ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul></div><div class="col-md-6"><h3 class="fs-6">Histórico</h3><ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul></div></div>`;
+            });
         }
     });
-    qs("#consultaDeliveryForm").addEventListener("submit", async (event) => { event.preventDefault(); if (await submitAction(event.currentTarget)) modal("#consultaDeliveryModal").hide(); });
-    qs("#consultaCancelForm").addEventListener("submit", async (event) => { event.preventDefault(); if (await submitAction(event.currentTarget)) modal("#consultaCancelModal").hide(); });
+    qs("#consultaDeliveryForm").addEventListener("submit", async (event) => { event.preventDefault(); await submitAction(event.currentTarget); });
+    qs("#consultaCancelForm").addEventListener("submit", async (event) => { event.preventDefault(); await submitAction(event.currentTarget); });
     const releaseLocalMedia = () => { resetInterface(); destroyOcrWorker(); };
     window.addEventListener("pagehide", releaseLocalMedia);
     window.addEventListener("beforeunload", releaseLocalMedia);
