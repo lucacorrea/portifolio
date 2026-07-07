@@ -49,11 +49,10 @@ class Product extends BaseModel {
     public function all($order = "nome ASC") {
         $filialId = $_SESSION['filial_id'] ?? 1;
         // Só a Matriz (ID 1) vê o catálogo global completo. Filiais veem apenas seu estoque local.
-        $join = ((int)$filialId === 1) ? "LEFT JOIN" : "INNER JOIN";
 
         $sql = "SELECT p.*, p.id as id, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
                 FROM {$this->table} p
-                $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 ORDER BY p.$order";
         
         return $this->query($sql, [$filialId])->fetchAll();
@@ -61,7 +60,6 @@ class Product extends BaseModel {
 
     public function paginate($perPage = 15, $currentPage = 1, $order = "id DESC", $filters = []) {
         $filialId = $_SESSION['filial_id'] ?? 1;
-        $join = ((int)$filialId === 1) ? "LEFT JOIN" : "INNER JOIN";
         $offset = ($currentPage - 1) * $perPage;
         
         $where = " WHERE 1=1";
@@ -85,7 +83,7 @@ class Product extends BaseModel {
         }
         
         // Ensure count uses the same JOIN context
-        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? $where");
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} p LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ? $where");
         $totalStmt->execute($paramsCount);
         $total = $totalStmt->fetchColumn();
         
@@ -103,7 +101,7 @@ class Product extends BaseModel {
 
         $sql = "SELECT p.*, p.id as id, COALESCE(ef.quantidade, 0) as quantidade, COALESCE(ef.estoque_minimo, p.estoque_minimo) as estoque_minimo
                 FROM {$this->table} p
-                $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
+                LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 $where 
                 ORDER BY $finalOrder LIMIT $perPage OFFSET $offset";
                 
