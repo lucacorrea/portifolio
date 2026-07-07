@@ -814,9 +814,9 @@ button, a, input, select, textarea { outline: none; }
 .beneficiary-detail-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .beneficiary-detail-section { grid-column: 1 / -1; min-width: 0; }
 .beneficiary-detail-section--full { grid-column: 1 / -1; }
-.beneficiary-detail-section-title { margin: 0 0 10px; color: #243b73; font-size: 1rem; font-weight: 780; line-height: 1.25; letter-spacing: 0; }
+.beneficiary-detail-section-title { margin: 0 0 10px; color: var(--primary-dark); font-size: 1rem; font-weight: 780; line-height: 1.25; letter-spacing: 0; }
 .beneficiary-detail-fields { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px 14px; margin: 0; }
-.beneficiary-detail-field { grid-column: span 3; min-width: 0; min-height: 80px; padding: 14px 15px; border: 1px solid #e5e9ee; border-radius: 10px; background: #fff; }
+.beneficiary-detail-field { grid-column: span 3; min-width: 0; min-height: 80px; padding: 14px 15px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-sm); }
 .beneficiary-detail-field--span-2 { grid-column: span 2; }
 .beneficiary-detail-field--span-3 { grid-column: span 3; }
 .beneficiary-detail-field--span-4 { grid-column: span 4; }
@@ -824,13 +824,13 @@ button, a, input, select, textarea { outline: none; }
 .beneficiary-detail-field--span-6 { grid-column: span 6; }
 .beneficiary-detail-field--span-8 { grid-column: span 8; }
 .beneficiary-detail-field--span-12 { grid-column: span 12; }
-.beneficiary-detail-field dt { margin: 0 0 6px; color: #6f7a88; font-size: .83rem; font-weight: 500; line-height: 1.25; letter-spacing: 0; }
-.beneficiary-detail-field dd { min-width: 0; margin: 0; color: #617286; font-size: 1.05rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.beneficiary-detail-field dt { margin: 0 0 6px; color: var(--text-muted); font-size: .83rem; font-weight: 600; line-height: 1.25; letter-spacing: 0; }
+.beneficiary-detail-field dd { min-width: 0; margin: 0; color: var(--text-secondary); font-size: 1.05rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
 .beneficiary-detail-list-cards { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.beneficiary-detail-list-cards .list-group-item { min-width: 0; padding: 13px 14px; border: 1px solid #e5e9ee; border-radius: 10px; background: #fff; color: #617286; }
-.beneficiary-detail-list-cards .list-group-item strong { color: #53677d; }
-.beneficiary-detail-list-cards .list-group-item small { color: #6f7a88; }
-.beneficiary-detail-table-card { min-width: 0; border: 1px solid #e5e9ee; border-radius: 10px; background: #fff; }
+.beneficiary-detail-list-cards .list-group-item { min-width: 0; padding: 13px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-secondary); box-shadow: var(--shadow-sm); }
+.beneficiary-detail-list-cards .list-group-item strong { color: var(--text-primary); }
+.beneficiary-detail-list-cards .list-group-item small { color: var(--text-muted); }
+.beneficiary-detail-table-card { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-sm); }
 .beneficiary-detail-table-card .data-table { margin: 0; }
 
 @media (max-width: 1050px) {
