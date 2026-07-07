@@ -321,6 +321,7 @@ $service = new ComidaMesaService(new ComidaMesaRepository($pdo));
 $competence = ['id' => 7, 'mes' => 7, 'ano' => 2026, 'status' => 'aberta'];
 
 assert_same($service->maskCpf('12345678909'), '***.***.***-**', 'mascara de CPF');
+assert_same($service->formatCpf('12345678909'), '123.456.789-09', 'formatacao completa de CPF');
 assert_same($service->formatCompetence(7, 2026), 'Julho de 2026', 'formatacao de competencia');
 
 $status = $service->deliveryStatusForRow(['inscricao_status' => 'ativa', 'entrega_id' => null], $competence);
@@ -366,6 +367,8 @@ assert_same($service->deliveryEligibility(['status' => 'ativa', 'polo_id' => nul
 $consult = $service->consultCpf('123.456.789-09', 7);
 $cpfQuery = $pdo->latestStatementContaining('where p.cpf = :cpf');
 assert_same($consult['state'], 'inscrito', 'consulta CPF localiza inscricao');
+assert_same($consult['cpf_formatado'], '123.456.789-09', 'consulta CPF retorna documento formatado completo');
+assert_same($consult['person']['cpf_formatado'], '123.456.789-09', 'consulta CPF retorna pessoa com documento formatado completo');
 assert_same($consult['person']['cpf_masked'], '***.***.***-**', 'consulta CPF mascara documento na resposta');
 assert_same($consult['person']['vinculo_familiar'], 'responsavel', 'consulta CPF preserva vinculo familiar priorizado');
 assert_same($consult['delivery']['status'], 'cancelada', 'consulta CPF exibe entrega cancelada');

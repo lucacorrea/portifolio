@@ -67,6 +67,10 @@ assert.doesNotMatch((consultaJs.match(/const resetInterface[\s\S]*?};/) || [""])
 assert.match(consultaJs, /pagehide", releaseLocalMedia/);
 assert.match(consultaJs, /const releaseLocalMedia = \(\) => \{ resetInterface\(\); destroyOcrWorker\(\); \}/);
 assert.doesNotMatch(consultaJs, /localStorage|sessionStorage|indexedDB|IndexedDB|console\.log/);
+assert.doesNotMatch(consultaJs, /data-ocr-cpf/i);
+assert.doesNotMatch(consultaJs, /data-[a-z0-9-]*cpf[a-z0-9-]*=/i);
+assert.match(consultaJs, /ocrCandidateStore/);
+assert.match(consultaJs, /data-ocr-index/);
 assert.doesNotMatch(consultaJs, /fetch\([^)]*(Blob|blob|image|preview|canvas)/s);
 assert.doesNotMatch(consultaJs, /FormData\([^)]*(file|image|blob|canvas|preview)/i);
 

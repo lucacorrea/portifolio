@@ -118,6 +118,7 @@ $basic = $basicService->consultCpfBasic('12345678909');
 
 assert_true($basic['found'] === true, 'consultCpfBasic encontra solicitante');
 assert_same($basic['person']['name'] ?? null, 'Pessoa Teste', 'consultCpfBasic retorna nome mínimo');
+assert_same($basic['person']['cpf_formatted'] ?? null, '123.456.789-09', 'consultCpfBasic retorna CPF completo formatado');
 assert_true(!isset($basic['familiares'], $basic['solicitacoes'], $basic['historico_ajudas']), 'consultCpfBasic não retorna relações');
 assert_same($basicRepo->findCalls, 1, 'consultCpfBasic chama findSolicitanteByCpf');
 assert_same($basicRepo->familiaresCalls, 0, 'consultCpfBasic não chama familiares');
@@ -129,6 +130,9 @@ $fullService = new AnexoIntegrationService($fullRepo, 'enabled');
 $full = $fullService->consultCpf('12345678909');
 
 assert_true($full['found'] === true, 'consultCpf completo continua funcionando');
+assert_same($full['person']['cpf'], '12345678909', 'consultCpf completo preserva CPF com 11 dígitos');
+assert_same($full['person']['cpf_formatted'], '123.456.789-09', 'consultCpf completo retorna CPF formatado para o modal ANEXO');
+assert_same($full['person']['cpf_masked'], '123.***.***-09', 'consultCpf completo mantém CPF mascarado por compatibilidade');
 assert_same($fullRepo->familiaresCalls, 1, 'consultCpf completo chama familiares');
 assert_same($fullRepo->solicitacoesCalls, 1, 'consultCpf completo chama solicitações');
 assert_same($fullRepo->entregasCalls, 1, 'consultCpf completo chama entregas');

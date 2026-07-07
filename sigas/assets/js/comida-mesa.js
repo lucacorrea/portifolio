@@ -26,6 +26,18 @@
         if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
         return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9)}`;
     };
+    const fullCpf = (data = {}) => {
+        const value = data.cpf_completo
+            || data.cpf_formatted
+            || data.cpf_formatado
+            || data.cpf
+            || data.cpf_mascarado
+            || data.cpf_masked
+            || "";
+        const numbers = digits(value);
+
+        return numbers.length === 11 && !String(value).includes("*") ? maskCpf(numbers) : (value || "Não informado");
+    };
 
     const setAlert = (form, html = "") => {
         const alert = qs("[data-form-alert]", form);
@@ -114,7 +126,7 @@
             inscricao_id: data.id,
             versao_atualizacao: data.versao_atualizacao,
             nome: data.nome,
-            cpf: data.cpf_completo || data.cpf_mascarado,
+            cpf: data.cpf_completo || data.cpf_formatado || data.cpf_mascarado,
             telefone: data.telefone,
             nis: data.nis,
             rg: data.rg,
@@ -164,7 +176,7 @@
         const description = (pairs) => pairs.map(([term, value]) => `<dt>${escapeHTML(term)}</dt><dd>${label(value)}</dd>`).join("");
         const render = (data) => {
             const entregaRows = (data.entregas || []).map((item) => `<tr><td>${label(item.competencia_label)}</td><td>${label(item.status_label)}</td><td>${label(item.entregue_em_formatado)}</td><td>${label(item.polo_nome)}</td><td>${label(item.recebedor_nome)}</td><td>${label(item.recebedor_parentesco)}</td><td>${label(item.operador_nome)}</td><td>${label(item.cancelador_nome)}</td><td>${label(item.cancelada_em_formatada)}</td><td>${label(item.motivo_cancelamento)}</td></tr>`).join("");
-            const members = (data.integrantes || []).map((item) => `<li class="list-group-item d-flex justify-content-between"><span>${label(item.nome)}<br><small>${label(item.parentesco)} · ${label(item.cpf_mascarado)}</small></span></li>`).join("");
+            const members = (data.integrantes || []).map((item) => `<li class="list-group-item d-flex justify-content-between"><span>${label(item.nome)}<br><small>${label(item.parentesco)} · CPF ${label(fullCpf(item))}</small></span></li>`).join("");
             const documents = (data.documentos || []).map((item) => `<li class="list-group-item d-flex justify-content-between align-items-center"><span>${label(item.tipo)}<br><small>${label(item.descricao)} · ${label(item.nome_original)} · ${label(item.mime_type)} · ${label(item.tamanho_formatado)} · ${label(item.criado_em_formatado)} · ${label(item.enviado_por_nome)}</small></span><a class="btn btn-light btn-sm" href="api/comida-mesa/visualizar-documento.php?id=${encodeURIComponent(item.id)}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i>Abrir</a></li>`).join("");
             const history = (data.historico || []).map((item) => {
                 const changes = (item.changes || []).map((change) => `<li>${label(change.field)}: ${label(change.before)} &rarr; ${label(change.after)}</li>`).join("");
@@ -172,7 +184,7 @@
             }).join("");
             content.innerHTML = `
                 <div class="row g-3">
-                    <div class="col-lg-4"><h3 class="fs-6">Responsável</h3><dl class="small">${description([["Nome", data.nome], ["CPF", data.cpf_completo || data.cpf_mascarado], ["NIS", data.nis], ["RG", data.rg], ["Nascimento", data.data_nascimento], ["Telefone", data.telefone], ["E-mail", data.email]])}</dl></div>
+                    <div class="col-lg-4"><h3 class="fs-6">Responsável</h3><dl class="small">${description([["Nome", data.nome], ["CPF", fullCpf(data)], ["NIS", data.nis], ["RG", data.rg], ["Nascimento", data.data_nascimento], ["Telefone", data.telefone], ["E-mail", data.email]])}</dl></div>
                     <div class="col-lg-4"><h3 class="fs-6">Família</h3><dl class="small">${description([["Código", data.familia_codigo], ["Zona", data.zona], ["Logradouro", data.logradouro], ["Número", data.numero], ["Complemento", data.complemento], ["Bairro", data.bairro], ["Comunidade", data.comunidade], ["Referência", data.ponto_referencia], ["CEP", data.cep], ["Membros", data.quantidade_membros], ["Renda", data.renda_familiar_formatada]])}</dl></div>
                     <div class="col-lg-4"><h3 class="fs-6">Inscrição</h3><dl class="small">${description([["Situação", data.status_label], ["Prioridade", data.prioridade_label], ["Polo", data.polo_nome], ["Data de inscrição", data.data_inscricao_formatada], ["Data de aprovação", data.data_aprovacao_formatada], ["Observação", data.observacao], ["Motivo", data.motivo_suspensao], ["Atualização", data.atualizado_em_formatado]])}</dl></div>
                 </div>
@@ -322,7 +334,7 @@
                     <div class="anexo-information-grid">
                         <section class="anexo-detail-card anexo-detail-card--identity">
                             ${anexoCardHeading("bi-person-vcard", "Identificação", "Dados pessoais registrados no ANEXO.")}
-                            <dl class="anexo-data-list">${descriptionList([["CPF", person.cpf_masked], ["NIS", person.nis], ["RG", person.rg], ["Nascimento", formatDate(person.birth_date)], ["Telefone", person.phone], ["Gênero", person.gender], ["Estado civil", person.marital_status], ["Naturalidade", person.birthplace]])}</dl>
+                            <dl class="anexo-data-list">${descriptionList([["CPF", fullCpf(person)], ["NIS", person.nis], ["RG", person.rg], ["Nascimento", formatDate(person.birth_date)], ["Telefone", person.phone], ["Gênero", person.gender], ["Estado civil", person.marital_status], ["Naturalidade", person.birthplace]])}</dl>
                         </section>
 
                         <section class="anexo-detail-card anexo-detail-card--address">
@@ -332,7 +344,7 @@
 
                         <section class="anexo-detail-card anexo-detail-card--spouse">
                             ${anexoCardHeading("bi-people", "Cônjuge", "Informações vinculadas ao responsável familiar.")}
-                            <dl class="anexo-data-list">${descriptionList([["Cônjuge", person.spouse_name], ["CPF do cônjuge", person.spouse_cpf], ["NIS do cônjuge", person.spouse_nis], ["RG do cônjuge", person.spouse_rg], ["Nascimento", formatDate(person.spouse_birth_date)], ["Responsável", person.created_by]])}</dl>
+                            <dl class="anexo-data-list">${descriptionList([["Cônjuge", person.spouse_name], ["CPF do cônjuge", person.spouse_cpf_formatted || person.spouse_cpf], ["NIS do cônjuge", person.spouse_nis], ["RG do cônjuge", person.spouse_rg], ["Nascimento", formatDate(person.spouse_birth_date)], ["Responsável", person.created_by]])}</dl>
                         </section>
 
                         <section class="anexo-detail-card anexo-detail-card--summary">

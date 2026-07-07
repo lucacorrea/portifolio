@@ -12,7 +12,7 @@
     const modal = (selector) => bootstrap.Modal.getOrCreateInstance(qs(selector));
     const ids = ["#consultaResult", "#manualCpfForm", "#manualCpf", "#scannerVideo", "#scannerPreview", "#cameraPlaceholder", "#openCameraButton", "#captureDocumentButton", "#chooseImageButton", "#retryOcrButton", "#cancelOcrButton", "#documentImageInput", "#ocrStatus", "#ocrCandidates", "#cpfScanRegion", "[data-ocr-progress-bar]", "[data-ocr-progress]", "[data-ocr-title]", "[data-ocr-message]", "#continueOcrButton", "#zoomInButton", "#zoomOutButton", "#moveImageUpButton", "#moveImageDownButton"];
     const [result, form, cpfInput, video, preview, placeholder, openCamera, capture, chooseImage, retry, cancelOcr, fileInput, ocrStatus, ocrCandidates, scanRegion, progressBar, progressText, progressTitle, progressMessage, continueOcr, zoomIn, zoomOut, moveImageUp, moveImageDown] = ids.map((id) => qs(id));
-    let currentCpf = "", currentData = null, controller = null, stream = null, objectUrl = "", selectedFile = null;
+    let currentCpf = "", currentData = null, controller = null, stream = null, objectUrl = "", selectedFile = null, ocrCandidateStore = [];
     let ocrState = "idle", ocrRunId = 0, ocrWorker = null, ocrWorkerPromise = null, workerReady = false, lastConsultedCpf = "";
     let liveScanRunning = false, liveScanBusy = false, liveScanAttempt = 0, lastScanFinishedAt = 0, lowConfidenceCpf = "", lowConfidenceHits = 0, scanTimer = 0;
     let cameraZoomTrack = null, cameraZoom = null, imageZoom = 1, imageOffsetY = 0, dragStartY = null, dragStartOffset = 0;
@@ -22,6 +22,11 @@
         if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
         if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
         return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9)}`;
+    };
+    const fullCpf = (data = {}) => {
+        const value = data.cpf_completo || data.cpf_formatted || data.cpf_formatado || data.cpf || data.cpf_mascarado || data.cpf_masked || "";
+        const numbers = digits(value);
+        return numbers.length === 11 && !String(value).includes("*") ? maskCpf(numbers) : (value || "Não informado");
     };
     const panel = (icon, title, text, tone = "info") => `<div class="alert-soft ${tone}"><i class="bi bi-${icon}"></i><div><strong>${escapeHTML(title)}</strong><br><span>${escapeHTML(text)}</span></div></div>`;
     const button = (attrs, icon, text, cls = "btn btn-primary") => `<button class="${cls}" type="button" ${attrs}><i class="bi bi-${icon}"></i>${escapeHTML(text)}</button>`;
@@ -36,7 +41,7 @@
     };
     const renderPersonWithoutRegistration = (data) => {
         const action = permissions.create ? `<a class="btn btn-primary" href="modulo.php?action=new&cpf=${encodeURIComponent(currentCpf)}"><i class="bi bi-plus-lg"></i>Criar inscrição</a>` : "";
-        result.innerHTML = `<div class="result-status-header"><span class="result-avatar">${escapeHTML((data.person?.name || "P").slice(0, 2).toUpperCase())}</span><div><span class="result-overline">Pessoa localizada sem inscrição</span><h2>${escapeHTML(data.person?.name)}</h2><p>CPF: ${escapeHTML(data.person?.cpf_masked)}</p></div><span class="status-badge status-warning"><i class="bi bi-hourglass"></i>Sem inscrição</span></div><div class="verification-grid"><div><span>Vínculo familiar</span><strong>${escapeHTML(data.person?.vinculo_familiar || "sem_familia")}</strong></div><div><span>Família</span><strong>${escapeHTML(data.family?.code || "Sem família")}</strong></div></div><div class="result-actions">${action}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
+        result.innerHTML = `<div class="result-status-header"><span class="result-avatar">${escapeHTML((data.person?.name || "P").slice(0, 2).toUpperCase())}</span><div><span class="result-overline">Pessoa localizada sem inscrição</span><h2>${escapeHTML(data.person?.name)}</h2><p>CPF: ${escapeHTML(fullCpf(data.person || data))}</p></div><span class="status-badge status-warning"><i class="bi bi-hourglass"></i>Sem inscrição</span></div><div class="verification-grid"><div><span>Vínculo familiar</span><strong>${escapeHTML(data.person?.vinculo_familiar || "sem_familia")}</strong></div><div><span>Família</span><strong>${escapeHTML(data.family?.code || "Sem família")}</strong></div></div><div class="result-actions">${action}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
     };
     const renderRegistered = (data) => {
         const eligibility = data.eligibility || {};
@@ -44,7 +49,7 @@
         const canCancel = permissions.cancelDelivery && eligibility.action === "cancel";
         const deliveryText = data.delivery?.status_label || "Não informado";
         const deliveryMeta = data.delivery?.delivered_at ? `${data.delivery.delivered_at}${data.delivery.receiver_name ? " · " + data.delivery.receiver_name : ""}` : (data.delivery?.cancellation_reason || eligibility.reason || "");
-        result.innerHTML = `<div class="result-status-header"><span class="result-avatar">${escapeHTML((data.person?.name || "P").slice(0, 2).toUpperCase())}</span><div><span class="result-overline">Pessoa inscrita</span><h2>${escapeHTML(data.person?.name)}</h2><p>CPF: ${escapeHTML(data.person?.cpf_masked)}</p></div><span class="status-badge ${data.delivery?.status === "recebida" ? "status-success" : "status-info"}"><i class="bi bi-basket2"></i>${escapeHTML(deliveryText)}</span></div><div class="verification-grid"><div><span>Família</span><strong>${escapeHTML(data.registration?.family_code || data.family?.code)}</strong></div><div><span>Situação</span><strong>${escapeHTML(data.registration?.status_label)}</strong></div><div><span>Prioridade</span><strong>${escapeHTML(data.registration?.priority)}</strong></div><div><span>Polo</span><strong>${escapeHTML(data.registration?.pole || "Sem polo")}</strong></div><div><span>Competência</span><strong>${escapeHTML(data.competence?.label || "Sem competência")}</strong></div><div><span>Entrega</span><strong>${escapeHTML(deliveryMeta || deliveryText)}</strong></div></div>${eligibility.reason ? panel("info-circle", "Regra operacional", eligibility.reason, "info") : ""}<div class="result-actions">${button(`data-open-detail data-registration-id="${escapeHTML(data.registration?.id)}"`, "eye", "Visualizar detalhes", "btn btn-light")}${permissions.edit ? `<a class="btn btn-light" href="modulo.php?action=edit&id=${encodeURIComponent(data.registration?.id)}"><i class="bi bi-pencil"></i>Editar</a>` : ""}${canDelivery ? button("data-open-delivery", "basket2", eligibility.action === "reactivate" ? "Reativar entrega" : "Registrar entrega") : ""}${canCancel ? button("data-open-cancel", "x-circle", "Cancelar entrega", "btn btn-danger") : ""}${!data.competence && permissions.manageCompetences ? '<a class="btn btn-light" href="modulo.php?action=competence"><i class="bi bi-calendar-plus"></i>Gerenciar competência</a>' : ""}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
+        result.innerHTML = `<div class="result-status-header"><span class="result-avatar">${escapeHTML((data.person?.name || "P").slice(0, 2).toUpperCase())}</span><div><span class="result-overline">Pessoa inscrita</span><h2>${escapeHTML(data.person?.name)}</h2><p>CPF: ${escapeHTML(fullCpf(data.person || data))}</p></div><span class="status-badge ${data.delivery?.status === "recebida" ? "status-success" : "status-info"}"><i class="bi bi-basket2"></i>${escapeHTML(deliveryText)}</span></div><div class="verification-grid"><div><span>Família</span><strong>${escapeHTML(data.registration?.family_code || data.family?.code)}</strong></div><div><span>Situação</span><strong>${escapeHTML(data.registration?.status_label)}</strong></div><div><span>Prioridade</span><strong>${escapeHTML(data.registration?.priority)}</strong></div><div><span>Polo</span><strong>${escapeHTML(data.registration?.pole || "Sem polo")}</strong></div><div><span>Competência</span><strong>${escapeHTML(data.competence?.label || "Sem competência")}</strong></div><div><span>Entrega</span><strong>${escapeHTML(deliveryMeta || deliveryText)}</strong></div></div>${eligibility.reason ? panel("info-circle", "Regra operacional", eligibility.reason, "info") : ""}<div class="result-actions">${button(`data-open-detail data-registration-id="${escapeHTML(data.registration?.id)}"`, "eye", "Visualizar detalhes", "btn btn-light")}${permissions.edit ? `<a class="btn btn-light" href="modulo.php?action=edit&id=${encodeURIComponent(data.registration?.id)}"><i class="bi bi-pencil"></i>Editar</a>` : ""}${canDelivery ? button("data-open-delivery", "basket2", eligibility.action === "reactivate" ? "Reativar entrega" : "Registrar entrega") : ""}${canCancel ? button("data-open-cancel", "x-circle", "Cancelar entrega", "btn btn-danger") : ""}${!data.competence && permissions.manageCompetences ? '<a class="btn btn-light" href="modulo.php?action=competence"><i class="bi bi-calendar-plus"></i>Gerenciar competência</a>' : ""}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
     };
     const renderData = (data) => { currentData = data; if (data.state === "nao_localizado") renderNotFound(data); else if (data.state === "pessoa_sem_inscricao") renderPersonWithoutRegistration(data); else renderRegistered(data); };
     const consult = async () => {
@@ -97,6 +102,7 @@
     };
     const resetCapture = () => {
         clearTimeout(scanTimer); liveScanRunning = false; liveScanBusy = false; liveScanAttempt = 0; lowConfidenceCpf = ""; lowConfidenceHits = 0;
+        ocrCandidateStore = [];
         ocrCandidates.hidden = true; ocrCandidates.innerHTML = ""; ocrStatus.classList.remove("ocr-result-success", "ocr-result-warning");
     };
     const revokePreviewUrl = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); objectUrl = ""; };
@@ -199,7 +205,8 @@
     };
     const renderMultipleCandidates = (candidates) => {
         liveScanRunning = false; updateButtons(); setProgress("Mais de um CPF encontrado", 100, "Selecione o número do titular do documento.");
-        ocrCandidates.hidden = false; ocrCandidates.innerHTML = `<h3>Foram encontrados mais de um CPF.</h3><p>Selecione o número que pertence ao titular do documento.</p><div class="ocr-candidate-actions">${candidates.map((item) => button(`data-ocr-cpf="${escapeHTML(item.cpf)}"`, "person-vcard", item.formatted, "btn btn-light")).join("")}</div>`;
+        ocrCandidateStore = candidates;
+        ocrCandidates.hidden = false; ocrCandidates.innerHTML = `<h3>Foram encontrados mais de um CPF.</h3><p>Selecione o número que pertence ao titular do documento.</p><div class="ocr-candidate-actions">${candidates.map((item, index) => button(`data-ocr-index="${index}"`, "person-vcard", item.formatted, "btn btn-light")).join("")}</div>`;
     };
     const scheduleNextScan = (runId) => {
         if (!liveScanRunning || runId !== ocrRunId) return;
@@ -307,8 +314,16 @@
     qs("#cameraFrame").addEventListener("pointermove", (event) => { if (dragStartY === null) return; imageOffsetY = dragStartOffset + event.clientY - dragStartY; updatePreviewTransform(); });
     ["pointerup", "pointercancel", "pointerleave"].forEach((type) => qs("#cameraFrame").addEventListener(type, () => { dragStartY = null; }));
     document.addEventListener("click", async (event) => {
-        const selectedCpf = event.target.closest("[data-ocr-cpf]");
-        if (selectedCpf) { cpfInput.value = maskCpf(selectedCpf.dataset.ocrCpf); ocrCandidates.hidden = true; await consult(); return; }
+        const selectedCpf = event.target.closest("[data-ocr-index]");
+        if (selectedCpf) {
+            const item = ocrCandidateStore[Number(selectedCpf.dataset.ocrIndex)];
+            if (item?.cpf) {
+                cpfInput.value = maskCpf(item.cpf);
+                ocrCandidates.hidden = true;
+                await consult();
+            }
+            return;
+        }
         if (event.target.closest("[data-reset-consulta]")) { currentCpf = ""; currentData = null; cpfInput.value = ""; result.innerHTML = '<span class="result-empty-icon"><i class="bi bi-person-lines-fill"></i></span><h2>Resultado da consulta</h2><p>Informe o CPF para visualizar pessoa, família, inscrição, competência e situação da entrega.</p>'; resetInterface(); }
         if (event.target.closest("[data-open-delivery]") && currentData) {
             const formEl = qs("#consultaDeliveryForm"); formEl.reset(); setAlert(formEl, "");
@@ -328,7 +343,7 @@
             const deliveries = (data.entregas || []).map((item) => `<tr><td>${escapeHTML(String(item.mes).padStart(2, "0"))}/${escapeHTML(item.ano)}</td><td>${escapeHTML(item.status)}</td><td>${escapeHTML(item.entregue_em || "")}</td><td>${escapeHTML(item.recebedor_nome || "")}</td><td>${escapeHTML(item.motivo_cancelamento || "")}</td></tr>`).join("");
             const documents = (data.documentos || []).map((item) => `<li class="list-group-item d-flex justify-content-between"><span>${escapeHTML(item.tipo)}<br><small>${escapeHTML(item.nome_original)}</small></span><a class="btn btn-light btn-sm" target="_blank" rel="noopener" href="api/comida-mesa/visualizar-documento.php?id=${encodeURIComponent(item.id)}">Abrir</a></li>`).join("");
             const history = (data.historico || []).map((item) => `<li class="list-group-item"><strong>${escapeHTML(item.acao)}</strong><br><span>${escapeHTML(item.descricao || "")}</span><br><small>${escapeHTML(item.criado_em || "")}</small></li>`).join("");
-            content.innerHTML = `<div class="row g-3"><div class="col-md-4"><h3 class="fs-6">Responsável</h3><p><strong>${escapeHTML(data.nome)}</strong><br>CPF ${escapeHTML(data.cpf_mascarado)}</p></div><div class="col-md-4"><h3 class="fs-6">Família</h3><p>${escapeHTML(data.familia_codigo)}<br>${escapeHTML([data.logradouro, data.numero, data.bairro, data.comunidade].filter(Boolean).join(", "))}</p></div><div class="col-md-4"><h3 class="fs-6">Inscrição</h3><p>${escapeHTML(data.status)}<br>${escapeHTML(data.polo_nome || "Sem polo")}</p></div></div><h3 class="fs-6 mt-3">Entregas</h3><div class="table-responsive"><table class="data-table"><tbody>${deliveries || '<tr><td>Sem entregas.</td></tr>'}</tbody></table></div><div class="row g-3 mt-2"><div class="col-md-6"><h3 class="fs-6">Documentos</h3><ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul></div><div class="col-md-6"><h3 class="fs-6">Histórico</h3><ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul></div></div>`;
+            content.innerHTML = `<div class="row g-3"><div class="col-md-4"><h3 class="fs-6">Responsável</h3><p><strong>${escapeHTML(data.nome)}</strong><br>CPF ${escapeHTML(fullCpf(data))}</p></div><div class="col-md-4"><h3 class="fs-6">Família</h3><p>${escapeHTML(data.familia_codigo)}<br>${escapeHTML([data.logradouro, data.numero, data.bairro, data.comunidade].filter(Boolean).join(", "))}</p></div><div class="col-md-4"><h3 class="fs-6">Inscrição</h3><p>${escapeHTML(data.status)}<br>${escapeHTML(data.polo_nome || "Sem polo")}</p></div></div><h3 class="fs-6 mt-3">Entregas</h3><div class="table-responsive"><table class="data-table"><tbody>${deliveries || '<tr><td>Sem entregas.</td></tr>'}</tbody></table></div><div class="row g-3 mt-2"><div class="col-md-6"><h3 class="fs-6">Documentos</h3><ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul></div><div class="col-md-6"><h3 class="fs-6">Histórico</h3><ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul></div></div>`;
         }
     });
     qs("#consultaDeliveryForm").addEventListener("submit", async (event) => { event.preventDefault(); if (await submitAction(event.currentTarget)) modal("#consultaDeliveryModal").hide(); });
