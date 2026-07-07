@@ -224,10 +224,13 @@ assert_true($comidaMesaJs !== false, 'teste consegue ler JS do modulo Comida na 
 assert_true(str_contains((string) $comidaMesaJs, 'versao_atualizacao: data.versao_atualizacao'), 'JS preenche versao_atualizacao usando data.versao_atualizacao');
 assert_true(!str_contains((string) $comidaMesaJs, 'versao_atualizacao: data.atualizado_em'), 'JS nao usa data.atualizado_em como versao do formulario');
 assert_true(str_contains((string) $comidaMesaJs, 'const fullCpf = (data = {})'), 'JS possui helper para CPF completo');
-assert_true(str_contains((string) $comidaMesaJs, '["CPF", fullCpf(data)]'), 'modal do beneficiario usa CPF completo pelo helper');
+assert_true(str_contains((string) $comidaMesaJs, '{ label: "CPF", value: fullCpf(data), span: 3 }'), 'modal do beneficiario usa CPF completo pelo helper');
 assert_true(str_contains((string) $comidaMesaJs, 'CPF ${label(fullCpf(item))}'), 'modal do beneficiario usa CPF completo de integrantes');
 assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card'), 'modal do beneficiario separa dados em cards');
-assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--wide'), 'modal do beneficiario usa card amplo para entregas');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--full'), 'modal do beneficiario usa cards principais em largura total');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--four'), 'modal do beneficiario usa card 4/12 para integrantes');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--eight'), 'modal do beneficiario usa card 8/12 para historico de entregas');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--half'), 'modal do beneficiario usa cards 6/12 para documentos e historico');
 assert_true(str_contains((string) $comidaMesaJs, '["CPF", fullCpf(person)]'), 'modal ANEXO usa CPF formatado pelo helper');
 assert_true(!preg_match('/data-[^=]*cpf=["\'][^"\']*(cpf|\\$\\{)/i', (string) $comidaMesaJs), 'JS do Comida na Mesa nao coloca valor de CPF em data-*');
 

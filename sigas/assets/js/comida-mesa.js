@@ -173,14 +173,23 @@
         let controller = null;
 
         const label = (value) => escapeHTML(value || "Não informado");
-        const description = (pairs) => pairs.map(([term, value]) => `<dt>${escapeHTML(term)}</dt><dd>${label(value)}</dd>`).join("");
-        const infoCard = (icon, title, pairs, modifier = "") => `
+        const fieldGrid = (fields) => `
+            <dl class="beneficiary-detail-fields">
+                ${fields.map((field) => `
+                    <div class="beneficiary-detail-field beneficiary-detail-field--span-${field.span || 3}">
+                        <dt>${escapeHTML(field.label)}</dt>
+                        <dd>${label(field.value)}</dd>
+                    </div>
+                `).join("")}
+            </dl>
+        `;
+        const dataCard = (icon, title, fields, modifier = "") => `
             <section class="beneficiary-detail-card ${modifier}">
                 <div class="beneficiary-detail-card-heading">
                     <span class="beneficiary-detail-card-icon"><i class="bi bi-${icon}"></i></span>
                     <h3>${escapeHTML(title)}</h3>
                 </div>
-                <dl class="beneficiary-detail-list">${description(pairs)}</dl>
+                ${fieldGrid(fields)}
             </section>
         `;
         const listCard = (icon, title, content, modifier = "") => `
@@ -203,13 +212,41 @@
             content.innerHTML = `
                 <div class="beneficiary-detail-layout">
                     <div class="beneficiary-detail-grid">
-                        ${infoCard("person-vcard", "Responsável", [["Nome", data.nome], ["CPF", fullCpf(data)], ["NIS", data.nis], ["RG", data.rg], ["Nascimento", data.data_nascimento], ["Telefone", data.telefone], ["E-mail", data.email]])}
-                        ${infoCard("house-door", "Família", [["Código", data.familia_codigo], ["Zona", data.zona], ["Logradouro", data.logradouro], ["Número", data.numero], ["Complemento", data.complemento], ["Bairro", data.bairro], ["Comunidade", data.comunidade], ["Referência", data.ponto_referencia], ["CEP", data.cep], ["Membros", data.quantidade_membros], ["Renda", data.renda_familiar_formatada]])}
-                        ${infoCard("clipboard-check", "Inscrição", [["Situação", data.status_label], ["Prioridade", data.prioridade_label], ["Polo", data.polo_nome], ["Data de inscrição", data.data_inscricao_formatada], ["Data de aprovação", data.data_aprovacao_formatada], ["Observação", data.observacao], ["Motivo", data.motivo_suspensao], ["Atualização", data.atualizado_em_formatado]])}
-                        ${listCard("basket2", "Entregas", `<div class="table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Parentesco</th><th>Operador</th><th>Cancelador</th><th>Cancelamento</th><th>Motivo</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="10">Sem entregas registradas.</td></tr>'}</tbody></table></div>`, "beneficiary-detail-card--wide")}
-                        ${listCard("people", "Integrantes", `<ul class="list-group">${members || '<li class="list-group-item">Sem integrantes vinculados.</li>'}</ul>`, "beneficiary-detail-card--third")}
-                        ${listCard("paperclip", "Documentos", `<ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul>`, "beneficiary-detail-card--third")}
-                        ${listCard("clock-history", "Histórico", `<ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul>`, "beneficiary-detail-card--third")}
+                        ${dataCard("person-vcard", "Responsável familiar", [
+                            { label: "Nome", value: data.nome, span: 6 },
+                            { label: "CPF", value: fullCpf(data), span: 3 },
+                            { label: "Telefone", value: data.telefone, span: 3 },
+                            { label: "NIS", value: data.nis, span: 3 },
+                            { label: "RG", value: data.rg, span: 3 },
+                            { label: "Nascimento", value: data.data_nascimento, span: 3 },
+                            { label: "E-mail", value: data.email, span: 3 }
+                        ], "beneficiary-detail-card--full")}
+                        ${dataCard("clipboard-check", "Inscrição no programa", [
+                            { label: "Situação", value: data.status_label, span: 2 },
+                            { label: "Prioridade", value: data.prioridade_label, span: 2 },
+                            { label: "Polo", value: data.polo_nome, span: 2 },
+                            { label: "Inscrição", value: data.data_inscricao_formatada, span: 3 },
+                            { label: "Aprovação", value: data.data_aprovacao_formatada, span: 3 },
+                            { label: "Observação", value: data.observacao, span: 6 },
+                            { label: "Motivo suspensão", value: data.motivo_suspensao, span: 6 }
+                        ], "beneficiary-detail-card--full")}
+                        ${dataCard("house-door", "Família e endereço", [
+                            { label: "Código", value: data.familia_codigo, span: 2 },
+                            { label: "Zona", value: data.zona, span: 2 },
+                            { label: "Membros", value: data.quantidade_membros, span: 2 },
+                            { label: "Renda", value: data.renda_familiar_formatada, span: 3 },
+                            { label: "CEP", value: data.cep, span: 3 },
+                            { label: "Logradouro", value: data.logradouro, span: 6 },
+                            { label: "Nº", value: data.numero, span: 2 },
+                            { label: "Complemento", value: data.complemento, span: 4 },
+                            { label: "Bairro", value: data.bairro, span: 3 },
+                            { label: "Comunidade", value: data.comunidade, span: 3 },
+                            { label: "Referência", value: data.ponto_referencia, span: 6 }
+                        ], "beneficiary-detail-card--full")}
+                        ${listCard("people", "Integrantes", `<ul class="list-group">${members || '<li class="list-group-item">Sem integrantes vinculados.</li>'}</ul>`, "beneficiary-detail-card--four")}
+                        ${listCard("basket2", "Histórico de entregas", `<div class="table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Parentesco</th><th>Operador</th><th>Cancelador</th><th>Cancelamento</th><th>Motivo</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="10">Sem entregas registradas.</td></tr>'}</tbody></table></div>`, "beneficiary-detail-card--eight")}
+                        ${listCard("paperclip", "Documentos", `<ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul>`, "beneficiary-detail-card--half")}
+                        ${listCard("clock-history", "Histórico da inscrição", `<ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul>`, "beneficiary-detail-card--half")}
                     </div>
                 </div>
             `;
