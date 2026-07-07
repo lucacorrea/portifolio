@@ -810,11 +810,28 @@ button, a, input, select, textarea { outline: none; }
 .scan-guidance-card strong { font-size: 9.5px; }
 .scan-guidance-card p { margin: 4px 0 0; color: var(--text-muted); font-size: 8.5px; line-height: 1.45; }
 .status-neutral { color: var(--text-secondary); background: var(--surface-soft); border-color: var(--border); }
+.beneficiary-detail-layout { display: grid; gap: 14px; }
+.beneficiary-detail-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.beneficiary-detail-card { grid-column: span 4; min-width: 0; padding: 16px; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: #fff; box-shadow: 0 8px 20px rgba(22, 40, 30, .045); }
+.beneficiary-detail-card--wide { grid-column: 1 / -1; }
+.beneficiary-detail-card--third { grid-column: span 4; }
+.beneficiary-detail-card-heading { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 13px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.beneficiary-detail-card-heading h3 { margin: 0; color: var(--text); font-size: .98rem; font-weight: 760; line-height: 1.25; }
+.beneficiary-detail-card-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: var(--primary-soft); color: var(--primary-dark); font-size: .98rem; }
+.beneficiary-detail-list { display: grid; grid-template-columns: minmax(100px, .8fr) minmax(0, 1.35fr); gap: 9px 13px; margin: 0; }
+.beneficiary-detail-list dt { color: var(--text-muted); font-size: .76rem; font-weight: 800; line-height: 1.35; }
+.beneficiary-detail-list dd { min-width: 0; margin: 0; color: var(--text-secondary); font-size: .86rem; line-height: 1.45; overflow-wrap: anywhere; }
+.beneficiary-detail-card .list-group { margin: 0; }
+.beneficiary-detail-card .list-group-item { border-color: var(--border); }
+.beneficiary-detail-card .table-responsive { margin: 0; }
 
 @media (max-width: 1050px) {
     .scanner-layout { grid-template-columns: 1fr; }
     .scan-result-column { grid-template-columns: minmax(0,1fr) minmax(300px,.72fr); align-items: start; }
     .scan-result-card { grid-column: 1 / -1; }
+    .beneficiary-detail-card,
+    .beneficiary-detail-card--third { grid-column: span 6; }
+    .beneficiary-detail-card--wide { grid-column: 1 / -1; }
 }
 @media (max-width: 767px) {
     .document-scan-page { padding-inline: 12px; }
@@ -828,6 +845,12 @@ button, a, input, select, textarea { outline: none; }
     .manual-cpf-row .btn { min-height: 46px; }
     .scan-result-column { grid-template-columns: 1fr; gap: 12px; }
     .scan-result-card { grid-column: auto; }
+    .beneficiary-detail-grid { grid-template-columns: 1fr; }
+    .beneficiary-detail-card,
+    .beneficiary-detail-card--third,
+    .beneficiary-detail-card--wide { grid-column: auto; }
+    .beneficiary-detail-list { grid-template-columns: 1fr; gap: 3px 0; }
+    .beneficiary-detail-list dd { margin-bottom: 8px; }
     .result-status-header { grid-template-columns: auto minmax(0,1fr); }
     .result-status-header > .status-badge { grid-column: 1 / -1; justify-self: start; }
     .result-actions { grid-template-columns: 1fr; }

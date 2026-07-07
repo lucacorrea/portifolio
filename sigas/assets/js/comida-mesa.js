@@ -174,6 +174,24 @@
 
         const label = (value) => escapeHTML(value || "Não informado");
         const description = (pairs) => pairs.map(([term, value]) => `<dt>${escapeHTML(term)}</dt><dd>${label(value)}</dd>`).join("");
+        const infoCard = (icon, title, pairs, modifier = "") => `
+            <section class="beneficiary-detail-card ${modifier}">
+                <div class="beneficiary-detail-card-heading">
+                    <span class="beneficiary-detail-card-icon"><i class="bi bi-${icon}"></i></span>
+                    <h3>${escapeHTML(title)}</h3>
+                </div>
+                <dl class="beneficiary-detail-list">${description(pairs)}</dl>
+            </section>
+        `;
+        const listCard = (icon, title, content, modifier = "") => `
+            <section class="beneficiary-detail-card ${modifier}">
+                <div class="beneficiary-detail-card-heading">
+                    <span class="beneficiary-detail-card-icon"><i class="bi bi-${icon}"></i></span>
+                    <h3>${escapeHTML(title)}</h3>
+                </div>
+                ${content}
+            </section>
+        `;
         const render = (data) => {
             const entregaRows = (data.entregas || []).map((item) => `<tr><td>${label(item.competencia_label)}</td><td>${label(item.status_label)}</td><td>${label(item.entregue_em_formatado)}</td><td>${label(item.polo_nome)}</td><td>${label(item.recebedor_nome)}</td><td>${label(item.recebedor_parentesco)}</td><td>${label(item.operador_nome)}</td><td>${label(item.cancelador_nome)}</td><td>${label(item.cancelada_em_formatada)}</td><td>${label(item.motivo_cancelamento)}</td></tr>`).join("");
             const members = (data.integrantes || []).map((item) => `<li class="list-group-item d-flex justify-content-between"><span>${label(item.nome)}<br><small>${label(item.parentesco)} · CPF ${label(fullCpf(item))}</small></span></li>`).join("");
@@ -183,13 +201,17 @@
                 return `<li class="list-group-item"><strong>${label(item.acao)}</strong><br><span>${label(item.descricao)}</span><br><small>${label(item.usuario_nome)} · ${label(item.criado_em)}</small>${changes ? `<ul class="mt-2 mb-0">${changes}</ul>` : ""}</li>`;
             }).join("");
             content.innerHTML = `
-                <div class="row g-3">
-                    <div class="col-lg-4"><h3 class="fs-6">Responsável</h3><dl class="small">${description([["Nome", data.nome], ["CPF", fullCpf(data)], ["NIS", data.nis], ["RG", data.rg], ["Nascimento", data.data_nascimento], ["Telefone", data.telefone], ["E-mail", data.email]])}</dl></div>
-                    <div class="col-lg-4"><h3 class="fs-6">Família</h3><dl class="small">${description([["Código", data.familia_codigo], ["Zona", data.zona], ["Logradouro", data.logradouro], ["Número", data.numero], ["Complemento", data.complemento], ["Bairro", data.bairro], ["Comunidade", data.comunidade], ["Referência", data.ponto_referencia], ["CEP", data.cep], ["Membros", data.quantidade_membros], ["Renda", data.renda_familiar_formatada]])}</dl></div>
-                    <div class="col-lg-4"><h3 class="fs-6">Inscrição</h3><dl class="small">${description([["Situação", data.status_label], ["Prioridade", data.prioridade_label], ["Polo", data.polo_nome], ["Data de inscrição", data.data_inscricao_formatada], ["Data de aprovação", data.data_aprovacao_formatada], ["Observação", data.observacao], ["Motivo", data.motivo_suspensao], ["Atualização", data.atualizado_em_formatado]])}</dl></div>
+                <div class="beneficiary-detail-layout">
+                    <div class="beneficiary-detail-grid">
+                        ${infoCard("person-vcard", "Responsável", [["Nome", data.nome], ["CPF", fullCpf(data)], ["NIS", data.nis], ["RG", data.rg], ["Nascimento", data.data_nascimento], ["Telefone", data.telefone], ["E-mail", data.email]])}
+                        ${infoCard("house-door", "Família", [["Código", data.familia_codigo], ["Zona", data.zona], ["Logradouro", data.logradouro], ["Número", data.numero], ["Complemento", data.complemento], ["Bairro", data.bairro], ["Comunidade", data.comunidade], ["Referência", data.ponto_referencia], ["CEP", data.cep], ["Membros", data.quantidade_membros], ["Renda", data.renda_familiar_formatada]])}
+                        ${infoCard("clipboard-check", "Inscrição", [["Situação", data.status_label], ["Prioridade", data.prioridade_label], ["Polo", data.polo_nome], ["Data de inscrição", data.data_inscricao_formatada], ["Data de aprovação", data.data_aprovacao_formatada], ["Observação", data.observacao], ["Motivo", data.motivo_suspensao], ["Atualização", data.atualizado_em_formatado]])}
+                        ${listCard("basket2", "Entregas", `<div class="table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Parentesco</th><th>Operador</th><th>Cancelador</th><th>Cancelamento</th><th>Motivo</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="10">Sem entregas registradas.</td></tr>'}</tbody></table></div>`, "beneficiary-detail-card--wide")}
+                        ${listCard("people", "Integrantes", `<ul class="list-group">${members || '<li class="list-group-item">Sem integrantes vinculados.</li>'}</ul>`, "beneficiary-detail-card--third")}
+                        ${listCard("paperclip", "Documentos", `<ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul>`, "beneficiary-detail-card--third")}
+                        ${listCard("clock-history", "Histórico", `<ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul>`, "beneficiary-detail-card--third")}
+                    </div>
                 </div>
-                <h3 class="fs-6 mt-3">Entregas</h3><div class="table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Parentesco</th><th>Operador</th><th>Cancelador</th><th>Cancelamento</th><th>Motivo</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="10">Sem entregas registradas.</td></tr>'}</tbody></table></div>
-                <div class="row g-3 mt-2"><div class="col-lg-4"><h3 class="fs-6">Integrantes</h3><ul class="list-group">${members || '<li class="list-group-item">Sem integrantes vinculados.</li>'}</ul></div><div class="col-lg-4"><h3 class="fs-6">Documentos</h3><ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul></div><div class="col-lg-4"><h3 class="fs-6">Histórico</h3><ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul></div></div>
             `;
         };
 

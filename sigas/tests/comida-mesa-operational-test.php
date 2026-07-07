@@ -226,6 +226,8 @@ assert_true(!str_contains((string) $comidaMesaJs, 'versao_atualizacao: data.atua
 assert_true(str_contains((string) $comidaMesaJs, 'const fullCpf = (data = {})'), 'JS possui helper para CPF completo');
 assert_true(str_contains((string) $comidaMesaJs, '["CPF", fullCpf(data)]'), 'modal do beneficiario usa CPF completo pelo helper');
 assert_true(str_contains((string) $comidaMesaJs, 'CPF ${label(fullCpf(item))}'), 'modal do beneficiario usa CPF completo de integrantes');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card'), 'modal do beneficiario separa dados em cards');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--wide'), 'modal do beneficiario usa card amplo para entregas');
 assert_true(str_contains((string) $comidaMesaJs, '["CPF", fullCpf(person)]'), 'modal ANEXO usa CPF formatado pelo helper');
 assert_true(!preg_match('/data-[^=]*cpf=["\'][^"\']*(cpf|\\$\\{)/i', (string) $comidaMesaJs), 'JS do Comida na Mesa nao coloca valor de CPF em data-*');
 
