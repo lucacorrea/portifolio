@@ -172,6 +172,73 @@ final class ServiceOrderManagementService
         });
     }
 
+    public function approveBudgetAndCreateOrder(int $budgetId): ServiceOrder
+    {
+        if ($this->budgets === null) {
+            throw new InvalidArgumentException('Integração de orçamento indisponível.');
+        }
+
+        return $this->transactional(function () use ($budgetId): ServiceOrder {
+            $budget = $this->budgets->lockById($budgetId);
+            if ($budget === null) {
+                throw new InvalidArgumentException('Orçamento não encontrado.');
+            }
+            if ($budget->status() === 'recusado') {
+                throw new InvalidArgumentException('Orçamento recusado não pode ser aprovado.');
+            }
+            if ($this->orders->hasOperationalOrderForBudget($budgetId)) {
+                throw new InvalidArgumentException('Este orçamento já possui uma OS operacional vinculada.');
+            }
+
+            $budgetItems = $this->budgets->findItems($budgetId);
+            if ($budgetItems === []) {
+                throw new InvalidArgumentException('Não é possível aprovar orçamento sem itens.');
+            }
+
+            if ($budget->status() !== 'aprovado') {
+                $this->budgets->approve($budgetId);
+            }
+
+            $items = [];
+            foreach ($budgetItems as $item) {
+                $items[] = [
+                    'type' => $item->type(),
+                    'origin' => 'orcamento',
+                    'reference_id' => $item->referenceId(),
+                    'budget_item_id' => $item->id(),
+                    'description' => $item->description(),
+                    'unit' => $item->unit(),
+                    'quantity' => $item->quantity(),
+                    'unit_price' => $item->unitPrice(),
+                    'discount' => $item->discount(),
+                ];
+            }
+
+            $data = ServiceOrderFormData::fromArray([
+                'client_id' => $budget->clientId(),
+                'budget_id' => $budget->id(),
+                'status' => 'aguardando_agendamento',
+                'priority' => 'media',
+                'discount' => $budget->discount(),
+                'increase' => $budget->increase(),
+                'notes' => $budget->notes(),
+                'items' => $items,
+            ]);
+
+            $order = $this->orders->create($data, null, null, null, null);
+            $this->connection->prepare(
+                'UPDATE ordens_servico
+                    SET valor_aprovado_orcamento = :approved_value
+                  WHERE id = :order_id'
+            )->execute([
+                'approved_value' => $budget->total(),
+                'order_id' => $order->id(),
+            ]);
+
+            return $this->getOrder($order->id());
+        });
+    }
+
     public function updateOrder(int $id, ServiceOrderFormData $data): void
     {
         $this->transactional(function () use ($id, $data): void {
@@ -206,6 +273,9 @@ final class ServiceOrderManagementService
             $this->validateTeamForScheduledOrder($team);
             $this->validateConflicts($orderId, $team, $schedule);
             $this->orders->updateSchedule($orderId, $schedule->start(), $schedule->end());
+            if (in_array($order->status(), ['rascunho', 'aberta', 'aguardando_agendamento'], true)) {
+                $this->orders->updateStatus($orderId, 'agendada');
+            }
         });
     }
 
@@ -213,10 +283,11 @@ final class ServiceOrderManagementService
     {
         $this->transactional(function () use ($orderId, $team, $schedule): void {
             $this->requireLockedOrder($orderId);
-            $this->validateEmployees($team);
+            $this->validateTeamForScheduledOrder($team);
             $this->validateConflicts($orderId, $team, $schedule);
             $this->orders->replaceTeam($orderId, $team);
             $this->orders->updateSchedule($orderId, $schedule->start(), $schedule->end());
+            $this->orders->updateStatus($orderId, 'agendada');
         });
     }
 
@@ -247,12 +318,13 @@ final class ServiceOrderManagementService
             $notes = $notes === null ? null : $this->cleanOptionalText($notes, 1000);
             $releaseBudget = in_array($option, ['liberar_orcamento', 'criar_substituta'], true) ? 1 : 0;
 
-            $this->connection->prepare(
+            $statement = $this->connection->prepare(
                 'INSERT INTO ordem_servico_cancelamentos
                     (ordem_servico_id, opcao, motivo, observacao, orcamento_liberado, cancelado_por)
                  VALUES
                     (:order_id, :option, :reason, :notes, :release_budget, :user_id)'
-            )->execute([
+            );
+            $statement->execute([
                 'order_id' => $orderId,
                 'option' => $option,
                 'reason' => $reason,
@@ -260,6 +332,7 @@ final class ServiceOrderManagementService
                 'release_budget' => $releaseBudget,
                 'user_id' => $userId,
             ]);
+            $cancellationId = (int) $this->connection->lastInsertId();
 
             $this->connection->prepare(
                 "UPDATE ordens_servico
@@ -268,6 +341,27 @@ final class ServiceOrderManagementService
                         orcamento_liberado = :release_budget
                   WHERE id = :order_id"
             )->execute(['order_id' => $orderId, 'release_budget' => $releaseBudget]);
+            $this->orders->syncOperationalBudgetKey($orderId);
+
+            if ($option === 'criar_substituta') {
+                $replacement = $this->createReplacementOrder($order);
+                $this->connection->prepare(
+                    'UPDATE ordem_servico_cancelamentos
+                        SET ordem_substituta_id = :replacement_id
+                      WHERE id = :cancellation_id'
+                )->execute([
+                    'replacement_id' => $replacement->id(),
+                    'cancellation_id' => $cancellationId,
+                ]);
+                $this->connection->prepare(
+                    'UPDATE ordens_servico
+                        SET ordem_substituta_id = :replacement_id
+                      WHERE id = :order_id'
+                )->execute([
+                    'replacement_id' => $replacement->id(),
+                    'order_id' => $orderId,
+                ]);
+            }
         });
     }
 
@@ -278,7 +372,11 @@ final class ServiceOrderManagementService
             if (!in_array($order->status(), ['finalizada', 'cancelada'], true)) {
                 throw new InvalidArgumentException('Apenas OS finalizada ou cancelada pode ser reaberta.');
             }
+            $this->assertOrderCanReopen($order);
             $this->orders->updateStatus($orderId, 'aberta');
+            if ($order->status() === 'cancelada' && $order->budgetId() !== null) {
+                $this->orders->markBudgetReleased($orderId, false);
+            }
         });
     }
 
@@ -354,7 +452,80 @@ final class ServiceOrderManagementService
     private function validateConflictIfScheduled(ServiceOrder $order, ServiceOrderTeamData $team): void
     {
         if ($order->scheduledStart() === null || $order->scheduledEnd() === null) return;
+        $this->validateTeamForScheduledOrder($team);
         $this->validateConflicts($order->id(), $team, new ServiceOrderScheduleData(new DateTimeImmutable($order->scheduledStart()), new DateTimeImmutable($order->scheduledEnd())));
+    }
+
+    private function assertOrderCanReopen(ServiceOrder $order): void
+    {
+        if ($order->status() === 'finalizada' && $this->hasExecutionLocks($order->id())) {
+            throw new InvalidArgumentException('OS finalizada com execução, estoque, pagamento ou conta a receber não pode ser reaberta. Use estorno/correção financeira.');
+        }
+        if ($order->status() === 'cancelada' && $order->budgetId() !== null && $this->orders->hasOtherOperationalOrderForBudget($order->budgetId(), $order->id())) {
+            throw new InvalidArgumentException('Não é possível reabrir: o orçamento já possui outra OS operacional.');
+        }
+    }
+
+    private function hasExecutionLocks(int $orderId): bool
+    {
+        foreach ([
+            'SELECT id FROM ordem_servico_finalizacoes WHERE ordem_servico_id = :id AND ativa = 1 LIMIT 1 FOR UPDATE',
+            'SELECT id FROM estoque_movimentacoes WHERE ordem_servico_id = :id LIMIT 1 FOR UPDATE',
+            "SELECT id FROM ordem_servico_pagamentos WHERE ordem_servico_id = :id AND status = 'ativo' LIMIT 1 FOR UPDATE",
+            "SELECT id FROM contas_receber WHERE ordem_servico_id = :id AND status <> 'cancelada' LIMIT 1 FOR UPDATE",
+        ] as $sql) {
+            $statement = $this->connection->prepare($sql);
+            $statement->execute(['id' => $orderId]);
+            if ($statement->fetch() !== false) return true;
+        }
+        return false;
+    }
+
+    private function createReplacementOrder(ServiceOrder $order): ServiceOrder
+    {
+        $items = [];
+        foreach ($this->orders->findItems($order->id()) as $item) {
+            $items[] = [
+                'type' => $item->type(),
+                'origin' => $item->origin(),
+                'reference_id' => $item->referenceId(),
+                'budget_item_id' => $item->budgetItemId(),
+                'description' => $item->description(),
+                'unit' => $item->unit(),
+                'quantity' => $item->quantity(),
+                'unit_price' => $item->unitPrice(),
+                'discount' => $item->discount(),
+            ];
+        }
+        if ($items === []) {
+            throw new InvalidArgumentException('OS sem itens não pode gerar substituta.');
+        }
+
+        $data = ServiceOrderFormData::fromArray([
+            'client_id' => $order->clientId(),
+            'budget_id' => $order->budgetId(),
+            'status' => 'aguardando_agendamento',
+            'priority' => $order->priority(),
+            'equipment_type' => $order->equipmentType(),
+            'equipment_brand' => $order->equipmentBrand(),
+            'equipment_model' => $order->equipmentModel(),
+            'equipment_capacity' => $order->equipmentCapacity(),
+            'equipment_serial_number' => $order->equipmentSerialNumber(),
+            'equipment_environment' => $order->equipmentEnvironment(),
+            'equipment_location' => $order->equipmentLocation(),
+            'reported_problem' => $order->reportedProblem(),
+            'identified_problem' => $order->identifiedProblem(),
+            'diagnosis' => $order->diagnosis(),
+            'solution' => $order->solution(),
+            'recommendation' => $order->recommendation(),
+            'internal_notes' => $order->internalNotes(),
+            'notes' => $order->notes(),
+            'discount' => $order->discount(),
+            'increase' => $order->increase(),
+            'items' => $items,
+        ]);
+
+        return $this->orders->create($data, null, null, null, null);
     }
 
     private function validateConflicts(?int $orderId, ServiceOrderTeamData $team, ServiceOrderScheduleData $schedule): void

@@ -78,7 +78,21 @@ $editError = budget_error($recovery, 'edit');
         <?php foreach ($budgets as $budget): ?>
             <?php $displayStatus = $budget->displayStatus(); ?>
             <tr>
-                <td><strong><?= h($budget->displayNumber()) ?></strong><?php if (isset($ordersByBudget[$budget->id()])): ?><br><small class="text-muted">OS: <?= h($ordersByBudget[$budget->id()]['numero']) ?></small><?php endif; ?></td><td><?= h($budget->clientName()) ?><br><small class="text-muted"><?= h($budget->clientCode()) ?></small></td><td><?= h(budget_date($budget->issueDate())) ?></td><td><?= h(budget_date($budget->validUntil())) ?></td><td><?= h((string) $budget->itemsCount()) ?></td><td><?= h(budget_money($budget->total())) ?></td><td><span class="badge-soft badge-<?= h(budget_status_class($displayStatus)) ?>"><?= h(budget_status_label($displayStatus)) ?></span></td>
+                <td>
+                    <?php if ($canEdit && !in_array($budget->status(), ['aprovado', 'recusado'], true)): ?>
+                        <button class="table-inline-action js-budget-edit" type="button" data-budget-id="<?= h((string) $budget->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-orcamento-edit"><?= h($budget->displayNumber()) ?></button>
+                    <?php else: ?>
+                        <strong><?= h($budget->displayNumber()) ?></strong>
+                    <?php endif; ?>
+                    <?php if (isset($ordersByBudget[$budget->id()])): ?><br><small class="text-muted">OS criada: <?= h($ordersByBudget[$budget->id()]['numero']) ?></small><?php endif; ?>
+                </td><td>
+                    <?php if ($canEdit && !in_array($budget->status(), ['aprovado', 'recusado'], true)): ?>
+                        <button class="table-inline-action js-budget-edit" type="button" data-budget-id="<?= h((string) $budget->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-orcamento-edit"><?= h($budget->clientName()) ?></button>
+                    <?php else: ?>
+                        <?= h($budget->clientName()) ?>
+                    <?php endif; ?>
+                    <br><small class="text-muted"><?= h($budget->clientCode()) ?></small>
+                </td><td><?= h(budget_date($budget->issueDate())) ?></td><td><?= h(budget_date($budget->validUntil())) ?></td><td><?= h((string) $budget->itemsCount()) ?></td><td><?= h(budget_money($budget->total())) ?></td><td><span class="badge-soft badge-<?= h(budget_status_class($displayStatus)) ?>"><?= h(budget_status_label($displayStatus)) ?></span></td>
                 <td class="table-actions-cell"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do orçamento <?= h($budget->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
                     <li><button class="dropdown-item js-budget-view" type="button" data-budget-id="<?= h((string) $budget->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-orcamento-view"><i class="bi bi-eye"></i> Visualizar</button></li>
                     <?php if (isset($ordersByBudget[$budget->id()])): ?><li><a class="dropdown-item" href="ordens-servico.php?search=<?= h(rawurlencode($ordersByBudget[$budget->id()]['numero'])) ?>"><i class="bi bi-clipboard2-check"></i> Abrir Ordem de Serviço</a></li><?php endif; ?>

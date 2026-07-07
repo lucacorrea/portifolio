@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const employeeOptions = pageData.employees || [];
   const recoveryModal = pageData.recoveryModal || new URLSearchParams(window.location.search).get('modal');
   const recoveryData = pageData.recoveryData || {};
+  const recoveryError = pageData.recoveryError || '';
 
   function parseNumber(value) {
     value = String(value || '0').replace(/\s/g, '');
@@ -221,6 +222,31 @@ document.addEventListener('DOMContentLoaded', function () {
     restoreTeamMembers(document.getElementById('modal-os-team'), data.team_members || data.equipe || legacyTeamFromData(data));
   }
 
+  function restoreFinalizeForm(data) {
+    setValue('os-finalize-id', data.id);
+    const modal = document.getElementById('modal-os-finalize');
+    if (!modal) return;
+    const fields = {
+      valor_recebido: data.valor_recebido,
+      forma_pagamento: data.forma_pagamento,
+      vencimento_em: data.vencimento_em,
+      proximo_lembrete_em: data.proximo_lembrete_em,
+      observacao: data.observacao,
+    };
+    Object.entries(fields).forEach(function ([name, value]) {
+      const input = modal.querySelector('[name="' + name + '"]');
+      if (input) input.value = value || '';
+    });
+    if (recoveryError) {
+      const body = modal.querySelector('.modal-body');
+      const alert = document.createElement('div');
+      alert.className = 'alert alert-danger';
+      alert.setAttribute('role', 'alert');
+      alert.textContent = recoveryError;
+      body?.prepend(alert);
+    }
+  }
+
   function legacyTeamFromData(data) {
     const members = [];
     if (data.funcionario_principal_id) members.push({ employee_id: data.funcionario_principal_id, role: 'Responsável técnico', primary: true });
@@ -280,7 +306,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function setValue(id, value) {
     const el = document.getElementById(id);
-    if (el) el.value = value || '';
+    if (!el) return;
+    const normalized = value || '';
+    if (el.tagName === 'SELECT' && normalized && !Array.from(el.options).some(function (option) { return option.value === String(normalized); })) {
+      el.appendChild(new Option(String(normalized), String(normalized)));
+    }
+    el.value = normalized;
   }
 
   document.querySelectorAll('.js-os-view').forEach(function (button) {
@@ -345,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
       setValue('os-notes', order.notes);
       setValue('os-scheduled-start', toLocalInput(order.scheduled_start));
       setValue('os-scheduled-end', toLocalInput(order.scheduled_end));
-      setValue('os-status', 'aberta');
+      setValue('os-status', order.status || 'aberta');
       data.items.forEach(function (item) { addRow(form, item.type, item); });
       restoreTeamMembers(form, data.team || legacyTeamFromData(order));
       recalc(form);
@@ -397,6 +428,12 @@ document.addEventListener('DOMContentLoaded', function () {
   if (recoveryModal === 'team' && window.bootstrap) {
     restoreTeamForm(recoveryData);
     const modal = document.getElementById('modal-os-team');
+    if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
+  }
+
+  if (recoveryModal === 'finalize' && window.bootstrap) {
+    restoreFinalizeForm(recoveryData);
+    const modal = document.getElementById('modal-os-finalize');
     if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
   }
 });

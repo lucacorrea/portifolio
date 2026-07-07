@@ -8,7 +8,7 @@ $pageSubtitle = 'Distribuição semanal dos atendimentos por dupla';
 
 $primaryActionLabel = 'Adicionar serviço';
 $primaryActionIcon = 'bi-calendar-plus';
-$primaryActionHref = 'ordens-servico.php?modal=create';
+$primaryActionTarget = '#modal-week-create';
 $primaryActionPermission = 'painel_semanal.adicionar';
 $requiredPermission = 'painel_semanal.visualizar';
 

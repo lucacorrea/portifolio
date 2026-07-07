@@ -4,6 +4,30 @@ declare(strict_types=1);
 
 $activePage = $activePage ?? 'dashboard';
 
+$companySettings = [];
+try {
+    $companySettings = $application->companySettings()->get();
+} catch (Throwable) {
+    $companySettings = [];
+}
+
+$companyName = trim((string) ($companySettings['nome_fantasia'] ?? ''));
+if ($companyName === '') {
+    $companyName = 'K. Yamaguchi';
+}
+
+$companyLogo = trim((string) ($companySettings['logo'] ?? ''));
+if (
+    $companyLogo !== ''
+    && (
+        str_contains($companyLogo, "\0")
+        || $companyLogo !== strip_tags($companyLogo)
+        || preg_match('/^\s*javascript:/i', $companyLogo)
+    )
+) {
+    $companyLogo = '';
+}
+
 $navGroups = [
     'Principal' => [
         [
@@ -182,15 +206,39 @@ $canSeeItem = static function (
     <a
         class="sidebar-brand"
         href="dashboard.php"
-        aria-label="K. Yamaguchi Refrigeração"
+        aria-label="<?= htmlspecialchars(
+            $companyName,
+            ENT_QUOTES,
+            'UTF-8'
+        ) ?>"
     >
         <div class="brand-icon">
-            <i class="bi bi-snow2"></i>
+            <?php if ($companyLogo !== ''): ?>
+                <img
+                    class="brand-logo-img"
+                    src="<?= htmlspecialchars(
+                        $companyLogo,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>"
+                    alt="Logo <?= htmlspecialchars(
+                        $companyName,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>"
+                >
+            <?php else: ?>
+                <i class="bi bi-snow2"></i>
+            <?php endif; ?>
         </div>
 
         <div>
             <div class="brand-name">
-                K. Yamaguchi
+                <?= htmlspecialchars(
+                    $companyName,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
             </div>
 
             <div class="brand-tag">

@@ -74,8 +74,10 @@ function client_status_class(string $status): string
 
 function client_address(Client $client): string
 {
-    $parts = array_filter([$client->address(), $client->number(), $client->complement(), $client->district(), $client->city(), $client->state(), $client->zipCode()]);
-    return $parts === [] ? '-' : implode(', ', $parts);
+    $address = trim(implode(', ', array_filter([$client->address(), $client->number(), $client->district()])));
+    $cityState = trim(implode('/', array_filter([$client->city(), $client->state()])));
+    $parts = array_filter([$address, $cityState]);
+    return $parts === [] ? 'Endereço não informado' : implode(', ', $parts);
 }
 
 $createData = client_data($recovery, 'create');
@@ -108,18 +110,24 @@ $editError = client_error($recovery, 'edit');
     <?php else: ?>
     <div class="table-panel-wrap">
         <table class="os-table clients-table">
-            <thead><tr><th>Código</th><th>Cliente</th><th>CPF/CNPJ</th><th>Contato</th><th>Cidade</th><th>Status</th><th>Cadastrado em</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Código</th><th>Cliente</th><th>CPF/CNPJ</th><th>Contato</th><th>Endereço</th><th>Status</th><th>Ações</th></tr></thead>
             <tbody>
             <?php foreach ($clients as $client): ?>
                 <?php $history = $clientBudgets[$client->id()] ?? []; ?>
                 <tr>
                     <td><strong><?= h($client->displayCode()) ?></strong></td>
-                    <td><strong><?= h($client->name()) ?></strong><br><small class="text-muted"><?= h($client->personTypeLabel()) ?></small></td>
+                    <td>
+                        <?php if ($canEdit): ?>
+                            <button class="table-inline-action js-client-edit" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-edit" data-client-id="<?= h((string) $client->id()) ?>"><?= h($client->name()) ?></button>
+                        <?php else: ?>
+                            <strong><?= h($client->name()) ?></strong>
+                        <?php endif; ?>
+                        <br><small class="text-muted"><?= h($client->personTypeLabel()) ?></small>
+                    </td>
                     <td><?= h(client_document($client->document(), $client->personType())) ?></td>
                     <td><span><?= h($client->phone() ?? '-') ?></span><br><small><?= h($client->whatsapp() ?? '-') ?></small><?php if ($client->email()): ?><br><small><?= h($client->email()) ?></small><?php endif; ?></td>
-                    <td><?= h($client->city() ?? '-') ?></td>
+                    <td><?= h(client_address($client)) ?></td>
                     <td><span class="badge-soft badge-<?= h(client_status_class($client->status())) ?>"><?= h(client_status_label($client->status())) ?></span></td>
-                    <td><?= h(client_date($client->createdAt())) ?></td>
                     <td class="table-actions-cell"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do cliente <?= h($client->name()) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
                         <li><button class="dropdown-item js-client-view" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-view" data-client-id="<?= h((string) $client->id()) ?>"><i class="bi bi-eye"></i> Visualizar</button></li>
                         <?php if ($canEdit): ?><li><button class="dropdown-item js-client-edit" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-edit" data-client-id="<?= h((string) $client->id()) ?>"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?>

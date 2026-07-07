@@ -1,0 +1,10 @@
+.env
+*.env
+*.log
+logs/
+storage/
+configuracao/
+vendor/
+.idea/
+.vscode/
+Thumbs.db

@@ -2,19 +2,24 @@
 
 - Menus de ações de tabelas devem usar `table-action-dropdown` e o portal global em `assets/js/osmais-app.js`; não prenda `.dropdown-menu` ao overflow da tabela nem resolva removendo `overflow-x` dos painéis.
 - Orçamentos não possuem funcionários.
+- Ao aprovar um orçamento, uma OS deve ser criada automaticamente.
+- A aprovação e a criação da OS ocorrem na mesma transação.
+- Um orçamento aprovado não pode gerar duas OS por duplicidade.
 - A equipe operacional é definida somente na Ordem de Serviço.
 - Uma OS pode ser criada sem equipe.
-- Uma OS pode possuir um, dois ou mais funcionários.
+- Uma OS pode possuir um ou vários funcionários.
 - Cada integrante possui função operacional.
-- Quando houver equipe, exatamente um integrante deve ser o responsável principal.
+- Quando houver equipe, exatamente um funcionário deve ser o principal.
 - Para agendar, a OS deve possuir pelo menos um funcionário e um principal.
 - Todos os integrantes devem ser considerados na validação de conflito.
 - Agenda e Serviços da Semana são projeções das OS.
+- Serviços da Semana não deve redirecionar o usuário para a página de OS ao salvar.
 - Orçamentos aprovados podem gerar uma OS operacional por vez.
+- Finalização de OS deve integrar serviços, peças, estoque, pagamentos, Caixa e Contas a Receber.
 - Finalizar uma OS é uma operação transacional.
 - Produtos utilizados na finalização geram movimentação de estoque.
 - Pagamentos geram movimentação de Caixa.
 - Saldo pendente gera Conta a Receber.
-- Pagamentos e movimentações financeiras nunca são apagados; correções usam estorno.
-- Comprovante de serviço é documento não fiscal.
+- Pagamentos não são apagados: correções usam estorno.
+- Documento de serviço não fiscal é diferente de documento fiscal.
 - Dropdown de ações usa table-action-dropdown e portal global.

@@ -14,6 +14,7 @@ final class ProductFormData
         private readonly ?string $category,
         private readonly ?string $manufacturer,
         private readonly string $unit,
+        private readonly ?string $ncm,
         private readonly ?string $barcode,
         private readonly string $costPrice,
         private readonly string $salePrice,
@@ -32,6 +33,7 @@ final class ProductFormData
             category: self::text((string) ($data['category'] ?? ''), 'categoria', 100, false),
             manufacturer: self::text((string) ($data['manufacturer'] ?? ''), 'fabricante', 100, false),
             unit: self::text((string) ($data['unit'] ?? 'un'), 'unidade', 20, true),
+            ncm: self::normalizeNcm($data['ncm'] ?? ''),
             barcode: self::text((string) ($data['barcode'] ?? ''), 'código de barras', 100, false),
             costPrice: self::decimal($data['cost_price'] ?? '0', 2, 'preço de custo'),
             salePrice: self::decimal($data['sale_price'] ?? '0', 2, 'preço de venda'),
@@ -47,6 +49,7 @@ final class ProductFormData
     public function category(): ?string { return $this->category; }
     public function manufacturer(): ?string { return $this->manufacturer; }
     public function unit(): string { return $this->unit; }
+    public function ncm(): ?string { return $this->ncm; }
     public function barcode(): ?string { return $this->barcode; }
     public function costPrice(): string { return $this->costPrice; }
     public function salePrice(): string { return $this->salePrice; }
@@ -63,6 +66,7 @@ final class ProductFormData
             $this->category,
             $this->manufacturer,
             $this->unit,
+            $this->ncm,
             $this->barcode,
             self::decimal($costPrice, 2, 'preço de custo'),
             self::decimal($salePrice, 2, 'preço de venda'),
@@ -71,6 +75,18 @@ final class ProductFormData
             $this->location,
             $this->status
         );
+    }
+
+    private static function normalizeNcm(mixed $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+        if ($value === '') {
+            return null;
+        }
+        if (!preg_match('/^\d{1,8}$/', $value)) {
+            throw new InvalidArgumentException('Informe um NCM com até 8 dígitos.');
+        }
+        return $value;
     }
 
     private static function text(string $value, string $field, int $max, bool $required): ?string

@@ -2,6 +2,7 @@
 
 const SIGAS = {
     page: document.body.dataset.page || 'login',
+    context: window.SIGAS_CONTEXT || {},
     qs(selector, context = document) { return context.querySelector(selector); },
     qsa(selector, context = document) { return [...context.querySelectorAll(selector)]; },
     escapeHTML(value = '') {
@@ -22,48 +23,42 @@ const SIGAS = {
         instance.show();
     },
     sidebarMarkup() {
+        const dashboardUrl = this.context.urls?.dashboard || 'dashboard.php';
         const sections = [
             ['Principal', [
-                ['dashboard.html', 'speedometer2', 'Visão Geral', 'dashboard']
+                [dashboardUrl, 'speedometer2', 'Visão Geral', 'dashboard']
             ]],
-            ['Atendimento Social', [
-                ['consulta-documento.html', 'person-bounding-box', 'Consultar CPF / Documento', 'consulta'],
-                ['cadastro-anexo.html', 'file-earmark-person', 'Novo Cadastro ANEXO', 'cadastro-anexo'],
-                ['pessoas.html', 'people', 'Pessoas e Prontuários', 'pessoas'],
-                ['solicitacoes.html', 'inboxes', 'Solicitações', 'solicitacoes'],
-                ['atendimentos.html', 'clipboard2-pulse', 'Atendimentos', 'atendimentos']
-            ]],
-            ['Programas e Benefícios', [
-                ['beneficios.html', 'gift', 'Programas e Benefícios', 'beneficios'],
-                ['modulo.html', 'basket2', 'Comida na Mesa / Entregas', 'modulo', true]
-            ]],
-            ['Rede Socioassistencial', [
-                ['unidades.html', 'buildings', 'Unidades', 'unidades']
-            ]],
-            ['Gestão', [
-                ['relatorios.html', 'bar-chart', 'Relatórios', 'relatorios'],
-                ['integracao-semth.html', 'database-lock', 'Integração SEMTH', 'integracao'],
-                ['usuarios.html', 'person-gear', 'Usuários', 'usuarios'],
-                ['configuracoes.html', 'sliders', 'Configurações', 'configuracoes'],
-                ['manual-sistema.html', 'book', 'Manual do Sistema', 'manual']
+            ['Comida na Mesa', [
+                ['consulta-documento.php', 'person-bounding-box', 'Consultar CPF / Registrar entrega', 'consulta'],
+                ['modulo.php', 'basket2', 'Beneficiários e competências', 'modulo', true]
             ]]
         ];
         const recordPages = ['registro'];
         return `
             <button class="btn btn-light btn-icon sidebar-close" type="button" data-sidebar-close aria-label="Fechar menu"><i class="bi bi-x-lg"></i></button>
-            <a class="sidebar-brand" href="dashboard.html" aria-label="SIGAS Coari - Página inicial">
+            <a class="sidebar-brand" href="${this.escapeHTML(dashboardUrl)}" aria-label="SIGAS Coari - Página inicial">
                 <img src="assets/img/brasao-placeholder.svg" alt="Brasão institucional ilustrativo">
                 <div><strong>SIGAS COARI</strong><small>Gestão da Assistência Social</small></div>
             </a>
             <div class="sidebar-scroll">
                 ${sections.map(([title, items]) => `<section class="nav-section"><h2 class="nav-section-title">${title}</h2><nav class="sidebar-nav" aria-label="${title}">${items.map(([href, icon, label, key, featured]) => {
-                    const active = this.page === key || (recordPages.includes(this.page) && key === 'pessoas');
-                    return `<a href="${href}" class="sidebar-link ${active ? 'active' : ''}" ${active ? 'aria-current="page"' : ''} title="${label}"><i class="bi bi-${icon}"></i><span>${label}</span>${featured ? '<b class="food-marker" aria-label="Ação prioritária"></b>' : ''}</a>`;
+                    const active = this.page === key || (recordPages.includes(this.page) && key === 'modulo');
+                    return `<a href="${this.escapeHTML(href)}" class="sidebar-link ${active ? 'active' : ''}" ${active ? 'aria-current="page"' : ''} title="${label}"><i class="bi bi-${icon}"></i><span>${label}</span>${featured ? '<b class="food-marker" aria-label="Ação prioritária"></b>' : ''}</a>`;
                 }).join('')}</nav></section>`).join('')}
             </div>
-            <div class="sidebar-footer"><strong>SIGAS Coari v1.1</strong><br>Estrutura demonstrativa organizada</div>`;
+            <div class="sidebar-footer"><strong>SIGAS Coari v1.1</strong><br>Gestão integrada da Assistência Social</div>`;
     },
     topbarMarkup() {
+        const user = this.context.user || {};
+        const urls = this.context.urls || {};
+        const csrf = this.context.csrf || {};
+        const initials = user.initials || 'U';
+        const name = user.name || 'Usuário';
+        const jobTitle = user.jobTitle || 'Usuário';
+        const sector = user.sector || 'Sem setor';
+        const logoutUrl = urls.logout || 'sair.php';
+        const logoutToken = csrf.logout || '';
+
         return `
             <button class="btn btn-light btn-icon" type="button" data-sidebar-toggle aria-label="Abrir ou recolher menu" aria-expanded="false"><i class="bi bi-list"></i></button>
             <div class="topbar-search">
@@ -71,7 +66,7 @@ const SIGAS = {
                 <input class="form-control" id="globalSearch" type="search" placeholder="Pesquisar CPF, nome, protocolo ou solicitação" aria-label="Pesquisa global">
                 <span class="search-shortcut">Ctrl K</span>
             </div>
-            <button class="unit-chip" type="button" data-bs-toggle="tooltip" title="Unidade de trabalho atual"><i class="bi bi-building"></i><span>SEMAS — Sede Administrativa</span></button>
+            <button class="unit-chip" type="button" data-bs-toggle="tooltip" title="Unidade de trabalho atual"><i class="bi bi-building"></i><span>${this.escapeHTML(sector)}</span></button>
             <div class="dropdown">
                 <button class="btn btn-light btn-icon topbar-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notificações"><i class="bi bi-bell"></i><span class="notification-dot"></span></button>
                 <div class="dropdown-menu dropdown-menu-end p-2 notification-menu">
@@ -83,23 +78,27 @@ const SIGAS = {
             </div>
             <div class="dropdown">
                 <button class="user-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu do usuário">
-                    <span class="avatar">MO</span><span class="user-meta"><strong>Maria Oliveira</strong><span>Assistente Social</span></span><i class="bi bi-chevron-down small text-secondary"></i>
+                    <span class="avatar">${this.escapeHTML(initials)}</span><span class="user-meta"><strong>${this.escapeHTML(name)}</strong><span>${this.escapeHTML(jobTitle)}</span></span><i class="bi bi-chevron-down small text-secondary"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="perfil-usuario.html"><i class="bi bi-person me-2"></i>Meu perfil</a></li>
-                    <li><a class="dropdown-item" href="configuracoes.html"><i class="bi bi-sliders me-2"></i>Preferências</a></li>
+                    <li><a class="dropdown-item" href="perfil-usuario.php"><i class="bi bi-person me-2"></i>Meu perfil</a></li>
+                    <li><a class="dropdown-item" href="dashboard.php"><i class="bi bi-sliders me-2"></i>Preferências</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="index.html"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+                    <li>
+                        <form method="post" action="${this.escapeHTML(logoutUrl)}">
+                            <input type="hidden" name="_csrf" value="${this.escapeHTML(logoutToken)}">
+                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Sair</button>
+                        </form>
+                    </li>
                 </ul>
             </div>`;
     },
     bottomNavMarkup() {
-        const programPages = ['modulo', 'beneficios', 'cidadania', 'crianca', 'natalidade', 'funeral', 'outros'];
+        const dashboardUrl = this.context.urls?.dashboard || 'dashboard.php';
         return `<nav class="bottom-navigation" aria-label="Navegação móvel">
-            <a href="dashboard.html" class="${this.page === 'dashboard' ? 'active' : ''}"><i class="bi bi-house"></i><span>Início</span></a>
-            <a href="pessoas.html" class="${['consulta','pessoas','registro'].includes(this.page) ? 'active' : ''}"><i class="bi bi-people"></i><span>Pessoas</span></a>
-            <a href="cadastro-anexo.html" class="new-action ${this.page === 'cadastro-anexo' ? 'active' : ''}" aria-label="Novo Cadastro ANEXO"><i class="bi bi-plus-lg"></i><span>Novo</span></a>
-            <a href="beneficios.html" class="${programPages.includes(this.page) ? 'active' : ''}"><i class="bi bi-gift"></i><span>Benefícios</span></a>
+            <a href="${this.escapeHTML(dashboardUrl)}" class="${this.page === 'dashboard' ? 'active' : ''}"><i class="bi bi-house"></i><span>Início</span></a>
+            <a href="consulta-documento.php" class="${this.page === 'consulta' ? 'active' : ''}"><i class="bi bi-search"></i><span>Consultar</span></a>
+            <a href="modulo.php" class="${this.page === 'modulo' ? 'active' : ''}"><i class="bi bi-basket2"></i><span>Beneficiários</span></a>
             <button type="button" data-sidebar-toggle><i class="bi bi-three-dots"></i><span>Mais</span></button>
         </nav>`;
     },
@@ -127,20 +126,22 @@ const SIGAS = {
             toggle.setAttribute('aria-label', hidden ? 'Ocultar senha' : 'Mostrar senha');
         });
         form.addEventListener('submit', event => {
-            event.preventDefault();
             const identity = this.qs('#loginIdentity');
             const validIdentity = identity.value.trim().length >= 5;
-            const validPassword = password.value.length >= 4;
+            const validPassword = password.value.length >= 8;
             identity.classList.toggle('is-invalid', !validIdentity);
             password.classList.toggle('is-invalid', !validPassword);
-            feedback.className = `login-feedback show ${validIdentity && validPassword ? 'text-success' : 'text-danger'}`;
-            feedback.textContent = validIdentity && validPassword ? 'Credenciais demonstrativas validadas. Redirecionando…' : 'Preencha uma identificação válida e uma senha com pelo menos 4 caracteres.';
-            if (validIdentity && validPassword) {
-                const button = this.qs('button[type="submit"]', form);
-                button.disabled = true;
-                button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Entrando';
-                window.setTimeout(() => { window.location.href = 'dashboard.html'; }, 650);
+
+            if (!validIdentity || !validPassword) {
+                event.preventDefault();
+                feedback.className = 'login-feedback show text-danger';
+                feedback.textContent = 'Preencha uma identificação válida e uma senha com pelo menos 8 caracteres.';
+                return;
             }
+
+            const button = this.qs('button[type="submit"]', form);
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Verificando';
         });
     },
     initSidebar() {
@@ -179,7 +180,7 @@ const SIGAS = {
                     this.showToast('Digite um termo para pesquisar.', 'danger');
                     return;
                 }
-                window.location.href = `pessoas.html?q=${encodeURIComponent(term)}`;
+                window.location.href = `consulta-documento.php?q=${encodeURIComponent(term)}`;
             }
         });
     },
@@ -196,12 +197,15 @@ const SIGAS = {
     },
     initFilters() {
         const form = this.qs('#filterForm');
+        if (!form || form.hasAttribute('data-server-filter')) {
+            return;
+        }
+
         const advanced = this.qs('#advancedFilters');
         const table = this.qs('#beneficiaryTable');
         const loading = this.qs('#tableLoading');
         const empty = this.qs('#emptyState');
         const error = this.qs('#errorState');
-        if (!form) return;
         this.qsa('[data-toggle-advanced]').forEach(button => button.addEventListener('click', () => {
             advanced?.classList.toggle('show');
             const expanded = advanced?.classList.contains('show') || false;
@@ -474,16 +478,16 @@ const SIGAS = {
             openLink.tabIndex = 0;
             openLink.removeAttribute('data-demo-action');
             if (['open-existing', 'open-linked'].includes(result.decision)) {
-                openLink.href = 'registro.html';
+                openLink.href = 'registro.php';
                 openLink.innerHTML = '<i class="bi bi-person-lines-fill"></i>Abrir cadastro SIGAS';
             } else if (result.decision === 'create-reference') {
-                openLink.href = 'cadastro-anexo.html';
+                openLink.href = 'modulo.php?action=new';
                 openLink.innerHTML = '<i class="bi bi-link-45deg"></i>Vincular ao SIGAS';
             } else if (result.decision === 'review-conflict') {
-                openLink.href = 'integracao-semth.html#divergencias';
+                openLink.href = 'consulta-documento.php';
                 openLink.innerHTML = '<i class="bi bi-exclamation-diamond"></i>Revisar divergência';
             } else {
-                openLink.href = 'cadastro-anexo.html';
+                openLink.href = 'modulo.php?action=new';
                 openLink.innerHTML = '<i class="bi bi-person-plus"></i>Iniciar cadastro';
             }
         };
@@ -637,6 +641,7 @@ const SIGAS = {
     initSourceOwnership() {
         const table = this.qs('#beneficiaryTable');
         if (!table) return;
+        if (document.body?.dataset.page === 'modulo') return;
         const header = this.qs('thead tr', table);
         if (header && !this.qs('[data-source-column]', header)) {
             const th = document.createElement('th');
@@ -670,8 +675,8 @@ const SIGAS = {
                 const checkbox = this.qs('input[type="checkbox"]', row);
                 if (checkbox) { checkbox.disabled = true; checkbox.setAttribute('aria-label', 'Registro SEMTH somente leitura'); }
                 this.qsa('button', row).forEach(button => { button.disabled = true; button.title = 'O SIGAS não altera registros do SEMTH'; });
-                const view = this.qs('a[href="registro.html"]', row);
-                if (view) { view.href = 'integracao-semth.html#consulta'; view.title = 'Visualizar referência SEMTH'; }
+                const view = this.qs('a[href="registro.php"]', row);
+                if (view) { view.href = 'consulta-documento.php'; view.title = 'Visualizar referência SEMTH'; }
             }
         });
         this.qsa('.mobile-record-card').forEach((card, index) => {
@@ -687,8 +692,8 @@ const SIGAS = {
             if (source.type === 'legacy') {
                 card.classList.add('legacy-readonly-row');
                 this.qsa('button', card).forEach(button => { button.disabled = true; });
-                const view = this.qs('a[href="registro.html"]', card);
-                if (view) { view.href = 'integracao-semth.html#consulta'; view.innerHTML = '<i class="bi bi-eye"></i>Consultar'; }
+                const view = this.qs('a[href="registro.php"]', card);
+                if (view) { view.href = 'consulta-documento.php'; view.innerHTML = '<i class="bi bi-eye"></i>Consultar'; }
             }
         });
     },
@@ -841,7 +846,7 @@ const SIGAS = {
                     this.qs('[data-scan-reset]')?.click();
                     return;
                 }
-                window.location.href = 'cadastro-anexo.html';
+                window.location.href = 'modulo.php?action=new';
             }
             const upload = event.target.closest('.document-upload');
             if (upload) {
@@ -895,8 +900,8 @@ const SIGAS = {
             const modal = this.qs('#editRegistrationModal');
             if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
         }
-        if (window.location.hash === '#novo' && this.page !== 'cadastro-anexo') {
-            window.location.replace('cadastro-anexo.html');
+        if (window.location.hash === '#novo' && this.page !== 'modulo') {
+            window.location.replace('modulo.php?action=new');
         }
     }
 };

@@ -18,6 +18,8 @@ final class ServiceOrderRepository
 {
     private const BLOCKING_STATUSES = ['agendada', 'em_deslocamento', 'em_execucao'];
 
+    private ?bool $hasOperationalBudgetKeyColumn = null;
+
     public function __construct(private readonly PDO $connection)
     {
     }
@@ -77,6 +79,26 @@ final class ServiceOrderRepository
               FOR UPDATE"
         );
         $statement->execute(['budget_id' => $budgetId]);
+        return $statement->fetch() !== false;
+    }
+
+    public function hasOtherOperationalOrderForBudget(int $budgetId, int $ignoreOrderId): bool
+    {
+        $this->assertPositiveId($budgetId);
+        $this->assertPositiveId($ignoreOrderId);
+        $statement = $this->connection->prepare(
+            "SELECT id
+               FROM ordens_servico
+              WHERE orcamento_id = :budget_id
+                AND id <> :ignore_order_id
+                AND (
+                    status <> 'cancelada'
+                    OR (status = 'cancelada' AND orcamento_liberado = 0)
+                )
+              LIMIT 1
+              FOR UPDATE"
+        );
+        $statement->execute(['budget_id' => $budgetId, 'ignore_order_id' => $ignoreOrderId]);
         return $statement->fetch() !== false;
     }
 
@@ -161,6 +183,7 @@ final class ServiceOrderRepository
         $this->assertPositiveId($id);
         $this->connection->prepare('UPDATE ordens_servico SET numero = :number WHERE id = :id')
             ->execute(['number' => sprintf('OS-%06d', $id), 'id' => $id]);
+        $this->syncOperationalBudgetKey($id);
         $this->replaceItems($id, $data->items());
         if ($primaryEmployeeId !== null || $supportEmployeeId !== null) {
             $this->replaceTeam($id, ServiceOrderTeamData::fromArray([
@@ -208,6 +231,7 @@ final class ServiceOrderRepository
         $statement->bindValue('id', $id, PDO::PARAM_INT);
         $this->bindForm($statement, $data, $totals);
         $statement->execute();
+        $this->syncOperationalBudgetKey($id);
         $this->replaceItems($id, $data->items());
     }
 
@@ -324,13 +348,7 @@ final class ServiceOrderRepository
             'INSERT INTO ordem_servico_funcionarios
                 (ordem_servico_id, funcionario_id, funcao, principal, ativo, adicionado_em, removido_em)
              VALUES
-                (:order_id, :employee_id, :role, :primary_member, 1, CURRENT_TIMESTAMP, NULL)
-             ON DUPLICATE KEY UPDATE
-                funcao = VALUES(funcao),
-                principal = VALUES(principal),
-                ativo = 1,
-                adicionado_em = CURRENT_TIMESTAMP,
-                removido_em = NULL'
+                (:order_id, :employee_id, :role, :primary_member, 1, CURRENT_TIMESTAMP, NULL)'
         );
 
         foreach ($team->members() as $member) {
@@ -417,6 +435,35 @@ final class ServiceOrderRepository
         }
         $statement = $this->connection->prepare('UPDATE ordens_servico SET ' . implode(', ', $sets) . ' WHERE id = :order_id');
         $statement->execute($params);
+        $this->syncOperationalBudgetKey($orderId);
+    }
+
+    public function markBudgetReleased(int $orderId, bool $released): void
+    {
+        $this->assertPositiveId($orderId);
+        $this->connection->prepare(
+            'UPDATE ordens_servico SET orcamento_liberado = :released WHERE id = :order_id'
+        )->execute(['order_id' => $orderId, 'released' => $released ? 1 : 0]);
+        $this->syncOperationalBudgetKey($orderId);
+    }
+
+    public function syncOperationalBudgetKey(int $orderId): void
+    {
+        $this->assertPositiveId($orderId);
+        if (!$this->hasOperationalBudgetKeyColumn()) {
+            return;
+        }
+
+        $this->connection->prepare(
+            "UPDATE ordens_servico
+                SET orcamento_operacional_chave = CASE
+                    WHEN orcamento_id IS NOT NULL
+                     AND (status <> 'cancelada' OR orcamento_liberado = 0)
+                    THEN orcamento_id
+                    ELSE NULL
+                END
+              WHERE id = :order_id"
+        )->execute(['order_id' => $orderId]);
     }
 
     /** @return array{0:array<int,string>,1:array<string,mixed>} */
@@ -537,5 +584,24 @@ final class ServiceOrderRepository
     private function assertPositiveId(int $id): void
     {
         if ($id <= 0) throw new InvalidArgumentException('ID de ordem de serviço inválido.');
+    }
+
+    private function hasOperationalBudgetKeyColumn(): bool
+    {
+        if ($this->hasOperationalBudgetKeyColumn !== null) {
+            return $this->hasOperationalBudgetKeyColumn;
+        }
+
+        $statement = $this->connection->prepare(
+            "SELECT COUNT(*)
+               FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'ordens_servico'
+                AND COLUMN_NAME = 'orcamento_operacional_chave'"
+        );
+        $statement->execute();
+        $this->hasOperationalBudgetKeyColumn = (int) $statement->fetchColumn() > 0;
+
+        return $this->hasOperationalBudgetKeyColumn;
     }
 }

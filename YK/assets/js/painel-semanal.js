@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const statusOperations = {
     agendada: ['start_travel', 'start_execution', 'wait_part'],
     em_deslocamento: ['start_execution', 'wait_part'],
-    em_execucao: ['wait_part', 'finalize'],
+    em_execucao: ['wait_part'],
     aguardando_peca: ['start_execution'],
   };
 
@@ -62,6 +62,22 @@ document.addEventListener('DOMContentLoaded', function () {
     select.addEventListener('change', function () { updateEmployeeOptions(select.closest('form') || document); });
   });
 
+  function syncCreateEndFromDuration() {
+    const start = document.getElementById('week-create-start');
+    const end = document.getElementById('week-create-end');
+    const service = document.getElementById('week-create-service');
+    if (!start || !end || !service || !start.value || end.value) return;
+    const duration = Number.parseInt(service.selectedOptions[0]?.dataset.duration || '60', 10);
+    const startDate = new Date(start.value);
+    if (Number.isNaN(startDate.getTime())) return;
+    startDate.setMinutes(startDate.getMinutes() + (duration > 0 ? duration : 60));
+    const pad = (value) => String(value).padStart(2, '0');
+    end.value = startDate.getFullYear() + '-' + pad(startDate.getMonth() + 1) + '-' + pad(startDate.getDate()) + 'T' + pad(startDate.getHours()) + ':' + pad(startDate.getMinutes());
+  }
+
+  document.getElementById('week-create-start')?.addEventListener('change', syncCreateEndFromDuration);
+  document.getElementById('week-create-service')?.addEventListener('change', syncCreateEndFromDuration);
+
   document.querySelectorAll('.js-week-schedule').forEach(function (button) {
     button.addEventListener('click', function () {
       setValue('week-schedule-id', button.dataset.orderId);
@@ -102,6 +118,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function restoreRecovery() {
     if (!recoveryModal || !window.bootstrap) return;
     const modalMap = {
+      create: 'modal-week-create',
       reschedule: 'modal-week-schedule',
       team: 'modal-week-team',
       status: 'modal-week-status',
@@ -110,6 +127,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById(modalMap[recoveryModal]);
     if (!modal) return;
 
+    setValue('week-create-client', recoveryData.client_id);
+    setValue('week-create-service', recoveryData.service_id);
+    setValue('week-create-start', toLocalInput(recoveryData.agendado_inicio));
+    setValue('week-create-end', toLocalInput(recoveryData.agendado_fim));
     setValue('week-schedule-id', recoveryData.id);
     setValue('week-schedule-start', toLocalInput(recoveryData.agendado_inicio));
     setValue('week-schedule-end', toLocalInput(recoveryData.agendado_fim));

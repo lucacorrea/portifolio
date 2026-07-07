@@ -93,6 +93,15 @@ textarea {
   font-size: 21px;
 }
 
+.brand-logo-img {
+  display: block;
+  max-width: 38px;
+  max-height: 38px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
 .brand-name {
   font-size: 17px;
   font-weight: 800;
@@ -700,6 +709,54 @@ textarea.form-control-os {
   border-radius: 9px;
   background: #fff;
   color: var(--muted);
+}
+
+.desktop-sidebar-btn {
+  display: inline-flex;
+}
+
+.table-inline-action {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--brand);
+  font: inherit;
+  font-weight: 900;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.table-inline-action:hover {
+  color: var(--brand-strong);
+  text-decoration: underline;
+}
+
+body.sidebar-collapsed .os-sidebar {
+  width: 82px;
+  min-width: 82px;
+}
+
+body.sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+  padding-inline: 12px;
+}
+
+body.sidebar-collapsed .sidebar-brand > div:not(.brand-icon),
+body.sidebar-collapsed .sidebar-section,
+body.sidebar-collapsed .nav-link-os span,
+body.sidebar-collapsed .sidebar-footer {
+  display: none;
+}
+
+body.sidebar-collapsed .sidebar-nav {
+  padding-inline: 10px;
+}
+
+body.sidebar-collapsed .nav-link-os {
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .table-actions-cell {
@@ -1601,6 +1658,32 @@ textarea.form-control-os {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .desktop-sidebar-btn {
+    display: none;
+  }
+
+  body.sidebar-collapsed .os-sidebar {
+    width: 266px;
+    min-width: 266px;
+  }
+
+  body.sidebar-collapsed .sidebar-brand {
+    justify-content: flex-start;
+    padding: 22px 18px 20px;
+  }
+
+  body.sidebar-collapsed .sidebar-brand > div:not(.brand-icon),
+  body.sidebar-collapsed .sidebar-section,
+  body.sidebar-collapsed .nav-link-os span,
+  body.sidebar-collapsed .sidebar-footer {
+    display: block;
+  }
+
+  body.sidebar-collapsed .nav-link-os {
+    justify-content: flex-start;
+    padding: 9px 12px;
   }
 
   body.sidebar-open {

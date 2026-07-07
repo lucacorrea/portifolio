@@ -34,8 +34,17 @@ final class BudgetRepository
     public function lockById(int $id): ?Budget
     {
         $this->assertPositiveId($id);
-        $budgets = $this->selectBudgets(['o.id = :id'], ['id' => $id], 'o.id DESC', true);
-        return $budgets[0] ?? null;
+
+        $statement = $this->connection->prepare(
+            'SELECT id FROM orcamentos WHERE id = :id LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute(['id' => $id]);
+
+        if ($statement->fetch() === false) {
+            return null;
+        }
+
+        return $this->findById($id);
     }
 
     /** @return array<int,array<string,mixed>> */
@@ -49,6 +58,13 @@ final class BudgetRepository
                JOIN clientes c ON c.id = o.cliente_id
                JOIN orcamento_itens i ON i.orcamento_id = o.id
               WHERE o.status = 'aprovado'
+                AND EXISTS (
+                    SELECT 1
+                      FROM ordens_servico os_liberada
+                     WHERE os_liberada.orcamento_id = o.id
+                       AND os_liberada.status = 'cancelada'
+                       AND os_liberada.orcamento_liberado = 1
+                )
                 AND NOT EXISTS (
                     SELECT 1
                       FROM ordens_servico os

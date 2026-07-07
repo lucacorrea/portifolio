@@ -7,12 +7,10 @@ os_require_post_request();
 [$application, $session] = os_action_context('painel_semanal.alterar_status');
 $redirectTarget = painel_semanal_return_target();
 try {
-    $map = ['start_travel' => 'em_deslocamento', 'start_execution' => 'em_execucao', 'wait_part' => 'aguardando_peca', 'finalize' => 'finalizada'];
+    $map = ['start_travel' => 'em_deslocamento', 'start_execution' => 'em_execucao', 'wait_part' => 'aguardando_peca'];
     $operation = (string) ($_POST['operation'] ?? '');
     if (!isset($map[$operation])) throw new InvalidArgumentException('Operação inválida.');
-    $map[$operation] === 'finalizada'
-        ? $application->serviceOrderManagement()->finalize(os_posted_positive_int('id'))
-        : $application->serviceOrderManagement()->changeStatus(os_posted_positive_int('id'), $map[$operation]);
+    $application->serviceOrderManagement()->changeStatus(os_posted_positive_int('id'), $map[$operation]);
     $session->flash('success', 'Status atualizado.');
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('status', $_POST, $exception->getMessage());
