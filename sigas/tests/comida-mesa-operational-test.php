@@ -226,12 +226,13 @@ assert_true(!str_contains((string) $comidaMesaJs, 'versao_atualizacao: data.atua
 assert_true(str_contains((string) $comidaMesaJs, 'const fullCpf = (data = {})'), 'JS possui helper para CPF completo');
 assert_true(str_contains((string) $comidaMesaJs, '{ label: "CPF", value: fullCpf(data), span: 3 }'), 'modal do beneficiario usa CPF completo pelo helper');
 assert_true(str_contains((string) $comidaMesaJs, 'CPF ${label(fullCpf(item))}'), 'modal do beneficiario usa CPF completo de integrantes');
-assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card'), 'modal do beneficiario separa dados em cards');
-assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--full'), 'modal do beneficiario usa cards principais em largura total');
-assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--four'), 'modal do beneficiario usa card 4/12 para integrantes');
-assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--eight'), 'modal do beneficiario usa card 8/12 para historico de entregas');
-assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-card--half'), 'modal do beneficiario usa cards 6/12 para documentos e historico');
-assert_true(str_contains((string) $comidaMesaJs, '["CPF", fullCpf(person)]'), 'modal ANEXO usa CPF formatado pelo helper');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-field'), 'modal do beneficiario separa dados em cards de campo');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-section--full'), 'modal do beneficiario usa secoes principais em largura total');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-section--four'), 'modal do beneficiario usa secao 4/12 para integrantes');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-section--eight'), 'modal do beneficiario usa secao 8/12 para historico de entregas');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-section--half'), 'modal do beneficiario usa secoes 6/12 para documentos e historico');
+assert_true(str_contains((string) $comidaMesaJs, '{ label: "CPF", value: fullCpf(person), span: 3 }'), 'modal ANEXO usa CPF formatado pelo helper');
+assert_true(str_contains((string) $comidaMesaJs, 'VII. Solicitações'), 'modal ANEXO exibe solicitacoes no mesmo estilo de secoes');
 assert_true(!preg_match('/data-[^=]*cpf=["\'][^"\']*(cpf|\\$\\{)/i', (string) $comidaMesaJs), 'JS do Comida na Mesa nao coloca valor de CPF em data-*');
 
 $moduloPhp = file_get_contents(dirname(__DIR__) . '/modulo.php');

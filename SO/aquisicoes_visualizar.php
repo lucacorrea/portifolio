@@ -120,6 +120,32 @@ function render_aquisicao_print_header(array $aq, string $titulo, string $viaLab
 <?php
 }
 
+function render_aquisicao_signature_footer(string $assinaturaLabel): void
+{
+?>
+    <div class="rodape-documento print-signature-footer">
+        <div class="assinaturas-grid">
+            <div>
+                <div class="assinatura-linha">
+                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">AUTORIZAÇÃO DE FORNECEDOR</div>
+                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                        <?= h($assinaturaLabel) ?>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="assinatura-linha">
+                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                        Assinatura e Carimbo
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php
+}
+
 function render_itens_aquisicao_table(array $items, float $valorTotal): void
 {
 ?>
@@ -274,6 +300,7 @@ include 'views/layout/header.php';
     }
 
     .print-repeat-table>thead>tr>td,
+    .print-repeat-table>tfoot>tr>td,
     .print-repeat-table>tbody>tr>td {
         padding: 0;
         border: 0;
@@ -514,9 +541,15 @@ include 'views/layout/header.php';
             display: table-row-group !important;
         }
 
+        .print-repeat-table>tfoot {
+            display: table-footer-group !important;
+        }
+
         .print-repeat-table>thead>tr,
+        .print-repeat-table>tfoot>tr,
         .print-repeat-table>tbody>tr,
         .print-repeat-table>thead>tr>td,
+        .print-repeat-table>tfoot>tr>td,
         .print-repeat-table>tbody>tr>td {
             page-break-inside: auto !important;
             break-inside: auto !important;
@@ -569,7 +602,7 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr 1fr !important;
             gap: 2rem !important;
             text-align: center !important;
-            margin-top: 70px !important;
+            margin-top: 24mm !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
@@ -635,30 +668,14 @@ include 'views/layout/header.php';
                             <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
 
                             <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
-
-                            <div class="rodape-documento">
-                                <div class="assinaturas-grid">
-                                    <div>
-                                        <div class="assinatura-linha">
-                                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                                Autorização de Recebimento
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div class="assinatura-linha">
-                                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                                Assinatura e Carimbo
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </td>
                     </tr>
                 </tbody>
+                <tfoot>
+                    <tr>
+                        <td><?php render_aquisicao_signature_footer('Autorização de Recebimento'); ?></td>
+                    </tr>
+                </tfoot>
             </table>
 
         </div>
@@ -704,30 +721,14 @@ include 'views/layout/header.php';
                             <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
 
                             <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
-
-                            <div class="rodape-documento">
-                                <div class="assinaturas-grid">
-                                    <div>
-                                        <div class="assinatura-linha">
-                                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                                Autorização de Saída
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div class="assinatura-linha">
-                                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                                Assinatura e Carimbo
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </td>
                     </tr>
                 </tbody>
+                <tfoot>
+                    <tr>
+                        <td><?php render_aquisicao_signature_footer('Autorização de Saída'); ?></td>
+                    </tr>
+                </tfoot>
             </table>
 
         </div>
