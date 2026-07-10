@@ -24,4 +24,4 @@ try {
     $session->flash('danger', 'Nao foi possivel registrar o pagamento.');
 }
 
-os_redirect($application, 'contas-receber.php');
+os_redirect_back($application, 'contas-receber.php');

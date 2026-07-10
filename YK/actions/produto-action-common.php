@@ -38,11 +38,16 @@ function product_action_context(string $permission): array
 function product_redirect(Application $application, string $target = 'produtos.php'): never
 {
     header(
-        'Location: ' . $application->redirect()->applicationUrl($target),
+        'Location: ' . $application->redirect()->applicationUrl(product_return_target($application, $target)),
         true,
         303
     );
     exit;
+}
+
+function product_return_target(Application $application, string $default): string
+{
+    return action_return_target($application, $default);
 }
 
 function product_require_post_request(): void

@@ -100,7 +100,7 @@ function employee_redirect(
         'Location: '
         . $application
             ->redirect()
-            ->applicationUrl($target),
+            ->applicationUrl(action_return_target($application, $target)),
         true,
         303
     );

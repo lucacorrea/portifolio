@@ -120,6 +120,7 @@ function profile_date(?string $value): string
                         <li>
                           <form method="post" action="actions/perfil-status.php" data-confirm-title="<?= $profile->status() === 'ativo' ? 'Desativar perfil' : 'Ativar perfil' ?>" data-confirm-message="<?= h(($profile->status() === 'ativo' ? 'Desativar' : 'Ativar') . ' o perfil "' . $profile->name() . '"?') ?>">
                             <?= $csrf->field() ?>
+                            <?php return_to_field(); ?>
                             <input type="hidden" name="id" value="<?= h((string) $profile->id()) ?>">
                             <input type="hidden" name="status" value="<?= $profile->status() === 'ativo' ? 'inativo' : 'ativo' ?>">
                             <button class="dropdown-item" type="submit"><i class="bi bi-power"></i> <?= $profile->status() === 'ativo' ? 'Desativar' : 'Ativar' ?></button>
@@ -130,6 +131,7 @@ function profile_date(?string $value): string
                         <li>
                           <form method="post" action="actions/perfil-excluir.php" data-confirm-title="Excluir perfil" data-confirm-message="<?= h('Excluir o perfil "' . $profile->name() . '"? Esta ação só será permitida se não houver usuários vinculados.') ?>">
                             <?= $csrf->field() ?>
+                            <?php return_to_field(); ?>
                             <input type="hidden" name="id" value="<?= h((string) $profile->id()) ?>">
                             <button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash"></i> Excluir</button>
                           </form>
@@ -158,6 +160,7 @@ function profile_date(?string $value): string
         </div>
         <div class="modal-body">
           <?= $csrf->field() ?>
+          <?php return_to_field(); ?>
           <input type="hidden" name="id" value="<?= h((string) $profile->id()) ?>">
           <p class="section-note mb-3">As permissões de <?= h($profile->name()) ?> serão copiadas para um perfil personalizado ativo.</p>
           <div class="form-group">

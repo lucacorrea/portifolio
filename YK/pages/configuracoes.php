@@ -13,6 +13,7 @@ $canEdit = $authorization->can('configuracao.editar');
     <div class="panel-header"><div class="panel-title"><i class="bi bi-building"></i>Dados da empresa</div></div>
     <form class="visual-modal" method="post" action="actions/configuracao-empresa-salvar.php">
         <?= $csrf->field() ?>
+        <?php return_to_field(); ?>
         <div class="form-section">
             <div class="form-row">
                 <div class="form-group"><label class="form-label">Razao social</label><input class="form-control-os" name="razao_social" value="<?= h((string) ($company['razao_social'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>></div>

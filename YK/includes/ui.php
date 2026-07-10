@@ -3,6 +3,23 @@ function h($value): string {
   return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+function current_return_target(): string {
+  $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+  $query = (string) ($_SERVER['QUERY_STRING'] ?? '');
+  $target = $script . ($query !== '' ? '?' . $query : '');
+  $application = $GLOBALS['application'] ?? null;
+
+  if ($application && method_exists($application, 'redirect')) {
+    return $application->redirect()->sanitize($target);
+  }
+
+  return $target;
+}
+
+function return_to_field(): void {
+  echo '<input type="hidden" name="return_to" value="' . h(current_return_target()) . '">';
+}
+
 function money($value): string {
   return 'R$ ' . number_format((float) $value, 2, ',', '.');
 }

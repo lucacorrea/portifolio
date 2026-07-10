@@ -8,6 +8,7 @@ use InvalidArgumentException;
 
 final class ServiceOrderFormData
 {
+    private const STATUSES = ['rascunho', 'aberta', 'aguardando_agendamento', 'agendada', 'em_deslocamento', 'em_execucao', 'aguardando_peca', 'finalizada', 'cancelada'];
     private const INITIAL_STATUSES = ['rascunho', 'aberta', 'aguardando_agendamento', 'agendada'];
 
     /** @param ServiceOrderItemData[] $items */
@@ -39,11 +40,12 @@ final class ServiceOrderFormData
     public static function fromArray(array $data, bool $editing = false): self
     {
         $status = (string) ($data['status'] ?? 'aberta');
-        if (!$editing && !in_array($status, self::INITIAL_STATUSES, true)) {
-            throw new InvalidArgumentException('Status inicial inválido para OS.');
-        }
         if ($editing) {
-            $status = 'aberta';
+            if (!in_array($status, self::STATUSES, true)) {
+                throw new InvalidArgumentException('Status da OS inválido.');
+            }
+        } elseif (!in_array($status, self::INITIAL_STATUSES, true)) {
+            throw new InvalidArgumentException('Status inicial inválido para OS.');
         }
 
         $priority = (string) ($data['priority'] ?? $data['prioridade'] ?? 'media');

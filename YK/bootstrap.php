@@ -41,6 +41,32 @@ ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/storage/logs/app.log');
 error_reporting(E_ALL);
 
+if (!function_exists('action_return_target')) {
+    function action_return_target(Application $application, string $default): string
+    {
+        $fallback = $application->redirect()->sanitize($default);
+        $raw = isset($_POST['return_to']) ? (string) $_POST['return_to'] : '';
+        $safe = $application->redirect()->sanitize($raw);
+        $target = $raw !== '' && $safe !== 'dashboard.php' ? $safe : $fallback;
+
+        $defaultParts = parse_url($fallback);
+        if (!isset($defaultParts['query']) || (string) $defaultParts['query'] === '') {
+            return $target;
+        }
+
+        $targetParts = parse_url($target);
+        $path = isset($targetParts['path']) ? (string) $targetParts['path'] : $fallback;
+        parse_str(isset($targetParts['query']) ? (string) $targetParts['query'] : '', $query);
+        parse_str((string) $defaultParts['query'], $defaultQuery);
+
+        foreach ($defaultQuery as $key => $value) {
+            $query[$key] = $value;
+        }
+
+        return $path . ($query === [] ? '' : '?' . http_build_query($query));
+    }
+}
+
 try {
     $environment = new Environment(Environment::resolveFilePath(__DIR__));
     $environment->load();

@@ -12,6 +12,10 @@ function painel_semanal_redirect(App\Core\Application $application, string $targ
 
 function painel_semanal_return_target(?string $modal = null): string
 {
+    if (isset($GLOBALS['application']) && $GLOBALS['application'] instanceof App\Core\Application && trim((string) ($_POST['return_to'] ?? '')) !== '') {
+        return os_return_target($GLOBALS['application'], 'painel-semanal.php', $modal === null ? [] : ['modal' => $modal]);
+    }
+
     $week = (string) ($_POST['return_week'] ?? date('Y-m-d'));
     $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $week);
     if (!$parsed || $parsed->format('Y-m-d') !== $week) {

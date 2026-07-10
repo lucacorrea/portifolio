@@ -54,6 +54,7 @@ foreach ($groups as $permissions) {
     <form method="post" action="actions/perfil-permissoes-salvar.php" data-permission-form data-confirm-title="Salvar permissões" data-confirm-message="Substituir as permissões deste perfil? A mudança valerá na próxima requisição.">
       <div class="permissions-toolbar">
         <?= $csrf->field() ?>
+        <?php return_to_field(); ?>
         <input type="hidden" name="id" value="<?= h((string) $profileId) ?>">
         <div class="permission-counter"><strong data-permission-selected><?= h((string) count($selectedIds)) ?></strong> de <strong data-permission-total><?= h((string) $totalPermissions) ?></strong> permissões selecionadas</div>
         <?php if ($isProtected): ?>

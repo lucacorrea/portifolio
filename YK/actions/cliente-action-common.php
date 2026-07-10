@@ -35,8 +35,13 @@ function client_action_context(string $permission): array
 
 function client_redirect(Application $application, string $target = 'clientes.php'): never
 {
-    header('Location: ' . $application->redirect()->applicationUrl($target), true, 303);
+    header('Location: ' . $application->redirect()->applicationUrl(client_return_target($application, $target)), true, 303);
     exit;
+}
+
+function client_return_target(Application $application, string $default): string
+{
+    return action_return_target($application, $default);
 }
 
 function client_require_post_request(): void

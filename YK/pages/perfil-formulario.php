@@ -53,6 +53,7 @@ $activeProfiles = array_filter(
         <?php endif; ?>
 
         <?= $csrf->field() ?>
+        <?php return_to_field(); ?>
         <?php if ($profile !== null): ?>
           <input type="hidden" name="id" value="<?= h((string) $profile->id()) ?>">
         <?php endif; ?>

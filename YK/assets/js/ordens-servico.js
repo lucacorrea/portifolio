@@ -144,6 +144,13 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
     if (item) {
+      const referenceValue = item.reference_id || '';
+      if (referenceValue && !Array.from(select.options).some(function (option) { return option.value === String(referenceValue); })) {
+        select.appendChild(new Option('Item atual — inativo ou indisponível', String(referenceValue)));
+      }
+      field(row, 'id').value = item.id || '';
+      field(row, 'origin').value = item.origin || 'manual';
+      field(row, 'budget_item_id').value = item.budget_item_id || '';
       select.value = item.reference_id || '';
       field(row, 'description').value = item.description || '';
       field(row, 'unit').value = item.unit || 'un';
@@ -203,6 +210,8 @@ document.addEventListener('DOMContentLoaded', function () {
       ['os-recommendation', 'recommendation'],
       ['os-internal-notes', 'internal_notes'],
       ['os-notes', 'notes'],
+      ['os-discount', 'discount'],
+      ['os-increase', 'increase'],
       ['os-scheduled-start', 'agendado_inicio'],
       ['os-scheduled-end', 'agendado_fim'],
     ].forEach(function (pair) {
@@ -314,6 +323,40 @@ document.addEventListener('DOMContentLoaded', function () {
     el.value = normalized;
   }
 
+  function showOrderFormError(message) {
+    const alert = document.querySelector('#modal-os [data-os-form-error]');
+    if (!alert) return;
+    alert.textContent = message;
+    alert.classList.remove('d-none');
+  }
+
+  function hideOrderFormError() {
+    const alert = document.querySelector('#modal-os [data-os-form-error]');
+    if (!alert) return;
+    alert.textContent = '';
+    alert.classList.add('d-none');
+  }
+
+  function resetOrderModal(form) {
+    form.reset();
+    hideOrderFormError();
+    form.querySelectorAll('.os-items').forEach(function (box) { box.replaceChildren(); });
+    restoreTeamMembers(form, []);
+    setValue('os-id', '');
+    setValue('os-creation-mode', 'manual');
+    setValue('os-budget-id', '');
+    const initialStatus = 'aberta';
+    setValue('os-status', initialStatus);
+    const status = document.getElementById('os-status');
+    if (status) status.disabled = false;
+    const budget = document.getElementById('os-budget-id');
+    if (budget) budget.disabled = false;
+    document.getElementById('modal-os-title').textContent = 'Nova OS';
+    addRow(form, 'servico');
+    updateBudgetMode(form);
+    recalc(form);
+  }
+
   document.querySelectorAll('.js-os-view').forEach(function (button) {
     button.addEventListener('click', async function () {
       const data = await loadOrder(button.dataset.orderId);
@@ -350,38 +393,70 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.querySelectorAll('.js-os-edit').forEach(function (button) {
     button.addEventListener('click', async function () {
-      const data = await loadOrder(button.dataset.orderId);
-      const order = data.order;
       const modal = document.getElementById('modal-os');
       const form = modal.querySelector('form');
-      form.querySelectorAll('.os-items').forEach(function (box) { box.replaceChildren(); });
-      document.getElementById('modal-os-title').textContent = 'Editar OS';
-      setValue('os-id', order.id);
-      setValue('os-client', order.client_id);
-      setValue('os-budget-id', order.budget_id);
-      setValue('os-priority', order.priority);
-      setValue('os-equipment-type', order.equipment_type);
-      setValue('os-equipment-brand', order.equipment_brand);
-      setValue('os-equipment-model', order.equipment_model);
-      setValue('os-equipment-capacity', order.equipment_capacity);
-      setValue('os-equipment-serial-number', order.equipment_serial_number);
-      setValue('os-equipment-environment', order.equipment_environment);
-      setValue('os-equipment-location', order.equipment_location);
-      setValue('os-reported-problem', order.reported_problem);
-      setValue('os-identified-problem', order.identified_problem);
-      setValue('os-diagnosis', order.diagnosis);
-      setValue('os-solution', order.solution);
-      setValue('os-recommendation', order.recommendation);
-      setValue('os-internal-notes', order.internal_notes);
-      setValue('os-notes', order.notes);
-      setValue('os-scheduled-start', toLocalInput(order.scheduled_start));
-      setValue('os-scheduled-end', toLocalInput(order.scheduled_end));
-      setValue('os-status', order.status || 'aberta');
-      data.items.forEach(function (item) { addRow(form, item.type, item); });
-      restoreTeamMembers(form, data.team || legacyTeamFromData(order));
-      recalc(form);
+      try {
+        hideOrderFormError();
+        form.querySelectorAll('.os-items').forEach(function (box) { box.replaceChildren(); });
+        const data = await loadOrder(button.dataset.orderId);
+        const order = data.order;
+        document.getElementById('modal-os-title').textContent = 'Editar OS';
+        setValue('os-id', order.id);
+        setValue('os-client', order.client_id);
+        setValue('os-budget-id', order.budget_id);
+        const budgetSelect = document.getElementById('os-budget-id');
+        if (budgetSelect) budgetSelect.disabled = false;
+        if (order.budget_id) {
+          setValue('os-creation-mode', 'manual');
+          if (budgetSelect) {
+            const selected = budgetSelect.querySelector('option[value="' + String(order.budget_id) + '"]');
+            if (selected && selected.textContent === String(order.budget_id)) {
+              selected.textContent = 'Orçamento vinculado ORC-' + String(order.budget_id).padStart(6, '0');
+            }
+            budgetSelect.disabled = true;
+          }
+        }
+        setValue('os-priority', order.priority);
+        setValue('os-equipment-type', order.equipment_type);
+        setValue('os-equipment-brand', order.equipment_brand);
+        setValue('os-equipment-model', order.equipment_model);
+        setValue('os-equipment-capacity', order.equipment_capacity);
+        setValue('os-equipment-serial-number', order.equipment_serial_number);
+        setValue('os-equipment-environment', order.equipment_environment);
+        setValue('os-equipment-location', order.equipment_location);
+        setValue('os-reported-problem', order.reported_problem);
+        setValue('os-identified-problem', order.identified_problem);
+        setValue('os-diagnosis', order.diagnosis);
+        setValue('os-solution', order.solution);
+        setValue('os-recommendation', order.recommendation);
+        setValue('os-internal-notes', order.internal_notes);
+        setValue('os-notes', order.notes);
+        setValue('os-discount', order.discount);
+        setValue('os-increase', order.increase);
+        setValue('os-scheduled-start', toLocalInput(order.scheduled_start));
+        setValue('os-scheduled-end', toLocalInput(order.scheduled_end));
+        setValue('os-status', order.status);
+        const status = document.getElementById('os-status');
+        if (status) status.disabled = true;
+        data.items.forEach(function (item) { addRow(form, item.type, item); });
+        restoreTeamMembers(form, data.team || legacyTeamFromData(order));
+        updateBudgetMode(form);
+        recalc(form);
+      } catch (error) {
+        showOrderFormError('Não foi possível carregar os dados da OS.');
+      }
     });
   });
+
+  const orderModal = document.getElementById('modal-os');
+  if (orderModal) {
+    orderModal.addEventListener('show.bs.modal', function (event) {
+      if (event.relatedTarget && !event.relatedTarget.classList.contains('js-os-edit')) {
+        const form = orderModal.querySelector('form');
+        if (form) resetOrderModal(form);
+      }
+    });
+  }
 
   document.querySelectorAll('.js-os-team').forEach(function (button) {
     button.addEventListener('click', function () {
