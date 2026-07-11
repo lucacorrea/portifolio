@@ -3,7 +3,9 @@ $primaryActionLabel = $primaryActionLabel ?? 'Nova OS';
 $primaryActionIcon = $primaryActionIcon ?? 'bi-plus-lg';
 $primaryActionTarget = $primaryActionTarget ?? '#modal-os';
 $pageSubtitle = $pageSubtitle ?? 'Gestão de serviços';
-$showPrimaryAction = !isset($primaryActionPermission) || $authorization->can((string) $primaryActionPermission);
+$showPrimaryAction = isset($showPrimaryAction)
+  ? (bool) $showPrimaryAction
+  : (!isset($primaryActionPermission) || $authorization->can((string) $primaryActionPermission));
 ?>
 
 <header class="topbar">
