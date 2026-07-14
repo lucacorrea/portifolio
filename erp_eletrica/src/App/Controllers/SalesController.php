@@ -177,12 +177,62 @@ class SalesController extends BaseController {
         exit;
     }
 
+    private function normalizeCheckoutIdempotencyKey($key): ?string {
+        $key = trim((string)$key);
+        if ($key === '') {
+            return null;
+        }
+
+        $key = preg_replace('/[^A-Za-z0-9:_-]/', '', $key);
+        return $key === '' ? null : substr($key, 0, 80);
+    }
+
+    private function acquireCheckoutLock(\PDO $db, ?string $key): ?string {
+        if (!$key) {
+            return null;
+        }
+
+        $lockName = 'checkout_venda_' . hash('sha256', $key);
+        $stmt = $db->prepare("SELECT GET_LOCK(?, 10)");
+        $stmt->execute([$lockName]);
+
+        if ((int)$stmt->fetchColumn() !== 1) {
+            throw new \Exception("Esta venda ja esta sendo processada. Aguarde alguns segundos e tente novamente.");
+        }
+
+        return $lockName;
+    }
+
+    private function releaseCheckoutLock(\PDO $db, ?string $lockName): void {
+        if (!$lockName) {
+            return;
+        }
+
+        try {
+            $stmt = $db->prepare("SELECT RELEASE_LOCK(?)");
+            $stmt->execute([$lockName]);
+        } catch (\Throwable $e) {
+            error_log("Erro ao liberar lock de checkout: " . $e->getMessage());
+        }
+    }
+
+    private function respondExistingCheckoutSale(array $sale): void {
+        echo json_encode([
+            'success' => true,
+            'sale_id' => (int)$sale['id'],
+            'tipo_nota' => $sale['tipo_nota'] ?? 'nao_fiscal',
+            'duplicate' => true
+        ]);
+    }
+
     public function checkout() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $data = json_decode(file_get_contents('php://input'), true);
+            $data = json_decode(file_get_contents('php://input'), true) ?: [];
             $saleModel = new Sale();
             $productModel = new Product();
             $db = \App\Config\Database::getInstance()->getConnection();
+            $idempotencyKey = $this->normalizeCheckoutIdempotencyKey($data['idempotency_key'] ?? null);
+            $checkoutLock = null;
 
             // --- Fiscal sanitizer helpers (same approach as acainhadinhos) ---
             $saneNCM = function(?string $v): string {
@@ -219,6 +269,16 @@ class SalesController extends BaseController {
             };
 
             try {
+                $checkoutLock = $this->acquireCheckoutLock($db, $idempotencyKey);
+
+                if ($idempotencyKey) {
+                    $existingSale = $saleModel->findByIdempotencyKey($idempotencyKey);
+                    if ($existingSale) {
+                        $this->respondExistingCheckoutSale($existingSale);
+                        return;
+                    }
+                }
+
                 $db->beginTransaction();
 
                 // Validation: Cashier Open Check
@@ -405,6 +465,7 @@ class SalesController extends BaseController {
                     'troco'               => isset($data['troco']) ? (float)$data['troco'] : null,
                     'taxa_cartao'         => isset($data['taxa_cartao']) ? (float)$data['taxa_cartao'] : 0,
                     'multi_detalhes'      => $multiDetalhes,
+                    'idempotency_key'     => $idempotencyKey,
                 ];
 
                 // Get Seller Commission Data (using the attributed seller's ID)
@@ -579,8 +640,22 @@ class SalesController extends BaseController {
 
                 echo json_encode(['success' => true, 'sale_id' => $saleId, 'tipo_nota' => $tipoNota]);
             } catch (\Exception $e) {
-                $db->rollBack();
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+
+                $isDuplicateKeyError = str_contains($e->getMessage(), 'Duplicate entry') || str_contains($e->getMessage(), 'idempotency_key');
+                if ($idempotencyKey && $isDuplicateKeyError) {
+                    $existingSale = $saleModel->findByIdempotencyKey($idempotencyKey);
+                    if ($existingSale) {
+                        $this->respondExistingCheckoutSale($existingSale);
+                        return;
+                    }
+                }
+
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            } finally {
+                $this->releaseCheckoutLock($db, $checkoutLock);
             }
             exit;
         }

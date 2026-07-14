@@ -897,6 +897,29 @@ const finalTotal = document.getElementById('finalTotal');
 const btnCheckout = document.getElementById('btnCheckout');
 const productPreviewImg = document.getElementById('productPreviewImg');
 const productPreviewName = document.getElementById('productPreviewName');
+let checkoutInFlight = false;
+let currentCheckoutIdempotencyKey = null;
+
+function getCheckoutIdempotencyKey() {
+    if (currentCheckoutIdempotencyKey) {
+        return currentCheckoutIdempotencyKey;
+    }
+
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        currentCheckoutIdempotencyKey = window.crypto.randomUUID();
+    } else {
+        currentCheckoutIdempotencyKey = `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    return currentCheckoutIdempotencyKey;
+}
+
+function finishCheckoutAttempt(clearKey = false) {
+    checkoutInFlight = false;
+    if (clearKey) {
+        currentCheckoutIdempotencyKey = null;
+    }
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -3269,10 +3292,13 @@ async function confirmarCheckoutFiado() {
 }
 
 async function processarCheckout() {
+    if (checkoutInFlight) return;
+
     if (btnCheckout) {
         if (btnCheckout.disabled) return;
         btnCheckout.disabled = true;
     }
+    checkoutInFlight = true;
 
     // Guardar HTML/texto original do botão de checkout para restaurar em caso de erro/validação pendente
     const originalBtnHTML = btnCheckout ? btnCheckout.innerHTML : '';
@@ -3299,6 +3325,7 @@ async function processarCheckout() {
                 btnCheckout.disabled = false;
                 btnCheckout.innerHTML = originalBtnHTML;
             }
+            finishCheckoutAttempt(false);
             return;
         }
     }
@@ -3348,6 +3375,7 @@ async function processarCheckout() {
             btnCheckout.disabled = false;
             btnCheckout.innerHTML = originalBtnHTML;
         }
+        finishCheckoutAttempt(false);
         return;
     }
 
@@ -3385,7 +3413,8 @@ async function processarCheckout() {
         supervisor_id: authSupervisorId,
         supervisor_credential: authSupervisorCredential,
         tipo_nota: tipoNota,
-        multi_detalhes: multiDetalhes
+        multi_detalhes: multiDetalhes,
+        idempotency_key: getCheckoutIdempotencyKey()
     };
 
     try {
@@ -3418,12 +3447,14 @@ async function processarCheckout() {
 
             renderCart();
             loadRecentSales();
+            finishCheckoutAttempt(true);
         } else {
             alert('Erro ao finalizar: ' + result.error);
             if (btnCheckout) {
                 btnCheckout.disabled = false;
                 btnCheckout.innerHTML = originalBtnHTML;
             }
+            finishCheckoutAttempt(false);
         }
     } catch (err) {
         alert('Erro ao processar venda: ' + err.message);
@@ -3431,6 +3462,7 @@ async function processarCheckout() {
             btnCheckout.disabled = false;
             btnCheckout.innerHTML = originalBtnHTML;
         }
+        finishCheckoutAttempt(false);
     }
 }
 

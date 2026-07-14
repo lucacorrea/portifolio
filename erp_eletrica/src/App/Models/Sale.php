@@ -12,6 +12,7 @@ class Sale extends BaseModel {
         $hasClienteNome = $this->columnExists('cliente_nome');
         $hasTaxaCartao  = $this->columnExists('taxa_cartao');
         $hasMultiDetalhes = $this->columnExists('multi_detalhes');
+        $hasIdempotencyKey = $this->columnExists('idempotency_key');
 
         $cols   = ['cliente_id', 'usuario_id', 'filial_id', 'valor_total', 'desconto_total', 'autorizado_por', 'forma_pagamento', 'status'];
         $params = [
@@ -62,12 +63,28 @@ class Sale extends BaseModel {
             $params[] = $data['multi_detalhes'] ?? null;
         }
 
+        if ($hasIdempotencyKey && !empty($data['idempotency_key'])) {
+            $cols[]   = 'idempotency_key';
+            $params[] = $data['idempotency_key'];
+        }
+
         $placeholders = implode(', ', array_fill(0, count($cols), '?'));
         $colList      = implode(', ', $cols);
 
         $sql = "INSERT INTO {$this->table} ($colList) VALUES ($placeholders)";
         $this->query($sql, $params);
         return $this->db->lastInsertId();
+    }
+
+    public function findByIdempotencyKey($key) {
+        if (empty($key) || !$this->columnExists('idempotency_key')) {
+            return null;
+        }
+
+        return $this->query(
+            "SELECT * FROM {$this->table} WHERE idempotency_key = ? LIMIT 1",
+            [$key]
+        )->fetch() ?: null;
     }
 
     public function getRecent($limit = 10) {
