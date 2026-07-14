@@ -39,4 +39,4 @@ try {
     $session->flash('danger', 'Não foi possível alterar o status.');
 }
 
-os_redirect($application);
+os_redirect_back($application);

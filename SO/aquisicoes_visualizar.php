@@ -82,6 +82,70 @@ function money_br($value): string
     return 'R$ ' . number_format((float) $value, 2, ',', '.');
 }
 
+function render_aquisicao_print_header(array $aq, string $titulo, string $viaLabel): void
+{
+?>
+    <div class="ordem-header">
+        <div class="ordem-logo">
+            <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
+        </div>
+
+        <div class="ordem-center">
+            <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                PREFEITURA MUNICIPAL DE COARI
+            </h1>
+            <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                <?= h($titulo) ?>
+            </h2>
+            <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
+                COARI - AM | CNPJ: 04.262.432/0001-21
+            </div>
+        </div>
+
+        <div class="ordem-right">
+            <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
+                <?= h($viaLabel) ?>
+            </div>
+            <div class="ordem-right-box">
+                <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
+                <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">
+                    <?= h(str_replace('AQ-', '', $aq['numero_aq'])) ?>
+                </div>
+            </div>
+            <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
+                DATA: <?= date('d/m/Y', strtotime($aq['criado_em'])) ?> | <?= date('H:i', strtotime($aq['criado_em'])) ?>
+            </div>
+        </div>
+    </div>
+<?php
+}
+
+function render_aquisicao_signature_footer(string $assinaturaLabel): void
+{
+?>
+    <div class="rodape-documento print-signature-footer">
+        <div class="assinaturas-grid">
+            <div>
+                <div class="assinatura-linha">
+                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">AUTORIZAÇÃO DE FORNECEDOR</div>
+                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                        <?= h($assinaturaLabel) ?>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="assinatura-linha">
+                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                        Assinatura e Carimbo
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php
+}
+
 function render_itens_aquisicao_table(array $items, float $valorTotal): void
 {
 ?>
@@ -229,9 +293,17 @@ include 'views/layout/header.php';
     }
 
     .ordem-info-table,
-    .ordem-items-table {
+    .ordem-items-table,
+    .print-repeat-table {
         width: 100%;
         border-collapse: collapse;
+    }
+
+    .print-repeat-table>thead>tr>td,
+    .print-repeat-table>tfoot>tr>td,
+    .print-repeat-table>tbody>tr>td {
+        padding: 0;
+        border: 0;
     }
 
     .ordem-info-wrap,
@@ -454,10 +526,33 @@ include 'views/layout/header.php';
         }
 
         .ordem-info-table,
-        .ordem-items-table {
+        .ordem-items-table,
+        .print-repeat-table {
             width: 100% !important;
             min-width: 0 !important;
             font-size: 10px !important;
+        }
+
+        .print-repeat-table>thead {
+            display: table-header-group !important;
+        }
+
+        .print-repeat-table>tbody {
+            display: table-row-group !important;
+        }
+
+        .print-repeat-table>tfoot {
+            display: table-footer-group !important;
+        }
+
+        .print-repeat-table>thead>tr,
+        .print-repeat-table>tfoot>tr,
+        .print-repeat-table>tbody>tr,
+        .print-repeat-table>thead>tr>td,
+        .print-repeat-table>tfoot>tr>td,
+        .print-repeat-table>tbody>tr>td {
+            page-break-inside: auto !important;
+            break-inside: auto !important;
         }
 
         .ordem-items-table {
@@ -507,7 +602,7 @@ include 'views/layout/header.php';
             grid-template-columns: 1fr 1fr !important;
             gap: 2rem !important;
             text-align: center !important;
-            margin-top: 70px !important;
+            margin-top: 24mm !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
@@ -536,89 +631,52 @@ include 'views/layout/header.php';
     <!-- VIA PREFEITURA -->
     <div class="card printable-page" id="via-prefeitura-aq">
         <div class="card-body">
-
-            <div class="ordem-header">
-                <div class="ordem-logo">
-                    <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
-                </div>
-
-                <div class="ordem-center">
-                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                        PREFEITURA MUNICIPAL DE COARI
-                    </h1>
-                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                        Ordem de Aquisição e Suprimentos
-                    </h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                        COARI - AM | CNPJ: 04.262.432/0001-21
-                    </div>
-                </div>
-
-                <div class="ordem-right">
-                    <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
-                        Via Administrativa
-                    </div>
-                    <div class="ordem-right-box">
-                        <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
-                        <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">
-                            <?= h(str_replace('AQ-', '', $aq['numero_aq'])) ?>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                        DATA: <?= date('d/m/Y', strtotime($aq['criado_em'])) ?> | <?= date('H:i', strtotime($aq['criado_em'])) ?>
-                    </div>
-                </div>
-            </div>
-
-            <div class="ordem-info-wrap">
-                <table class="ordem-info-table">
+            <table class="print-repeat-table">
+                <thead>
                     <tr>
-                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
-                        <td style="font-weight: 700;"><?= h(strtoupper($aq['fornecedor'])) ?></td>
-                        <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
+                        <td><?php render_aquisicao_print_header($aq, 'Ordem de Aquisição e Suprimentos', 'Via Administrativa'); ?></td>
                     </tr>
+                </thead>
+                <tbody>
                     <tr>
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
-                        <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
+                        <td>
+                            <div class="ordem-info-wrap">
+                                <table class="ordem-info-table">
+                                    <tr>
+                                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
+                                        <td style="font-weight: 700;"><?= h(strtoupper($aq['fornecedor'])) ?></td>
+                                        <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
+                                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
+                                        <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
 
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
-                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
-                    </tr>
+                                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
+                                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
+                                    </tr>
 
-                    <tr>
-                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local:</td>
-                        <td colspan="3" style="font-weight: 700; text-transform: uppercase;">
-                            <?= !empty($aq['oficio_local']) ? h($aq['oficio_local']) : '---' ?>
+                                    <tr>
+                                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local:</td>
+                                        <td colspan="3" style="font-weight: 700; text-transform: uppercase;">
+                                            <?= !empty($aq['oficio_local']) ? h($aq['oficio_local']) : '---' ?>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
+
+                            <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
                         </td>
                     </tr>
-                </table>
-            </div>
-
-            <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
-
-            <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
-
-            <div class="rodape-documento">
-                <div class="assinaturas-grid">
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                Autorização de Recebimento
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                Assinatura e Carimbo
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td><?php render_aquisicao_signature_footer('Autorização de Recebimento'); ?></td>
+                    </tr>
+                </tfoot>
+            </table>
 
         </div>
     </div>
@@ -626,90 +684,52 @@ include 'views/layout/header.php';
     <!-- VIA FORNECEDOR -->
     <div class="card printable-page" id="via-fornecedor-aq">
         <div class="card-body">
-
-            <div class="ordem-header">
-                <div class="ordem-logo">
-                    <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
-                </div>
-
-                <div class="ordem-center">
-                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                        PREFEITURA MUNICIPAL DE COARI
-                    </h1>
-                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                        Ordem de Fornecimento
-                    </h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                        COARI - AM | CNPJ: 04.262.432/0001-21
-                    </div>
-                </div>
-
-                <div class="ordem-right">
-                    <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
-                        Via Fornecedor
-                    </div>
-                    <div class="ordem-right-box">
-                        <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
-                        <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">
-                            <?= h(str_replace('AQ-', '', $aq['numero_aq'])) ?>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                        DATA: <?= date('d/m/Y', strtotime($aq['criado_em'])) ?> | <?= date('H:i', strtotime($aq['criado_em'])) ?>
-                    </div>
-                </div>
-            </div>
-
-            <div class="ordem-info-wrap">
-                <table class="ordem-info-table">
+            <table class="print-repeat-table">
+                <thead>
                     <tr>
-                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
-                        <td style="font-weight: 700;"><?= h(strtoupper($aq['fornecedor'])) ?></td>
-                        <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
+                        <td><?php render_aquisicao_print_header($aq, 'Ordem de Fornecimento', 'Via Fornecedor'); ?></td>
                     </tr>
+                </thead>
+                <tbody>
                     <tr>
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
-                        <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
+                        <td>
+                            <div class="ordem-info-wrap">
+                                <table class="ordem-info-table">
+                                    <tr>
+                                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
+                                        <td style="font-weight: 700;"><?= h(strtoupper($aq['fornecedor'])) ?></td>
+                                        <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
+                                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', strtotime($aq['criado_em'])) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
+                                        <td style="font-weight: 700;"><?= h(strtoupper($aq['secretaria'])) ?></td>
 
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
-                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
-                    </tr>
+                                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
+                                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h($aq['oficio_num']) ?></td>
+                                    </tr>
 
-                    <tr>
-                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local:</td>
-                        <td colspan="3" style="font-weight: 700; text-transform: uppercase;">
-                            <?= !empty($aq['oficio_local']) ? h($aq['oficio_local']) : '---' ?>
+                                    <tr>
+                                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local:</td>
+                                        <td colspan="3" style="font-weight: 700; text-transform: uppercase;">
+                                            <?= !empty($aq['oficio_local']) ? h($aq['oficio_local']) : '---' ?>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
+
+                            <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
                         </td>
                     </tr>
-                </table>
-            </div>
-
-            <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
-
-            <?php render_itens_aquisicao_table($items, (float) $aq['valor_total']); ?>
-
-            <div class="rodape-documento">
-
-                <div class="assinaturas-grid">
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                Autorização de Saída
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                Assinatura e Carimbo
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td><?php render_aquisicao_signature_footer('Autorização de Saída'); ?></td>
+                    </tr>
+                </tfoot>
+            </table>
 
         </div>
     </div>

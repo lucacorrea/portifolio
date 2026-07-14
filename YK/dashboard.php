@@ -5,7 +5,9 @@ $activePage = 'dashboard';
 $primaryActionLabel = 'Nova OS';
 $primaryActionIcon = 'bi-plus-lg';
 $primaryActionTarget = '#modal-os';
+$primaryActionHref = 'ordens-servico.php?modal=create';
 $primaryActionPermission = 'os.criar';
+$showPrimaryAction = false;
 $requiredPermission = 'dashboard.visualizar';
 $pageContent = __DIR__ . '/pages/dashboard.php';
 

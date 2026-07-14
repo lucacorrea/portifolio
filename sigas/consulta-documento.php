@@ -60,6 +60,7 @@ if (!$authorization->can($user, 'comida_mesa.consultar_cpf')) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
     <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
+    <link href="assets/css/consulta-result-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-result-modal.css')) ?>" rel="stylesheet">
 </head>
 <body data-page="consulta">
     <main class="container py-5">
@@ -124,6 +125,7 @@ $frontendContext = [
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
     <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
+    <link href="assets/css/consulta-result-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-result-modal.css')) ?>" rel="stylesheet">
 </head>
 <body data-page="consulta">
     <div class="app-shell">
@@ -217,6 +219,30 @@ $frontendContext = [
             <footer class="app-footer"><span>Consulta real no banco do SIGAS.</span><span>SIGAS Coari - SEMAS Coari/AM</span></footer>
         </div>
         <div id="bottomNavigation"></div>
+    </div>
+
+    <div class="modal fade consulta-result-modal" id="consultaResultModal" tabindex="-1" aria-labelledby="consultaResultModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable consulta-result-dialog">
+            <div class="modal-content consulta-result-content">
+                <div class="modal-header consulta-result-header">
+                    <div class="consulta-result-header-copy">
+                        <div class="consulta-result-eyebrow">
+                            <i class="bi bi-person-check"></i>
+                            Consulta por CPF
+                        </div>
+                        <h2 class="modal-title consulta-result-title" id="consultaResultModalTitle">
+                            Beneficiário localizado
+                        </h2>
+                        <p class="consulta-result-subtitle">
+                            Situação operacional no Programa Coari Comida na Mesa.
+                        </p>
+                    </div>
+                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body consulta-result-body" data-consulta-result-modal-body></div>
+                <div class="modal-footer consulta-result-footer" data-consulta-result-modal-footer></div>
+            </div>
+        </div>
     </div>
 
     <div class="modal fade" id="consultaDeliveryModal" tabindex="-1" aria-labelledby="consultaDeliveryTitle" aria-hidden="true">

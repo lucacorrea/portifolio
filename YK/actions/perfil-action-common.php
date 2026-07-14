@@ -43,7 +43,7 @@ function profile_action_context(string $permission): array
 
 function profile_redirect(Application $application, string $target): never
 {
-    header('Location: ' . $application->redirect()->applicationUrl($target), true, 303);
+    header('Location: ' . $application->redirect()->applicationUrl(action_return_target($application, $target)), true, 303);
     exit;
 }
 

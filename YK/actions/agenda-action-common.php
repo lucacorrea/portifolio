@@ -12,6 +12,10 @@ function agenda_redirect(App\Core\Application $application, string $target = 'ag
 
 function agenda_return_target(?string $modal = null): string
 {
+    if (isset($GLOBALS['application']) && $GLOBALS['application'] instanceof App\Core\Application && trim((string) ($_POST['return_to'] ?? '')) !== '') {
+        return os_return_target($GLOBALS['application'], 'agenda.php', $modal === null ? [] : ['modal' => $modal]);
+    }
+
     $view = (string) ($_POST['return_view'] ?? 'day');
     if (!in_array($view, ['day', 'week'], true)) {
         $view = 'day';

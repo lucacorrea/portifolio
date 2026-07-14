@@ -26,6 +26,41 @@
         if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
         return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9)}`;
     };
+    const fullCpf = (data = {}) => {
+        const value = data.cpf_completo
+            || data.cpf_formatted
+            || data.cpf_formatado
+            || data.cpf
+            || data.cpf_mascarado
+            || data.cpf_masked
+            || "";
+        const numbers = digits(value);
+
+        return numbers.length === 11 && !String(value).includes("*") ? maskCpf(numbers) : (value || "Não informado");
+    };
+    const detailLabel = (value) => escapeHTML(value || "Não informado");
+    const detailFieldGrid = (fields) => `
+        <dl class="beneficiary-detail-fields">
+            ${fields.map((field) => `
+                <div class="beneficiary-detail-field beneficiary-detail-field--span-${field.span || 3}">
+                    <dt>${escapeHTML(field.label)}</dt>
+                    <dd>${detailLabel(field.value)}</dd>
+                </div>
+            `).join("")}
+        </dl>
+    `;
+    const detailDataSection = (title, fields, modifier = "") => `
+        <section class="beneficiary-detail-section ${modifier}">
+            <h3 class="beneficiary-detail-section-title">${escapeHTML(title)}</h3>
+            ${detailFieldGrid(fields)}
+        </section>
+    `;
+    const detailListSection = (title, content, modifier = "") => `
+        <section class="beneficiary-detail-section ${modifier}">
+            <h3 class="beneficiary-detail-section-title">${escapeHTML(title)}</h3>
+            ${content}
+        </section>
+    `;
 
     const setAlert = (form, html = "") => {
         const alert = qs("[data-form-alert]", form);
@@ -114,7 +149,7 @@
             inscricao_id: data.id,
             versao_atualizacao: data.versao_atualizacao,
             nome: data.nome,
-            cpf: data.cpf_completo || data.cpf_mascarado,
+            cpf: data.cpf_completo || data.cpf_formatado || data.cpf_mascarado,
             telefone: data.telefone,
             nis: data.nis,
             rg: data.rg,
@@ -160,24 +195,55 @@
         const content = qs("[data-detail-content]");
         let controller = null;
 
-        const label = (value) => escapeHTML(value || "Não informado");
-        const description = (pairs) => pairs.map(([term, value]) => `<dt>${escapeHTML(term)}</dt><dd>${label(value)}</dd>`).join("");
+        const label = detailLabel;
         const render = (data) => {
             const entregaRows = (data.entregas || []).map((item) => `<tr><td>${label(item.competencia_label)}</td><td>${label(item.status_label)}</td><td>${label(item.entregue_em_formatado)}</td><td>${label(item.polo_nome)}</td><td>${label(item.recebedor_nome)}</td><td>${label(item.recebedor_parentesco)}</td><td>${label(item.operador_nome)}</td><td>${label(item.cancelador_nome)}</td><td>${label(item.cancelada_em_formatada)}</td><td>${label(item.motivo_cancelamento)}</td></tr>`).join("");
-            const members = (data.integrantes || []).map((item) => `<li class="list-group-item d-flex justify-content-between"><span>${label(item.nome)}<br><small>${label(item.parentesco)} · ${label(item.cpf_mascarado)}</small></span></li>`).join("");
+            const members = (data.integrantes || []).map((item) => `<li class="list-group-item d-flex justify-content-between"><span>${label(item.nome)}<br><small>${label(item.parentesco)} · CPF ${label(fullCpf(item))}</small></span></li>`).join("");
             const documents = (data.documentos || []).map((item) => `<li class="list-group-item d-flex justify-content-between align-items-center"><span>${label(item.tipo)}<br><small>${label(item.descricao)} · ${label(item.nome_original)} · ${label(item.mime_type)} · ${label(item.tamanho_formatado)} · ${label(item.criado_em_formatado)} · ${label(item.enviado_por_nome)}</small></span><a class="btn btn-light btn-sm" href="api/comida-mesa/visualizar-documento.php?id=${encodeURIComponent(item.id)}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i>Abrir</a></li>`).join("");
             const history = (data.historico || []).map((item) => {
                 const changes = (item.changes || []).map((change) => `<li>${label(change.field)}: ${label(change.before)} &rarr; ${label(change.after)}</li>`).join("");
                 return `<li class="list-group-item"><strong>${label(item.acao)}</strong><br><span>${label(item.descricao)}</span><br><small>${label(item.usuario_nome)} · ${label(item.criado_em)}</small>${changes ? `<ul class="mt-2 mb-0">${changes}</ul>` : ""}</li>`;
             }).join("");
             content.innerHTML = `
-                <div class="row g-3">
-                    <div class="col-lg-4"><h3 class="fs-6">Responsável</h3><dl class="small">${description([["Nome", data.nome], ["CPF", data.cpf_completo || data.cpf_mascarado], ["NIS", data.nis], ["RG", data.rg], ["Nascimento", data.data_nascimento], ["Telefone", data.telefone], ["E-mail", data.email]])}</dl></div>
-                    <div class="col-lg-4"><h3 class="fs-6">Família</h3><dl class="small">${description([["Código", data.familia_codigo], ["Zona", data.zona], ["Logradouro", data.logradouro], ["Número", data.numero], ["Complemento", data.complemento], ["Bairro", data.bairro], ["Comunidade", data.comunidade], ["Referência", data.ponto_referencia], ["CEP", data.cep], ["Membros", data.quantidade_membros], ["Renda", data.renda_familiar_formatada]])}</dl></div>
-                    <div class="col-lg-4"><h3 class="fs-6">Inscrição</h3><dl class="small">${description([["Situação", data.status_label], ["Prioridade", data.prioridade_label], ["Polo", data.polo_nome], ["Data de inscrição", data.data_inscricao_formatada], ["Data de aprovação", data.data_aprovacao_formatada], ["Observação", data.observacao], ["Motivo", data.motivo_suspensao], ["Atualização", data.atualizado_em_formatado]])}</dl></div>
+                <div class="beneficiary-detail-layout">
+                    <div class="beneficiary-detail-grid">
+                        ${detailDataSection("I. Responsável familiar", [
+                            { label: "Nome", value: data.nome, span: 6 },
+                            { label: "CPF", value: fullCpf(data), span: 3 },
+                            { label: "Telefone", value: data.telefone, span: 3 },
+                            { label: "NIS", value: data.nis, span: 3 },
+                            { label: "RG", value: data.rg, span: 3 },
+                            { label: "Nascimento", value: data.data_nascimento, span: 3 },
+                            { label: "E-mail", value: data.email, span: 3 }
+                        ], "beneficiary-detail-section--full")}
+                        ${detailDataSection("II. Inscrição no programa", [
+                            { label: "Situação", value: data.status_label, span: 2 },
+                            { label: "Prioridade", value: data.prioridade_label, span: 2 },
+                            { label: "Polo", value: data.polo_nome, span: 2 },
+                            { label: "Inscrição", value: data.data_inscricao_formatada, span: 3 },
+                            { label: "Aprovação", value: data.data_aprovacao_formatada, span: 3 },
+                            { label: "Observação", value: data.observacao, span: 6 },
+                            { label: "Motivo suspensão", value: data.motivo_suspensao, span: 6 }
+                        ], "beneficiary-detail-section--full")}
+                        ${detailDataSection("III. Família e endereço", [
+                            { label: "Código", value: data.familia_codigo, span: 2 },
+                            { label: "Zona", value: data.zona, span: 2 },
+                            { label: "Membros", value: data.quantidade_membros, span: 2 },
+                            { label: "Renda", value: data.renda_familiar_formatada, span: 3 },
+                            { label: "CEP", value: data.cep, span: 3 },
+                            { label: "Logradouro", value: data.logradouro, span: 6 },
+                            { label: "Nº", value: data.numero, span: 2 },
+                            { label: "Complemento", value: data.complemento, span: 4 },
+                            { label: "Bairro", value: data.bairro, span: 3 },
+                            { label: "Comunidade", value: data.comunidade, span: 3 },
+                            { label: "Referência", value: data.ponto_referencia, span: 6 }
+                        ], "beneficiary-detail-section--full")}
+                        ${detailListSection("IV. Integrantes", `<ul class="beneficiary-detail-list-cards">${members || '<li class="list-group-item">Sem integrantes vinculados.</li>'}</ul>`, "beneficiary-detail-section--full")}
+                        ${detailListSection("V. Histórico de entregas", `<div class="beneficiary-detail-table-card table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Parentesco</th><th>Operador</th><th>Cancelador</th><th>Cancelamento</th><th>Motivo</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="10">Sem entregas registradas.</td></tr>'}</tbody></table></div>`, "beneficiary-detail-section--full")}
+                        ${detailListSection("VI. Documentos", `<ul class="beneficiary-detail-list-cards">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul>`, "beneficiary-detail-section--full")}
+                        ${detailListSection("VII. Histórico da inscrição", `<ul class="beneficiary-detail-list-cards">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul>`, "beneficiary-detail-section--full")}
+                    </div>
                 </div>
-                <h3 class="fs-6 mt-3">Entregas</h3><div class="table-responsive"><table class="data-table"><thead><tr><th>Competência</th><th>Status</th><th>Data</th><th>Polo</th><th>Recebedor</th><th>Parentesco</th><th>Operador</th><th>Cancelador</th><th>Cancelamento</th><th>Motivo</th></tr></thead><tbody>${entregaRows || '<tr><td colspan="10">Sem entregas registradas.</td></tr>'}</tbody></table></div>
-                <div class="row g-3 mt-2"><div class="col-lg-4"><h3 class="fs-6">Integrantes</h3><ul class="list-group">${members || '<li class="list-group-item">Sem integrantes vinculados.</li>'}</ul></div><div class="col-lg-4"><h3 class="fs-6">Documentos</h3><ul class="list-group">${documents || '<li class="list-group-item">Sem documentos disponíveis.</li>'}</ul></div><div class="col-lg-4"><h3 class="fs-6">Histórico</h3><ul class="list-group">${history || '<li class="list-group-item">Sem histórico disponível.</li>'}</ul></div></div>
             `;
         };
 
@@ -244,15 +310,6 @@
             .filter((value) => value !== "Não informado")
             .join(", ") || "Endereço não informado";
         const descriptionList = (items) => items.map(([label, value]) => `<dt>${escapeHTML(label)}</dt><dd>${escapeHTML(valueOrFallback(value))}</dd>`).join("");
-        const anexoCardHeading = (icon, title, description) => `
-            <div class="anexo-card-heading">
-                <span class="anexo-card-icon"><i class="bi ${icon}"></i></span>
-                <div>
-                    <h3 class="anexo-card-title">${title}</h3>
-                    <p class="anexo-card-description">${description}</p>
-                </div>
-            </div>
-        `;
         const anexoRequestStatus = (item = {}) => {
             const received = item.assigned || Number(item.deliveries_count || 0) > 0;
             return {
@@ -269,95 +326,73 @@
             const receivedHelpCount = Number(anexo.received_help_count ?? helpHistory.length);
             const receivedHelpLabel = receivedHelpCount > 0 ? `Sim, ${receivedHelpCount} registro${receivedHelpCount === 1 ? "" : "s"}` : "Não";
             const familyHtml = family.map((item) => `
-                <li class="anexo-family-item">
-                    <strong class="anexo-family-name">${escapeHTML(valueOrFallback(item.name))}</strong>
-                    <span class="anexo-family-meta">${escapeHTML(valueOrFallback(item.relationship))} &middot; ${escapeHTML(formatDate(item.birth_date))} &middot; ${escapeHTML(valueOrFallback(item.schooling))}</span>
+                <li class="list-group-item">
+                    <strong>${escapeHTML(valueOrFallback(item.name))}</strong><br>
+                    <small>${escapeHTML(valueOrFallback(item.relationship))} &middot; ${escapeHTML(formatDate(item.birth_date))} &middot; ${escapeHTML(valueOrFallback(item.schooling))}</small>
                 </li>
             `).join("");
             const helpHistoryHtml = helpHistory.map((item) => {
                 const deliveredAt = item.delivered_date ? `${formatDate(item.delivered_date)} ${valueOrFallback(item.delivered_time, "")}`.trim() : "Data não informada";
                 return `
-                    <article class="anexo-help-card">
-                        <div class="anexo-request-head">
-                            <div>
-                                <strong>${escapeHTML(valueOrFallback(item.type_name, "Ajuda recebida"))}</strong>
-                                <span>${escapeHTML(deliveredAt)}</span>
-                            </div>
-                            <span class="status-badge status-success">Entregue</span>
-                        </div>
-                    </article>
+                    <div class="list-group-item">
+                        <strong>${escapeHTML(valueOrFallback(item.type_name, "Ajuda recebida"))}</strong><br>
+                        <small>${escapeHTML(deliveredAt)} &middot; Entregue</small>
+                    </div>
                 `;
             }).join("");
             const requestsHtml = requests.map((item) => {
                 const requestStatus = anexoRequestStatus(item);
                 return `
-                    <article class="anexo-request-card">
-                        <div class="anexo-request-head">
-                            <div>
-                                <strong>${escapeHTML(valueOrFallback(item.type_name, item.type_id ? `Ajuda #${item.type_id}` : "Tipo não informado"))}</strong>
-                                <span>${escapeHTML(formatDate(item.requested_at))}</span>
-                            </div>
-                            <span class="status-badge status-${requestStatus.className}">${escapeHTML(requestStatus.label)}</span>
-                        </div>
-                        <p>${escapeHTML(valueOrFallback(item.summary, "Resumo não informado"))}</p>
-                    </article>
+                    <div class="list-group-item">
+                        <strong>${escapeHTML(valueOrFallback(item.type_name, item.type_id ? `Ajuda #${item.type_id}` : "Tipo não informado"))}</strong><br>
+                        <small>${escapeHTML(formatDate(item.requested_at))} &middot; ${escapeHTML(requestStatus.label)}</small>
+                        <p class="mb-0 mt-2">${escapeHTML(valueOrFallback(item.summary, "Resumo não informado"))}</p>
+                    </div>
                 `;
             }).join("");
 
             anexoDetailContent.innerHTML = `
-                <div class="anexo-detail-layout">
-                    <section class="anexo-detail-hero">
-                        <div class="anexo-hero-main">
-                            <span class="status-badge status-info"><i class="bi bi-database-check"></i>Somente leitura</span>
-                            <h3>${escapeHTML(valueOrFallback(person.name))}</h3>
-                            <p>${escapeHTML(addressOf(person))}</p>
-                        </div>
-                        <div class="anexo-detail-stats">
-                            <div class="anexo-stat-card"><span>Solicitações</span><strong>${requests.length}</strong></div>
-                            <div class="anexo-stat-card"><span>Entregas</span><strong>${receivedHelpCount}</strong></div>
-                            <div class="anexo-stat-card"><span>Familiares</span><strong>${family.length}</strong></div>
-                        </div>
-                    </section>
-
-                    <div class="anexo-information-grid">
-                        <section class="anexo-detail-card anexo-detail-card--identity">
-                            ${anexoCardHeading("bi-person-vcard", "Identificação", "Dados pessoais registrados no ANEXO.")}
-                            <dl class="anexo-data-list">${descriptionList([["CPF", person.cpf_masked], ["NIS", person.nis], ["RG", person.rg], ["Nascimento", formatDate(person.birth_date)], ["Telefone", person.phone], ["Gênero", person.gender], ["Estado civil", person.marital_status], ["Naturalidade", person.birthplace]])}</dl>
-                        </section>
-
-                        <section class="anexo-detail-card anexo-detail-card--address">
-                            ${anexoCardHeading("bi-house-door", "Endereço e renda", "Localização e composição socioeconômica.")}
-                            <dl class="anexo-data-list">${descriptionList([["Endereço", addressOf(person)], ["Referência", person.reference_point], ["Membros", person.members_count], ["Famílias", person.families_count], ["Renda familiar", formatMoney(person.family_income)], ["Cadastro", formatDate(person.created_at)], ["Atualização", formatDate(person.updated_at)]])}</dl>
-                        </section>
-
-                        <section class="anexo-detail-card anexo-detail-card--spouse">
-                            ${anexoCardHeading("bi-people", "Cônjuge", "Informações vinculadas ao responsável familiar.")}
-                            <dl class="anexo-data-list">${descriptionList([["Cônjuge", person.spouse_name], ["CPF do cônjuge", person.spouse_cpf], ["NIS do cônjuge", person.spouse_nis], ["RG do cônjuge", person.spouse_rg], ["Nascimento", formatDate(person.spouse_birth_date)], ["Responsável", person.created_by]])}</dl>
-                        </section>
-
-                        <section class="anexo-detail-card anexo-detail-card--summary">
-                            ${anexoCardHeading("bi-file-text", "Resumo do caso", "Descrição registrada durante o atendimento.")}
-                            <div class="anexo-case-summary">${escapeHTML(valueOrFallback(person.summary))}</div>
-                        </section>
-
-                        <section class="anexo-detail-card anexo-detail-card--help-history">
-                            ${anexoCardHeading("bi-bag-check", "Histórico de ajudas recebidas", "Checagem por CPF e ID da pessoa no ANEXO.")}
-                            <div class="anexo-received-summary">
-                                <span class="status-badge status-${receivedHelpCount > 0 ? "success" : "neutral"}">${escapeHTML(receivedHelpCount > 0 ? "Já recebeu ajuda" : "Sem entrega confirmada")}</span>
-                                <strong>${escapeHTML(receivedHelpLabel)}</strong>
-                            </div>
-                            <div class="anexo-help-list">${helpHistoryHtml || '<div class="anexo-empty-state"><i class="bi bi-inbox"></i><span>Nenhuma ajuda entregue localizada para este CPF ou ID.</span></div>'}</div>
-                        </section>
-
-                        <section class="anexo-detail-card anexo-detail-card--family">
-                            ${anexoCardHeading("bi-diagram-3", "Familiares", "Composição familiar informada no ANEXO.")}
-                            ${familyHtml ? `<ul class="anexo-family-list">${familyHtml}</ul>` : '<div class="anexo-empty-state"><i class="bi bi-inbox"></i><span>Sem familiares cadastrados.</span></div>'}
-                        </section>
-
-                        <section class="anexo-detail-card anexo-detail-card--requests">
-                            ${anexoCardHeading("bi-journal-check", "Solicitações", "Histórico de solicitações registradas.")}
-                            <div class="anexo-request-list">${requestsHtml || '<div class="anexo-empty-state"><i class="bi bi-inbox"></i><span>Sem solicitações registradas.</span></div>'}</div>
-                        </section>
+                <div class="beneficiary-detail-layout">
+                    <div class="beneficiary-detail-grid">
+                        ${detailDataSection("I. Identificação", [
+                            { label: "Nome", value: person.name, span: 6 },
+                            { label: "CPF", value: fullCpf(person), span: 3 },
+                            { label: "NIS", value: person.nis, span: 3 },
+                            { label: "RG", value: person.rg, span: 3 },
+                            { label: "Nascimento", value: formatDate(person.birth_date), span: 3 },
+                            { label: "Telefone", value: person.phone, span: 3 },
+                            { label: "Gênero", value: person.gender, span: 3 },
+                            { label: "Estado civil", value: person.marital_status, span: 3 },
+                            { label: "Naturalidade", value: person.birthplace, span: 3 },
+                            { label: "Nacionalidade", value: person.nationality, span: 3 }
+                        ], "beneficiary-detail-section--full")}
+                        ${detailDataSection("II. Endereço e renda", [
+                            { label: "Endereço", value: person.street, span: 6 },
+                            { label: "Número", value: person.number, span: 2 },
+                            { label: "Complemento", value: person.complement, span: 4 },
+                            { label: "Bairro", value: person.district, span: 4 },
+                            { label: "Referência", value: person.reference_point, span: 8 },
+                            { label: "Membros", value: person.members_count, span: 3 },
+                            { label: "Famílias", value: person.families_count, span: 3 },
+                            { label: "Renda familiar", value: formatMoney(person.family_income), span: 3 },
+                            { label: "Já recebeu ajuda", value: receivedHelpLabel, span: 3 }
+                        ], "beneficiary-detail-section--full")}
+                        ${detailDataSection("III. Cônjuge e cadastro", [
+                            { label: "Cônjuge", value: person.spouse_name, span: 4 },
+                            { label: "CPF do cônjuge", value: person.spouse_cpf_formatted || person.spouse_cpf, span: 3 },
+                            { label: "NIS do cônjuge", value: person.spouse_nis, span: 3 },
+                            { label: "RG do cônjuge", value: person.spouse_rg, span: 2 },
+                            { label: "Nascimento", value: formatDate(person.spouse_birth_date), span: 3 },
+                            { label: "Responsável", value: person.created_by, span: 3 },
+                            { label: "Cadastro", value: formatDate(person.created_at), span: 3 },
+                            { label: "Atualização", value: formatDate(person.updated_at), span: 3 }
+                        ], "beneficiary-detail-section--full")}
+                        ${detailDataSection("IV. Resumo do caso", [
+                            { label: "Resumo", value: person.summary, span: 12 }
+                        ], "beneficiary-detail-section--full")}
+                        ${detailListSection("V. Histórico de ajudas recebidas", `<div class="beneficiary-detail-list-cards">${helpHistoryHtml || '<div class="list-group-item">Nenhuma ajuda entregue localizada para este CPF ou ID.</div>'}</div>`, "beneficiary-detail-section--full")}
+                        ${detailListSection("VI. Familiares", `<ul class="beneficiary-detail-list-cards">${familyHtml || '<li class="list-group-item">Sem familiares cadastrados.</li>'}</ul>`, "beneficiary-detail-section--full")}
+                        ${detailListSection("VII. Solicitações", `<div class="beneficiary-detail-list-cards">${requestsHtml || '<div class="list-group-item">Sem solicitações registradas.</div>'}</div>`, "beneficiary-detail-section--full")}
                     </div>
                 </div>
             `;

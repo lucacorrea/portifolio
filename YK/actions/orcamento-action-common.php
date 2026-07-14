@@ -41,8 +41,13 @@ function budget_action_context(string $permission, bool $requireCsrf = true): ar
 
 function budget_redirect(Application $application, string $target = 'orcamentos.php'): never
 {
-    header('Location: ' . $application->redirect()->applicationUrl($target), true, 303);
+    header('Location: ' . $application->redirect()->applicationUrl(budget_return_target($application, $target)), true, 303);
     exit;
+}
+
+function budget_return_target(Application $application, string $default): string
+{
+    return action_return_target($application, $default);
 }
 
 function budget_require_post_request(): void

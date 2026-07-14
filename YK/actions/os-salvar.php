@@ -17,8 +17,13 @@ try {
     $service = $application->serviceOrderManagement();
 
     if ($isEditing) {
+        $currentOrder = $service->getOrder(os_posted_positive_int('id'));
+        $payload['status'] = $currentOrder->status();
+        if ($currentOrder->budgetId() !== null) {
+            $payload['budget_id'] = $currentOrder->budgetId();
+        }
         $data = ServiceOrderFormData::fromArray($payload, true);
-        $service->updateOrder(os_posted_positive_int('id'), $data);
+        $service->updateOrder($currentOrder->id(), $data);
         $session->flash('success', 'OS atualizada com sucesso.');
     } elseif (($payload['creation_mode'] ?? 'manual') === 'budget') {
         $application->authorization()->requirePermission('orcamento.converter_os');
@@ -37,10 +42,10 @@ try {
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery($isEditing ? 'edit' : 'create', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
-    os_redirect($application, 'ordens-servico.php?modal=' . ($isEditing ? 'edit' : 'create'));
+    os_redirect_back($application, 'ordens-servico.php', ['modal' => $isEditing ? 'edit' : 'create']);
 } catch (Throwable $exception) {
     error_log('OS save failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível salvar a OS.');
 }
 
-os_redirect($application);
+os_redirect_back($application);

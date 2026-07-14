@@ -165,6 +165,7 @@ final class AnexoIntegrationService
         return [
             'id' => (int) $row['id'],
             'name' => (string) $row['nome'],
+            'cpf_formatted' => $this->formatCpf((string) $row['cpf']),
             'cpf_masked' => $this->maskCpf((string) $row['cpf']),
             'phone' => $row['telefone'] === null ? null : (string) $row['telefone'],
             'district' => $row['bairro_nome'] === null ? null : (string) $row['bairro_nome'],
@@ -195,6 +196,7 @@ final class AnexoIntegrationService
             'id' => (int) $row['id'],
             'name' => (string) $row['nome'],
             'cpf' => Validator::onlyDigits((string) $row['cpf']),
+            'cpf_formatted' => $this->formatCpf((string) $row['cpf']),
             'cpf_masked' => $this->maskCpf((string) $row['cpf']),
             'nis' => $row['nis'] === null ? null : (string) $row['nis'],
             'phone' => $row['telefone'] === null ? null : (string) $row['telefone'],
@@ -217,6 +219,7 @@ final class AnexoIntegrationService
             'summary' => $row['resumo_caso'] === null ? null : mb_substr((string) $row['resumo_caso'], 0, 500),
             'spouse_name' => $row['conj_nome'] === null ? null : (string) $row['conj_nome'],
             'spouse_cpf' => $row['conj_cpf'] === null ? null : $this->maskCpf((string) $row['conj_cpf']),
+            'spouse_cpf_formatted' => $row['conj_cpf'] === null ? null : $this->formatCpf((string) $row['conj_cpf']),
             'spouse_nis' => $row['conj_nis'] === null ? null : (string) $row['conj_nis'],
             'spouse_rg' => $row['conj_rg'] === null ? null : (string) $row['conj_rg'],
             'spouse_birth_date' => $row['conj_nasc'] === null ? null : (string) $row['conj_nasc'],
@@ -274,5 +277,14 @@ final class AnexoIntegrationService
         $cpf = Validator::onlyDigits($cpf);
 
         return strlen($cpf) === 11 ? substr($cpf, 0, 3) . '.***.***-' . substr($cpf, 9, 2) : '***.***.***-**';
+    }
+
+    private function formatCpf(string $cpf): string
+    {
+        $digits = Validator::onlyDigits($cpf);
+
+        return strlen($digits) === 11
+            ? substr($digits, 0, 3) . '.' . substr($digits, 3, 3) . '.' . substr($digits, 6, 3) . '-' . substr($digits, 9, 2)
+            : ($cpf === '' ? 'Não informado' : $cpf);
     }
 }

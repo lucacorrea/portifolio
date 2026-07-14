@@ -37,8 +37,13 @@ function service_action_context(string $permission): array
 
 function service_redirect(Application $application, string $target = 'servicos.php'): never
 {
-    header('Location: ' . $application->redirect()->applicationUrl($target), true, 303);
+    header('Location: ' . $application->redirect()->applicationUrl(service_return_target($application, $target)), true, 303);
     exit;
+}
+
+function service_return_target(Application $application, string $default): string
+{
+    return action_return_target($application, $default);
 }
 
 function service_require_post_request(): void

@@ -22,12 +22,14 @@ final class SafeRedirect
         'funcionarios.php',
         'tecnicos.php',
         'caixa.php',
+        'contas-receber.php',
         'faturamento.php',
         'relatorios.php',
         'configuracoes.php',
         'perfis-acesso.php',
         'perfil-formulario.php',
         'perfil-permissoes.php',
+        'ordem-servico-comprovante.php',
     ];
 
     public function sanitize(?string $next): string

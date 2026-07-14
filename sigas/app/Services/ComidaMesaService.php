@@ -84,12 +84,13 @@ final class ComidaMesaService
         $row = $this->repository->findByCpf($digits, $competence === null ? null : (int) $competence['id']);
 
         if ($row === null) {
-            return ['ok' => true, 'state' => 'nao_localizado', 'person' => null, 'cpf' => $digits];
+            return ['ok' => true, 'state' => 'nao_localizado', 'person' => null, 'cpf' => $digits, 'cpf_formatado' => $this->formatCpf($digits)];
         }
 
         $person = [
             'id' => (int) $row['pessoa_id'],
             'name' => (string) $row['responsavel_nome'],
+            'cpf_formatado' => $this->formatCpf((string) $row['cpf']),
             'cpf_masked' => $this->maskCpf((string) $row['cpf']),
             'nis' => $row['nis'] === null ? null : (string) $row['nis'],
             'vinculo_familiar' => (string) ($row['vinculo_familiar'] ?? 'sem_familia'),
@@ -98,7 +99,7 @@ final class ComidaMesaService
         $family = $row['familia_id'] === null ? null : ['id' => (int) $row['familia_id'], 'code' => (string) $row['familia_codigo']];
 
         if ($row['inscricao_id'] === null) {
-            return ['ok' => true, 'state' => 'pessoa_sem_inscricao', 'person' => $person, 'family' => $family, 'cpf' => $digits];
+            return ['ok' => true, 'state' => 'pessoa_sem_inscricao', 'person' => $person, 'family' => $family, 'cpf' => $digits, 'cpf_formatado' => $this->formatCpf($digits)];
         }
 
         $delivery = $this->deliveryStatusForRow($row, $competence);
@@ -117,6 +118,7 @@ final class ComidaMesaService
             'state' => 'inscrito',
             'person' => $person,
             'family' => $family,
+            'cpf_formatado' => $this->formatCpf($digits),
             'registration' => [
                 'id' => (int) $row['inscricao_id'],
                 'status' => (string) $row['inscricao_status'],
@@ -361,12 +363,11 @@ final class ComidaMesaService
             throw $this->problem('Inscrição não localizada.', 404);
         }
 
-        if ($canEditCpf) {
-            $row['cpf_completo'] = $this->formatCpf((string) $row['cpf']);
-        }
+        $row['cpf_completo'] = $this->formatCpf((string) $row['cpf']);
         $row['cpf_mascarado'] = $this->maskCpf((string) $row['cpf']);
         unset($row['cpf']);
         foreach ($row['integrantes'] as &$member) {
+            $member['cpf_completo'] = $this->formatCpf((string) $member['cpf']);
             $member['cpf_mascarado'] = $this->maskCpf((string) $member['cpf']);
             unset($member['cpf']);
         }

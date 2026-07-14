@@ -19,6 +19,8 @@ use App\Catalog\Service\ServiceManagementService;
 use App\Company\Service\CompanySettingsService;
 use App\CRM\Repository\ClientRepository;
 use App\CRM\Service\ClientManagementService;
+use App\Dashboard\Repository\DashboardRepository;
+use App\Dashboard\Service\DashboardService;
 use App\Finance\Service\AccountsReceivableManagementService;
 use App\Finance\Service\CashManagementService;
 use App\Finance\Service\PaymentManagementService;
@@ -71,6 +73,7 @@ final class Application
     private ?CompanySettingsService $companySettings = null;
     private ?PrivilegedAuthorizationService $privilegedAuthorization = null;
     private ?ServiceOrderFinalizationService $serviceOrderFinalization = null;
+    private ?DashboardService $dashboardService = null;
 
     private ?SafeRedirect $redirect = null;
 
@@ -378,6 +381,16 @@ final class Application
         }
 
         return $this->serviceOrderFinalization;
+    }
+
+    public function dashboard(): DashboardService
+    {
+        if ($this->dashboardService === null) {
+            $connection = $this->database->connection();
+            $this->dashboardService = new DashboardService(new DashboardRepository($connection));
+        }
+
+        return $this->dashboardService;
     }
 
     public function redirect(): SafeRedirect

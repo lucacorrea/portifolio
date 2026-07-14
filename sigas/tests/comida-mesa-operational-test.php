@@ -192,6 +192,7 @@ assert_true(!array_key_exists('cpf', $detail), 'detalhe nunca expoe CPF bruto do
 assert_same($detail['cpf_completo'], '123.456.789-09', 'detalhe com permissao retorna CPF formatado para edicao');
 assert_same($detail['cpf_mascarado'], '***.***.***-**', 'detalhe mantem CPF mascarado');
 assert_true(!array_key_exists('cpf', $detail['integrantes'][0]), 'detalhe remove CPF bruto dos integrantes');
+assert_same($detail['integrantes'][1]['cpf_completo'], '987.654.321-00', 'detalhe retorna CPF completo formatado de integrante');
 assert_same($detail['integrantes'][1]['cpf_mascarado'], '***.***.***-**', 'detalhe mascara CPF de integrante');
 assert_same($detail['entregas'][0]['status_label'], 'Cancelada', 'historico operacional exibe entrega cancelada');
 assert_same($detail['entregas'][0]['competencia_label'], 'Julho de 2026', 'entrega recebe rotulo de competencia');
@@ -202,7 +203,7 @@ assert_true(isset($detail['historico'][0]['changes'][0]), 'historico invalido na
 assert_same($detail['versao_atualizacao'], '2026-07-03 08:00:00', 'detalhe retorna versao_atualizacao baseada na ultima atualizacao');
 
 $withoutCpfPermission = $service->detail(8, false, false, false);
-assert_true(!array_key_exists('cpf_completo', $withoutCpfPermission), 'detalhe sem permissao nao retorna CPF completo');
+assert_same($withoutCpfPermission['cpf_completo'], '123.456.789-09', 'detalhe autenticado retorna CPF completo mesmo sem permissao de edicao');
 assert_same($withoutCpfPermission['documentos'], [], 'detalhe respeita ausencia de permissao para documentos');
 assert_same($withoutCpfPermission['historico'], [], 'detalhe respeita ausencia de permissao para historico');
 
@@ -222,6 +223,22 @@ $comidaMesaJs = file_get_contents(dirname(__DIR__) . '/assets/js/comida-mesa.js'
 assert_true($comidaMesaJs !== false, 'teste consegue ler JS do modulo Comida na Mesa');
 assert_true(str_contains((string) $comidaMesaJs, 'versao_atualizacao: data.versao_atualizacao'), 'JS preenche versao_atualizacao usando data.versao_atualizacao');
 assert_true(!str_contains((string) $comidaMesaJs, 'versao_atualizacao: data.atualizado_em'), 'JS nao usa data.atualizado_em como versao do formulario');
+assert_true(str_contains((string) $comidaMesaJs, 'const fullCpf = (data = {})'), 'JS possui helper para CPF completo');
+assert_true(str_contains((string) $comidaMesaJs, '{ label: "CPF", value: fullCpf(data), span: 3 }'), 'modal do beneficiario usa CPF completo pelo helper');
+assert_true(str_contains((string) $comidaMesaJs, 'CPF ${label(fullCpf(item))}'), 'modal do beneficiario usa CPF completo de integrantes');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-field'), 'modal do beneficiario separa dados em cards de campo');
+assert_true(str_contains((string) $comidaMesaJs, 'beneficiary-detail-section--full'), 'modal do beneficiario usa secoes principais em largura total');
+assert_true(!str_contains((string) $comidaMesaJs, 'beneficiary-detail-section--four'), 'modal do beneficiario nao usa secoes estreitas para integrantes');
+assert_true(!str_contains((string) $comidaMesaJs, 'beneficiary-detail-section--eight'), 'modal do beneficiario nao usa secoes estreitas para historico de entregas');
+assert_true(!str_contains((string) $comidaMesaJs, 'beneficiary-detail-section--half'), 'modal do beneficiario nao usa secoes estreitas para documentos e historico');
+assert_true(str_contains((string) $comidaMesaJs, '{ label: "CPF", value: fullCpf(person), span: 3 }'), 'modal ANEXO usa CPF formatado pelo helper');
+assert_true(str_contains((string) $comidaMesaJs, 'VII. Solicitações'), 'modal ANEXO exibe solicitacoes no mesmo estilo de secoes');
+assert_true(!preg_match('/data-[^=]*cpf=["\'][^"\']*(cpf|\\$\\{)/i', (string) $comidaMesaJs), 'JS do Comida na Mesa nao coloca valor de CPF em data-*');
+
+$moduloPhp = file_get_contents(dirname(__DIR__) . '/modulo.php');
+assert_true($moduloPhp !== false, 'teste consegue ler modulo.php');
+assert_true(str_contains((string) $moduloPhp, '$service->formatCpf((string) $row[\'cpf\'])'), 'modulo.php usa formatCpf na listagem');
+assert_true(!str_contains((string) $moduloPhp, '$service->maskCpf((string) $row[\'cpf\'])'), 'modulo.php nao usa maskCpf na listagem');
 
 @unlink($logDir . DIRECTORY_SEPARATOR . 'application.log');
 @rmdir($logDir);

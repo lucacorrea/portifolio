@@ -324,6 +324,7 @@ metric_grid([
 
             <div class="modal-body">
                 <?= $csrf->field() ?>
+                <?php return_to_field(); ?>
 
                 <div
                     class="alert alert-danger <?= $createRecoveryError === null ? 'd-none' : '' ?>"
@@ -518,6 +519,7 @@ metric_grid([
 
             <div class="modal-body">
                 <?= $csrf->field() ?>
+                <?php return_to_field(); ?>
 
                 <div
                     class="alert alert-danger <?= $editRecoveryError === null ? 'd-none' : '' ?>"

@@ -810,11 +810,35 @@ button, a, input, select, textarea { outline: none; }
 .scan-guidance-card strong { font-size: 9.5px; }
 .scan-guidance-card p { margin: 4px 0 0; color: var(--text-muted); font-size: 8.5px; line-height: 1.45; }
 .status-neutral { color: var(--text-secondary); background: var(--surface-soft); border-color: var(--border); }
+.beneficiary-detail-layout { display: grid; gap: 14px; }
+.beneficiary-detail-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.beneficiary-detail-section { grid-column: 1 / -1; min-width: 0; }
+.beneficiary-detail-section--full { grid-column: 1 / -1; }
+.beneficiary-detail-section-title { margin: 0 0 10px; color: var(--primary-dark); font-size: 1rem; font-weight: 780; line-height: 1.25; letter-spacing: 0; }
+.beneficiary-detail-fields { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px 14px; margin: 0; }
+.beneficiary-detail-field { grid-column: span 3; min-width: 0; min-height: 80px; padding: 14px 15px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-sm); }
+.beneficiary-detail-field--span-2 { grid-column: span 2; }
+.beneficiary-detail-field--span-3 { grid-column: span 3; }
+.beneficiary-detail-field--span-4 { grid-column: span 4; }
+.beneficiary-detail-field--span-5 { grid-column: span 5; }
+.beneficiary-detail-field--span-6 { grid-column: span 6; }
+.beneficiary-detail-field--span-8 { grid-column: span 8; }
+.beneficiary-detail-field--span-12 { grid-column: span 12; }
+.beneficiary-detail-field dt { margin: 0 0 6px; color: var(--text-muted); font-size: .83rem; font-weight: 600; line-height: 1.25; letter-spacing: 0; }
+.beneficiary-detail-field dd { min-width: 0; margin: 0; color: var(--text-secondary); font-size: 1.05rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.beneficiary-detail-list-cards { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.beneficiary-detail-list-cards .list-group-item { min-width: 0; padding: 13px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-secondary); box-shadow: var(--shadow-sm); }
+.beneficiary-detail-list-cards .list-group-item strong { color: var(--text-primary); }
+.beneficiary-detail-list-cards .list-group-item small { color: var(--text-muted); }
+.beneficiary-detail-table-card { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-sm); }
+.beneficiary-detail-table-card .data-table { margin: 0; }
 
 @media (max-width: 1050px) {
     .scanner-layout { grid-template-columns: 1fr; }
     .scan-result-column { grid-template-columns: minmax(0,1fr) minmax(300px,.72fr); align-items: start; }
     .scan-result-card { grid-column: 1 / -1; }
+    .beneficiary-detail-field--span-2,
+    .beneficiary-detail-field--span-3 { grid-column: span 4; }
 }
 @media (max-width: 767px) {
     .document-scan-page { padding-inline: 12px; }
@@ -828,6 +852,17 @@ button, a, input, select, textarea { outline: none; }
     .manual-cpf-row .btn { min-height: 46px; }
     .scan-result-column { grid-template-columns: 1fr; gap: 12px; }
     .scan-result-card { grid-column: auto; }
+    .beneficiary-detail-grid { grid-template-columns: 1fr; }
+    .beneficiary-detail-section { grid-column: auto; }
+    .beneficiary-detail-fields { grid-template-columns: 1fr; }
+    .beneficiary-detail-field,
+    .beneficiary-detail-field--span-2,
+    .beneficiary-detail-field--span-3,
+    .beneficiary-detail-field--span-4,
+    .beneficiary-detail-field--span-5,
+    .beneficiary-detail-field--span-6,
+    .beneficiary-detail-field--span-8,
+    .beneficiary-detail-field--span-12 { grid-column: auto; }
     .result-status-header { grid-template-columns: auto minmax(0,1fr); }
     .result-status-header > .status-badge { grid-column: 1 / -1; justify-self: start; }
     .result-actions { grid-template-columns: 1fr; }

@@ -18,4 +18,4 @@ try {
     $session->flash('danger', 'Nao foi possivel salvar os dados da empresa.');
 }
 
-os_redirect($application, 'configuracoes.php');
+os_redirect_back($application, 'configuracoes.php');

@@ -19,10 +19,10 @@ try {
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('finalize', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
-    os_redirect($application, 'ordens-servico.php?modal=finalize');
+    os_redirect_back($application, 'ordens-servico.php', ['modal' => 'finalize']);
 } catch (Throwable $exception) {
     error_log('OS finalization failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível finalizar a OS.');
 }
 
-os_redirect($application);
+os_redirect_back($application);

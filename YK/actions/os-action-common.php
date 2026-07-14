@@ -16,6 +16,7 @@ function os_action_context(string $permission, bool $requireCsrf = true): array
     $app = require dirname(__DIR__) . '/bootstrap.php';
     /** @var Application $application */
     $application = $app['application'];
+    $GLOBALS['application'] = $application;
     $session = $application->session();
     $session->start();
 
@@ -43,6 +44,36 @@ function os_redirect(Application $application, string $target = 'ordens-servico.
 {
     header('Location: ' . $application->redirect()->applicationUrl($target), true, 303);
     exit;
+}
+
+function os_return_target(Application $application, string $default = 'ordens-servico.php', array $params = []): string
+{
+    $raw = isset($_POST['return_to']) ? (string) $_POST['return_to'] : '';
+    $safe = $application->redirect()->sanitize($raw);
+    $fallback = $application->redirect()->sanitize($default);
+    $target = $raw === '' || $safe === 'dashboard.php' ? $fallback : $safe;
+
+    if ($params === []) {
+        return $target;
+    }
+
+    $parts = parse_url($target);
+    $path = isset($parts['path']) ? (string) $parts['path'] : $fallback;
+    parse_str(isset($parts['query']) ? (string) $parts['query'] : '', $query);
+    foreach ($params as $key => $value) {
+        if ($value === null || $value === '') {
+            unset($query[$key]);
+            continue;
+        }
+        $query[$key] = $value;
+    }
+
+    return $path . ($query === [] ? '' : '?' . http_build_query($query));
+}
+
+function os_redirect_back(Application $application, string $default = 'ordens-servico.php', array $params = []): never
+{
+    os_redirect($application, os_return_target($application, $default, $params));
 }
 
 function os_require_post_request(): void

@@ -38,10 +38,10 @@ try {
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('team', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
-    os_redirect($application, 'ordens-servico.php?modal=team');
+    os_redirect_back($application, 'ordens-servico.php', ['modal' => 'team']);
 } catch (Throwable $exception) {
     error_log('OS team/schedule failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível atualizar equipe ou agendamento.');
 }
 
-os_redirect($application);
+os_redirect_back($application);

@@ -20,10 +20,10 @@ try {
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('cancel', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
-    os_redirect($application, 'ordens-servico.php?modal=cancel');
+    os_redirect_back($application, 'ordens-servico.php', ['modal' => 'cancel']);
 } catch (Throwable $exception) {
     error_log('OS cancel failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível cancelar a OS.');
 }
 
-os_redirect($application);
+os_redirect_back($application);
