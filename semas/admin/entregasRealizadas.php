@@ -501,13 +501,26 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
         #tabelaEntregas th {
             background-color: #435ebe;
             color: white;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 700;
             white-space: nowrap;
             padding: 12px 10px;
-            border: none;
+            border: 1px solid #314a9b;
             position: sticky;
             top: 0;
             z-index: 10;
+        }
+
+        #tabelaEntregas thead tr:first-child th:first-child {
+            border-top-left-radius: 6px;
+        }
+
+        #tabelaEntregas thead tr:first-child th:last-child {
+            border-top-right-radius: 6px;
+        }
+
+        .card-header {
+            border-bottom: 1px solid #d9deea;
         }
 
         #tabelaEntregas td {
@@ -1602,6 +1615,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                         },
                         customize: function(xlsx) {
                             const sheet = xlsx.xl.worksheets['sheet1.xml'];
+                            const styles = xlsx.xl['styles.xml'];
 
                             const larguras = [18, 38, 16, 22, 10, 14, 30];
                             $('col', sheet).each(function(i) {
@@ -1611,25 +1625,94 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                                 }
                             });
 
+                            function appendXml(parent, xml) {
+                                const node = $.parseXML(xml).documentElement;
+                                parent.appendChild(styles.importNode(node, true));
+                            }
+
+                            const fonts = $('fonts', styles)[0];
+                            const fills = $('fills', styles)[0];
+                            const borders = $('borders', styles)[0];
+                            const cellXfs = $('cellXfs', styles)[0];
+
+                            const titleFontId = parseInt($(fonts).attr('count'), 10);
+                            appendXml(fonts, '<font><sz val="16"/><b/><color rgb="FF1F3864"/><name val="Calibri"/></font>');
+                            $(fonts).attr('count', titleFontId + 1);
+
+                            const headerFontId = parseInt($(fonts).attr('count'), 10);
+                            appendXml(fonts, '<font><sz val="12"/><b/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>');
+                            $(fonts).attr('count', headerFontId + 1);
+
+                            const headerFillId = parseInt($(fills).attr('count'), 10);
+                            appendXml(fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF435EBE"/><bgColor indexed="64"/></patternFill></fill>');
+                            $(fills).attr('count', headerFillId + 1);
+
+                            const borderId = parseInt($(borders).attr('count'), 10);
+                            appendXml(borders, '<border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>');
+                            $(borders).attr('count', borderId + 1);
+
+                            function addCellStyle(xml) {
+                                const styleId = parseInt($(cellXfs).attr('count'), 10);
+                                appendXml(cellXfs, xml);
+                                $(cellXfs).attr('count', styleId + 1);
+                                return styleId;
+                            }
+
+                            const titleStyle = addCellStyle(
+                                '<xf numFmtId="0" fontId="' + titleFontId + '" fillId="0" borderId="' + borderId + '" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+                            );
+
+                            const infoStyle = addCellStyle(
+                                '<xf numFmtId="0" fontId="0" fillId="0" borderId="' + borderId + '" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
+                            );
+
+                            const headerStyle = addCellStyle(
+                                '<xf numFmtId="0" fontId="' + headerFontId + '" fillId="' + headerFillId + '" borderId="' + borderId + '" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+                            );
+
+                            const bodyCenterStyle = addCellStyle(
+                                '<xf numFmtId="0" fontId="0" fillId="0" borderId="' + borderId + '" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+                            );
+
+                            const bodyLeftStyle = addCellStyle(
+                                '<xf numFmtId="0" fontId="0" fillId="0" borderId="' + borderId + '" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
+                            );
+
+                            let mergeCells = $('mergeCells', sheet);
+                            if (!mergeCells.length) {
+                                const worksheet = $('worksheet', sheet)[0];
+                                const mergeNode = sheet.createElement('mergeCells');
+                                mergeNode.setAttribute('count', '0');
+                                worksheet.appendChild(mergeNode);
+                                mergeCells = $('mergeCells', sheet);
+                            }
+
+                            const titleMerge = sheet.createElement('mergeCell');
+                            titleMerge.setAttribute('ref', 'A1:G1');
+                            mergeCells[0].appendChild(titleMerge);
+                            mergeCells.attr('count', mergeCells.children('mergeCell').length);
+
                             $('row', sheet).each(function() {
                                 const rowNum = parseInt($(this).attr('r'), 10) || 0;
+
+                                if (rowNum === 1) {
+                                    $(this).attr('ht', '26').attr('customHeight', '1');
+                                } else if (rowNum === 3) {
+                                    $(this).attr('ht', '22').attr('customHeight', '1');
+                                }
 
                                 $('c', this).each(function() {
                                     const ref = $(this).attr('r') || '';
                                     const col = ref.replace(/[0-9]/g, '');
 
                                     if (rowNum === 1) {
-                                        $(this).attr('s', '52');
+                                        $(this).attr('s', titleStyle);
                                     } else if (rowNum === 2) {
-                                        $(this).attr('s', '50');
+                                        $(this).attr('s', infoStyle);
                                     } else if (rowNum === 3) {
-                                        $(this).attr('s', '57');
+                                        $(this).attr('s', headerStyle);
                                     } else {
-                                        if (col === 'B') {
-                                            $(this).attr('s', '0');
-                                        } else {
-                                            $(this).attr('s', '50');
-                                        }
+                                        $(this).attr('s', col === 'B' ? bodyLeftStyle : bodyCenterStyle);
                                     }
                                 });
                             });
@@ -1657,6 +1740,76 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                         },
                         exportOptions: {
                             columns: [0, 1, 2, 3, 4, 5, 6]
+                        },
+                        customize: function(win) {
+                            const doc = $(win.document);
+
+                            doc.find('head').append(`
+                                <style>
+                                    @page {
+                                        size: A4 landscape;
+                                        margin: 8mm;
+                                    }
+
+                                    body {
+                                        font-family: Arial, sans-serif !important;
+                                        color: #111 !important;
+                                    }
+
+                                    .print-header {
+                                        border: 1px solid #000;
+                                        padding: 10px 12px;
+                                        margin-bottom: 10px;
+                                    }
+
+                                    .print-header h3 {
+                                        margin: 0 0 8px 0 !important;
+                                        text-align: center !important;
+                                        font-size: 20px !important;
+                                        font-weight: 700 !important;
+                                    }
+
+                                    .print-header p {
+                                        margin: 3px 0 !important;
+                                        font-size: 12px !important;
+                                    }
+
+                                    table.dataTable {
+                                        width: 100% !important;
+                                        border-collapse: collapse !important;
+                                        border: 1px solid #000 !important;
+                                        font-size: 10px !important;
+                                    }
+
+                                    table.dataTable thead th {
+                                        font-size: 11px !important;
+                                        font-weight: 700 !important;
+                                        text-align: center !important;
+                                        background: #f0f0f0 !important;
+                                        color: #000 !important;
+                                        border: 1px solid #000 !important;
+                                        padding: 5px 4px !important;
+                                    }
+
+                                    table.dataTable tbody td,
+                                    table.dataTable tfoot td {
+                                        border: 1px solid #000 !important;
+                                        padding: 4px !important;
+                                        vertical-align: middle !important;
+                                    }
+
+                                    table.dataTable tbody td:nth-child(2) {
+                                        text-align: left !important;
+                                    }
+
+                                    table.dataTable tbody td:not(:nth-child(2)) {
+                                        text-align: center !important;
+                                    }
+                                </style>
+                            `);
+
+                            doc.find('body').css('background', '#fff');
+                            doc.find('table').removeClass('table-striped table-hover');
                         }
                     }
                 ],
