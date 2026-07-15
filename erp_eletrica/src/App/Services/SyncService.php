@@ -54,8 +54,9 @@ class SyncService {
         $tempId = $op['temp_id'];
         $isContingencia = $op['is_contingencia'] ?? false;
         $createdAt = $op['created_at'] ?? date('Y-m-d H:i:s');
+        $idempotencyKey = $this->normalizeIdempotencyKey($data['idempotency_key'] ?? ('offline:' . $tempId));
 
-        $this->log('INFO', "Sincronizando venda offline: temp_id=$tempId, total=R${$data['total']}", [
+        $this->log('INFO', "Sincronizando venda offline: temp_id=$tempId, total=R$" . ($data['total'] ?? 0), [
             'temp_id' => $tempId,
             'total' => $data['total'],
             'pagamento' => $data['pagamento'],
@@ -63,6 +64,41 @@ class SyncService {
         ]);
 
         try {
+            $alreadySynced = $this->findSuccessfulSync('sale', $tempId);
+            if ($alreadySynced) {
+                $this->log('INFO', "Venda offline ja sincronizada: temp_id=$tempId", $alreadySynced);
+                return [
+                    'success' => true,
+                    'temp_id' => $tempId,
+                    'real_id' => (int)$alreadySynced['real_id'],
+                    'type' => 'sale',
+                    'already_synced' => true,
+                    'stock_warnings' => [],
+                    'contingencia' => $isContingencia
+                ];
+            }
+
+            $saleModel = new \App\Models\Sale();
+            if ($idempotencyKey) {
+                $existingSale = $saleModel->findByIdempotencyKey($idempotencyKey);
+                if ($existingSale) {
+                    $this->log('INFO', "Venda offline localizada por idempotency_key: temp_id=$tempId", [
+                        'temp_id' => $tempId,
+                        'real_id' => $existingSale['id']
+                    ]);
+                    $this->logSyncAudit('sale', $tempId, (int)$existingSale['id'], 'success', null, $data, $session);
+                    return [
+                        'success' => true,
+                        'temp_id' => $tempId,
+                        'real_id' => (int)$existingSale['id'],
+                        'type' => 'sale',
+                        'already_synced' => true,
+                        'stock_warnings' => [],
+                        'contingencia' => $isContingencia
+                    ];
+                }
+            }
+
             $this->db->beginTransaction();
 
             // Verificar se o caixa está aberto para a filial
@@ -98,8 +134,6 @@ class SyncService {
                 }
             }
 
-            // Criar venda
-            $saleModel = new \App\Models\Sale();
             $saleData = [
                 'cliente_id'          => $data['cliente_id'] ?? null,
                 'nome_cliente_avulso' => $data['nome_cliente_avulso'] ?? null,
@@ -115,6 +149,7 @@ class SyncService {
                 'valor_recebido'      => $data['valor_recebido'] ?? null,
                 'troco'               => $data['troco'] ?? null,
                 'taxa_cartao'         => $data['taxa_cartao'] ?? 0,
+                'idempotency_key'     => $idempotencyKey,
             ];
 
             $saleId = $saleModel->create($saleData);
@@ -232,7 +267,9 @@ class SyncService {
             ];
 
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
 
             $this->logSyncAudit('sale', $tempId, null, 'error', $e->getMessage(), $data, $session);
             $this->log('ERROR', "❌ Falha ao sincronizar venda: " . $e->getMessage(), [
@@ -309,6 +346,47 @@ class SyncService {
             $this->logSyncAudit('presale', $tempId, null, 'error', $e->getMessage(), $data, $session);
             $this->log('ERROR', "❌ Falha ao sincronizar pré-venda: " . $e->getMessage());
             throw $e;
+        }
+    }
+
+    private function normalizeIdempotencyKey($key): ?string {
+        $key = trim((string)$key);
+        if ($key === '') {
+            return null;
+        }
+
+        $key = preg_replace('/[^A-Za-z0-9:_-]/', '', $key);
+        return $key === '' ? null : substr($key, 0, 80);
+    }
+
+    private function findSuccessfulSync(string $type, ?string $tempId): ?array {
+        if (!$tempId) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->db->query("SHOW TABLES LIKE 'sync_audit_log'");
+            if ($stmt->rowCount() === 0) {
+                return null;
+            }
+
+            $stmt = $this->db->prepare("
+                SELECT real_id
+                FROM sync_audit_log
+                WHERE operation_type = ?
+                  AND temp_id = ?
+                  AND status = 'success'
+                  AND real_id IS NOT NULL
+                ORDER BY id DESC
+                LIMIT 1
+            ");
+            $stmt->execute([$type, $tempId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            return $row ?: null;
+        } catch (\Exception $e) {
+            error_log("[SYNC_AUDIT] Erro ao consultar log: " . $e->getMessage());
+            return null;
         }
     }
 
