@@ -283,6 +283,8 @@ final class BudgetRepository
         $status = trim((string) ($filters['status'] ?? ''));
         if ($status === 'vencido') {
             $where[] = "o.status IN ('enviado', 'aguardando_aprovacao') AND o.validade < CURRENT_DATE";
+        } elseif ($status === 'exceto_recusados') {
+            $where[] = "o.status <> 'recusado'";
         } elseif ($status !== '') {
             $where[] = 'o.status = :status';
             $params['status'] = $status;

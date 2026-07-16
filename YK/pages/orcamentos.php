@@ -14,13 +14,27 @@ $budgetService = $application->budgetManagement();
 $clientService = $application->clientManagement();
 $productService = $application->productManagement();
 $serviceService = $application->serviceManagement();
+$allowedStatusFilters = [
+    '',
+    'exceto_recusados',
+    'rascunho',
+    'enviado',
+    'aguardando_aprovacao',
+    'aprovado',
+    'recusado',
+    'vencido',
+];
+$statusFilter = trim((string) ($_GET['status'] ?? ''));
+if (!in_array($statusFilter, $allowedStatusFilters, true)) {
+    $statusFilter = '';
+}
 
 $filters = [
     'search' => trim((string) ($_GET['search'] ?? '')),
     'date_from' => trim((string) ($_GET['date_from'] ?? '')),
     'date_to' => trim((string) ($_GET['date_to'] ?? '')),
     'client_id' => trim((string) ($_GET['client_id'] ?? '')),
-    'status' => trim((string) ($_GET['status'] ?? '')),
+    'status' => $statusFilter,
 ];
 
 $budgets = $budgetService->listBudgets($filters);
@@ -67,7 +81,7 @@ $editError = budget_error($recovery, 'edit');
     <input class="filter-select input-date" type="date" name="date_from" value="<?= h($filters['date_from']) ?>" aria-label="Período inicial">
     <input class="filter-select input-date" type="date" name="date_to" value="<?= h($filters['date_to']) ?>" aria-label="Período final">
     <select class="filter-select" name="client_id" aria-label="Cliente"><option value="">Todos os clientes</option><?php foreach ($clients as $client): ?><option value="<?= h((string) $client->id()) ?>" <?= $filters['client_id'] === (string) $client->id() ? 'selected' : '' ?>><?= h($client->name()) ?></option><?php endforeach; ?></select>
-    <select class="filter-select" name="status" aria-label="Status"><option value="">Todos os status</option><?php foreach (['rascunho','enviado','aguardando_aprovacao','aprovado','recusado','vencido'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(budget_status_label($status)) ?></option><?php endforeach; ?></select>
+    <select class="filter-select" name="status" aria-label="Status"><option value="">Todos os status</option><option value="exceto_recusados" <?= $filters['status'] === 'exceto_recusados' ? 'selected' : '' ?>>Todos exceto canceladas</option><?php foreach (['rascunho','enviado','aguardando_aprovacao','aprovado','recusado','vencido'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(budget_status_label($status)) ?></option><?php endforeach; ?></select>
     <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button><a class="btn-filter btn-filter-ghost" href="orcamentos.php"><i class="bi bi-x-lg"></i> Limpar filtros</a>
 </form>
 
