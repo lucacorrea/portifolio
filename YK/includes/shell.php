@@ -79,6 +79,25 @@ try {
     </main>
   </div>
 
+  <p class="visually-hidden" id="row-actions-table-instructions">
+    Para abrir as ações de um registro, dê dois cliques na linha, toque em uma tela sensível ou pressione Enter ou Espaço.
+  </p>
+  <dialog class="row-actions-dialog" id="row-actions-dialog" aria-labelledby="row-actions-dialog-title" aria-describedby="row-actions-dialog-description">
+    <div class="row-actions-dialog-content">
+      <div class="row-actions-dialog-header">
+        <div>
+          <span class="row-actions-dialog-eyebrow">Ações do registro</span>
+          <h2 id="row-actions-dialog-title">Escolha uma ação</h2>
+        </div>
+        <button class="row-actions-dialog-close" type="button" data-row-actions-close aria-label="Fechar ações">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p class="row-actions-dialog-description" id="row-actions-dialog-description">Selecione o que deseja fazer com este registro.</p>
+      <div class="row-actions-menu-host" data-row-actions-menu-host></div>
+    </div>
+  </dialog>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/osmais-app.js"></script>
   <?php foreach (($pageScripts ?? []) as $script): ?>
