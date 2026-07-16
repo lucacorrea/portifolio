@@ -40,6 +40,14 @@ document.addEventListener('DOMContentLoaded', function () {
     return row.querySelector('[data-team-field="' + name + '"]');
   }
 
+  function canonicalTeamRole(value) {
+    const role = String(value || 'Técnico').trim();
+    const normalized = role.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (normalized === 'responsavel tecnico') return 'Responsável técnico';
+    if (normalized === 'tecnico') return 'Técnico';
+    return role || 'Técnico';
+  }
+
   function setTeamNames(container) {
     container.querySelectorAll('.os-team-member-row').forEach(function (row, index) {
       row.querySelectorAll('[data-team-field]').forEach(function (input) {
@@ -71,22 +79,39 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     employeeSelect.value = member?.employee_id || '';
-    teamField(row, 'funcao').value = member?.role || member?.funcao || 'Técnico';
+    const roleSelect = teamField(row, 'funcao');
+    const role = canonicalTeamRole(member?.role || member?.funcao);
+    if (!Array.from(roleSelect.options).some(function (option) { return option.value === role; })) {
+      roleSelect.appendChild(new Option(role, role));
+    }
+    roleSelect.value = role;
     teamField(row, 'principal').checked = Boolean(member?.primary || member?.principal);
 
     row.querySelector('.js-os-remove-team-member').addEventListener('click', function () {
       row.remove();
+      if (!container.querySelector('[data-team-field="principal"]:checked')) {
+        const firstPrincipal = container.querySelector('[data-team-field="principal"]');
+        if (firstPrincipal) firstPrincipal.checked = true;
+      }
       setTeamNames(container);
       updateTeamDuplicates(container);
     });
-    row.addEventListener('change', function () {
+    row.addEventListener('change', function (event) {
+      if (event.target.matches('[data-team-field="principal"]') && event.target.checked) {
+        container.querySelectorAll('[data-team-field="principal"]').forEach(function (radio) {
+          if (radio !== event.target) radio.checked = false;
+        });
+      }
       setTeamNames(container);
       updateTeamDuplicates(container);
     });
 
     container.appendChild(row);
-    if (!container.querySelector('[data-team-field="principal"]:checked')) {
+    if (!member && !container.querySelector('[data-team-field="principal"]:checked')) {
       teamField(row, 'principal').checked = true;
+    }
+    if (container.dataset.teamEditable === '0') {
+      row.querySelectorAll('input, select, button').forEach(function (control) { control.disabled = true; });
     }
     setTeamNames(container);
     updateTeamDuplicates(container);
@@ -323,6 +348,11 @@ document.addEventListener('DOMContentLoaded', function () {
     el.value = normalized;
   }
 
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value || '';
+  }
+
   function showOrderFormError(message) {
     const alert = document.querySelector('#modal-os [data-os-form-error]');
     if (!alert) return;
@@ -487,6 +517,30 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('.js-os-cancel').forEach(function (button) {
     button.addEventListener('click', function () {
       setValue('os-cancel-id', button.dataset.orderId);
+    });
+  });
+
+  document.querySelectorAll('.js-os-reverse').forEach(function (button) {
+    button.addEventListener('click', function () {
+      setValue('os-reverse-id', button.dataset.orderId);
+      setText('os-reverse-number', button.dataset.orderNumber);
+      setValue('os-reverse-reason', '');
+    });
+  });
+
+  document.querySelectorAll('.js-os-delete').forEach(function (button) {
+    button.addEventListener('click', function () {
+      setValue('os-delete-id', button.dataset.orderId);
+      setText('os-delete-number', button.dataset.orderNumber);
+      setValue('os-delete-reason', '');
+    });
+  });
+
+  document.querySelectorAll('.js-os-receipt').forEach(function (button) {
+    button.addEventListener('click', function () {
+      setValue('os-receipt-payment-id', button.dataset.paymentId);
+      setText('os-receipt-order-number', button.dataset.orderNumber);
+      setText('os-receipt-payment-label', button.dataset.paymentLabel);
     });
   });
 

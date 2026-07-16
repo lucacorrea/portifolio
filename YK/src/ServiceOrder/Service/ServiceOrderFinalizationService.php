@@ -41,18 +41,51 @@ final class ServiceOrderFinalizationService
             if ($items === []) throw new InvalidArgumentException('Informe ao menos um item executado.');
 
             $totals = ['servico' => 0.0, 'produto' => 0.0, 'outro' => 0.0];
-            $insertItem = $this->connection->prepare(
-                'INSERT INTO ordem_servico_execucao_itens
-                    (ordem_servico_id, ordem_servico_item_id, tipo, referencia_id, descricao, unidade, quantidade, valor_unitario, desconto, subtotal, adicional, ordem)
-                 VALUES
-                    (:order_id, :source_item_id, :type, :reference_id, :description, :unit, :quantity, :unit_price, :discount, :subtotal, :additional, :sort_order)'
-            );
-
-            foreach ($items as $index => $item) {
+            foreach ($items as $item) {
                 $subtotal = max(0.0, $item['quantity'] * $item['unit_price'] - $item['discount']);
                 $totals[$item['type']] += $subtotal;
+            }
+
+            $discount = $this->money($data['desconto'] ?? '0');
+            $increase = $this->money($data['acrescimo'] ?? '0');
+            $total = max(0.0, array_sum($totals) - $discount + $increase);
+            $paymentValue = $this->money($data['valor_recebido'] ?? '0');
+            if ($paymentValue > $total) throw new InvalidArgumentException('Pagamento maior que o total executado.');
+
+            $this->connection->prepare(
+                'INSERT INTO ordem_servico_finalizacoes
+                    (ordem_servico_id, status_origem, subtotal_servicos, subtotal_produtos, subtotal_outros,
+                     desconto, acrescimo, total_executado, observacao, finalizado_por)
+                 VALUES
+                    (:order_id, :source_status, :services, :products, :others, :discount, :increase,
+                     :total, :notes, :user_id)'
+            )->execute([
+                'order_id' => $orderId,
+                'source_status' => $order->status(),
+                'services' => number_format($totals['servico'], 2, '.', ''),
+                'products' => number_format($totals['produto'], 2, '.', ''),
+                'others' => number_format($totals['outro'], 2, '.', ''),
+                'discount' => number_format($discount, 2, '.', ''),
+                'increase' => number_format($increase, 2, '.', ''),
+                'total' => number_format($total, 2, '.', ''),
+                'notes' => $this->optionalText($data['observacao'] ?? null, 1000),
+                'user_id' => $userId,
+            ]);
+            $finalizationId = (int) $this->connection->lastInsertId();
+
+            $insertItem = $this->connection->prepare(
+                'INSERT INTO ordem_servico_execucao_itens
+                    (ordem_servico_id, finalizacao_id, ordem_servico_item_id, tipo, referencia_id,
+                     descricao, unidade, quantidade, valor_unitario, desconto, subtotal, adicional, ordem)
+                 VALUES
+                    (:order_id, :finalization_id, :source_item_id, :type, :reference_id,
+                     :description, :unit, :quantity, :unit_price, :discount, :subtotal, :additional, :sort_order)'
+            );
+            foreach ($items as $index => $item) {
+                $subtotal = max(0.0, $item['quantity'] * $item['unit_price'] - $item['discount']);
                 $insertItem->execute([
                     'order_id' => $orderId,
+                    'finalization_id' => $finalizationId,
                     'source_item_id' => $item['source_item_id'],
                     'type' => $item['type'],
                     'reference_id' => $item['reference_id'],
@@ -70,29 +103,6 @@ final class ServiceOrderFinalizationService
                     $this->inventory->consumeForOrder($orderId, $item['reference_id'], (string) $item['quantity'], $userId, $item['authorization_id']);
                 }
             }
-
-            $discount = $this->money($data['desconto'] ?? '0');
-            $increase = $this->money($data['acrescimo'] ?? '0');
-            $total = max(0.0, array_sum($totals) - $discount + $increase);
-            $paymentValue = $this->money($data['valor_recebido'] ?? '0');
-            if ($paymentValue > $total) throw new InvalidArgumentException('Pagamento maior que o total executado.');
-
-            $this->connection->prepare(
-                'INSERT INTO ordem_servico_finalizacoes
-                    (ordem_servico_id, subtotal_servicos, subtotal_produtos, subtotal_outros, desconto, acrescimo, total_executado, observacao, finalizado_por)
-                 VALUES
-                    (:order_id, :services, :products, :others, :discount, :increase, :total, :notes, :user_id)'
-            )->execute([
-                'order_id' => $orderId,
-                'services' => number_format($totals['servico'], 2, '.', ''),
-                'products' => number_format($totals['produto'], 2, '.', ''),
-                'others' => number_format($totals['outro'], 2, '.', ''),
-                'discount' => number_format($discount, 2, '.', ''),
-                'increase' => number_format($increase, 2, '.', ''),
-                'total' => number_format($total, 2, '.', ''),
-                'notes' => $this->optionalText($data['observacao'] ?? null, 1000),
-                'user_id' => $userId,
-            ]);
 
             if ($paymentValue > 0.0) {
                 $form = (string) ($data['forma_pagamento'] ?? '');

@@ -1,17 +1,28 @@
 -- Migration 010 - Complementos operacionais e financeiros apos a base 009.
--- Aplicacao manual na hospedagem, apos backup validado.
+-- Reentrante para aplicação automática após a base 009.
 -- Ordem: executar depois de 009_required_business_adjustments.sql.
 -- Compatibilidade alvo: MariaDB 10.4 compartilhado, InnoDB, utf8mb4.
 
 SET NAMES utf8mb4;
 
 ALTER TABLE estoque_autorizacoes
-    ADD COLUMN utilizada_em DATETIME NULL AFTER autorizado_em,
-    ADD COLUMN movimentacao_id INT UNSIGNED NULL AFTER utilizada_em,
-    ADD KEY idx_estoque_aut_utilizacao (utilizada_em, movimentacao_id),
-    ADD CONSTRAINT fk_estoque_aut_movimentacao
-        FOREIGN KEY (movimentacao_id) REFERENCES estoque_movimentacoes(id)
-        ON UPDATE CASCADE ON DELETE SET NULL;
+    ADD COLUMN IF NOT EXISTS utilizada_em DATETIME NULL AFTER autorizado_em,
+    ADD COLUMN IF NOT EXISTS movimentacao_id INT UNSIGNED NULL AFTER utilizada_em,
+    ADD KEY IF NOT EXISTS idx_estoque_aut_utilizacao (utilizada_em, movimentacao_id);
+
+SET @fk_exists := (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+     WHERE CONSTRAINT_SCHEMA = DATABASE()
+       AND CONSTRAINT_NAME = 'fk_estoque_aut_movimentacao'
+);
+SET @sql := IF(
+    @fk_exists = 0,
+    'ALTER TABLE estoque_autorizacoes ADD CONSTRAINT fk_estoque_aut_movimentacao FOREIGN KEY (movimentacao_id) REFERENCES estoque_movimentacoes(id) ON UPDATE CASCADE ON DELETE SET NULL',
+    'SELECT 1'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 CREATE TABLE IF NOT EXISTS vendas_avulsas (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

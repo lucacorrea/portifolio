@@ -8,6 +8,7 @@ use App\CRM\DTO\ClientFormData;
 use App\CRM\Entity\Client;
 use InvalidArgumentException;
 use PDO;
+use PDOException;
 use Throwable;
 
 final class ClientRepository
@@ -183,6 +184,76 @@ final class ClientRepository
         $statement = $this->connection->prepare($sql);
         $statement->execute($params);
         return (int) $statement->fetchColumn() > 0;
+    }
+
+    /** @return array<string, true> */
+    public function importedSourceCodes(): array
+    {
+        $statement = $this->connection->query("SELECT codigo FROM clientes WHERE codigo LIKE 'A7-%'");
+        $codes = [];
+        foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $code) {
+            $codes[(string) $code] = true;
+        }
+        return $codes;
+    }
+
+    /** @return array<int, array{nome:string,telefone:?string}> */
+    public function clientIdentityData(): array
+    {
+        $statement = $this->connection->query(
+            "SELECT nome, telefone FROM clientes WHERE telefone IS NOT NULL AND telefone <> ''"
+        );
+        return $statement->fetchAll();
+    }
+
+    /**
+     * @param array<int, array{code:string,data:ClientFormData}> $rows
+     */
+    public function createImportedBatch(array $rows): int
+    {
+        if ($rows === []) {
+            return 0;
+        }
+
+        $ownsTransaction = !$this->connection->inTransaction();
+        try {
+            if ($ownsTransaction) {
+                $this->connection->beginTransaction();
+            }
+
+            $statement = $this->connection->prepare(
+                'INSERT INTO clientes
+                    (codigo, tipo_pessoa, nome, documento, telefone, whatsapp, email, endereco, numero,
+                     complemento, bairro, cidade, uf, cep, observacoes, status)
+                 VALUES
+                    (:code, :person_type, :name, :document, :phone, :whatsapp, :email, :address, :number,
+                     :complement, :district, :city, :state, :zip_code, :notes, :status)'
+            );
+
+            foreach ($rows as $row) {
+                $code = (string) ($row['code'] ?? '');
+                $data = $row['data'] ?? null;
+                if (preg_match('/^A7-\d{1,10}$/', $code) !== 1 || !$data instanceof ClientFormData) {
+                    throw new InvalidArgumentException('Registro de importação inválido.');
+                }
+                $statement->bindValue('code', $code);
+                $this->bindForm($statement, $data);
+                $statement->execute();
+            }
+
+            if ($ownsTransaction) {
+                $this->connection->commit();
+            }
+            return count($rows);
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
+            if ($exception instanceof PDOException && $exception->getCode() === '23000') {
+                throw new InvalidArgumentException('Um dos clientes já foi importado. Analise o PDF novamente.', 0, $exception);
+            }
+            throw $exception;
+        }
     }
 
     private function bindForm(\PDOStatement $statement, ClientFormData $data): void

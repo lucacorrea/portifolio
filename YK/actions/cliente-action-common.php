@@ -84,3 +84,29 @@ function client_consume_form_recovery(): ?array
     }
     return ['modal' => $recovery['modal'], 'error' => $recovery['error'], 'data' => $recovery['data']];
 }
+
+function client_store_import_preview(array $preview): void
+{
+    unset($preview['rows']);
+    $_SESSION['client_import_preview'] = $preview;
+}
+
+/** @return array<string,mixed>|null */
+function client_import_preview(): ?array
+{
+    $preview = $_SESSION['client_import_preview'] ?? null;
+    if (!is_array($preview)
+        || preg_match('/^[a-f0-9]{48}$/', (string) ($preview['token'] ?? '')) !== 1
+        || !is_array($preview['summary'] ?? null)
+        || !is_array($preview['preview'] ?? null)
+    ) {
+        unset($_SESSION['client_import_preview']);
+        return null;
+    }
+    return $preview;
+}
+
+function client_clear_import_preview(): void
+{
+    unset($_SESSION['client_import_preview']);
+}

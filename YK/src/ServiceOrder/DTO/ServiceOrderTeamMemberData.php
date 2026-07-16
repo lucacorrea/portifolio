@@ -28,14 +28,14 @@ final class ServiceOrderTeamMemberData
             throw new InvalidArgumentException('Informe um funcionário válido.');
         }
 
-        if ($this->role === '' || mb_strlen($this->role) > 80 || str_contains($this->role, "\0") || $this->role !== strip_tags($this->role)) {
+        if ($this->role === '' || self::textLength($this->role) > 80 || str_contains($this->role, "\0") || $this->role !== strip_tags($this->role)) {
             throw new InvalidArgumentException('Informe uma função válida para a equipe.');
         }
     }
 
     public static function fromArray(array $data): self
     {
-        $role = trim((string) ($data['funcao'] ?? $data['role'] ?? 'Técnico'));
+        $role = self::canonicalRole(trim((string) ($data['funcao'] ?? $data['role'] ?? 'Técnico')));
         if ($role === 'Outro') {
             $customRole = trim((string) ($data['funcao_personalizada'] ?? $data['custom_role'] ?? ''));
             if ($customRole !== '') {
@@ -43,7 +43,7 @@ final class ServiceOrderTeamMemberData
             }
         }
 
-        if (!in_array($role, self::ALLOWED_ROLES, true) && mb_strlen($role) > 80) {
+        if (!in_array($role, self::ALLOWED_ROLES, true) && self::textLength($role) > 80) {
             throw new InvalidArgumentException('Função operacional inválida.');
         }
 
@@ -52,6 +52,16 @@ final class ServiceOrderTeamMemberData
             $role,
             self::boolValue($data['principal'] ?? $data['primary'] ?? false)
         );
+    }
+
+    private static function canonicalRole(string $role): string
+    {
+        $normalized = function_exists('mb_strtolower') ? mb_strtolower($role, 'UTF-8') : strtolower($role);
+        return match ($normalized) {
+            'responsavel tecnico', 'responsavel técnico', 'responsável tecnico', 'responsável técnico' => 'Responsável técnico',
+            'tecnico', 'técnico' => 'Técnico',
+            default => $role,
+        };
     }
 
     public function employeeId(): int
@@ -77,6 +87,11 @@ final class ServiceOrderTeamMemberData
         }
 
         return $int;
+    }
+
+    private static function textLength(string $value): int
+    {
+        return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
     }
 
     private static function boolValue(mixed $value): bool

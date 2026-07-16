@@ -3,18 +3,31 @@
 declare(strict_types=1);
 
 use App\ServiceOrder\DTO\ServiceOrderFormData;
+use App\ServiceOrder\DTO\ServiceOrderScheduleData;
+use App\ServiceOrder\DTO\ServiceOrderTeamData;
 
 require __DIR__ . '/os-action-common.php';
 
 os_require_post_request();
 
 $isEditing = trim((string) ($_POST['id'] ?? '')) !== '';
+$teamSubmitted = isset($_POST['team_submitted']);
+$scheduleSubmitted = trim((string) ($_POST['agendado_inicio'] ?? '')) !== ''
+    || trim((string) ($_POST['agendado_fim'] ?? '')) !== '';
 [$application, $session] = os_action_context($isEditing ? 'os.editar' : 'os.criar');
 
 try {
     $payload = $_POST;
     $payload['items'] = os_items_from_post();
     $service = $application->serviceOrderManagement();
+    if ($teamSubmitted) {
+        $application->authorization()->requirePermission('os.alterar_equipe');
+    }
+    if ($scheduleSubmitted) {
+        $application->authorization()->requirePermission('os.agendar');
+    }
+    $team = $teamSubmitted ? ServiceOrderTeamData::fromArray($_POST) : null;
+    $schedule = $scheduleSubmitted ? ServiceOrderScheduleData::fromArray($_POST) : null;
 
     if ($isEditing) {
         $currentOrder = $service->getOrder(os_posted_positive_int('id'));
@@ -23,20 +36,27 @@ try {
             $payload['budget_id'] = $currentOrder->budgetId();
         }
         $data = ServiceOrderFormData::fromArray($payload, true);
-        $service->updateOrder($currentOrder->id(), $data);
+        $service->updateOrder(
+            id: $currentOrder->id(),
+            data: $data,
+            team: $team,
+            schedule: $schedule,
+            teamSubmitted: $teamSubmitted,
+            scheduleSubmitted: $scheduleSubmitted
+        );
         $session->flash('success', 'OS atualizada com sucesso.');
     } elseif (($payload['creation_mode'] ?? 'manual') === 'budget') {
         $application->authorization()->requirePermission('orcamento.converter_os');
         $order = $service->createOrderFromApprovedBudget(
             os_posted_positive_int('budget_id'),
-            os_optional_team_from_post(),
-            os_optional_schedule_from_post(),
+            $team,
+            $schedule,
             trim((string) ($payload['save_as_draft'] ?? '')) !== ''
         );
         $session->flash('success', 'OS cadastrada a partir do orçamento com o número ' . $order->displayNumber() . '.');
     } else {
         $data = ServiceOrderFormData::fromArray($payload, false);
-        $order = $service->createOrder($data, os_optional_team_from_post(), os_optional_schedule_from_post());
+        $order = $service->createOrder($data, $team, $schedule);
         $session->flash('success', 'OS cadastrada com o número ' . $order->displayNumber() . '.');
     }
 } catch (InvalidArgumentException $exception) {

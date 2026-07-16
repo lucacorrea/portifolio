@@ -3078,3 +3078,57 @@ body::-webkit-scrollbar-thumb:hover {
 .table-scroll-y::-webkit-scrollbar-thumb:hover {
   background-color: var(--scrollbar-page-hover);
 }
+
+/* Ordens de serviço: listagem e linhas de SRV mais compactas. */
+.service-orders-table th,
+.service-orders-table td {
+  padding: 8px 10px;
+}
+
+.service-orders-table .os-contact-cell .table-inline-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+#os-tab-items .form-section {
+  margin-bottom: 10px;
+  padding: 12px;
+}
+
+.os-item-row {
+  grid-template-columns: minmax(150px, 1.4fr) minmax(170px, 1.8fr) 68px 64px 104px 96px 108px 38px;
+  align-items: end;
+  gap: 7px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.os-item-row .form-group,
+.os-team-member-row .form-group {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.os-team-member-row {
+  grid-template-columns: minmax(180px, 2fr) minmax(150px, 1.5fr) minmax(110px, .8fr) 42px;
+  align-items: end;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+@media (max-width: 991.98px) {
+  .os-item-row,
+  .os-team-member-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .os-item-row,
+  .os-team-member-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

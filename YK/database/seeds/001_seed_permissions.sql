@@ -12,6 +12,7 @@ VALUES
 
     ('Clientes', 'cliente', 'cliente.visualizar', 'Visualizar clientes', 'Permite acessar a listagem e os dados dos clientes.', 110),
     ('Clientes', 'cliente', 'cliente.criar', 'Criar clientes', 'Permite cadastrar novos clientes.', 120),
+    ('Clientes', 'cliente', 'cliente.importar', 'Importar clientes', 'Permite importar clientes em lote a partir do relatório PDF do A7.', 125),
     ('Clientes', 'cliente', 'cliente.editar', 'Editar clientes', 'Permite alterar dados cadastrais de clientes.', 130),
     ('Clientes', 'cliente', 'cliente.desativar', 'Desativar clientes', 'Permite desativar clientes sem excluir o cadastro.', 140),
     ('Clientes', 'cliente', 'cliente.excluir', 'Excluir clientes', 'Permite excluir cadastros de clientes.', 150),
@@ -27,6 +28,7 @@ VALUES
     ('Ordens de Serviço', 'os', 'os.finalizar', 'Finalizar ordens de serviço', 'Permite concluir ordens de serviço.', 280),
     ('Ordens de Serviço', 'os', 'os.reabrir', 'Reabrir ordens de serviço', 'Permite reabrir ordens de serviço concluídas ou canceladas.', 290),
     ('Ordens de Serviço', 'os', 'os.imprimir', 'Imprimir ordens de serviço', 'Permite imprimir ordens de serviço.', 300),
+    ('Ordens de Serviço', 'os', 'os.estornar', 'Estornar ordens de serviço', 'Permite desfazer a finalização compensando estoque, caixa, pagamentos e contas a receber.', 305),
     ('Ordens de Serviço', 'os', 'os.excluir', 'Excluir ordens de serviço', 'Permite excluir ordens de serviço.', 310),
     ('Ordens de Serviço', 'os', 'os.visualizar_valores', 'Visualizar valores da OS', 'Permite visualizar valores financeiros da ordem de serviço.', 320),
     ('Ordens de Serviço', 'os', 'os.emitir_comprovante', 'Emitir comprovante de OS', 'Permite emitir comprovante não fiscal de serviço.', 330),

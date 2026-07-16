@@ -43,7 +43,8 @@ final class ServiceOrderRepository
                 SUM(CASE WHEN status = 'aguardando_peca' THEN 1 ELSE 0 END) AS waiting_part,
                 SUM(CASE WHEN status = 'finalizada' AND finalizada_em >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') THEN 1 ELSE 0 END) AS finished_month,
                 SUM(CASE WHEN prioridade = 'urgente' AND status NOT IN ('finalizada','cancelada') THEN 1 ELSE 0 END) AS urgent
-             FROM ordens_servico"
+             FROM ordens_servico
+             WHERE excluida_em IS NULL"
         );
         $row = $statement->fetch() ?: [];
         return [
@@ -71,6 +72,7 @@ final class ServiceOrderRepository
             "SELECT id
                FROM ordens_servico
               WHERE orcamento_id = :budget_id
+                AND excluida_em IS NULL
                 AND (
                     status <> 'cancelada'
                     OR (status = 'cancelada' AND orcamento_liberado = 0)
@@ -91,6 +93,7 @@ final class ServiceOrderRepository
                FROM ordens_servico
               WHERE orcamento_id = :budget_id
                 AND id <> :ignore_order_id
+                AND excluida_em IS NULL
                 AND (
                     status <> 'cancelada'
                     OR (status = 'cancelada' AND orcamento_liberado = 0)
@@ -155,8 +158,10 @@ final class ServiceOrderRepository
         return $grouped;
     }
 
-    public function create(ServiceOrderFormData $data, ?int $primaryEmployeeId, ?int $supportEmployeeId, ?DateTimeImmutable $start, ?DateTimeImmutable $end): ServiceOrder
+    public function create(ServiceOrderFormData $data, ?ServiceOrderTeamData $team, ?DateTimeImmutable $start, ?DateTimeImmutable $end): ServiceOrder
     {
+        $primaryEmployeeId = $team?->primaryEmployeeId();
+        $supportEmployeeId = $team?->firstSupportEmployeeId();
         $totals = $data->totals();
         $statement = $this->connection->prepare(
             'INSERT INTO ordens_servico
@@ -185,11 +190,8 @@ final class ServiceOrderRepository
             ->execute(['number' => sprintf('OS-%06d', $id), 'id' => $id]);
         $this->syncOperationalBudgetKey($id);
         $this->replaceItems($id, $data->items());
-        if ($primaryEmployeeId !== null || $supportEmployeeId !== null) {
-            $this->replaceTeam($id, ServiceOrderTeamData::fromArray([
-                'funcionario_principal_id' => $primaryEmployeeId,
-                'funcionario_apoio_id' => $supportEmployeeId,
-            ]));
+        if ($team !== null && $team->hasMembers()) {
+            $this->replaceTeam($id, $team);
         }
 
         $order = $this->findById($id);
@@ -305,6 +307,7 @@ final class ServiceOrderRepository
                   JOIN ordens_servico os
                     ON os.id = osf.ordem_servico_id
                  WHERE f.id IN (' . implode(', ', $employeePlaceholders) . ')
+                   AND os.excluida_em IS NULL
                    AND os.status IN (' . implode(', ', $statusPlaceholders) . ')
                    AND os.agendado_inicio IS NOT NULL
                    AND os.agendado_fim IS NOT NULL
@@ -473,20 +476,28 @@ final class ServiceOrderRepository
         $params = [];
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
-            $where[] = '(os.numero LIKE :search_number OR c.codigo LIKE :search_client_code OR c.nome LIKE :search_client_name OR os.equipamento_tipo LIKE :search_equipment_type OR os.equipamento_marca LIKE :search_equipment_brand OR os.equipamento_modelo LIKE :search_equipment_model OR os.equipamento_numero_serie LIKE :search_serial OR item_summary.servico_principal LIKE :search_main_service OR fp.nome LIKE :search_primary OR fa.nome LIKE :search_support)';
+            $where[] = '(os.numero LIKE :search_number OR c.codigo LIKE :search_client_code OR c.nome LIKE :search_client_name OR c.telefone LIKE :search_phone OR c.whatsapp LIKE :search_whatsapp OR os.equipamento_tipo LIKE :search_equipment_type OR os.equipamento_marca LIKE :search_equipment_brand OR os.equipamento_modelo LIKE :search_equipment_model OR os.equipamento_numero_serie LIKE :search_serial OR item_summary.servico_principal LIKE :search_main_service OR fp.nome LIKE :search_primary OR fa.nome LIKE :search_support)';
             $like = '%' . $search . '%';
             $params += [
                 'search_number' => $like, 'search_client_code' => $like, 'search_client_name' => $like,
+                'search_phone' => $like, 'search_whatsapp' => $like,
                 'search_equipment_type' => $like, 'search_equipment_brand' => $like, 'search_equipment_model' => $like,
                 'search_serial' => $like, 'search_main_service' => $like, 'search_primary' => $like, 'search_support' => $like,
             ];
         }
-        foreach (['client_id' => 'os.cliente_id', 'primary_employee_id' => 'os.funcionario_principal_id', 'support_employee_id' => 'os.funcionario_apoio_id', 'status' => 'os.status', 'priority' => 'os.prioridade'] as $key => $column) {
+        foreach (['client_id' => 'os.cliente_id', 'primary_employee_id' => 'os.funcionario_principal_id', 'support_employee_id' => 'os.funcionario_apoio_id', 'priority' => 'os.prioridade'] as $key => $column) {
             $value = trim((string) ($filters[$key] ?? ''));
             if ($value !== '') {
                 $where[] = $column . ' = :' . $key;
                 $params[$key] = in_array($key, ['client_id', 'primary_employee_id', 'support_employee_id'], true) ? (int) $value : $value;
             }
+        }
+        $status = trim((string) ($filters['status'] ?? ''));
+        if ($status === 'exceto_canceladas') {
+            $where[] = "os.status <> 'cancelada'";
+        } elseif ($status !== '') {
+            $where[] = 'os.status = :status';
+            $params['status'] = $status;
         }
         $employeeId = trim((string) ($filters['employee_id'] ?? ''));
         if ($employeeId !== '') {
@@ -494,16 +505,26 @@ final class ServiceOrderRepository
             $params['employee_id'] = (int) $employeeId;
         }
         if (trim((string) ($filters['date_from'] ?? '')) !== '') {
-            $where[] = 'DATE(os.agendado_inicio) >= :date_from';
+            $where[] = 'os.agendado_inicio >= :date_from';
             $params['date_from'] = trim((string) $filters['date_from']);
         }
         if (trim((string) ($filters['date_to'] ?? '')) !== '') {
-            $where[] = 'DATE(os.agendado_inicio) <= :date_to';
+            $where[] = 'os.agendado_inicio < DATE_ADD(:date_to, INTERVAL 1 DAY)';
             $params['date_to'] = trim((string) $filters['date_to']);
         }
         if (trim((string) ($filters['service'] ?? '')) !== '') {
             $where[] = 'item_summary.servicos LIKE :service_filter';
             $params['service_filter'] = '%' . trim((string) $filters['service']) . '%';
+        }
+        $serviceId = filter_var($filters['service_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if (is_int($serviceId)) {
+            $where[] = "EXISTS (SELECT 1 FROM ordem_servico_itens osi_service WHERE osi_service.ordem_servico_id = os.id AND osi_service.tipo = 'servico' AND osi_service.referencia_id = :service_id)";
+            $params['service_id'] = $serviceId;
+        }
+        $serviceCategory = trim((string) ($filters['service_category'] ?? ''));
+        if ($serviceCategory !== '') {
+            $where[] = "EXISTS (SELECT 1 FROM ordem_servico_itens osi_category JOIN servicos srv_category ON srv_category.id = osi_category.referencia_id WHERE osi_category.ordem_servico_id = os.id AND osi_category.tipo = 'servico' AND srv_category.categoria = :service_category)";
+            $params['service_category'] = $serviceCategory;
         }
         if (trim((string) ($filters['equipment'] ?? '')) !== '') {
             $where[] = '(os.equipamento_tipo LIKE :equipment_filter OR os.equipamento_marca LIKE :equipment_filter OR os.equipamento_modelo LIKE :equipment_filter)';
@@ -515,7 +536,9 @@ final class ServiceOrderRepository
     /** @param array<int,string> $where @return ServiceOrder[] */
     private function selectOrders(array $where, array $parameters, string $orderBy, bool $forUpdate = false): array
     {
-        $sql = 'SELECT os.id, os.numero, os.cliente_id, c.nome AS cliente_nome, c.endereco AS cliente_endereco,
+        $where = array_merge(['os.excluida_em IS NULL'], $where);
+        $sql = 'SELECT os.id, os.numero, os.cliente_id, c.nome AS cliente_nome,
+                       c.telefone AS cliente_telefone, c.whatsapp AS cliente_whatsapp, c.endereco AS cliente_endereco,
                        c.numero AS cliente_numero, c.bairro AS cliente_bairro, c.cidade AS cliente_cidade, c.uf AS cliente_uf,
                        os.orcamento_id, os.funcionario_principal_id, fp.codigo AS funcionario_principal_codigo,
                        fp.nome AS funcionario_principal_nome, os.funcionario_apoio_id, fa.codigo AS funcionario_apoio_codigo,
