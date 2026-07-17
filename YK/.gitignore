@@ -5,6 +5,5 @@ config/database.local.php
 storage/logs/*.log
 storage/cache/*
 backups/
-/vendor/
 *.bak
 *.backup
