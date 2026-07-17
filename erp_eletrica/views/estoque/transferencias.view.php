@@ -240,7 +240,7 @@
                         </thead>
                         <tbody id="tbodyTransf">
                             <?php foreach ($produtosMatriz as $pm): ?>
-                            <?php $unidadeProduto = $pm['unidade'] ?: 'UN'; ?>
+                            <?php $unidadeProduto = !empty($pm['unidade']) ? $pm['unidade'] : 'UN'; ?>
                             <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
@@ -415,7 +415,7 @@
                         </thead>
                         <tbody id="tbodyReq">
                             <?php foreach ($produtosMatriz as $pm): ?>
-                            <?php $unidadeProduto = $pm['unidade'] ?: 'UN'; ?>
+                            <?php $unidadeProduto = !empty($pm['unidade']) ? $pm['unidade'] : 'UN'; ?>
                             <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
@@ -500,6 +500,7 @@
                         </thead>
                         <tbody id="tbodyTransf">
                             <?php foreach ($produtosMatriz as $pm): ?>
+                            <?php $unidadeProduto = !empty($pm['unidade']) ? $pm['unidade'] : 'UN'; ?>
                             <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
