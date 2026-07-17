@@ -367,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const enhanceActionTable = (table) => {
-    if (table.dataset.rowActionsReady === 'true' || table.closest('.modal, dialog')) return;
+    if (table.closest('.modal, dialog')) return;
 
     const headers = Array.from(table.tHead?.rows[0]?.cells || []);
     const actionIndex = headers.findIndex((header) => normalizedText(header.textContent) === 'acoes');
@@ -375,15 +375,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const rows = Array.from(table.tBodies).flatMap((body) => Array.from(body.rows));
     const sources = rows.map((row) => ({ row, cell: row.cells[actionIndex] }))
-      .filter(({ cell }) => cell?.querySelector('.dropdown-menu'));
-    if (sources.length === 0) return;
+      .filter(({ row, cell }) => !row.classList.contains('row-actions-trigger') && cell?.querySelector('.dropdown-menu'));
+    if (sources.length === 0) {
+      if (actionableRows(table).length === 0) {
+        table.classList.remove('row-actions-table');
+        delete table.dataset.rowActionsReady;
+        headers[actionIndex].classList.remove('row-actions-source-cell');
+        const hint = table.closest('.table-panel-wrap')?.previousElementSibling;
+        if (hint?.classList.contains('row-actions-hint')) hint.remove();
+      }
+      return;
+    }
 
     table.dataset.rowActionsReady = 'true';
     table.classList.add('row-actions-table');
     headers[actionIndex].classList.add('row-actions-source-cell');
     rows.forEach((row) => row.cells[actionIndex]?.classList.add('row-actions-source-cell'));
 
-    let hasFocusableRow = false;
+    let hasFocusableRow = actionableRows(table).length > 0;
     sources.forEach(({ row, cell }) => {
       const menu = cell.querySelector('.dropdown-menu');
       const toggle = cell.querySelector('.btn-action[data-bs-toggle="dropdown"]');
@@ -404,7 +413,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   if (rowActionsDialog && rowActionsHost && typeof rowActionsDialog.showModal === 'function') {
-    document.querySelectorAll('table.os-table').forEach(enhanceActionTable);
+    window.OSMais = window.OSMais || {};
+    window.OSMais.refreshActionTables = (root = document) => {
+      closeActionMenu();
+      if (activeRowActions) restoreRowActions({ restoreFocus: false });
+      root.querySelectorAll('table.os-table').forEach(enhanceActionTable);
+    };
+    window.OSMais.refreshActionTables();
 
     document.addEventListener('dblclick', (event) => {
       const row = event.target.closest('tr.row-actions-trigger');

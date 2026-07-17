@@ -23,15 +23,25 @@ final class ClientRepository
         $where = [];
         $params = [];
         $search = trim((string) ($filters['search'] ?? ''));
+        $limit = null;
+        if (array_key_exists('limit', $filters)) {
+            $limit = filter_var($filters['limit'], FILTER_VALIDATE_INT, [
+                'options' => ['min_range' => 1, 'max_range' => 500],
+            ]);
+            if (!is_int($limit)) {
+                throw new InvalidArgumentException('Limite de clientes inválido.');
+            }
+        }
 
         if ($search !== '') {
             $documentSearch = preg_replace('/\D+/', '', $search) ?? '';
-            $where[] = '(codigo LIKE :search_code OR nome LIKE :search_name OR documento LIKE :search_document OR telefone LIKE :search_phone OR whatsapp LIKE :search_whatsapp OR email LIKE :search_email OR cidade LIKE :search_city)';
-            $like = '%' . $search . '%';
+            $where[] = "(codigo LIKE :search_code ESCAPE '=' OR nome LIKE :search_name ESCAPE '=' OR documento LIKE :search_document ESCAPE '=' OR telefone LIKE :search_phone ESCAPE '=' OR whatsapp LIKE :search_whatsapp ESCAPE '=' OR email LIKE :search_email ESCAPE '=' OR cidade LIKE :search_city ESCAPE '=')";
+            $escapedSearch = str_replace(['=', '%', '_'], ['==', '=%', '=_'], $search);
+            $like = '%' . $escapedSearch . '%';
             $params += [
                 'search_code' => $like,
                 'search_name' => $like,
-                'search_document' => $documentSearch === '' ? '__never_match__' : '%' . $documentSearch . '%',
+                'search_document' => $documentSearch === '' ? '#no-document-match#' : '%' . $documentSearch . '%',
                 'search_phone' => $like,
                 'search_whatsapp' => $like,
                 'search_email' => $like,
@@ -57,6 +67,9 @@ final class ClientRepository
         }
 
         $sql .= ' ORDER BY nome ASC, id ASC';
+        if ($limit !== null) {
+            $sql .= ' LIMIT ' . $limit;
+        }
         $statement = $this->connection->prepare($sql);
         $statement->execute($params);
 
