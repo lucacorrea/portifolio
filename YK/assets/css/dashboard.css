@@ -788,6 +788,10 @@ body.sidebar-collapsed .nav-link-os {
   background: #f3f8fb;
 }
 
+.record-actions-trigger .record-actions-source {
+  display: none !important;
+}
+
 .row-actions-trigger:focus-visible {
   position: relative;
   z-index: 2;

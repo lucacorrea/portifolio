@@ -387,96 +387,92 @@ document.addEventListener('DOMContentLoaded', function () {
     recalc(form);
   }
 
-  document.querySelectorAll('.js-os-view').forEach(function (button) {
-    button.addEventListener('click', async function () {
+  async function prepareOrderView(button) {
+    const data = await loadOrder(button.dataset.orderId);
+    const order = data.order;
+    document.getElementById('os-view-subtitle').textContent = order.number || '';
+    const summary = document.getElementById('os-view-summary');
+    summary.replaceChildren();
+    [
+      ['Número', order.number], ['Cliente', order.client_name], ['Equipamento', [order.equipment_type, order.equipment_brand, order.equipment_model].filter(Boolean).join(' ') || '-'],
+      ['Status', order.status], ['Prioridade', order.priority], ['Agendamento', ((order.scheduled_start || '-') + ' até ' + (order.scheduled_end || '-'))],
+      ['Problema', order.reported_problem || '-'], ['Diagnóstico', order.diagnosis || '-'], ['Observações', order.notes || '-']
+    ].forEach(function (pair) {
+      const div = document.createElement('div');
+      const span = document.createElement('span');
+      span.textContent = pair[0];
+      const strong = document.createElement('strong');
+      strong.textContent = pair[1] || '-';
+      div.append(span, strong);
+      summary.appendChild(div);
+    });
+    const tbody = document.getElementById('os-view-items');
+    tbody.replaceChildren();
+    data.items.forEach(function (item) {
+      const row = document.createElement('tr');
+      [item.type, item.description, item.quantity, money(parseNumber(item.unit_price)), money(parseNumber(item.subtotal))].forEach(function (value) {
+        const cell = document.createElement('td');
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+      tbody.appendChild(row);
+    });
+  }
+
+  async function prepareOrderEdit(button) {
+    const modal = document.getElementById('modal-os');
+    const form = modal.querySelector('form');
+    try {
+      hideOrderFormError();
+      form.querySelectorAll('.os-items').forEach(function (box) { box.replaceChildren(); });
       const data = await loadOrder(button.dataset.orderId);
       const order = data.order;
-      document.getElementById('os-view-subtitle').textContent = order.number || '';
-      const summary = document.getElementById('os-view-summary');
-      summary.replaceChildren();
-      [
-        ['Número', order.number], ['Cliente', order.client_name], ['Equipamento', [order.equipment_type, order.equipment_brand, order.equipment_model].filter(Boolean).join(' ') || '-'],
-        ['Status', order.status], ['Prioridade', order.priority], ['Agendamento', ((order.scheduled_start || '-') + ' até ' + (order.scheduled_end || '-'))],
-        ['Problema', order.reported_problem || '-'], ['Diagnóstico', order.diagnosis || '-'], ['Observações', order.notes || '-']
-      ].forEach(function (pair) {
-        const div = document.createElement('div');
-        const span = document.createElement('span');
-        span.textContent = pair[0];
-        const strong = document.createElement('strong');
-        strong.textContent = pair[1] || '-';
-        div.append(span, strong);
-        summary.appendChild(div);
-      });
-      const tbody = document.getElementById('os-view-items');
-      tbody.replaceChildren();
-      data.items.forEach(function (item) {
-        const row = document.createElement('tr');
-        [item.type, item.description, item.quantity, money(parseNumber(item.unit_price)), money(parseNumber(item.subtotal))].forEach(function (value) {
-          const cell = document.createElement('td');
-          cell.textContent = value;
-          row.appendChild(cell);
-        });
-        tbody.appendChild(row);
-      });
-    });
-  });
-
-  document.querySelectorAll('.js-os-edit').forEach(function (button) {
-    button.addEventListener('click', async function () {
-      const modal = document.getElementById('modal-os');
-      const form = modal.querySelector('form');
-      try {
-        hideOrderFormError();
-        form.querySelectorAll('.os-items').forEach(function (box) { box.replaceChildren(); });
-        const data = await loadOrder(button.dataset.orderId);
-        const order = data.order;
-        document.getElementById('modal-os-title').textContent = 'Editar OS';
-        setValue('os-id', order.id);
-        setValue('os-client', order.client_id);
-        setValue('os-budget-id', order.budget_id);
-        const budgetSelect = document.getElementById('os-budget-id');
-        if (budgetSelect) budgetSelect.disabled = false;
-        if (order.budget_id) {
-          setValue('os-creation-mode', 'manual');
-          if (budgetSelect) {
-            const selected = budgetSelect.querySelector('option[value="' + String(order.budget_id) + '"]');
-            if (selected && selected.textContent === String(order.budget_id)) {
-              selected.textContent = 'Orçamento vinculado ORC-' + String(order.budget_id).padStart(6, '0');
-            }
-            budgetSelect.disabled = true;
+      document.getElementById('modal-os-title').textContent = 'Editar OS';
+      setValue('os-id', order.id);
+      setValue('os-client', order.client_id);
+      setValue('os-budget-id', order.budget_id);
+      const budgetSelect = document.getElementById('os-budget-id');
+      if (budgetSelect) budgetSelect.disabled = false;
+      if (order.budget_id) {
+        setValue('os-creation-mode', 'manual');
+        if (budgetSelect) {
+          const selected = budgetSelect.querySelector('option[value="' + String(order.budget_id) + '"]');
+          if (selected && selected.textContent === String(order.budget_id)) {
+            selected.textContent = 'Orçamento vinculado ORC-' + String(order.budget_id).padStart(6, '0');
           }
+          budgetSelect.disabled = true;
         }
-        setValue('os-priority', order.priority);
-        setValue('os-equipment-type', order.equipment_type);
-        setValue('os-equipment-brand', order.equipment_brand);
-        setValue('os-equipment-model', order.equipment_model);
-        setValue('os-equipment-capacity', order.equipment_capacity);
-        setValue('os-equipment-serial-number', order.equipment_serial_number);
-        setValue('os-equipment-environment', order.equipment_environment);
-        setValue('os-equipment-location', order.equipment_location);
-        setValue('os-reported-problem', order.reported_problem);
-        setValue('os-identified-problem', order.identified_problem);
-        setValue('os-diagnosis', order.diagnosis);
-        setValue('os-solution', order.solution);
-        setValue('os-recommendation', order.recommendation);
-        setValue('os-internal-notes', order.internal_notes);
-        setValue('os-notes', order.notes);
-        setValue('os-discount', order.discount);
-        setValue('os-increase', order.increase);
-        setValue('os-scheduled-start', toLocalInput(order.scheduled_start));
-        setValue('os-scheduled-end', toLocalInput(order.scheduled_end));
-        setValue('os-status', order.status);
-        const status = document.getElementById('os-status');
-        if (status) status.disabled = true;
-        data.items.forEach(function (item) { addRow(form, item.type, item); });
-        restoreTeamMembers(form, data.team || legacyTeamFromData(order));
-        updateBudgetMode(form);
-        recalc(form);
-      } catch (error) {
-        showOrderFormError('Não foi possível carregar os dados da OS.');
       }
-    });
-  });
+      setValue('os-priority', order.priority);
+      setValue('os-equipment-type', order.equipment_type);
+      setValue('os-equipment-brand', order.equipment_brand);
+      setValue('os-equipment-model', order.equipment_model);
+      setValue('os-equipment-capacity', order.equipment_capacity);
+      setValue('os-equipment-serial-number', order.equipment_serial_number);
+      setValue('os-equipment-environment', order.equipment_environment);
+      setValue('os-equipment-location', order.equipment_location);
+      setValue('os-reported-problem', order.reported_problem);
+      setValue('os-identified-problem', order.identified_problem);
+      setValue('os-diagnosis', order.diagnosis);
+      setValue('os-solution', order.solution);
+      setValue('os-recommendation', order.recommendation);
+      setValue('os-internal-notes', order.internal_notes);
+      setValue('os-notes', order.notes);
+      setValue('os-discount', order.discount);
+      setValue('os-increase', order.increase);
+      setValue('os-scheduled-start', toLocalInput(order.scheduled_start));
+      setValue('os-scheduled-end', toLocalInput(order.scheduled_end));
+      setValue('os-status', order.status);
+      const status = document.getElementById('os-status');
+      if (status) status.disabled = true;
+      data.items.forEach(function (item) { addRow(form, item.type, item); });
+      restoreTeamMembers(form, data.team || legacyTeamFromData(order));
+      updateBudgetMode(form);
+      recalc(form);
+    } catch (error) {
+      showOrderFormError('Não foi possível carregar os dados da OS.');
+    }
+  }
 
   const orderModal = document.getElementById('modal-os');
   if (orderModal) {
@@ -488,60 +484,43 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  document.querySelectorAll('.js-os-team').forEach(function (button) {
-    button.addEventListener('click', function () {
+  document.addEventListener('click', function (event) {
+    const button = event.target.closest?.('.js-os-view, .js-os-edit, .js-os-team, .js-os-status, .js-os-finalize, .js-os-cancel, .js-os-reverse, .js-os-delete, .js-os-receipt');
+    if (!button) return;
+
+    if (button.classList.contains('js-os-view')) {
+      void prepareOrderView(button);
+    } else if (button.classList.contains('js-os-edit')) {
+      void prepareOrderEdit(button);
+    } else if (button.classList.contains('js-os-team')) {
       setValue('os-team-id', button.dataset.orderId);
       setValue('os-team-start', toLocalInput(button.dataset.start));
       setValue('os-team-end', toLocalInput(button.dataset.end));
       let team = [];
       try { team = JSON.parse(button.dataset.team || '[]'); } catch (error) { team = []; }
       restoreTeamMembers(document.getElementById('modal-os-team'), team);
-    });
-  });
-
-  document.querySelectorAll('.js-os-status').forEach(function (button) {
-    button.addEventListener('click', function () {
+    } else if (button.classList.contains('js-os-status')) {
       setValue('os-status-id', button.dataset.orderId);
       setValue('os-status-operation', button.dataset.operation);
       document.getElementById('os-status-title').textContent = button.dataset.label || 'Alterar status';
       document.getElementById('os-status-message').textContent = 'Confirmar operação "' + (button.dataset.label || 'alterar status') + '"?';
-    });
-  });
-
-  document.querySelectorAll('.js-os-finalize').forEach(function (button) {
-    button.addEventListener('click', function () {
+    } else if (button.classList.contains('js-os-finalize')) {
       setValue('os-finalize-id', button.dataset.orderId);
-    });
-  });
-
-  document.querySelectorAll('.js-os-cancel').forEach(function (button) {
-    button.addEventListener('click', function () {
+    } else if (button.classList.contains('js-os-cancel')) {
       setValue('os-cancel-id', button.dataset.orderId);
-    });
-  });
-
-  document.querySelectorAll('.js-os-reverse').forEach(function (button) {
-    button.addEventListener('click', function () {
+    } else if (button.classList.contains('js-os-reverse')) {
       setValue('os-reverse-id', button.dataset.orderId);
       setText('os-reverse-number', button.dataset.orderNumber);
       setValue('os-reverse-reason', '');
-    });
-  });
-
-  document.querySelectorAll('.js-os-delete').forEach(function (button) {
-    button.addEventListener('click', function () {
+    } else if (button.classList.contains('js-os-delete')) {
       setValue('os-delete-id', button.dataset.orderId);
       setText('os-delete-number', button.dataset.orderNumber);
       setValue('os-delete-reason', '');
-    });
-  });
-
-  document.querySelectorAll('.js-os-receipt').forEach(function (button) {
-    button.addEventListener('click', function () {
+    } else if (button.classList.contains('js-os-receipt')) {
       setValue('os-receipt-payment-id', button.dataset.paymentId);
       setText('os-receipt-order-number', button.dataset.orderNumber);
       setText('os-receipt-payment-label', button.dataset.paymentLabel);
-    });
+    }
   });
 
   if ((recoveryModal === 'create' || recoveryModal === 'edit') && window.bootstrap) {

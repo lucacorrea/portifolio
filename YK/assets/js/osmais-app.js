@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     .toLowerCase();
 
   const isInteractiveTarget = (target) => Boolean(target.closest(
-    'a, button, input, select, textarea, label, form, [contenteditable="true"], [role="button"]'
+    'a, button, input, select, textarea, label, form, summary, [contenteditable="true"], [data-bs-toggle], [role="button"], [role="link"], audio[controls], video[controls]'
   ));
 
   const rowActionTitle = (row, toggle) => {
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hint.innerHTML = '<i class="bi bi-cursor" aria-hidden="true"></i><span></span>';
     hint.querySelector('span').textContent = coarsePointer.matches
       ? 'Toque na linha para ver as ações.'
-      : 'Dê dois cliques na linha ou use Enter para ver as ações.';
+      : 'Clique na linha ou use Enter para ver as ações.';
     wrapper.before(hint);
   };
 
@@ -375,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const rows = Array.from(table.tBodies).flatMap((body) => Array.from(body.rows));
     const sources = rows.map((row) => ({ row, cell: row.cells[actionIndex] }))
-      .filter(({ row, cell }) => !row.classList.contains('row-actions-trigger') && cell?.querySelector('.dropdown-menu'));
+      .filter(({ row, cell }) => !row.classList.contains('row-actions-trigger') && cell?.querySelector(`.dropdown-menu ${actionItemSelector}`));
     if (sources.length === 0) {
       if (actionableRows(table).length === 0) {
         table.classList.remove('row-actions-table');
@@ -406,6 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
       row.setAttribute('aria-haspopup', 'dialog');
       row.setAttribute('aria-controls', 'row-actions-dialog');
       row.setAttribute('aria-describedby', 'row-actions-table-instructions');
+      row.setAttribute('aria-label', row.dataset.rowActionsTitle);
       hasFocusableRow = true;
     });
 
@@ -421,16 +422,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     window.OSMais.refreshActionTables();
 
-    document.addEventListener('dblclick', (event) => {
+    document.addEventListener('click', (event) => {
       const row = event.target.closest('tr.row-actions-trigger');
-      if (!row || isInteractiveTarget(event.target)) return;
-      setCurrentRow(row);
-      openRowActions(row);
-    });
-
-    document.addEventListener('pointerup', (event) => {
-      const row = event.target.closest('tr.row-actions-trigger');
-      if (!row || isInteractiveTarget(event.target) || !['touch', 'pen'].includes(event.pointerType)) return;
+      const selection = window.getSelection()?.toString().trim();
+      if (!row || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey
+        || event.shiftKey || event.altKey || selection || isInteractiveTarget(event.target)) return;
       setCurrentRow(row);
       openRowActions(row);
     });

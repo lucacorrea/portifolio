@@ -54,7 +54,7 @@ function metric_card(string $label, string $value, string $icon, string $accent,
 }
 
 function metric_grid(array $cards): void {
-  echo '<div class="metrics-grid">';
+  echo '<div class="metrics-grid" data-live-region="metrics">';
   foreach ($cards as $card) {
     echo metric_card($card[0], (string) $card[1], $card[2], $card[3], $card[4] ?? '');
   }

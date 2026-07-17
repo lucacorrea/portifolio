@@ -209,7 +209,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
     ['Finalizadas no mes', (string) ($summary['finished_month'] ?? 0), 'bi-check2-circle', '#15803D', 'concluidas'],
 ]); ?>
 
-<form class="filter-bar" method="get" action="ordens-servico.php">
+<form class="filter-bar" method="get" action="ordens-servico.php" data-live-filter="service-orders" data-live-regions="metrics results">
     <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Pesquisar OS, cliente, local ou funcionario"></div>
     <input class="filter-select input-date" type="date" name="date_from" value="<?= h($filters['date_from']) ?>" aria-label="Data inicial">
     <input class="filter-select input-date" type="date" name="date_to" value="<?= h($filters['date_to']) ?>" aria-label="Data final">
@@ -219,10 +219,10 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
     <select class="filter-select" name="service_id" aria-label="Serviço"><option value="">Todos os serviços</option><?php foreach ($allServices as $service): ?><option value="<?= h((string) $service->id()) ?>" <?= $filters['service_id'] === (string) $service->id() ? 'selected' : '' ?>><?= h($service->displayCode() . ' - ' . $service->name()) ?></option><?php endforeach; ?></select>
     <select class="filter-select" name="status" aria-label="Status"><option value="">Todos os status</option><option value="exceto_canceladas" <?= $filters['status'] === 'exceto_canceladas' ? 'selected' : '' ?>>Todos exceto canceladas</option><?php foreach (['rascunho','aberta','aguardando_agendamento','agendada','em_deslocamento','em_execucao','aguardando_peca','finalizada','cancelada'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(os_label_status($status)) ?></option><?php endforeach; ?></select>
     <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-    <a class="btn-filter btn-filter-ghost" href="ordens-servico.php"><i class="bi bi-x-lg"></i> Limpar</a>
+    <a class="btn-filter btn-filter-ghost" href="ordens-servico.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
 </form>
 
-<section class="panel">
+<section class="panel" data-live-region="results">
     <div class="panel-header">
         <div class="panel-title"><i class="bi bi-wrench-adjustable-circle"></i>Ordens de Servico</div>
         <?php if ($canCreate): ?><button class="btn-filter btn-filter-primary" type="button" data-bs-toggle="modal" data-bs-target="#modal-os"><i class="bi bi-plus-lg"></i> Nova OS</button><?php endif; ?>

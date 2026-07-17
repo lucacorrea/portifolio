@@ -130,6 +130,8 @@ metric_grid([
     class="filter-bar"
     method="get"
     action="funcionarios.php"
+    data-live-filter="employees"
+    data-live-regions="metrics results"
 >
     <div class="search-wrap">
         <i class="bi bi-search"></i>
@@ -155,13 +157,14 @@ metric_grid([
     <a
         class="btn-filter btn-filter-ghost"
         href="funcionarios.php"
+        data-live-filter-clear
     >
         <i class="bi bi-x-lg"></i>
         Limpar filtros
     </a>
 </form>
 
-<section class="panel">
+<section class="panel" data-live-region="results">
     <div class="panel-header">
         <div class="panel-title">
             <i class="bi bi-person-badge"></i>
@@ -641,10 +644,16 @@ document.addEventListener('DOMContentLoaded', function () {
         element.classList.add('d-none');
     }
 
-    document
-        .querySelectorAll('.js-employee-view')
-        .forEach(function (button) {
-            button.addEventListener('click', function () {
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest(
+            '.js-employee-view, .js-employee-edit'
+        );
+
+        if (!button) {
+            return;
+        }
+
+        if (button.classList.contains('js-employee-view')) {
                 text(
                     'view-employee-subtitle',
                     button.dataset.employeeCode
@@ -665,13 +674,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     'view-employee-updated-at',
                     button.dataset.employeeUpdatedAt
                 );
-            });
-        });
+        }
 
-    document
-        .querySelectorAll('.js-employee-edit')
-        .forEach(function (button) {
-            button.addEventListener('click', function () {
+        if (button.classList.contains('js-employee-edit')) {
                 hideError('edit-employee-form-error');
                 text(
                     'edit-employee-subtitle',
@@ -693,8 +698,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     'edit-employee-name',
                     button.dataset.employeeName
                 );
-            });
-        });
+        }
+    });
 
     const createModal = document.getElementById(
         'modal-funcionario'

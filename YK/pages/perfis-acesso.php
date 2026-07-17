@@ -45,7 +45,7 @@ function profile_date(?string $value): string
     ['Usuários vinculados', (string) $summary['users'], 'bi-people', '#7C3AED', 'em todos os perfis'],
   ]); ?>
 
-  <form class="filter-bar" method="get" action="perfis-acesso.php">
+  <form class="filter-bar" method="get" action="perfis-acesso.php" data-live-filter="profiles" data-live-regions="metrics results profile-modals">
     <div class="search-wrap">
       <i class="bi bi-search"></i>
       <input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Buscar por nome do perfil">
@@ -61,10 +61,10 @@ function profile_date(?string $value): string
       <option value="personalizado"<?= $filters['type'] === 'personalizado' ? ' selected' : '' ?>>Personalizados</option>
     </select>
     <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-    <a class="btn-filter btn-filter-ghost" href="perfis-acesso.php"><i class="bi bi-x-lg"></i> Limpar filtros</a>
+    <a class="btn-filter btn-filter-ghost" href="perfis-acesso.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar filtros</a>
   </form>
 
-  <section class="panel">
+  <section class="panel" data-live-region="results">
     <div class="panel-header">
       <div class="panel-title"><i class="bi bi-shield-lock"></i>Perfis cadastrados</div>
       <?php if ($canCreate): ?>
@@ -99,8 +99,8 @@ function profile_date(?string $value): string
                 <td><?= h((string) $profile->totalUsers()) ?></td>
                 <td><?= h((string) $profile->totalPermissions()) ?></td>
                 <td><?= h(profile_date($profile->updatedAt())) ?></td>
-                <td>
-                  <div class="dropdown">
+                <td class="table-actions-cell">
+                  <div class="dropdown table-action-dropdown">
                     <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-label="Ações do perfil <?= h($profile->name()) ?>">
                       <i class="bi bi-three-dots-vertical"></i>
                     </button>
@@ -149,6 +149,7 @@ function profile_date(?string $value): string
   </section>
 </div>
 
+<div data-live-region="profile-modals">
 <?php foreach ($profiles as $profile): ?>
   <?php if (!$canDuplicate) continue; ?>
   <div class="modal fade" id="duplicate-profile-<?= h((string) $profile->id()) ?>" tabindex="-1" aria-hidden="true">
@@ -180,6 +181,7 @@ function profile_date(?string $value): string
     </div>
   </div>
 <?php endforeach; ?>
+</div>
 
 <div class="modal fade" id="profile-confirm-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">

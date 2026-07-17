@@ -17,17 +17,18 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   };
 
-  document.querySelectorAll('form[data-confirm-title]').forEach((form) => {
-    form.addEventListener('submit', (event) => {
-      if (bypassConfirm) {
-        bypassConfirm = false;
-        return;
-      }
+  document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || !form.matches('form[data-confirm-title]')) return;
 
-      if (!showConfirm(form)) {
-        event.preventDefault();
-      }
-    });
+    if (bypassConfirm) {
+      bypassConfirm = false;
+      return;
+    }
+
+    if (!showConfirm(form)) {
+      event.preventDefault();
+    }
   });
 
   confirmModalElement?.querySelector('[data-confirm-submit]')?.addEventListener('click', () => {

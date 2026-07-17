@@ -332,6 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
     filterForm?.addEventListener('submit', function (event) { event.preventDefault(); searchClients(); });
     clearFilters?.addEventListener('click', function (event) { event.preventDefault(); filterForm.querySelectorAll('input[name], select[name]').forEach(function (field) { field.value = ''; }); searchClients(); searchInput?.focus(); });
     searchRetry?.addEventListener('click', searchClients);
+    window.addEventListener('popstate', function () { const params = new URL(window.location.href).searchParams; filterForm?.querySelectorAll('[name]').forEach(function (field) { field.value = params.get(field.name) || ''; }); searchClients(); });
     const targets = { create: 'modal-cliente', edit: 'modal-cliente-edit' };
     if (recoveryModal && targets[recoveryModal] && window.bootstrap) { const modal = document.getElementById(targets[recoveryModal]); if (modal) bootstrap.Modal.getOrCreateInstance(modal).show(); }
     if (openImportUpload && window.bootstrap) { const modal = document.getElementById('modal-client-import'); if (modal) bootstrap.Modal.getOrCreateInstance(modal).show(); }

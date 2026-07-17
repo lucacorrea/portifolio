@@ -99,7 +99,7 @@ metric_grid([
 ]);
 ?>
 
-<form class="filter-bar" method="get" action="servicos.php">
+<form class="filter-bar" method="get" action="servicos.php" data-live-filter="services" data-live-regions="metrics results">
     <div class="search-wrap">
         <i class="bi bi-search"></i>
         <input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Buscar código, serviço, categoria ou equipamento" maxlength="150">
@@ -116,10 +116,10 @@ metric_grid([
         <option value="inativo" <?= $filters['status'] === 'inativo' ? 'selected' : '' ?>>Inativos</option>
     </select>
     <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-    <a class="btn-filter btn-filter-ghost" href="servicos.php"><i class="bi bi-x-lg"></i> Limpar filtros</a>
+    <a class="btn-filter btn-filter-ghost" href="servicos.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar filtros</a>
 </form>
 
-<section class="panel">
+<section class="panel" data-live-region="results">
     <div class="panel-header">
         <div class="panel-title"><i class="bi bi-tools"></i>Serviços cadastrados</div>
         <?php if ($canCreate): ?>
@@ -216,11 +216,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function text(id, value) { const element = document.getElementById(id); if (element) { element.textContent = value || '-'; } }
     function val(id, value) { const element = document.getElementById(id); if (element) { element.value = value || ''; } }
     function moneyValue(value) { const number = Number.parseFloat(value || '0'); return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-    document.querySelectorAll('.js-service-view').forEach(function (button) {
-        button.addEventListener('click', function () { text('view-service-subtitle', button.dataset.serviceCode); text('view-service-code', button.dataset.serviceCode); text('view-service-name', button.dataset.serviceName); text('view-service-category', button.dataset.serviceCategory); text('view-service-compatible-equipment', button.dataset.serviceCompatibleEquipment); text('view-service-duration', button.dataset.serviceDuration); text('view-service-value', moneyValue(button.dataset.serviceValue)); text('view-service-status', button.dataset.serviceStatus === 'ativo' ? 'Ativo' : 'Inativo'); text('view-service-created-at', button.dataset.serviceCreatedAt); text('view-service-updated-at', button.dataset.serviceUpdatedAt); text('view-service-description', button.dataset.serviceDescription); });
-    });
-    document.querySelectorAll('.js-service-edit').forEach(function (button) {
-        button.addEventListener('click', function () { text('edit-service-subtitle', button.dataset.serviceCode); val('edit-service-id', button.dataset.serviceId); val('edit-service-code', button.dataset.serviceCode); val('edit-service-name', button.dataset.serviceName); val('edit-service-category', button.dataset.serviceCategory); val('edit-service-compatible-equipment', button.dataset.serviceCompatibleEquipment); val('edit-service-duration-minutes', button.dataset.serviceDurationMinutes); if (canChangePrice) { val('edit-service-value', button.dataset.serviceValue); } val('edit-service-description', button.dataset.serviceDescription); val('edit-service-status', button.dataset.serviceStatus || 'ativo'); });
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('.js-service-view, .js-service-edit');
+        if (!button) return;
+        if (button.classList.contains('js-service-view')) { text('view-service-subtitle', button.dataset.serviceCode); text('view-service-code', button.dataset.serviceCode); text('view-service-name', button.dataset.serviceName); text('view-service-category', button.dataset.serviceCategory); text('view-service-compatible-equipment', button.dataset.serviceCompatibleEquipment); text('view-service-duration', button.dataset.serviceDuration); text('view-service-value', moneyValue(button.dataset.serviceValue)); text('view-service-status', button.dataset.serviceStatus === 'ativo' ? 'Ativo' : 'Inativo'); text('view-service-created-at', button.dataset.serviceCreatedAt); text('view-service-updated-at', button.dataset.serviceUpdatedAt); text('view-service-description', button.dataset.serviceDescription); }
+        if (button.classList.contains('js-service-edit')) { text('edit-service-subtitle', button.dataset.serviceCode); val('edit-service-id', button.dataset.serviceId); val('edit-service-code', button.dataset.serviceCode); val('edit-service-name', button.dataset.serviceName); val('edit-service-category', button.dataset.serviceCategory); val('edit-service-compatible-equipment', button.dataset.serviceCompatibleEquipment); val('edit-service-duration-minutes', button.dataset.serviceDurationMinutes); if (canChangePrice) { val('edit-service-value', button.dataset.serviceValue); } val('edit-service-description', button.dataset.serviceDescription); val('edit-service-status', button.dataset.serviceStatus || 'ativo'); }
     });
     const createModal = document.getElementById('modal-servico');
     if (createModal) { createModal.addEventListener('show.bs.modal', function (event) { if (event.relatedTarget) { const form = createModal.querySelector('form'); if (form) { form.reset(); } text('create-service-form-error', ''); document.getElementById('create-service-form-error')?.classList.add('d-none'); } }); }
