@@ -710,6 +710,299 @@ try {
         order: 3;
       }
     }
+
+
+    /* =========================================================
+       LISTA DE BENEFICIÁRIOS — MESMO PADRÃO VISUAL DA TABELA DE ENTREGAS
+       Somente estilo/estrutura visual. A lógica PHP e o JS foram preservados.
+    ========================================================= */
+    .beneficiarios-list-card {
+      border: 0 !important;
+      border-radius: 14px !important;
+      box-shadow: none !important;
+      background: #fff !important;
+      overflow: hidden;
+    }
+
+    .beneficiarios-list-card .card-header {
+      background: #fff !important;
+      border-bottom: 0 !important;
+      padding: 1.45rem 1.45rem .55rem !important;
+    }
+
+    .beneficiarios-list-card .card-header h4 {
+      margin: 0 0 .35rem 0;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #25396f;
+    }
+
+    .beneficiarios-list-card .card-header p {
+      margin: 0;
+      color: #7c8db5 !important;
+      font-size: .95rem;
+    }
+
+    .beneficiarios-list-body {
+      padding: 1.05rem 1.45rem 1.45rem !important;
+      background: #fff !important;
+    }
+
+    .beneficiarios-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .beneficiarios-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      min-height: 38px;
+    }
+
+    .beneficiarios-toolbar-search {
+      margin-left: auto;
+    }
+
+    .beneficiarios-search-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .beneficiarios-search-input {
+      width: 100%;
+      min-width: 320px;
+      max-width: 420px;
+      height: 38px;
+      padding: .55rem .9rem;
+      border: 1px solid #9bb4f5;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      font-size: 15px;
+      box-shadow: none;
+      outline: none;
+      transition: all .2s ease;
+    }
+
+    .beneficiarios-search-input::placeholder {
+      color: #7f8a99;
+      opacity: 1;
+    }
+
+    .beneficiarios-search-input:focus {
+      border-color: #9ab0f5;
+      box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+    }
+
+    .beneficiarios-search-clear {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border: 1px solid #cfd6df;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .2s ease;
+      padding: 0;
+    }
+
+    .beneficiarios-search-clear i {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .beneficiarios-search-clear:hover {
+      border-color: #435ebe;
+      color: #435ebe;
+      background: #f8f9ff;
+    }
+
+    .beneficiarios-search-clear:focus {
+      outline: none;
+      box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+    }
+
+    .beneficiarios-table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #tbl {
+      width: 100% !important;
+      table-layout: auto;
+      border-collapse: collapse !important;
+      border-spacing: 0 !important;
+      background: #fff !important;
+      margin-bottom: 0 !important;
+    }
+
+    #tbl thead,
+    #tbl thead.table-light,
+    #tbl thead tr,
+    #tbl thead th {
+      background: #fff !important;
+    }
+
+    #tbl thead th {
+      color: #495057 !important;
+      font-size: 15px !important;
+      font-weight: 700 !important;
+      text-align: center !important;
+      padding: 13px 10px !important;
+      border: 0 !important;
+      border-top: 1px solid #d7dce2 !important;
+      border-bottom: 2px solid #d7dce2 !important;
+      white-space: nowrap !important;
+      vertical-align: middle !important;
+    }
+
+    #tbl thead th.sortable-th {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sort-header-btn {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: 700;
+      padding: 0;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .35rem;
+      width: 100%;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+
+    .sort-header-btn:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .sort-indicator {
+      width: 14px;
+      min-width: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #d9dee5;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .sort-indicator::before {
+      content: "↕";
+    }
+
+    #tbl thead th.sort-asc .sort-indicator,
+    #tbl thead th.sort-desc .sort-indicator {
+      color: #8a95a3;
+    }
+
+    #tbl thead th.sort-asc .sort-indicator::before {
+      content: "▲";
+      font-size: 10px;
+    }
+
+    #tbl thead th.sort-desc .sort-indicator::before {
+      content: "▼";
+      font-size: 10px;
+    }
+
+    #tbl tbody td {
+      padding: 11px 10px !important;
+      vertical-align: middle !important;
+      border: 0 !important;
+      border-bottom: 1px solid #dfe3e8 !important;
+      background: transparent !important;
+      color: #536779 !important;
+      white-space: nowrap !important;
+      text-align: center !important;
+    }
+
+    #tbl tbody tr:nth-child(even) {
+      background: #f7f8fa !important;
+    }
+
+    #tbl tbody tr:nth-child(odd) {
+      background: #fff !important;
+    }
+
+    #tbl tbody tr:hover {
+      background: #f1f4f8 !important;
+    }
+
+    #tbl tbody tr:last-child td {
+      border-bottom: 2px solid #435ebe !important;
+    }
+
+    #tbl .td-endereco,
+    #tbl .td-responsavel {
+      max-width: none !important;
+      text-align: center !important;
+    }
+
+    #tbl .td-endereco .cell-truncate,
+    #tbl .td-responsavel .cell-truncate {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center !important;
+    }
+
+    #tbl .table-actions {
+      min-width: 210px;
+      width: 210px;
+      white-space: nowrap;
+      text-align: center !important;
+    }
+
+    .beneficiarios-pagination-wrap {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e9ecef;
+      background: #fff !important;
+    }
+
+    @media (max-width: 991.98px) {
+      .beneficiarios-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .beneficiarios-toolbar-search {
+        margin-left: 0;
+        width: 100%;
+      }
+
+      .beneficiarios-search-wrap {
+        width: 100%;
+      }
+
+      .beneficiarios-search-input {
+        min-width: 0;
+        max-width: 100%;
+        flex: 1 1 auto;
+      }
+    }
+
   </style>
 </head>
 
@@ -842,27 +1135,49 @@ try {
         </div>
 
         <section class="section mb-4">
-          <div class="card">
-            <div class="card-header d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
-              <span>Lista de Beneficiários (via ajudas_entregas)</span>
-              <div class="d-flex gap-2 align-items-center">
-                <input id="qLive" name="q" value="<?= e($qPrefill) ?>" class="form-control form-control-sm" placeholder="Buscar por ID, CPF, nome, telefone, endereço, número ou responsável..." autocomplete="off" />
-                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClear"><i class="bi bi-x-circle"></i></button>
-              </div>
+          <div class="card beneficiarios-list-card">
+            <div class="card-header">
+              <h4>Lista de Beneficiários (via ajudas_entregas)</h4>
+              <p><?= count($rows) ?> registros encontrados</p>
             </div>
 
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle w-100 text-nowrap mb-0" id="tbl">
-                  <thead class="table-light">
+            <div class="card-body beneficiarios-list-body">
+              <div class="beneficiarios-toolbar">
+                <div class="beneficiarios-toolbar-left"></div>
+
+                <div class="beneficiarios-toolbar-search">
+                  <div class="beneficiarios-search-wrap">
+                    <input id="qLive" name="q" value="<?= e($qPrefill) ?>" class="beneficiarios-search-input" placeholder="Buscar por ID, CPF, nome, telefone, endereço ou responsável..." autocomplete="off" />
+                    <button class="beneficiarios-search-clear" type="button" id="btnClear" title="Limpar pesquisa" aria-label="Limpar pesquisa"><i class="bi bi-x-circle"></i></button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-responsive beneficiarios-table-responsive">
+                <table class="table table-hover align-middle w-100 text-nowrap mb-0" id="tbl">
+                  <thead>
                     <tr>
-                      <th>CPF</th>
-                      <th>Nome</th>
-                      <th class="text-end">Valor (última entrega)</th>
-                      <th>Número</th>
-                      <th>Endereço</th>
-                      <th>Telefone</th>
-                      <th>Responsável (última)</th>
+                      <th class="sortable-th" data-sort-key="cpf" data-sort-type="digits">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por CPF">CPF <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th sort-asc" data-sort-key="nome" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por nome">Nome <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th text-center" data-sort-key="valor" data-sort-type="number">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por valor da última entrega">Valor (última entrega) <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="numero" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por número">Número <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="endereco" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por endereço">Endereço <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="telefone" data-sort-type="digits">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por telefone">Telefone <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="responsavel" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por responsável">Responsável (última) <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
                       <th class="text-center text-nowrap">Ações</th>
                     </tr>
                   </thead>
@@ -885,10 +1200,11 @@ try {
                           data-telefone="<?= e($telDigits) ?>"
                           data-endereco="<?= e($rowEnd) ?>"
                           data-numero="<?= e(mb_strtolower($rowNum, 'UTF-8')) ?>"
+                          data-valor="<?= e((string)($r['valor_ultima'] ?? '')) ?>"
                           data-responsavel="<?= e($respKey) ?>">
                           <td class="nowrap"><?= e(formatCpf($r['cpf'])) ?></td>
                           <td><?= e((string)$r['nome']) ?></td>
-                          <td class="text-end"><?= e(moneyBR($r['valor_ultima'] ?? null)) ?></td>
+                          <td class="text-center"><?= e(moneyBR($r['valor_ultima'] ?? null)) ?></td>
                           <td><?= e((string)$r['numero']) ?></td>
                           <td class="td-endereco">
                             <div class="cell-truncate" title="<?= e((string)$r['endereco']) ?>"><?= e((string)$r['endereco']) ?></div>
@@ -923,27 +1239,27 @@ try {
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            <div class="card-footer tfoot-pager">
-              <div class="custom-pagination-bar">
-                <div class="custom-pagination-left">
-                  <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
-                  <button type="button" class="btn btn-outline-secondary btn-sm" id="btnNext">Próximo</button>
-                </div>
+              <div class="beneficiarios-pagination-wrap">
+                <div class="custom-pagination-bar">
+                  <div class="custom-pagination-left">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnNext">Próximo</button>
+                  </div>
 
-                <div class="custom-pagination-center">
-                  <span class="custom-page-info" id="lblPagina">Página 1 de 1</span>
-                </div>
+                  <div class="custom-pagination-center">
+                    <span class="custom-page-info" id="lblPagina">Página 1 de 1</span>
+                  </div>
 
-                <div class="custom-pagination-right">
-                  <label for="selPerPage" class="custom-length-label">por página</label>
-                  <select id="selPerPage" class="custom-length-select">
-                    <option value="10" selected>10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                  </select>
+                  <div class="custom-pagination-right">
+                    <label for="selPerPage" class="custom-length-label">por página</label>
+                    <select id="selPerPage" class="custom-length-select">
+                      <option value="10" selected>10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1123,8 +1439,88 @@ try {
       let page = 1;
       let perPage = parseInt(selPerPage.value, 10) || 10;
       let filtered = dataRows.slice();
+      let sortState = {
+        key: 'nome',
+        type: 'text',
+        dir: 'asc'
+      };
+
+      const sortableHeaders = Array.from(document.querySelectorAll('#tbl thead th.sortable-th'));
+
+      function normalizeText(value) {
+        return String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim();
+      }
+
+      function getSortValue(tr, key, type) {
+        let value = tr.dataset[key] || '';
+
+        if (type === 'number') {
+          if (value === '' || value === null || typeof value === 'undefined') return Number.NEGATIVE_INFINITY;
+          const raw = String(value).trim();
+          if (raw.includes(',')) {
+            return Number(raw.replace(/\./g, '').replace(',', '.')) || 0;
+          }
+          return Number(raw) || 0;
+        }
+
+        if (type === 'digits') {
+          return String(value).replace(/\D+/g, '');
+        }
+
+        return normalizeText(value);
+      }
+
+      function updateSortHeaders() {
+        sortableHeaders.forEach(th => {
+          th.classList.remove('sort-asc', 'sort-desc');
+          const key = th.dataset.sortKey || '';
+          const btn = th.querySelector('.sort-header-btn');
+          if (!btn) return;
+
+          if (key === sortState.key) {
+            th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+            btn.setAttribute('aria-sort', sortState.dir === 'asc' ? 'ascending' : 'descending');
+          } else {
+            btn.removeAttribute('aria-sort');
+          }
+        });
+      }
+
+      function applySort() {
+        if (!sortState.key) return;
+
+        const dir = sortState.dir === 'desc' ? -1 : 1;
+        const key = sortState.key;
+        const type = sortState.type || 'text';
+
+        filtered.sort((a, b) => {
+          const av = getSortValue(a, key, type);
+          const bv = getSortValue(b, key, type);
+
+          if (type === 'number') {
+            if (av < bv) return -1 * dir;
+            if (av > bv) return 1 * dir;
+            return normalizeText(a.dataset.nome).localeCompare(normalizeText(b.dataset.nome), 'pt-BR') * dir;
+          }
+
+          const cmp = String(av).localeCompare(String(bv), 'pt-BR', {
+            numeric: true,
+            sensitivity: 'base'
+          });
+
+          if (cmp !== 0) return cmp * dir;
+          return normalizeText(a.dataset.nome).localeCompare(normalizeText(b.dataset.nome), 'pt-BR') * dir;
+        });
+      }
 
       function renderPage() {
+        applySort();
+        updateSortHeaders();
+
         const total = filtered.length;
         const pages = Math.max(1, Math.ceil(total / perPage));
         if (page > pages) page = pages;
@@ -1133,13 +1529,21 @@ try {
         const start = (page - 1) * perPage;
         const end = start + perPage;
 
-        dataRows.forEach(r => r.style.display = 'none');
+        dataRows.forEach(r => {
+          r.style.display = 'none';
+          tbody.appendChild(r);
+        });
 
         if (total === 0) {
-          if (noResultsRow) noResultsRow.classList.remove('d-none');
+          if (noResultsRow) {
+            noResultsRow.classList.remove('d-none');
+            tbody.appendChild(noResultsRow);
+          }
         } else {
           if (noResultsRow) noResultsRow.classList.add('d-none');
+          filtered.forEach(r => tbody.appendChild(r));
           filtered.slice(start, end).forEach(r => r.style.display = '');
+          if (noResultsRow) tbody.appendChild(noResultsRow);
         }
 
         lblPagina.textContent = `Página ${page} de ${pages}`;
@@ -1149,20 +1553,21 @@ try {
 
       function applyFilter() {
         const q = (inpSearch.value || '').trim().toLowerCase();
+        const qText = normalizeText(q);
         const qDigits = q.replace(/\D+/g, '');
 
         filtered = dataRows.filter(tr => {
           if (!q) return true;
 
-          const nome = tr.dataset.nome || '';
+          const nome = normalizeText(tr.dataset.nome || '');
           const id = tr.dataset.id || '';
           const cpf = tr.dataset.cpf || '';
           const tel = tr.dataset.telefone || '';
-          const end = tr.dataset.endereco || '';
-          const num = tr.dataset.numero || '';
-          const resp = tr.dataset.responsavel || '';
+          const end = normalizeText(tr.dataset.endereco || '');
+          const num = normalizeText(tr.dataset.numero || '');
+          const resp = normalizeText(tr.dataset.responsavel || '');
 
-          const hitText = nome.includes(q) || end.includes(q) || num.includes(q) || resp.includes(q);
+          const hitText = nome.includes(qText) || end.includes(qText) || num.includes(qText) || resp.includes(qText);
           const hitDigits = qDigits && (id === qDigits || id.startsWith(qDigits) || cpf.startsWith(qDigits) || tel.includes(qDigits));
           return hitText || !!hitDigits;
         });
@@ -1170,6 +1575,27 @@ try {
         page = 1;
         renderPage();
       }
+
+      sortableHeaders.forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sortKey || '';
+          const type = th.dataset.sortType || 'text';
+          if (!key) return;
+
+          if (sortState.key === key) {
+            sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortState = {
+              key,
+              type,
+              dir: 'asc'
+            };
+          }
+
+          page = 1;
+          renderPage();
+        });
+      });
 
       inpSearch.addEventListener('input', applyFilter);
 
