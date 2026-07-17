@@ -1767,8 +1767,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                             const fontHeader = addFont({ bold: true, size: 11 });
                             const blackBorder = addBorder();
 
-                            const styleTitle = addStyle({ fontId: fontTitle, horizontal: 'center', vertical: 'center', wrap: true });
-                            const styleMeta = addStyle({ fontId: fontMeta, horizontal: 'center', vertical: 'center', wrap: true });
+                            const styleTitle = addStyle({ fontId: fontTitle, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
+                            const styleMeta = addStyle({ fontId: fontMeta, borderId: blackBorder, horizontal: 'left', vertical: 'center', wrap: true });
                             const styleHeader = addStyle({ fontId: fontHeader, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
                             const styleCenter = addStyle({ borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
                             const styleLeft = addStyle({ borderId: blackBorder, horizontal: 'left', vertical: 'center', wrap: true });
