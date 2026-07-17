@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/src/Core/SqlStatementSplitter.php';
+require dirname(__DIR__) . '/src/Core/MigrationException.php';
+require dirname(__DIR__) . '/src/Core/MigrationRunner.php';
 
+use App\Core\MigrationRunner;
 use App\Core\SqlStatementSplitter;
 
 function migrationAssertSame(mixed $expected, mixed $actual, string $message): void
@@ -37,10 +40,17 @@ foreach ($migrationPaths as $path) {
         'Nome de migration inválido: ' . $name
     );
     migrationAssertSame($expectedVersion, (int) $matches[1], 'A sequência de migrations deve ser contínua.');
+    migrationAssertSame(
+        true,
+        MigrationRunner::supportsVersion((int) $matches[1]),
+        'Toda migration versionada deve estar homologada para execução automática.'
+    );
     $sql = file_get_contents($path);
     migrationAssertSame(true, is_string($sql) && trim($sql) !== '', 'Migration vazia: ' . $name);
     migrationAssertSame(true, count(SqlStatementSplitter::split((string) $sql)) > 0, 'Migration sem comandos: ' . $name);
     ++$expectedVersion;
 }
+
+migrationAssertSame(false, MigrationRunner::supportsVersion($expectedVersion), 'Versão futura não pode ser executada sem homologação.');
 
 echo "MigrationRunnerTest: OK\n";

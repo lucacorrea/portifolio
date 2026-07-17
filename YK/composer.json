@@ -11,7 +11,8 @@
         "test": [
             "@php tests/EnvironmentTest.php",
             "@php tests/ClientPdfImportTest.php",
-            "@php tests/MigrationRunnerTest.php"
+            "@php tests/MigrationRunnerTest.php",
+            "@php tests/WebMigrationCoordinatorTest.php"
         ]
     }
 }

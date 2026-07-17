@@ -15,27 +15,27 @@ final class MigrationRunner
     {
     }
 
-    public function run(string $directory): void
+    public function run(string $directory, int $lockWaitSeconds = 20): bool
     {
         $files = $this->migrationFiles($directory);
         if ($files === []) {
-            return;
+            return true;
         }
         if ($this->historyIsCurrent($files)) {
-            return;
+            return true;
         }
 
         $lockName = $this->lockName();
         $lockAcquired = false;
         $currentMigration = 'bootstrap';
         try {
-            $lockAcquired = $this->acquireLock($lockName);
+            $lockAcquired = $this->acquireLock($lockName, $lockWaitSeconds);
             if (!$lockAcquired) {
-                throw new MigrationException('Outra atualização do banco ainda está em andamento.');
+                return false;
             }
 
             if ($this->historyIsCurrent($files)) {
-                return;
+                return true;
             }
 
             $this->assertCompatibleServer();
@@ -64,15 +64,19 @@ final class MigrationRunner
                 }
                 $currentMigration = $file['name'];
                 $startedAt = hrtime(true);
+                if (!self::supportsVersion($file['version'])) {
+                    throw new MigrationException('A migration ainda não foi homologada para execução automática.');
+                }
                 $this->preflight($file['version']);
                 $this->executeSql($file['sql']);
                 $postcondition = $this->knownPostcondition($file['version']);
-                if ($postcondition === false) {
+                if ($postcondition !== true) {
                     throw new MigrationException('A migration não atingiu o estado esperado.');
                 }
                 $elapsedMilliseconds = (int) ((hrtime(true) - $startedAt) / 1_000_000);
                 $this->recordMigration($file, 'applied', $elapsedMilliseconds);
             }
+            return true;
         } catch (Throwable $exception) {
             if ($this->connection->inTransaction()) {
                 $this->connection->rollBack();
@@ -146,10 +150,17 @@ final class MigrationRunner
         return 'yk_migrate_' . substr(hash('sha256', $database), 0, 40);
     }
 
-    private function acquireLock(string $name): bool
+    public static function supportsVersion(int $version): bool
     {
-        $statement = $this->connection->prepare('SELECT GET_LOCK(:lock_name, 20)');
-        $statement->execute(['lock_name' => $name]);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], true);
+    }
+
+    private function acquireLock(string $name, int $waitSeconds): bool
+    {
+        $statement = $this->connection->prepare('SELECT GET_LOCK(:lock_name, :wait_seconds)');
+        $statement->bindValue('lock_name', $name);
+        $statement->bindValue('wait_seconds', max(0, $waitSeconds), PDO::PARAM_INT);
+        $statement->execute();
         return (int) $statement->fetchColumn() === 1;
     }
 

@@ -20,10 +20,13 @@ function environmentAssertSame(mixed $expected, mixed $actual, string $message):
 }
 
 $previousValue = getenv('DB_AUTO_MIGRATE');
+$previousWebValue = getenv('DB_WEB_MIGRATIONS');
 
 try {
     putenv('DB_AUTO_MIGRATE');
+    putenv('DB_WEB_MIGRATIONS');
     unset($_ENV['DB_AUTO_MIGRATE'], $_SERVER['DB_AUTO_MIGRATE']);
+    unset($_ENV['DB_WEB_MIGRATIONS'], $_SERVER['DB_WEB_MIGRATIONS']);
 
     $environment = new Environment(__DIR__ . '/missing.env');
 
@@ -40,6 +43,12 @@ try {
         $environment->get('DB_AUTO_MIGRATE', 'false'),
         'DB_AUTO_MIGRATE deve aceitar o valor definido no ambiente.'
     );
+
+    environmentAssertSame(
+        'true',
+        $environment->get('DB_WEB_MIGRATIONS', 'true'),
+        'DB_WEB_MIGRATIONS deve permitir atualização interna por padrão.'
+    );
 } finally {
     if ($previousValue === false) {
         putenv('DB_AUTO_MIGRATE');
@@ -48,6 +57,14 @@ try {
         putenv('DB_AUTO_MIGRATE=' . $previousValue);
         $_ENV['DB_AUTO_MIGRATE'] = $previousValue;
         $_SERVER['DB_AUTO_MIGRATE'] = $previousValue;
+    }
+    if ($previousWebValue === false) {
+        putenv('DB_WEB_MIGRATIONS');
+        unset($_ENV['DB_WEB_MIGRATIONS'], $_SERVER['DB_WEB_MIGRATIONS']);
+    } else {
+        putenv('DB_WEB_MIGRATIONS=' . $previousWebValue);
+        $_ENV['DB_WEB_MIGRATIONS'] = $previousWebValue;
+        $_SERVER['DB_WEB_MIGRATIONS'] = $previousWebValue;
     }
 }
 
