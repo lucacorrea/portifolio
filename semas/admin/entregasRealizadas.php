@@ -501,26 +501,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
         #tabelaEntregas th {
             background-color: #435ebe;
             color: white;
-            font-size: 15px;
-            font-weight: 700;
+            font-weight: 600;
             white-space: nowrap;
             padding: 12px 10px;
-            border: 1px solid #314a9b;
+            border: none;
             position: sticky;
             top: 0;
             z-index: 10;
-        }
-
-        #tabelaEntregas thead tr:first-child th:first-child {
-            border-top-left-radius: 6px;
-        }
-
-        #tabelaEntregas thead tr:first-child th:last-child {
-            border-top-right-radius: 6px;
-        }
-
-        .card-header {
-            border-bottom: 1px solid #d9deea;
         }
 
         #tabelaEntregas td {
@@ -894,6 +881,72 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                 justify-content: center;
                 width: 100%;
             }
+        }
+
+        /* =========================================================
+           TABELA INICIAL — VISUAL LIMPO, SEM CABEÇALHO ROXO
+        ========================================================= */
+        #tabelaEntregas {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            border-spacing: 0 !important;
+            background: #fff;
+        }
+
+        #tabelaEntregas thead th {
+            background: #fff !important;
+            color: #495057 !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+            padding: 13px 10px !important;
+            border: 0 !important;
+            border-bottom: 2px solid #d7dce2 !important;
+            white-space: nowrap;
+            position: static !important;
+        }
+
+        #tabelaEntregas tbody td {
+            padding: 11px 10px !important;
+            vertical-align: middle !important;
+            border: 0 !important;
+            border-bottom: 1px solid #dfe3e8 !important;
+            background: transparent !important;
+            color: #536779;
+            white-space: nowrap;
+        }
+
+        #tabelaEntregas tbody tr:nth-child(even) {
+            background: #f7f8fa !important;
+        }
+
+        #tabelaEntregas tbody tr:nth-child(odd) {
+            background: #fff !important;
+        }
+
+        #tabelaEntregas tbody tr:hover {
+            background: #f1f4f8 !important;
+        }
+
+        #tabelaEntregas tbody tr:last-child td {
+            border-bottom: 2px solid #435ebe !important;
+        }
+
+        #tabelaEntregas tfoot td {
+            background: #fff !important;
+            color: #536779 !important;
+            border: 0 !important;
+            border-top: 1px solid #e3e7eb !important;
+            border-bottom: 1px solid #e3e7eb !important;
+            padding: 10px 8px !important;
+            font-weight: 700 !important;
+        }
+
+        /* Remove eventual cor aplicada pelo DataTables durante o carregamento. */
+        #tabelaEntregas_wrapper .dataTables_scrollHead table thead th,
+        #tabelaEntregas_wrapper .dataTables_scrollBody table thead th {
+            background: #fff !important;
+            color: #495057 !important;
         }
 
         @media print {
@@ -1585,7 +1638,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
 
             let table = $('#tabelaEntregas').DataTable({
                 dom: 'Brt',
-                buttons: [{
+                buttons: [
+                    {
                         extend: 'excelHtml5',
                         text: '<i class="bi bi-file-earmark-excel me-1"></i>Excel',
                         className: 'btn btn-sm btn-success',
@@ -1597,6 +1651,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                             <?php else: ?>
                                 periodo = 'Todas as entregas\n';
                             <?php endif; ?>
+
+                            /* O \n cria uma linha/célula separada no Excel. */
                             return periodo + 'Total: <?= count($entregas) ?> registros | Valor Total: <?= formatarMoeda($total_valor_filtrado) ?>';
                         },
                         exportOptions: {
@@ -1605,7 +1661,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                                 header: function(data, column) {
                                     return normalizarTextoExportacao(data, column);
                                 },
-                                body: function(data, row, column, node) {
+                                body: function(data, row, column) {
                                     return normalizarTextoExportacao(data, column);
                                 },
                                 footer: function(data, column) {
@@ -1615,104 +1671,61 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                         },
                         customize: function(xlsx) {
                             const sheet = xlsx.xl.worksheets['sheet1.xml'];
-                            const styles = xlsx.xl['styles.xml'];
 
-                            const larguras = [18, 38, 16, 22, 10, 14, 30];
+                            /* Largura suficiente para mostrar os dados sem clicar na célula. */
+                            const larguras = [24, 42, 18, 28, 10, 16, 36];
                             $('col', sheet).each(function(i) {
-                                if (larguras[i]) {
-                                    $(this).attr('width', larguras[i]);
-                                    $(this).attr('customWidth', 1);
+                                if (larguras[i] !== undefined) {
+                                    $(this)
+                                        .attr('width', larguras[i])
+                                        .attr('customWidth', '1');
                                 }
                             });
 
-                            function appendXml(parent, xml) {
-                                const node = $.parseXML(xml).documentElement;
-                                parent.appendChild(styles.importNode(node, true));
-                            }
-
-                            const fonts = $('fonts', styles)[0];
-                            const fills = $('fills', styles)[0];
-                            const borders = $('borders', styles)[0];
-                            const cellXfs = $('cellXfs', styles)[0];
-
-                            const titleFontId = parseInt($(fonts).attr('count'), 10);
-                            appendXml(fonts, '<font><sz val="16"/><b/><color rgb="FF1F3864"/><name val="Calibri"/></font>');
-                            $(fonts).attr('count', titleFontId + 1);
-
-                            const headerFontId = parseInt($(fonts).attr('count'), 10);
-                            appendXml(fonts, '<font><sz val="12"/><b/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>');
-                            $(fonts).attr('count', headerFontId + 1);
-
-                            const headerFillId = parseInt($(fills).attr('count'), 10);
-                            appendXml(fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF435EBE"/><bgColor indexed="64"/></patternFill></fill>');
-                            $(fills).attr('count', headerFillId + 1);
-
-                            const borderId = parseInt($(borders).attr('count'), 10);
-                            appendXml(borders, '<border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>');
-                            $(borders).attr('count', borderId + 1);
-
-                            function addCellStyle(xml) {
-                                const styleId = parseInt($(cellXfs).attr('count'), 10);
-                                appendXml(cellXfs, xml);
-                                $(cellXfs).attr('count', styleId + 1);
-                                return styleId;
-                            }
-
-                            const titleStyle = addCellStyle(
-                                '<xf numFmtId="0" fontId="' + titleFontId + '" fillId="0" borderId="' + borderId + '" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
-                            );
-
-                            const infoStyle = addCellStyle(
-                                '<xf numFmtId="0" fontId="0" fillId="0" borderId="' + borderId + '" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
-                            );
-
-                            const headerStyle = addCellStyle(
-                                '<xf numFmtId="0" fontId="' + headerFontId + '" fillId="' + headerFillId + '" borderId="' + borderId + '" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
-                            );
-
-                            const bodyCenterStyle = addCellStyle(
-                                '<xf numFmtId="0" fontId="0" fillId="0" borderId="' + borderId + '" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
-                            );
-
-                            const bodyLeftStyle = addCellStyle(
-                                '<xf numFmtId="0" fontId="0" fillId="0" borderId="' + borderId + '" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
-                            );
-
+                            /* Centraliza o título em A1:G1. */
                             let mergeCells = $('mergeCells', sheet);
                             if (!mergeCells.length) {
-                                const worksheet = $('worksheet', sheet)[0];
-                                const mergeNode = sheet.createElement('mergeCells');
-                                mergeNode.setAttribute('count', '0');
-                                worksheet.appendChild(mergeNode);
+                                const mergeCellsNode = sheet.createElement('mergeCells');
+                                mergeCellsNode.setAttribute('count', '0');
+                                const sheetData = $('sheetData', sheet)[0];
+                                sheetData.parentNode.insertBefore(mergeCellsNode, sheetData.nextSibling);
                                 mergeCells = $('mergeCells', sheet);
                             }
 
-                            const titleMerge = sheet.createElement('mergeCell');
-                            titleMerge.setAttribute('ref', 'A1:G1');
-                            mergeCells[0].appendChild(titleMerge);
-                            mergeCells.attr('count', mergeCells.children('mergeCell').length);
+                            if (!mergeCells.find('mergeCell[ref="A1:G1"]').length) {
+                                const mergeCell = sheet.createElement('mergeCell');
+                                mergeCell.setAttribute('ref', 'A1:G1');
+                                mergeCells[0].appendChild(mergeCell);
+                                mergeCells.attr('count', mergeCells.children('mergeCell').length);
+                            }
 
+                            /*
+                             * Estilos nativos do DataTables Buttons:
+                             * 25 = célula normal com borda preta fina
+                             * 27 = célula em negrito com borda preta fina
+                             * 54 = texto centralizado e em negrito
+                             * Evita alterar styles.xml e, portanto, evita arquivo reparado/corrompido.
+                             */
                             $('row', sheet).each(function() {
                                 const rowNum = parseInt($(this).attr('r'), 10) || 0;
 
                                 if (rowNum === 1) {
                                     $(this).attr('ht', '26').attr('customHeight', '1');
-                                } else if (rowNum === 3) {
-                                    $(this).attr('ht', '22').attr('customHeight', '1');
+                                } else if (rowNum === 2 || rowNum === 3) {
+                                    $(this).attr('ht', '20').attr('customHeight', '1');
+                                } else {
+                                    $(this).attr('ht', '28').attr('customHeight', '1');
                                 }
 
                                 $('c', this).each(function() {
-                                    const ref = $(this).attr('r') || '';
-                                    const col = ref.replace(/[0-9]/g, '');
-
                                     if (rowNum === 1) {
-                                        $(this).attr('s', titleStyle);
-                                    } else if (rowNum === 2) {
-                                        $(this).attr('s', infoStyle);
-                                    } else if (rowNum === 3) {
-                                        $(this).attr('s', headerStyle);
+                                        $(this).attr('s', '54');
+                                    } else if (rowNum === 2 || rowNum === 3) {
+                                        $(this).attr('s', '0');
+                                    } else if (rowNum === 4) {
+                                        $(this).attr('s', '27');
                                     } else {
-                                        $(this).attr('s', col === 'B' ? bodyLeftStyle : bodyCenterStyle);
+                                        $(this).attr('s', '25');
                                     }
                                 });
                             });
@@ -1721,7 +1734,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                     {
                         extend: 'print',
                         text: '<i class="bi bi-printer me-1"></i>Imprimir',
-                        className: 'btn btn-sm btn-primary',
+                        className: 'btn btn-sm btn-secondary',
                         title: '',
                         messageTop: function() {
                             let periodo = '';
@@ -1748,67 +1761,68 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                                 <style>
                                     @page {
                                         size: A4 landscape;
-                                        margin: 8mm;
+                                        margin: 7mm;
                                     }
 
-                                    body {
+                                    html, body {
                                         font-family: Arial, sans-serif !important;
-                                        color: #111 !important;
+                                        color: #000 !important;
+                                        background: #fff !important;
                                     }
 
                                     .print-header {
-                                        border: 1px solid #000;
-                                        padding: 10px 12px;
-                                        margin-bottom: 10px;
+                                        margin: 0 0 8px 0 !important;
+                                        padding: 0 !important;
+                                        border: 0 !important;
                                     }
 
                                     .print-header h3 {
                                         margin: 0 0 8px 0 !important;
                                         text-align: center !important;
-                                        font-size: 20px !important;
-                                        font-weight: 700 !important;
+                                        font-size: 18px !important;
                                     }
 
                                     .print-header p {
                                         margin: 3px 0 !important;
-                                        font-size: 12px !important;
+                                        font-size: 11px !important;
                                     }
 
-                                    table.dataTable {
+                                    table {
                                         width: 100% !important;
                                         border-collapse: collapse !important;
-                                        border: 1px solid #000 !important;
-                                        font-size: 10px !important;
+                                        table-layout: auto !important;
+                                        font-size: 9px !important;
                                     }
 
-                                    table.dataTable thead th {
-                                        font-size: 11px !important;
+                                    table thead th {
+                                        background: #fff !important;
+                                        color: #000 !important;
                                         font-weight: 700 !important;
                                         text-align: center !important;
-                                        background: #f0f0f0 !important;
-                                        color: #000 !important;
                                         border: 1px solid #000 !important;
-                                        padding: 5px 4px !important;
+                                        padding: 4px 3px !important;
                                     }
 
-                                    table.dataTable tbody td,
-                                    table.dataTable tfoot td {
+                                    table tbody td {
+                                        background: #fff !important;
+                                        color: #000 !important;
                                         border: 1px solid #000 !important;
-                                        padding: 4px !important;
+                                        padding: 3px !important;
                                         vertical-align: middle !important;
                                     }
 
-                                    table.dataTable tbody td:nth-child(2) {
-                                        text-align: left !important;
-                                    }
-
-                                    table.dataTable tbody td:not(:nth-child(2)) {
-                                        text-align: center !important;
+                                    table tbody tr:nth-child(even) td,
+                                    table tbody tr:nth-child(odd) td {
+                                        background: #fff !important;
                                     }
                                 </style>
                             `);
 
-                            doc.find('body').css('background', '#fff');
+                            doc.find('body').css({
+                                margin: '0',
+                                padding: '0'
+                            });
+
                             doc.find('table').removeClass('table-striped table-hover');
                         }
                     }
@@ -1828,7 +1842,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                 scrollCollapse: true,
                 fixedHeader: true,
                 responsive: false,
-                columnDefs: [{
+                columnDefs: [
+                    {
                         orderable: false,
                         targets: [7],
                         className: 'dt-body-center text-center'
