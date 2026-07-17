@@ -7,6 +7,7 @@
         "smalot/pdfparser": "^2.12"
     },
     "scripts": {
+        "migrate": "@php scripts/migrate.php",
         "test": [
             "@php tests/EnvironmentTest.php",
             "@php tests/ClientPdfImportTest.php",

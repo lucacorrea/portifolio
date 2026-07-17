@@ -28,16 +28,16 @@ try {
     $environment = new Environment(__DIR__ . '/missing.env');
 
     environmentAssertSame(
-        'true',
-        $environment->get('DB_AUTO_MIGRATE', 'true'),
+        'false',
+        $environment->get('DB_AUTO_MIGRATE', 'false'),
         'DB_AUTO_MIGRATE deve aceitar o valor padrão usado pelo bootstrap.'
     );
 
-    putenv('DB_AUTO_MIGRATE=false');
+    putenv('DB_AUTO_MIGRATE=true');
 
     environmentAssertSame(
-        'false',
-        $environment->get('DB_AUTO_MIGRATE', 'true'),
+        'true',
+        $environment->get('DB_AUTO_MIGRATE', 'false'),
         'DB_AUTO_MIGRATE deve aceitar o valor definido no ambiente.'
     );
 } finally {
