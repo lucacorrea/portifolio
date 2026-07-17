@@ -903,6 +903,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
             text-align: center !important;
             padding: 13px 10px !important;
             border: 0 !important;
+            border-top: 1px solid #d7dce2 !important;
             border-bottom: 2px solid #d7dce2 !important;
             white-space: nowrap;
             position: static !important;
@@ -944,8 +945,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
             font-weight: 700 !important;
         }
 
-        #tabelaEntregas tfoot td:nth-child(4) {
+        #tabelaEntregas tfoot td:first-child {
             text-align: right !important;
+            padding-right: 14px !important;
         }
 
         #tabelaEntregas tfoot td:nth-child(5),
@@ -1659,18 +1661,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                         text: '<i class="bi bi-file-earmark-excel me-1"></i>Excel',
                         className: 'btn btn-sm btn-success',
                         title: null,
-                        messageTop: function() {
-                            let periodo = '';
-                            <?php if ($tem_filtro_data): ?>
-                                periodo = 'Período: <?= date("d/m/Y", strtotime($filtro_data_inicio)) ?> - <?= date("d/m/Y", strtotime($filtro_data_fim)) ?>';
-                            <?php else: ?>
-                                periodo = 'Todas as entregas';
-                            <?php endif; ?>
-
-                            return 'ENTREGAS REALIZADAS - ANEXO\n' +
-                                periodo + '\n' +
-                                'Total: <?= count($entregas) ?> registros | Valor Total: <?= formatarMoeda($total_valor_filtrado) ?>';
-                        },
+                        filename: 'Entregas Realizadas - ANEXO',
                         exportOptions: {
                             columns: [0, 1, 2, 3, 4, 5, 6],
                             format: {
@@ -1688,26 +1679,19 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                         customize: function(xlsx) {
                             const sheet = xlsx.xl.worksheets['sheet1.xml'];
                             const styles = xlsx.xl['styles.xml'];
+                            const sharedStrings = xlsx.xl['sharedStrings.xml'];
+                            const sheetData = $('sheetData', sheet)[0];
 
-                            const larguras = [24, 42, 18, 28, 10, 16, 38];
-                            $('col', sheet).each(function(i) {
-                                if (larguras[i] !== undefined) {
-                                    $(this)
-                                        .attr('width', larguras[i])
-                                        .attr('customWidth', '1');
-                                }
-                            });
+                            const periodoTexto = <?php if ($tem_filtro_data): ?>
+                                'Período: <?= date("d/m/Y", strtotime($filtro_data_inicio)) ?> - <?= date("d/m/Y", strtotime($filtro_data_fim)) ?>';
+                            <?php else: ?>
+                                'Todas as entregas';
+                            <?php endif; ?>
 
-                            function excelColName(index) {
-                                let name = '';
-                                index++;
-                                while (index > 0) {
-                                    const rem = (index - 1) % 26;
-                                    name = String.fromCharCode(65 + rem) + name;
-                                    index = Math.floor((index - 1) / 26);
-                                }
-                                return name;
-                            }
+                            const totalTexto = 'Total: <?= count($entregas) ?> registros | Valor Total: <?= formatarMoeda($total_valor_filtrado) ?>';
+                            const agora = new Date();
+                            const geradoTexto = 'Gerado em: ' + agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+                            const tituloTexto = 'ENTREGAS REALIZADAS - ANEXO';
 
                             function appendXml(parent, xml) {
                                 const parsed = $.parseXML('<root>' + xml + '</root>');
@@ -1721,7 +1705,18 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                                 const id = $('font', fonts).length;
                                 const bold = options.bold ? '<b/>' : '';
                                 const size = options.size || 11;
-                                appendXml(fonts, '<font>' + bold + '<sz val="' + size + '"/><color rgb="FF000000"/><name val="Calibri"/><family val="2"/></font>');
+
+                                appendXml(
+                                    fonts,
+                                    '<font>' +
+                                        bold +
+                                        '<sz val="' + size + '"/>' +
+                                        '<color rgb="FF000000"/>' +
+                                        '<name val="Calibri"/>' +
+                                        '<family val="2"/>' +
+                                    '</font>'
+                                );
+
                                 fonts.attr('count', $('font', fonts).length);
                                 return id;
                             }
@@ -1729,7 +1724,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                             function addBorder() {
                                 const borders = $('borders', styles);
                                 const id = $('border', borders).length;
-                                appendXml(borders,
+
+                                appendXml(
+                                    borders,
                                     '<border>' +
                                         '<left style="thin"><color rgb="FF000000"/></left>' +
                                         '<right style="thin"><color rgb="FF000000"/></right>' +
@@ -1738,6 +1735,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                                         '<diagonal/>' +
                                     '</border>'
                                 );
+
                                 borders.attr('count', $('border', borders).length);
                                 return id;
                             }
@@ -1747,78 +1745,205 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                                 const id = $('xf', cellXfs).length;
                                 const fontId = options.fontId || 0;
                                 const borderId = options.borderId || 0;
-                                const applyBorder = options.borderId ? ' applyBorder="1"' : '';
-                                const applyFont = options.fontId ? ' applyFont="1"' : '';
                                 const horizontal = options.horizontal || 'center';
                                 const vertical = options.vertical || 'center';
                                 const wrap = options.wrap ? ' wrapText="1"' : '';
+                                const applyFont = options.fontId ? ' applyFont="1"' : '';
+                                const applyBorder = options.borderId ? ' applyBorder="1"' : '';
 
-                                appendXml(cellXfs,
+                                appendXml(
+                                    cellXfs,
                                     '<xf numFmtId="0" fontId="' + fontId + '" fillId="0" borderId="' + borderId + '" xfId="0"' + applyFont + applyBorder + ' applyAlignment="1">' +
                                         '<alignment horizontal="' + horizontal + '" vertical="' + vertical + '"' + wrap + '/>' +
                                     '</xf>'
                                 );
+
                                 cellXfs.attr('count', $('xf', cellXfs).length);
                                 return id;
                             }
 
                             const fontTitle = addFont({ bold: true, size: 14 });
+                            const fontMeta = addFont({ bold: true, size: 11 });
                             const fontHeader = addFont({ bold: true, size: 11 });
                             const blackBorder = addBorder();
 
-                            const styleTitle = addStyle({ fontId: fontTitle, horizontal: 'center', vertical: 'center' });
-                            const styleMeta = addStyle({ fontId: fontHeader, horizontal: 'center', vertical: 'center' });
+                            const styleTitle = addStyle({ fontId: fontTitle, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
+                            const styleMeta = addStyle({ fontId: fontMeta, borderId: blackBorder, horizontal: 'left', vertical: 'center', wrap: true });
                             const styleHeader = addStyle({ fontId: fontHeader, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
                             const styleCenter = addStyle({ borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
                             const styleLeft = addStyle({ borderId: blackBorder, horizontal: 'left', vertical: 'center', wrap: true });
 
-                            let mergeCells = $('mergeCells', sheet);
-                            if (!mergeCells.length) {
-                                const mergeCellsNode = sheet.createElement('mergeCells');
-                                mergeCellsNode.setAttribute('count', '0');
-                                const sheetData = $('sheetData', sheet)[0];
-                                sheetData.parentNode.insertBefore(mergeCellsNode, sheetData.nextSibling);
-                                mergeCells = $('mergeCells', sheet);
+                            function excelColName(index) {
+                                let name = '';
+                                index++;
+
+                                while (index > 0) {
+                                    const rem = (index - 1) % 26;
+                                    name = String.fromCharCode(65 + rem) + name;
+                                    index = Math.floor((index - 1) / 26);
+                                }
+
+                                return name;
                             }
 
-                            ['A1:G1', 'A2:G2', 'A3:G3'].forEach(function(ref) {
-                                if (!mergeCells.find('mergeCell[ref="' + ref + '"]').length) {
-                                    const mergeCell = sheet.createElement('mergeCell');
-                                    mergeCell.setAttribute('ref', ref);
-                                    mergeCells[0].appendChild(mergeCell);
+                            function excelColIndex(ref) {
+                                const col = String(ref || '').replace(/[0-9]/g, '');
+                                let index = 0;
+
+                                for (let i = 0; i < col.length; i++) {
+                                    index = index * 26 + (col.charCodeAt(i) - 64);
                                 }
+
+                                return index - 1;
+                            }
+
+                            function getCellText(cell) {
+                                const $cell = $(cell);
+                                const type = $cell.attr('t');
+
+                                if (type === 'inlineStr') {
+                                    return $('is t', cell).text();
+                                }
+
+                                if (type === 's') {
+                                    const sharedIndex = parseInt($('v', cell).text(), 10);
+                                    if (sharedStrings && !Number.isNaN(sharedIndex)) {
+                                        return $('si', sharedStrings).eq(sharedIndex).text();
+                                    }
+                                }
+
+                                return $('v', cell).text() || $('t', cell).text() || '';
+                            }
+
+                            const originalRows = $('row', sheet).toArray();
+                            let headerIndex = originalRows.findIndex(function(row) {
+                                const rowText = $('c', row)
+                                    .toArray()
+                                    .map(function(cell) {
+                                        return getCellText(cell);
+                                    })
+                                    .join('|')
+                                    .toLowerCase();
+
+                                return rowText.includes('data/hora') && rowText.includes('beneficiário') && rowText.includes('cpf');
                             });
-                            mergeCells.attr('count', mergeCells.children('mergeCell').length);
 
-                            $('row', sheet).each(function() {
-                                const rowNum = parseInt($(this).attr('r'), 10) || 0;
+                            if (headerIndex < 0) {
+                                headerIndex = 0;
+                            }
 
-                                if (rowNum === 1) {
-                                    $(this).attr('ht', '26').attr('customHeight', '1');
-                                } else if (rowNum === 2 || rowNum === 3) {
-                                    $(this).attr('ht', '22').attr('customHeight', '1');
-                                } else {
-                                    $(this).attr('ht', '30').attr('customHeight', '1');
-                                }
+                            let tableRows = originalRows.slice(headerIndex).map(function(row) {
+                                const values = ['', '', '', '', '', '', ''];
 
-                                $('c', this).each(function() {
-                                    const ref = $(this).attr('r') || '';
-                                    const col = ref.replace(/[0-9]/g, '');
-
-                                    if (rowNum === 1) {
-                                        $(this).attr('s', styleTitle);
-                                    } else if (rowNum === 2 || rowNum === 3) {
-                                        $(this).attr('s', styleMeta);
-                                    } else if (rowNum === 4) {
-                                        $(this).attr('s', styleHeader);
-                                    } else if (col === 'B') {
-                                        $(this).attr('s', styleLeft);
-                                    } else {
-                                        $(this).attr('s', styleCenter);
+                                $('c', row).each(function() {
+                                    const colIndex = excelColIndex($(this).attr('r'));
+                                    if (colIndex >= 0 && colIndex <= 6) {
+                                        values[colIndex] = getCellText(this).replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
                                     }
                                 });
+
+                                return values;
+                            }).filter(function(values) {
+                                return values.some(function(value) {
+                                    return String(value || '').trim() !== '';
+                                });
                             });
+
+                            if (!tableRows.length || String(tableRows[0][0]).toLowerCase() !== 'data/hora') {
+                                tableRows.unshift(['Data/Hora', 'Beneficiário', 'CPF', 'Benefício', 'Qtde', 'Valor', 'Responsável']);
+                            }
+
+                            while (sheetData.firstChild) {
+                                sheetData.removeChild(sheetData.firstChild);
+                            }
+
+                            $('mergeCells', sheet).remove();
+                            $('autoFilter', sheet).remove();
+
+                            function createCell(colIndex, rowNumber, value, styleId) {
+                                const cell = sheet.createElement('c');
+                                const ref = excelColName(colIndex) + rowNumber;
+                                cell.setAttribute('r', ref);
+                                cell.setAttribute('s', styleId);
+                                cell.setAttribute('t', 'inlineStr');
+
+                                const inlineString = sheet.createElement('is');
+                                const textNode = sheet.createElement('t');
+                                textNode.setAttribute('xml:space', 'preserve');
+                                textNode.textContent = value || '';
+                                inlineString.appendChild(textNode);
+                                cell.appendChild(inlineString);
+
+                                return cell;
+                            }
+
+                            function createRow(rowNumber, values, styleResolver, height) {
+                                const row = sheet.createElement('row');
+                                row.setAttribute('r', String(rowNumber));
+                                row.setAttribute('ht', String(height));
+                                row.setAttribute('customHeight', '1');
+
+                                for (let i = 0; i < 7; i++) {
+                                    const styleId = typeof styleResolver === 'function' ? styleResolver(i) : styleResolver;
+                                    row.appendChild(createCell(i, rowNumber, values[i] || '', styleId));
+                                }
+
+                                return row;
+                            }
+
+                            function createMergedRow(rowNumber, text, styleId, height) {
+                                return createRow(rowNumber, [text, '', '', '', '', '', ''], styleId, height);
+                            }
+
+                            sheetData.appendChild(createMergedRow(1, tituloTexto, styleTitle, 25));
+                            sheetData.appendChild(createMergedRow(2, periodoTexto, styleMeta, 21));
+                            sheetData.appendChild(createMergedRow(3, totalTexto, styleMeta, 21));
+                            sheetData.appendChild(createMergedRow(4, geradoTexto, styleMeta, 21));
+                            sheetData.appendChild(createRow(5, tableRows[0], styleHeader, 22));
+
+                            for (let i = 1; i < tableRows.length; i++) {
+                                const rowNumber = i + 5;
+                                sheetData.appendChild(createRow(rowNumber, tableRows[i], function(colIndex) {
+                                    return colIndex === 1 ? styleLeft : styleCenter;
+                                }, 24));
+                            }
+
+                            const mergeCellsNode = sheet.createElement('mergeCells');
+                            ['A1:G1', 'A2:G2', 'A3:G3', 'A4:G4'].forEach(function(ref) {
+                                const mergeCell = sheet.createElement('mergeCell');
+                                mergeCell.setAttribute('ref', ref);
+                                mergeCellsNode.appendChild(mergeCell);
+                            });
+                            mergeCellsNode.setAttribute('count', '4');
+                            sheetData.parentNode.insertBefore(mergeCellsNode, sheetData.nextSibling);
+
+                            let cols = $('cols', sheet)[0];
+                            if (!cols) {
+                                cols = sheet.createElement('cols');
+                                sheetData.parentNode.insertBefore(cols, sheetData);
+                            }
+
+                            while (cols.firstChild) {
+                                cols.removeChild(cols.firstChild);
+                            }
+
+                            const widths = [24, 44, 20, 30, 10, 18, 40];
+                            widths.forEach(function(width, index) {
+                                const col = sheet.createElement('col');
+                                col.setAttribute('min', String(index + 1));
+                                col.setAttribute('max', String(index + 1));
+                                col.setAttribute('width', String(width));
+                                col.setAttribute('customWidth', '1');
+                                cols.appendChild(col);
+                            });
+
+                            const totalRows = tableRows.length + 4;
+                            const dimension = $('dimension', sheet);
+                            if (dimension.length) {
+                                dimension.attr('ref', 'A1:G' + totalRows);
+                            }
                         }
+
                     },
                     {
                         extend: 'print',
