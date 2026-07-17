@@ -179,6 +179,8 @@ metric_grid([
     class="filter-bar"
     method="get"
     action="usuarios.php"
+    data-live-filter="users"
+    data-live-regions="metrics results"
 >
     <div class="search-wrap">
         <i class="bi bi-search"></i>
@@ -270,13 +272,14 @@ metric_grid([
     <a
         class="btn-filter btn-filter-ghost"
         href="usuarios.php"
+        data-live-filter-clear
     >
         <i class="bi bi-x-lg"></i>
         Limpar filtros
     </a>
 </form>
 
-<section class="panel">
+<section class="panel" data-live-region="results">
 
     <div class="panel-header">
         <div class="panel-title">
@@ -1884,10 +1887,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    document
-        .querySelectorAll('.js-user-view')
-        .forEach(function (button) {
-            button.addEventListener('click', function () {
+    function prepareUserView(button) {
                 text(
                     'view-user-subtitle',
                     'ID #' + (button.dataset.userId || '')
@@ -1949,13 +1949,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     'view-user-created-at',
                     button.dataset.userCreatedAt
                 );
-            });
-        });
+    }
 
-    document
-        .querySelectorAll('.js-user-edit')
-        .forEach(function (button) {
-            button.addEventListener('click', function () {
+    function prepareUserEdit(button) {
                 const id = document.getElementById(
                     'edit-user-id'
                 );
@@ -2032,13 +2028,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     'edit-user-subtitle',
                     button.dataset.userName
                 );
-            });
-        });
+    }
 
-    document
-        .querySelectorAll('.js-user-reset-password')
-        .forEach(function (button) {
-            button.addEventListener('click', function () {
+    function prepareUserPasswordReset(button) {
                 const id = document.getElementById(
                     'password-user-id'
                 );
@@ -2080,8 +2072,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     'password-user-subtitle',
                     button.dataset.userName
                 );
-            });
-        });
+    }
 
     const statusConfiguration = {
         ativo: {
@@ -2110,10 +2101,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    document
-        .querySelectorAll('.js-user-status')
-        .forEach(function (button) {
-            button.addEventListener('click', function () {
+    function prepareUserStatus(button) {
                 const operation =
                     button.dataset.userOperation || '';
 
@@ -2166,8 +2154,27 @@ document.addEventListener('DOMContentLoaded', function () {
                         ? configuration.button
                         : 'Confirmar';
                 }
-            });
-        });
+    }
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest(
+            '.js-user-view, .js-user-edit, .js-user-reset-password, .js-user-status'
+        );
+
+        if (!button) {
+            return;
+        }
+
+        if (button.classList.contains('js-user-view')) {
+            prepareUserView(button);
+        } else if (button.classList.contains('js-user-edit')) {
+            prepareUserEdit(button);
+        } else if (button.classList.contains('js-user-reset-password')) {
+            prepareUserPasswordReset(button);
+        } else if (button.classList.contains('js-user-status')) {
+            prepareUserStatus(button);
+        }
+    });
 
     const createModal = document.getElementById(
         'modal-usuario'

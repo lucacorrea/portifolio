@@ -145,6 +145,9 @@ final class AccountsReceivableManagementService
 
         try {
             $account = $this->lockAccount($accountId);
+            if (!in_array($account['status'], ['pendente', 'parcial', 'vencida'], true)) {
+                throw new InvalidArgumentException('A situação da conta não permite novo pagamento.');
+            }
             $amount = $this->money($value);
             if ($amount <= 0.0 || $amount > (float) $account['saldo']) {
                 throw new InvalidArgumentException('Valor de pagamento inválido para o saldo.');

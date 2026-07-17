@@ -9,18 +9,18 @@ require __DIR__ . '/os-action-common.php';
 
 os_require_post_request();
 
-$hasTeam = isset($_POST['team_submitted'])
-    || isset($_POST['team_members'])
-    || trim((string) ($_POST['funcionario_principal_id'] ?? '')) !== ''
-    || trim((string) ($_POST['funcionario_apoio_id'] ?? '')) !== '';
+$hasTeam = isset($_POST['team_submitted']);
 $hasSchedule = trim((string) ($_POST['agendado_inicio'] ?? '')) !== '' || trim((string) ($_POST['agendado_fim'] ?? '')) !== '';
-$permission = $hasTeam && !$hasSchedule ? 'os.alterar_equipe' : 'os.agendar';
+$permission = $hasTeam ? 'os.alterar_equipe' : 'os.agendar';
 [$application, $session] = os_action_context($permission);
-if ($hasTeam && $hasSchedule) {
-    $application->authorization()->requirePermission('os.alterar_equipe');
-}
 
 try {
+    if (!$hasTeam && !$hasSchedule) {
+        throw new InvalidArgumentException('Informe a equipe ou o agendamento que deseja alterar.');
+    }
+    if ($hasTeam && $hasSchedule) {
+        $application->authorization()->requirePermission('os.agendar');
+    }
     $id = os_posted_positive_int('id');
     $service = $application->serviceOrderManagement();
     if ($hasTeam && $hasSchedule) {

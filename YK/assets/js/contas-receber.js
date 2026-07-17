@@ -6,10 +6,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (element) element.value = value || '';
   }
 
-  document.querySelectorAll('.js-cr-payment').forEach(function (button) {
-    button.addEventListener('click', function () {
-      setValue('cr-payment-id', button.dataset.id);
-      setValue('cr-payment-value', button.dataset.balance);
-    });
+  document.addEventListener('click', function (event) {
+    const button = event.target.closest?.('.js-cr-payment');
+    if (!button) return;
+    setValue('cr-payment-id', button.dataset.id);
+    setValue('cr-payment-value', button.dataset.balance);
   });
 });

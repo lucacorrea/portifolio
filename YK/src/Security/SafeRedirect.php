@@ -30,6 +30,9 @@ final class SafeRedirect
         'perfil-formulario.php',
         'perfil-permissoes.php',
         'ordem-servico-comprovante.php',
+        'ordem-servico-imprimir.php',
+        'orcamento-imprimir.php',
+        'recibo-imprimir.php',
     ];
 
     public function sanitize(?string $next): string

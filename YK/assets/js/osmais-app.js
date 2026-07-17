@@ -272,6 +272,221 @@ document.addEventListener('DOMContentLoaded', () => {
     toggle?.focus();
   });
 
+  const rowActionsDialog = document.getElementById('row-actions-dialog');
+  const rowActionsHost = rowActionsDialog?.querySelector('[data-row-actions-menu-host]');
+  const rowActionsTitle = document.getElementById('row-actions-dialog-title');
+  const coarsePointer = window.matchMedia('(pointer: coarse)');
+  const actionItemSelector = '.dropdown-item:not(.disabled):not([disabled]):not([aria-disabled="true"])';
+  let activeRowActions = null;
+
+  const normalizedText = (value) => value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+  const isInteractiveTarget = (target) => Boolean(target.closest(
+    'a, button, input, select, textarea, label, form, summary, [contenteditable="true"], [data-bs-toggle], [role="button"], [role="link"], audio[controls], video[controls]'
+  ));
+
+  const rowActionTitle = (row, toggle) => {
+    const label = toggle?.getAttribute('aria-label')?.trim() || '';
+    if (label && !['acoes', 'acao'].includes(normalizedText(label))) return label;
+
+    const identifier = row.cells[0]?.innerText.trim().replace(/\s+/g, ' ');
+    return identifier ? `Ações do registro ${identifier}` : 'Ações do registro';
+  };
+
+  const restoreRowActions = ({ restoreFocus = true } = {}) => {
+    if (!activeRowActions) return;
+
+    const { menu, originalParent, originalNextSibling, row } = activeRowActions;
+    activeRowActions = null;
+    menu.classList.remove('row-actions-menu', 'show', 'action-menu-portal');
+    resetMenuStyles(menu);
+
+    if (originalNextSibling?.parentNode === originalParent) {
+      originalParent.insertBefore(menu, originalNextSibling);
+    } else {
+      originalParent?.appendChild(menu);
+    }
+
+    if (rowActionsDialog?.open) rowActionsDialog.close();
+    if (restoreFocus && row.isConnected) row.focus({ preventScroll: true });
+  };
+
+  const openRowActions = (row) => {
+    if (!rowActionsDialog || !rowActionsHost || typeof rowActionsDialog.showModal !== 'function') return;
+
+    const menu = row._rowActionsMenu;
+    if (!menu) return;
+    if (activeRowActions) restoreRowActions({ restoreFocus: false });
+    closeActionMenu();
+
+    activeRowActions = {
+      row,
+      menu,
+      originalParent: menu.parentNode,
+      originalNextSibling: menu.nextSibling,
+    };
+
+    menu.classList.remove('show', 'action-menu-portal');
+    resetMenuStyles(menu);
+    menu.classList.add('row-actions-menu');
+    rowActionsHost.appendChild(menu);
+    if (rowActionsTitle) rowActionsTitle.textContent = row.dataset.rowActionsTitle || 'Ações do registro';
+    rowActionsDialog.showModal();
+
+    window.requestAnimationFrame(() => {
+      menu.querySelector(actionItemSelector)?.focus();
+    });
+  };
+
+  const actionableRows = (table) => Array.from(table.tBodies)
+    .flatMap((body) => Array.from(body.rows))
+    .filter((row) => row.classList.contains('row-actions-trigger'));
+
+  const setCurrentRow = (row, focus = false) => {
+    actionableRows(row.closest('table')).forEach((candidate) => {
+      candidate.tabIndex = candidate === row ? 0 : -1;
+    });
+    if (focus) row.focus({ preventScroll: true });
+  };
+
+  const addRowActionsHint = (table) => {
+    const wrapper = table.closest('.table-panel-wrap');
+    if (!wrapper || wrapper.previousElementSibling?.classList.contains('row-actions-hint')) return;
+
+    const hint = document.createElement('p');
+    hint.className = 'row-actions-hint';
+    hint.innerHTML = '<i class="bi bi-cursor" aria-hidden="true"></i><span></span>';
+    hint.querySelector('span').textContent = coarsePointer.matches
+      ? 'Toque na linha para ver as ações.'
+      : 'Clique na linha ou use Enter para ver as ações.';
+    wrapper.before(hint);
+  };
+
+  const enhanceActionTable = (table) => {
+    if (table.closest('.modal, dialog')) return;
+
+    const headers = Array.from(table.tHead?.rows[0]?.cells || []);
+    const actionIndex = headers.findIndex((header) => normalizedText(header.textContent) === 'acoes');
+    if (actionIndex < 0) return;
+
+    const rows = Array.from(table.tBodies).flatMap((body) => Array.from(body.rows));
+    const sources = rows.map((row) => ({ row, cell: row.cells[actionIndex] }))
+      .filter(({ row, cell }) => !row.classList.contains('row-actions-trigger') && cell?.querySelector(`.dropdown-menu ${actionItemSelector}`));
+    if (sources.length === 0) {
+      if (actionableRows(table).length === 0) {
+        table.classList.remove('row-actions-table');
+        delete table.dataset.rowActionsReady;
+        headers[actionIndex].classList.remove('row-actions-source-cell');
+        const hint = table.closest('.table-panel-wrap')?.previousElementSibling;
+        if (hint?.classList.contains('row-actions-hint')) hint.remove();
+      }
+      return;
+    }
+
+    table.dataset.rowActionsReady = 'true';
+    table.classList.add('row-actions-table');
+    headers[actionIndex].classList.add('row-actions-source-cell');
+    rows.forEach((row) => row.cells[actionIndex]?.classList.add('row-actions-source-cell'));
+
+    let hasFocusableRow = actionableRows(table).length > 0;
+    sources.forEach(({ row, cell }) => {
+      const menu = cell.querySelector('.dropdown-menu');
+      const toggle = cell.querySelector('.btn-action[data-bs-toggle="dropdown"]');
+      const action = menu.querySelector(actionItemSelector);
+      if (!action) return;
+
+      row._rowActionsMenu = menu;
+      row.dataset.rowActionsTitle = rowActionTitle(row, toggle);
+      row.classList.add('row-actions-trigger');
+      row.tabIndex = hasFocusableRow ? -1 : 0;
+      row.setAttribute('aria-haspopup', 'dialog');
+      row.setAttribute('aria-controls', 'row-actions-dialog');
+      row.setAttribute('aria-describedby', 'row-actions-table-instructions');
+      row.setAttribute('aria-label', row.dataset.rowActionsTitle);
+      hasFocusableRow = true;
+    });
+
+    if (hasFocusableRow) addRowActionsHint(table);
+  };
+
+  if (rowActionsDialog && rowActionsHost && typeof rowActionsDialog.showModal === 'function') {
+    window.OSMais = window.OSMais || {};
+    window.OSMais.refreshActionTables = (root = document) => {
+      closeActionMenu();
+      if (activeRowActions) restoreRowActions({ restoreFocus: false });
+      root.querySelectorAll('table.os-table').forEach(enhanceActionTable);
+    };
+    window.OSMais.refreshActionTables();
+
+    document.addEventListener('click', (event) => {
+      const row = event.target.closest('tr.row-actions-trigger');
+      const selection = window.getSelection()?.toString().trim();
+      if (!row || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey
+        || event.shiftKey || event.altKey || selection || isInteractiveTarget(event.target)) return;
+      setCurrentRow(row);
+      openRowActions(row);
+    });
+
+    document.addEventListener('focusin', (event) => {
+      const row = event.target.closest?.('tr.row-actions-trigger');
+      if (row && event.target === row) setCurrentRow(row);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      const row = event.target.closest?.('tr.row-actions-trigger');
+      if (!row || event.target !== row) return;
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openRowActions(row);
+        return;
+      }
+
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const rows = actionableRows(row.closest('table'));
+      const current = rows.indexOf(row);
+      const next = event.key === 'Home' ? 0
+        : event.key === 'End' ? rows.length - 1
+          : Math.min(rows.length - 1, Math.max(0, current + (event.key === 'ArrowDown' ? 1 : -1)));
+      setCurrentRow(rows[next], true);
+    });
+
+    rowActionsDialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      restoreRowActions();
+    });
+    rowActionsDialog.addEventListener('close', () => restoreRowActions());
+    rowActionsDialog.addEventListener('click', (event) => {
+      if (event.target.closest('[data-row-actions-close]')) {
+        event.preventDefault();
+        restoreRowActions();
+        return;
+      }
+      const action = event.target.closest('.dropdown-item');
+      if (action) {
+        const returnRow = activeRowActions?.row;
+        const targetSelector = action.getAttribute('data-bs-target');
+        const targetModal = targetSelector?.startsWith('#') ? document.querySelector(targetSelector) : null;
+        targetModal?.addEventListener('hidden.bs.modal', () => {
+          if (returnRow?.isConnected) setCurrentRow(returnRow, true);
+        }, { once: true });
+        const handsOffFocus = action.matches('[data-bs-toggle="modal"]');
+        restoreRowActions({ restoreFocus: !handsOffFocus });
+      }
+    }, true);
+    rowActionsDialog.addEventListener('click', (event) => {
+      if (event.target !== rowActionsDialog) return;
+      const rect = rowActionsDialog.getBoundingClientRect();
+      const outside = event.clientX < rect.left || event.clientX > rect.right
+        || event.clientY < rect.top || event.clientY > rect.bottom;
+      if (outside) restoreRowActions();
+    });
+  }
+
   window.addEventListener('resize', positionActionMenu, { passive: true });
   document.addEventListener('scroll', positionActionMenu, {
     passive: true,

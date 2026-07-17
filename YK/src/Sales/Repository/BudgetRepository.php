@@ -62,19 +62,21 @@ final class BudgetRepository
                     SELECT 1
                       FROM ordens_servico os_liberada
                      WHERE os_liberada.orcamento_id = o.id
-                       AND os_liberada.status = 'cancelada'
                        AND os_liberada.orcamento_liberado = 1
+                       AND (os_liberada.status = 'cancelada' OR os_liberada.excluida_em IS NOT NULL)
                 )
                 AND NOT EXISTS (
                     SELECT 1
-                      FROM ordens_servico os
+                     FROM ordens_servico os
                      WHERE os.orcamento_id = o.id
+                       AND os.excluida_em IS NULL
                        AND os.status <> 'cancelada'
                 )
                 AND NOT EXISTS (
                     SELECT 1
-                      FROM ordens_servico os
+                     FROM ordens_servico os
                      WHERE os.orcamento_id = o.id
+                       AND os.excluida_em IS NULL
                        AND os.status = 'cancelada'
                        AND os.orcamento_liberado = 0
                 )
@@ -99,8 +101,9 @@ final class BudgetRepository
         }
         $statement = $this->connection->prepare(
             "SELECT orcamento_id, id, numero, status
-               FROM ordens_servico
+              FROM ordens_servico
               WHERE orcamento_id IN (" . implode(', ', $placeholders) . ")
+                AND excluida_em IS NULL
                 AND (
                     status <> 'cancelada'
                     OR (status = 'cancelada' AND orcamento_liberado = 0)
@@ -250,6 +253,29 @@ final class BudgetRepository
         return $this->selectBudgets(['o.cliente_id = :client_id'], ['client_id' => $clientId], 'o.data_emissao DESC, o.id DESC');
     }
 
+    /** @param int[] $clientIds @return Budget[] */
+    public function budgetsByClients(array $clientIds): array
+    {
+        $clientIds = array_values(array_unique(array_map('intval', $clientIds)));
+        if ($clientIds === []) return [];
+        if (count($clientIds) > 100) throw new InvalidArgumentException('Quantidade de clientes inválida.');
+
+        $placeholders = [];
+        $params = [];
+        foreach ($clientIds as $index => $clientId) {
+            $this->assertPositiveId($clientId);
+            $key = 'client_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $clientId;
+        }
+
+        return $this->selectBudgets(
+            ['o.cliente_id IN (' . implode(', ', $placeholders) . ')'],
+            $params,
+            'o.data_emissao DESC, o.id DESC'
+        );
+    }
+
     /** @return array{0:array<int,string>,1:array<string,mixed>} */
     private function filters(array $filters): array
     {
@@ -283,6 +309,8 @@ final class BudgetRepository
         $status = trim((string) ($filters['status'] ?? ''));
         if ($status === 'vencido') {
             $where[] = "o.status IN ('enviado', 'aguardando_aprovacao') AND o.validade < CURRENT_DATE";
+        } elseif ($status === 'exceto_recusados') {
+            $where[] = "o.status <> 'recusado'";
         } elseif ($status !== '') {
             $where[] = 'o.status = :status';
             $params['status'] = $status;

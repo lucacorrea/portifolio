@@ -451,13 +451,15 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
 
     <style>
         .card-stat {
-            border-left: 4px solid #435ebe;
-            transition: all 0.3s ease;
+            border-left: 0 !important;
+            transition: none !important;
+            background: #fff !important;
+            box-shadow: none !important;
         }
 
         .card-stat:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            transform: none !important;
+            box-shadow: none !important;
         }
 
         .badge-entregue {
@@ -883,6 +885,83 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
             }
         }
 
+        /* =========================================================
+           TABELA INICIAL — VISUAL LIMPO, SEM CABEÇALHO ROXO
+        ========================================================= */
+        #tabelaEntregas {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            border-spacing: 0 !important;
+            background: #fff;
+        }
+
+        #tabelaEntregas thead th {
+            background: #fff !important;
+            color: #495057 !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+            padding: 13px 10px !important;
+            border: 0 !important;
+            border-top: 1px solid #d7dce2 !important;
+            border-bottom: 2px solid #d7dce2 !important;
+            white-space: nowrap;
+            position: static !important;
+        }
+
+        #tabelaEntregas tbody td {
+            padding: 11px 10px !important;
+            vertical-align: middle !important;
+            border: 0 !important;
+            border-bottom: 1px solid #dfe3e8 !important;
+            background: transparent !important;
+            color: #536779;
+            white-space: nowrap;
+        }
+
+        #tabelaEntregas tbody tr:nth-child(even) {
+            background: #f7f8fa !important;
+        }
+
+        #tabelaEntregas tbody tr:nth-child(odd) {
+            background: #fff !important;
+        }
+
+        #tabelaEntregas tbody tr:hover {
+            background: #f1f4f8 !important;
+        }
+
+        #tabelaEntregas tbody tr:last-child td {
+            border-bottom: 2px solid #435ebe !important;
+        }
+
+        #tabelaEntregas tfoot td {
+            background: #fff !important;
+            color: #536779 !important;
+            border: 0 !important;
+            border-top: 1px solid #e3e7eb !important;
+            border-bottom: 1px solid #e3e7eb !important;
+            padding: 10px 8px !important;
+            font-weight: 700 !important;
+        }
+
+        #tabelaEntregas tfoot td:first-child {
+            text-align: right !important;
+            padding-right: 14px !important;
+        }
+
+        #tabelaEntregas tfoot td:nth-child(5),
+        #tabelaEntregas tfoot td:nth-child(6) {
+            text-align: center !important;
+        }
+
+        /* Remove eventual cor aplicada pelo DataTables durante o carregamento. */
+        #tabelaEntregas_wrapper .dataTables_scrollHead table thead th,
+        #tabelaEntregas_wrapper .dataTables_scrollBody table thead th {
+            background: #fff !important;
+            color: #495057 !important;
+        }
+
         @media print {
 
             .sidebar,
@@ -1229,10 +1308,14 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                                         </tbody>
                                         <tfoot>
                                             <tr>
-                                                <td colspan="4" class="text-end"><strong>TOTAIS:</strong></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td class="text-end"><strong>TOTAIS:</strong></td>
                                                 <td><strong><?= $total_quantidade_filtrado ?></strong></td>
                                                 <td><strong><?= formatarMoeda($total_valor_filtrado) ?></strong></td>
-                                                <td colspan="2"></td>
+                                                <td></td>
+                                                <td></td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -1572,27 +1655,20 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
 
             let table = $('#tabelaEntregas').DataTable({
                 dom: 'Brt',
-                buttons: [{
+                buttons: [
+                    {
                         extend: 'excelHtml5',
                         text: '<i class="bi bi-file-earmark-excel me-1"></i>Excel',
                         className: 'btn btn-sm btn-success',
-                        title: 'ENTREGAS REALIZADAS - ANEXO',
-                        messageTop: function() {
-                            let periodo = '';
-                            <?php if ($tem_filtro_data): ?>
-                                periodo = 'Período: <?= date("d/m/Y", strtotime($filtro_data_inicio)) ?> - <?= date("d/m/Y", strtotime($filtro_data_fim)) ?>\n';
-                            <?php else: ?>
-                                periodo = 'Todas as entregas\n';
-                            <?php endif; ?>
-                            return periodo + 'Total: <?= count($entregas) ?> registros | Valor Total: <?= formatarMoeda($total_valor_filtrado) ?>';
-                        },
+                        title: null,
+                        filename: 'Entregas Realizadas - ANEXO',
                         exportOptions: {
                             columns: [0, 1, 2, 3, 4, 5, 6],
                             format: {
                                 header: function(data, column) {
                                     return normalizarTextoExportacao(data, column);
                                 },
-                                body: function(data, row, column, node) {
+                                body: function(data, row, column) {
                                     return normalizarTextoExportacao(data, column);
                                 },
                                 footer: function(data, column) {
@@ -1602,43 +1678,277 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                         },
                         customize: function(xlsx) {
                             const sheet = xlsx.xl.worksheets['sheet1.xml'];
+                            const styles = xlsx.xl['styles.xml'];
+                            const sharedStrings = xlsx.xl['sharedStrings.xml'];
+                            const sheetData = $('sheetData', sheet)[0];
 
-                            const larguras = [18, 38, 16, 22, 10, 14, 30];
-                            $('col', sheet).each(function(i) {
-                                if (larguras[i]) {
-                                    $(this).attr('width', larguras[i]);
-                                    $(this).attr('customWidth', 1);
+                            const periodoTexto = <?php if ($tem_filtro_data): ?>
+                                'Período: <?= date("d/m/Y", strtotime($filtro_data_inicio)) ?> - <?= date("d/m/Y", strtotime($filtro_data_fim)) ?>';
+                            <?php else: ?>
+                                'Todas as entregas';
+                            <?php endif; ?>
+
+                            const totalTexto = 'Total: <?= count($entregas) ?> registros | Valor Total: <?= formatarMoeda($total_valor_filtrado) ?>';
+                            const agora = new Date();
+                            const geradoTexto = 'Gerado em: ' + agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+                            const tituloTexto = 'ENTREGAS REALIZADAS - ANEXO';
+
+                            function appendXml(parent, xml) {
+                                const parsed = $.parseXML('<root>' + xml + '</root>');
+                                $(parsed).find('root').children().each(function() {
+                                    parent.append(this);
+                                });
+                            }
+
+                            function addFont(options) {
+                                const fonts = $('fonts', styles);
+                                const id = $('font', fonts).length;
+                                const bold = options.bold ? '<b/>' : '';
+                                const size = options.size || 11;
+
+                                appendXml(
+                                    fonts,
+                                    '<font>' +
+                                        bold +
+                                        '<sz val="' + size + '"/>' +
+                                        '<color rgb="FF000000"/>' +
+                                        '<name val="Calibri"/>' +
+                                        '<family val="2"/>' +
+                                    '</font>'
+                                );
+
+                                fonts.attr('count', $('font', fonts).length);
+                                return id;
+                            }
+
+                            function addBorder() {
+                                const borders = $('borders', styles);
+                                const id = $('border', borders).length;
+
+                                appendXml(
+                                    borders,
+                                    '<border>' +
+                                        '<left style="thin"><color rgb="FF000000"/></left>' +
+                                        '<right style="thin"><color rgb="FF000000"/></right>' +
+                                        '<top style="thin"><color rgb="FF000000"/></top>' +
+                                        '<bottom style="thin"><color rgb="FF000000"/></bottom>' +
+                                        '<diagonal/>' +
+                                    '</border>'
+                                );
+
+                                borders.attr('count', $('border', borders).length);
+                                return id;
+                            }
+
+                            function addStyle(options) {
+                                const cellXfs = $('cellXfs', styles);
+                                const id = $('xf', cellXfs).length;
+                                const fontId = options.fontId || 0;
+                                const borderId = options.borderId || 0;
+                                const horizontal = options.horizontal || 'center';
+                                const vertical = options.vertical || 'center';
+                                const wrap = options.wrap ? ' wrapText="1"' : '';
+                                const applyFont = options.fontId ? ' applyFont="1"' : '';
+                                const applyBorder = options.borderId ? ' applyBorder="1"' : '';
+
+                                appendXml(
+                                    cellXfs,
+                                    '<xf numFmtId="0" fontId="' + fontId + '" fillId="0" borderId="' + borderId + '" xfId="0"' + applyFont + applyBorder + ' applyAlignment="1">' +
+                                        '<alignment horizontal="' + horizontal + '" vertical="' + vertical + '"' + wrap + '/>' +
+                                    '</xf>'
+                                );
+
+                                cellXfs.attr('count', $('xf', cellXfs).length);
+                                return id;
+                            }
+
+                            const fontTitle = addFont({ bold: true, size: 14 });
+                            const fontMeta = addFont({ bold: true, size: 11 });
+                            const fontHeader = addFont({ bold: true, size: 11 });
+                            const blackBorder = addBorder();
+
+                            const styleTitle = addStyle({ fontId: fontTitle, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
+                            const styleMeta = addStyle({ fontId: fontMeta, borderId: blackBorder, horizontal: 'left', vertical: 'center', wrap: true });
+                            const styleHeader = addStyle({ fontId: fontHeader, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
+                            const styleCenter = addStyle({ borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
+                            const styleLeft = addStyle({ borderId: blackBorder, horizontal: 'left', vertical: 'center', wrap: true });
+
+                            function excelColName(index) {
+                                let name = '';
+                                index++;
+
+                                while (index > 0) {
+                                    const rem = (index - 1) % 26;
+                                    name = String.fromCharCode(65 + rem) + name;
+                                    index = Math.floor((index - 1) / 26);
                                 }
+
+                                return name;
+                            }
+
+                            function excelColIndex(ref) {
+                                const col = String(ref || '').replace(/[0-9]/g, '');
+                                let index = 0;
+
+                                for (let i = 0; i < col.length; i++) {
+                                    index = index * 26 + (col.charCodeAt(i) - 64);
+                                }
+
+                                return index - 1;
+                            }
+
+                            function getCellText(cell) {
+                                const $cell = $(cell);
+                                const type = $cell.attr('t');
+
+                                if (type === 'inlineStr') {
+                                    return $('is t', cell).text();
+                                }
+
+                                if (type === 's') {
+                                    const sharedIndex = parseInt($('v', cell).text(), 10);
+                                    if (sharedStrings && !Number.isNaN(sharedIndex)) {
+                                        return $('si', sharedStrings).eq(sharedIndex).text();
+                                    }
+                                }
+
+                                return $('v', cell).text() || $('t', cell).text() || '';
+                            }
+
+                            const originalRows = $('row', sheet).toArray();
+                            let headerIndex = originalRows.findIndex(function(row) {
+                                const rowText = $('c', row)
+                                    .toArray()
+                                    .map(function(cell) {
+                                        return getCellText(cell);
+                                    })
+                                    .join('|')
+                                    .toLowerCase();
+
+                                return rowText.includes('data/hora') && rowText.includes('beneficiário') && rowText.includes('cpf');
                             });
 
-                            $('row', sheet).each(function() {
-                                const rowNum = parseInt($(this).attr('r'), 10) || 0;
+                            if (headerIndex < 0) {
+                                headerIndex = 0;
+                            }
 
-                                $('c', this).each(function() {
-                                    const ref = $(this).attr('r') || '';
-                                    const col = ref.replace(/[0-9]/g, '');
+                            let tableRows = originalRows.slice(headerIndex).map(function(row) {
+                                const values = ['', '', '', '', '', '', ''];
 
-                                    if (rowNum === 1) {
-                                        $(this).attr('s', '52');
-                                    } else if (rowNum === 2) {
-                                        $(this).attr('s', '50');
-                                    } else if (rowNum === 3) {
-                                        $(this).attr('s', '57');
-                                    } else {
-                                        if (col === 'B') {
-                                            $(this).attr('s', '0');
-                                        } else {
-                                            $(this).attr('s', '50');
-                                        }
+                                $('c', row).each(function() {
+                                    const colIndex = excelColIndex($(this).attr('r'));
+                                    if (colIndex >= 0 && colIndex <= 6) {
+                                        values[colIndex] = getCellText(this).replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
                                     }
                                 });
+
+                                return values;
+                            }).filter(function(values) {
+                                return values.some(function(value) {
+                                    return String(value || '').trim() !== '';
+                                });
                             });
+
+                            if (!tableRows.length || String(tableRows[0][0]).toLowerCase() !== 'data/hora') {
+                                tableRows.unshift(['Data/Hora', 'Beneficiário', 'CPF', 'Benefício', 'Qtde', 'Valor', 'Responsável']);
+                            }
+
+                            while (sheetData.firstChild) {
+                                sheetData.removeChild(sheetData.firstChild);
+                            }
+
+                            $('mergeCells', sheet).remove();
+                            $('autoFilter', sheet).remove();
+
+                            function createCell(colIndex, rowNumber, value, styleId) {
+                                const cell = sheet.createElement('c');
+                                const ref = excelColName(colIndex) + rowNumber;
+                                cell.setAttribute('r', ref);
+                                cell.setAttribute('s', styleId);
+                                cell.setAttribute('t', 'inlineStr');
+
+                                const inlineString = sheet.createElement('is');
+                                const textNode = sheet.createElement('t');
+                                textNode.setAttribute('xml:space', 'preserve');
+                                textNode.textContent = value || '';
+                                inlineString.appendChild(textNode);
+                                cell.appendChild(inlineString);
+
+                                return cell;
+                            }
+
+                            function createRow(rowNumber, values, styleResolver, height) {
+                                const row = sheet.createElement('row');
+                                row.setAttribute('r', String(rowNumber));
+                                row.setAttribute('ht', String(height));
+                                row.setAttribute('customHeight', '1');
+
+                                for (let i = 0; i < 7; i++) {
+                                    const styleId = typeof styleResolver === 'function' ? styleResolver(i) : styleResolver;
+                                    row.appendChild(createCell(i, rowNumber, values[i] || '', styleId));
+                                }
+
+                                return row;
+                            }
+
+                            function createMergedRow(rowNumber, text, styleId, height) {
+                                return createRow(rowNumber, [text, '', '', '', '', '', ''], styleId, height);
+                            }
+
+                            sheetData.appendChild(createMergedRow(1, tituloTexto, styleTitle, 25));
+                            sheetData.appendChild(createMergedRow(2, periodoTexto, styleMeta, 21));
+                            sheetData.appendChild(createMergedRow(3, totalTexto, styleMeta, 21));
+                            sheetData.appendChild(createMergedRow(4, geradoTexto, styleMeta, 21));
+                            sheetData.appendChild(createRow(5, tableRows[0], styleHeader, 22));
+
+                            for (let i = 1; i < tableRows.length; i++) {
+                                const rowNumber = i + 5;
+                                sheetData.appendChild(createRow(rowNumber, tableRows[i], function(colIndex) {
+                                    return colIndex === 1 ? styleLeft : styleCenter;
+                                }, 24));
+                            }
+
+                            const mergeCellsNode = sheet.createElement('mergeCells');
+                            ['A1:G1', 'A2:G2', 'A3:G3', 'A4:G4'].forEach(function(ref) {
+                                const mergeCell = sheet.createElement('mergeCell');
+                                mergeCell.setAttribute('ref', ref);
+                                mergeCellsNode.appendChild(mergeCell);
+                            });
+                            mergeCellsNode.setAttribute('count', '4');
+                            sheetData.parentNode.insertBefore(mergeCellsNode, sheetData.nextSibling);
+
+                            let cols = $('cols', sheet)[0];
+                            if (!cols) {
+                                cols = sheet.createElement('cols');
+                                sheetData.parentNode.insertBefore(cols, sheetData);
+                            }
+
+                            while (cols.firstChild) {
+                                cols.removeChild(cols.firstChild);
+                            }
+
+                            const widths = [24, 44, 20, 30, 10, 18, 40];
+                            widths.forEach(function(width, index) {
+                                const col = sheet.createElement('col');
+                                col.setAttribute('min', String(index + 1));
+                                col.setAttribute('max', String(index + 1));
+                                col.setAttribute('width', String(width));
+                                col.setAttribute('customWidth', '1');
+                                cols.appendChild(col);
+                            });
+
+                            const totalRows = tableRows.length + 4;
+                            const dimension = $('dimension', sheet);
+                            if (dimension.length) {
+                                dimension.attr('ref', 'A1:G' + totalRows);
+                            }
                         }
+
                     },
                     {
                         extend: 'print',
                         text: '<i class="bi bi-printer me-1"></i>Imprimir',
-                        className: 'btn btn-sm btn-primary',
+                        className: 'btn btn-sm btn-secondary',
                         title: '',
                         messageTop: function() {
                             let periodo = '';
@@ -1657,6 +1967,96 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                         },
                         exportOptions: {
                             columns: [0, 1, 2, 3, 4, 5, 6]
+                        },
+                        customize: function(win) {
+                            const doc = $(win.document);
+
+                            doc.find('head').append(`
+                                <style>
+                                    @page {
+                                        size: A4 landscape;
+                                        margin: 7mm;
+                                    }
+
+                                    html, body {
+                                        font-family: Arial, sans-serif !important;
+                                        color: #000 !important;
+                                        background: #fff !important;
+                                    }
+
+                                    .print-header {
+                                        margin: 0 0 8px 0 !important;
+                                        padding: 0 !important;
+                                        border: 0 !important;
+                                    }
+
+                                    .print-header h3 {
+                                        margin: 0 0 8px 0 !important;
+                                        text-align: center !important;
+                                        font-size: 18px !important;
+                                    }
+
+                                    .print-header p {
+                                        margin: 3px 0 !important;
+                                        font-size: 11px !important;
+                                    }
+
+                                    table {
+                                        width: 100% !important;
+                                        border-collapse: collapse !important;
+                                        table-layout: auto !important;
+                                        font-size: 9px !important;
+                                    }
+
+                                    table thead th {
+                                        background: #fff !important;
+                                        color: #000 !important;
+                                        font-weight: 700 !important;
+                                        text-align: center !important;
+                                        border: 1px solid #000 !important;
+                                        padding: 4px 3px !important;
+                                    }
+
+                                    table tbody td {
+                                        background: #fff !important;
+                                        color: #000 !important;
+                                        border: 1px solid #000 !important;
+                                        padding: 3px !important;
+                                        vertical-align: middle !important;
+                                        text-align: center !important;
+                                    }
+
+                                    table tbody td:nth-child(2) {
+                                        text-align: left !important;
+                                    }
+
+                                    table tfoot td {
+                                        background: #fff !important;
+                                        color: #000 !important;
+                                        border: 1px solid #000 !important;
+                                        padding: 3px !important;
+                                        text-align: center !important;
+                                        font-weight: 700 !important;
+                                    }
+
+                                    table tfoot td:nth-child(4) {
+                                        text-align: right !important;
+                                    }
+
+                                    table tbody tr:nth-child(even) td,
+                                    table tbody tr:nth-child(odd) td {
+                                        background: #fff !important;
+                                    }
+                                </style>
+                            `);
+
+                            doc.find('body').css({
+                                margin: '0',
+                                padding: '0'
+                            });
+
+                            doc.find('table').removeClass('table-striped table-hover');
+                            doc.find('table tbody td:nth-child(2)').css('text-align', 'left');
                         }
                     }
                 ],
@@ -1675,7 +2075,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                 scrollCollapse: true,
                 fixedHeader: true,
                 responsive: false,
-                columnDefs: [{
+                columnDefs: [
+                    {
                         orderable: false,
                         targets: [7],
                         className: 'dt-body-center text-center'

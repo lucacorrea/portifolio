@@ -78,25 +78,20 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('week-create-start')?.addEventListener('change', syncCreateEndFromDuration);
   document.getElementById('week-create-service')?.addEventListener('change', syncCreateEndFromDuration);
 
-  document.querySelectorAll('.js-week-schedule').forEach(function (button) {
-    button.addEventListener('click', function () {
+  document.addEventListener('click', function (event) {
+    const button = event.target.closest?.('.js-week-schedule, .js-week-team, .js-week-status, .js-week-cancel');
+    if (!button) return;
+
+    if (button.classList.contains('js-week-schedule')) {
       setValue('week-schedule-id', button.dataset.orderId);
       setValue('week-schedule-start', toLocalInput(button.dataset.start));
       setValue('week-schedule-end', toLocalInput(button.dataset.end));
-    });
-  });
-
-  document.querySelectorAll('.js-week-team').forEach(function (button) {
-    button.addEventListener('click', function () {
+    } else if (button.classList.contains('js-week-team')) {
       setValue('week-team-id', button.dataset.orderId);
       setValue('week-team-primary', button.dataset.primaryId);
       setValue('week-team-support', button.dataset.supportId);
       updateEmployeeOptions(document.getElementById('modal-week-team'));
-    });
-  });
-
-  document.querySelectorAll('.js-week-status').forEach(function (button) {
-    button.addEventListener('click', function () {
+    } else if (button.classList.contains('js-week-status')) {
       setValue('week-status-id', button.dataset.orderId);
       const select = document.getElementById('week-status-select');
       if (select) {
@@ -104,15 +99,11 @@ document.addEventListener('DOMContentLoaded', function () {
         setValue('week-status-operation', select.value);
         select.onchange = function () { setValue('week-status-operation', select.value); };
       }
-    });
-  });
-
-  document.querySelectorAll('.js-week-cancel').forEach(function (button) {
-    button.addEventListener('click', function () {
+    } else if (button.classList.contains('js-week-cancel')) {
       setValue('week-cancel-id', button.dataset.orderId);
       const message = document.getElementById('week-cancel-message');
       if (message) message.textContent = 'Cancelar a OS ' + (button.dataset.orderNumber || '') + '?';
-    });
+    }
   });
 
   function restoreRecovery() {

@@ -31,7 +31,7 @@ function cr_status_badge(string $status): string { return ['pendente'=>'amber','
     ['Recebido hoje', cr_money($indicators['received']), 'bi-cash-coin', '#16A34A', 'pagamentos'],
 ]); ?>
 
-<form class="filter-bar" method="get" action="contas-receber.php">
+<form class="filter-bar" method="get" action="contas-receber.php" data-live-filter="receivables" data-live-regions="metrics results">
     <select class="filter-select" name="bucket">
         <option value="">Todos</option>
         <option value="vencidos" <?= $filters['bucket'] === 'vencidos' ? 'selected' : '' ?>>Vencidos</option>
@@ -48,10 +48,10 @@ function cr_status_badge(string $status): string { return ['pendente'=>'amber','
     </select>
     <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" name="search" value="<?= h($filters['search']) ?>" placeholder="Cliente ou OS"></div>
     <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-    <a class="btn-filter btn-filter-ghost" href="contas-receber.php"><i class="bi bi-x-lg"></i> Limpar</a>
+    <a class="btn-filter btn-filter-ghost" href="contas-receber.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
 </form>
 
-<section class="panel">
+<section class="panel" data-live-region="results">
     <div class="panel-header"><div class="panel-title"><i class="bi bi-wallet2"></i>Contas a Receber</div></div>
     <?php if ($accounts === []): ?>
         <?php empty_state('Nenhuma conta encontrada', 'Saldos pendentes de OS finalizadas aparecerao aqui.'); ?>

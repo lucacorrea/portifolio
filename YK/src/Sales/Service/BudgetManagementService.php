@@ -91,6 +91,12 @@ final class BudgetManagementService
         return $this->budgets->budgetsByClient($clientId);
     }
 
+    /** @param int[] $clientIds @return Budget[] */
+    public function budgetsByClients(array $clientIds): array
+    {
+        return $this->budgets->budgetsByClients($clientIds);
+    }
+
     private function validateReferences(BudgetFormData $data, bool $newBudget): void
     {
         $client = $this->clients->findById($data->clientId());

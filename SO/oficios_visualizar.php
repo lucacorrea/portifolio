@@ -22,6 +22,15 @@ $stmt_items = $pdo->prepare("SELECT * FROM itens_oficio WHERE oficio_id = ?");
 $stmt_items->execute([$id]);
 $items = $stmt_items->fetchAll();
 
+$stmt_aquisicoes = $pdo->prepare("
+    SELECT id, numero_aq
+    FROM aquisicoes
+    WHERE oficio_id = ?
+    ORDER BY id ASC
+");
+$stmt_aquisicoes->execute([$id]);
+$aquisicoes = $stmt_aquisicoes->fetchAll(PDO::FETCH_ASSOC);
+
 // Buscar todos os anexos vinculados
 $stmt_anexos = $pdo->prepare("SELECT * FROM oficio_anexos WHERE oficio_id = ? ORDER BY criado_em ASC");
 $stmt_anexos->execute([$id]);
@@ -38,7 +47,7 @@ $page_title = "Solicitação: " . $oficio['numero'];
 include 'views/layout/header.php';
 ?>
 
-<div class="no-print" style="margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center;">
+<div class="no-print" style="margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
     <?php
     $nivel = strtoupper($_SESSION['nivel'] ?? '');
     $back_url = ($nivel === 'SEMFAZ') ? 'oficios_lista_sefaz.php' : 'oficios_lista.php';
@@ -53,6 +62,21 @@ include 'views/layout/header.php';
     <?php if ($oficio['status'] == 'PENDENTE_ITENS' && ($nivel == 'SEFAZ' || $nivel == 'ADMIN' || $nivel == 'SUPORTE')): ?>
         <a href="atribuir_itens.php?id=<?php echo $oficio['id']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus-circle"></i> Atribuir Itens</a>
     <?php endif; ?>
+
+    <?php foreach ($aquisicoes as $aquisicao): ?>
+        <a
+            href="aquisicoes_visualizar.php?id=<?php echo (int)$aquisicao['id']; ?>"
+            class="btn btn-primary btn-sm"
+            title="Abrir a tela de visualização e impressão da aquisição"
+        >
+            <i class="fas fa-print"></i>
+            <?php if (count($aquisicoes) === 1): ?>
+                Imprimir Aquisição
+            <?php else: ?>
+                Imprimir <?php echo htmlspecialchars($aquisicao['numero_aq'], ENT_QUOTES, 'UTF-8'); ?>
+            <?php endif; ?>
+        </a>
+    <?php endforeach; ?>
 </div>
 
 <?php display_flash(); ?>

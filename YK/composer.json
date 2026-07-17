@@ -1,0 +1,18 @@
+{
+    "name": "kyamaguchi/osmais",
+    "description": "Sistema de gestão de serviços da K. Yamaguchi Refrigeração.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "smalot/pdfparser": "^2.12"
+    },
+    "scripts": {
+        "migrate": "@php scripts/migrate.php",
+        "test": [
+            "@php tests/EnvironmentTest.php",
+            "@php tests/ClientPdfImportTest.php",
+            "@php tests/MigrationRunnerTest.php",
+            "@php tests/WebMigrationCoordinatorTest.php"
+        ]
+    }
+}

@@ -28,12 +28,12 @@ $balance = $totals['entrada'] - $totals['saida'] - $totals['estorno_entrada'] + 
     ['Saldo', money(number_format($balance, 2, '.', '')), 'bi-cash-coin', '#2563EB', 'movimentacoes'],
 ]); ?>
 
-<form class="filter-bar" method="get" action="caixa.php">
+<form class="filter-bar" method="get" action="caixa.php" data-live-filter="cash" data-live-regions="metrics results">
     <input class="filter-select input-date" type="date" name="date" value="<?= h($date) ?>">
     <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
 </form>
 
-<section class="panel">
+<section class="panel" data-live-region="results">
     <div class="panel-header"><div class="panel-title"><i class="bi bi-cash-coin"></i>Movimentacoes do caixa</div></div>
     <?php if ($movements === []): ?>
         <?php empty_state('Nenhuma movimentacao no dia', 'Recebimentos de OS e contas aparecerao aqui.'); ?>
