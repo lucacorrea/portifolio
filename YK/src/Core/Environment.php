@@ -19,6 +19,7 @@ final class Environment
         'DB_USERNAME',
         'DB_PASSWORD',
         'DB_CHARSET',
+        'DB_AUTO_MIGRATE',
 
         'SESSION_NAME',
         'SESSION_TIMEOUT',
