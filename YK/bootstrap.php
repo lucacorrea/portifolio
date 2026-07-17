@@ -120,16 +120,18 @@ try {
         charset: $environment->require('DB_CHARSET')
     );
 
-    $autoMigrate = filter_var(
-        $environment->get('DB_AUTO_MIGRATE', 'true'),
-        FILTER_VALIDATE_BOOLEAN,
-        FILTER_NULL_ON_FAILURE
-    );
-    if ($autoMigrate === null) {
-        throw new RuntimeException('Configuração DB_AUTO_MIGRATE inválida.');
-    }
-    if ($autoMigrate) {
-        (new MigrationRunner($database->connection()))->run(__DIR__ . '/database/migrations');
+    if (PHP_SAPI === 'cli') {
+        $autoMigrate = filter_var(
+            $environment->get('DB_AUTO_MIGRATE', 'false'),
+            FILTER_VALIDATE_BOOLEAN,
+            FILTER_NULL_ON_FAILURE
+        );
+        if ($autoMigrate === null) {
+            throw new RuntimeException('Configuração DB_AUTO_MIGRATE inválida.');
+        }
+        if ($autoMigrate) {
+            (new MigrationRunner($database->connection()))->run(__DIR__ . '/database/migrations');
+        }
     }
 
     return [
