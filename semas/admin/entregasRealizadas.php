@@ -499,21 +499,24 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
         }
 
         #tabelaEntregas th {
-            background-color: #ffffff;
-            color: #212529;
+            background-color: #435ebe;
+            color: white;
             font-size: 15px;
             font-weight: 700;
             white-space: nowrap;
             padding: 12px 10px;
-            border: 1px solid #000000;
+            border: 1px solid #314a9b;
             position: sticky;
             top: 0;
             z-index: 10;
         }
 
-        #tabelaEntregas thead tr:first-child th:first-child,
+        #tabelaEntregas thead tr:first-child th:first-child {
+            border-top-left-radius: 6px;
+        }
+
         #tabelaEntregas thead tr:first-child th:last-child {
-            border-radius: 0;
+            border-top-right-radius: 6px;
         }
 
         .card-header {
@@ -523,7 +526,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
         #tabelaEntregas td {
             padding: 10px 8px;
             vertical-align: middle;
-            border: 1px solid #000000;
+            border-bottom: 1px solid #dee2e6;
             white-space: nowrap;
         }
 
@@ -536,7 +539,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
         }
 
         #tabelaEntregas tbody tr:last-child td {
-            border-bottom: 1px solid #000000;
+            border-bottom: 2px solid #435ebe;
         }
 
         #tabelaEntregas tfoot {
@@ -546,7 +549,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
         #tabelaEntregas tfoot td {
             font-weight: bold;
             padding: 12px 8px;
-            border-top: 1px solid #000000;
+            border-top: 2px solid #435ebe;
         }
 
         .profile-wrap {
@@ -1614,12 +1617,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                             const sheet = xlsx.xl.worksheets['sheet1.xml'];
                             const styles = xlsx.xl['styles.xml'];
 
-                            const larguras = [24, 42, 18, 28, 10, 16, 36];
+                            const larguras = [18, 38, 16, 22, 10, 14, 30];
                             $('col', sheet).each(function(i) {
                                 if (larguras[i]) {
                                     $(this).attr('width', larguras[i]);
-                                    $(this).attr('customWidth', '1');
-                                    $(this).attr('bestFit', '1');
+                                    $(this).attr('customWidth', 1);
                                 }
                             });
 
@@ -1629,16 +1631,21 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                             }
 
                             const fonts = $('fonts', styles)[0];
+                            const fills = $('fills', styles)[0];
                             const borders = $('borders', styles)[0];
                             const cellXfs = $('cellXfs', styles)[0];
 
                             const titleFontId = parseInt($(fonts).attr('count'), 10);
-                            appendXml(fonts, '<font><sz val="16"/><b/><color rgb="FF000000"/><name val="Calibri"/></font>');
+                            appendXml(fonts, '<font><sz val="16"/><b/><color rgb="FF1F3864"/><name val="Calibri"/></font>');
                             $(fonts).attr('count', titleFontId + 1);
 
                             const headerFontId = parseInt($(fonts).attr('count'), 10);
-                            appendXml(fonts, '<font><sz val="12"/><b/><color rgb="FF000000"/><name val="Calibri"/></font>');
+                            appendXml(fonts, '<font><sz val="12"/><b/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>');
                             $(fonts).attr('count', headerFontId + 1);
+
+                            const headerFillId = parseInt($(fills).attr('count'), 10);
+                            appendXml(fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF435EBE"/><bgColor indexed="64"/></patternFill></fill>');
+                            $(fills).attr('count', headerFillId + 1);
 
                             const borderId = parseInt($(borders).attr('count'), 10);
                             appendXml(borders, '<border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>');
@@ -1652,63 +1659,46 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                             }
 
                             const titleStyle = addCellStyle(
-                                '<xf numFmtId="0" fontId="' + titleFontId + '" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+                                '<xf numFmtId="0" fontId="' + titleFontId + '" fillId="0" borderId="' + borderId + '" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
                             );
+
                             const infoStyle = addCellStyle(
-                                '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
+                                '<xf numFmtId="0" fontId="0" fillId="0" borderId="' + borderId + '" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
                             );
+
                             const headerStyle = addCellStyle(
-                                '<xf numFmtId="0" fontId="' + headerFontId + '" fillId="0" borderId="' + borderId + '" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+                                '<xf numFmtId="0" fontId="' + headerFontId + '" fillId="' + headerFillId + '" borderId="' + borderId + '" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
                             );
+
                             const bodyCenterStyle = addCellStyle(
                                 '<xf numFmtId="0" fontId="0" fillId="0" borderId="' + borderId + '" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
                             );
+
                             const bodyLeftStyle = addCellStyle(
                                 '<xf numFmtId="0" fontId="0" fillId="0" borderId="' + borderId + '" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'
                             );
 
                             let mergeCells = $('mergeCells', sheet);
                             if (!mergeCells.length) {
+                                const worksheet = $('worksheet', sheet)[0];
                                 const mergeNode = sheet.createElement('mergeCells');
                                 mergeNode.setAttribute('count', '0');
-                                const sheetData = $('sheetData', sheet)[0];
-                                sheetData.parentNode.insertBefore(mergeNode, sheetData.nextSibling);
+                                worksheet.appendChild(mergeNode);
                                 mergeCells = $('mergeCells', sheet);
                             }
 
-                            const jaMesclado = mergeCells.find('mergeCell[ref="A1:G1"]').length > 0;
-                            if (!jaMesclado) {
-                                const titleMerge = sheet.createElement('mergeCell');
-                                titleMerge.setAttribute('ref', 'A1:G1');
-                                mergeCells[0].appendChild(titleMerge);
-                                mergeCells.attr('count', mergeCells.children('mergeCell').length);
-                            }
-
-                            let headerRowNum = 0;
-                            $('row', sheet).each(function() {
-                                const rowText = $('c', this).map(function() {
-                                    const type = $(this).attr('t');
-                                    if (type === 'inlineStr') return $('t', this).text();
-                                    const value = $('v', this).text();
-                                    if (type === 's') {
-                                        const idx = parseInt(value, 10);
-                                        return $('si', xlsx.xl['sharedStrings.xml']).eq(idx).text();
-                                    }
-                                    return value;
-                                }).get().join(' | ');
-                                if (rowText.includes('Data/Hora') && rowText.includes('Beneficiário')) {
-                                    headerRowNum = parseInt($(this).attr('r'), 10) || 0;
-                                }
-                            });
+                            const titleMerge = sheet.createElement('mergeCell');
+                            titleMerge.setAttribute('ref', 'A1:G1');
+                            mergeCells[0].appendChild(titleMerge);
+                            mergeCells.attr('count', mergeCells.children('mergeCell').length);
 
                             $('row', sheet).each(function() {
                                 const rowNum = parseInt($(this).attr('r'), 10) || 0;
-                                $(this).removeAttr('customHeight').removeAttr('ht');
 
                                 if (rowNum === 1) {
-                                    $(this).attr('ht', '28').attr('customHeight', '1');
-                                } else if (rowNum === headerRowNum) {
-                                    $(this).attr('ht', '24').attr('customHeight', '1');
+                                    $(this).attr('ht', '26').attr('customHeight', '1');
+                                } else if (rowNum === 3) {
+                                    $(this).attr('ht', '22').attr('customHeight', '1');
                                 }
 
                                 $('c', this).each(function() {
@@ -1717,10 +1707,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
 
                                     if (rowNum === 1) {
                                         $(this).attr('s', titleStyle);
-                                    } else if (headerRowNum && rowNum === headerRowNum) {
-                                        $(this).attr('s', headerStyle);
-                                    } else if (!headerRowNum || rowNum < headerRowNum) {
+                                    } else if (rowNum === 2) {
                                         $(this).attr('s', infoStyle);
+                                    } else if (rowNum === 3) {
+                                        $(this).attr('s', headerStyle);
                                     } else {
                                         $(this).attr('s', col === 'B' ? bodyLeftStyle : bodyCenterStyle);
                                     }
@@ -1763,14 +1753,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
 
                                     body {
                                         font-family: Arial, sans-serif !important;
-                                        color: #000 !important;
-                                        background: #fff !important;
+                                        color: #111 !important;
                                     }
 
                                     .print-header {
-                                        padding: 0 0 8px 0 !important;
-                                        margin: 0 0 8px 0 !important;
-                                        border: 0 !important;
+                                        border: 1px solid #000;
+                                        padding: 10px 12px;
+                                        margin-bottom: 10px;
                                     }
 
                                     .print-header h3 {
@@ -1778,28 +1767,25 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                                         text-align: center !important;
                                         font-size: 20px !important;
                                         font-weight: 700 !important;
-                                        color: #000 !important;
                                     }
 
                                     .print-header p {
                                         margin: 3px 0 !important;
                                         font-size: 12px !important;
-                                        color: #000 !important;
                                     }
 
                                     table.dataTable {
                                         width: 100% !important;
                                         border-collapse: collapse !important;
-                                        border-spacing: 0 !important;
+                                        border: 1px solid #000 !important;
                                         font-size: 10px !important;
-                                        color: #000 !important;
                                     }
 
                                     table.dataTable thead th {
                                         font-size: 11px !important;
                                         font-weight: 700 !important;
                                         text-align: center !important;
-                                        background: #fff !important;
+                                        background: #f0f0f0 !important;
                                         color: #000 !important;
                                         border: 1px solid #000 !important;
                                         padding: 5px 4px !important;
@@ -1807,13 +1793,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
 
                                     table.dataTable tbody td,
                                     table.dataTable tfoot td {
-                                        background: #fff !important;
-                                        color: #000 !important;
                                         border: 1px solid #000 !important;
                                         padding: 4px !important;
                                         vertical-align: middle !important;
-                                        white-space: normal !important;
-                                        word-break: normal !important;
                                     }
 
                                     table.dataTable tbody td:nth-child(2) {
@@ -1828,7 +1810,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
 
                             doc.find('body').css('background', '#fff');
                             doc.find('table').removeClass('table-striped table-hover');
-                            doc.find('table thead th, table tbody td, table tfoot td').css('border', '1px solid #000');
                         }
                     }
                 ],
