@@ -114,6 +114,22 @@ try {
     webMigrationAssertSame(0, $concurrentRuns, 'Lock concorrente deve retornar sem aguardar nem executar.');
     flock($lockHandle, LOCK_UN);
     fclose($lockHandle);
+
+    $blockedRuntimePath = $root . DIRECTORY_SEPARATOR . 'blocked-runtime';
+    file_put_contents($blockedRuntimePath, 'not-a-directory');
+    $fallbackRuns = 0;
+    $fallback = new WebMigrationCoordinator(
+        $migrations,
+        $blockedRuntimePath . DIRECTORY_SEPARATOR . 'state.json',
+        $blockedRuntimePath . DIRECTORY_SEPARATOR . 'state.lock',
+        static function () use (&$fallbackRuns): bool {
+            ++$fallbackRuns;
+            return true;
+        },
+        static fn (): int => $now
+    );
+    $fallback->run();
+    webMigrationAssertSame(1, $fallbackRuns, 'Cache local indisponível deve usar o lock do banco como fallback.');
 } finally {
     removeWebMigrationTestDirectory($root);
 }

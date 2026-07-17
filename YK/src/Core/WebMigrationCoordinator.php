@@ -17,6 +17,7 @@ final class WebMigrationCoordinator
 
     private readonly Closure $runner;
     private readonly Closure $clock;
+    private bool $runnerAttempted = false;
 
     public function __construct(
         private readonly string $migrationsDirectory,
@@ -33,21 +34,27 @@ final class WebMigrationCoordinator
 
     public function run(): void
     {
+        $this->runnerAttempted = false;
         try {
             $this->runSafely();
-        } catch (Throwable) {
-            // Fail-open: a atualização do schema nunca pode derrubar a resposta HTTP.
+        } catch (Throwable $exception) {
+            error_log('Web migration coordination failed: ' . $exception::class);
+            if (!$this->runnerAttempted) {
+                $this->runWithoutFileState();
+            }
         }
     }
 
     private function runSafely(): void
     {
         if (!$this->ensureRuntimeDirectory()) {
+            $this->runWithoutFileState();
             return;
         }
 
         $lock = @fopen($this->lockPath, 'c+');
         if ($lock === false) {
+            $this->runWithoutFileState();
             return;
         }
 
@@ -75,6 +82,7 @@ final class WebMigrationCoordinator
             ]);
 
             try {
+                $this->runnerAttempted = true;
                 $completed = (bool) ($this->runner)();
                 if (!$completed) {
                     $this->writeState([
@@ -113,6 +121,16 @@ final class WebMigrationCoordinator
         } finally {
             @flock($lock, LOCK_UN);
             fclose($lock);
+        }
+    }
+
+    private function runWithoutFileState(): void
+    {
+        $this->runnerAttempted = true;
+        try {
+            ($this->runner)();
+        } catch (Throwable $exception) {
+            error_log('Automatic web migration failed: ' . $exception::class);
         }
     }
 
