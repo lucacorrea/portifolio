@@ -710,6 +710,208 @@ try {
         order: 3;
       }
     }
+
+
+    /* =========================================================
+       TABELA BENEFICIÁRIOS — MESMO PADRÃO VISUAL DA TABELA DE ENTREGAS
+       Mantém a lógica existente; altera apenas apresentação.
+    ========================================================= */
+    .beneficiarios-list-card {
+      border: 0 !important;
+      border-radius: 14px !important;
+      box-shadow: none !important;
+      background: #fff !important;
+      overflow: hidden;
+    }
+
+    .beneficiarios-list-header {
+      background: #fff !important;
+      border-bottom: 0 !important;
+      padding: 1.35rem 1.35rem 1rem !important;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .beneficiarios-card-title {
+      margin: 0 0 .35rem 0;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #25396f;
+    }
+
+    .beneficiarios-search-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      margin-left: auto;
+    }
+
+    .beneficiarios-search-input {
+      width: 100%;
+      min-width: 320px;
+      max-width: 420px;
+      height: 38px;
+      padding: .55rem .9rem;
+      border: 1px solid #9bb4f5;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      font-size: 15px;
+      box-shadow: none;
+      outline: none;
+      transition: all .2s ease;
+    }
+
+    .beneficiarios-search-input::placeholder {
+      color: #7f8a99;
+      opacity: 1;
+    }
+
+    .beneficiarios-search-input:focus {
+      border-color: #9ab0f5;
+      box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+    }
+
+    .beneficiarios-search-clear {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border: 1px solid #cfd6df;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .2s ease;
+      padding: 0;
+    }
+
+    .beneficiarios-search-clear:hover {
+      border-color: #435ebe;
+      color: #435ebe;
+      background: #f8f9ff;
+    }
+
+    .beneficiarios-list-body {
+      padding: 0 1.35rem 0 !important;
+      background: #fff !important;
+    }
+
+    .beneficiarios-table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #tbl {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      border-spacing: 0 !important;
+      background: #fff !important;
+      margin-bottom: 0 !important;
+    }
+
+    #tbl thead th {
+      background: #fff !important;
+      color: #495057 !important;
+      font-size: 15px !important;
+      font-weight: 700 !important;
+      text-align: center !important;
+      padding: 13px 10px !important;
+      border: 0 !important;
+      border-top: 1px solid #d7dce2 !important;
+      border-bottom: 2px solid #d7dce2 !important;
+      white-space: nowrap !important;
+      vertical-align: middle !important;
+    }
+
+    #tbl tbody td {
+      padding: 11px 10px !important;
+      vertical-align: middle !important;
+      border: 0 !important;
+      border-bottom: 1px solid #dfe3e8 !important;
+      background: transparent !important;
+      color: #536779 !important;
+      white-space: nowrap !important;
+      text-align: center;
+    }
+
+    #tbl tbody td:nth-child(2),
+    #tbl tbody td:nth-child(5),
+    #tbl tbody td:nth-child(7) {
+      text-align: left !important;
+    }
+
+    #tbl tbody tr:nth-child(even) {
+      background: #f7f8fa !important;
+    }
+
+    #tbl tbody tr:nth-child(odd) {
+      background: #fff !important;
+    }
+
+    #tbl tbody tr:hover {
+      background: #f1f4f8 !important;
+    }
+
+    #tbl tbody tr:last-child td {
+      border-bottom: 2px solid #435ebe !important;
+    }
+
+    #tbl .td-endereco,
+    #tbl .td-responsavel {
+      max-width: none;
+    }
+
+    #tbl .td-endereco .cell-truncate,
+    #tbl .td-responsavel .cell-truncate {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .table-actions {
+      min-width: 210px;
+      width: 210px;
+      white-space: nowrap;
+      text-align: center !important;
+    }
+
+    .beneficiarios-list-footer {
+      background: #fff !important;
+      border-top: 1px solid #eef1f5 !important;
+      padding: 1rem 1.35rem !important;
+    }
+
+    .beneficiarios-list-footer .custom-pagination-bar {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    @media (max-width: 991.98px) {
+      .beneficiarios-list-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .beneficiarios-search-wrap {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .beneficiarios-search-input {
+        min-width: 0;
+        max-width: 100%;
+        flex: 1 1 auto;
+      }
+    }
+
   </style>
 </head>
 
@@ -842,19 +1044,23 @@ try {
         </div>
 
         <section class="section mb-4">
-          <div class="card">
-            <div class="card-header d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
-              <span>Lista de Beneficiários (via ajudas_entregas)</span>
-              <div class="d-flex gap-2 align-items-center">
-                <input id="qLive" name="q" value="<?= e($qPrefill) ?>" class="form-control form-control-sm" placeholder="Buscar por ID, CPF, nome, telefone, endereço, número ou responsável..." autocomplete="off" />
-                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClear"><i class="bi bi-x-circle"></i></button>
+          <div class="card beneficiarios-list-card">
+            <div class="card-header beneficiarios-list-header">
+              <div>
+                <h4 class="beneficiarios-card-title">Lista de Beneficiários (via ajudas_entregas)</h4>
+                <p class="text-muted mb-0"><?= count($rows) ?> registros encontrados</p>
+              </div>
+
+              <div class="beneficiarios-search-wrap">
+                <input id="qLive" name="q" value="<?= e($qPrefill) ?>" class="beneficiarios-search-input" placeholder="Buscar por ID, CPF, nome, telefone, endereço, número ou responsável..." autocomplete="off" />
+                <button class="beneficiarios-search-clear" type="button" id="btnClear" title="Limpar pesquisa" aria-label="Limpar pesquisa"><i class="bi bi-x-circle"></i></button>
               </div>
             </div>
 
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle w-100 text-nowrap mb-0" id="tbl">
-                  <thead class="table-light">
+            <div class="card-body beneficiarios-list-body">
+              <div class="table-responsive beneficiarios-table-responsive">
+                <table class="table align-middle w-100 text-nowrap mb-0" id="tbl">
+                  <thead>
                     <tr>
                       <th>CPF</th>
                       <th>Nome</th>
@@ -888,7 +1094,7 @@ try {
                           data-responsavel="<?= e($respKey) ?>">
                           <td class="nowrap"><?= e(formatCpf($r['cpf'])) ?></td>
                           <td><?= e((string)$r['nome']) ?></td>
-                          <td class="text-end"><?= e(moneyBR($r['valor_ultima'] ?? null)) ?></td>
+                          <td class="text-center"><?= e(moneyBR($r['valor_ultima'] ?? null)) ?></td>
                           <td><?= e((string)$r['numero']) ?></td>
                           <td class="td-endereco">
                             <div class="cell-truncate" title="<?= e((string)$r['endereco']) ?>"><?= e((string)$r['endereco']) ?></div>
@@ -925,7 +1131,7 @@ try {
               </div>
             </div>
 
-            <div class="card-footer tfoot-pager">
+            <div class="card-footer tfoot-pager beneficiarios-list-footer">
               <div class="custom-pagination-bar">
                 <div class="custom-pagination-left">
                   <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
