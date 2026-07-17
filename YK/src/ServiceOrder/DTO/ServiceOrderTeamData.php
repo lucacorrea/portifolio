@@ -41,8 +41,9 @@ final class ServiceOrderTeamData
 
         if (is_array($rawMembers)) {
             foreach ($rawMembers as $row) {
-                if (!is_array($row) || trim((string) ($row['funcionario_id'] ?? $row['employee_id'] ?? '')) === '') {
-                    continue;
+                if (!is_array($row)) throw new InvalidArgumentException('Equipe inválida.');
+                if (trim((string) ($row['funcionario_id'] ?? $row['employee_id'] ?? '')) === '') {
+                    throw new InvalidArgumentException('Selecione o funcionário da equipe.');
                 }
                 $members[] = ServiceOrderTeamMemberData::fromArray($row);
             }

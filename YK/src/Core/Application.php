@@ -17,13 +17,17 @@ use App\Catalog\Repository\ServiceRepository;
 use App\Catalog\Service\ProductManagementService;
 use App\Catalog\Service\ServiceManagementService;
 use App\Company\Service\CompanySettingsService;
+use App\CRM\Import\A7ClientReportMapper;
+use App\CRM\Import\ClientPdfParser;
 use App\CRM\Repository\ClientRepository;
+use App\CRM\Service\ClientImportService;
 use App\CRM\Service\ClientManagementService;
 use App\Dashboard\Repository\DashboardRepository;
 use App\Dashboard\Service\DashboardService;
 use App\Finance\Service\AccountsReceivableManagementService;
 use App\Finance\Service\CashManagementService;
 use App\Finance\Service\PaymentManagementService;
+use App\Finance\Service\ReceiptService;
 use App\Inventory\Service\InventoryManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\PrivilegedAuthorizationService;
@@ -33,6 +37,7 @@ use App\Schedule\Repository\AgendaReminderRepository;
 use App\Schedule\Service\AgendaManagementService;
 use App\ServiceOrder\Repository\ServiceOrderRepository;
 use App\ServiceOrder\Service\ServiceOrderFinalizationService;
+use App\ServiceOrder\Service\ServiceOrderLifecycleService;
 use App\ServiceOrder\Service\ServiceOrderManagementService;
 use App\Sales\Repository\BudgetRepository;
 use App\Sales\Service\BudgetManagementService;
@@ -61,6 +66,8 @@ final class Application
 
     private ?ClientManagementService $clientManagement = null;
 
+    private ?ClientImportService $clientImport = null;
+
     private ?BudgetManagementService $budgetManagement = null;
 
     private ?ServiceOrderManagementService $serviceOrderManagement = null;
@@ -70,9 +77,11 @@ final class Application
     private ?CashManagementService $cashManagement = null;
     private ?AccountsReceivableManagementService $accountsReceivableManagement = null;
     private ?PaymentManagementService $paymentManagement = null;
+    private ?ReceiptService $receiptService = null;
     private ?CompanySettingsService $companySettings = null;
     private ?PrivilegedAuthorizationService $privilegedAuthorization = null;
     private ?ServiceOrderFinalizationService $serviceOrderFinalization = null;
+    private ?ServiceOrderLifecycleService $serviceOrderLifecycle = null;
     private ?DashboardService $dashboardService = null;
 
     private ?SafeRedirect $redirect = null;
@@ -256,6 +265,19 @@ final class Application
         return $this->clientManagement;
     }
 
+    public function clientImport(): ClientImportService
+    {
+        if ($this->clientImport === null) {
+            $connection = $this->database->connection();
+            $this->clientImport = new ClientImportService(
+                new ClientRepository($connection),
+                new ClientPdfParser(new A7ClientReportMapper())
+            );
+        }
+
+        return $this->clientImport;
+    }
+
     public function budgetManagement(): BudgetManagementService
     {
         if ($this->budgetManagement === null) {
@@ -345,6 +367,15 @@ final class Application
         return $this->paymentManagement;
     }
 
+    public function receiptService(): ReceiptService
+    {
+        if ($this->receiptService === null) {
+            $this->receiptService = new ReceiptService($this->database->connection());
+        }
+
+        return $this->receiptService;
+    }
+
     public function companySettings(): CompanySettingsService
     {
         if ($this->companySettings === null) {
@@ -381,6 +412,17 @@ final class Application
         }
 
         return $this->serviceOrderFinalization;
+    }
+
+    public function serviceOrderLifecycle(): ServiceOrderLifecycleService
+    {
+        if ($this->serviceOrderLifecycle === null) {
+            $this->serviceOrderLifecycle = new ServiceOrderLifecycleService(
+                $this->database->connection()
+            );
+        }
+
+        return $this->serviceOrderLifecycle;
     }
 
     public function dashboard(): DashboardService

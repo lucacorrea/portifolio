@@ -97,8 +97,7 @@ final class ServiceOrderManagementService
 
             return $this->orders->create(
                 $data,
-                $team?->primaryEmployeeId(),
-                $team?->firstSupportEmployeeId(),
+                $team,
                 $schedule?->start(),
                 $schedule?->end()
             );
@@ -164,8 +163,7 @@ final class ServiceOrderManagementService
 
             return $this->orders->create(
                 $data,
-                $team?->primaryEmployeeId(),
-                $team?->firstSupportEmployeeId(),
+                $team,
                 $schedule?->start(),
                 $schedule?->end()
             );
@@ -225,7 +223,7 @@ final class ServiceOrderManagementService
                 'items' => $items,
             ]);
 
-            $order = $this->orders->create($data, null, null, null, null);
+            $order = $this->orders->create($data, null, null, null);
             $this->connection->prepare(
                 'UPDATE ordens_servico
                     SET valor_aprovado_orcamento = :approved_value
@@ -239,12 +237,53 @@ final class ServiceOrderManagementService
         });
     }
 
-    public function updateOrder(int $id, ServiceOrderFormData $data): void
+    public function updateOrder(
+        int $id,
+        ServiceOrderFormData $data,
+        ?ServiceOrderTeamData $team = null,
+        ?ServiceOrderScheduleData $schedule = null,
+        bool $teamSubmitted = false,
+        bool $scheduleSubmitted = false
+    ): void
     {
-        $this->transactional(function () use ($id, $data): void {
-            $this->requireLockedOrder($id);
+        $this->transactional(function () use ($id, $data, $team, $schedule, $teamSubmitted, $scheduleSubmitted): void {
+            $order = $this->requireLockedOrder($id);
+            $this->assertOrderMutable($order);
             $this->validateReferences($data);
+
+            $effectiveTeam = null;
+            if ($teamSubmitted) {
+                $effectiveTeam = $team ?? new ServiceOrderTeamData([]);
+            } elseif ($scheduleSubmitted) {
+                $effectiveTeam = $this->teamFromOrder($order);
+            }
+
+            if ($teamSubmitted && $effectiveTeam !== null && $effectiveTeam->hasMembers()) {
+                $this->validateEmployees($effectiveTeam);
+            }
+
+            if ($scheduleSubmitted && $schedule !== null && $effectiveTeam !== null) {
+                $this->validateTeamForScheduledOrder($effectiveTeam);
+                $this->validateConflicts($id, $effectiveTeam, $schedule);
+            } elseif ($teamSubmitted && $effectiveTeam !== null && $order->scheduledStart() !== null && $order->scheduledEnd() !== null) {
+                $this->validateTeamForScheduledOrder($effectiveTeam);
+                $this->validateConflicts(
+                    $id,
+                    $effectiveTeam,
+                    new ServiceOrderScheduleData(new DateTimeImmutable($order->scheduledStart()), new DateTimeImmutable($order->scheduledEnd()))
+                );
+            }
+
             $this->orders->updateCore($id, $data);
+            if ($teamSubmitted && $effectiveTeam !== null) {
+                $this->orders->replaceTeam($id, $effectiveTeam);
+            }
+            if ($scheduleSubmitted && $schedule !== null) {
+                $this->orders->updateSchedule($id, $schedule->start(), $schedule->end());
+                if (in_array($order->status(), ['rascunho', 'aberta', 'aguardando_agendamento'], true)) {
+                    $this->orders->updateStatus($id, 'agendada');
+                }
+            }
         });
     }
 
@@ -252,6 +291,7 @@ final class ServiceOrderManagementService
     {
         $this->transactional(function () use ($orderId, $data): void {
             $order = $this->requireLockedOrder($orderId);
+            $this->assertOrderMutable($order);
             if ($data->hasMembers()) $this->validateEmployees($data);
             $this->validateConflictIfScheduled($order, $data);
             $this->orders->replaceTeam($orderId, $data);
@@ -269,6 +309,7 @@ final class ServiceOrderManagementService
     {
         $this->transactional(function () use ($orderId, $schedule): void {
             $order = $this->requireLockedOrder($orderId);
+            $this->assertOrderMutable($order);
             $team = $this->teamFromOrder($order);
             $this->validateTeamForScheduledOrder($team);
             $this->validateConflicts($orderId, $team, $schedule);
@@ -282,7 +323,8 @@ final class ServiceOrderManagementService
     public function assignTeamAndSchedule(int $orderId, ServiceOrderTeamData $team, ServiceOrderScheduleData $schedule): void
     {
         $this->transactional(function () use ($orderId, $team, $schedule): void {
-            $this->requireLockedOrder($orderId);
+            $order = $this->requireLockedOrder($orderId);
+            $this->assertOrderMutable($order);
             $this->validateTeamForScheduledOrder($team);
             $this->validateConflicts($orderId, $team, $schedule);
             $this->orders->replaceTeam($orderId, $team);
@@ -408,6 +450,16 @@ final class ServiceOrderManagementService
         return $order;
     }
 
+    private function assertOrderMutable(ServiceOrder $order): void
+    {
+        if ($order->status() === 'finalizada') {
+            throw new InvalidArgumentException('Estorne a OS finalizada antes de alterá-la.');
+        }
+        if ($order->status() === 'cancelada') {
+            throw new InvalidArgumentException('Reabra a OS cancelada antes de alterá-la.');
+        }
+    }
+
     private function validateReferences(ServiceOrderFormData $data): void
     {
         $client = $this->clients->findById($data->clientId());
@@ -433,7 +485,8 @@ final class ServiceOrderManagementService
 
     private function validateStateRequirements(string $status, ?ServiceOrderTeamData $team, ?ServiceOrderScheduleData $schedule): void
     {
-        if (in_array($status, self::STATUS_REQUIRES_TEAM_AND_SCHEDULE, true) && ($team === null || !$team->hasMembers() || $team->primaryEmployeeId() === null || $schedule === null)) {
+        $requiresOperationalAssignment = in_array($status, self::STATUS_REQUIRES_TEAM_AND_SCHEDULE, true) || $schedule !== null;
+        if ($requiresOperationalAssignment && ($team === null || !$team->hasMembers() || $team->primaryEmployeeId() === null || $schedule === null)) {
             throw new InvalidArgumentException('Informe equipe com responsável principal e agendamento para esse status.');
         }
     }
@@ -525,7 +578,7 @@ final class ServiceOrderManagementService
             'items' => $items,
         ]);
 
-        return $this->orders->create($data, null, null, null, null);
+        return $this->orders->create($data, null, null, null);
     }
 
     private function validateConflicts(?int $orderId, ServiceOrderTeamData $team, ServiceOrderScheduleData $schedule): void

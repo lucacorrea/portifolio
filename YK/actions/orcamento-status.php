@@ -28,6 +28,11 @@ try {
             'success',
             'Orçamento aprovado e OS criada automaticamente: ' . $order->displayNumber() . '.'
         );
+        if ($application->authorization()->can('os.visualizar')) {
+            $target = 'ordens-servico.php?search=' . rawurlencode($order->displayNumber());
+            header('Location: ' . $application->redirect()->applicationUrl($target), true, 303);
+            exit;
+        }
     } else {
         $application->budgetManagement()->rejectBudget($budgetId, $_POST['reason'] ?? null);
         $session->flash('success', 'Orçamento recusado com sucesso.');

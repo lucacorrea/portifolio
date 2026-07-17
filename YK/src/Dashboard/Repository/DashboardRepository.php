@@ -23,7 +23,8 @@ final class DashboardRepository
                 SUM(CASE WHEN agendado_inicio >= DATE_SUB(CURRENT_DATE, INTERVAL WEEKDAY(CURRENT_DATE) DAY)
                           AND agendado_inicio < DATE_ADD(DATE_SUB(CURRENT_DATE, INTERVAL WEEKDAY(CURRENT_DATE) DAY), INTERVAL 7 DAY)
                           AND status <> 'cancelada' THEN 1 ELSE 0 END) AS week_services
-             FROM ordens_servico"
+             FROM ordens_servico
+             WHERE excluida_em IS NULL"
         )->fetch() ?: [];
 
         $waitingBudgets = $this->connection->query(
@@ -94,6 +95,7 @@ final class DashboardRepository
               WHERE os.agendado_inicio >= DATE_SUB(CURRENT_DATE, INTERVAL WEEKDAY(CURRENT_DATE) DAY)
                 AND os.agendado_inicio < DATE_ADD(DATE_SUB(CURRENT_DATE, INTERVAL WEEKDAY(CURRENT_DATE) DAY), INTERVAL 7 DAY)
                 AND os.status <> 'cancelada'
+                AND os.excluida_em IS NULL
            ORDER BY os.agendado_inicio ASC, os.id ASC
               LIMIT " . $limit
         )->fetchAll();
@@ -119,6 +121,7 @@ final class DashboardRepository
                       WHERE osf.ordem_servico_id = os.id AND osf.ativo = 1) AS equipe
                FROM ordens_servico os
                JOIN clientes c ON c.id = os.cliente_id
+              WHERE os.excluida_em IS NULL
            ORDER BY os.criado_em DESC, os.id DESC
               LIMIT " . $limit
         )->fetchAll();

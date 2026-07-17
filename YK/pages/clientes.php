@@ -27,11 +27,13 @@ foreach ($budgetService->listBudgets() as $budget) {
 }
 
 $canCreate = $authorization->can('cliente.criar');
+$canImport = $authorization->can('cliente.importar');
 $canEdit = $authorization->can('cliente.editar');
 $canStatus = $authorization->can('cliente.desativar');
 $canHistory = $authorization->can('cliente.visualizar_historico');
 $canViewBudget = $authorization->can('orcamento.visualizar');
 $recovery = client_consume_form_recovery();
+$importPreview = $canImport ? client_import_preview() : null;
 
 function client_data(?array $recovery, string $modal): array
 {
@@ -104,7 +106,7 @@ $editError = client_error($recovery, 'edit');
 </form>
 
 <section class="panel">
-    <div class="panel-header"><div class="panel-title"><i class="bi bi-people"></i>Clientes cadastrados</div><?php if ($canCreate): ?><button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente"><i class="bi bi-person-plus"></i><span>Novo cliente</span></button><?php endif; ?></div>
+    <div class="panel-header"><div class="panel-title"><i class="bi bi-people"></i>Clientes cadastrados</div><div class="d-flex flex-wrap gap-2"><?php if ($canImport): ?><button class="btn-filter btn-filter-ghost" type="button" data-bs-toggle="modal" data-bs-target="#modal-client-import"><i class="bi bi-file-earmark-pdf"></i><span>Importar PDF</span></button><?php endif; ?><?php if ($canCreate): ?><button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente"><i class="bi bi-person-plus"></i><span>Novo cliente</span></button><?php endif; ?></div></div>
     <?php if ($clients === []): ?>
         <?php empty_state('Nenhum cliente encontrado', 'Cadastre o primeiro cliente ou ajuste os filtros.'); ?>
     <?php else: ?>
@@ -164,6 +166,34 @@ function client_form_fields(array $data, string $prefix, bool $editing = false):
 
 <?php if ($canCreate): ?><div class="modal fade" id="modal-cliente" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/cliente-salvar.php" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Novo cliente</h2><p class="text-muted small mb-0">O código será gerado automaticamente.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><div class="alert alert-danger <?= $createError === null ? 'd-none' : '' ?>" id="create-client-form-error" role="alert"><?= h($createError ?? '') ?></div><?php client_form_fields($createData, 'create-client'); ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check-lg"></i> Salvar</button></div></form></div></div><?php endif; ?>
 
+<?php if ($canImport): ?>
+<div class="modal fade" id="modal-client-import" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/clientes-importar-analisar.php" enctype="multipart/form-data"><div class="modal-header"><div><h2 class="modal-title fs-5">Importar clientes pelo PDF</h2><p class="text-muted small mb-0">Use o relatório “RELATÓRIO DE CLIENTES 2” exportado pelo A7.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><input type="hidden" name="MAX_FILE_SIZE" value="5242880"><div class="alert alert-info" role="note"><i class="bi bi-shield-check me-1"></i> O PDF será somente analisado nesta etapa. Nenhum cliente será gravado antes da sua confirmação.</div><div class="form-group"><label class="form-label" for="client-import-pdf">Arquivo PDF</label><input class="form-control-os" id="client-import-pdf" type="file" name="client_pdf" accept="application/pdf,.pdf" required><small class="text-muted">Máximo de 5 MB e 200 páginas. O arquivo não será armazenado.</small></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-search"></i> Analisar PDF</button></div></form></div></div>
+
+<?php if ($importPreview !== null): ?>
+<?php $importSummary = $importPreview['summary']; ?>
+<div class="modal fade" id="modal-client-import-preview" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content visual-modal"><div class="modal-header"><div><h2 class="modal-title fs-5">Revisar importação</h2><p class="text-muted small mb-0"><?= h((string) ($importPreview['source_name'] ?? 'PDF')) ?> · <?= h((string) ($importPreview['pages'] ?? 0)) ?> página(s)</p></div></div><div class="modal-body">
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg"><div class="form-section h-100"><small class="text-muted">Encontrados</small><strong class="d-block fs-4"><?= h((string) ($importSummary['total'] ?? 0)) ?></strong></div></div>
+    <div class="col-6 col-lg"><div class="form-section h-100"><small class="text-muted">Para importar</small><strong class="d-block fs-4 text-success"><?= h((string) ($importSummary['ready'] ?? 0)) ?></strong></div></div>
+    <div class="col-6 col-lg"><div class="form-section h-100"><small class="text-muted">Já importados</small><strong class="d-block fs-4"><?= h((string) ($importSummary['existing'] ?? 0)) ?></strong></div></div>
+    <div class="col-6 col-lg"><div class="form-section h-100"><small class="text-muted">Possíveis duplicados</small><strong class="d-block fs-4 text-warning"><?= h((string) ($importSummary['possible_duplicates'] ?? 0)) ?></strong></div></div>
+    <div class="col-6 col-lg"><div class="form-section h-100"><small class="text-muted">Inválidos</small><strong class="d-block fs-4 text-danger"><?= h((string) ($importSummary['invalid'] ?? 0)) ?></strong></div></div>
+</div>
+<?php if (($importSummary['warnings'] ?? 0) > 0): ?><div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i><?= h((string) $importSummary['warnings']) ?> registro(s) possui(em) nome e telefone repetidos dentro do próprio PDF. Os códigos A7 são diferentes, por isso serão preservados.</div><?php endif; ?>
+<div class="alert alert-secondary">Somente códigos A7 já importados e registros inválidos serão ignorados. Possíveis duplicidades serão sinalizadas, mas preservadas por possuírem código de origem próprio. A confirmação grava o lote em uma única transação.</div>
+<div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Código</th><th>Cliente</th><th>Telefone</th><th>Cidade</th><th>Análise</th></tr></thead><tbody>
+<?php foreach ($importPreview['preview'] as $row): ?>
+<?php
+$status = (string) ($row['status'] ?? 'invalid');
+$statusClass = match ($status) { 'ready' => 'green', 'existing' => 'gray', 'possible_duplicate' => 'amber', default => 'red' };
+?>
+<tr><td><strong><?= h((string) ($row['code'] ?? '')) ?></strong></td><td><?= h((string) ($row['name'] ?? '')) ?></td><td><?= h((string) ($row['phone'] ?? '-')) ?></td><td><?= h((string) ($row['city'] ?? '-')) ?></td><td><span class="badge-soft badge-<?= h($statusClass) ?>"><?= h((string) ($row['message'] ?? '')) ?></span></td></tr>
+<?php endforeach; ?>
+</tbody></table></div><p class="text-muted small mt-2 mb-0">A tabela mostra uma amostra da análise; os totais acima consideram o PDF completo.</p>
+</div><div class="modal-footer"><form method="post" action="actions/clientes-importar-cancelar.php"><?= $csrf->field() ?><input type="hidden" name="import_token" value="<?= h((string) $importPreview['token']) ?>"><button class="btn-modal-cancel" type="submit">Descartar análise</button></form><?php if (($importSummary['ready'] ?? 0) > 0): ?><form method="post" action="actions/clientes-importar-confirmar.php"><?= $csrf->field() ?><input type="hidden" name="import_token" value="<?= h((string) $importPreview['token']) ?>"><button class="btn-modal-save" type="submit"><i class="bi bi-check-lg"></i> Importar <?= h((string) $importSummary['ready']) ?> cliente(s)</button></form><?php endif; ?></div></div></div></div>
+<?php endif; ?>
+<?php endif; ?>
+
 <div class="modal fade" id="modal-cliente-view" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content visual-modal"><div class="modal-header"><div><h2 class="modal-title fs-5">Dados do cliente</h2><p class="text-muted small mb-0" id="view-client-subtitle"></p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><section class="form-section"><h3 class="form-section-title">Cadastro</h3><div class="form-row"><div class="form-group"><label class="form-label">Código</label><div class="form-control-os" id="view-client-code"></div></div><div class="form-group"><label class="form-label">Tipo</label><div class="form-control-os" id="view-client-person-type"></div></div><div class="form-group"><label class="form-label">Status</label><div class="form-control-os" id="view-client-status"></div></div></div><div class="form-row"><div class="form-group"><label class="form-label">Nome</label><div class="form-control-os" id="view-client-name"></div></div><div class="form-group"><label class="form-label">CPF/CNPJ</label><div class="form-control-os" id="view-client-document"></div></div></div><div class="form-row"><div class="form-group"><label class="form-label">Telefone</label><div class="form-control-os" id="view-client-phone"></div></div><div class="form-group"><label class="form-label">WhatsApp</label><div class="form-control-os" id="view-client-whatsapp"></div></div><div class="form-group"><label class="form-label">E-mail</label><div class="form-control-os" id="view-client-email"></div></div></div><div class="form-group"><label class="form-label">Endereço completo</label><div class="form-control-os" id="view-client-address"></div></div><div class="form-group"><label class="form-label">Observações</label><div class="form-control-os" id="view-client-notes"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Cadastrado em</label><div class="form-control-os" id="view-client-created-at"></div></div><div class="form-group"><label class="form-label">Atualizado em</label><div class="form-control-os" id="view-client-updated-at"></div></div></div></section><?php if ($canHistory): ?><section class="form-section"><h3 class="form-section-title">Orçamentos do cliente</h3><div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Número</th><th>Emissão</th><th>Validade</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody id="view-client-budgets"></tbody></table></div></section><?php endif; ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Fechar</button></div></div></div></div>
 
 <?php if ($canEdit): ?><div class="modal fade" id="modal-cliente-edit" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/cliente-salvar.php" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Editar cliente</h2><p class="text-muted small mb-0" id="edit-client-subtitle"><?= h(client_value($editData, 'code')) ?></p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><div class="alert alert-danger <?= $editError === null ? 'd-none' : '' ?>" id="edit-client-form-error" role="alert"><?= h($editError ?? '') ?></div><input type="hidden" name="id" id="edit-client-id" value="<?= h(client_value($editData, 'id')) ?>"><section class="form-section"><h3 class="form-section-title">Código</h3><input class="form-control-os" id="edit-client-code" type="text" value="<?= h(client_value($editData, 'code')) ?>" readonly></section><?php client_form_fields($editData, 'edit-client', true); ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check-lg"></i> Salvar</button></div></form></div></div><?php endif; ?>
@@ -176,6 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const clients = <?= json_encode($clientPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
     const recoveryModal = <?= json_encode($recovery['modal'] ?? null, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
     const canViewBudget = <?= $canViewBudget ? 'true' : 'false' ?>;
+    const openImportPreview = <?= $importPreview !== null && (string) ($_GET['modal'] ?? '') === 'import-preview' ? 'true' : 'false' ?>;
     function text(id, value) { const element = document.getElementById(id); if (element) element.textContent = value || '-'; }
     function val(id, value) { const element = document.getElementById(id); if (element) element.value = value || ''; }
     function money(value) { return Number.parseFloat(value || '0').toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
@@ -193,5 +224,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.js-client-status').forEach(function (button) { button.addEventListener('click', function () { const activate = button.dataset.clientStatus === 'ativo'; val('status-client-id', button.dataset.clientId); val('status-client-value', button.dataset.clientStatus); text('client-status-title', activate ? 'Ativar cliente' : 'Desativar cliente'); text('client-status-message', (activate ? 'Deseja ativar ' : 'Deseja desativar ') + (button.dataset.clientName || 'este cliente') + '?'); }); });
     const targets = { create: 'modal-cliente', edit: 'modal-cliente-edit' };
     if (recoveryModal && targets[recoveryModal] && window.bootstrap) { const modal = document.getElementById(targets[recoveryModal]); if (modal) bootstrap.Modal.getOrCreateInstance(modal).show(); }
+    if (openImportPreview && window.bootstrap) { const modal = document.getElementById('modal-client-import-preview'); if (modal) bootstrap.Modal.getOrCreateInstance(modal).show(); }
 });
 </script>

@@ -13,6 +13,8 @@ final class ServiceOrder
         private readonly ?string $number,
         private readonly int $clientId,
         private readonly string $clientName,
+        private readonly ?string $clientPhone,
+        private readonly ?string $clientWhatsapp,
         private readonly ?string $clientAddress,
         private readonly ?string $clientNumber,
         private readonly ?string $clientDistrict,
@@ -68,6 +70,8 @@ final class ServiceOrder
             number: isset($data['numero']) ? (string) $data['numero'] : null,
             clientId: (int) ($data['cliente_id'] ?? 0),
             clientName: (string) ($data['cliente_nome'] ?? ''),
+            clientPhone: isset($data['cliente_telefone']) ? (string) $data['cliente_telefone'] : null,
+            clientWhatsapp: isset($data['cliente_whatsapp']) ? (string) $data['cliente_whatsapp'] : null,
             clientAddress: isset($data['cliente_endereco']) ? (string) $data['cliente_endereco'] : null,
             clientNumber: isset($data['cliente_numero']) ? (string) $data['cliente_numero'] : null,
             clientDistrict: isset($data['cliente_bairro']) ? (string) $data['cliente_bairro'] : null,
@@ -118,6 +122,8 @@ final class ServiceOrder
     public function displayNumber(): string { return $this->number ?? sprintf('OS-%06d', $this->id); }
     public function clientId(): int { return $this->clientId; }
     public function clientName(): string { return $this->clientName; }
+    public function clientPhone(): ?string { return $this->clientPhone; }
+    public function clientWhatsapp(): ?string { return $this->clientWhatsapp; }
     public function clientAddress(): ?string { return $this->clientAddress; }
     public function clientNumber(): ?string { return $this->clientNumber; }
     public function clientDistrict(): ?string { return $this->clientDistrict; }

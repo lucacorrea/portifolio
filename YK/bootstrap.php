@@ -4,6 +4,13 @@ declare(strict_types=1);
 use App\Core\Database;
 use App\Core\Environment;
 use App\Core\Application;
+use App\Core\MigrationException;
+use App\Core\MigrationRunner;
+
+$vendorAutoload = __DIR__ . '/vendor/autoload.php';
+if (is_file($vendorAutoload)) {
+    require_once $vendorAutoload;
+}
 
 spl_autoload_register(static function (string $class): void {
     $prefix = 'App\\';
@@ -113,6 +120,18 @@ try {
         charset: $environment->require('DB_CHARSET')
     );
 
+    $autoMigrate = filter_var(
+        $environment->get('DB_AUTO_MIGRATE', 'true'),
+        FILTER_VALIDATE_BOOLEAN,
+        FILTER_NULL_ON_FAILURE
+    );
+    if ($autoMigrate === null) {
+        throw new RuntimeException('Configuração DB_AUTO_MIGRATE inválida.');
+    }
+    if ($autoMigrate) {
+        (new MigrationRunner($database->connection()))->run(__DIR__ . '/database/migrations');
+    }
+
     return [
         'environment' => $environment,
         'settings' => $settings,
@@ -126,6 +145,11 @@ try {
         throw new RuntimeException('Configuracao do ambiente invalida.');
     }
 
-    http_response_code(500);
+    if ($exception instanceof MigrationException) {
+        http_response_code(503);
+        header('Retry-After: 30');
+    } else {
+        http_response_code(500);
+    }
     exit('Não foi possível inicializar o sistema. Entre em contato com o administrador.');
 }

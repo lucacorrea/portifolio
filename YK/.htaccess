@@ -2,7 +2,7 @@ Options -Indexes
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^(config|src|database|scripts|storage|backups)(/|$) - [F,L]
+    RewriteRule ^(config|src|database|scripts|storage|backups|tests|vendor)(/|$) - [F,L]
 </IfModule>
 
 <IfModule mod_authz_core.c>
@@ -10,6 +10,9 @@ Options -Indexes
         Require all denied
     </FilesMatch>
     <FilesMatch "(\.(ini|log|sql|bak|backup|old|dist)|database\.local\.php)$">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "^composer\.(json|lock)$">
         Require all denied
     </FilesMatch>
 </IfModule>
@@ -20,6 +23,10 @@ Options -Indexes
         Deny from all
     </FilesMatch>
     <FilesMatch "(\.(ini|log|sql|bak|backup|old|dist)|database\.local\.php)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <FilesMatch "^composer\.(json|lock)$">
         Order allow,deny
         Deny from all
     </FilesMatch>
