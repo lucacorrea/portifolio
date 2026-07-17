@@ -713,8 +713,8 @@ try {
 
 
     /* =========================================================
-       TABELA BENEFICIÁRIOS — MESMO PADRÃO VISUAL DA TABELA DE ENTREGAS
-       Mantém a lógica existente; altera apenas apresentação.
+       LISTA DE BENEFICIÁRIOS — MESMO PADRÃO VISUAL DA TABELA DE ENTREGAS
+       Somente estilo/estrutura visual. A lógica PHP e o JS foram preservados.
     ========================================================= */
     .beneficiarios-list-card {
       border: 0 !important;
@@ -724,22 +724,48 @@ try {
       overflow: hidden;
     }
 
-    .beneficiarios-list-header {
+    .beneficiarios-list-card .card-header {
       background: #fff !important;
       border-bottom: 0 !important;
-      padding: 1.35rem 1.35rem 1rem !important;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 1rem;
-      flex-wrap: wrap;
+      padding: 1.45rem 1.45rem .55rem !important;
     }
 
-    .beneficiarios-card-title {
+    .beneficiarios-list-card .card-header h4 {
       margin: 0 0 .35rem 0;
       font-size: 1.15rem;
       font-weight: 800;
       color: #25396f;
+    }
+
+    .beneficiarios-list-card .card-header p {
+      margin: 0;
+      color: #7c8db5 !important;
+      font-size: .95rem;
+    }
+
+    .beneficiarios-list-body {
+      padding: 1.05rem 1.45rem 1.45rem !important;
+      background: #fff !important;
+    }
+
+    .beneficiarios-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .beneficiarios-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      min-height: 38px;
+    }
+
+    .beneficiarios-toolbar-search {
+      margin-left: auto;
     }
 
     .beneficiarios-search-wrap {
@@ -747,7 +773,6 @@ try {
       align-items: center;
       gap: 8px;
       flex-wrap: nowrap;
-      margin-left: auto;
     }
 
     .beneficiarios-search-input {
@@ -792,15 +817,21 @@ try {
       padding: 0;
     }
 
+    .beneficiarios-search-clear i {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
     .beneficiarios-search-clear:hover {
       border-color: #435ebe;
       color: #435ebe;
       background: #f8f9ff;
     }
 
-    .beneficiarios-list-body {
-      padding: 0 1.35rem 0 !important;
-      background: #fff !important;
+    .beneficiarios-search-clear:focus {
+      outline: none;
+      box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
     }
 
     .beneficiarios-table-responsive {
@@ -810,14 +841,21 @@ try {
 
     #tbl {
       width: 100% !important;
+      table-layout: auto;
       border-collapse: collapse !important;
       border-spacing: 0 !important;
       background: #fff !important;
       margin-bottom: 0 !important;
     }
 
+    #tbl thead,
+    #tbl thead.table-light,
+    #tbl thead tr,
     #tbl thead th {
       background: #fff !important;
+    }
+
+    #tbl thead th {
       color: #495057 !important;
       font-size: 15px !important;
       font-weight: 700 !important;
@@ -838,13 +876,7 @@ try {
       background: transparent !important;
       color: #536779 !important;
       white-space: nowrap !important;
-      text-align: center;
-    }
-
-    #tbl tbody td:nth-child(2),
-    #tbl tbody td:nth-child(5),
-    #tbl tbody td:nth-child(7) {
-      text-align: left !important;
+      text-align: center !important;
     }
 
     #tbl tbody tr:nth-child(even) {
@@ -865,7 +897,8 @@ try {
 
     #tbl .td-endereco,
     #tbl .td-responsavel {
-      max-width: none;
+      max-width: none !important;
+      text-align: center !important;
     }
 
     #tbl .td-endereco .cell-truncate,
@@ -874,35 +907,36 @@ try {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      text-align: center !important;
     }
 
-    .table-actions {
+    #tbl .table-actions {
       min-width: 210px;
       width: 210px;
       white-space: nowrap;
       text-align: center !important;
     }
 
-    .beneficiarios-list-footer {
+    .beneficiarios-pagination-wrap {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e9ecef;
       background: #fff !important;
-      border-top: 1px solid #eef1f5 !important;
-      padding: 1rem 1.35rem !important;
-    }
-
-    .beneficiarios-list-footer .custom-pagination-bar {
-      padding-top: 0;
-      border-top: 0;
     }
 
     @media (max-width: 991.98px) {
-      .beneficiarios-list-header {
+      .beneficiarios-toolbar {
         flex-direction: column;
         align-items: stretch;
       }
 
+      .beneficiarios-toolbar-search {
+        margin-left: 0;
+        width: 100%;
+      }
+
       .beneficiarios-search-wrap {
         width: 100%;
-        margin-left: 0;
       }
 
       .beneficiarios-search-input {
@@ -1045,26 +1079,30 @@ try {
 
         <section class="section mb-4">
           <div class="card beneficiarios-list-card">
-            <div class="card-header beneficiarios-list-header">
-              <div>
-                <h4 class="beneficiarios-card-title">Lista de Beneficiários (via ajudas_entregas)</h4>
-                <p class="text-muted mb-0"><?= count($rows) ?> registros encontrados</p>
-              </div>
-
-              <div class="beneficiarios-search-wrap">
-                <input id="qLive" name="q" value="<?= e($qPrefill) ?>" class="beneficiarios-search-input" placeholder="Buscar por ID, CPF, nome, telefone, endereço, número ou responsável..." autocomplete="off" />
-                <button class="beneficiarios-search-clear" type="button" id="btnClear" title="Limpar pesquisa" aria-label="Limpar pesquisa"><i class="bi bi-x-circle"></i></button>
-              </div>
+            <div class="card-header">
+              <h4>Lista de Beneficiários (via ajudas_entregas)</h4>
+              <p><?= count($rows) ?> registros encontrados</p>
             </div>
 
             <div class="card-body beneficiarios-list-body">
+              <div class="beneficiarios-toolbar">
+                <div class="beneficiarios-toolbar-left"></div>
+
+                <div class="beneficiarios-toolbar-search">
+                  <div class="beneficiarios-search-wrap">
+                    <input id="qLive" name="q" value="<?= e($qPrefill) ?>" class="beneficiarios-search-input" placeholder="Buscar por ID, CPF, nome, telefone, endereço ou responsável..." autocomplete="off" />
+                    <button class="beneficiarios-search-clear" type="button" id="btnClear" title="Limpar pesquisa" aria-label="Limpar pesquisa"><i class="bi bi-x-circle"></i></button>
+                  </div>
+                </div>
+              </div>
+
               <div class="table-responsive beneficiarios-table-responsive">
-                <table class="table align-middle w-100 text-nowrap mb-0" id="tbl">
+                <table class="table table-hover align-middle w-100 text-nowrap mb-0" id="tbl">
                   <thead>
                     <tr>
                       <th>CPF</th>
                       <th>Nome</th>
-                      <th class="text-end">Valor (última entrega)</th>
+                      <th class="text-center">Valor (última entrega)</th>
                       <th>Número</th>
                       <th>Endereço</th>
                       <th>Telefone</th>
@@ -1129,27 +1167,27 @@ try {
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            <div class="card-footer tfoot-pager beneficiarios-list-footer">
-              <div class="custom-pagination-bar">
-                <div class="custom-pagination-left">
-                  <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
-                  <button type="button" class="btn btn-outline-secondary btn-sm" id="btnNext">Próximo</button>
-                </div>
+              <div class="beneficiarios-pagination-wrap">
+                <div class="custom-pagination-bar">
+                  <div class="custom-pagination-left">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnNext">Próximo</button>
+                  </div>
 
-                <div class="custom-pagination-center">
-                  <span class="custom-page-info" id="lblPagina">Página 1 de 1</span>
-                </div>
+                  <div class="custom-pagination-center">
+                    <span class="custom-page-info" id="lblPagina">Página 1 de 1</span>
+                  </div>
 
-                <div class="custom-pagination-right">
-                  <label for="selPerPage" class="custom-length-label">por página</label>
-                  <select id="selPerPage" class="custom-length-select">
-                    <option value="10" selected>10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                  </select>
+                  <div class="custom-pagination-right">
+                    <label for="selPerPage" class="custom-length-label">por página</label>
+                    <select id="selPerPage" class="custom-length-select">
+                      <option value="10" selected>10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
