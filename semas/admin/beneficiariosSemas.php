@@ -868,6 +868,63 @@ try {
       vertical-align: middle !important;
     }
 
+    #tbl thead th.sortable-th {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sort-header-btn {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: 700;
+      padding: 0;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .35rem;
+      width: 100%;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+
+    .sort-header-btn:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .sort-indicator {
+      width: 14px;
+      min-width: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #d9dee5;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .sort-indicator::before {
+      content: "↕";
+    }
+
+    #tbl thead th.sort-asc .sort-indicator,
+    #tbl thead th.sort-desc .sort-indicator {
+      color: #8a95a3;
+    }
+
+    #tbl thead th.sort-asc .sort-indicator::before {
+      content: "▲";
+      font-size: 10px;
+    }
+
+    #tbl thead th.sort-desc .sort-indicator::before {
+      content: "▼";
+      font-size: 10px;
+    }
+
     #tbl tbody td {
       padding: 11px 10px !important;
       vertical-align: middle !important;
@@ -1100,13 +1157,27 @@ try {
                 <table class="table table-hover align-middle w-100 text-nowrap mb-0" id="tbl">
                   <thead>
                     <tr>
-                      <th>CPF</th>
-                      <th>Nome</th>
-                      <th class="text-center">Valor (última entrega)</th>
-                      <th>Número</th>
-                      <th>Endereço</th>
-                      <th>Telefone</th>
-                      <th>Responsável (última)</th>
+                      <th class="sortable-th" data-sort-key="cpf" data-sort-type="digits">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por CPF">CPF <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th sort-asc" data-sort-key="nome" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por nome">Nome <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th text-center" data-sort-key="valor" data-sort-type="number">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por valor da última entrega">Valor (última entrega) <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="numero" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por número">Número <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="endereco" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por endereço">Endereço <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="telefone" data-sort-type="digits">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por telefone">Telefone <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="responsavel" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por responsável">Responsável (última) <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
                       <th class="text-center text-nowrap">Ações</th>
                     </tr>
                   </thead>
@@ -1129,6 +1200,7 @@ try {
                           data-telefone="<?= e($telDigits) ?>"
                           data-endereco="<?= e($rowEnd) ?>"
                           data-numero="<?= e(mb_strtolower($rowNum, 'UTF-8')) ?>"
+                          data-valor="<?= e((string)($r['valor_ultima'] ?? '')) ?>"
                           data-responsavel="<?= e($respKey) ?>">
                           <td class="nowrap"><?= e(formatCpf($r['cpf'])) ?></td>
                           <td><?= e((string)$r['nome']) ?></td>
@@ -1367,8 +1439,88 @@ try {
       let page = 1;
       let perPage = parseInt(selPerPage.value, 10) || 10;
       let filtered = dataRows.slice();
+      let sortState = {
+        key: 'nome',
+        type: 'text',
+        dir: 'asc'
+      };
+
+      const sortableHeaders = Array.from(document.querySelectorAll('#tbl thead th.sortable-th'));
+
+      function normalizeText(value) {
+        return String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim();
+      }
+
+      function getSortValue(tr, key, type) {
+        let value = tr.dataset[key] || '';
+
+        if (type === 'number') {
+          if (value === '' || value === null || typeof value === 'undefined') return Number.NEGATIVE_INFINITY;
+          const raw = String(value).trim();
+          if (raw.includes(',')) {
+            return Number(raw.replace(/\./g, '').replace(',', '.')) || 0;
+          }
+          return Number(raw) || 0;
+        }
+
+        if (type === 'digits') {
+          return String(value).replace(/\D+/g, '');
+        }
+
+        return normalizeText(value);
+      }
+
+      function updateSortHeaders() {
+        sortableHeaders.forEach(th => {
+          th.classList.remove('sort-asc', 'sort-desc');
+          const key = th.dataset.sortKey || '';
+          const btn = th.querySelector('.sort-header-btn');
+          if (!btn) return;
+
+          if (key === sortState.key) {
+            th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+            btn.setAttribute('aria-sort', sortState.dir === 'asc' ? 'ascending' : 'descending');
+          } else {
+            btn.removeAttribute('aria-sort');
+          }
+        });
+      }
+
+      function applySort() {
+        if (!sortState.key) return;
+
+        const dir = sortState.dir === 'desc' ? -1 : 1;
+        const key = sortState.key;
+        const type = sortState.type || 'text';
+
+        filtered.sort((a, b) => {
+          const av = getSortValue(a, key, type);
+          const bv = getSortValue(b, key, type);
+
+          if (type === 'number') {
+            if (av < bv) return -1 * dir;
+            if (av > bv) return 1 * dir;
+            return normalizeText(a.dataset.nome).localeCompare(normalizeText(b.dataset.nome), 'pt-BR') * dir;
+          }
+
+          const cmp = String(av).localeCompare(String(bv), 'pt-BR', {
+            numeric: true,
+            sensitivity: 'base'
+          });
+
+          if (cmp !== 0) return cmp * dir;
+          return normalizeText(a.dataset.nome).localeCompare(normalizeText(b.dataset.nome), 'pt-BR') * dir;
+        });
+      }
 
       function renderPage() {
+        applySort();
+        updateSortHeaders();
+
         const total = filtered.length;
         const pages = Math.max(1, Math.ceil(total / perPage));
         if (page > pages) page = pages;
@@ -1377,13 +1529,21 @@ try {
         const start = (page - 1) * perPage;
         const end = start + perPage;
 
-        dataRows.forEach(r => r.style.display = 'none');
+        dataRows.forEach(r => {
+          r.style.display = 'none';
+          tbody.appendChild(r);
+        });
 
         if (total === 0) {
-          if (noResultsRow) noResultsRow.classList.remove('d-none');
+          if (noResultsRow) {
+            noResultsRow.classList.remove('d-none');
+            tbody.appendChild(noResultsRow);
+          }
         } else {
           if (noResultsRow) noResultsRow.classList.add('d-none');
+          filtered.forEach(r => tbody.appendChild(r));
           filtered.slice(start, end).forEach(r => r.style.display = '');
+          if (noResultsRow) tbody.appendChild(noResultsRow);
         }
 
         lblPagina.textContent = `Página ${page} de ${pages}`;
@@ -1393,20 +1553,21 @@ try {
 
       function applyFilter() {
         const q = (inpSearch.value || '').trim().toLowerCase();
+        const qText = normalizeText(q);
         const qDigits = q.replace(/\D+/g, '');
 
         filtered = dataRows.filter(tr => {
           if (!q) return true;
 
-          const nome = tr.dataset.nome || '';
+          const nome = normalizeText(tr.dataset.nome || '');
           const id = tr.dataset.id || '';
           const cpf = tr.dataset.cpf || '';
           const tel = tr.dataset.telefone || '';
-          const end = tr.dataset.endereco || '';
-          const num = tr.dataset.numero || '';
-          const resp = tr.dataset.responsavel || '';
+          const end = normalizeText(tr.dataset.endereco || '');
+          const num = normalizeText(tr.dataset.numero || '');
+          const resp = normalizeText(tr.dataset.responsavel || '');
 
-          const hitText = nome.includes(q) || end.includes(q) || num.includes(q) || resp.includes(q);
+          const hitText = nome.includes(qText) || end.includes(qText) || num.includes(qText) || resp.includes(qText);
           const hitDigits = qDigits && (id === qDigits || id.startsWith(qDigits) || cpf.startsWith(qDigits) || tel.includes(qDigits));
           return hitText || !!hitDigits;
         });
@@ -1414,6 +1575,27 @@ try {
         page = 1;
         renderPage();
       }
+
+      sortableHeaders.forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sortKey || '';
+          const type = th.dataset.sortType || 'text';
+          if (!key) return;
+
+          if (sortState.key === key) {
+            sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortState = {
+              key,
+              type,
+              dir: 'asc'
+            };
+          }
+
+          page = 1;
+          renderPage();
+        });
+      });
 
       inpSearch.addEventListener('input', applyFilter);
 
