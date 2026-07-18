@@ -38,8 +38,7 @@ $companyLogo = CompanyBranding::safeLogoUrl($company['logo'] ?? null);
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="company-trade-name">Nome fantasia</label>
-                    <input class="form-control-os" id="company-trade-name" name="nome_fantasia" maxlength="150" value="<?= h((string) ($company['nome_fantasia'] ?? '')) ?>" aria-describedby="company-trade-name-help" <?= $canEdit ? '' : 'disabled' ?>>
-                    <small class="text-muted" id="company-trade-name-help">As três primeiras palavras serão exibidas abaixo da logo no menu.</small>
+                    <input class="form-control-os" id="company-trade-name" name="nome_fantasia" maxlength="150" value="<?= h((string) ($company['nome_fantasia'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="company-document">CPF/CNPJ</label>

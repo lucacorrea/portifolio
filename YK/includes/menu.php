@@ -20,7 +20,6 @@ if ($companyName === '') {
 if ($companyName === '') {
     $companyName = 'K. Yamaguchi';
 }
-$companyDisplayName = CompanyBranding::shortName($companyName);
 $companyLogo = CompanyBranding::safeLogoUrl($companySettings['logo'] ?? null);
 
 $navGroups = [
@@ -215,7 +214,7 @@ $canSeeItem = static function (
     <a
         class="sidebar-brand"
         href="dashboard.php"
-        aria-label="<?= htmlspecialchars(
+        aria-label="Ir para o Dashboard - <?= htmlspecialchars(
             $companyName,
             ENT_QUOTES,
             'UTF-8'
@@ -237,15 +236,7 @@ $canSeeItem = static function (
             <?php endif; ?>
         </div>
 
-        <div class="brand-copy"<?= $companyDisplayName !== $companyName ? ' title="' . htmlspecialchars($companyName, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
-            <div class="brand-name">
-                <?= htmlspecialchars(
-                    $companyDisplayName,
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </div>
-
+        <div class="brand-copy">
             <div class="brand-tag">
                 Gestão de Serviços
             </div>
