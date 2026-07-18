@@ -876,6 +876,40 @@ textarea.form-control-os {
   font-size: 13px;
 }
 
+.cr-batch-selection {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--ice);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cr-select-column {
+  width: 42px;
+  text-align: center;
+}
+
+.cr-batch-incompatible {
+  opacity: .55;
+}
+
+.cr-batch-account-list {
+  display: grid;
+  gap: 8px;
+}
+
+.cr-batch-account-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--ice);
+}
+
 .btn-action {
   width: 32px;
   height: 32px;
