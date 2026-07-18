@@ -110,6 +110,27 @@ function os_badge_status(string $status): string
     ][$status] ?? 'gray';
 }
 
+function os_status_filter_url(array $filters, string $status): string
+{
+    $query = array_filter($filters, static fn(mixed $value): bool => is_scalar($value) && (string) $value !== '');
+    if ($status === '') unset($query['status']);
+    else $query['status'] = $status;
+    return 'ordens-servico.php' . ($query === [] ? '' : '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986));
+}
+
+$statusFilterButtons = [
+    ['', 'Todos', 'all', ''],
+    ['rascunho', 'Rascunho', 'gray', ''],
+    ['aberta', 'Aberta', 'blue', ''],
+    ['aguardando_agendamento', 'Aguardando agendamento', 'amber', ''],
+    ['agendada', 'Agendada', 'teal', '--status-filter-color:var(--teal);--status-filter-active:var(--teal);--status-filter-bg:#e6fffb'],
+    ['em_deslocamento', 'Em deslocamento', 'purple', '--status-filter-color:var(--purple);--status-filter-active:var(--purple);--status-filter-bg:#f4efff'],
+    ['em_execucao', 'Em execução', 'green', ''],
+    ['aguardando_peca', 'Aguardando peça', 'amber', ''],
+    ['finalizada', 'Finalizada', 'green', ''],
+    ['cancelada', 'Cancelada', 'red', ''],
+];
+
 function os_money_fmt(string $value): string
 {
     return money($value);
@@ -223,8 +244,22 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 </form>
 
 <section class="panel" data-live-region="results">
-    <div class="panel-header">
-        <div class="panel-title"><i class="bi bi-wrench-adjustable-circle"></i>Ordens de Servico</div>
+    <div class="panel-header budget-panel-header">
+        <div class="budget-panel-heading">
+            <div class="panel-title"><i class="bi bi-wrench-adjustable-circle"></i>Ordens de Serviço</div>
+            <nav class="budget-status-filters" aria-label="Filtrar ordens de serviço por status">
+                <?php foreach ($statusFilterButtons as [$statusValue, $statusLabel, $statusClass, $statusStyle]): ?>
+                    <?php $isActiveStatus = $filters['status'] === $statusValue; ?>
+                    <a
+                        class="budget-status-filter budget-status-filter-<?= h($statusClass) ?> js-os-status-filter<?= $isActiveStatus ? ' active' : '' ?>"
+                        href="<?= h(os_status_filter_url($filters, $statusValue)) ?>"
+                        data-status="<?= h($statusValue) ?>"
+                        <?= $statusStyle !== '' ? 'style="' . h($statusStyle) . '"' : '' ?>
+                        <?= $isActiveStatus ? 'aria-current="true"' : '' ?>
+                    ><?= h($statusLabel) ?></a>
+                <?php endforeach; ?>
+            </nav>
+        </div>
         <?php if ($canCreate): ?><button class="btn-filter btn-filter-primary" type="button" data-bs-toggle="modal" data-bs-target="#modal-os"><i class="bi bi-plus-lg"></i> Nova OS</button><?php endif; ?>
     </div>
     <?php if ($orders === []): ?>
@@ -321,3 +356,17 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 <?php if ($canIssueReceipt): ?><div class="modal fade" id="modal-os-receipt" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/recibo-emitir.php" target="_blank"><div class="modal-header"><h2 class="modal-title fs-5">Gerar recibo de pagamento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><input type="hidden" name="pagamento_id" id="os-receipt-payment-id"><p>Gerar recibo da <strong id="os-receipt-order-number"></strong> referente a <strong id="os-receipt-payment-label"></strong>?</p><p class="text-muted small mb-0">O documento registra uma fotografia dos dados da empresa, do cliente e do pagamento.</p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Gerar recibo</button></div></form></div></div><?php endif; ?>
 
 <script type="application/json" id="os-page-data"><?= json_encode(['services' => $serviceOptions, 'products' => $productOptions, 'employees' => $employeeOptions, 'recoveryModal' => $recovery['modal'] ?? ($_GET['modal'] ?? null), 'recoveryData' => $recovery['data'] ?? [], 'recoveryError' => $recovery['error'] ?? null], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>
+<script>
+document.addEventListener('click', function (event) {
+    const statusFilterButton = event.target.closest('.js-os-status-filter');
+    if (!statusFilterButton) return;
+    event.preventDefault();
+    const statusSelect = document.querySelector('form[data-live-filter="service-orders"] select[name="status"]');
+    if (!statusSelect) {
+        window.location.assign(statusFilterButton.href);
+        return;
+    }
+    statusSelect.value = statusFilterButton.dataset.status || '';
+    statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+});
+</script>
