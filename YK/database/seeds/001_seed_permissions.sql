@@ -89,6 +89,11 @@ VALUES
     ('Funcionários', 'funcionario', 'funcionario.visualizar_dados_bancarios', 'Visualizar dados bancários', 'Permite visualizar dados bancários de funcionários.', 1080),
     ('Funcionários', 'funcionario', 'funcionario.editar_dados_bancarios', 'Editar dados bancários', 'Permite alterar dados bancários de funcionários.', 1090),
 
+    ('Fornecedores', 'fornecedor', 'fornecedor.visualizar', 'Visualizar fornecedores', 'Permite acessar fornecedores.', 1110),
+    ('Fornecedores', 'fornecedor', 'fornecedor.criar', 'Criar fornecedores', 'Permite cadastrar fornecedores.', 1120),
+    ('Fornecedores', 'fornecedor', 'fornecedor.editar', 'Editar fornecedores', 'Permite alterar fornecedores.', 1130),
+    ('Fornecedores', 'fornecedor', 'fornecedor.desativar', 'Desativar fornecedores', 'Permite inativar ou reativar fornecedores.', 1140),
+
     ('Caixa', 'caixa', 'caixa.visualizar', 'Visualizar caixa', 'Permite acessar o caixa.', 1310),
     ('Caixa', 'caixa', 'caixa.abrir', 'Abrir caixa', 'Permite abrir caixa operacional.', 1320),
     ('Caixa', 'caixa', 'caixa.registrar_venda', 'Registrar venda', 'Permite registrar vendas no caixa.', 1330),
@@ -105,6 +110,10 @@ VALUES
     ('Financeiro', 'financeiro', 'financeiro.criar_lancamento', 'Criar lançamento financeiro', 'Permite criar lançamentos financeiros.', 1540),
     ('Financeiro', 'financeiro', 'financeiro.editar_lancamento', 'Editar lançamento financeiro', 'Permite alterar lançamentos financeiros.', 1550),
     ('Financeiro', 'financeiro', 'financeiro.estornar', 'Estornar financeiro', 'Permite estornar lançamentos financeiros.', 1560),
+    ('Financeiro', 'contas_pagar', 'contas_pagar.visualizar', 'Visualizar contas a pagar', 'Permite acessar a carteira de contas a pagar.', 1561),
+    ('Financeiro', 'contas_pagar', 'contas_pagar.criar', 'Criar contas a pagar', 'Permite inserir manualmente contas de fornecedores.', 1562),
+    ('Financeiro', 'contas_pagar', 'contas_pagar.editar', 'Editar contas a pagar', 'Permite alterar contas a pagar pendentes.', 1563),
+    ('Financeiro', 'contas_pagar', 'contas_pagar.cancelar', 'Cancelar contas a pagar', 'Permite cancelar contas a pagar preservando a auditoria.', 1564),
     ('Financeiro', 'contas_receber', 'contas_receber.visualizar', 'Visualizar contas a receber', 'Permite acessar a carteira de contas a receber.', 1570),
     ('Financeiro', 'contas_receber', 'contas_receber.registrar_pagamento', 'Registrar pagamento de conta', 'Permite registrar pagamentos posteriores de OS.', 1580),
     ('Financeiro', 'contas_receber', 'contas_receber.baixa_lote', 'Baixa em lote', 'Permite registrar baixa em lote de contas do mesmo cliente.', 1585),

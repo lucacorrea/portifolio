@@ -83,6 +83,13 @@ $navGroups = [
             'permission' => 'produto.visualizar',
         ],
         [
+            'key' => 'fornecedores',
+            'label' => 'Fornecedores',
+            'icon' => 'bi-truck',
+            'href' => 'fornecedores.php',
+            'permission' => 'fornecedor.visualizar',
+        ],
+        [
             'key' => 'servicos',
             'label' => 'Serviços',
             'icon' => 'bi-tools',
@@ -112,6 +119,13 @@ $navGroups = [
             'icon' => 'bi-wallet2',
             'href' => 'contas-receber.php',
             'permission' => 'contas_receber.visualizar',
+        ],
+        [
+            'key' => 'contas-pagar',
+            'label' => 'Contas a Pagar',
+            'icon' => 'bi-credit-card-2-front',
+            'href' => 'contas-pagar.php',
+            'permission' => 'contas_pagar.visualizar',
         ],
         [
             'key' => 'faturamento',
