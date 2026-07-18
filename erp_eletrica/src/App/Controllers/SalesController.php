@@ -764,7 +764,11 @@ class SalesController extends BaseController {
     }
 
     public function cancel_sale() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Metodo nao permitido']);
+            exit;
+        }
         
         $data = json_decode(file_get_contents('php://input'), true);
         $id = $data['id'] ?? null;
@@ -928,13 +932,15 @@ class SalesController extends BaseController {
             // 4. Auditoria
             $audit = new \App\Services\AuditLogService();
             $auditText = $isAlreadyCancelled ? "Regularização Fiscal (Cancelamento SEFAZ)" : $motivo;
-            $audit->record('Cancelamento de venda', 'vendas', $id, null, $auditText . ($isFiscal ? " (Sincronizado SEFAZ)" : ""));
+            $audit->record('Cancelamento de venda', 'vendas', $id, null, $auditText . ($isFiscalMode ? " (Sincronizado SEFAZ)" : ""));
 
             $db->commit();
             echo json_encode(['success' => true]);
 
-        } catch (\Exception $e) {
-            $db->rollBack();
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;
