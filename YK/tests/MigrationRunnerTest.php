@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(12, count($migrationPaths), 'A sequência atual deve conter 12 migrations.');
+migrationAssertSame(13, count($migrationPaths), 'A sequência atual deve conter 13 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {

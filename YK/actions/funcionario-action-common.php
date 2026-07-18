@@ -24,7 +24,8 @@ if (
  * }
  */
 function employee_action_context(
-    string $permission
+    string $permission,
+    bool $requireCsrf = true
 ): array {
     $app = require dirname(__DIR__) . '/bootstrap.php';
 
@@ -34,22 +35,24 @@ function employee_action_context(
     $session = $application->session();
     $session->start();
 
-    try {
-        $csrfToken = isset($_POST['csrf_token'])
-            ? (string) $_POST['csrf_token']
-            : null;
+    if ($requireCsrf) {
+        try {
+            $csrfToken = isset($_POST['csrf_token'])
+                ? (string) $_POST['csrf_token']
+                : null;
 
-        $application
-            ->csrf()
-            ->requireValid($csrfToken);
-    } catch (Throwable $exception) {
-        error_log(
-            'Employee action CSRF failed: '
-            . $exception->getMessage()
-        );
+            $application
+                ->csrf()
+                ->requireValid($csrfToken);
+        } catch (Throwable $exception) {
+            error_log(
+                'Employee action CSRF failed: '
+                . $exception->getMessage()
+            );
 
-        http_response_code(403);
-        exit;
+            http_response_code(403);
+            exit;
+        }
     }
 
     try {

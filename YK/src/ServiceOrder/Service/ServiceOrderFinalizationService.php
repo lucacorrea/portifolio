@@ -206,7 +206,8 @@ final class ServiceOrderFinalizationService
     private function requiredText(mixed $value, int $max): string
     {
         $text = trim((string) $value);
-        if ($text === '' || str_contains($text, "\0") || $text !== strip_tags($text) || mb_strlen($text) > $max) throw new InvalidArgumentException('Texto inválido na finalização.');
+        $length = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
+        if ($text === '' || str_contains($text, "\0") || $text !== strip_tags($text) || $length > $max) throw new InvalidArgumentException('Texto inválido na finalização.');
         return $text;
     }
 
@@ -214,7 +215,8 @@ final class ServiceOrderFinalizationService
     {
         $text = trim((string) ($value ?? ''));
         if ($text === '') return null;
-        if (str_contains($text, "\0") || mb_strlen($text) > $max) throw new InvalidArgumentException('Observação inválida.');
+        $length = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
+        if (str_contains($text, "\0") || $length > $max) throw new InvalidArgumentException('Observação inválida.');
         return $text;
     }
 

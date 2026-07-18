@@ -110,6 +110,27 @@ function os_badge_status(string $status): string
     ][$status] ?? 'gray';
 }
 
+function os_status_filter_url(array $filters, string $status): string
+{
+    $query = array_filter($filters, static fn(mixed $value): bool => is_scalar($value) && (string) $value !== '');
+    if ($status === '') unset($query['status']);
+    else $query['status'] = $status;
+    return 'ordens-servico.php' . ($query === [] ? '' : '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986));
+}
+
+$statusFilterButtons = [
+    ['', 'Todos', 'all', ''],
+    ['rascunho', 'Rascunho', 'gray', ''],
+    ['aberta', 'Aberta', 'blue', ''],
+    ['aguardando_agendamento', 'Aguardando agendamento', 'amber', ''],
+    ['agendada', 'Agendada', 'teal', '--status-filter-color:var(--teal);--status-filter-active:var(--teal);--status-filter-bg:#e6fffb'],
+    ['em_deslocamento', 'Em deslocamento', 'purple', '--status-filter-color:var(--purple);--status-filter-active:var(--purple);--status-filter-bg:#f4efff'],
+    ['em_execucao', 'Em execução', 'green', ''],
+    ['aguardando_peca', 'Aguardando peça', 'amber', ''],
+    ['finalizada', 'Finalizada', 'green', ''],
+    ['cancelada', 'Cancelada', 'red', ''],
+];
+
 function os_money_fmt(string $value): string
 {
     return money($value);
@@ -223,8 +244,22 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 </form>
 
 <section class="panel" data-live-region="results">
-    <div class="panel-header">
-        <div class="panel-title"><i class="bi bi-wrench-adjustable-circle"></i>Ordens de Servico</div>
+    <div class="panel-header budget-panel-header">
+        <div class="budget-panel-heading">
+            <div class="panel-title"><i class="bi bi-wrench-adjustable-circle"></i>Ordens de Serviço</div>
+            <nav class="budget-status-filters" aria-label="Filtrar ordens de serviço por status">
+                <?php foreach ($statusFilterButtons as [$statusValue, $statusLabel, $statusClass, $statusStyle]): ?>
+                    <?php $isActiveStatus = $filters['status'] === $statusValue; ?>
+                    <a
+                        class="budget-status-filter budget-status-filter-<?= h($statusClass) ?> js-os-status-filter<?= $isActiveStatus ? ' active' : '' ?>"
+                        href="<?= h(os_status_filter_url($filters, $statusValue)) ?>"
+                        data-status="<?= h($statusValue) ?>"
+                        <?= $statusStyle !== '' ? 'style="' . h($statusStyle) . '"' : '' ?>
+                        <?= $isActiveStatus ? 'aria-current="true"' : '' ?>
+                    ><?= h($statusLabel) ?></a>
+                <?php endforeach; ?>
+            </nav>
+        </div>
         <?php if ($canCreate): ?><button class="btn-filter btn-filter-primary" type="button" data-bs-toggle="modal" data-bs-target="#modal-os"><i class="bi bi-plus-lg"></i> Nova OS</button><?php endif; ?>
     </div>
     <?php if ($orders === []): ?>
@@ -238,23 +273,14 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                     <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; ?>
                     <tr>
                         <td>
-                            <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?>
-                                <button class="table-inline-action js-os-edit" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os"><?= h($order->displayNumber()) ?></button>
-                            <?php else: ?>
-                                <strong><?= h($order->displayNumber()) ?></strong>
-                            <?php endif; ?>
+                            <strong><?= h($order->displayNumber()) ?></strong>
                         </td>
                         <td>
-                            <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?>
-                                <button class="table-inline-action js-os-edit" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os"><?= h($order->clientName()) ?></button>
-                            <?php else: ?>
-                                <?= h($order->clientName()) ?>
-                            <?php endif; ?>
+                            <?= h($order->clientName()) ?>
                             <br><small class="text-muted">CLI-<?= h(str_pad((string) $order->clientId(), 6, '0', STR_PAD_LEFT)) ?></small>
                         </td>
                         <td class="os-contact-cell">
                             <?php if ($contactPhone === null): ?>-
-                            <?php elseif ($whatsappUrl !== null): ?><a class="table-inline-action" href="<?= h($whatsappUrl) ?>" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> <?= h($contactPhone) ?></a>
                             <?php else: ?><?= h($contactPhone) ?><?php endif; ?>
                         </td>
                         <td><?= h(os_location($order)) ?></td>
@@ -266,6 +292,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                 <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acoes da OS <?= h($order->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><button class="dropdown-item js-os-view" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os-view"><i class="bi bi-eye"></i> Visualizar</button></li>
+                                    <?php if ($whatsappUrl !== null): ?><li><a class="dropdown-item" href="<?= h($whatsappUrl) ?>" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> Chamar no WhatsApp</a></li><?php endif; ?>
                                     <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-os-edit" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?>
                                     <?php if (($canTeam || $canSchedule) && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-os-team" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-team='<?= h(json_encode(array_map(static fn($member): array => ['employee_id' => $member->employeeId(), 'role' => $member->role(), 'primary' => $member->primary()], $team), JSON_UNESCAPED_UNICODE)) ?>' data-start="<?= h($order->scheduledStart() ?? '') ?>" data-end="<?= h($order->scheduledEnd() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-os-team"><i class="bi bi-people"></i> Definir equipe</button></li><?php endif; ?>
                                     <?php if ($canStatus && $order->status() === 'agendada'): ?><li><button class="dropdown-item js-os-status" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-operation="start_travel" data-label="Iniciar deslocamento" data-bs-toggle="modal" data-bs-target="#modal-os-status"><i class="bi bi-truck"></i> Iniciar deslocamento</button></li><?php endif; ?>
@@ -329,3 +356,17 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 <?php if ($canIssueReceipt): ?><div class="modal fade" id="modal-os-receipt" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/recibo-emitir.php" target="_blank"><div class="modal-header"><h2 class="modal-title fs-5">Gerar recibo de pagamento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><input type="hidden" name="pagamento_id" id="os-receipt-payment-id"><p>Gerar recibo da <strong id="os-receipt-order-number"></strong> referente a <strong id="os-receipt-payment-label"></strong>?</p><p class="text-muted small mb-0">O documento registra uma fotografia dos dados da empresa, do cliente e do pagamento.</p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Gerar recibo</button></div></form></div></div><?php endif; ?>
 
 <script type="application/json" id="os-page-data"><?= json_encode(['services' => $serviceOptions, 'products' => $productOptions, 'employees' => $employeeOptions, 'recoveryModal' => $recovery['modal'] ?? ($_GET['modal'] ?? null), 'recoveryData' => $recovery['data'] ?? [], 'recoveryError' => $recovery['error'] ?? null], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>
+<script>
+document.addEventListener('click', function (event) {
+    const statusFilterButton = event.target.closest('.js-os-status-filter');
+    if (!statusFilterButton) return;
+    event.preventDefault();
+    const statusSelect = document.querySelector('form[data-live-filter="service-orders"] select[name="status"]');
+    if (!statusSelect) {
+        window.location.assign(statusFilterButton.href);
+        return;
+    }
+    statusSelect.value = statusFilterButton.dataset.status || '';
+    statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+});
+</script>

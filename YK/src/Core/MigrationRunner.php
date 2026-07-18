@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+require_once __DIR__ . '/MigrationThirteenPostcondition.php';
+
 use PDO;
 use Throwable;
 
 final class MigrationRunner
 {
+    use MigrationThirteenPostcondition;
+
     private const HISTORY_TABLE = 'schema_migrations';
 
     public function __construct(private readonly PDO $connection)
@@ -152,7 +156,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -315,7 +319,7 @@ final class MigrationRunner
                 && $this->allForeignKeys(['fk_usuarios_perfil', 'fk_perfil_permissoes_perfil', 'fk_perfil_permissoes_permissao']),
             2 => $this->scalar(
                 "SELECT COUNT(*) FROM permissoes
-                 WHERE modulo IN ('fornecedor', 'transportadora')
+                 WHERE modulo = 'transportadora'
                     OR codigo IN ('funcionario.desativar', 'funcionario.visualizar_produtividade', 'funcionario.visualizar_comissao')"
             ) === 0,
             3 => $this->tableExists('funcionarios'),
@@ -341,6 +345,7 @@ final class MigrationRunner
                 && $this->permissionSatisfied('venda_avulsa.estornar'),
             11 => $this->migrationElevenSatisfied(),
             12 => $this->permissionSatisfied('cliente.importar'),
+            13 => $this->migrationThirteenSatisfied(),
             default => null,
         };
     }

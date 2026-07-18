@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Company\Service\CompanyBranding;
+
 $activePage = $activePage ?? 'dashboard';
 
 $companySettings = [];
@@ -13,20 +15,12 @@ try {
 
 $companyName = trim((string) ($companySettings['nome_fantasia'] ?? ''));
 if ($companyName === '') {
+    $companyName = trim((string) ($companySettings['razao_social'] ?? ''));
+}
+if ($companyName === '') {
     $companyName = 'K. Yamaguchi';
 }
-
-$companyLogo = trim((string) ($companySettings['logo'] ?? ''));
-if (
-    $companyLogo !== ''
-    && (
-        str_contains($companyLogo, "\0")
-        || $companyLogo !== strip_tags($companyLogo)
-        || preg_match('/^\s*javascript:/i', $companyLogo)
-    )
-) {
-    $companyLogo = '';
-}
+$companyLogo = CompanyBranding::safeLogoUrl($companySettings['logo'] ?? null);
 
 $navGroups = [
     'Principal' => [
@@ -83,6 +77,13 @@ $navGroups = [
             'permission' => 'produto.visualizar',
         ],
         [
+            'key' => 'fornecedores',
+            'label' => 'Fornecedores',
+            'icon' => 'bi-truck',
+            'href' => 'fornecedores.php',
+            'permission' => 'fornecedor.visualizar',
+        ],
+        [
             'key' => 'servicos',
             'label' => 'Serviços',
             'icon' => 'bi-tools',
@@ -112,6 +113,13 @@ $navGroups = [
             'icon' => 'bi-wallet2',
             'href' => 'contas-receber.php',
             'permission' => 'contas_receber.visualizar',
+        ],
+        [
+            'key' => 'contas-pagar',
+            'label' => 'Contas a Pagar',
+            'icon' => 'bi-credit-card-2-front',
+            'href' => 'contas-pagar.php',
+            'permission' => 'contas_pagar.visualizar',
         ],
         [
             'key' => 'faturamento',
@@ -206,14 +214,14 @@ $canSeeItem = static function (
     <a
         class="sidebar-brand"
         href="dashboard.php"
-        aria-label="<?= htmlspecialchars(
+        aria-label="Ir para o Dashboard - <?= htmlspecialchars(
             $companyName,
             ENT_QUOTES,
             'UTF-8'
         ) ?>"
     >
-        <div class="brand-icon">
-            <?php if ($companyLogo !== ''): ?>
+        <div class="brand-icon<?= $companyLogo !== null ? ' has-logo' : '' ?>">
+            <?php if ($companyLogo !== null): ?>
                 <img
                     class="brand-logo-img"
                     src="<?= htmlspecialchars(
@@ -221,26 +229,14 @@ $canSeeItem = static function (
                         ENT_QUOTES,
                         'UTF-8'
                     ) ?>"
-                    alt="Logo <?= htmlspecialchars(
-                        $companyName,
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>"
+                    alt=""
                 >
             <?php else: ?>
                 <i class="bi bi-snow2"></i>
             <?php endif; ?>
         </div>
 
-        <div>
-            <div class="brand-name">
-                <?= htmlspecialchars(
-                    $companyName,
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </div>
-
+        <div class="brand-copy">
             <div class="brand-tag">
                 Gestão de Serviços
             </div>

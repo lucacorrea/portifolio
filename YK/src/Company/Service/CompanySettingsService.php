@@ -54,7 +54,10 @@ final class CompanySettingsService
     {
         $text = trim((string) ($value ?? ''));
         if ($text === '') return null;
-        if (str_contains($text, "\0") || $text !== strip_tags($text) || mb_strlen($text) > $max) {
+        $length = function_exists('mb_strlen')
+            ? mb_strlen($text, 'UTF-8')
+            : (function_exists('iconv_strlen') ? iconv_strlen($text, 'UTF-8') : strlen($text));
+        if ($length === false || str_contains($text, "\0") || $text !== strip_tags($text) || $length > $max) {
             throw new InvalidArgumentException('Dados da empresa inválidos.');
         }
         return $text;

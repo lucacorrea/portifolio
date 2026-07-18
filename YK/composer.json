@@ -11,6 +11,9 @@
         "test": [
             "@php tests/EnvironmentTest.php",
             "@php tests/ClientPdfImportTest.php",
+            "@php tests/EmployeeFormDataTest.php",
+            "@php tests/CompanyBrandingTest.php",
+            "@php tests/PayablesValidationTest.php",
             "@php tests/MigrationRunnerTest.php",
             "@php tests/WebMigrationCoordinatorTest.php"
         ]

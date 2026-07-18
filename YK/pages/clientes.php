@@ -91,6 +91,20 @@ function client_status_class(string $status): string
     return $status === 'ativo' ? 'green' : 'gray';
 }
 
+function client_status_filter_url(array $filters, string $status): string
+{
+    $query = array_filter($filters, static fn(mixed $value): bool => is_scalar($value) && (string) $value !== '');
+    if ($status === '') unset($query['status']);
+    else $query['status'] = $status;
+    return 'clientes.php' . ($query === [] ? '' : '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986));
+}
+
+$statusFilterButtons = [
+    ['', 'Todos', 'all'],
+    ['ativo', 'Ativos', 'green'],
+    ['inativo', 'Inativos', 'gray'],
+];
+
 function client_address(Client $client): string
 {
     $address = trim(implode(', ', array_filter([$client->address(), $client->number(), $client->district()])));
@@ -123,7 +137,23 @@ $editError = client_error($recovery, 'edit');
 </form>
 
 <section class="panel">
-    <div class="panel-header"><div class="panel-title"><i class="bi bi-people"></i>Clientes cadastrados</div><div class="d-flex flex-wrap gap-2"><?php if ($canImport): ?><button class="btn-filter btn-filter-ghost" type="button" data-bs-toggle="modal" data-bs-target="#modal-client-import"><i class="bi bi-file-earmark-pdf"></i><span>Adicionar pelo PDF</span></button><?php endif; ?><?php if ($canCreate): ?><button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente"><i class="bi bi-person-plus"></i><span>Novo cliente</span></button><?php endif; ?></div></div>
+    <div class="panel-header budget-panel-header">
+        <div class="budget-panel-heading">
+            <div class="panel-title"><i class="bi bi-people"></i>Clientes cadastrados</div>
+            <nav class="budget-status-filters" aria-label="Filtrar clientes por status">
+                <?php foreach ($statusFilterButtons as [$statusValue, $statusLabel, $statusClass]): ?>
+                    <?php $isActiveStatus = $filters['status'] === $statusValue; ?>
+                    <a
+                        class="budget-status-filter budget-status-filter-<?= h($statusClass) ?> js-client-status-filter<?= $isActiveStatus ? ' active' : '' ?>"
+                        href="<?= h(client_status_filter_url($filters, $statusValue)) ?>"
+                        data-status="<?= h($statusValue) ?>"
+                        <?= $isActiveStatus ? 'aria-current="true"' : '' ?>
+                    ><?= h($statusLabel) ?></a>
+                <?php endforeach; ?>
+            </nav>
+        </div>
+        <div class="d-flex flex-wrap gap-2"><?php if ($canImport): ?><button class="btn-filter btn-filter-ghost" type="button" data-bs-toggle="modal" data-bs-target="#modal-client-import"><i class="bi bi-file-earmark-pdf"></i><span>Adicionar pelo PDF</span></button><?php endif; ?><?php if ($canCreate): ?><button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente"><i class="bi bi-person-plus"></i><span>Novo cliente</span></button><?php endif; ?></div>
+    </div>
     <div class="px-3 pt-3" id="client-search-feedback" role="status" aria-live="polite"><?= h($initialHasMore ? 'Exibindo os primeiros 100 clientes. Refine a pesquisa.' : count($clients) . ' cliente(s) encontrado(s).') ?></div>
     <div class="alert alert-danger mx-3 mt-3 mb-0 d-none" id="client-search-error" role="alert"><span></span> <button class="btn btn-link alert-link p-0 align-baseline" id="client-search-retry" type="button">Tentar novamente</button></div>
     <div class="table-panel-wrap">
@@ -270,8 +300,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     function prepareClientStatus(button) { const activate = button.dataset.clientStatus === 'ativo'; val('status-client-id', button.dataset.clientId); val('status-client-value', button.dataset.clientStatus); text('client-status-title', activate ? 'Ativar cliente' : 'Desativar cliente'); text('client-status-message', (activate ? 'Deseja ativar ' : 'Deseja desativar ') + (button.dataset.clientName || 'este cliente') + '?'); }
     document.addEventListener('click', function (event) {
-        const button = event.target.closest('.js-client-actions, .js-client-view, .js-client-edit, .js-client-status');
+        const button = event.target.closest('.js-client-status-filter, .js-client-actions, .js-client-view, .js-client-edit, .js-client-status');
         if (!button) return;
+        if (button.classList.contains('js-client-status-filter')) {
+            event.preventDefault();
+            const statusSelect = filterForm?.querySelector('select[name="status"]');
+            if (!statusSelect) {
+                window.location.assign(button.href);
+                return;
+            }
+            statusSelect.value = button.dataset.status || '';
+            searchClients();
+            return;
+        }
         const client = clients[String(button.dataset.clientId || '')];
         if (button.classList.contains('js-client-actions') && client) prepareClientActions(client);
         else if (button.classList.contains('js-client-view') && client) prepareClientView(client);
@@ -306,6 +347,7 @@ document.addEventListener('DOMContentLoaded', function () {
         window.OSMais?.refreshActionTables?.();
     }
     function currentFilterParams() { const params = new URLSearchParams(new FormData(filterForm)); Array.from(params.keys()).forEach(function (key) { if (!params.get(key)) params.delete(key); }); return params; }
+    function syncClientStatusButtons(status) { document.querySelectorAll('.js-client-status-filter').forEach(function (button) { const active = (button.dataset.status || '') === status; button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'true'); else button.removeAttribute('aria-current'); }); }
     function showSearchError(message) { const label = searchError?.querySelector('span'); if (label) label.textContent = message; searchError?.classList.remove('d-none'); }
     function clearSearchError() { searchError?.classList.add('d-none'); }
     async function searchClients() {
@@ -318,6 +360,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok || !payload?.ok || !Array.isArray(payload.clients)) throw new Error(payload?.error || 'Não foi possível pesquisar os clientes.');
             if (sequence !== searchSequence) return;
             renderClients(payload.clients);
+            syncClientStatusButtons(params.get('status') || '');
             if (searchFeedback) searchFeedback.textContent = payload.has_more ? 'Exibindo os primeiros 100 clientes. Refine a pesquisa.' : payload.count + ' cliente(s) encontrado(s).';
             const query = params.toString(); const returnTarget = 'clientes.php' + (query ? '?' + query : ''); window.history.replaceState(null, '', returnTarget); document.querySelectorAll('input[name="return_to"]').forEach(function (field) { field.value = returnTarget; });
         } catch (error) {

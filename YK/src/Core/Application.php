@@ -25,10 +25,12 @@ use App\CRM\Service\ClientManagementService;
 use App\Dashboard\Repository\DashboardRepository;
 use App\Dashboard\Service\DashboardService;
 use App\Finance\Service\AccountsReceivableManagementService;
+use App\Finance\Service\AccountsPayableManagementService;
 use App\Finance\Service\CashManagementService;
 use App\Finance\Service\PaymentManagementService;
 use App\Finance\Service\ReceiptService;
 use App\Inventory\Service\InventoryManagementService;
+use App\Purchasing\Service\SupplierManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\PrivilegedAuthorizationService;
 use App\Security\SafeRedirect;
@@ -76,6 +78,8 @@ final class Application
     private ?InventoryManagementService $inventoryManagement = null;
     private ?CashManagementService $cashManagement = null;
     private ?AccountsReceivableManagementService $accountsReceivableManagement = null;
+    private ?AccountsPayableManagementService $accountsPayableManagement = null;
+    private ?SupplierManagementService $supplierManagement = null;
     private ?PaymentManagementService $paymentManagement = null;
     private ?ReceiptService $receiptService = null;
     private ?CompanySettingsService $companySettings = null;
@@ -354,6 +358,24 @@ final class Application
         }
 
         return $this->accountsReceivableManagement;
+    }
+
+    public function accountsPayableManagement(): AccountsPayableManagementService
+    {
+        if ($this->accountsPayableManagement === null) {
+            $this->accountsPayableManagement = new AccountsPayableManagementService($this->database->connection());
+        }
+
+        return $this->accountsPayableManagement;
+    }
+
+    public function supplierManagement(): SupplierManagementService
+    {
+        if ($this->supplierManagement === null) {
+            $this->supplierManagement = new SupplierManagementService($this->database->connection());
+        }
+
+        return $this->supplierManagement;
     }
 
     public function paymentManagement(): PaymentManagementService
