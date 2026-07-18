@@ -59,6 +59,22 @@ function budget_money(string $value): string { return money($value); }
 function budget_date(string $value): string { try { return (new DateTimeImmutable($value))->format('d/m/Y'); } catch (Throwable) { return '-'; } }
 function budget_status_label(string $status): string { return ['rascunho' => 'Rascunho', 'enviado' => 'Enviado', 'aguardando_aprovacao' => 'Aguardando aprovação', 'aprovado' => 'Aprovado', 'recusado' => 'Recusado', 'vencido' => 'Vencido'][$status] ?? 'Rascunho'; }
 function budget_status_class(string $status): string { return ['rascunho' => 'gray', 'enviado' => 'blue', 'aguardando_aprovacao' => 'amber', 'aprovado' => 'green', 'recusado' => 'red', 'vencido' => 'red'][$status] ?? 'gray'; }
+function budget_status_filter_url(array $filters, string $status): string {
+    $query = array_filter($filters, static fn(mixed $value): bool => is_scalar($value) && (string) $value !== '');
+    if ($status === '') unset($query['status']);
+    else $query['status'] = $status;
+    return 'orcamentos.php' . ($query === [] ? '' : '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986));
+}
+
+$statusFilterButtons = [
+    ['', 'Todos', 'all'],
+    ['rascunho', 'Rascunho', 'gray'],
+    ['enviado', 'Enviado', 'blue'],
+    ['aguardando_aprovacao', 'Aguardando aprovação', 'amber'],
+    ['aprovado', 'Aprovado', 'green'],
+    ['recusado', 'Recusado', 'red'],
+    ['vencido', 'Vencido', 'red'],
+];
 
 $createData = budget_data($recovery, 'create');
 $editData = budget_data($recovery, 'edit');
@@ -86,7 +102,23 @@ $editError = budget_error($recovery, 'edit');
 </form>
 
 <section class="panel" data-live-region="results">
-    <div class="panel-header"><div class="panel-title"><i class="bi bi-file-earmark-text"></i>Orçamentos</div><?php if ($canCreate): ?><button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="#modal-orcamento"><i class="bi bi-file-earmark-plus"></i><span>Novo orçamento</span></button><?php endif; ?></div>
+    <div class="panel-header budget-panel-header">
+        <div class="budget-panel-heading">
+            <div class="panel-title"><i class="bi bi-file-earmark-text"></i>Orçamentos</div>
+            <nav class="budget-status-filters" aria-label="Filtrar orçamentos por status">
+                <?php foreach ($statusFilterButtons as [$statusValue, $statusLabel, $statusClass]): ?>
+                    <?php $isActiveStatus = $filters['status'] === $statusValue; ?>
+                    <a
+                        class="budget-status-filter budget-status-filter-<?= h($statusClass) ?> js-budget-status-filter<?= $isActiveStatus ? ' active' : '' ?>"
+                        href="<?= h(budget_status_filter_url($filters, $statusValue)) ?>"
+                        data-status="<?= h($statusValue) ?>"
+                        <?= $isActiveStatus ? 'aria-current="true"' : '' ?>
+                    ><?= h($statusLabel) ?></a>
+                <?php endforeach; ?>
+            </nav>
+        </div>
+        <?php if ($canCreate): ?><button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="#modal-orcamento"><i class="bi bi-file-earmark-plus"></i><span>Novo orçamento</span></button><?php endif; ?>
+    </div>
     <?php if ($budgets === []): ?><?php empty_state('Nenhum orçamento encontrado', 'Cadastre o primeiro orçamento ou ajuste os filtros.'); ?><?php else: ?>
     <div class="table-panel-wrap"><table class="os-table budgets-table"><thead><tr><th>Número</th><th>Cliente</th><th>Emissão</th><th>Validade</th><th>Itens</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>
         <?php foreach ($budgets as $budget): ?>
@@ -158,6 +190,18 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.js-budget-form').forEach(function (form) { form.querySelectorAll('.js-add-budget-item').forEach(function (button) { button.addEventListener('click', function () { addRow(form, button.dataset.type); }); }); form.querySelectorAll('.js-budget-discount,.js-budget-increase').forEach(function (input) { input.addEventListener('input', function () { recalc(form); }); }); if (!form.closest('#modal-orcamento-edit') && !(recoveryModal === 'create' && hasRows(recoveryData))) addRow(form, 'servico'); });
     async function loadBudget(id, mode) { const response = await fetch('actions/orcamento-detalhes.php?id=' + encodeURIComponent(id) + (mode ? '&mode=' + mode : ''), { headers: { Accept: 'application/json' } }); if (!response.ok) throw new Error('Falha ao carregar orçamento.'); return response.json(); }
     document.addEventListener('click', async function (event) {
+        const statusFilterButton = event.target.closest('.js-budget-status-filter');
+        if (statusFilterButton) {
+            event.preventDefault();
+            const statusSelect = document.querySelector('form[data-live-filter="budgets"] select[name="status"]');
+            if (!statusSelect) {
+                window.location.assign(statusFilterButton.href);
+                return;
+            }
+            statusSelect.value = statusFilterButton.dataset.status || '';
+            statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+        }
         const button = event.target.closest('.js-budget-view, .js-budget-edit, .js-budget-status');
         if (!button) return;
         if (button.classList.contains('js-budget-view')) { const data = await loadBudget(button.dataset.budgetId); const budget = data.budget; document.getElementById('view-budget-subtitle').textContent = budget.number; const summary = document.getElementById('view-budget-summary'); summary.replaceChildren(); [['Número', budget.number], ['Cliente', budget.client_name + ' · ' + (budget.client_document || '-')], ['Emissão', budget.issue_date], ['Validade', budget.valid_until], ['Status', budget.display_status], ['Subtotal serviços', money(parseNumber(budget.services_subtotal))], ['Subtotal produtos', money(parseNumber(budget.products_subtotal))], ['Subtotal outros', money(parseNumber(budget.others_subtotal))], ['Desconto', money(parseNumber(budget.discount))], ['Acréscimo', money(parseNumber(budget.increase))], ['Total', money(parseNumber(budget.total))], ['Observações', budget.notes || '-']].forEach(function (pair) { const div = document.createElement('div'); const span = document.createElement('span'); span.textContent = pair[0]; const strong = document.createElement('strong'); strong.textContent = pair[1]; div.append(span, strong); summary.appendChild(div); }); const tbody = document.getElementById('view-budget-items'); tbody.replaceChildren(); data.items.forEach(function (item) { const row = document.createElement('tr'); [item.type, item.description, item.unit, item.quantity, money(parseNumber(item.unit_price)), money(parseNumber(item.discount)), money(parseNumber(item.subtotal))].forEach(function (value) { const cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell); }); tbody.appendChild(row); }); }

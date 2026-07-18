@@ -540,6 +540,98 @@ textarea {
   color: var(--brand);
 }
 
+.budget-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.budget-status-filters {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.budget-status-filter {
+  --status-filter-color: var(--muted);
+  --status-filter-active: var(--muted);
+  --status-filter-bg: #edf2f5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--status-filter-color) 22%, transparent);
+  border-radius: 9px;
+  background: var(--status-filter-bg);
+  color: var(--status-filter-color);
+  font-size: 11.5px;
+  font-weight: 900;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.budget-status-filter:hover {
+  color: var(--status-filter-color);
+  box-shadow: 0 3px 9px color-mix(in srgb, var(--status-filter-color) 18%, transparent);
+  transform: translateY(-1px);
+}
+
+.budget-status-filter:focus-visible {
+  outline: 2px solid var(--status-filter-color);
+  outline-offset: 2px;
+}
+
+.budget-status-filter.active {
+  background: var(--status-filter-active);
+  color: #fff;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--status-filter-active) 25%, transparent);
+}
+
+.budget-status-filter-all {
+  --status-filter-color: var(--brand);
+  --status-filter-active: var(--brand);
+  --status-filter-bg: var(--brand-soft);
+}
+
+.budget-status-filter-gray {
+  --status-filter-color: var(--muted);
+  --status-filter-active: #526570;
+  --status-filter-bg: #edf2f5;
+}
+
+.budget-status-filter-blue {
+  --status-filter-color: var(--blue);
+  --status-filter-active: var(--blue);
+  --status-filter-bg: #eff6ff;
+}
+
+.budget-status-filter-amber {
+  --status-filter-color: var(--amber);
+  --status-filter-active: #8a5004;
+  --status-filter-bg: #fff7e8;
+}
+
+.budget-status-filter-green {
+  --status-filter-color: var(--green);
+  --status-filter-active: var(--green);
+  --status-filter-bg: #e8f8f1;
+}
+
+.budget-status-filter-red {
+  --status-filter-color: var(--red);
+  --status-filter-active: var(--red);
+  --status-filter-bg: #fff0f0;
+}
+
 .panel-tag {
   padding: 4px 9px;
   border-radius: 99px;
@@ -1938,6 +2030,17 @@ body.sidebar-collapsed .nav-link-os {
   .panel-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .budget-panel-heading,
+  .budget-status-filters {
+    width: 100%;
+  }
+
+  .budget-panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .pagination-bar {
