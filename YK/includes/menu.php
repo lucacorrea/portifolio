@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Company\Service\CompanyBranding;
+
 $activePage = $activePage ?? 'dashboard';
 
 $companySettings = [];
@@ -13,20 +15,13 @@ try {
 
 $companyName = trim((string) ($companySettings['nome_fantasia'] ?? ''));
 if ($companyName === '') {
+    $companyName = trim((string) ($companySettings['razao_social'] ?? ''));
+}
+if ($companyName === '') {
     $companyName = 'K. Yamaguchi';
 }
-
-$companyLogo = trim((string) ($companySettings['logo'] ?? ''));
-if (
-    $companyLogo !== ''
-    && (
-        str_contains($companyLogo, "\0")
-        || $companyLogo !== strip_tags($companyLogo)
-        || preg_match('/^\s*javascript:/i', $companyLogo)
-    )
-) {
-    $companyLogo = '';
-}
+$companyDisplayName = CompanyBranding::shortName($companyName);
+$companyLogo = CompanyBranding::safeLogoUrl($companySettings['logo'] ?? null);
 
 $navGroups = [
     'Principal' => [
@@ -226,8 +221,8 @@ $canSeeItem = static function (
             'UTF-8'
         ) ?>"
     >
-        <div class="brand-icon">
-            <?php if ($companyLogo !== ''): ?>
+        <div class="brand-icon<?= $companyLogo !== null ? ' has-logo' : '' ?>">
+            <?php if ($companyLogo !== null): ?>
                 <img
                     class="brand-logo-img"
                     src="<?= htmlspecialchars(
@@ -235,21 +230,17 @@ $canSeeItem = static function (
                         ENT_QUOTES,
                         'UTF-8'
                     ) ?>"
-                    alt="Logo <?= htmlspecialchars(
-                        $companyName,
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>"
+                    alt=""
                 >
             <?php else: ?>
                 <i class="bi bi-snow2"></i>
             <?php endif; ?>
         </div>
 
-        <div>
+        <div class="brand-copy"<?= $companyDisplayName !== $companyName ? ' title="' . htmlspecialchars($companyName, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
             <div class="brand-name">
                 <?= htmlspecialchars(
-                    $companyName,
+                    $companyDisplayName,
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?>
