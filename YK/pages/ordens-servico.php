@@ -238,23 +238,14 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                     <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; ?>
                     <tr>
                         <td>
-                            <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?>
-                                <button class="table-inline-action js-os-edit" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os"><?= h($order->displayNumber()) ?></button>
-                            <?php else: ?>
-                                <strong><?= h($order->displayNumber()) ?></strong>
-                            <?php endif; ?>
+                            <strong><?= h($order->displayNumber()) ?></strong>
                         </td>
                         <td>
-                            <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?>
-                                <button class="table-inline-action js-os-edit" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os"><?= h($order->clientName()) ?></button>
-                            <?php else: ?>
-                                <?= h($order->clientName()) ?>
-                            <?php endif; ?>
+                            <?= h($order->clientName()) ?>
                             <br><small class="text-muted">CLI-<?= h(str_pad((string) $order->clientId(), 6, '0', STR_PAD_LEFT)) ?></small>
                         </td>
                         <td class="os-contact-cell">
                             <?php if ($contactPhone === null): ?>-
-                            <?php elseif ($whatsappUrl !== null): ?><a class="table-inline-action" href="<?= h($whatsappUrl) ?>" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> <?= h($contactPhone) ?></a>
                             <?php else: ?><?= h($contactPhone) ?><?php endif; ?>
                         </td>
                         <td><?= h(os_location($order)) ?></td>
@@ -266,6 +257,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                 <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acoes da OS <?= h($order->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><button class="dropdown-item js-os-view" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os-view"><i class="bi bi-eye"></i> Visualizar</button></li>
+                                    <?php if ($whatsappUrl !== null): ?><li><a class="dropdown-item" href="<?= h($whatsappUrl) ?>" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> Chamar no WhatsApp</a></li><?php endif; ?>
                                     <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-os-edit" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?>
                                     <?php if (($canTeam || $canSchedule) && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-os-team" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-team='<?= h(json_encode(array_map(static fn($member): array => ['employee_id' => $member->employeeId(), 'role' => $member->role(), 'primary' => $member->primary()], $team), JSON_UNESCAPED_UNICODE)) ?>' data-start="<?= h($order->scheduledStart() ?? '') ?>" data-end="<?= h($order->scheduledEnd() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-os-team"><i class="bi bi-people"></i> Definir equipe</button></li><?php endif; ?>
                                     <?php if ($canStatus && $order->status() === 'agendada'): ?><li><button class="dropdown-item js-os-status" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-operation="start_travel" data-label="Iniciar deslocamento" data-bs-toggle="modal" data-bs-target="#modal-os-status"><i class="bi bi-truck"></i> Iniciar deslocamento</button></li><?php endif; ?>

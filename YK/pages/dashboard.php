@@ -129,16 +129,24 @@ if ($authorization->can('caixa.visualizar')) {
     <?php if ($latestOrders === []): ?>
         <?php empty_state('Nenhuma ordem de serviço cadastrada', 'As novas ordens aparecerão aqui.'); ?>
     <?php else: ?>
-        <div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Número</th><th>Cliente</th><th>Serviço</th><th>Equipe</th><th>Status</th><?php if ($showOrderValues): ?><th>Valor</th><?php endif; ?><th>Cadastro</th></tr></thead><tbody>
+        <div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Número</th><th>Cliente</th><th>Serviço</th><th>Equipe</th><th>Status</th><?php if ($showOrderValues): ?><th>Valor</th><?php endif; ?><th>Cadastro</th><th>Ações</th></tr></thead><tbody>
         <?php foreach ($latestOrders as $order): ?>
             <tr>
-                <td><a class="table-inline-action" href="ordens-servico.php?search=<?= h(rawurlencode(dashboard_order_number($order))) ?>"><?= h(dashboard_order_number($order)) ?></a></td>
+                <td><strong><?= h(dashboard_order_number($order)) ?></strong></td>
                 <td><?= h((string) $order['cliente_nome']) ?></td>
                 <td><?= h((string) $order['servico']) ?></td>
                 <td><?= h(trim((string) ($order['equipe'] ?? '')) ?: 'Equipe não definida') ?></td>
                 <td><?= ui_badge(dashboard_status_label((string) $order['status'])) ?></td>
                 <?php if ($showOrderValues): ?><td><?= money((string) $order['total']) ?></td><?php endif; ?>
                 <td><?= h(dashboard_date((string) $order['criado_em'], 'd/m/Y H:i')) ?></td>
+                <td class="table-actions-cell">
+                    <div class="dropdown table-action-dropdown">
+                        <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações da OS <?= h(dashboard_order_number($order)) ?>"><i class="bi bi-three-dots-vertical"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="ordens-servico.php?search=<?= h(rawurlencode(dashboard_order_number($order))) ?>"><i class="bi bi-eye"></i> Abrir Ordem de Serviço</a></li>
+                        </ul>
+                    </div>
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody></table></div>
