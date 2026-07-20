@@ -2089,7 +2089,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
 
                             for (let i = 1; i < tableRows.length; i++) {
                                 sheetData.appendChild(createRow(i + 5, tableRows[i], function(colIndex) {
-                                    return (colIndex === 1 || colIndex === 4 || colIndex === 9) ? styleLeft : styleCenter;
+                                    return colIndex === 1 ? styleLeft : styleCenter;
                                 }, 24));
                             }
 
