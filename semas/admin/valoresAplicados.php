@@ -1833,38 +1833,295 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                     ],
                     dom: 'Brt',
                     buttons: [{
-                        extend: 'excel',
+                        extend: 'excelHtml5',
                         text: '<i class="bi bi-file-earmark-excel"></i> Excel',
                         className: 'btn btn-success btn-sm d-none',
-                        title: 'Valores Aplicados - ANEXO',
+                        title: null,
                         filename: 'valores_aplicados_<?= date('Y-m-d') ?>',
                         exportOptions: {
                             columns: ':visible',
                             stripHtml: true,
                             format: {
+                                header: function(data) {
+                                    return $('<div>').html(data).text().replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+                                },
                                 body: function(data, row, column) {
-                                    data = String(data).replace(/<[^>]*>/g, '');
+                                    let texto = $('<div>').html(data).text().replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
 
-                                    if (column === 6 || column === 7) {
-                                        let match = data.match(/[\d.,]+/);
-                                        if (match) {
-                                            let valor = match[0].replace(/\./g, '').replace(',', '.');
-                                            return parseFloat(valor) || 0;
+                                    if (column === 0) {
+                                        const partes = texto.match(/^(\d{2}\/\d{2}\/\d{4})\s*(\d{2}:\d{2}|--:--)?$/);
+                                        if (partes) {
+                                            texto = partes[1] + (partes[2] ? ' às ' + partes[2] : '');
                                         }
-                                        return 0;
                                     }
 
-                                    return data.trim();
+                                    return texto;
+                                },
+                                footer: function(data) {
+                                    return $('<div>').html(data).text().replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
                                 }
                             }
                         },
                         customize: function(xlsx) {
-                            var sheet = xlsx.xl.worksheets['sheet1.xml'];
-                            $('row c[r^="G"]', sheet).attr('s', '44');
-                            $('row c[r^="H"]', sheet).attr('s', '44');
-                            $('col', sheet).each(function() {
-                                $(this).attr('width', '15');
+                            const sheet = xlsx.xl.worksheets['sheet1.xml'];
+                            const styles = xlsx.xl['styles.xml'];
+                            const sharedStrings = xlsx.xl['sharedStrings.xml'];
+                            const sheetData = $('sheetData', sheet)[0];
+
+                            const tituloTexto = 'VALORES APLICADOS - ANEXO';
+                            const resumoTexto = 'Total: <?= $total_entregas ?> entregas | Quantidade: <?= $total_quantidade ?> itens | Pessoas atendidas: <?= $total_pessoas ?> | Valor Total: <?= formatarMoeda($total_valor) ?> | Valor Médio: <?= $total_entregas > 0 ? formatarMoeda($total_valor / $total_entregas) : 'R$ 0,00' ?>';
+
+                            const filtros = [];
+                            <?php if ($filtro_mes !== 'todos'): ?>
+                                filtros.push(<?= json_encode('Mês: ' . date('m/Y', strtotime($filtro_mes . '-01')), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_ano !== 'todos'): ?>
+                                filtros.push(<?= json_encode('Ano: ' . $filtro_ano, JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_beneficio): ?>
+                                filtros.push(<?= json_encode('Benefício: ' . ($beneficio_nome ?? 'Selecionado'), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_bairro): ?>
+                                filtros.push(<?= json_encode('Bairro: ' . ($bairro_nome ?? 'Selecionado'), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_status !== 'todos'): ?>
+                                filtros.push(<?= json_encode('Status: ' . ($filtro_status === 'Sim' ? 'Entregue' : 'Pendente'), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_data_inicio): ?>
+                                filtros.push(<?= json_encode('Data inicial: ' . date('d/m/Y', strtotime($filtro_data_inicio)), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_data_fim): ?>
+                                filtros.push(<?= json_encode('Data final: ' . date('d/m/Y', strtotime($filtro_data_fim)), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_responsavel): ?>
+                                filtros.push(<?= json_encode('Responsável: ' . $filtro_responsavel, JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            filtros.push(<?= json_encode('Ordenação: ' . ($ordenacao === 'data_asc' ? 'Data mais antiga' : ($ordenacao === 'valor_desc' ? 'Maior valor' : ($ordenacao === 'valor_asc' ? 'Menor valor' : ($ordenacao === 'nome_asc' ? 'Nome A-Z' : 'Data mais recente')))), JSON_UNESCAPED_UNICODE) ?>);
+
+                            if (valorFilterModo === 'com_valor') {
+                                filtros.push('Exibição: somente com valor');
+                            } else if (valorFilterModo === 'sem_valor') {
+                                filtros.push('Exibição: somente sem valor');
+                            } else {
+                                filtros.push('Exibição: todas as entregas');
+                            }
+
+                            const filtrosTexto = 'Filtros: ' + (filtros.length ? filtros.join(' | ') : 'Nenhum filtro aplicado');
+                            const agora = new Date();
+                            const geradoTexto = 'Gerado em: ' + agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+
+                            function appendXml(parent, xml) {
+                                const parsed = $.parseXML('<root>' + xml + '</root>');
+                                $(parsed).find('root').children().each(function() {
+                                    parent.append(this);
+                                });
+                            }
+
+                            function addFont(options) {
+                                const fonts = $('fonts', styles);
+                                const id = $('font', fonts).length;
+                                appendXml(fonts,
+                                    '<font>' +
+                                        (options.bold ? '<b/>' : '') +
+                                        '<sz val="' + (options.size || 11) + '"/>' +
+                                        '<color rgb="FF000000"/>' +
+                                        '<name val="Calibri"/>' +
+                                        '<family val="2"/>' +
+                                    '</font>'
+                                );
+                                fonts.attr('count', $('font', fonts).length);
+                                return id;
+                            }
+
+                            function addFill(color) {
+                                const fills = $('fills', styles);
+                                const id = $('fill', fills).length;
+                                appendXml(fills,
+                                    '<fill><patternFill patternType="solid">' +
+                                        '<fgColor rgb="' + color + '"/>' +
+                                        '<bgColor indexed="64"/>' +
+                                    '</patternFill></fill>'
+                                );
+                                fills.attr('count', $('fill', fills).length);
+                                return id;
+                            }
+
+                            function addBorder() {
+                                const borders = $('borders', styles);
+                                const id = $('border', borders).length;
+                                appendXml(borders,
+                                    '<border>' +
+                                        '<left style="thin"><color rgb="FF000000"/></left>' +
+                                        '<right style="thin"><color rgb="FF000000"/></right>' +
+                                        '<top style="thin"><color rgb="FF000000"/></top>' +
+                                        '<bottom style="thin"><color rgb="FF000000"/></bottom>' +
+                                        '<diagonal/>' +
+                                    '</border>'
+                                );
+                                borders.attr('count', $('border', borders).length);
+                                return id;
+                            }
+
+                            function addStyle(options) {
+                                const cellXfs = $('cellXfs', styles);
+                                const id = $('xf', cellXfs).length;
+                                const fontId = options.fontId || 0;
+                                const fillId = options.fillId || 0;
+                                const borderId = options.borderId || 0;
+                                appendXml(cellXfs,
+                                    '<xf numFmtId="0" fontId="' + fontId + '" fillId="' + fillId + '" borderId="' + borderId + '" xfId="0"' +
+                                        (options.fontId ? ' applyFont="1"' : '') +
+                                        (options.fillId ? ' applyFill="1"' : '') +
+                                        (options.borderId ? ' applyBorder="1"' : '') +
+                                        ' applyAlignment="1">' +
+                                        '<alignment horizontal="' + (options.horizontal || 'center') + '" vertical="center" wrapText="1"/>' +
+                                    '</xf>'
+                                );
+                                cellXfs.attr('count', $('xf', cellXfs).length);
+                                return id;
+                            }
+
+                            const fontTitle = addFont({ bold: true, size: 14 });
+                            const fontMeta = addFont({ bold: true, size: 11 });
+                            const fontHeader = addFont({ bold: true, size: 11 });
+                            const grayFill = addFill('FFF2F4F7');
+                            const blackBorder = addBorder();
+
+                            const styleTitle = addStyle({ fontId: fontTitle, fillId: grayFill, borderId: blackBorder, horizontal: 'center' });
+                            const styleMeta = addStyle({ fontId: fontMeta, borderId: blackBorder, horizontal: 'left' });
+                            const styleHeader = addStyle({ fontId: fontHeader, fillId: grayFill, borderId: blackBorder, horizontal: 'center' });
+                            const styleCenter = addStyle({ borderId: blackBorder, horizontal: 'center' });
+                            const styleLeft = addStyle({ borderId: blackBorder, horizontal: 'left' });
+
+                            function excelColName(index) {
+                                let name = '';
+                                index++;
+                                while (index > 0) {
+                                    const rem = (index - 1) % 26;
+                                    name = String.fromCharCode(65 + rem) + name;
+                                    index = Math.floor((index - 1) / 26);
+                                }
+                                return name;
+                            }
+
+                            function excelColIndex(ref) {
+                                const col = String(ref || '').replace(/[0-9]/g, '');
+                                let index = 0;
+                                for (let i = 0; i < col.length; i++) {
+                                    index = index * 26 + (col.charCodeAt(i) - 64);
+                                }
+                                return index - 1;
+                            }
+
+                            function getCellText(cell) {
+                                const $cell = $(cell);
+                                const type = $cell.attr('t');
+                                if (type === 'inlineStr') return $('is t', cell).text();
+                                if (type === 's') {
+                                    const sharedIndex = parseInt($('v', cell).text(), 10);
+                                    if (sharedStrings && !Number.isNaN(sharedIndex)) {
+                                        return $('si', sharedStrings).eq(sharedIndex).text();
+                                    }
+                                }
+                                return $('v', cell).text() || $('t', cell).text() || '';
+                            }
+
+                            const originalRows = $('row', sheet).toArray();
+                            let headerIndex = originalRows.findIndex(function(row) {
+                                const text = $('c', row).toArray().map(getCellText).join('|').toLowerCase();
+                                return text.includes('data/hora') && text.includes('beneficiário') && text.includes('valor total');
                             });
+                            if (headerIndex < 0) headerIndex = 0;
+
+                            let tableRows = originalRows.slice(headerIndex).map(function(row) {
+                                const values = new Array(11).fill('');
+                                $('c', row).each(function() {
+                                    const colIndex = excelColIndex($(this).attr('r'));
+                                    if (colIndex >= 0 && colIndex < 11) {
+                                        values[colIndex] = getCellText(this).replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+                                    }
+                                });
+                                return values;
+                            }).filter(function(values) {
+                                return values.some(function(value) { return String(value).trim() !== ''; });
+                            });
+
+                            const expectedHeader = ['Data/Hora', 'Beneficiário', 'Telefone', 'CPF', 'Benefício', 'Qtd', 'Valor Unit.', 'Valor Total', 'Bairro', 'Responsável', 'Status'];
+                            if (!tableRows.length || String(tableRows[0][0]).toLowerCase() !== 'data/hora') {
+                                tableRows.unshift(expectedHeader);
+                            }
+
+                            while (sheetData.firstChild) sheetData.removeChild(sheetData.firstChild);
+                            $('mergeCells', sheet).remove();
+                            $('autoFilter', sheet).remove();
+
+                            function createCell(colIndex, rowNumber, value, styleId) {
+                                const cell = sheet.createElement('c');
+                                cell.setAttribute('r', excelColName(colIndex) + rowNumber);
+                                cell.setAttribute('s', styleId);
+                                cell.setAttribute('t', 'inlineStr');
+                                const inlineString = sheet.createElement('is');
+                                const textNode = sheet.createElement('t');
+                                textNode.setAttribute('xml:space', 'preserve');
+                                textNode.textContent = value || '';
+                                inlineString.appendChild(textNode);
+                                cell.appendChild(inlineString);
+                                return cell;
+                            }
+
+                            function createRow(rowNumber, values, styleResolver, height) {
+                                const row = sheet.createElement('row');
+                                row.setAttribute('r', String(rowNumber));
+                                row.setAttribute('ht', String(height));
+                                row.setAttribute('customHeight', '1');
+                                for (let i = 0; i < 11; i++) {
+                                    const styleId = typeof styleResolver === 'function' ? styleResolver(i) : styleResolver;
+                                    row.appendChild(createCell(i, rowNumber, values[i] || '', styleId));
+                                }
+                                return row;
+                            }
+
+                            sheetData.appendChild(createRow(1, [tituloTexto], styleTitle, 26));
+                            sheetData.appendChild(createRow(2, [filtrosTexto], styleMeta, 34));
+                            sheetData.appendChild(createRow(3, [resumoTexto], styleMeta, 30));
+                            sheetData.appendChild(createRow(4, [geradoTexto], styleMeta, 22));
+                            sheetData.appendChild(createRow(5, tableRows[0], styleHeader, 24));
+
+                            for (let i = 1; i < tableRows.length; i++) {
+                                sheetData.appendChild(createRow(i + 5, tableRows[i], function(colIndex) {
+                                    return (colIndex === 1 || colIndex === 4 || colIndex === 9) ? styleLeft : styleCenter;
+                                }, 24));
+                            }
+
+                            const mergeCellsNode = sheet.createElement('mergeCells');
+                            ['A1:K1', 'A2:K2', 'A3:K3', 'A4:K4'].forEach(function(ref) {
+                                const mergeCell = sheet.createElement('mergeCell');
+                                mergeCell.setAttribute('ref', ref);
+                                mergeCellsNode.appendChild(mergeCell);
+                            });
+                            mergeCellsNode.setAttribute('count', '4');
+                            sheetData.parentNode.insertBefore(mergeCellsNode, sheetData.nextSibling);
+
+                            let cols = $('cols', sheet)[0];
+                            if (!cols) {
+                                cols = sheet.createElement('cols');
+                                sheetData.parentNode.insertBefore(cols, sheetData);
+                            }
+                            while (cols.firstChild) cols.removeChild(cols.firstChild);
+
+                            const widths = [22, 38, 18, 18, 28, 10, 17, 18, 22, 30, 14];
+                            widths.forEach(function(width, index) {
+                                const col = sheet.createElement('col');
+                                col.setAttribute('min', String(index + 1));
+                                col.setAttribute('max', String(index + 1));
+                                col.setAttribute('width', String(width));
+                                col.setAttribute('customWidth', '1');
+                                cols.appendChild(col);
+                            });
+
+                            const totalRows = tableRows.length + 4;
+                            const dimension = $('dimension', sheet);
+                            if (dimension.length) dimension.attr('ref', 'A1:K' + totalRows);
                         }
                     }],
                     order: [],
