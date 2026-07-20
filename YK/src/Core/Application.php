@@ -123,11 +123,11 @@ final class Application
                 ),
                 (int) (
                     $this->settings['session_timeout']
-                    ?? 1800
+                    ?? 86400
                 ),
                 (int) (
                     $this->settings['session_absolute_timeout']
-                    ?? 28800
+                    ?? 86400
                 ),
                 (int) (
                     $this->settings['session_regenerate_interval']

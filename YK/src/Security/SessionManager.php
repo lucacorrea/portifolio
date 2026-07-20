@@ -9,8 +9,8 @@ final class SessionManager
 
     public function __construct(
         private readonly string $name = 'YKSESSID',
-        private readonly int $idleTimeout = 1800,
-        private readonly int $absoluteTimeout = 28800,
+        private readonly int $idleTimeout = 86400,
+        private readonly int $absoluteTimeout = 86400,
         private readonly int $regenerateInterval = 900,
         private readonly string $cookiePath = '/YK',
         private readonly bool $secureCookie = true
@@ -30,10 +30,11 @@ final class SessionManager
         ini_set('session.cookie_httponly', '1');
         ini_set('session.cookie_secure', $this->secureCookie ? '1' : '0');
         ini_set('session.cookie_samesite', 'Lax');
+        ini_set('session.gc_maxlifetime', (string) max($this->idleTimeout, $this->absoluteTimeout));
 
         session_name($this->name);
         session_set_cookie_params([
-            'lifetime' => 0,
+            'lifetime' => $this->absoluteTimeout,
             'path' => $this->cookiePath,
             'secure' => $this->secureCookie,
             'httponly' => true,
