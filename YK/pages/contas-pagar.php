@@ -50,6 +50,15 @@ function payable_installment_status(array $installment): string
     return $status === 'pendente' && payable_value($installment, 'vencimento_em') < date('Y-m-d') ? 'vencida' : $status;
 }
 
+function payable_current_installment(array $installments): ?array
+{
+    foreach ($installments as $installment) {
+        if (is_array($installment) && payable_value($installment, 'status') === 'pendente') return $installment;
+    }
+    $last = end($installments);
+    return is_array($last) ? $last : null;
+}
+
 function payable_payment_options(string $selected = ''): void
 {
     foreach (AccountsPayableManagementService::paymentMethods() as $method) {
@@ -169,19 +178,20 @@ $statusButtons = [['', 'Todos', 'all'], ['pendente', 'Pendentes', 'amber'], ['ve
     </div>
     <?php if ($hasMoreAccounts): ?><div class="px-3 py-2 text-muted small border-bottom" role="status">Exibindo as primeiras 300 contas. Refine os filtros para localizar as demais.</div><?php endif; ?>
     <?php if ($accounts === []): ?><?php empty_state('Nenhuma conta encontrada', 'Cadastre manualmente uma conta de fornecedor ou ajuste os filtros.'); ?><?php else: ?>
-    <div class="table-panel-wrap"><table class="os-table payable-table"><thead><tr><th>Código</th><th>Fornecedor / descrição</th><th>Pagamento</th><th>Parcelas por mês</th><th>Valor total</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+    <div class="table-panel-wrap"><table class="os-table payable-table"><thead><tr><th>Código</th><th>Fornecedor / descrição</th><th>Pagamento</th><th>Parcela atual</th><th>Valor total</th><th>Status</th><th>Ações</th></tr></thead><tbody>
     <?php foreach ($accounts as $account):
         $payload = json_encode($account, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?: '{}';
         $status = payable_value($account, 'status', 'pendente');
         $displayStatus = payable_value($account, 'status_exibicao', $status);
         $locked = $status !== 'pendente' || payable_value($account, 'possui_movimentacao', '0') === '1';
         $installments = is_array($account['parcelas'] ?? null) ? $account['parcelas'] : [];
+        $currentInstallment = payable_current_installment($installments);
     ?>
         <tr class="payable-row payable-row--<?= h($displayStatus) ?>">
             <td><strong><?= h(payable_value($account, 'codigo')) ?></strong><br><small><?= h(payable_value($account, 'documento', 'Sem documento')) ?></small></td>
             <td><strong><?= h(payable_value($account, 'fornecedor_nome')) ?></strong><br><small><?= h(payable_value($account, 'descricao')) ?></small></td>
             <td><strong><?= payable_value($account, 'tipo_pagamento') === 'parcelado' ? h(payable_value($account, 'quantidade_parcelas')) . 'x' : 'À vista' ?></strong><br><small><?= h(payable_payment_label(payable_value($account, 'forma_pagamento'))) ?></small></td>
-            <td><div class="payable-installment-list"><?php foreach ($installments as $installment): $installmentStatus = payable_installment_status($installment); ?><span class="payable-installment payable-installment--<?= h($installmentStatus) ?>" title="<?= h(payable_status_label($installmentStatus) . ' — ' . money(payable_value($installment, 'valor', '0'))) ?>"><strong><?= h(payable_value($installment, 'numero')) ?>/<?= h(payable_value($account, 'quantidade_parcelas')) ?></strong> <?= h(payable_date(payable_value($installment, 'vencimento_em'))) ?> · <?= h(payable_status_label($installmentStatus)) ?></span><?php endforeach; ?></div></td>
+            <td><div class="payable-installment-list"><?php if ($currentInstallment !== null): $installmentStatus = payable_installment_status($currentInstallment); ?><span class="payable-installment payable-installment--<?= h($installmentStatus) ?>" title="<?= h(payable_status_label($installmentStatus) . ' — ' . money(payable_value($currentInstallment, 'valor', '0'))) ?>"><strong><?= h(payable_value($currentInstallment, 'numero')) ?>/<?= h(payable_value($account, 'quantidade_parcelas')) ?></strong> <?= h(payable_date(payable_value($currentInstallment, 'vencimento_em'))) ?> · <?= h(payable_status_label($installmentStatus)) ?></span><?php else: ?>—<?php endif; ?></div></td>
             <td><strong><?= money(payable_value($account, 'valor', '0')) ?></strong><br><small><?= h(payable_value($account, 'parcelas_pagas', '0')) ?>/<?= h(payable_value($account, 'quantidade_parcelas', '1')) ?> quitada(s)</small></td>
             <td><span class="badge-soft badge-<?= h(payable_status_badge($displayStatus)) ?>"><?= h(payable_status_label($displayStatus)) ?></span></td>
             <td class="table-actions-cell"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações da conta <?= h(payable_value($account, 'codigo')) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><button class="dropdown-item js-payable-view" type="button" data-account="<?= h($payload) ?>" data-bs-toggle="modal" data-bs-target="#modal-conta-pagar-view"><i class="bi bi-eye"></i> Parcelas e detalhes</button></li><?php if ($canEdit && !$locked): ?><li><button class="dropdown-item js-payable-edit" type="button" data-account="<?= h($payload) ?>" data-bs-toggle="modal" data-bs-target="#modal-conta-pagar-edit"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?><?php if ($canCancel && !$locked): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger js-payable-cancel" type="button" data-account="<?= h($payload) ?>" data-bs-toggle="modal" data-bs-target="#modal-conta-pagar-cancel"><i class="bi bi-x-circle"></i> Cancelar</button></li><?php endif; ?></ul></div></td>
