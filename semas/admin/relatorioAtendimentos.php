@@ -248,19 +248,22 @@ if ($exportFlag === '1') {
         <Font ss:Bold="1" />
       </Style>
       <Style ss:ID="sHeader">
-        <Font ss:Bold="1" /><Interior ss:Color="#F2F4F7" ss:Pattern="Solid" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Font ss:Bold="1" /><Alignment ss:Horizontal="Center" ss:Vertical="Center" /><Interior ss:Color="#F2F4F7" ss:Pattern="Solid" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
       </Style>
       <Style ss:ID="sText">
-        <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+      </Style>
+      <Style ss:ID="sTextLeft">
+        <Alignment ss:Horizontal="Left" ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
       </Style>
       <Style ss:ID="sInt">
-        <NumberFormat ss:Format="0" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" /><NumberFormat ss:Format="0" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
       </Style>
       <Style ss:ID="sMoney">
-        <NumberFormat ss:Format="R$ #,##0.00" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" /><NumberFormat ss:Format="R$ #,##0.00" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
       </Style>
       <Style ss:ID="sDateTime">
-        <NumberFormat ss:Format="dd/mm/yyyy\ hh:mm" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" /><NumberFormat ss:Format="dd/mm/yyyy\ hh:mm" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
       </Style>
     </Styles>
 
@@ -313,7 +316,7 @@ if ($exportFlag === '1') {
               <Cell ss:StyleID="sText"><Data ss:Type="String">—</Data></Cell>
             <?php endif; ?>
 
-            <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc((string)($r['solicitante_nome'] ?? '')) ?></Data></Cell>
+            <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc((string)($r['solicitante_nome'] ?? '')) ?></Data></Cell>
             <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc((string)($r['bairro_nome'] ?? '')) ?></Data></Cell>
             <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc((string)($r['beneficio_nome'] ?? '')) ?></Data></Cell>
             <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc((string)($r['responsavel'] ?? '')) ?></Data></Cell>
