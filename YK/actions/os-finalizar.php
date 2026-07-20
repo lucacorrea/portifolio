@@ -6,7 +6,6 @@ require __DIR__ . '/os-action-common.php';
 
 os_require_post_request();
 [$application, $session] = os_action_context('os.finalizar');
-$application->authorization()->requirePermission('os.finalizar_com_pagamento');
 
 try {
     $user = $application->authorization()->requireLogin();
@@ -15,7 +14,7 @@ try {
         $_POST,
         $user->id()
     );
-    $session->flash('success', 'OS finalizada; pagamento, Caixa e Contas a Receber foram atualizados.');
+    $session->flash('success', 'OS finalizada e direcionada para Contas a Receber.');
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('finalize', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());

@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(18, count($migrationPaths), 'A sequência atual deve conter 18 migrations.');
+migrationAssertSame(19, count($migrationPaths), 'A sequência atual deve conter 19 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -96,5 +96,13 @@ migrationAssertSame(true, str_contains((string) $agendaReminderMigration, "ENUM(
 migrationAssertSame(true, str_contains((string) $agendaReminderMigration, 'concluido_em'), 'A conclusão deve registrar data e hora.');
 migrationAssertSame(true, str_contains((string) $agendaReminderMigration, 'concluido_por'), 'A conclusão deve registrar o usuário responsável.');
 migrationAssertSame(true, str_contains((string) $agendaReminderMigration, 'fk_agenda_lembretes_concluido_usuario'), 'A auditoria da conclusão deve preservar integridade referencial.');
+
+$orderPaymentMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/019_service_order_payment_receipts_permissions.sql');
+migrationAssertSame(true, is_string($orderPaymentMigration), 'A migration do pagamento de OS deve ser legível.');
+migrationAssertSame(true, str_contains((string) $orderPaymentMigration, 'payment_token'), 'Pagamento de OS deve possuir token idempotente persistente.');
+migrationAssertSame(true, str_contains((string) $orderPaymentMigration, 'uq_os_pagamento_token'), 'Token de pagamento não pode ser reutilizado.');
+migrationAssertSame(true, str_contains((string) $orderPaymentMigration, 'total_origem'), 'Estorno deve conseguir restaurar os totais anteriores da OS.');
+migrationAssertSame(true, str_contains((string) $orderPaymentMigration, 'os.excluir'), 'A permissão de exclusão lógica deve ser reparada na migration.');
+migrationAssertSame(true, str_contains((string) $orderPaymentMigration, 'recibo.emitir'), 'Emissão de recibo deve possuir permissão ativa.');
 
 echo "MigrationRunnerTest: OK\n";

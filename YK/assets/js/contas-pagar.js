@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function () {
       [String(installment.numero) + '/' + String(account.quantidade_parcelas), formatted(installment, 'vencimento_em', 'date'), formatted(installment, 'valor', 'money'), statusLabels[displayStatus] || displayStatus, paymentLabels[installment.forma_pagamento_quitacao] || paymentLabels[account.forma_pagamento] || 'Não informada', formatted(installment, 'quitada_em', 'date')].forEach((text) => row.appendChild(element('td', '', text)));
       const actionCell = element('td');
       if (installment.status === 'pendente' && host.dataset.canSettle === '1') {
-        const settle = element('button', 'btn-filter btn-filter-primary js-payable-settle-installment', 'Quitar');
+        const settle = element('button', 'btn-filter btn-filter-primary js-payable-settle-installment', 'Dar baixa');
         settle.type = 'button'; settle.dataset.installment = JSON.stringify(installment); settle.dataset.account = JSON.stringify(account);
         actionCell.appendChild(settle);
       } else if (installment.status === 'paga' && host.dataset.canReverse === '1') {
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!form) return;
       form.elements.namedItem('parcela_id').value = installment.id || '';
       form.elements.namedItem('forma_pagamento').value = account.forma_pagamento || 'outro';
-      document.getElementById('payable-settle-message').textContent = 'Quitar a parcela ' + installment.numero + '/' + account.quantidade_parcelas + ' de ' + formatted(installment, 'valor', 'money') + '?';
+      document.getElementById('payable-settle-message').textContent = 'Dar baixa na parcela ' + installment.numero + '/' + account.quantidade_parcelas + ' de ' + formatted(installment, 'valor', 'money') + '?';
       switchModal('modal-conta-pagar-quitar'); return;
     }
     const reverseButton = event.target.closest('.js-payable-reverse-installment');

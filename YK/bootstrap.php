@@ -114,6 +114,9 @@ try {
         throw new RuntimeException('Configuração de integração fiscal inválida.');
     }
 
+    $sessionTimeout = max(86400, (int) $environment->get('SESSION_TIMEOUT', '86400'));
+    $sessionAbsoluteTimeout = max(86400, (int) $environment->get('SESSION_ABSOLUTE_TIMEOUT', '86400'));
+
     $settings = [
         'app_env' => $appEnv,
         'app_debug' => $appDebug,
@@ -121,8 +124,8 @@ try {
         'fiscal_integration_enabled' => $fiscalIntegrationEnabled,
         'fiscal_production_enabled' => $fiscalProductionEnabled,
         'session_name' => $environment->get('SESSION_NAME', 'YKSESSID'),
-        'session_timeout' => (int) $environment->get('SESSION_TIMEOUT', '86400'),
-        'session_absolute_timeout' => (int) $environment->get('SESSION_ABSOLUTE_TIMEOUT', '86400'),
+        'session_timeout' => $sessionTimeout,
+        'session_absolute_timeout' => $sessionAbsoluteTimeout,
         'session_regenerate_interval' => (int) $environment->get('SESSION_REGENERATE_INTERVAL', '900'),
         'session_cookie_path' => $environment->get('SESSION_COOKIE_PATH', '/YK'),
         'login_max_attempts' => (int) $environment->get('LOGIN_MAX_ATTEMPTS', '5'),

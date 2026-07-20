@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const incompatible = activeClient !== '' && checkbox.dataset.clientId !== activeClient && !checkbox.checked;
       checkbox.disabled = incompatible;
       checkbox.closest('tr')?.classList.toggle('cr-batch-incompatible', incompatible);
+      checkbox.closest('tr')?.classList.toggle('cr-batch-selected', checkbox.checked);
     });
 
     const total = selected.reduce(function (sum, checkbox) { return sum + cents(checkbox.dataset.balance); }, 0);
@@ -35,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const status = document.getElementById('cr-batch-selection');
     if (!status) return;
     if (message) status.textContent = message;
-    else if (selected.length === 0) status.textContent = 'Selecione pelo menos duas contas em aberto do mesmo cliente.';
+    else if (selected.length === 0) status.textContent = 'Selecione pelo menos duas contas em aberto do mesmo cliente para dar baixa de uma só vez.';
     else status.textContent = selected.length + ' conta(s) de ' + selected[0].dataset.clientName + ' selecionada(s) — total ' + moneyFromCents(total) + '.';
   }
 

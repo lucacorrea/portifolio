@@ -4,9 +4,9 @@ declare(strict_types=1);
 $activePage = 'painel-semanal';
 
 $pageTitle = 'Serviços da Semana';
-$pageSubtitle = 'Distribuição semanal dos atendimentos por dupla';
+$pageSubtitle = 'Agenda semanal dos serviços confirmados';
 
-$primaryActionLabel = 'Adicionar serviço';
+$primaryActionLabel = 'Confirmar novo serviço';
 $primaryActionIcon = 'bi-calendar-plus';
 $primaryActionTarget = '#modal-week-create';
 $primaryActionPermission = 'painel_semanal.adicionar';

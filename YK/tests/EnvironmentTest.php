@@ -69,6 +69,15 @@ try {
         str_replace('\\', '/', Environment::resolveFilePath('/home/usuario/public_html/YK')),
         'O .env padrão deve ser procurado dentro de configuracoes/yk.'
     );
+
+    $bootstrapSource = file_get_contents(dirname(__DIR__) . '/bootstrap.php');
+    environmentAssertSame(
+        true,
+        is_string($bootstrapSource)
+            && str_contains($bootstrapSource, "max(86400, (int) \$environment->get('SESSION_TIMEOUT'")
+            && str_contains($bootstrapSource, "max(86400, (int) \$environment->get('SESSION_ABSOLUTE_TIMEOUT'"),
+        'Configurações antigas não devem reduzir a sessão para menos de 24 horas.'
+    );
 } finally {
     if ($previousValue === false) {
         putenv('DB_AUTO_MIGRATE');
