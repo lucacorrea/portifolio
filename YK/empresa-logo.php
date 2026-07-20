@@ -15,7 +15,7 @@ try {
     session_write_close();
 
     $version = isset($_GET['v']) && is_string($_GET['v']) ? trim($_GET['v']) : '';
-    $storage = new CompanyLogoStorage(__DIR__ . '/storage');
+    $storage = CompanyLogoStorage::forProjectRoot(__DIR__);
     $path = $storage->resolve('empresa-logo.php?v=' . $version);
     if ($path === null) {
         throw new RuntimeException('Logo não encontrada.');
