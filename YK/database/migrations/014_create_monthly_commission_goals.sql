@@ -20,12 +20,11 @@ CREATE TABLE IF NOT EXISTS metas_comissao_mensais (
     UNIQUE KEY uq_meta_comissao_competencia_versao (competencia, versao),
     UNIQUE KEY uq_meta_comissao_competencia_ativa (configuracao_ativa_chave),
     KEY idx_meta_comissao_competencia (competencia, ativa),
-    CONSTRAINT chk_meta_comissao_competencia_inicio_mes
-        CHECK (DAYOFMONTH(competencia) = 1),
+    CONSTRAINT chk_meta_comissao_ativa CHECK (ativa IN (0, 1)),
     CONSTRAINT chk_meta_comissao_valor_positivo CHECK (valor_meta > 0),
     CONSTRAINT chk_meta_comissao_percentual CHECK (percentual_comissao > 0 AND percentual_comissao <= 100),
     CONSTRAINT chk_meta_comissao_desativacao
-        CHECK ((ativa = 1 AND desativada_por IS NULL AND desativada_em IS NULL)
+        CHECK ((ativa = 1 AND desativada_em IS NULL)
             OR (ativa = 0 AND desativada_em IS NOT NULL)),
     CONSTRAINT fk_meta_comissao_criada_usuario FOREIGN KEY (criada_por) REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_meta_comissao_desativada_usuario FOREIGN KEY (desativada_por) REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE SET NULL

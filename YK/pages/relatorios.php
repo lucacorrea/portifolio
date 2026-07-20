@@ -221,6 +221,7 @@ $prizePercentage = (string) ($goal['percentage'] ?? '0.00');
             </div>
             <div class="modal-body">
                 <?= $csrf->field() ?>
+                <?php return_to_field(); ?>
                 <div class="alert alert-info" role="note">Ao atingir a meta, o percentual será aplicado sobre todo o valor creditado ao funcionário, e não apenas sobre o excedente.</div>
                 <div class="form-row">
                     <div class="form-group"><label class="form-label" for="goal-competence">Mês de referência</label><input class="form-control-os" id="goal-competence" type="month" name="competencia" value="<?= h($competence) ?>" required></div>

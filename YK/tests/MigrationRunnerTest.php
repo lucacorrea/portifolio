@@ -59,5 +59,7 @@ migrationAssertSame(true, str_contains((string) $commissionMigration, 'uq_meta_c
 migrationAssertSame(true, str_contains((string) $commissionMigration, 'uq_meta_comissao_competencia_versao'), 'O histórico deve preservar versões da competência.');
 migrationAssertSame(true, str_contains((string) $commissionMigration, 'relatorio.comissao.visualizar'), 'A permissão de visualização deve ser criada.');
 migrationAssertSame(true, str_contains((string) $commissionMigration, 'relatorio.meta_comissao.configurar'), 'A permissão de configuração deve ser criada.');
+migrationAssertSame(false, str_contains((string) $commissionMigration, 'DAYOFMONTH('), 'A migration deve evitar função incompatível com o analisador SQL da hospedagem.');
+migrationAssertSame(false, str_contains((string) $commissionMigration, 'desativada_por IS NULL'), 'Coluna com ON DELETE SET NULL não pode participar de CHECK no MariaDB da hospedagem.');
 
 echo "MigrationRunnerTest: OK\n";

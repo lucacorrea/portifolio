@@ -22,7 +22,11 @@ $redirectCompetence = preg_match('/^\d{4}-(?:0[1-9]|1[0-2])$/', $competence) ===
     ? $competence
     : date('Y-m');
 $redirect = static function () use ($application, $redirectCompetence): never {
-    header('Location: ' . $application->redirect()->applicationUrl('relatorios.php?competencia=' . rawurlencode($redirectCompetence)), true, 303);
+    $target = action_return_target(
+        $application,
+        'relatorios.php?competencia=' . rawurlencode($redirectCompetence)
+    );
+    header('Location: ' . $application->redirect()->applicationUrl($target), true, 303);
     exit;
 };
 
