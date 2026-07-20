@@ -61,41 +61,55 @@ $urgentCount = count(array_filter($orders, static fn($order): bool => $order->pr
 $withoutTeam = count(array_filter($orders, static fn($order): bool => ($GLOBALS['teamsByOrder'][$order->id()] ?? []) === []));
 ?>
 
-<div class="page-body agenda-page">
-<?php metric_grid([
-    ['Atendimentos', (string) count($orders), 'bi-wrench', '#2563EB', 'OS no período'],
-    ['Lembretes', (string) count($reminders), 'bi-alarm', '#7C3AED', 'agenda comercial'],
-    ['Agendadas', (string) $scheduledCount, 'bi-calendar2-check', '#0F766E', 'com horário'],
-    ['Em execução', (string) $runningCount, 'bi-play-circle', '#16A34A', 'em atendimento'],
-    ['Urgentes', (string) $urgentCount, 'bi-exclamation-triangle', '#DC2626', 'prioridade alta'],
-    ['Sem equipe', (string) $withoutTeam, 'bi-people', '#D97706', 'corrigir OS'],
-]); ?>
+<div class="page-body operational-page agenda-page" data-page="agenda">
+<div class="agenda-summary-bar" data-live-region="metrics" aria-label="Resumo da agenda">
+    <span><i class="bi bi-wrench" aria-hidden="true"></i><strong><?= h((string) count($orders)) ?></strong> Atendimentos</span>
+    <span><i class="bi bi-alarm" aria-hidden="true"></i><strong><?= h((string) count($reminders)) ?></strong> Lembretes</span>
+    <span><i class="bi bi-calendar2-check" aria-hidden="true"></i><strong><?= h((string) $scheduledCount) ?></strong> Agendadas</span>
+    <span><i class="bi bi-play-circle" aria-hidden="true"></i><strong><?= h((string) $runningCount) ?></strong> Em execução</span>
+    <span><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><strong><?= h((string) $urgentCount) ?></strong> Urgentes</span>
+    <span><i class="bi bi-people" aria-hidden="true"></i><strong><?= h((string) $withoutTeam) ?></strong> Sem equipe</span>
+</div>
 
-<form class="filter-bar" method="get" action="agenda.php" data-live-filter="agenda" data-live-regions="metrics results">
+<form class="filter-bar agenda-filter-bar" method="get" action="agenda.php" data-live-filter="agenda" data-live-regions="metrics results">
     <input type="hidden" name="view" value="<?= h($view) ?>">
     <input type="hidden" name="date" value="<?= h($periodStart->format('Y-m-d')) ?>">
     <select class="filter-select" name="client_id" aria-label="Cliente"><option value="">Todos os clientes</option><?php foreach ($clients as $client): ?><option value="<?= h((string) $client->id()) ?>" <?= $filters['client_id'] === (string) $client->id() ? 'selected' : '' ?>><?= h($client->name()) ?></option><?php endforeach; ?></select>
     <select class="filter-select" name="employee_id" aria-label="Funcionário"><option value="">Todos os funcionários</option><?php foreach ($employees as $employee): ?><option value="<?= h((string) $employee->id()) ?>" <?= $filters['employee_id'] === (string) $employee->id() ? 'selected' : '' ?>><?= h($employee->displayCode() . ' — ' . $employee->name()) ?></option><?php endforeach; ?></select>
     <select class="filter-select" name="status" aria-label="Status"><option value="">Todos os status</option><?php foreach (['agendada','em_deslocamento','em_execucao','aguardando_peca','finalizada','cancelada'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(agenda_label_status($status)) ?></option><?php endforeach; ?></select>
     <select class="filter-select" name="event_type" aria-label="Tipo"><option value="all" <?= $eventType === 'all' ? 'selected' : '' ?>>Todos</option><option value="service_order" <?= $eventType === 'service_order' ? 'selected' : '' ?>>Atendimentos</option><option value="reminder" <?= $eventType === 'reminder' ? 'selected' : '' ?>>Lembretes</option></select>
-    <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-    <a class="btn-filter btn-filter-ghost" href="agenda.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar filtros</a>
+    <div class="agenda-filter-actions">
+        <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
+        <a class="btn-filter btn-filter-ghost" href="agenda.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
+    </div>
 </form>
 
-<section class="panel" data-live-region="results">
-    <div class="panel-header"><div class="panel-title"><i class="bi bi-calendar-week"></i><?= h($view === 'week' ? 'Semana de ' . $periodStart->format('d/m/Y') : $periodStart->format('d/m/Y')) ?></div><div class="d-flex gap-2"><a class="btn-filter btn-filter-ghost" href="agenda.php?view=<?= h($view) ?>&date=<?= h($prevDate->format('Y-m-d')) ?>">Anterior</a><a class="btn-filter btn-filter-primary" href="agenda.php?view=<?= h($view) ?>&date=<?= h(date('Y-m-d')) ?>">Hoje</a><a class="btn-filter btn-filter-ghost" href="agenda.php?view=<?= h($view) ?>&date=<?= h($nextDate->format('Y-m-d')) ?>">Próximo</a><a class="btn-filter btn-filter-ghost" href="agenda.php?view=<?= $view === 'day' ? 'week' : 'day' ?>&date=<?= h($periodStart->format('Y-m-d')) ?>"><?= $view === 'day' ? 'Ver semana' : 'Ver dia' ?></a></div></div>
+<section class="panel agenda-panel" data-live-region="results">
+    <div class="panel-header agenda-toolbar">
+        <div class="agenda-period">
+            <span class="agenda-period-kicker"><?= $view === 'week' ? 'Visão semanal' : 'Visão diária' ?></span>
+            <div class="panel-title"><i class="bi bi-calendar-week" aria-hidden="true"></i><?= h($view === 'week' ? 'Semana de ' . $periodStart->format('d/m/Y') : $periodStart->format('d/m/Y')) ?></div>
+        </div>
+        <nav class="agenda-navigation" aria-label="Navegação da agenda">
+            <a class="agenda-nav-button" href="agenda.php?view=<?= h($view) ?>&date=<?= h($prevDate->format('Y-m-d')) ?>" aria-label="Período anterior" title="Anterior"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+            <a class="btn-filter btn-filter-primary" href="agenda.php?view=<?= h($view) ?>&date=<?= h(date('Y-m-d')) ?>">Hoje</a>
+            <a class="agenda-nav-button" href="agenda.php?view=<?= h($view) ?>&date=<?= h($nextDate->format('Y-m-d')) ?>" aria-label="Próximo período" title="Próximo"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+            <a class="btn-filter btn-filter-ghost agenda-view-toggle" href="agenda.php?view=<?= $view === 'day' ? 'week' : 'day' ?>&date=<?= h($periodStart->format('Y-m-d')) ?>"><i class="bi <?= $view === 'day' ? 'bi-calendar-week' : 'bi-calendar-day' ?>" aria-hidden="true"></i><?= $view === 'day' ? 'Semana' : 'Dia' ?></a>
+        </nav>
+    </div>
     <?php if ($events === []): ?><?php empty_state('Nenhum evento no período', 'Atendimentos e lembretes aparecerão aqui.'); ?><?php else: ?>
     <div class="agenda-event-list">
         <?php foreach ($events as $event): ?>
             <?php if ($event['type'] === 'service_order'): $order = $event['order']; ?>
-                <article class="week-service-card priority-<?= h($order->priority()) ?>" data-record-actions>
-                    <div class="week-service-time"><?= h(agenda_event_time($order->scheduledStart(), $order->scheduledEnd())) ?></div>
-                    <strong class="week-service-os"><?= h($order->displayNumber()) ?></strong>
-                    <div class="week-service-client"><?= h($order->clientName()) ?></div>
-                    <div class="week-service-title"><?= h($order->mainService() ?? 'Serviço não informado') ?></div>
-                    <div class="week-service-details"><?= agenda_team_lines($teamsByOrder[$order->id()] ?? []) ?></div>
-                    <div class="week-service-meta"><span class="badge-soft badge-<?= h(agenda_status_badge($order->status())) ?>"><?= h($order->displayStatus()) ?></span><span class="badge-soft badge-<?= h(agenda_priority_badge($order->priority())) ?>"><?= h($order->displayPriority()) ?></span></div>
-                    <div class="mt-2 d-flex justify-content-end record-actions-source">
+                <article class="week-service-card agenda-event-card priority-<?= h($order->priority()) ?>" data-record-actions>
+                    <div class="agenda-event-time"><i class="bi bi-clock" aria-hidden="true"></i><strong><?= h(agenda_event_time($order->scheduledStart(), $order->scheduledEnd())) ?></strong></div>
+                    <div class="agenda-event-content">
+                        <div class="agenda-event-heading"><strong class="week-service-os"><?= h($order->displayNumber()) ?></strong><span class="week-service-client"><?= h($order->clientName()) ?></span></div>
+                        <div class="week-service-title"><?= h($order->mainService() ?? 'Serviço não informado') ?></div>
+                        <div class="week-service-details"><i class="bi bi-people" aria-hidden="true"></i><span><?= agenda_team_lines($teamsByOrder[$order->id()] ?? []) ?></span></div>
+                    </div>
+                    <div class="week-service-meta agenda-event-meta"><span class="badge-soft badge-<?= h(agenda_status_badge($order->status())) ?>"><?= h($order->displayStatus()) ?></span><span class="badge-soft badge-<?= h(agenda_priority_badge($order->priority())) ?>"><?= h($order->displayPriority()) ?></span></div>
+                    <div class="record-actions-source agenda-event-actions">
                         <div class="dropdown table-action-dropdown">
                             <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações da OS <?= h($order->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end">
@@ -108,12 +122,11 @@ $withoutTeam = count(array_filter($orders, static fn($order): bool => ($GLOBALS[
                     </div>
                 </article>
             <?php else: $reminder = $event['reminder']; ?>
-                <article class="week-service-card priority-medium" data-record-actions>
-                    <div class="week-service-time"><?= h(agenda_event_time($reminder->start(), $reminder->end())) ?></div>
-                    <strong class="week-service-os"><?= h($reminder->title()) ?></strong>
-                    <div class="week-service-client"><?= h($reminder->description() ?? '-') ?></div>
-                    <div class="week-service-meta"><span class="badge-soft badge-blue"><?= h($reminder->status()) ?></span></div>
-                    <div class="mt-2 d-flex justify-content-end record-actions-source"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do lembrete <?= h($reminder->title()) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end"><?php if ($canEdit): ?><li><button class="dropdown-item js-reminder-edit" type="button" data-id="<?= h((string) $reminder->id()) ?>" data-title="<?= h($reminder->title()) ?>" data-description="<?= h($reminder->description() ?? '') ?>" data-start="<?= h($reminder->start()) ?>" data-end="<?= h($reminder->end() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-lembrete-edit"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?><?php if ($canCancel): ?><li><button class="dropdown-item text-danger js-reminder-cancel" type="button" data-id="<?= h((string) $reminder->id()) ?>" data-title="<?= h($reminder->title()) ?>" data-bs-toggle="modal" data-bs-target="#modal-lembrete-cancel"><i class="bi bi-x-circle"></i> Cancelar</button></li><?php endif; ?></ul></div></div>
+                <article class="week-service-card agenda-event-card agenda-reminder-card priority-medium" data-record-actions>
+                    <div class="agenda-event-time"><i class="bi bi-alarm" aria-hidden="true"></i><strong><?= h(agenda_event_time($reminder->start(), $reminder->end())) ?></strong></div>
+                    <div class="agenda-event-content"><div class="agenda-event-heading"><strong class="week-service-os">Lembrete</strong><span class="week-service-client"><?= h($reminder->title()) ?></span></div><div class="week-service-title"><?= h($reminder->description() ?? 'Sem descrição') ?></div></div>
+                    <div class="week-service-meta agenda-event-meta"><span class="badge-soft badge-blue"><?= h($reminder->status()) ?></span></div>
+                    <div class="record-actions-source agenda-event-actions"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do lembrete <?= h($reminder->title()) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end"><?php if ($canEdit): ?><li><button class="dropdown-item js-reminder-edit" type="button" data-id="<?= h((string) $reminder->id()) ?>" data-title="<?= h($reminder->title()) ?>" data-description="<?= h($reminder->description() ?? '') ?>" data-start="<?= h($reminder->start()) ?>" data-end="<?= h($reminder->end() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-lembrete-edit"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?><?php if ($canCancel): ?><li><button class="dropdown-item text-danger js-reminder-cancel" type="button" data-id="<?= h((string) $reminder->id()) ?>" data-title="<?= h($reminder->title()) ?>" data-bs-toggle="modal" data-bs-target="#modal-lembrete-cancel"><i class="bi bi-x-circle"></i> Cancelar</button></li><?php endif; ?></ul></div></div>
                 </article>
             <?php endif; ?>
         <?php endforeach; ?>
