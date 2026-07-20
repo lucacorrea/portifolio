@@ -57,6 +57,7 @@ $flashMessages = $session->consumeFlashMessages();
   <link rel="stylesheet" href="assets/css/frente-caixa.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/frente-caixa.css') ?>">
 </head>
 <body class="pdv-body">
+<div class="pdv-app" id="pdv-app">
   <header class="pdv-topbar">
     <div class="pdv-brand"><i class="bi bi-shop-window"></i><div><strong><?= h($companyName) ?> — PDV</strong><?php if ($companyDocument !== ''): ?><small>CNPJ/CPF: <?= h($companyDocument) ?></small><?php endif; ?></div></div>
     <div class="pdv-shortcuts" aria-label="Atalhos do teclado"><span><kbd>F2</kbd> Quantidade</span><b>•</b><span><kbd>F3</kbd> Desconto</span><b>•</b><span><kbd>Enter</kbd> Adicionar</span><b>•</b><span><kbd>F4</kbd> Finalizar</span><b>•</b><span><kbd>F6</kbd> Recebido</span></div>
@@ -99,7 +100,8 @@ $flashMessages = $session->consumeFlashMessages();
     </aside>
   </form>
   <script type="application/json" id="pdv-products-data"><?= json_encode($productPayload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
-  <script src="assets/js/frente-caixa.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/frente-caixa.js') ?>"></script>
   <?php endif; ?>
+</div>
+<script src="assets/js/frente-caixa.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/frente-caixa.js') ?>"></script>
 </body>
 </html>

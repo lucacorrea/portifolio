@@ -1,6 +1,11 @@
 :root { --pdv-brand: #0f6e8c; --pdv-brand-strong: #0b4f66; --pdv-brand-soft: #e7f6fb; --pdv-text-strong: #142733; --pdv-line: #dbe7ec; --pdv-bg: #eef5f8; }
 * { box-sizing: border-box; }
 body { margin: 0; color: #0f172a; background: var(--pdv-bg); font-family: "DM Sans", sans-serif; }
+.pdv-app { min-height: 100dvh; background: var(--pdv-bg); transform-origin: top left; }
+.pdv-fit-enabled { overflow: hidden; }
+.pdv-fit-enabled .pdv-app { width: var(--pdv-layout-width); height: var(--pdv-layout-height); min-height: 0; transform: scale(var(--pdv-scale)); }
+.pdv-fit-enabled .pdv-shell { height: calc(var(--pdv-layout-height) - 74px); min-height: 0; }
+.pdv-fit-enabled .pdv-blocked { min-height: calc(var(--pdv-layout-height) - 74px); }
 button, input, select { font: inherit; }
 .pdv-topbar { display: grid; grid-template-columns: minmax(280px, 1fr) auto minmax(280px, 1fr); align-items: center; min-height: 74px; padding: 10px 18px; color: #fff; background: linear-gradient(90deg, var(--pdv-brand), var(--pdv-brand-strong)); box-shadow: 0 4px 16px rgb(15 76 96 / 16%); }
 .pdv-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }

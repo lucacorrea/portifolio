@@ -1,6 +1,35 @@
 (function () {
   'use strict';
 
+  var app = document.getElementById('pdv-app');
+  var resizeFrame = 0;
+
+  function fitPdvToViewport() {
+    if (!app) return;
+    var isCompactScreen = window.innerWidth < 900;
+    if (isCompactScreen) {
+      document.body.classList.remove('pdv-fit-enabled');
+      document.documentElement.style.removeProperty('--pdv-scale');
+      document.documentElement.style.removeProperty('--pdv-layout-width');
+      document.documentElement.style.removeProperty('--pdv-layout-height');
+      return;
+    }
+    var widthScale = window.innerWidth / 1180;
+    var heightScale = window.innerHeight / 840;
+    var scale = Math.max(0.68, Math.min(1, widthScale, heightScale));
+    scale = Math.floor(scale * 100) / 100;
+    document.documentElement.style.setProperty('--pdv-scale', String(scale));
+    document.documentElement.style.setProperty('--pdv-layout-width', (window.innerWidth / scale) + 'px');
+    document.documentElement.style.setProperty('--pdv-layout-height', (window.innerHeight / scale) + 'px');
+    document.body.classList.add('pdv-fit-enabled');
+  }
+
+  fitPdvToViewport();
+  window.addEventListener('resize', function () {
+    window.cancelAnimationFrame(resizeFrame);
+    resizeFrame = window.requestAnimationFrame(fitPdvToViewport);
+  });
+
   var form = document.getElementById('pdv-form');
   if (!form) return;
 
