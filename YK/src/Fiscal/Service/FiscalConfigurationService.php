@@ -52,7 +52,7 @@ final class FiscalConfigurationService
         }
         $vault = $this->requireVault();
         $storage = $this->requireCertificateStorage();
-        $companyCnpj = self::cnpj((string) ($this->repository->companyFiscalData()['documento'] ?? ''));
+        $companyCnpj = self::companyCnpj((string) ($this->repository->companyFiscalData()['documento'] ?? ''));
         $secret = $vault->seal($password);
         $certificateId = 0;
         $storage->replaceWithMetadata(
@@ -213,6 +213,17 @@ final class FiscalConfigurationService
     public static function cnpj(string $value): string
     {
         return FiscalCertificateStorage::normalizeCnpj($value);
+    }
+
+    private static function companyCnpj(string $value): string
+    {
+        try {
+            return self::cnpj($value);
+        } catch (InvalidArgumentException) {
+            throw new InvalidArgumentException(
+                'Cadastre um CNPJ válido em Configurações > Dados da empresa antes de enviar o certificado.'
+            );
+        }
     }
 
     public static function isValidIbgeCityCode(string $code, string $state): bool
