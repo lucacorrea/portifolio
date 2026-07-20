@@ -1737,20 +1737,40 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                                 return id;
                             }
 
+                            function addFill(colorRgb) {
+                                const fills = $('fills', styles);
+                                const id = $('fill', fills).length;
+
+                                appendXml(
+                                    fills,
+                                    '<fill>' +
+                                        '<patternFill patternType="solid">' +
+                                            '<fgColor rgb="' + colorRgb + '"/>' +
+                                            '<bgColor indexed="64"/>' +
+                                        '</patternFill>' +
+                                    '</fill>'
+                                );
+
+                                fills.attr('count', $('fill', fills).length);
+                                return id;
+                            }
+
                             function addStyle(options) {
                                 const cellXfs = $('cellXfs', styles);
                                 const id = $('xf', cellXfs).length;
                                 const fontId = options.fontId || 0;
+                                const fillId = options.fillId || 0;
                                 const borderId = options.borderId || 0;
                                 const horizontal = options.horizontal || 'center';
                                 const vertical = options.vertical || 'center';
                                 const wrap = options.wrap ? ' wrapText="1"' : '';
                                 const applyFont = options.fontId ? ' applyFont="1"' : '';
+                                const applyFill = options.fillId ? ' applyFill="1"' : '';
                                 const applyBorder = options.borderId ? ' applyBorder="1"' : '';
 
                                 appendXml(
                                     cellXfs,
-                                    '<xf numFmtId="0" fontId="' + fontId + '" fillId="0" borderId="' + borderId + '" xfId="0"' + applyFont + applyBorder + ' applyAlignment="1">' +
+                                    '<xf numFmtId="0" fontId="' + fontId + '" fillId="' + fillId + '" borderId="' + borderId + '" xfId="0"' + applyFont + applyFill + applyBorder + ' applyAlignment="1">' +
                                         '<alignment horizontal="' + horizontal + '" vertical="' + vertical + '"' + wrap + '/>' +
                                     '</xf>'
                                 );
@@ -1763,10 +1783,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                             const fontMeta = addFont({ bold: true, size: 11 });
                             const fontHeader = addFont({ bold: true, size: 11 });
                             const blackBorder = addBorder();
+                            const lightGrayFill = addFill('FFF2F4F7');
 
-                            const styleTitle = addStyle({ fontId: fontTitle, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
+                            const styleTitle = addStyle({ fontId: fontTitle, fillId: lightGrayFill, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
                             const styleMeta = addStyle({ fontId: fontMeta, borderId: blackBorder, horizontal: 'left', vertical: 'center', wrap: true });
-                            const styleHeader = addStyle({ fontId: fontHeader, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
+                            const styleHeader = addStyle({ fontId: fontHeader, fillId: lightGrayFill, borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
                             const styleCenter = addStyle({ borderId: blackBorder, horizontal: 'center', vertical: 'center', wrap: true });
                             const styleLeft = addStyle({ borderId: blackBorder, horizontal: 'left', vertical: 'center', wrap: true });
 
