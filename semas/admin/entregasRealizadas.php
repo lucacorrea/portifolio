@@ -218,9 +218,6 @@ if ($estatisticas) {
 $sql_total_geral = "SELECT COUNT(*) as total FROM ajudas_entregas";
 $total_geral = $pdo->query($sql_total_geral)->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
 
-$sql_valor_total_geral = "SELECT SUM(COALESCE(valor_aplicado, 0)) as valor_total FROM ajudas_entregas";
-$valor_total_geral = $pdo->query($sql_valor_total_geral)->fetch(PDO::FETCH_ASSOC)['valor_total'] ?? 0;
-
 try {
     $bairros = $pdo->query("SELECT id, nome FROM bairros ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
@@ -1137,7 +1134,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes' && isset($_GET['id'])) 
                 <div class="total-geral-info">
                     <i class="bi bi-info-circle me-2"></i>
                     <strong>Total geral:</strong> <?= number_format((int)$total_geral, 0, ',', '.') ?> entregas |
-                    <strong>Valor geral:</strong> <?= formatarMoeda($valor_total_geral) ?>
+                    <strong>Valor geral:</strong> <?= formatarMoeda($estatisticas['valor_total'] ?? 0) ?>
 
                     <?php if (!empty($whereConditions)): ?>
                         <span class="ms-3">
