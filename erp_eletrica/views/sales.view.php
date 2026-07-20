@@ -2797,7 +2797,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         auth_code: authCode 
                     })
                 });
-                const data = await res.json();
+                const responseText = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    const cleanText = responseText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                    throw new Error(cleanText.slice(0, 220) || 'Resposta invalida do servidor.');
+                }
                 if (data.success) {
                     bootstrap.Modal.getOrCreateInstance('#modalTripleCancel').hide();
                     alert('Cancelamento processado com sucesso!');
@@ -2806,7 +2813,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('Erro: ' + data.error);
                 }
             } catch (err) {
-                alert('Erro de conexão ao cancelar venda.');
+                alert('Erro ao cancelar venda: ' + (err.message || 'Falha inesperada.'));
             } finally {
                 this.disabled = false;
                 this.innerHTML = originalText;
