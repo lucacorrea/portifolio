@@ -871,6 +871,7 @@ try {
     #tbl thead th.sortable-th {
       cursor: pointer;
       user-select: none;
+      position: relative;
     }
 
     .sort-header-btn {
@@ -879,15 +880,17 @@ try {
       color: inherit;
       font: inherit;
       font-weight: 700;
-      padding: 0;
+      padding: 0 22px 0 0;
       margin: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: .35rem;
       width: 100%;
+      min-height: 20px;
       cursor: pointer;
       line-height: 1.2;
+      position: relative;
+      text-align: center;
     }
 
     .sort-header-btn:focus {
@@ -896,33 +899,45 @@ try {
     }
 
     .sort-indicator {
-      width: 14px;
-      min-width: 14px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      color: #d9dee5;
-      font-size: 12px;
-      line-height: 1;
+      position: absolute;
+      top: 50%;
+      right: 2px;
+      width: 12px;
+      height: 18px;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .sort-indicator::before,
+    .sort-indicator::after {
+      position: absolute;
+      left: 0;
+      width: 12px;
+      text-align: center;
+      font-size: 9px;
+      line-height: 9px;
+      color: #e1e5ea;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
     .sort-indicator::before {
-      content: "↕";
+      content: "▲";
+      top: 0;
     }
 
-    #tbl thead th.sort-asc .sort-indicator,
-    #tbl thead th.sort-desc .sort-indicator {
+    .sort-indicator::after {
+      content: "▼";
+      bottom: 0;
+    }
+
+    #tbl thead th.sort-asc .sort-indicator::before,
+    #tbl thead th.sort-desc .sort-indicator::after {
       color: #8a95a3;
     }
 
-    #tbl thead th.sort-asc .sort-indicator::before {
-      content: "▲";
-      font-size: 10px;
-    }
-
+    #tbl thead th.sort-asc .sort-indicator::after,
     #tbl thead th.sort-desc .sort-indicator::before {
-      content: "▼";
-      font-size: 10px;
+      color: #e1e5ea;
     }
 
     #tbl tbody td {
