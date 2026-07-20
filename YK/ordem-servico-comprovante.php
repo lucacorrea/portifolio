@@ -73,7 +73,9 @@ function receipt_print_items(array $items, string $type, string $title, bool $wi
 * { box-sizing: border-box; }
 html, body { width: 80mm; margin: 0; padding: 0; }
 body { background: #eef2f4; color: #111; font-family: Arial, Helvetica, sans-serif; font-size: 10px; line-height: 1.3; }
-.receipt { width: 80mm; min-height: 100mm; margin: 10px auto; padding: 4mm; background: #fff; box-shadow: 0 8px 24px rgba(15, 23, 42, .12); }
+.receipt { position: relative; isolation: isolate; width: 80mm; min-height: 100mm; margin: 10px auto; padding: 4mm; overflow: hidden; background: #fff; box-shadow: 0 8px 24px rgba(15, 23, 42, .12); }
+.receipt::before { position: absolute; top: 50%; left: 50%; z-index: 0; width: 110%; color: #000; content: "DOCUMENTO NÃO FISCAL"; font-size: 17px; font-weight: 800; letter-spacing: .1em; line-height: 1; opacity: .075; text-align: center; white-space: nowrap; transform: translate(-50%, -50%) rotate(-32deg); pointer-events: none; }
+.receipt > * { position: relative; z-index: 1; }
 .company-header { text-align: center; }
 .company-logo { display: block; width: auto; max-width: 46mm; height: auto; max-height: 18mm; margin: 0 auto 2mm; object-fit: contain; }
 .company-header h1 { margin: 0; font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; }
@@ -82,7 +84,6 @@ body { background: #eef2f4; color: #111; font-family: Arial, Helvetica, sans-ser
 .document-label { display: block; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .document-number { display: block; margin: 1mm 0; font-size: 18px; line-height: 1; }
 .document-meta { display: flex; justify-content: center; gap: 2mm; font-size: 9px; }
-.non-fiscal { display: inline-block; margin-top: 1.5mm; padding: 1mm 2mm; border: 1px solid #111; font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .receipt-section { margin-top: 3mm; break-inside: avoid; }
 .receipt-section h2 { margin: 0 0 1.5mm; padding-bottom: 1mm; border-bottom: 1px solid #111; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .info-list { display: grid; gap: 1mm; margin: 0; }
@@ -128,7 +129,6 @@ body { background: #eef2f4; color: #111; font-family: Arial, Helvetica, sans-ser
         <span class="document-label">Comprovante de serviço</span>
         <strong class="document-number"><?= receipt_h($order->displayNumber()) ?></strong>
         <div class="document-meta"><span>Emitido em <?= date('d/m/Y H:i') ?></span><span>•</span><span>Finalizada</span></div>
-        <span class="non-fiscal">Documento não fiscal</span>
     </div>
 
     <section class="receipt-section">
