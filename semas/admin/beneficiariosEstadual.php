@@ -168,7 +168,344 @@ try {
             flex-wrap: wrap;
         }
 
-        /* Modal Layout (mesmo padrão) */
+        /* Cabeçalho no mesmo visual do print (input + X com respiro) */
+        .card-header-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: .5rem;
+            align-items: center;
+        }
+
+        .search-inline {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .search-inline .form-control {
+            width: min(420px, 80vw);
+        }
+
+        @media (max-width:576px) {
+            .card-header-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tfoot-pager>.flex-grow-1 {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+            }
+
+            .search-inline .form-control {
+                width: 100%;
+            }
+        }
+
+
+
+        /* ===== TABELA NO PADRÃO ENTREGAS + ORDENAR PRISMA ===== */
+        .beneficiarios-list-card {
+            border: 0;
+            border-radius: 12px;
+            box-shadow: none;
+            overflow: hidden;
+        }
+
+        .beneficiarios-list-card .card-body {
+            padding: 1.35rem 1.35rem 1.15rem;
+        }
+
+        .beneficiarios-card-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.15rem;
+        }
+
+        .beneficiarios-card-title {
+            margin: 0 0 .3rem;
+            color: #25396f;
+            font-size: 1.15rem;
+            font-weight: 800;
+        }
+
+        .beneficiarios-card-subtitle {
+            margin: 0;
+            color: #7c8db5;
+            font-size: .96rem;
+            font-weight: 500;
+        }
+
+        .dt-search-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: nowrap;
+            margin-left: auto;
+        }
+
+        .dt-search-input {
+            width: 100%;
+            min-width: 320px;
+            max-width: 420px;
+            height: 38px;
+            padding: .55rem .9rem;
+            border: 1px solid #9bb4f5;
+            border-radius: 4px;
+            background: #fff;
+            color: #495057;
+            font-size: 15px;
+            box-shadow: none;
+            outline: none;
+            transition: all .2s ease;
+        }
+
+        .dt-search-input::placeholder {
+            color: #7f8a99;
+            opacity: 1;
+        }
+
+        .dt-search-input:focus {
+            border-color: #9ab0f5;
+            box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+        }
+
+        .dt-search-clear {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            border: 1px solid #cfd6df;
+            border-radius: 4px;
+            background: #fff;
+            color: #495057;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all .2s ease;
+            padding: 0;
+        }
+
+        .dt-search-clear i {
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .dt-search-clear:hover {
+            border-color: #435ebe;
+            color: #435ebe;
+            background: #f8f9ff;
+        }
+
+        .beneficiarios-table {
+            width: 100% !important;
+            border-collapse: separate;
+            border-spacing: 0;
+            color: #526a80;
+        }
+
+        .beneficiarios-table thead th {
+            position: relative;
+            background: #fff !important;
+            color: #2f3f4f;
+            font-weight: 800;
+            font-size: .94rem;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+            padding: .9rem 2.05rem .9rem .75rem;
+            border-top: 0 !important;
+            border-left: 0 !important;
+            border-right: 0 !important;
+            border-bottom: 2px solid #dbe1ea !important;
+        }
+
+        .beneficiarios-table thead th.sortable-th {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .beneficiarios-table thead th.sortable-th:hover {
+            color: #25396f;
+        }
+
+        .sort-prisma {
+            position: absolute;
+            right: .78rem;
+            top: 50%;
+            width: 10px;
+            height: 16px;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .sort-prisma::before,
+        .sort-prisma::after {
+            content: "";
+            position: absolute;
+            left: 1px;
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+        }
+
+        .sort-prisma::before {
+            top: 0;
+            border-bottom: 7px solid #e3e7ec;
+        }
+
+        .sort-prisma::after {
+            bottom: 0;
+            border-top: 7px solid #e3e7ec;
+        }
+
+        .beneficiarios-table thead th.sort-asc .sort-prisma::before {
+            border-bottom-color: #9aa4b2;
+        }
+
+        .beneficiarios-table thead th.sort-desc .sort-prisma::after {
+            border-top-color: #9aa4b2;
+        }
+
+        .beneficiarios-table tbody td {
+            padding: .78rem .75rem;
+            vertical-align: middle;
+            border-top: 0 !important;
+            border-left: 0 !important;
+            border-right: 0 !important;
+            border-bottom: 1px solid #e2e6ea !important;
+            color: #526a80;
+            font-size: .96rem;
+            background: #fff;
+        }
+
+        .beneficiarios-table tbody tr:nth-child(even) td {
+            background: #f6f7f9;
+        }
+
+        .beneficiarios-table tbody tr:hover td {
+            background: #eef1f5;
+        }
+
+        .beneficiarios-table .td-cpf,
+        .beneficiarios-table .td-valor,
+        .beneficiarios-table .td-numero,
+        .beneficiarios-table .td-telefone,
+        .beneficiarios-table .td-responsavel,
+        .beneficiarios-table .table-actions {
+            text-align: center;
+        }
+
+        .beneficiarios-table .td-nome {
+            text-align: left;
+            font-weight: 700;
+            color: #425a70;
+        }
+
+        .beneficiarios-table .td-endereco {
+            text-align: left;
+        }
+
+        .cell-truncate {
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .custom-pagination-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eef1f4;
+            flex-wrap: wrap;
+        }
+
+        .custom-pagination-left,
+        .custom-pagination-center,
+        .custom-pagination-right {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+        }
+
+        .custom-pagination-center {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .custom-page-info {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #435ebe;
+            white-space: nowrap;
+        }
+
+        .custom-length-label {
+            color: #6c757d;
+            font-weight: 600;
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+
+        .custom-length-select {
+            min-width: 72px;
+            padding: .45rem 2rem .45rem .75rem;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            background-color: #fff;
+            color: #495057;
+            font-weight: 600;
+            outline: none;
+        }
+
+        .custom-length-select:focus {
+            border-color: #435ebe;
+            box-shadow: 0 0 0 .15rem rgba(67, 94, 190, .15);
+        }
+
+        @media (max-width: 991.98px) {
+            .beneficiarios-card-head {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .dt-search-wrap {
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .dt-search-input {
+                min-width: 0;
+                max-width: 100%;
+                flex: 1 1 auto;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .custom-pagination-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .custom-pagination-left,
+            .custom-pagination-center,
+            .custom-pagination-right {
+                justify-content: center;
+                width: 100%;
+            }
+        }
+
+        /* Modal */
         .profile-wrap {
             display: flex;
             gap: 1rem;
@@ -437,99 +774,105 @@ try {
                 </div>
 
                 <section class="section mb-4">
-                    <div class="card">
-                        <!-- ====== NOVO CABEÇALHO (compacto, título à esquerda / busca à direita) ====== -->
-                        <div class="card-header d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
-                            <span>Lista de Beneficiários</span>
-                            <div class="d-flex gap-2 align-items-center">
-                                <input id="qLive" class="form-control form-control-sm"
-                                    placeholder="Buscar por nome/CPF/telefone/endereço/responsável..." autocomplete="off" />
-                                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClear" title="Limpar">
-                                    <i class="bi bi-x-circle"></i>
-                                </button>
-                            </div>
-                        </div>
-
+                    <div class="card beneficiarios-list-card">
                         <div class="card-body">
+                            <div class="beneficiarios-card-head">
+                                <div>
+                                    <h4 class="beneficiarios-card-title">Lista de Beneficiários</h4>
+                                    <p class="beneficiarios-card-subtitle" id="totalRowsLabel"><?= number_format(count($rows), 0, ',', '.') ?> registros encontrados</p>
+                                </div>
+
+                                <div class="dt-search-wrap">
+                                    <input type="text" id="inpSearch" class="dt-search-input"
+                                        placeholder="Buscar por nome/CPF/telefone/endereço/responsável..." autocomplete="off">
+                                    <button type="button" class="dt-search-clear" id="btnClear" title="Limpar pesquisa" aria-label="Limpar pesquisa">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                </div>
+                            </div>
+
                             <?php if ($msgOk): ?>
                                 <div class="alert alert-success"><?= h($msgOk) ?></div>
                             <?php elseif ($msgErr): ?>
                                 <div class="alert alert-danger"><?= h($msgErr) ?></div>
                             <?php endif; ?>
 
-                            <div class="table-responsive-md">
-                                <table class="table table-striped table-hover align-middle w-100 text-nowrap" id="tbl">
-                                    <thead class="table-light">
+                            <div class="table-responsive">
+                                <table class="table beneficiarios-table align-middle w-100 text-nowrap mb-0" id="tbl">
+                                    <thead>
                                         <tr>
-                                            <th>CPF</th>
-                                            <th>Nome</th>
-                                            <th class="text-end">Valor (R$)</th>
-                                            <th>Número</th>
-                                            <th>Endereço</th>
-                                            <th>Telefone</th>
-                                            <th>Responsável</th>
+                                            <th class="sortable-th" data-sort-key="cpf" data-sort-type="digits" tabindex="0" role="button" aria-label="Ordenar por CPF"><span>CPF</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                                            <th class="sortable-th sort-asc" data-sort-key="nome" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Nome"><span>Nome</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                                            <th class="sortable-th" data-sort-key="valor" data-sort-type="number" tabindex="0" role="button" aria-label="Ordenar por Valor"><span>Valor (R$)</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                                            <th class="sortable-th" data-sort-key="numero" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Número"><span>Número</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                                            <th class="sortable-th" data-sort-key="endereco" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Endereço"><span>Endereço</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                                            <th class="sortable-th" data-sort-key="telefone" data-sort-type="digits" tabindex="0" role="button" aria-label="Ordenar por Telefone"><span>Telefone</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                                            <th class="sortable-th" data-sort-key="responsavel" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Responsável"><span>Responsável</span><span class="sort-prisma" aria-hidden="true"></span></th>
                                             <th class="text-center text-nowrap">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbody">
-                                        <?php if (!$rows): ?>
-                                            <tr>
-                                                <td colspan="8" class="text-center text-muted">Nenhum beneficiário encontrado.</td>
+                                        <?php foreach ($rows as $r): ?>
+                                            <?php
+                                            $cpfDigits = only_digits($r['cpf']);
+                                            $telDigits = only_digits($r['telefone']);
+                                            $rowNome   = mb_strtolower($r['nome'] ?? '', 'UTF-8');
+                                            $rowEnd    = mb_strtolower($r['endereco'] ?? '', 'UTF-8');
+                                            $rowNum    = mb_strtolower((string)($r['numero'] ?? ''), 'UTF-8');
+                                            $rowResp   = mb_strtolower($r['responsavel'] ?? '', 'UTF-8');
+                                            $valorSort = ($r['beneficio_estadual_valor'] === null || $r['beneficio_estadual_valor'] === '') ? '' : (string)(float)$r['beneficio_estadual_valor'];
+                                            ?>
+                                            <tr
+                                                data-id="<?= (int)$r['id'] ?>"
+                                                data-nome="<?= h($rowNome) ?>"
+                                                data-cpf="<?= h($cpfDigits) ?>"
+                                                data-valor="<?= h($valorSort) ?>"
+                                                data-telefone="<?= h($telDigits) ?>"
+                                                data-endereco="<?= h($rowEnd) ?>"
+                                                data-numero="<?= h($rowNum) ?>"
+                                                data-responsavel="<?= h($rowResp) ?>">
+                                                <td class="td-cpf nowrap"><?= h(fmt_cpf($r['cpf'])) ?></td>
+                                                <td class="td-nome"><?= h($r['nome']) ?></td>
+                                                <td class="td-valor"><?= h(fmt_money($r['beneficio_estadual_valor'])) ?></td>
+                                                <td class="td-numero"><?= h($r['numero']) ?></td>
+                                                <td class="td-endereco"><span class="cell-truncate" title="<?= h($r['endereco']) ?>"><?= h($r['endereco']) ?></span></td>
+                                                <td class="td-telefone nowrap"><?= h(fmt_phone($r['telefone'])) ?></td>
+                                                <td class="td-responsavel"><span class="cell-truncate" title="<?= h($r['responsavel']) ?>"><?= h($r['responsavel']) ?></span></td>
+                                                <td class="text-center table-actions">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary btnVer">Ver</button>
+                                                </td>
                                             </tr>
-                                            <?php else: foreach ($rows as $r): ?>
-                                                <?php
-                                                $cpfDigits = only_digits($r['cpf']);
-                                                $telDigits = only_digits($r['telefone']);
-                                                $rowNome   = mb_strtolower($r['nome'] ?? '');
-                                                $rowEnd    = mb_strtolower($r['endereco'] ?? '');
-                                                $rowNum    = (string)($r['numero'] ?? '');
-                                                $rowResp   = mb_strtolower($r['responsavel'] ?? '');
-                                                ?>
-                                                <tr
-                                                    data-id="<?= (int)$r['id'] ?>"
-                                                    data-nome="<?= h($rowNome) ?>"
-                                                    data-cpf="<?= h($cpfDigits) ?>"
-                                                    data-telefone="<?= h($telDigits) ?>"
-                                                    data-endereco="<?= h($rowEnd) ?>"
-                                                    data-numero="<?= h($rowNum) ?>"
-                                                    data-responsavel="<?= h($rowResp) ?>">
-                                                    <td class="nowrap"><?= h(fmt_cpf($r['cpf'])) ?></td>
-                                                    <td><?= h($r['nome']) ?></td>
-                                                    <td class="text-end"><?= h(fmt_money($r['beneficio_estadual_valor'])) ?></td>
-                                                    <td><?= h($r['numero']) ?></td>
-                                                    <td class="td-endereco"><?= h($r['endereco']) ?></td>
-                                                    <td class="nowrap"><?= h(fmt_phone($r['telefone'])) ?></td>
-                                                    <td class="td-responsavel"><?= h($r['responsavel']) ?></td>
-                                                    <td class="text-center table-actions">
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary btnVer">Ver</button>
-                                                    </td>
-                                                </tr>
-                                        <?php endforeach;
-                                        endif; ?>
+                                        <?php endforeach; ?>
+
+                                        <tr id="trNoResults" class="<?= $rows ? 'd-none' : '' ?>">
+                                            <td colspan="8" class="text-center text-muted py-4">
+                                                <i class="bi bi-inbox"></i> Nenhum beneficiário encontrado.
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
 
-                            <!-- Paginação client-side -->
-                            <div class="mt-2 tfoot-pager">
-                                <div class="d-flex align-items-center gap-2">
-                                    <button class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
-                                    <button class="btn btn-outline-secondary btn-sm" id="btnNext">Próxima</button>
+                            <div id="customPaginationBeneficiarios" class="custom-pagination-bar">
+                                <div class="custom-pagination-left">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnNext">Próximo</button>
                                 </div>
-                                <div class="flex-grow-1 d-flex justify-content-center">
-                                    <strong id="lblPagina">Página 1 de 1</strong>
+
+                                <div class="custom-pagination-center">
+                                    <span class="custom-page-info" id="lblPagina">Página 1 de 1</span>
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <label for="selPerPage" class="form-label m-0">por página</label>
-                                    <select id="selPerPage" class="form-select form-select-sm" style="width:auto">
-                                        <option>10</option>
-                                        <option>20</option>
-                                        <option>50</option>
-                                        <option>100</option>
+
+                                <div class="custom-pagination-right">
+                                    <label for="selPerPage" class="custom-length-label">por página</label>
+                                    <select id="selPerPage" class="custom-length-select">
+                                        <option value="10" selected>10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
                                     </select>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </section>
@@ -892,90 +1235,238 @@ try {
             const cy = document.getElementById('current-year');
             if (cy) cy.textContent = String(new Date().getFullYear());
 
-            // ======= Tabela / Paginação client-side =======
+            // ===== Busca + Paginação + Ordenação =====
             const tbody = document.getElementById('tbody');
-            const allRows = Array.from(tbody?.querySelectorAll('tr') || []);
-            // Usa #qLive (novo). Se não existir, tenta #inpSearch (compat.)
-            const inpSearch = document.getElementById('qLive') || document.getElementById('inpSearch');
+            const dataRows = Array.from(tbody?.querySelectorAll('tr[data-id]') || []);
+            const noResultsRow = document.getElementById('trNoResults');
+            const inpSearch = document.getElementById('inpSearch');
             const btnClear = document.getElementById('btnClear');
             const selPerPage = document.getElementById('selPerPage');
             const btnPrev = document.getElementById('btnPrev');
             const btnNext = document.getElementById('btnNext');
             const lblPagina = document.getElementById('lblPagina');
+            const totalRowsLabel = document.getElementById('totalRowsLabel');
+            const sortableHeaders = Array.from(document.querySelectorAll('#tbl thead th[data-sort-key]'));
 
-            selPerPage.value = '10';
             let page = 1;
-            let perPage = parseInt(selPerPage.value, 10);
-            let filtered = allRows.slice();
+            let perPage = parseInt(selPerPage?.value || '10', 10) || 10;
+            let filtered = dataRows.slice();
+            let tDeb = null;
+            let sortState = {
+                key: 'nome',
+                dir: 'asc',
+                type: 'text'
+            };
 
-            function applyFilter() {
-                const q = (inpSearch?.value || '').trim().toLowerCase();
-                const qDigits = q.replace(/\D+/g, '');
-                filtered = allRows.filter(tr => {
-                    if (!q) return true;
-                    const nome = tr.dataset.nome || '';
-                    const cpf = tr.dataset.cpf || '';
-                    const tel = tr.dataset.telefone || '';
-                    const end = tr.dataset.endereco || '';
-                    const num = (tr.dataset.numero || '').toLowerCase();
-                    const resp = (tr.dataset.responsavel || '').toLowerCase();
+            const collator = new Intl.Collator('pt-BR', {
+                numeric: true,
+                sensitivity: 'base'
+            });
 
-                    // texto livre em nome/endereço/número/responsável
-                    const hitText = nome.includes(q) || end.includes(q) || (num && num.includes(q)) || resp.includes(q);
+            function normalizeText(value) {
+                return String(value || '')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase()
+                    .trim();
+            }
 
-                    // busca por números (cpf/telefone)
-                    const hitDigits = qDigits && (cpf.startsWith(qDigits) || tel.includes(qDigits));
+            function parseNumber(value) {
+                const raw = String(value ?? '').trim();
+                if (!raw) return Number.NEGATIVE_INFINITY;
+                const cleaned = raw
+                    .replace(/R\$/g, '')
+                    .replace(/\s+/g, '')
+                    .replace(/\./g, '')
+                    .replace(',', '.');
+                const n = Number(cleaned);
+                return Number.isFinite(n) ? n : Number.NEGATIVE_INFINITY;
+            }
 
-                    return hitText || !!hitDigits;
+            function getSortValue(tr, key, type) {
+                const value = tr.dataset[key] ?? '';
+
+                if (type === 'number') {
+                    return parseNumber(value);
+                }
+
+                if (type === 'digits') {
+                    return String(value).replace(/\D+/g, '');
+                }
+
+                return normalizeText(value);
+            }
+
+            function sortRows(rows) {
+                const { key, dir, type } = sortState;
+                const factor = dir === 'desc' ? -1 : 1;
+
+                rows.sort((a, b) => {
+                    const av = getSortValue(a, key, type);
+                    const bv = getSortValue(b, key, type);
+
+                    let result;
+                    if (type === 'number') {
+                        result = av === bv ? 0 : (av > bv ? 1 : -1);
+                    } else {
+                        result = collator.compare(String(av), String(bv));
+                    }
+
+                    if (result === 0) {
+                        result = collator.compare(a.dataset.nome || '', b.dataset.nome || '');
+                    }
+
+                    return result * factor;
                 });
-                page = 1;
-                renderPage();
+
+                return rows;
+            }
+
+            function updateSortIndicators() {
+                sortableHeaders.forEach(th => {
+                    th.classList.remove('sort-asc', 'sort-desc');
+                    if (th.dataset.sortKey === sortState.key) {
+                        th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+                    }
+                });
+            }
+
+            function updateRowsInDom(rows) {
+                rows.forEach(row => tbody.appendChild(row));
+                if (noResultsRow) tbody.appendChild(noResultsRow);
             }
 
             function renderPage() {
                 const total = filtered.length;
                 const pages = Math.max(1, Math.ceil(total / perPage));
+
                 if (page > pages) page = pages;
+                if (page < 1) page = 1;
 
                 const start = (page - 1) * perPage;
                 const end = start + perPage;
 
-                // esconde tudo, mostra só o slice atual
-                allRows.forEach(r => r.style.display = 'none');
-                filtered.slice(start, end).forEach(r => r.style.display = '');
+                dataRows.forEach(row => row.style.display = 'none');
 
-                if (lblPagina) lblPagina.textContent = `Página ${page} de ${pages}`;
-                if (btnPrev) btnPrev.disabled = page <= 1;
-                if (btnNext) btnNext.disabled = page >= pages;
+                if (total === 0) {
+                    if (noResultsRow) noResultsRow.classList.remove('d-none');
+                } else {
+                    if (noResultsRow) noResultsRow.classList.add('d-none');
+                    filtered.slice(start, end).forEach(row => row.style.display = '');
+                }
+
+                if (lblPagina) lblPagina.textContent = `Página ${total === 0 ? 1 : page} de ${pages}`;
+                if (btnPrev) btnPrev.disabled = page <= 1 || total === 0;
+                if (btnNext) btnNext.disabled = page >= pages || total === 0;
+
+                if (totalRowsLabel) {
+                    const plural = total === 1 ? 'registro encontrado' : 'registros encontrados';
+                    totalRowsLabel.textContent = `${total.toLocaleString('pt-BR')} ${plural}`;
+                }
             }
 
+            function doFilter() {
+                const q = normalizeText(inpSearch?.value || '');
+                const qDigits = q.replace(/\D+/g, '');
+
+                filtered = dataRows.filter(tr => {
+                    if (!q) return true;
+
+                    const id = tr.dataset.id || '';
+                    const nome = normalizeText(tr.dataset.nome || '');
+                    const cpf = tr.dataset.cpf || '';
+                    const tel = tr.dataset.telefone || '';
+                    const end = normalizeText(tr.dataset.endereco || '');
+                    const num = normalizeText(tr.dataset.numero || '');
+                    const resp = normalizeText(tr.dataset.responsavel || '');
+
+                    const hitText = nome.includes(q) || end.includes(q) || num.includes(q) || resp.includes(q);
+                    const hitDigits = qDigits && (
+                        id === qDigits ||
+                        id.startsWith(qDigits) ||
+                        cpf.startsWith(qDigits) ||
+                        tel.includes(qDigits)
+                    );
+
+                    return hitText || !!hitDigits;
+                });
+
+                sortRows(filtered);
+                updateRowsInDom(filtered);
+                page = 1;
+                renderPage();
+            }
+
+            function applyFilter() {
+                clearTimeout(tDeb);
+                tDeb = setTimeout(doFilter, 120);
+            }
+
+            sortableHeaders.forEach(th => {
+                const sortAction = () => {
+                    const key = th.dataset.sortKey || 'nome';
+                    const type = th.dataset.sortType || 'text';
+
+                    if (sortState.key === key) {
+                        sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortState = {
+                            key,
+                            type,
+                            dir: 'asc'
+                        };
+                    }
+
+                    updateSortIndicators();
+                    doFilter();
+                };
+
+                th.addEventListener('click', sortAction);
+                th.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        sortAction();
+                    }
+                });
+            });
+
             inpSearch?.addEventListener('input', applyFilter);
+            inpSearch?.addEventListener('keydown', e => {
+                if (e.key === 'Enter') e.preventDefault();
+            });
+
             btnClear?.addEventListener('click', () => {
                 if (!inpSearch) return;
                 inpSearch.value = '';
-                inpSearch.dispatchEvent(new Event('input'));
+                doFilter();
                 inpSearch.focus();
             });
+
             selPerPage?.addEventListener('change', () => {
                 perPage = parseInt(selPerPage.value, 10) || 10;
                 page = 1;
                 renderPage();
             });
+
             btnPrev?.addEventListener('click', () => {
                 if (page > 1) {
                     page--;
                     renderPage();
                 }
             });
+
             btnNext?.addEventListener('click', () => {
-                page++;
-                renderPage();
+                const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+                if (page < totalPages) {
+                    page++;
+                    renderPage();
+                }
             });
 
-            // primeira renderização
-            applyFilter();
+            updateSortIndicators();
+            doFilter();
 
-            // ======= Modal: abrir detalhes via mini API =======
+                        // ======= Modal: abrir detalhes via mini API =======
             const fmtDate = (s) => {
                 if (!s) return '—';
                 const p = (s + '').split(' ')[0]?.split('-') || [];
