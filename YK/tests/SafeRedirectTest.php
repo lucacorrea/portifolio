@@ -24,7 +24,7 @@ foreach (array_unique($menuMatches[1] ?? []) as $menuTarget) {
     redirectAssertSame($menuTarget, $redirect->sanitize($menuTarget), 'Toda página do menu deve ser um retorno interno permitido.');
 }
 
-foreach (['fornecedores.php', 'contas-pagar.php', 'usuarios.php', 'relatorios.php'] as $page) {
+foreach (['fornecedores.php', 'contas-pagar.php', 'usuarios.php', 'relatorios.php', 'frente-caixa.php', 'caixa-vendas.php', 'caixa-movimentacoes.php'] as $page) {
     $target = $page . '?search=teste&page=2';
     redirectAssertSame($target, $redirect->sanitize($target), 'A página operacional deve preservar filtros no retorno.');
     redirectAssertSame('/YK/' . $target, $redirect->applicationUrl($target), 'A URL interna deve retornar à página de origem.');

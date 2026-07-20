@@ -59,6 +59,9 @@ if ($authorization->can('agenda.visualizar') && $authorization->can('agenda.cria
 if ($authorization->can('caixa.visualizar')) {
     $quickActions[] = ['Ver caixa', 'bi-cash-coin', 'caixa.php'];
 }
+if ($authorization->can('caixa.registrar_venda')) {
+    $quickActions[] = ['Frente de Caixa', 'bi-shop-window', 'frente-caixa.php'];
+}
 ?>
 
 <div class="page-body dashboard-page">

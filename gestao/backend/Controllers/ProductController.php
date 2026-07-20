@@ -9,15 +9,20 @@ use App\Core\Response;
 use App\Security\Auth;
 use App\Security\Csrf;
 use App\Services\ProductService;
+use App\Services\UploadService;
 use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 
 final class ProductController
 {
     private ProductService $service;
+    private UploadService $uploads;
 
-    public function __construct(?ProductService $service = null)
+    public function __construct(?ProductService $service = null, ?UploadService $uploads = null)
     {
         $this->service = $service ?? new ProductService();
+        $this->uploads = $uploads ?? new UploadService();
     }
 
     public function list(Request $request): void
@@ -52,14 +57,25 @@ final class ProductController
         Auth::requireLogin();
         $this->validateCsrf($request);
 
+        $uploadedAbsolutePath = null;
+
         try {
             $empresaId = (int)Auth::user()['empresa_id'];
             $payload = $request->all();
-            $payload['image'] = $this->storeProductImage($empresaId, $payload['image'] ?? '');
+            [$image, $uploadedAbsolutePath] = $this->uploads->storeProductImage(
+                $empresaId,
+                is_array($_FILES['imageFile'] ?? null) ? $_FILES['imageFile'] : null,
+                (string)($payload['image'] ?? '')
+            );
+            $payload['image'] = $image;
 
             Response::success($this->service->save($empresaId, $payload));
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException | RuntimeException $e) {
+            $this->uploads->removeProductUpload($uploadedAbsolutePath);
             Response::fail($e->getMessage(), [], 422);
+        } catch (Throwable $e) {
+            $this->uploads->removeProductUpload($uploadedAbsolutePath);
+            throw $e;
         }
     }
 
@@ -84,54 +100,4 @@ final class ProductController
         }
     }
 
-    private function storeProductImage(int $empresaId, mixed $currentImage): string
-    {
-        $image = trim((string)$currentImage);
-
-        if (!isset($_FILES['imageFile'])) {
-            return $image;
-        }
-
-        $file = $_FILES['imageFile'];
-
-        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-            return $image;
-        }
-
-        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-            throw new InvalidArgumentException('Não foi possível receber a imagem do produto.');
-        }
-
-        if ((int)($file['size'] ?? 0) > 2 * 1024 * 1024) {
-            throw new InvalidArgumentException('A imagem deve ter no máximo 2MB.');
-        }
-
-        $tmpName = (string)($file['tmp_name'] ?? '');
-        $mime = is_file($tmpName) ? (new \finfo(FILEINFO_MIME_TYPE))->file($tmpName) : '';
-        $extensions = [
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/webp' => 'webp',
-            'image/gif' => 'gif',
-        ];
-
-        if (!isset($extensions[$mime])) {
-            throw new InvalidArgumentException('Formato de imagem inválido.');
-        }
-
-        $dir = BASE_PATH . '/uploads/produtos';
-
-        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
-            throw new InvalidArgumentException('Não foi possível preparar o diretório de uploads.');
-        }
-
-        $filename = sprintf('empresa-%d-%s.%s', $empresaId, bin2hex(random_bytes(8)), $extensions[$mime]);
-        $target = $dir . '/' . $filename;
-
-        if (!move_uploaded_file($tmpName, $target)) {
-            throw new InvalidArgumentException('Não foi possível salvar a imagem do produto.');
-        }
-
-        return 'uploads/produtos/' . $filename;
-    }
 }

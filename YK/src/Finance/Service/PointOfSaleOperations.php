@@ -24,7 +24,9 @@ trait PointOfSaleOperations
         $statement = $this->connection->prepare(
             'SELECT venda.*, cliente.nome AS cliente_nome, usuario.nome AS usuario_nome,
                     sessao.codigo AS sessao_codigo,
-                    (SELECT COUNT(*) FROM venda_avulsa_itens item WHERE item.venda_avulsa_id = venda.id) AS itens
+                    (SELECT COUNT(*) FROM venda_avulsa_itens item WHERE item.venda_avulsa_id = venda.id) AS itens,
+                    (SELECT GROUP_CONCAT(CONCAT(item.quantidade, "x ", item.descricao) ORDER BY item.ordem SEPARATOR " · ")
+                       FROM venda_avulsa_itens item WHERE item.venda_avulsa_id = venda.id) AS itens_resumo
                FROM vendas_avulsas venda
                LEFT JOIN clientes cliente ON cliente.id = venda.cliente_id
                JOIN usuarios usuario ON usuario.id = venda.criada_por
@@ -45,8 +47,9 @@ trait PointOfSaleOperations
         $discount = $this->moneyCents($data['desconto'] ?? '0', true);
         $increase = $this->moneyCents($data['acrescimo'] ?? '0', true);
         $clientId = $this->optionalPositiveInt($data['cliente_id'] ?? null);
+        $receivedValue = $data['valor_recebido'] ?? null;
 
-        return $this->transactional(function () use ($items, $form, $discount, $increase, $clientId, $userId): array {
+        return $this->transactional(function () use ($items, $form, $discount, $increase, $clientId, $receivedValue, $userId): array {
             $session = $this->requireOpenSession(true);
             if ($clientId !== null) {
                 $statement = $this->connection->prepare('SELECT id FROM clientes WHERE id = :id AND status = "ativo"');
@@ -71,6 +74,10 @@ trait PointOfSaleOperations
             $total = $subtotal - $discount + $increase;
             if ($total <= 0) throw new InvalidArgumentException('O total da venda deve ser maior que zero.');
             if ($discount > $subtotal) throw new InvalidArgumentException('O desconto não pode superar o subtotal.');
+            if ($form === 'dinheiro') {
+                $received = $this->moneyCents($receivedValue ?? '', true);
+                if ($received < $total) throw new InvalidArgumentException('O valor recebido em dinheiro é menor que o total da venda.');
+            }
 
             $this->connection->prepare(
                 'INSERT INTO vendas_avulsas

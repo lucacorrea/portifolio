@@ -36,6 +36,7 @@ cashAssertSame(123456, $money->invoke($cash, '1.234,56'), 'O Caixa deve calcular
 cashAssertSame(0, $money->invoke($cash, '0,00', true), 'Abertura e conferência podem aceitar zero.');
 cashAssertThrows(static fn() => $money->invoke($cash, '-1,00'), 'Valores negativos devem ser rejeitados.');
 cashAssertThrows(static fn() => $money->invoke($cash, '10,999'), 'Mais de duas casas monetárias devem ser rejeitadas.');
+cashAssertThrows(static fn() => $money->invoke($cash, '10000000000,00'), 'Valores acima do DECIMAL do banco devem ser rejeitados.');
 
 $cart = $items->invoke($cash, [
     ['produto_id' => '9', 'quantidade' => '1,250'],

@@ -166,7 +166,7 @@ final class CashManagementService
         if (str_contains($text, ',')) $text = str_replace(',', '.', str_replace('.', '', $text));
         if (!preg_match('/^\d+(\.\d{1,2})?$/', $text)) throw new InvalidArgumentException('Valor monetário inválido.');
         $cents = (int) round((float) $text * 100);
-        if ($cents < 0 || (!$allowZero && $cents === 0)) throw new InvalidArgumentException('Valor monetário inválido.');
+        if ($cents < 0 || $cents > 999999999999 || (!$allowZero && $cents === 0)) throw new InvalidArgumentException('Valor monetário inválido.');
         return $cents;
     }
 

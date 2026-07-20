@@ -21,7 +21,7 @@ final class ProductRepository
         return $this->db;
     }
 
-    public function findAll(int $empresaId, string $query = ''): array
+    public function findAll(int $empresaId, string $query = '', ?bool $active = true): array
     {
         $query = trim($query);
 
@@ -47,18 +47,23 @@ final class ProductRepository
             p.cest,
             p.fabricante AS manufacturer,
             COALESCE(NULLIF(p.origem_dados, \'\'), \'manual\') AS source,
-            p.url_imagem_origem AS externalImageUrl
+            p.url_imagem_origem AS externalImageUrl,
+            p.ativo AS active
         FROM produtos p
         LEFT JOIN categorias c
                ON p.categoria_id = c.id
               AND c.empresa_id = p.empresa_id
         WHERE p.empresa_id = :empresa_id
-          AND p.ativo = 1
     ';
 
         $params = [
             ':empresa_id' => $empresaId,
         ];
+
+        if ($active !== null) {
+            $sql .= ' AND p.ativo = :ativo';
+            $params[':ativo'] = $active ? 1 : 0;
+        }
 
         if ($query !== '') {
             $sql .= '
@@ -92,7 +97,12 @@ final class ProductRepository
 
     public function findById(int $empresaId, int $id): ?array
     {
-        $stmt = $this->db->prepare('
+        return $this->findByIdWithStatus($empresaId, $id, true);
+    }
+
+    public function findByIdWithStatus(int $empresaId, int $id, ?bool $active = true): ?array
+    {
+        $sql = '
             SELECT
                 p.id,
                 p.nome AS name,
@@ -114,20 +124,30 @@ final class ProductRepository
             p.cest,
             p.fabricante AS manufacturer,
             COALESCE(NULLIF(p.origem_dados, \'\'), \'manual\') AS source,
-            p.url_imagem_origem AS externalImageUrl
+            p.url_imagem_origem AS externalImageUrl,
+            p.ativo AS active
             FROM produtos p
             LEFT JOIN categorias c
                    ON p.categoria_id = c.id
                   AND c.empresa_id = p.empresa_id
             WHERE p.empresa_id = :empresa_id
               AND p.id = :id
-              AND p.ativo = 1
-            LIMIT 1
-        ');
-        $stmt->execute([
+        ';
+
+        $params = [
             ':empresa_id' => $empresaId,
             ':id' => $id,
-        ]);
+        ];
+
+        if ($active !== null) {
+            $sql .= ' AND p.ativo = :ativo';
+            $params[':ativo'] = $active ? 1 : 0;
+        }
+
+        $sql .= ' LIMIT 1';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
 
         $product = $stmt->fetch();
 
@@ -329,14 +349,59 @@ final class ProductRepository
 
     public function inactivate(int $empresaId, int $id): void
     {
+        $this->setActive($empresaId, $id, false);
+    }
+
+    public function activate(int $empresaId, int $id): void
+    {
+        $this->setActive($empresaId, $id, true);
+    }
+
+    public function hasSaleHistory(int $empresaId, int $id): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT 1
+               FROM venda_itens vi
+               INNER JOIN vendas v ON v.id = vi.venda_id
+              WHERE v.empresa_id = :empresa_id
+                AND vi.produto_id = :id
+              LIMIT 1'
+        );
+        $stmt->execute([
+            ':empresa_id' => $empresaId,
+            ':id' => $id,
+        ]);
+
+        return $stmt->fetchColumn() !== false;
+    }
+
+    public function deleteInactive(int $empresaId, int $id): bool
+    {
+        $stmt = $this->db->prepare(
+            'DELETE FROM produtos
+              WHERE empresa_id = :empresa_id
+                AND id = :id
+                AND ativo = 0'
+        );
+        $stmt->execute([
+            ':empresa_id' => $empresaId,
+            ':id' => $id,
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    private function setActive(int $empresaId, int $id, bool $active): void
+    {
         $stmt = $this->db->prepare(
             'UPDATE produtos
-             SET ativo = 0
+             SET ativo = :ativo
              WHERE empresa_id = :empresa_id AND id = :id'
         );
         $stmt->execute([
             ':empresa_id' => $empresaId,
             ':id' => $id,
+            ':ativo' => $active ? 1 : 0,
         ]);
     }
 
@@ -392,6 +457,7 @@ final class ProductRepository
             'manufacturer' => $product['manufacturer'] ?? '',
             'source' => $product['source'] ?? 'manual',
             'externalImageUrl' => $product['externalImageUrl'] ?? '',
+            'active' => (int)($product['active'] ?? 1) === 1,
         ];
     }
 }

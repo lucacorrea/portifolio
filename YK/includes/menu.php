@@ -108,6 +108,27 @@ $navGroups = [
             'permission' => 'caixa.visualizar',
         ],
         [
+            'key' => 'frente-caixa',
+            'label' => 'Frente de Caixa',
+            'icon' => 'bi-shop-window',
+            'href' => 'frente-caixa.php',
+            'permission' => 'caixa.registrar_venda',
+        ],
+        [
+            'key' => 'caixa-vendas',
+            'label' => 'Vendas do Caixa',
+            'icon' => 'bi-receipt',
+            'href' => 'caixa-vendas.php',
+            'permission' => 'venda_avulsa.visualizar',
+        ],
+        [
+            'key' => 'caixa-movimentacoes',
+            'label' => 'Movimentações',
+            'icon' => 'bi-arrow-left-right',
+            'href' => 'caixa-movimentacoes.php',
+            'permission' => 'caixa.visualizar',
+        ],
+        [
             'key' => 'contas-receber',
             'label' => 'Contas a Receber',
             'icon' => 'bi-wallet2',
