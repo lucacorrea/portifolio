@@ -26,7 +26,7 @@ final class CompanySettingsService
         $payload = [
             'razao_social' => $this->clean($data['razao_social'] ?? null, 150),
             'nome_fantasia' => $this->clean($data['nome_fantasia'] ?? null, 150),
-            'documento' => $this->clean($data['documento'] ?? null, 30),
+            'documento' => $this->document($data['documento'] ?? null),
             'inscricao_estadual' => $this->clean($data['inscricao_estadual'] ?? null, 40),
             'inscricao_municipal' => $this->clean($data['inscricao_municipal'] ?? null, 40),
             'email' => $this->email($data['email'] ?? null),
@@ -103,6 +103,60 @@ final class CompanySettingsService
         }
 
         return $email;
+    }
+
+    private function document(mixed $value): ?string
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '') return null;
+        if (preg_match('/^[0-9.\/\-\s]+$/', $raw) !== 1) {
+            throw new InvalidArgumentException('Informe um CPF ou CNPJ válido para a empresa.');
+        }
+
+        $document = preg_replace('/\D+/', '', $raw) ?? '';
+        if (strlen($document) === 11) {
+            if (!self::isValidCpf($document)) {
+                throw new InvalidArgumentException('Informe um CPF válido para a empresa.');
+            }
+            return $document;
+        }
+        if (strlen($document) === 14) {
+            if (!self::isValidCnpj($document)) {
+                throw new InvalidArgumentException('Informe um CNPJ válido para a empresa.');
+            }
+            return $document;
+        }
+
+        throw new InvalidArgumentException('Informe um CPF ou CNPJ válido para a empresa.');
+    }
+
+    private static function isValidCpf(string $cpf): bool
+    {
+        if (preg_match('/^\d{11}$/', $cpf) !== 1 || preg_match('/^(\d)\1{10}$/', $cpf) === 1) return false;
+        for ($position = 9; $position < 11; $position++) {
+            $sum = 0;
+            for ($index = 0; $index < $position; $index++) {
+                $sum += (int) $cpf[$index] * (($position + 1) - $index);
+            }
+            if ((int) $cpf[$position] !== ((10 * $sum) % 11) % 10) return false;
+        }
+        return true;
+    }
+
+    private static function isValidCnpj(string $cnpj): bool
+    {
+        if (preg_match('/^\d{14}$/', $cnpj) !== 1 || preg_match('/^(\d)\1{13}$/', $cnpj) === 1) return false;
+        $rounds = [
+            12 => [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
+            13 => [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
+        ];
+        foreach ($rounds as $position => $weights) {
+            $sum = 0;
+            foreach ($weights as $index => $weight) $sum += (int) $cnpj[$index] * $weight;
+            $remainder = $sum % 11;
+            if ((int) $cnpj[$position] !== ($remainder < 2 ? 0 : 11 - $remainder)) return false;
+        }
+        return true;
     }
 
     private function digits(mixed $value, int $length): ?string
