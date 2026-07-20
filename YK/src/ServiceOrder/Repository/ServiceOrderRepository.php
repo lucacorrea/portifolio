@@ -28,7 +28,7 @@ final class ServiceOrderRepository
     public function findAll(array $filters = []): array
     {
         [$where, $params] = $this->filters($filters);
-        return $this->selectOrders($where, $params, 'os.criado_em DESC, os.id DESC');
+        return $this->selectOrders($where, $params, 'os.agendado_inicio DESC, os.id DESC');
     }
 
     /** @return array<string,int> */
