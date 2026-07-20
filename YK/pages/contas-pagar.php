@@ -186,9 +186,10 @@ $statusButtons = [['', 'Todos', 'all'], ['pendente', 'Pendentes', 'amber'], ['ve
         $locked = $status !== 'pendente' || payable_value($account, 'possui_movimentacao', '0') === '1';
         $installments = is_array($account['parcelas'] ?? null) ? $account['parcelas'] : [];
         $currentInstallment = payable_current_installment($installments);
+        $rowStatus = $currentInstallment !== null ? payable_installment_status($currentInstallment) : $displayStatus;
         $currentPayload = json_encode($currentInstallment, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?: '{}';
     ?>
-        <tr class="payable-row payable-row--<?= h($displayStatus) ?>">
+        <tr class="payable-row payable-row--<?= h($rowStatus) ?>">
             <td><strong><?= h(payable_value($account, 'codigo')) ?></strong><br><small><?= h(payable_value($account, 'documento', 'Sem documento')) ?></small></td>
             <td><strong><?= h(payable_value($account, 'fornecedor_nome')) ?></strong><br><small><?= h(payable_value($account, 'descricao')) ?></small></td>
             <td><strong><?= payable_value($account, 'tipo_pagamento') === 'parcelado' ? h(payable_value($account, 'quantidade_parcelas')) . 'x' : 'À vista' ?></strong><br><small><?= h(payable_payment_label(payable_value($account, 'forma_pagamento'))) ?></small></td>
