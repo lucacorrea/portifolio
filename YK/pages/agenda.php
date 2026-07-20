@@ -61,7 +61,7 @@ $urgentCount = count(array_filter($orders, static fn($order): bool => $order->pr
 $withoutTeam = count(array_filter($orders, static fn($order): bool => ($GLOBALS['teamsByOrder'][$order->id()] ?? []) === []));
 ?>
 
-<div class="page-body operational-page agenda-page" data-page="agenda">
+<div class="page-body operational-page agenda-page" data-page="agenda" data-view="<?= h($view) ?>">
 <div class="agenda-summary-bar" data-live-region="metrics" aria-label="Resumo da agenda">
     <span><i class="bi bi-wrench" aria-hidden="true"></i><strong><?= h((string) count($orders)) ?></strong> Atendimentos</span>
     <span><i class="bi bi-alarm" aria-hidden="true"></i><strong><?= h((string) count($reminders)) ?></strong> Lembretes</span>

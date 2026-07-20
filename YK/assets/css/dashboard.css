@@ -2449,6 +2449,8 @@ body.sidebar-collapsed .nav-link-os {
 
 .operational-page[data-page="agenda"].agenda-page {
   display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
   gap: 10px;
 }
 
@@ -2677,6 +2679,54 @@ body.sidebar-collapsed .nav-link-os {
 .operational-page[data-page="agenda"] .agenda-reminder-card .agenda-event-time i {
   background: #f4efff;
   color: #7c3aed;
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-list {
+  gap: 0;
+  padding: 0;
+  background: #fff;
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card {
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-left: 4px solid transparent;
+  border-radius: 0;
+  background: #fff;
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card:first-child {
+  padding-top: 12px;
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card:last-child {
+  padding-bottom: 12px;
+  border-bottom: 0;
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card.priority-low {
+  border-left-color: var(--blue);
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card.priority-medium {
+  border-left-color: var(--amber);
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card.priority-high {
+  border-left-color: #f97316;
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card.priority-urgent {
+  border-left-color: var(--red);
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card:hover {
+  background: #f8fcfd;
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-event-time {
+  align-self: stretch;
+  border-right: 1px solid var(--line-soft);
 }
 
 @media (max-width: 1100px) {
