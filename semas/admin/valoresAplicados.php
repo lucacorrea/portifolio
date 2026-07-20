@@ -894,6 +894,279 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                 margin-top: 0.5rem;
             }
         }
+    
+
+        /* ===== ESTILO CLEAN PADRÃO DAS TABELAS DO ANEXO ===== */
+        .card-statistic {
+            border: 1px solid #e6e9ef !important;
+            border-left: 0 !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+            background: #fff !important;
+            color: #2d3748 !important;
+        }
+
+        .card-statistic:nth-child(1),
+        .card-statistic:nth-child(2),
+        .card-statistic:nth-child(3),
+        .card-statistic:nth-child(4) {
+            border-left: 0 !important;
+            border-left-color: transparent !important;
+        }
+
+        .card-statistic .statistic-icon,
+        .card-statistic:nth-child(1) .statistic-icon,
+        .card-statistic:nth-child(2) .statistic-icon,
+        .card-statistic:nth-child(3) .statistic-icon,
+        .card-statistic:nth-child(4) .statistic-icon {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+        }
+
+        .valor-destaque,
+        .valor-cell,
+        .valor-alto,
+        .valor-nulo {
+            color: #52697f !important;
+        }
+
+        .valor-destaque {
+            color: #25396f !important;
+        }
+
+        .valor-cell,
+        .valor-alto {
+            font-weight: 700;
+        }
+
+        .filtros-ativos,
+        .alert-info {
+            background: #fff !important;
+            border: 1px solid #e1e6ec !important;
+            color: #52697f !important;
+            border-radius: 10px !important;
+        }
+
+        .badge-filtro {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+            border-radius: 999px !important;
+            font-weight: 700;
+        }
+
+        .badge-filtro a {
+            color: #52697f !important;
+            text-decoration: none;
+        }
+
+        .dt-search-input {
+            height: 38px;
+            border: 1px solid #9bb4f5;
+            border-radius: 4px;
+            background: #fff;
+            color: #495057;
+            box-shadow: none;
+        }
+
+        .dt-search-input:focus {
+            border-color: #9ab0f5;
+            box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+        }
+
+        .dt-search-clear {
+            border: 1px solid #cfd6df;
+            background: #fff;
+            color: #495057;
+        }
+
+        .dt-search-clear:hover {
+            border-color: #435ebe;
+            color: #435ebe;
+            background: #f8f9ff;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #tabelaValores {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            margin-bottom: 0 !important;
+            color: #52697f !important;
+            background: #fff !important;
+        }
+
+        #tabelaValores thead th {
+            background: #fff !important;
+            color: #2d3748 !important;
+            font-size: .95rem !important;
+            font-weight: 800 !important;
+            border: 0 !important;
+            border-bottom: 1px solid #d6dce5 !important;
+            padding: .95rem .75rem !important;
+            vertical-align: middle !important;
+            position: relative !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+        }
+
+        #tabelaValores tbody td {
+            border: 0 !important;
+            border-bottom: 1px solid #e1e6ec !important;
+            padding: .8rem .75rem !important;
+            vertical-align: middle !important;
+            color: #52697f !important;
+            font-size: .95rem !important;
+            background: transparent !important;
+        }
+
+        #tabelaValores tbody tr:nth-child(odd) td {
+            background: #fff !important;
+        }
+
+        #tabelaValores tbody tr:nth-child(even) td {
+            background: #f6f7f9 !important;
+        }
+
+        #tabelaValores tbody tr:hover td {
+            background: #eef1f5 !important;
+        }
+
+        #tabelaValores tbody tr.table-warning td {
+            background: inherit !important;
+            color: #52697f !important;
+        }
+
+        #tabelaValores tfoot th,
+        #tabelaValores tfoot td {
+            background: #fff !important;
+            border: 0 !important;
+            border-top: 1px solid #d6dce5 !important;
+            color: #52697f !important;
+            padding: .9rem .75rem !important;
+        }
+
+        #tabelaValores .cell-ellipsis {
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #tabelaValores .clean-text-pill,
+        #tabelaValores .status-clean {
+            display: inline-block;
+            max-width: 100%;
+            color: #52697f !important;
+            font-weight: 600;
+            background: transparent !important;
+            border: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+
+        #tabelaValores .status-clean {
+            font-weight: 700;
+        }
+
+        #tabelaValores .text-danger,
+        #tabelaValores .text-success,
+        #tabelaValores .text-warning,
+        #tabelaValores .text-info,
+        #tabelaValores .text-primary {
+            color: #52697f !important;
+        }
+
+        #tabelaValores thead th.sorting,
+        #tabelaValores thead th.sorting_asc,
+        #tabelaValores thead th.sorting_desc,
+        #tabelaValores thead th.sorting_asc_disabled,
+        #tabelaValores thead th.sorting_desc_disabled {
+            cursor: pointer;
+            user-select: none;
+            padding-right: 1.65rem !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::before {
+            content: "▲" !important;
+            right: .55rem !important;
+            top: calc(50% - 8px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::after {
+            content: "▼" !important;
+            right: .55rem !important;
+            top: calc(50% + 1px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after {
+            color: #8d98a7 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting:hover::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting:hover::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc:hover::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc:hover::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc:hover::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc:hover::after {
+            color: #b7c0cc !important;
+        }
+
+        .custom-pagination-bar {
+            border-top: 1px solid #e9ecef;
+        }
+
+        .custom-page-info {
+            color: #435ebe;
+            font-weight: 800;
+        }
+
+        .custom-length-select {
+            background-color: #fff;
+        }
+
+        .table-stats thead th {
+            background: #fff !important;
+            border-bottom: 1px solid #d6dce5 !important;
+        }
+
+        .table-stats tbody td,
+        .table-stats tbody th {
+            border-bottom: 1px solid #e1e6ec !important;
+        }
+
+        .progress-bar {
+            background-color: #8d98a7 !important;
+        }
+
     </style>
 </head>
 
@@ -1290,7 +1563,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                         <i class="bi bi-file-earmark-excel"></i> <span>Excel</span>
                                     </button>
                                     <div class="dropdown">
-                                        <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             <i class="bi bi-eye"></i> Exibir
                                         </button>
                                         <ul class="dropdown-menu">
@@ -1312,7 +1585,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                         <p class="text-muted mb-0">Não há registros de entregas com os filtros selecionados.</p>
                                     </div>
                                 <?php else: ?>
-                                    <div class="alert alert-info mb-3">
+                                    <div class="alert alert-info mb-3 clean-info-box">
                                         <i class="bi bi-info-circle"></i>
                                         Mostrando <strong><?= $total_entregas ?></strong> entregas de um total de <strong><?= $total_geral ?></strong> no sistema.
                                         <?php if ($filtros_aplicados): ?>
@@ -1409,11 +1682,11 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                         </td>
                                                         <td>
                                                             <?php if (!empty($tipo_nome)): ?>
-                                                                <span class="badge bg-primary d-inline-block text-truncate" style="max-width: 118px;">
+                                                                <span class="clean-text-pill cell-ellipsis" title="<?= htmlspecialchars($tipo_nome) ?>">
                                                                     <?= htmlspecialchars($tipo_nome) ?>
                                                                 </span>
                                                             <?php else: ?>
-                                                                <span class="badge badge-incompleto">Tipo não identificado</span>
+                                                                <span class="text-muted">Tipo não identificado</span>
                                                             <?php endif; ?>
                                                         </td>
                                                         <td class="text-center text-nowrap"><?= $quantidade ?></td>
@@ -1427,7 +1700,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                         </td>
                                                         <td>
                                                             <?php if (!empty($entrega['bairro_nome'])): ?>
-                                                                <span class="badge bg-info text-dark"><?= htmlspecialchars($entrega['bairro_nome']) ?></span>
+                                                                <span class="clean-text-pill cell-ellipsis" title="<?= htmlspecialchars($entrega['bairro_nome']) ?>"><?= htmlspecialchars($entrega['bairro_nome']) ?></span>
                                                             <?php else: ?>
                                                                 <span class="text-muted">N/A</span>
                                                             <?php endif; ?>
@@ -1436,7 +1709,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                             <div class="cell-ellipsis"><?= htmlspecialchars((string)($entrega['responsavel_entrega'] ?? 'N/A')) ?></div>
                                                         </td>
                                                         <td class="text-nowrap text-center">
-                                                            <span class="badge <?= ($entrega['entregue'] === 'Sim') ? 'bg-success' : 'bg-warning text-dark' ?>">
+                                                            <span class="status-clean">
                                                                 <?= ($entrega['entregue'] === 'Sim') ? 'Entregue' : 'Pendente' ?>
                                                             </span>
                                                         </td>
