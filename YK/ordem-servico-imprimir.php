@@ -219,10 +219,10 @@ $operationalNotes = array_values(array_filter([
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ordem de Serviço <?= h($order->displayNumber()) ?></title>
     <style>
-        @page { size: A5 landscape; margin: 6mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; }
         body { margin: 0; background: #e8f0f4; color: #0f172a; font-family: Arial, sans-serif; font-size: 10px; }
-        .print-page { width: 210mm; min-height: 148mm; margin: 12px auto; padding: 8mm; background: #fff; box-shadow: 0 8px 30px rgba(15, 23, 42, .12); }
+        .print-page { width: 210mm; min-height: 148.5mm; margin: 12px auto; padding: 6mm 7mm 5mm; background: #fff; box-shadow: 0 8px 30px rgba(15, 23, 42, .12); }
         .document-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 7px; border-bottom: 2px solid #0f7894; }
         .company-heading { min-width: 0; display: flex; align-items: center; gap: 9px; }
         .company-logo { position: relative; width: 34mm; height: 18mm; display: flex; flex: 0 0 34mm; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #dbe7ee; border-radius: 6px; background: #f8fbfc; }
@@ -258,10 +258,14 @@ $operationalNotes = array_values(array_filter([
         .notes-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
         .note-card { min-width: 0; padding: 5px 6px; border: 1px solid #dbe7ee; border-radius: 4px; break-inside: avoid; }
         .note-card p { margin: 0; line-height: 1.3; overflow-wrap: anywhere; }
-        .totals { width: 72mm; margin-left: auto; break-inside: avoid; }
+        .document-closing { display: grid; grid-template-columns: minmax(0, 1fr) 72mm; align-items: end; gap: 10mm; margin-top: 8px; break-inside: avoid; }
+        .document-closing.without-values { display: block; }
+        .financial-summary h2 { margin-bottom: 2px; }
+        .totals { width: 100%; break-inside: avoid; }
         .totals div { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid #dbe7ee; }
         .totals .total { border-bottom: 0; color: #0f7894; font-size: 13px; font-weight: 800; }
-        .signatures { display: grid; grid-template-columns: repeat(2, 70mm); justify-content: space-around; gap: 14mm; margin-top: 18px; break-inside: avoid; }
+        .signatures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8mm; margin-bottom: 3px; break-inside: avoid; }
+        .document-closing.without-values .signatures { grid-template-columns: repeat(2, 70mm); justify-content: space-around; margin-top: 18px; }
         .signatures div { padding-top: 4px; border-top: 1px solid #0f172a; color: #475569; text-align: center; }
         .document-footer { margin-top: 7px; color: #64748b; font-size: 8px; text-align: center; }
         .print-actions { position: sticky; top: 0; z-index: 2; display: flex; justify-content: center; gap: 6px; padding: 9px; background: #e8f0f4; }
@@ -269,7 +273,7 @@ $operationalNotes = array_values(array_filter([
         .print-actions .primary, .print-actions .active { background: #0f7894; color: #fff; }
         @media print {
             body { background: #fff; }
-            .print-page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+            .print-page { width: 210mm; min-height: 148.5mm; margin: 0; padding: 6mm 7mm 5mm; box-shadow: none; }
             .print-actions { display: none; }
         }
     </style>
@@ -338,21 +342,22 @@ $operationalNotes = array_values(array_filter([
             </section>
         <?php endif; ?>
 
-        <?php if ($withValues): ?>
-            <section class="document-section">
-                <h2>Resumo financeiro</h2>
-                <div class="totals">
-                    <div><span>Subtotal serviços</span><strong><?= h(os_print_money($order->servicesSubtotal())) ?></strong></div>
-                    <div><span>Subtotal produtos</span><strong><?= h(os_print_money($order->productsSubtotal())) ?></strong></div>
-                    <div><span>Subtotal outros</span><strong><?= h(os_print_money($order->othersSubtotal())) ?></strong></div>
-                    <div><span>Desconto</span><strong><?= h(os_print_money($order->discount())) ?></strong></div>
-                    <div><span>Acréscimo</span><strong><?= h(os_print_money($order->increase())) ?></strong></div>
-                    <div class="total"><span>Total</span><strong><?= h(os_print_money($order->total())) ?></strong></div>
+        <section class="document-closing<?= $withValues ? '' : ' without-values' ?>">
+            <div class="signatures"><div>Assinatura do cliente</div><div>Responsável pelo atendimento</div></div>
+            <?php if ($withValues): ?>
+                <div class="financial-summary">
+                    <h2>Resumo financeiro</h2>
+                    <div class="totals">
+                        <div><span>Subtotal serviços</span><strong><?= h(os_print_money($order->servicesSubtotal())) ?></strong></div>
+                        <div><span>Subtotal produtos</span><strong><?= h(os_print_money($order->productsSubtotal())) ?></strong></div>
+                        <div><span>Subtotal outros</span><strong><?= h(os_print_money($order->othersSubtotal())) ?></strong></div>
+                        <div><span>Desconto</span><strong><?= h(os_print_money($order->discount())) ?></strong></div>
+                        <div><span>Acréscimo</span><strong><?= h(os_print_money($order->increase())) ?></strong></div>
+                        <div class="total"><span>Total</span><strong><?= h(os_print_money($order->total())) ?></strong></div>
+                    </div>
                 </div>
-            </section>
-        <?php endif; ?>
-
-        <section class="signatures"><div>Assinatura do cliente</div><div>Responsável pelo atendimento</div></section>
+            <?php endif; ?>
+        </section>
         <footer class="document-footer">Documento de serviço não fiscal.</footer>
     </main>
 </body>
