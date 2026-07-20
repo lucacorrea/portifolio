@@ -10,6 +10,7 @@
         "migrate": "@php scripts/migrate.php",
         "test": [
             "@php tests/EnvironmentTest.php",
+            "@php tests/AgendaReminderStatusTest.php",
             "@php tests/ClientPdfImportTest.php",
             "@php tests/EmployeeFormDataTest.php",
             "@php tests/CompanyBrandingTest.php",

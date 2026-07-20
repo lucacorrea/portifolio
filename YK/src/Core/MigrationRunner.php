@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -358,6 +358,9 @@ final class MigrationRunner
             15 => $this->migrationFifteenSatisfied(),
             16 => $this->migrationSixteenSatisfied(),
             17 => $this->migrationSeventeenSatisfied(),
+            18 => $this->allColumns('agenda_lembretes', ['concluido_em', 'concluido_por'])
+                && $this->allForeignKeys(['fk_agenda_lembretes_concluido_usuario'])
+                && $this->columnTypeContains('agenda_lembretes', 'status', "'concluido'"),
             default => null,
         };
     }
@@ -445,6 +448,17 @@ final class MigrationRunner
         );
         $statement->execute(['table_name' => $table, 'column_name' => $column]);
         return (int) $statement->fetchColumn() === 1;
+    }
+
+    private function columnTypeContains(string $table, string $column, string $expected): bool
+    {
+        $statement = $this->connection->prepare(
+            'SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table_name AND COLUMN_NAME = :column_name'
+        );
+        $statement->execute(['table_name' => $table, 'column_name' => $column]);
+        $type = $statement->fetchColumn();
+        return is_string($type) && str_contains(strtolower($type), strtolower($expected));
     }
 
     /** @param array<int, array{0:string,1:string}> $indexes */

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Schedule\Service\AgendaDayBoard;
+
 require_once __DIR__ . '/../includes/ui.php';
 require_once __DIR__ . '/../actions/agenda-action-common.php';
 
@@ -28,17 +30,18 @@ if (!in_array($eventType, ['all', 'service_order', 'reminder'], true)) $eventTyp
 
 $orders = $eventType === 'reminder' ? [] : $orderService->calendarBetween($periodStart, $periodEnd, $filters);
 $teamsByOrder = $orderService->teamMembersForOrders($orders);
-$reminders = $eventType === 'service_order' ? [] : $agendaService->listRemindersBetween($periodStart, $periodEnd);
+$showReminders = $eventType !== 'service_order';
+$reminders = $showReminders ? $agendaService->listRemindersBetween($periodStart, $periodEnd, $view === 'day') : [];
 $clients = $clientService->listClients();
 $employees = $employeeService->listEmployees();
 $recovery = os_consume_form_recovery();
 
 $events = [];
 foreach ($orders as $order) {
-    $events[] = ['type' => 'service_order', 'time' => $order->scheduledStart() ?? '', 'order' => $order];
+    $events[] = ['type' => 'service_order', 'status' => $order->status(), 'time' => $order->scheduledStart() ?? '', 'order' => $order];
 }
 foreach ($reminders as $reminder) {
-    $events[] = ['type' => 'reminder', 'time' => $reminder->start(), 'reminder' => $reminder];
+    $events[] = ['type' => 'reminder', 'status' => $reminder->status(), 'time' => $reminder->start(), 'reminder' => $reminder];
 }
 usort($events, static fn(array $a, array $b): int => strcmp((string) $a['time'], (string) $b['time']));
 
@@ -50,8 +53,9 @@ $canCancel = $authorization->can('agenda.cancelar');
 $canReminder = $authorization->can('agenda.criar_lembrete');
 
 function agenda_event_time(?string $start, ?string $end = null): string { try { $s = new DateTimeImmutable((string) $start); $text = $s->format('H:i'); if ($end) $text .= '–' . (new DateTimeImmutable($end))->format('H:i'); return $text; } catch (Throwable) { return '-'; } }
-function agenda_status_badge(string $status): string { return ['agendada'=>'teal','em_deslocamento'=>'purple','em_execucao'=>'green','aguardando_peca'=>'amber','finalizada'=>'green','cancelada'=>'red','ativo'=>'blue'][$status] ?? 'gray'; }
+function agenda_status_badge(string $status): string { return ['agendada'=>'teal','em_deslocamento'=>'purple','em_execucao'=>'green','aguardando_peca'=>'amber','finalizada'=>'green','cancelada'=>'red','ativo'=>'blue','concluido'=>'green'][$status] ?? 'gray'; }
 function agenda_label_status(string $status): string { return ['agendada'=>'Agendada','em_deslocamento'=>'Em deslocamento','em_execucao'=>'Em execução','aguardando_peca'=>'Aguardando peça','finalizada'=>'Finalizada','cancelada'=>'Cancelada'][$status] ?? $status; }
+function agenda_reminder_status_label(string $status): string { return ['ativo'=>'Pendente','concluido'=>'Feito','cancelado'=>'Cancelado'][$status] ?? $status; }
 function agenda_priority_badge(string $priority): string { return ['baixa'=>'gray','media'=>'blue','alta'=>'amber','urgente'=>'red'][$priority] ?? 'blue'; }
 function agenda_team_lines(array $members): string { if ($members === []) return '<span>Equipe não definida</span>'; return implode('', array_map(static fn($member): string => '<span>' . h($member->displayLine()) . '</span>', $members)); }
 
@@ -59,12 +63,18 @@ $scheduledCount = count(array_filter($orders, static fn($order): bool => $order-
 $runningCount = count(array_filter($orders, static fn($order): bool => $order->status() === 'em_execucao'));
 $urgentCount = count(array_filter($orders, static fn($order): bool => $order->priority() === 'urgente'));
 $withoutTeam = count(array_filter($orders, static fn($order): bool => ($GLOBALS['teamsByOrder'][$order->id()] ?? []) === []));
+$activeReminderCount = count(array_filter($reminders, static fn($reminder): bool => $reminder->isActive()));
+
+$eventGroups = [['key' => 'all', 'label' => 'Eventos', 'icon' => 'bi-calendar-event', 'events' => $events]];
+if ($view === 'day') {
+    $eventGroups = AgendaDayBoard::group($events);
+}
 ?>
 
 <div class="page-body operational-page agenda-page" data-page="agenda" data-view="<?= h($view) ?>">
 <div class="agenda-summary-bar" data-live-region="metrics" aria-label="Resumo da agenda">
     <span><i class="bi bi-wrench" aria-hidden="true"></i><strong><?= h((string) count($orders)) ?></strong> Atendimentos</span>
-    <span><i class="bi bi-alarm" aria-hidden="true"></i><strong><?= h((string) count($reminders)) ?></strong> Lembretes</span>
+    <span><i class="bi bi-alarm" aria-hidden="true"></i><strong><?= h((string) $activeReminderCount) ?></strong> Lembretes</span>
     <span><i class="bi bi-calendar2-check" aria-hidden="true"></i><strong><?= h((string) $scheduledCount) ?></strong> Agendadas</span>
     <span><i class="bi bi-play-circle" aria-hidden="true"></i><strong><?= h((string) $runningCount) ?></strong> Em execução</span>
     <span><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><strong><?= h((string) $urgentCount) ?></strong> Urgentes</span>
@@ -76,7 +86,7 @@ $withoutTeam = count(array_filter($orders, static fn($order): bool => ($GLOBALS[
     <input type="hidden" name="date" value="<?= h($periodStart->format('Y-m-d')) ?>">
     <select class="filter-select" name="client_id" aria-label="Cliente"><option value="">Todos os clientes</option><?php foreach ($clients as $client): ?><option value="<?= h((string) $client->id()) ?>" <?= $filters['client_id'] === (string) $client->id() ? 'selected' : '' ?>><?= h($client->name()) ?></option><?php endforeach; ?></select>
     <select class="filter-select" name="employee_id" aria-label="Funcionário"><option value="">Todos os funcionários</option><?php foreach ($employees as $employee): ?><option value="<?= h((string) $employee->id()) ?>" <?= $filters['employee_id'] === (string) $employee->id() ? 'selected' : '' ?>><?= h($employee->displayCode() . ' — ' . $employee->name()) ?></option><?php endforeach; ?></select>
-    <select class="filter-select" name="status" aria-label="Status"><option value="">Todos os status</option><?php foreach (['agendada','em_deslocamento','em_execucao','aguardando_peca','finalizada','cancelada'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(agenda_label_status($status)) ?></option><?php endforeach; ?></select>
+    <select class="filter-select" name="status" aria-label="Status da OS"><option value="">Todos os status de OS</option><?php foreach (['agendada','em_deslocamento','em_execucao','aguardando_peca','finalizada','cancelada'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(agenda_label_status($status)) ?></option><?php endforeach; ?></select>
     <select class="filter-select" name="event_type" aria-label="Tipo"><option value="all" <?= $eventType === 'all' ? 'selected' : '' ?>>Todos</option><option value="service_order" <?= $eventType === 'service_order' ? 'selected' : '' ?>>Atendimentos</option><option value="reminder" <?= $eventType === 'reminder' ? 'selected' : '' ?>>Lembretes</option></select>
     <div class="agenda-filter-actions">
         <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
@@ -98,8 +108,17 @@ $withoutTeam = count(array_filter($orders, static fn($order): bool => ($GLOBALS[
         </nav>
     </div>
     <?php if ($events === []): ?><?php empty_state('Nenhum evento no período', 'Atendimentos e lembretes aparecerão aqui.'); ?><?php else: ?>
-    <div class="agenda-event-list">
-        <?php foreach ($events as $event): ?>
+    <div class="agenda-status-board">
+        <?php foreach ($eventGroups as $group): ?>
+        <section class="<?= $view === 'day' ? 'agenda-status-card agenda-status-' . h($group['key']) : 'agenda-status-flat' ?>">
+            <?php if ($view === 'day'): ?>
+            <header class="agenda-status-header">
+                <div><i class="bi <?= h($group['icon']) ?>" aria-hidden="true"></i><strong><?= h($group['label']) ?></strong></div>
+                <span><?= h((string) count($group['events'])) ?></span>
+            </header>
+            <?php endif; ?>
+            <div class="agenda-event-list">
+        <?php foreach ($group['events'] as $event): ?>
             <?php if ($event['type'] === 'service_order'): $order = $event['order']; ?>
                 <article class="week-service-card agenda-event-card priority-<?= h($order->priority()) ?>" data-record-actions>
                     <div class="agenda-event-time"><i class="bi bi-clock" aria-hidden="true"></i><strong><?= h(agenda_event_time($order->scheduledStart(), $order->scheduledEnd())) ?></strong></div>
@@ -125,10 +144,15 @@ $withoutTeam = count(array_filter($orders, static fn($order): bool => ($GLOBALS[
                 <article class="week-service-card agenda-event-card agenda-reminder-card priority-medium" data-record-actions>
                     <div class="agenda-event-time"><i class="bi bi-alarm" aria-hidden="true"></i><strong><?= h(agenda_event_time($reminder->start(), $reminder->end())) ?></strong></div>
                     <div class="agenda-event-content"><div class="agenda-event-heading"><strong class="week-service-os">Lembrete</strong><span class="week-service-client"><?= h($reminder->title()) ?></span></div><div class="week-service-title"><?= h($reminder->description() ?? 'Sem descrição') ?></div></div>
-                    <div class="week-service-meta agenda-event-meta"><span class="badge-soft badge-blue"><?= h($reminder->status()) ?></span></div>
-                    <div class="record-actions-source agenda-event-actions"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do lembrete <?= h($reminder->title()) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end"><?php if ($canEdit): ?><li><button class="dropdown-item js-reminder-edit" type="button" data-id="<?= h((string) $reminder->id()) ?>" data-title="<?= h($reminder->title()) ?>" data-description="<?= h($reminder->description() ?? '') ?>" data-start="<?= h($reminder->start()) ?>" data-end="<?= h($reminder->end() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-lembrete-edit"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?><?php if ($canCancel): ?><li><button class="dropdown-item text-danger js-reminder-cancel" type="button" data-id="<?= h((string) $reminder->id()) ?>" data-title="<?= h($reminder->title()) ?>" data-bs-toggle="modal" data-bs-target="#modal-lembrete-cancel"><i class="bi bi-x-circle"></i> Cancelar</button></li><?php endif; ?></ul></div></div>
+                    <div class="week-service-meta agenda-event-meta"><span class="badge-soft badge-<?= h(agenda_status_badge($reminder->status())) ?>"><?= h(agenda_reminder_status_label($reminder->status())) ?></span></div>
+                    <?php if ($reminder->isActive() && ($canEdit || $canCancel)): ?>
+                    <div class="record-actions-source agenda-event-actions"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do lembrete <?= h($reminder->title()) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end"><?php if ($canEdit): ?><li><form class="agenda-inline-action" method="post" action="actions/agenda-lembrete-concluir.php"><?= $csrf->field() ?><?php agenda_return_fields($view, $periodStart); ?><input type="hidden" name="id" value="<?= h((string) $reminder->id()) ?>"><button class="dropdown-item text-success" type="submit"><i class="bi bi-check2-circle"></i> Marcar como feito</button></form></li><li><button class="dropdown-item js-reminder-edit" type="button" data-id="<?= h((string) $reminder->id()) ?>" data-title="<?= h($reminder->title()) ?>" data-description="<?= h($reminder->description() ?? '') ?>" data-start="<?= h($reminder->start()) ?>" data-end="<?= h($reminder->end() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-lembrete-edit"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?><?php if ($canCancel): ?><li><button class="dropdown-item text-danger js-reminder-cancel" type="button" data-id="<?= h((string) $reminder->id()) ?>" data-title="<?= h($reminder->title()) ?>" data-bs-toggle="modal" data-bs-target="#modal-lembrete-cancel"><i class="bi bi-x-circle"></i> Cancelar</button></li><?php endif; ?></ul></div></div>
+                    <?php endif; ?>
                 </article>
             <?php endif; ?>
+        <?php endforeach; ?>
+            </div>
+        </section>
         <?php endforeach; ?>
     </div><?php endif; ?>
 </section>
@@ -143,5 +167,5 @@ $withoutTeam = count(array_filter($orders, static fn($order): bool => ($GLOBALS[
 
 <div class="modal fade" id="modal-agenda-schedule" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><form class="modal-content visual-modal" method="post" action="actions/agenda-reagendar.php"><div class="modal-header"><h2 class="modal-title fs-5">Reagendar OS</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php agenda_return_fields($view, $periodStart); ?><input type="hidden" name="id" id="agenda-schedule-id"><div class="form-row"><div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="agenda-schedule-start" required></div><div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="agenda-schedule-end" required></div></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Salvar</button></div></form></div></div>
 <div class="modal fade" id="modal-agenda-team" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><form class="modal-content visual-modal" method="post" action="actions/agenda-alterar-dupla.php"><div class="modal-header"><h2 class="modal-title fs-5">Alterar dupla</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php agenda_return_fields($view, $periodStart); ?><input type="hidden" name="id" id="agenda-team-id"><div class="form-row"><div class="form-group"><label class="form-label">Principal</label><select class="form-control-os js-primary-employee" name="funcionario_principal_id" id="agenda-team-primary" required><option value="">Selecione</option><?php agenda_employee_options($employees); ?></select></div><div class="form-group"><label class="form-label">Apoio</label><select class="form-control-os js-support-employee" name="funcionario_apoio_id" id="agenda-team-support" required><option value="">Selecione</option><?php agenda_employee_options($employees); ?></select></div></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Salvar</button></div></form></div></div>
-<div class="modal fade" id="modal-agenda-status" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/agenda-status.php"><div class="modal-header"><h2 class="modal-title fs-5" id="agenda-status-title">Alterar status</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php agenda_return_fields($view, $periodStart); ?><input type="hidden" name="id" id="agenda-status-id"><input type="hidden" name="operation" id="agenda-status-operation"><p id="agenda-status-message"></p><select class="form-control-os" id="agenda-status-select"><option value="start_travel">Iniciar deslocamento</option><option value="start_execution">Iniciar execução</option><option value="wait_part">Aguardar peça</option><option value="finalize">Finalizar</option><option value="cancel">Cancelar</option></select></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Confirmar</button></div></form></div></div>
+<div class="modal fade" id="modal-agenda-status" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/agenda-status.php"><div class="modal-header"><h2 class="modal-title fs-5" id="agenda-status-title">Alterar status</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php agenda_return_fields($view, $periodStart); ?><input type="hidden" name="id" id="agenda-status-id"><input type="hidden" name="operation" id="agenda-status-operation"><p id="agenda-status-message"></p><select class="form-control-os" id="agenda-status-select"><option value="start_travel">Iniciar deslocamento</option><option value="start_execution">Iniciar execução</option><option value="wait_part">Aguardar peça</option><option value="cancel">Cancelar</option></select></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Confirmar</button></div></form></div></div>
 <script type="application/json" id="agenda-page-data"><?= json_encode(['recoveryModal' => $recovery['modal'] ?? ($_GET['modal'] ?? null), 'recoveryData' => $recovery['data'] ?? [], 'recoveryError' => $recovery['error'] ?? null], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>

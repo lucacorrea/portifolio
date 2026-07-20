@@ -2681,52 +2681,105 @@ body.sidebar-collapsed .nav-link-os {
   color: #7c3aed;
 }
 
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-list {
+.operational-page[data-page="agenda"][data-view="day"] .agenda-status-board {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  background: #f7fafc;
+}
+
+.operational-page[data-page="agenda"][data-view="day"] .agenda-status-board {
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  align-items: start;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-card {
+  --agenda-status-color: var(--brand);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--agenda-status-color);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-reminder_active { --agenda-status-color: #7c3aed; }
+.operational-page[data-page="agenda"] .agenda-status-agendada { --agenda-status-color: var(--teal); }
+.operational-page[data-page="agenda"] .agenda-status-em_deslocamento { --agenda-status-color: var(--purple); }
+.operational-page[data-page="agenda"] .agenda-status-em_execucao { --agenda-status-color: var(--green); }
+.operational-page[data-page="agenda"] .agenda-status-aguardando_peca { --agenda-status-color: var(--amber); }
+.operational-page[data-page="agenda"] .agenda-status-finalizada,
+.operational-page[data-page="agenda"] .agenda-status-reminder_completed { --agenda-status-color: var(--green); }
+.operational-page[data-page="agenda"] .agenda-status-cancelada { --agenda-status-color: var(--red); }
+
+.operational-page[data-page="agenda"] .agenda-status-header {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.operational-page[data-page="agenda"] .agenda-status-header > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-header i {
+  color: var(--agenda-status-color);
+}
+
+.operational-page[data-page="agenda"] .agenda-status-header strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-header > span {
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--agenda-status-color) 11%, white);
+  color: var(--agenda-status-color);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-list {
   gap: 0;
   padding: 0;
   background: #fff;
 }
 
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card {
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-card {
+  grid-template-columns: 98px minmax(0, 1fr) auto auto;
   border: 0;
   border-bottom: 1px solid var(--line-soft);
-  border-left: 4px solid transparent;
   border-radius: 0;
-  background: #fff;
 }
 
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card:first-child {
-  padding-top: 12px;
-}
-
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card:last-child {
-  padding-bottom: 12px;
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-card:last-child {
   border-bottom: 0;
 }
 
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card.priority-low {
-  border-left-color: var(--blue);
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-heading {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 1px;
 }
 
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card.priority-medium {
-  border-left-color: var(--amber);
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-meta {
+  align-items: flex-end;
+  flex-direction: column;
 }
 
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card.priority-high {
-  border-left-color: #f97316;
-}
-
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card.priority-urgent {
-  border-left-color: var(--red);
-}
-
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-card:hover {
-  background: #f8fcfd;
-}
-
-.operational-page[data-page="agenda"][data-view="day"] .agenda-event-time {
-  align-self: stretch;
-  border-right: 1px solid var(--line-soft);
+.operational-page[data-page="agenda"] .agenda-inline-action {
+  margin: 0;
 }
 
 @media (max-width: 1100px) {
@@ -2745,6 +2798,10 @@ body.sidebar-collapsed .nav-link-os {
 
   .operational-page[data-page="agenda"] .agenda-event-actions {
     grid-column: 3;
+  }
+
+  .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-card {
+    grid-template-columns: 92px minmax(0, 1fr) auto;
   }
 }
 
@@ -2794,6 +2851,15 @@ body.sidebar-collapsed .nav-link-os {
 
   .operational-page[data-page="agenda"] .agenda-event-actions {
     grid-column: 2;
+  }
+
+  .operational-page[data-page="agenda"][data-view="day"] .agenda-status-board {
+    grid-template-columns: 1fr;
+    padding: 8px;
+  }
+
+  .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-card {
+    grid-template-columns: 82px minmax(0, 1fr);
   }
 }
 
