@@ -17,6 +17,10 @@
             "@php tests/ProductionReportServiceTest.php",
             "@php tests/PayablesValidationTest.php",
             "@php tests/CashManagementValidationTest.php",
+            "@php tests/FiscalSecurityComponentsTest.php",
+            "@php tests/FiscalConfigurationValidationTest.php",
+            "@php tests/FiscalRuntimeReadinessTest.php",
+            "@php tests/FiscalUiSecurityTest.php",
             "@php tests/MigrationRunnerTest.php",
             "@php tests/WebMigrationCoordinatorTest.php"
         ]

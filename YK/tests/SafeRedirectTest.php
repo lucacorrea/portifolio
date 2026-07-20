@@ -30,7 +30,15 @@ foreach (['fornecedores.php', 'contas-pagar.php', 'usuarios.php', 'relatorios.ph
     redirectAssertSame('/YK/' . $target, $redirect->applicationUrl($target), 'A URL interna deve retornar à página de origem.');
 }
 
-foreach (['https://example.com', '../usuarios.php', '/usuarios.php', 'pagina-inexistente.php'] as $unsafe) {
+foreach ([
+    'https://example.com',
+    '../usuarios.php',
+    '/usuarios.php',
+    'pagina-inexistente.php',
+    "usuarios.php\r\nLocation:%20https://example.com",
+    'usuarios.php%0d%0aLocation:%20https://example.com',
+    "usuarios.php\t?search=teste",
+] as $unsafe) {
     redirectAssertSame('dashboard.php', $redirect->sanitize($unsafe), 'Destino não autorizado deve continuar bloqueado.');
 }
 

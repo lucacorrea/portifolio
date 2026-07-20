@@ -27,23 +27,55 @@ final class CompanySettingsService
             'razao_social' => $this->clean($data['razao_social'] ?? null, 150),
             'nome_fantasia' => $this->clean($data['nome_fantasia'] ?? null, 150),
             'documento' => $this->clean($data['documento'] ?? null, 30),
+            'inscricao_estadual' => $this->clean($data['inscricao_estadual'] ?? null, 40),
+            'inscricao_municipal' => $this->clean($data['inscricao_municipal'] ?? null, 40),
+            'email' => $this->email($data['email'] ?? null),
+            'crt' => $this->crt($data['crt'] ?? null),
+            'cnae_principal' => $this->digits($data['cnae_principal'] ?? null, 7),
             'telefone' => $this->clean($data['telefone'] ?? null, 30),
             'endereco' => $this->clean($data['endereco'] ?? null, 255),
+            'endereco_logradouro' => $this->clean($data['endereco_logradouro'] ?? null, 150),
+            'endereco_numero' => $this->clean($data['endereco_numero'] ?? null, 30),
+            'endereco_complemento' => $this->clean($data['endereco_complemento'] ?? null, 100),
+            'endereco_bairro' => $this->clean($data['endereco_bairro'] ?? null, 100),
+            'endereco_cidade' => $this->clean($data['endereco_cidade'] ?? null, 100),
+            'endereco_uf' => $this->uf($data['endereco_uf'] ?? null),
+            'endereco_cep' => $this->digits($data['endereco_cep'] ?? null, 8),
+            'codigo_municipio_ibge' => $this->digits($data['codigo_municipio_ibge'] ?? null, 7),
             'logo' => $this->clean($data['logo'] ?? null, 255),
             'user_id' => $userId,
         ];
 
         $statement = $this->connection->prepare(
             'INSERT INTO configuracoes_empresa
-                (id, razao_social, nome_fantasia, documento, telefone, endereco, logo, atualizado_por)
+                (id, razao_social, nome_fantasia, documento, inscricao_estadual,
+                 inscricao_municipal, email, crt, cnae_principal, telefone, endereco,
+                 endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro,
+                 endereco_cidade, endereco_uf, endereco_cep, codigo_municipio_ibge, logo, atualizado_por)
              VALUES
-                (1, :razao_social, :nome_fantasia, :documento, :telefone, :endereco, :logo, :user_id)
+                (1, :razao_social, :nome_fantasia, :documento, :inscricao_estadual,
+                 :inscricao_municipal, :email, :crt, :cnae_principal, :telefone, :endereco,
+                 :endereco_logradouro, :endereco_numero, :endereco_complemento, :endereco_bairro,
+                 :endereco_cidade, :endereco_uf, :endereco_cep, :codigo_municipio_ibge, :logo, :user_id)
              ON DUPLICATE KEY UPDATE
                 razao_social = VALUES(razao_social),
                 nome_fantasia = VALUES(nome_fantasia),
                 documento = VALUES(documento),
+                inscricao_estadual = VALUES(inscricao_estadual),
+                inscricao_municipal = VALUES(inscricao_municipal),
+                email = VALUES(email),
+                crt = VALUES(crt),
+                cnae_principal = VALUES(cnae_principal),
                 telefone = VALUES(telefone),
                 endereco = VALUES(endereco),
+                endereco_logradouro = VALUES(endereco_logradouro),
+                endereco_numero = VALUES(endereco_numero),
+                endereco_complemento = VALUES(endereco_complemento),
+                endereco_bairro = VALUES(endereco_bairro),
+                endereco_cidade = VALUES(endereco_cidade),
+                endereco_uf = VALUES(endereco_uf),
+                endereco_cep = VALUES(endereco_cep),
+                codigo_municipio_ibge = VALUES(codigo_municipio_ibge),
                 logo = VALUES(logo),
                 atualizado_por = VALUES(atualizado_por)'
         );
@@ -61,5 +93,52 @@ final class CompanySettingsService
             throw new InvalidArgumentException('Dados da empresa inválidos.');
         }
         return $text;
+    }
+
+    private function email(mixed $value): ?string
+    {
+        $email = $this->clean($value, 150);
+        if ($email !== null && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new InvalidArgumentException('E-mail da empresa inválido.');
+        }
+
+        return $email;
+    }
+
+    private function digits(mixed $value, int $length): ?string
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw !== '' && preg_match('/^[0-9.\/\-\s]+$/', $raw) !== 1) {
+            throw new InvalidArgumentException('Dados fiscais da empresa inválidos.');
+        }
+        $digits = preg_replace('/\D+/', '', $raw);
+        if ($digits === null || $digits === '') return null;
+        if (strlen($digits) !== $length) {
+            throw new InvalidArgumentException('Dados fiscais da empresa inválidos.');
+        }
+
+        return $digits;
+    }
+
+    private function crt(mixed $value): ?int
+    {
+        if ($value === null || trim((string) $value) === '') return null;
+        $crt = filter_var($value, FILTER_VALIDATE_INT);
+        if ($crt === false || !in_array($crt, [1, 2, 3, 4], true)) {
+            throw new InvalidArgumentException('Regime tributário inválido.');
+        }
+
+        return $crt;
+    }
+
+    private function uf(mixed $value): ?string
+    {
+        $uf = strtoupper(trim((string) ($value ?? '')));
+        if ($uf === '') return null;
+        if (preg_match('/^[A-Z]{2}$/', $uf) !== 1) {
+            throw new InvalidArgumentException('UF da empresa inválida.');
+        }
+
+        return $uf;
     }
 }

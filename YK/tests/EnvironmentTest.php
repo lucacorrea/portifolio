@@ -47,9 +47,21 @@ try {
     );
 
     environmentAssertSame(
-        'true',
-        $environment->get('DB_WEB_MIGRATIONS', 'true'),
-        'DB_WEB_MIGRATIONS deve permitir atualização interna por padrão.'
+        'false',
+        $environment->get('DB_WEB_MIGRATIONS', 'false'),
+        'DB_WEB_MIGRATIONS deve permanecer desativado por padrão para proteger a disponibilidade.'
+    );
+
+    environmentAssertSame(
+        'false',
+        $environment->get('FISCAL_INTEGRATION_ENABLED', 'false'),
+        'A integração fiscal deve nascer desativada.'
+    );
+
+    environmentAssertSame(
+        'false',
+        $environment->get('FISCAL_PRODUCTION_ENABLED', 'false'),
+        'A emissão fiscal em produção deve exigir liberação explícita.'
     );
 
     environmentAssertSame(

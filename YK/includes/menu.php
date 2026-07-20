@@ -188,6 +188,18 @@ $navGroups = [
             'href' => 'configuracoes.php',
             'permission' => 'configuracao.visualizar',
         ],
+        [
+            'key' => 'configuracoes-fiscais',
+            'label' => 'Configuração Fiscal',
+            'icon' => 'bi-shield-lock',
+            'href' => 'configuracoes-fiscais.php',
+            'permissions_any' => [
+                'nota_fiscal.configurar',
+                'nota_fiscal.gerenciar_credenciais',
+                'nota_fiscal.testar_integracao',
+                'nota_fiscal.ativar_producao',
+            ],
+        ],
     ],
 
     'Administração' => [

@@ -50,6 +50,8 @@ use App\Workforce\Service\EmployeeManagementService;
 
 final class Application
 {
+    use FiscalApplicationServices;
+
     private ?SessionManager $session = null;
 
     private ?CsrfTokenManager $csrf = null;
@@ -90,7 +92,6 @@ final class Application
     private ?ServiceOrderLifecycleService $serviceOrderLifecycle = null;
     private ?DashboardService $dashboardService = null;
     private ?ProductionReportService $productionReportService = null;
-
     private ?SafeRedirect $redirect = null;
 
     public function __construct(
