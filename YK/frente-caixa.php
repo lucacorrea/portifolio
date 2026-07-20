@@ -69,7 +69,7 @@ $flashMessages = $session->consumeFlashMessages();
     <main class="pdv-blocked"><div><i class="bi bi-lock"></i><h1>O Caixa está fechado</h1><p>Uma pessoa com permissão de alto nível precisa abrir a sessão antes de iniciar vendas.</p><a href="<?= h($returnPage) ?>"><?= $returnPage === 'caixa.php' ? 'Ir para o controle do Caixa' : 'Voltar ao sistema' ?></a></div></main>
   <?php else: ?>
   <form class="pdv-shell" id="pdv-form" method="post" action="actions/caixa-venda-salvar.php" autocomplete="off">
-    <?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="forma_pagamento" id="pdv-payment-form" value="dinheiro"><input type="hidden" name="acrescimo" value="0"><div id="pdv-hidden-items"></div>
+    <?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="forma_pagamento" id="pdv-payment-form" value="dinheiro"><input type="hidden" name="acrescimo" value="0"><div id="pdv-hidden-items" hidden></div>
     <aside class="pdv-entry-column">
       <section class="pdv-card pdv-search-card"><label for="pdv-product-search">Produto / código / EAN</label><div class="pdv-search-box"><i class="bi bi-upc-scan"></i><input id="pdv-product-search" placeholder="Digite nome, código ou leia o código de barras" autofocus autocomplete="off"></div><div class="pdv-product-results d-none" id="pdv-product-results" role="listbox"></div></section>
       <section class="pdv-card"><span class="pdv-field-label">Código</span><strong id="pdv-current-code">—</strong></section>
