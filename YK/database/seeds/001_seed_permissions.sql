@@ -140,6 +140,8 @@ VALUES
     ('Relatórios', 'relatorio', 'relatorio.estoque', 'Visualizar relatório de estoque', 'Permite acessar relatórios de estoque.', 1830),
     ('Relatórios', 'relatorio', 'relatorio.produtividade', 'Visualizar relatório de produtividade', 'Permite acessar relatórios de produtividade.', 1840),
     ('Relatórios', 'relatorio', 'relatorio.funcionarios', 'Visualizar relatório de funcionários', 'Permite acessar relatórios de funcionários.', 1850),
+    ('Relatórios', 'relatorio', 'relatorio.comissao.visualizar', 'Visualizar comissões', 'Permite visualizar metas, produção e comissões dos funcionários.', 1855),
+    ('Relatórios', 'relatorio', 'relatorio.meta_comissao.configurar', 'Configurar meta de comissão', 'Permite criar uma nova versão da meta e do percentual mensal de comissão.', 1856),
     ('Relatórios', 'relatorio', 'relatorio.exportar', 'Exportar relatórios', 'Permite exportar relatórios.', 1860),
     ('Relatórios', 'relatorio', 'relatorio.imprimir', 'Imprimir relatórios', 'Permite imprimir relatórios.', 1870),
 

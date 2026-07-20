@@ -156,6 +156,8 @@ $navGroups = [
                 'relatorio.estoque',
                 'relatorio.produtividade',
                 'relatorio.funcionarios',
+                'relatorio.comissao.visualizar',
+                'relatorio.meta_comissao.configurar',
             ],
         ],
         [

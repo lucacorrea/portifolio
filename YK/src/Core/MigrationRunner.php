@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 require_once __DIR__ . '/MigrationThirteenPostcondition.php';
+require_once __DIR__ . '/MigrationFourteenPostcondition.php';
 
 use PDO;
 use Throwable;
@@ -12,6 +13,7 @@ use Throwable;
 final class MigrationRunner
 {
     use MigrationThirteenPostcondition;
+    use MigrationFourteenPostcondition;
 
     private const HISTORY_TABLE = 'schema_migrations';
 
@@ -156,7 +158,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -346,6 +348,7 @@ final class MigrationRunner
             11 => $this->migrationElevenSatisfied(),
             12 => $this->permissionSatisfied('cliente.importar'),
             13 => $this->migrationThirteenSatisfied(),
+            14 => $this->migrationFourteenSatisfied(),
             default => null,
         };
     }

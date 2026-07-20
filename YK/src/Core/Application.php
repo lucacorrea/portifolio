@@ -31,6 +31,8 @@ use App\Finance\Service\PaymentManagementService;
 use App\Finance\Service\ReceiptService;
 use App\Inventory\Service\InventoryManagementService;
 use App\Purchasing\Service\SupplierManagementService;
+use App\Report\Repository\ProductionReportRepository;
+use App\Report\Service\ProductionReportService;
 use App\Security\CsrfTokenManager;
 use App\Security\PrivilegedAuthorizationService;
 use App\Security\SafeRedirect;
@@ -87,6 +89,7 @@ final class Application
     private ?ServiceOrderFinalizationService $serviceOrderFinalization = null;
     private ?ServiceOrderLifecycleService $serviceOrderLifecycle = null;
     private ?DashboardService $dashboardService = null;
+    private ?ProductionReportService $productionReportService = null;
 
     private ?SafeRedirect $redirect = null;
 
@@ -455,6 +458,23 @@ final class Application
         }
 
         return $this->dashboardService;
+    }
+
+    public function reports(): ProductionReportService
+    {
+        if ($this->productionReportService === null) {
+            $connection = $this->database->connection();
+            $this->productionReportService = new ProductionReportService(
+                new ProductionReportRepository($connection)
+            );
+        }
+
+        return $this->productionReportService;
+    }
+
+    public function productionReports(): ProductionReportService
+    {
+        return $this->reports();
     }
 
     public function redirect(): SafeRedirect
