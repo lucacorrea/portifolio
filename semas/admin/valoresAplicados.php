@@ -1167,6 +1167,53 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
             background-color: #8d98a7 !important;
         }
 
+        /* ===== CORES DE DESTAQUE FINANCEIRO E STATUS ===== */
+        .valor-total-aplicado {
+            color: #198754 !important;
+        }
+
+        #tabelaValores .status-clean.status-entregue {
+            color: #198754 !important;
+        }
+
+        #tabelaValores .status-clean.status-pendente {
+            color: #b7791f !important;
+        }
+
+        /* Barra percentual: verde, com texto branco somente quando couber dentro */
+        .table-stats .progress.progress-percentual {
+            position: relative;
+            overflow: hidden;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .table-stats .progress.progress-percentual .progress-bar {
+            background-color: #198754 !important;
+            transition: width .25s ease;
+        }
+
+        .table-stats .progress-percentual-label {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            color: #212529;
+            font-size: .75rem;
+            font-weight: 700;
+            line-height: 20px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .table-stats .progress-percentual-label.label-in-bar {
+            color: #fff;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, .25);
+        }
+
     </style>
 </head>
 
@@ -1420,7 +1467,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                         </div>
                                         <div class="w-100">
                                             <h6 class="text-muted mb-1">Valor Total Aplicado</h6>
-                                            <div class="valor-destaque"><?= formatarMoeda($total_valor) ?></div>
+                                            <div class="valor-destaque valor-total-aplicado"><?= formatarMoeda($total_valor) ?></div>
                                             <small class="text-muted d-block mt-1">
                                                 <?= $total_entregas ?> entregas encontradas
                                                 <?php if ($filtros_aplicados): ?>
@@ -1709,7 +1756,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                             <div class="cell-ellipsis"><?= htmlspecialchars((string)($entrega['responsavel_entrega'] ?? 'N/A')) ?></div>
                                                         </td>
                                                         <td class="text-nowrap text-center">
-                                                            <span class="status-clean">
+                                                            <span class="status-clean <?= ($entrega['entregue'] === 'Sim') ? 'status-entregue' : 'status-pendente' ?>">
                                                                 <?= ($entrega['entregue'] === 'Sim') ? 'Entregue' : 'Pendente' ?>
                                                             </span>
                                                         </td>
@@ -1768,15 +1815,17 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                     <td class="text-center valor-cell"><?= formatarMoeda($tipo['total_valor']) ?></td>
                                                     <td class="text-center"><?= formatarMoeda($tipo['valor_medio']) ?></td>
                                                     <td class="text-center">
-                                                        <div class="progress" style="height: 20px;">
-                                                            <div class="progress-bar bg-success"
+                                                        <div class="progress progress-percentual" style="height: 20px;">
+                                                            <div class="progress-bar"
                                                                 role="progressbar"
-                                                                style="width: <?= $percentual ?>%"
+                                                                style="width: <?= min(100, max(0, $percentual)) ?>%"
                                                                 aria-valuenow="<?= $percentual ?>"
                                                                 aria-valuemin="0"
                                                                 aria-valuemax="100">
-                                                                <?= number_format($percentual, 1, ',', '.') ?>%
                                                             </div>
+                                                            <span class="progress-percentual-label">
+                                                                <?= number_format($percentual, 1, ',', '.') ?>%
+                                                            </span>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -2038,6 +2087,24 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
     <script>
         let tabelaValores = null;
         let valorFilterModo = 'todos';
+
+        function ajustarContrastePercentuais() {
+            document.querySelectorAll('.progress-percentual').forEach(function(progress) {
+                const bar = progress.querySelector('.progress-bar');
+                const label = progress.querySelector('.progress-percentual-label');
+
+                if (!bar || !label) return;
+
+                label.classList.remove('label-in-bar');
+
+                const larguraBarra = bar.getBoundingClientRect().width;
+                const larguraTexto = label.scrollWidth + 10;
+
+                if (larguraBarra >= larguraTexto) {
+                    label.classList.add('label-in-bar');
+                }
+            });
+        }
 
         function renderCustomPagination() {
             if (!tabelaValores) return;
@@ -2482,6 +2549,12 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                     }
                 });
             }
+
+            ajustarContrastePercentuais();
+
+            $(window).on('resize', function() {
+                ajustarContrastePercentuais();
+            });
 
             <?php if ($filtros_aplicados): ?>
                 $('button[data-bs-target="#modalFiltros"]').addClass('btn-filtro-applied');
