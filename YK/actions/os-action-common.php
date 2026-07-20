@@ -31,7 +31,7 @@ function os_action_context(string $permission, bool $requireCsrf = true): array
         error_log('OS action access failed: ' . $exception->getMessage());
         if ($requireCsrf) {
             $session->flash('danger', 'Não foi possível validar a operação.');
-            os_redirect($application);
+            os_redirect_back($application);
         }
         http_response_code(403);
         exit;
