@@ -45,13 +45,25 @@ final class EmployeeManagementService
 
     public function updateEmployee(
         int $id,
-        EmployeeFormData $data
+        EmployeeFormData $data,
+        bool $updateSalary = true,
+        bool $updateDocuments = true,
+        bool $updateBankData = true
     ): void {
         $this->getEmployee($id);
 
-        $this->employees->updateName(
+        $this->employees->update(
             $id,
-            $data->name()
+            $data,
+            $updateSalary,
+            $updateDocuments,
+            $updateBankData
         );
+    }
+
+    public function updateEmployeePhoto(int $id, ?string $photoPath): void
+    {
+        $this->getEmployee($id);
+        $this->employees->updateEmployeePhoto($id, $photoPath);
     }
 }

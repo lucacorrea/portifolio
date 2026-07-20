@@ -11,7 +11,14 @@
         "test": [
             "@php tests/EnvironmentTest.php",
             "@php tests/ClientPdfImportTest.php",
-            "@php tests/MigrationRunnerTest.php"
+            "@php tests/EmployeeFormDataTest.php",
+            "@php tests/CompanyBrandingTest.php",
+            "@php tests/SafeRedirectTest.php",
+            "@php tests/ProductionReportServiceTest.php",
+            "@php tests/PayablesValidationTest.php",
+            "@php tests/CashManagementValidationTest.php",
+            "@php tests/MigrationRunnerTest.php",
+            "@php tests/WebMigrationCoordinatorTest.php"
         ]
     }
 }

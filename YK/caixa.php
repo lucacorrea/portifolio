@@ -2,7 +2,7 @@
 $pageKey = 'caixa';
 $activePage = 'caixa';
 $pageTitle = 'Caixa';
-$pageSubtitle = 'Movimentacoes reais do dia';
+$pageSubtitle = 'Controle da sessão e acesso aos módulos de venda';
 $requiredPermission = 'caixa.visualizar';
 $pageContent = __DIR__ . '/pages/caixa.php';
 

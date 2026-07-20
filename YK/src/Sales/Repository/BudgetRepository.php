@@ -253,6 +253,29 @@ final class BudgetRepository
         return $this->selectBudgets(['o.cliente_id = :client_id'], ['client_id' => $clientId], 'o.data_emissao DESC, o.id DESC');
     }
 
+    /** @param int[] $clientIds @return Budget[] */
+    public function budgetsByClients(array $clientIds): array
+    {
+        $clientIds = array_values(array_unique(array_map('intval', $clientIds)));
+        if ($clientIds === []) return [];
+        if (count($clientIds) > 100) throw new InvalidArgumentException('Quantidade de clientes inválida.');
+
+        $placeholders = [];
+        $params = [];
+        foreach ($clientIds as $index => $clientId) {
+            $this->assertPositiveId($clientId);
+            $key = 'client_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $clientId;
+        }
+
+        return $this->selectBudgets(
+            ['o.cliente_id IN (' . implode(', ', $placeholders) . ')'],
+            $params,
+            'o.data_emissao DESC, o.id DESC'
+        );
+    }
+
     /** @return array{0:array<int,string>,1:array<string,mixed>} */
     private function filters(array $filters): array
     {

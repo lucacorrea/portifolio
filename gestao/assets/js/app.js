@@ -740,12 +740,13 @@ async function saveProductForm(form) {
   formData.append('expiry', $('#productExpiry')?.value || '');
   formData.append('image', image);
 
-  const imageFile = $('#productImageInput')?.files?.[0];
-  if (imageFile) {
-    formData.append('imageFile', imageFile);
-  }
-
   try {
+    const imageInput = $('#productImageInput[name="imageFile"]') || $('#productCameraInput[name="imageFile"]') || $('#productImageInput');
+    const imageFile = imageInput ? await prepareProductImageInput(imageInput) : null;
+    if (imageFile) {
+      formData.append('imageFile', imageFile);
+    }
+
     await postForm(`${prefix}api/produtos/salvar.php`, formData);
     showToast('Produto salvo');
     setTimeout(() => location.href = 'produtos.php', 500);
@@ -753,6 +754,82 @@ async function saveProductForm(form) {
     showToast(error.message);
     form.querySelector('button[type="submit"]')?.removeAttribute('disabled');
   }
+}
+
+const PRODUCT_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise(resolve => canvas.toBlob(resolve, type, quality));
+}
+
+function loadImageForResize(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Não foi possível ler a imagem selecionada.'));
+    };
+    image.src = url;
+  });
+}
+
+async function resizeProductImageFile(file) {
+  if (!file || !file.type.startsWith('image/') || file.size <= PRODUCT_IMAGE_MAX_BYTES) {
+    return file;
+  }
+
+  const image = await loadImageForResize(file);
+  let width = image.naturalWidth || image.width;
+  let height = image.naturalHeight || image.height;
+  const maxSide = 2200;
+
+  if (Math.max(width, height) > maxSide) {
+    const ratio = maxSide / Math.max(width, height);
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d', { alpha: false });
+  if (!context) return file;
+
+  for (let attempt = 0; attempt < 9; attempt += 1) {
+    const scale = Math.max(0.35, 1 - (attempt * 0.1));
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const quality = Math.max(0.52, 0.86 - (attempt * 0.06));
+    const blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+    if (blob && blob.size <= PRODUCT_IMAGE_MAX_BYTES) {
+      const name = (file.name || 'produto').replace(/\.[^.]+$/, '') + '.jpg';
+      return new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() });
+    }
+  }
+
+  return file;
+}
+
+async function prepareProductImageInput(input) {
+  const file = input?.files?.[0];
+  if (!file) return null;
+
+  const resized = await resizeProductImageFile(file);
+  if (resized !== file && window.DataTransfer) {
+    const files = new DataTransfer();
+    files.items.add(resized);
+    input.files = files.files;
+    showToast('Imagem reduzida automaticamente para até 2MB');
+  }
+
+  return input.files?.[0] || resized;
 }
 
 async function deleteProduct(id) {
@@ -1763,7 +1840,7 @@ function bindEvents() {
     }
   });
 
-  document.body.addEventListener('change', e => {
+  document.body.addEventListener('change', async e => {
     if (e.target.id === 'saleClientId') {
       saleClientId = Number(e.target.value || 0);
       saveCart();
@@ -1774,11 +1851,15 @@ function bindEvents() {
         e.target.setAttribute('name', 'imageFile');
         $('#productCameraInput')?.removeAttribute('name');
       }
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => $('#productPreview').src = reader.result;
-      reader.readAsDataURL(file);
+      try {
+        const file = await prepareProductImageInput(e.target);
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => $('#productPreview').src = reader.result;
+        reader.readAsDataURL(file);
+      } catch (error) {
+        showToast(error.message || 'Não foi possível processar a imagem.');
+      }
     }
   });
 

@@ -13,5 +13,6 @@ $primaryActionPermission = 'funcionario.criar';
 
 $requiredPermission = 'funcionario.visualizar';
 $pageContent = __DIR__ . '/pages/funcionarios.php';
+$pageScripts = ['assets/js/funcionarios.js'];
 
 require __DIR__ . '/includes/shell.php';

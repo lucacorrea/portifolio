@@ -117,7 +117,7 @@ metric_grid([
 ]);
 ?>
 
-<form class="filter-bar" method="get" action="produtos.php">
+<form class="filter-bar" method="get" action="produtos.php" data-live-filter="products" data-live-regions="metrics results">
     <div class="search-wrap">
         <i class="bi bi-search"></i>
         <input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Buscar código, nome, fabricante ou código de barras" maxlength="150">
@@ -144,10 +144,10 @@ metric_grid([
     </select>
 
     <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-    <a class="btn-filter btn-filter-ghost" href="produtos.php"><i class="bi bi-x-lg"></i> Limpar filtros</a>
+    <a class="btn-filter btn-filter-ghost" href="produtos.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar filtros</a>
 </form>
 
-<section class="panel">
+<section class="panel" data-live-region="results">
     <div class="panel-header">
         <div class="panel-title"><i class="bi bi-box-seam"></i>Produtos cadastrados</div>
         <?php if ($canCreate): ?>
@@ -298,13 +298,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function fillProduct(prefix, data) {
         val(prefix + '-id', data.productId); val(prefix + '-code', data.productCode); val(prefix + '-name', data.productName); val(prefix + '-description', data.productDescription); val(prefix + '-category', data.productCategory); val(prefix + '-manufacturer', data.productManufacturer); val(prefix + '-unit', data.productUnit); val(prefix + '-ncm', data.productNcm); val(prefix + '-barcode', data.productBarcode); val(prefix + '-stock', data.productStock); val(prefix + '-minimum-stock', data.productMinimumStock); val(prefix + '-location', data.productLocation); val(prefix + '-status', data.productStatus || 'ativo'); if (canCost) { val(prefix + '-cost-price', data.productCostPrice); } if (canSale) { val(prefix + '-sale-price', data.productSalePrice); }
     }
-    document.querySelectorAll('.js-product-view').forEach(function (button) {
-        button.addEventListener('click', function () {
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('.js-product-view, .js-product-edit');
+        if (!button) return;
+        if (button.classList.contains('js-product-view')) {
             text('view-product-subtitle', button.dataset.productCode); text('view-product-code', button.dataset.productCode); text('view-product-name', button.dataset.productName); text('view-product-description', button.dataset.productDescription); text('view-product-category', button.dataset.productCategory); text('view-product-manufacturer', button.dataset.productManufacturer); text('view-product-unit', button.dataset.productUnit); text('view-product-ncm', button.dataset.productNcm); text('view-product-barcode', button.dataset.productBarcode); if (canCost) { text('view-product-cost-price', moneyValue(button.dataset.productCostPrice)); } if (canSale) { text('view-product-sale-price', moneyValue(button.dataset.productSalePrice)); } if (canProfit) { text('view-product-unit-profit', moneyValue(button.dataset.productUnitProfit)); text('view-product-margin', percentValue(button.dataset.productMargin)); text('view-product-potential-profit', moneyValue(button.dataset.productPotentialProfit)); } text('view-product-stock', button.dataset.productStock); text('view-product-minimum-stock', button.dataset.productMinimumStock); text('view-product-location', button.dataset.productLocation); text('view-product-status', button.dataset.productStatus === 'ativo' ? 'Ativo' : 'Inativo');
-        });
-    });
-    document.querySelectorAll('.js-product-edit').forEach(function (button) {
-        button.addEventListener('click', function () { text('edit-product-subtitle', button.dataset.productCode); fillProduct('edit-product', button.dataset); });
+        }
+        if (button.classList.contains('js-product-edit')) { text('edit-product-subtitle', button.dataset.productCode); fillProduct('edit-product', button.dataset); }
     });
     const createModal = document.getElementById('modal-produto');
     if (createModal) { createModal.addEventListener('show.bs.modal', function (event) { if (event.relatedTarget) { const form = createModal.querySelector('form'); if (form) { form.reset(); } text('create-product-form-error', ''); document.getElementById('create-product-form-error')?.classList.add('d-none'); } }); }

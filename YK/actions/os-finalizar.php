@@ -15,7 +15,7 @@ try {
         $_POST,
         $user->id()
     );
-    $session->flash('success', 'OS finalizada com execução, estoque e financeiro registrados.');
+    $session->flash('success', 'OS finalizada; pagamento, Caixa e Contas a Receber foram atualizados.');
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('finalize', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());

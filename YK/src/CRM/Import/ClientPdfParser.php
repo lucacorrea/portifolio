@@ -62,7 +62,7 @@ final class ClientPdfParser
         }
 
         if ($rows === []) {
-            throw new InvalidArgumentException('Nenhum cliente foi encontrado. Use o relatório "RELATÓRIO DE CLIENTES 2" do A7.');
+            throw new InvalidArgumentException('Nenhum cliente foi encontrado. Use o relatório digital "RELATÓRIO DE CLIENTES 2" do A7; PDFs escaneados sem texto não podem ser extraídos.');
         }
 
         return ['pages' => $pageCount, 'rows' => $rows];

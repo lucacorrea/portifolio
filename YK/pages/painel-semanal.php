@@ -71,7 +71,7 @@ $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday
     ['Equipes utilizadas', (string) count($teams), 'bi-people', '#2563EB', 'sem repetição'],
 ]); ?>
 
-<form class="filter-bar" method="get" action="painel-semanal.php">
+<form class="filter-bar" method="get" action="painel-semanal.php" data-live-filter="weekly" data-live-regions="metrics results">
     <input type="hidden" name="week" value="<?= h($weekStart->format('Y-m-d')) ?>">
     <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="OS, cliente, serviço, equipamento ou funcionário"></div>
     <select class="filter-select" name="employee_id"><option value="">Todos os funcionários</option><?php foreach ($employees as $employee): ?><option value="<?= h((string) $employee->id()) ?>" <?= $filters['employee_id'] === (string) $employee->id() ? 'selected' : '' ?>><?= h($employee->displayCode() . ' — ' . $employee->name()) ?></option><?php endforeach; ?></select>
@@ -80,10 +80,10 @@ $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday
     <input class="filter-select" name="service" value="<?= h($filters['service']) ?>" placeholder="Serviço">
     <input class="filter-select" name="equipment" value="<?= h($filters['equipment']) ?>" placeholder="Equipamento">
     <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-    <a class="btn-filter btn-filter-ghost" href="painel-semanal.php?week=<?= h($weekStart->format('Y-m-d')) ?>"><i class="bi bi-x-lg"></i> Limpar</a>
+    <a class="btn-filter btn-filter-ghost" href="painel-semanal.php?week=<?= h($weekStart->format('Y-m-d')) ?>" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
 </form>
 
-<section class="panel weekly-board-panel">
+<section class="panel weekly-board-panel" data-live-region="results">
     <div class="panel-header"><div class="panel-title"><i class="bi bi-calendar-week"></i>Semana de <?= h($weekStart->format('d/m/Y')) ?></div><div class="d-flex gap-2"><a class="btn-filter btn-filter-ghost" href="painel-semanal.php?week=<?= h($prevWeek->format('Y-m-d')) ?>">Semana anterior</a><a class="btn-filter btn-filter-primary" href="painel-semanal.php?week=<?= h(date('Y-m-d')) ?>">Hoje</a><a class="btn-filter btn-filter-ghost" href="painel-semanal.php?week=<?= h($nextWeek->format('Y-m-d')) ?>">Próxima semana</a></div></div>
     <div class="weekly-board">
         <?php for ($i = 0; $i < 7; $i++): $day = $weekStart->modify('+' . $i . ' days'); $key = $day->format('Y-m-d'); $dayOrders = $weekGroups[$key] ?? []; ?>
@@ -95,14 +95,14 @@ $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday
                         <?php foreach ($byTeam as $teamName => $teamOrders): ?>
                             <section class="team-group"><header class="team-group-header"><div class="team-info"><strong class="team-names"><?= h($teamName) ?></strong><span class="team-role"><?= h(count($teamOrders) . ' atendimento' . (count($teamOrders) === 1 ? '' : 's')) ?></span></div></header>
                                 <?php foreach ($teamOrders as $order): ?>
-                                    <article class="week-service-card priority-<?= h($order->priority()) ?>">
+                                    <article class="week-service-card priority-<?= h($order->priority()) ?>" data-record-actions>
                                         <div class="week-service-time"><?= h(weekly_time($order->scheduledStart(), $order->scheduledEnd())) ?></div>
                                         <strong class="week-service-os"><?= h($order->displayNumber()) ?></strong>
                                         <div class="week-service-client"><?= h($order->clientName()) ?></div>
                                         <div class="week-service-title"><?= h($order->mainService() ?? 'Serviço não informado') ?></div>
                                         <div class="week-service-details"><span><?= h($order->displayEquipment()) ?></span><?= weekly_team_lines($teamsByOrder[$order->id()] ?? []) ?></div>
                                         <div class="week-service-meta"><span class="priority-label"><?= h(weekly_priority_label($order->priority())) ?></span><span><?= h(weekly_status_label($order->status())) ?></span></div>
-                                        <div class="mt-2 d-flex justify-content-end">
+                                        <div class="mt-2 d-flex justify-content-end record-actions-source">
                                             <div class="dropdown table-action-dropdown">
                                                 <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações da OS <?= h($order->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
                                                 <ul class="dropdown-menu dropdown-menu-end">

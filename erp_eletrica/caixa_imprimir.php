@@ -67,9 +67,10 @@ foreach ($metodosObrigatorios as $metodo) {
     }
 }
 
+$valorAbertura = (float)($caixa['valor_abertura'] ?? 0);
 $dinheiroInformado = $breakdownParaMostrar['DINHEIRO']['informado'] ?? (float)($summary['breakdown']['DINHEIRO'] ?? 0);
-$saldoFinalSistema = (float)$caixa['valor_abertura'] + (float)($summary['saldo'] ?? 0);
-$saldoFinalInformado = (float)$caixa['valor_abertura'] + $dinheiroInformado + (float)($summary['suprimento'] ?? 0) - (float)($summary['sangria'] ?? 0);
+$saldoFinalSistema = $valorAbertura + (float)($summary['saldo'] ?? 0);
+$saldoFinalInformado = $valorAbertura + $dinheiroInformado + (float)($summary['suprimento'] ?? 0) - (float)($summary['sangria'] ?? 0);
 $diferencaPagamentos = $totalInformadoPagamentos - $totalCalculadoPagamentos;
 $diferencaGaveta = $saldoFinalInformado - $saldoFinalSistema;
 $labelsPagamento = [
@@ -194,6 +195,11 @@ $labelsPagamento = [
 
     <div class="hr"></div>
     <div class="fw-bold mb-1">TOTAIS</div>
+
+    <div class="flex">
+        <span class="fw-bold">ABERTURA CAIXA</span>
+        <span class="fw-bold"><?= caixa_fmt_moeda($valorAbertura) ?></span>
+    </div>
     
     <div class="flex">
         <span class="fw-bold">DINHEIRO CONF.</span>

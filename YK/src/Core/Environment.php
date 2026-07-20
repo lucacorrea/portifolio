@@ -20,6 +20,7 @@ final class Environment
         'DB_PASSWORD',
         'DB_CHARSET',
         'DB_AUTO_MIGRATE',
+        'DB_WEB_MIGRATIONS',
 
         'SESSION_NAME',
         'SESSION_TIMEOUT',
@@ -43,7 +44,7 @@ final class Environment
      *
      * /home/usuario/
      * ├── configuracoes/
-     * │   └── YK/
+     * │   └── yk/
      * │       └── .env
      * └── public_html/
      *     └── YK/
@@ -52,7 +53,7 @@ final class Environment
      * /home/usuario/public_html/YK
      *
      * O resultado será:
-     * /home/usuario/configuracoes/YK/.env
+     * /home/usuario/configuracoes/yk/.env
      */
     public static function resolveFilePath(string $projectRoot): string
     {
@@ -85,7 +86,7 @@ final class Environment
             . DIRECTORY_SEPARATOR
             . 'configuracoes'
             . DIRECTORY_SEPARATOR
-            . 'YK'
+            . 'yk'
             . DIRECTORY_SEPARATOR
             . '.env';
     }

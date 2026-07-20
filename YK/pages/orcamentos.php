@@ -59,6 +59,22 @@ function budget_money(string $value): string { return money($value); }
 function budget_date(string $value): string { try { return (new DateTimeImmutable($value))->format('d/m/Y'); } catch (Throwable) { return '-'; } }
 function budget_status_label(string $status): string { return ['rascunho' => 'Rascunho', 'enviado' => 'Enviado', 'aguardando_aprovacao' => 'Aguardando aprovação', 'aprovado' => 'Aprovado', 'recusado' => 'Recusado', 'vencido' => 'Vencido'][$status] ?? 'Rascunho'; }
 function budget_status_class(string $status): string { return ['rascunho' => 'gray', 'enviado' => 'blue', 'aguardando_aprovacao' => 'amber', 'aprovado' => 'green', 'recusado' => 'red', 'vencido' => 'red'][$status] ?? 'gray'; }
+function budget_status_filter_url(array $filters, string $status): string {
+    $query = array_filter($filters, static fn(mixed $value): bool => is_scalar($value) && (string) $value !== '');
+    if ($status === '') unset($query['status']);
+    else $query['status'] = $status;
+    return 'orcamentos.php' . ($query === [] ? '' : '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986));
+}
+
+$statusFilterButtons = [
+    ['', 'Todos', 'all'],
+    ['rascunho', 'Rascunho', 'gray'],
+    ['enviado', 'Enviado', 'blue'],
+    ['aguardando_aprovacao', 'Aguardando aprovação', 'amber'],
+    ['aprovado', 'Aprovado', 'green'],
+    ['recusado', 'Recusado', 'red'],
+    ['vencido', 'Vencido', 'red'],
+];
 
 $createData = budget_data($recovery, 'create');
 $editData = budget_data($recovery, 'edit');
@@ -76,35 +92,43 @@ $editError = budget_error($recovery, 'edit');
     ['Valor aprovado', budget_money((string) ($summary['approved_value'] ?? '0')), 'bi-cash-stack', '#7C3AED', 'total aprovado'],
 ]); ?>
 
-<form class="filter-bar" method="get" action="orcamentos.php">
+<form class="filter-bar" method="get" action="orcamentos.php" data-live-filter="budgets" data-live-regions="metrics results">
     <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Buscar número ou cliente" maxlength="150"></div>
     <input class="filter-select input-date" type="date" name="date_from" value="<?= h($filters['date_from']) ?>" aria-label="Período inicial">
     <input class="filter-select input-date" type="date" name="date_to" value="<?= h($filters['date_to']) ?>" aria-label="Período final">
     <select class="filter-select" name="client_id" aria-label="Cliente"><option value="">Todos os clientes</option><?php foreach ($clients as $client): ?><option value="<?= h((string) $client->id()) ?>" <?= $filters['client_id'] === (string) $client->id() ? 'selected' : '' ?>><?= h($client->name()) ?></option><?php endforeach; ?></select>
     <select class="filter-select" name="status" aria-label="Status"><option value="">Todos os status</option><option value="exceto_recusados" <?= $filters['status'] === 'exceto_recusados' ? 'selected' : '' ?>>Todos exceto canceladas</option><?php foreach (['rascunho','enviado','aguardando_aprovacao','aprovado','recusado','vencido'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(budget_status_label($status)) ?></option><?php endforeach; ?></select>
-    <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button><a class="btn-filter btn-filter-ghost" href="orcamentos.php"><i class="bi bi-x-lg"></i> Limpar filtros</a>
+    <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button><a class="btn-filter btn-filter-ghost" href="orcamentos.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar filtros</a>
 </form>
 
-<section class="panel">
-    <div class="panel-header"><div class="panel-title"><i class="bi bi-file-earmark-text"></i>Orçamentos</div><?php if ($canCreate): ?><button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="#modal-orcamento"><i class="bi bi-file-earmark-plus"></i><span>Novo orçamento</span></button><?php endif; ?></div>
+<section class="panel" data-live-region="results">
+    <div class="panel-header budget-panel-header">
+        <div class="budget-panel-heading">
+            <div class="panel-title"><i class="bi bi-file-earmark-text"></i>Orçamentos</div>
+            <nav class="budget-status-filters" aria-label="Filtrar orçamentos por status">
+                <?php foreach ($statusFilterButtons as [$statusValue, $statusLabel, $statusClass]): ?>
+                    <?php $isActiveStatus = $filters['status'] === $statusValue; ?>
+                    <a
+                        class="budget-status-filter budget-status-filter-<?= h($statusClass) ?> js-budget-status-filter<?= $isActiveStatus ? ' active' : '' ?>"
+                        href="<?= h(budget_status_filter_url($filters, $statusValue)) ?>"
+                        data-status="<?= h($statusValue) ?>"
+                        <?= $isActiveStatus ? 'aria-current="true"' : '' ?>
+                    ><?= h($statusLabel) ?></a>
+                <?php endforeach; ?>
+            </nav>
+        </div>
+        <?php if ($canCreate): ?><button class="btn-new-os" type="button" data-bs-toggle="modal" data-bs-target="#modal-orcamento"><i class="bi bi-file-earmark-plus"></i><span>Novo orçamento</span></button><?php endif; ?>
+    </div>
     <?php if ($budgets === []): ?><?php empty_state('Nenhum orçamento encontrado', 'Cadastre o primeiro orçamento ou ajuste os filtros.'); ?><?php else: ?>
     <div class="table-panel-wrap"><table class="os-table budgets-table"><thead><tr><th>Número</th><th>Cliente</th><th>Emissão</th><th>Validade</th><th>Itens</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>
         <?php foreach ($budgets as $budget): ?>
             <?php $displayStatus = $budget->displayStatus(); ?>
             <tr>
                 <td>
-                    <?php if ($canEdit && !in_array($budget->status(), ['aprovado', 'recusado'], true)): ?>
-                        <button class="table-inline-action js-budget-edit" type="button" data-budget-id="<?= h((string) $budget->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-orcamento-edit"><?= h($budget->displayNumber()) ?></button>
-                    <?php else: ?>
-                        <strong><?= h($budget->displayNumber()) ?></strong>
-                    <?php endif; ?>
+                    <strong><?= h($budget->displayNumber()) ?></strong>
                     <?php if (isset($ordersByBudget[$budget->id()])): ?><br><small class="text-muted">OS criada: <?= h($ordersByBudget[$budget->id()]['numero']) ?></small><?php endif; ?>
                 </td><td>
-                    <?php if ($canEdit && !in_array($budget->status(), ['aprovado', 'recusado'], true)): ?>
-                        <button class="table-inline-action js-budget-edit" type="button" data-budget-id="<?= h((string) $budget->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-orcamento-edit"><?= h($budget->clientName()) ?></button>
-                    <?php else: ?>
-                        <?= h($budget->clientName()) ?>
-                    <?php endif; ?>
+                    <?= h($budget->clientName()) ?>
                     <br><small class="text-muted"><?= h($budget->clientCode()) ?></small>
                 </td><td><?= h(budget_date($budget->issueDate())) ?></td><td><?= h(budget_date($budget->validUntil())) ?></td><td><?= h((string) $budget->itemsCount()) ?></td><td><?= h(budget_money($budget->total())) ?></td><td><span class="badge-soft badge-<?= h(budget_status_class($displayStatus)) ?>"><?= h(budget_status_label($displayStatus)) ?></span></td>
                 <td class="table-actions-cell"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do orçamento <?= h($budget->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
@@ -165,9 +189,25 @@ document.addEventListener('DOMContentLoaded', function () {
     function restoreRows(form, data) { form.querySelectorAll('.budget-items').forEach(function (box) { box.replaceChildren(); }); (data.services || []).forEach(function (item) { addRow(form, 'servico', item); }); (data.products || []).forEach(function (item) { addRow(form, 'produto', item); }); (data.others || []).forEach(function (item) { addRow(form, 'outro', item); }); recalc(form); }
     document.querySelectorAll('.js-budget-form').forEach(function (form) { form.querySelectorAll('.js-add-budget-item').forEach(function (button) { button.addEventListener('click', function () { addRow(form, button.dataset.type); }); }); form.querySelectorAll('.js-budget-discount,.js-budget-increase').forEach(function (input) { input.addEventListener('input', function () { recalc(form); }); }); if (!form.closest('#modal-orcamento-edit') && !(recoveryModal === 'create' && hasRows(recoveryData))) addRow(form, 'servico'); });
     async function loadBudget(id, mode) { const response = await fetch('actions/orcamento-detalhes.php?id=' + encodeURIComponent(id) + (mode ? '&mode=' + mode : ''), { headers: { Accept: 'application/json' } }); if (!response.ok) throw new Error('Falha ao carregar orçamento.'); return response.json(); }
-    document.querySelectorAll('.js-budget-view').forEach(function (button) { button.addEventListener('click', async function () { const data = await loadBudget(button.dataset.budgetId); const budget = data.budget; document.getElementById('view-budget-subtitle').textContent = budget.number; const summary = document.getElementById('view-budget-summary'); summary.replaceChildren(); [['Número', budget.number], ['Cliente', budget.client_name + ' · ' + (budget.client_document || '-')], ['Emissão', budget.issue_date], ['Validade', budget.valid_until], ['Status', budget.display_status], ['Subtotal serviços', money(parseNumber(budget.services_subtotal))], ['Subtotal produtos', money(parseNumber(budget.products_subtotal))], ['Subtotal outros', money(parseNumber(budget.others_subtotal))], ['Desconto', money(parseNumber(budget.discount))], ['Acréscimo', money(parseNumber(budget.increase))], ['Total', money(parseNumber(budget.total))], ['Observações', budget.notes || '-']].forEach(function (pair) { const div = document.createElement('div'); const span = document.createElement('span'); span.textContent = pair[0]; const strong = document.createElement('strong'); strong.textContent = pair[1]; div.append(span, strong); summary.appendChild(div); }); const tbody = document.getElementById('view-budget-items'); tbody.replaceChildren(); data.items.forEach(function (item) { const row = document.createElement('tr'); [item.type, item.description, item.unit, item.quantity, money(parseNumber(item.unit_price)), money(parseNumber(item.discount)), money(parseNumber(item.subtotal))].forEach(function (value) { const cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell); }); tbody.appendChild(row); }); }); });
-    document.querySelectorAll('.js-budget-edit').forEach(function (button) { button.addEventListener('click', async function () { const data = await loadBudget(button.dataset.budgetId, 'edit'); const budget = data.budget; const modal = document.getElementById('modal-orcamento-edit'); const form = modal.querySelector('form'); form.querySelectorAll('.budget-items').forEach(function (box) { box.replaceChildren(); }); [['id', budget.id], ['number', budget.number], ['client', budget.client_id], ['issue-date', budget.issue_date], ['valid-until', budget.valid_until], ['status', budget.status], ['notes', budget.notes], ['discount', budget.discount], ['increase', budget.increase]].forEach(function (pair) { const el = document.getElementById('edit-budget-' + pair[0]) || form.querySelector(pair[0] === 'discount' ? '.js-budget-discount' : pair[0] === 'increase' ? '.js-budget-increase' : ''); if (el) el.value = pair[1] || ''; }); data.items.forEach(function (item) { addRow(form, item.type, item); }); recalc(form); }); });
-    document.querySelectorAll('.js-budget-status').forEach(function (button) { button.addEventListener('click', function () { const reject = button.dataset.operation === 'reject'; document.getElementById('status-budget-id').value = button.dataset.budgetId; document.getElementById('status-budget-operation').value = button.dataset.operation; document.getElementById('budget-status-title').textContent = reject ? 'Recusar orçamento' : 'Aprovar orçamento'; document.getElementById('budget-status-message').textContent = (reject ? 'Deseja recusar ' : 'Deseja aprovar ') + button.dataset.budgetNumber + '?'; document.getElementById('budget-reject-reason-wrap').classList.toggle('d-none', !reject); }); });
+    document.addEventListener('click', async function (event) {
+        const statusFilterButton = event.target.closest('.js-budget-status-filter');
+        if (statusFilterButton) {
+            event.preventDefault();
+            const statusSelect = document.querySelector('form[data-live-filter="budgets"] select[name="status"]');
+            if (!statusSelect) {
+                window.location.assign(statusFilterButton.href);
+                return;
+            }
+            statusSelect.value = statusFilterButton.dataset.status || '';
+            statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+        }
+        const button = event.target.closest('.js-budget-view, .js-budget-edit, .js-budget-status');
+        if (!button) return;
+        if (button.classList.contains('js-budget-view')) { const data = await loadBudget(button.dataset.budgetId); const budget = data.budget; document.getElementById('view-budget-subtitle').textContent = budget.number; const summary = document.getElementById('view-budget-summary'); summary.replaceChildren(); [['Número', budget.number], ['Cliente', budget.client_name + ' · ' + (budget.client_document || '-')], ['Emissão', budget.issue_date], ['Validade', budget.valid_until], ['Status', budget.display_status], ['Subtotal serviços', money(parseNumber(budget.services_subtotal))], ['Subtotal produtos', money(parseNumber(budget.products_subtotal))], ['Subtotal outros', money(parseNumber(budget.others_subtotal))], ['Desconto', money(parseNumber(budget.discount))], ['Acréscimo', money(parseNumber(budget.increase))], ['Total', money(parseNumber(budget.total))], ['Observações', budget.notes || '-']].forEach(function (pair) { const div = document.createElement('div'); const span = document.createElement('span'); span.textContent = pair[0]; const strong = document.createElement('strong'); strong.textContent = pair[1]; div.append(span, strong); summary.appendChild(div); }); const tbody = document.getElementById('view-budget-items'); tbody.replaceChildren(); data.items.forEach(function (item) { const row = document.createElement('tr'); [item.type, item.description, item.unit, item.quantity, money(parseNumber(item.unit_price)), money(parseNumber(item.discount)), money(parseNumber(item.subtotal))].forEach(function (value) { const cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell); }); tbody.appendChild(row); }); }
+        if (button.classList.contains('js-budget-edit')) { const data = await loadBudget(button.dataset.budgetId, 'edit'); const budget = data.budget; const modal = document.getElementById('modal-orcamento-edit'); const form = modal.querySelector('form'); form.querySelectorAll('.budget-items').forEach(function (box) { box.replaceChildren(); }); [['id', budget.id], ['number', budget.number], ['client', budget.client_id], ['issue-date', budget.issue_date], ['valid-until', budget.valid_until], ['status', budget.status], ['notes', budget.notes], ['discount', budget.discount], ['increase', budget.increase]].forEach(function (pair) { const el = document.getElementById('edit-budget-' + pair[0]) || form.querySelector(pair[0] === 'discount' ? '.js-budget-discount' : pair[0] === 'increase' ? '.js-budget-increase' : ''); if (el) el.value = pair[1] || ''; }); data.items.forEach(function (item) { addRow(form, item.type, item); }); recalc(form); }
+        if (button.classList.contains('js-budget-status')) { const reject = button.dataset.operation === 'reject'; document.getElementById('status-budget-id').value = button.dataset.budgetId; document.getElementById('status-budget-operation').value = button.dataset.operation; document.getElementById('budget-status-title').textContent = reject ? 'Recusar orçamento' : 'Aprovar orçamento'; document.getElementById('budget-status-message').textContent = (reject ? 'Deseja recusar ' : 'Deseja aprovar ') + button.dataset.budgetNumber + '?'; document.getElementById('budget-reject-reason-wrap').classList.toggle('d-none', !reject); }
+    });
     const targets = { create: 'modal-orcamento', edit: 'modal-orcamento-edit' }; if (recoveryModal && targets[recoveryModal] && window.bootstrap) { const modal = document.getElementById(targets[recoveryModal]); if (modal) { const form = modal.querySelector('form'); if (form && hasRows(recoveryData)) restoreRows(form, recoveryData); bootstrap.Modal.getOrCreateInstance(modal).show(); } }
 });
 </script>

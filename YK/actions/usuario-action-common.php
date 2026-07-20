@@ -113,51 +113,11 @@ function user_redirect(
     Application $application,
     string $target = 'usuarios.php'
 ): never {
-    $decodedTarget = rawurldecode(
-        trim($target)
-    );
-
-    $targetPath = parse_url(
-        $decodedTarget,
-        PHP_URL_PATH
-    );
-
-    if (
-        $decodedTarget !== ''
-        && $targetPath === 'usuarios.php'
-        && !str_contains($decodedTarget, "\0")
-        && !str_contains($decodedTarget, '..')
-        && !str_starts_with($decodedTarget, '/')
-        && !str_starts_with($decodedTarget, '\\')
-        && !str_starts_with($decodedTarget, '//')
-        && !preg_match('/^[a-z][a-z0-9+.-]*:/i', $decodedTarget)
-    ) {
-        $basePath = rtrim(
-            dirname(
-                $application
-                    ->redirect()
-                    ->loginUrl()
-            ),
-            '/\\'
-        );
-
-        header(
-            'Location: '
-            . $basePath
-            . '/'
-            . $decodedTarget,
-            true,
-            303
-        );
-
-        exit;
-    }
-
     header(
         'Location: '
         . $application
             ->redirect()
-            ->applicationUrl($target),
+            ->applicationUrl(action_return_target($application, $target)),
         true,
         303
     );
@@ -245,6 +205,7 @@ function user_store_form_recovery(
         'password_confirmation',
         'senha_hash',
         'csrf_token',
+        'return_to',
     ];
 
     $safeData = [];

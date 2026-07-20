@@ -10,6 +10,9 @@ use PDO;
 
 final class AccountsReceivableManagementService
 {
+    private const PAYMENT_FORMS = ['dinheiro', 'pix', 'cartao_debito', 'cartao_credito', 'transferencia', 'outro'];
+    private const ELIGIBLE_PAYMENT_STATUSES = ['pendente', 'parcial', 'vencida'];
+
     public function __construct(
         private readonly PDO $connection,
         private readonly CashManagementService $cash
@@ -48,22 +51,25 @@ final class AccountsReceivableManagementService
     {
         $where = [];
         $params = [];
-        $bucket = (string) ($filters['bucket'] ?? '');
+        $bucket = $this->filterValue($filters, 'bucket', ['', 'vencidos', 'hoje', 'semana', '15dias', 'sem_vencimento']);
         if ($bucket === 'vencidos') $where[] = "cr.vencimento_em < CURRENT_DATE AND cr.status IN ('pendente','parcial','vencida')";
         if ($bucket === 'hoje') $where[] = "cr.vencimento_em = CURRENT_DATE";
         if ($bucket === 'semana') $where[] = "cr.vencimento_em BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY)";
         if ($bucket === '15dias') $where[] = "cr.vencimento_em BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 15 DAY)";
         if ($bucket === 'sem_vencimento') $where[] = 'cr.vencimento_em IS NULL';
-        if (trim((string) ($filters['status'] ?? '')) !== '') {
+        $status = $this->filterValue($filters, 'status', ['', 'pendente', 'parcial', 'vencida', 'paga', 'estornada', 'cancelada']);
+        if ($status !== '') {
             $where[] = 'cr.status = :status';
-            $params['status'] = trim((string) $filters['status']);
+            $params['status'] = $status;
         }
-        if (trim((string) ($filters['search'] ?? '')) !== '') {
+        $search = $this->filterSearch($filters['search'] ?? '');
+        if ($search !== '') {
             $where[] = '(c.nome LIKE :search OR os.numero LIKE :search)';
-            $params['search'] = '%' . trim((string) $filters['search']) . '%';
+            $params['search'] = '%' . $search . '%';
         }
 
-        $sql = 'SELECT cr.*, os.numero AS os_numero, c.nome AS cliente_nome, c.telefone AS cliente_telefone
+        $sql = 'SELECT cr.*, os.numero AS os_numero, c.id AS cliente_id,
+                       c.nome AS cliente_nome, c.telefone AS cliente_telefone
                   FROM contas_receber cr
                   JOIN ordens_servico os ON os.id = cr.ordem_servico_id
                   JOIN clientes c ON c.id = os.cliente_id';
@@ -145,43 +151,87 @@ final class AccountsReceivableManagementService
 
         try {
             $account = $this->lockAccount($accountId);
-            if (!in_array($account['status'], ['pendente', 'parcial', 'vencida'], true)) {
+            if (!in_array($account['status'], self::ELIGIBLE_PAYMENT_STATUSES, true)) {
                 throw new InvalidArgumentException('A situação da conta não permite novo pagamento.');
             }
-            $amount = $this->money($value);
-            if ($amount <= 0.0 || $amount > (float) $account['saldo']) {
+            $amount = $this->moneyToCents($value);
+            if ($amount <= 0 || $amount > $this->moneyToCents((string) $account['saldo'])) {
                 throw new InvalidArgumentException('Valor de pagamento inválido para o saldo.');
             }
-
-            $cashId = $this->cash->registerEntry('conta_receber_pagamento', $accountId, 'Recebimento de conta a receber', $form, number_format($amount, 2, '.', ''), $userId);
-            $statement = $this->connection->prepare(
-                'INSERT INTO ordem_servico_pagamentos
-                    (ordem_servico_id, valor, forma_pagamento, recebido_em, observacao, status, registrado_por, caixa_movimentacao_id)
-                 VALUES (:order_id, :value, :form, NOW(), :notes, "ativo", :user_id, :cash_id)'
-            );
-            $statement->execute([
-                'order_id' => $account['ordem_servico_id'],
-                'value' => number_format($amount, 2, '.', ''),
-                'form' => $form,
-                'notes' => $notes,
-                'user_id' => $userId,
-                'cash_id' => $cashId,
-            ]);
-
-            $received = (float) $account['valor_recebido'] + $amount;
-            $balance = max(0.0, (float) $account['valor_total'] - $received);
-            $status = $balance <= 0.0 ? 'paga' : 'parcial';
-            $this->connection->prepare(
-                'UPDATE contas_receber SET valor_recebido = :received, saldo = :balance, status = :status WHERE id = :id'
-            )->execute([
-                'id' => $accountId,
-                'received' => number_format($received, 2, '.', ''),
-                'balance' => number_format($balance, 2, '.', ''),
-                'status' => $status,
-            ]);
-            $this->event($accountId, $status === 'paga' ? 'quitacao' : 'pagamento', 'Pagamento registrado.', number_format($amount, 2, '.', ''), $userId);
+            $this->applyPaymentToLockedAccount($account, $amount, $form, $notes, $userId);
 
             if ($ownsTransaction) $this->connection->commit();
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    /**
+     * @param array<int,mixed> $accountIds
+     * @return array{client_id:int,client_name:string,count:int,total:string,account_ids:array<int,int>}
+     */
+    public function registerBatchPayment(array $accountIds, string $form, ?string $notes, int $userId): array
+    {
+        $ids = $this->batchAccountIds($accountIds);
+        $form = $this->paymentForm($form);
+        $notes = $this->paymentNotes($notes);
+        if ($userId <= 0) {
+            throw new InvalidArgumentException('Usuário inválido para registrar a baixa.');
+        }
+
+        $ownsTransaction = !$this->connection->inTransaction();
+        if ($ownsTransaction) $this->connection->beginTransaction();
+
+        try {
+            $accounts = $this->lockAccountsForBatch($ids);
+            if (count($accounts) !== count($ids)) {
+                throw new InvalidArgumentException('Uma ou mais contas a receber não foram encontradas.');
+            }
+
+            $clientId = (int) $accounts[0]['cliente_id'];
+            $clientName = (string) $accounts[0]['cliente_nome'];
+            $totalPaid = 0;
+            foreach ($accounts as $account) {
+                if ((int) $account['cliente_id'] !== $clientId) {
+                    throw new InvalidArgumentException('Selecione apenas contas do mesmo cliente.');
+                }
+                if (!in_array((string) $account['status'], self::ELIGIBLE_PAYMENT_STATUSES, true)) {
+                    throw new InvalidArgumentException('Uma ou mais contas não permitem baixa.');
+                }
+                if ((string) $account['os_status'] !== 'finalizada' || $account['os_excluida_em'] !== null) {
+                    throw new InvalidArgumentException('Todas as OS devem estar finalizadas e ativas para a baixa em lote.');
+                }
+
+                $balance = $this->moneyToCents((string) $account['saldo']);
+                if ($balance <= 0) {
+                    throw new InvalidArgumentException('Uma ou mais contas não possuem saldo para baixa.');
+                }
+                if ($totalPaid > PHP_INT_MAX - $balance) {
+                    throw new InvalidArgumentException('Valor total da baixa excede o limite permitido.');
+                }
+                $totalPaid += $balance;
+            }
+
+            foreach ($accounts as $account) {
+                $this->applyPaymentToLockedAccount(
+                    $account,
+                    $this->moneyToCents((string) $account['saldo']),
+                    $form,
+                    $notes,
+                    $userId
+                );
+            }
+
+            if ($ownsTransaction) $this->connection->commit();
+
+            return [
+                'client_id' => $clientId,
+                'client_name' => $clientName,
+                'count' => count($accounts),
+                'total' => $this->centsToDecimal($totalPaid),
+                'account_ids' => $ids,
+            ];
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
             throw $exception;
@@ -195,6 +245,75 @@ final class AccountsReceivableManagementService
         $row = $statement->fetch();
         if ($row === false) throw new InvalidArgumentException('Conta a receber não encontrada.');
         return $row;
+    }
+
+    /** @param int[] $ids @return array<int,array<string,mixed>> */
+    private function lockAccountsForBatch(array $ids): array
+    {
+        $placeholders = [];
+        $params = [];
+        foreach ($ids as $index => $id) {
+            $key = 'id_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $id;
+        }
+
+        $statement = $this->connection->prepare(
+            'SELECT cr.*, os.status AS os_status, os.excluida_em AS os_excluida_em,
+                    c.id AS cliente_id, c.nome AS cliente_nome
+               FROM contas_receber cr
+               JOIN ordens_servico os ON os.id = cr.ordem_servico_id
+               JOIN clientes c ON c.id = os.cliente_id
+              WHERE cr.id IN (' . implode(', ', $placeholders) . ')
+              ORDER BY cr.id
+              FOR UPDATE'
+        );
+        $statement->execute($params);
+        return $statement->fetchAll();
+    }
+
+    /** @param array<string,mixed> $account */
+    private function applyPaymentToLockedAccount(array $account, int $amount, string $form, ?string $notes, int $userId): void
+    {
+        $form = $this->paymentForm($form);
+        $notes = $this->paymentNotes($notes);
+        $accountId = (int) $account['id'];
+        $value = $this->centsToDecimal($amount);
+        $cashId = $this->cash->registerEntry(
+            'conta_receber_pagamento',
+            $accountId,
+            'Recebimento de conta a receber',
+            $form,
+            $value,
+            $userId
+        );
+        $statement = $this->connection->prepare(
+            'INSERT INTO ordem_servico_pagamentos
+                (ordem_servico_id, valor, forma_pagamento, recebido_em, observacao, status, registrado_por, caixa_movimentacao_id)
+             VALUES (:order_id, :value, :form, NOW(), :notes, "ativo", :user_id, :cash_id)'
+        );
+        $statement->execute([
+            'order_id' => $account['ordem_servico_id'],
+            'value' => $value,
+            'form' => $form,
+            'notes' => $notes,
+            'user_id' => $userId,
+            'cash_id' => $cashId,
+        ]);
+
+        $received = $this->moneyToCents((string) $account['valor_recebido']) + $amount;
+        $total = $this->moneyToCents((string) $account['valor_total']);
+        $balance = max(0, $total - $received);
+        $status = $balance === 0 ? 'paga' : 'parcial';
+        $this->connection->prepare(
+            'UPDATE contas_receber SET valor_recebido = :received, saldo = :balance, status = :status WHERE id = :id'
+        )->execute([
+            'id' => $accountId,
+            'received' => $this->centsToDecimal($received),
+            'balance' => $this->centsToDecimal($balance),
+            'status' => $status,
+        ]);
+        $this->event($accountId, $status === 'paga' ? 'quitacao' : 'pagamento', 'Pagamento registrado.', $value, $userId);
     }
 
     private function findIdByOrder(int $orderId): int
@@ -219,6 +338,99 @@ final class AccountsReceivableManagementService
         if (str_contains($value, ',')) $value = str_replace(',', '.', str_replace('.', '', $value));
         if (!preg_match('/^\d+(\.\d+)?$/', $value)) throw new InvalidArgumentException('Valor monetário inválido.');
         return (float) $value;
+    }
+
+    /** @param array<string,mixed> $filters @param string[] $allowed */
+    private function filterValue(array $filters, string $key, array $allowed): string
+    {
+        $value = $filters[$key] ?? '';
+        if (!is_string($value)) {
+            throw new InvalidArgumentException('Filtro inválido.');
+        }
+        $value = trim($value);
+        if (!in_array($value, $allowed, true)) {
+            throw new InvalidArgumentException('Filtro inválido.');
+        }
+        return $value;
+    }
+
+    private function filterSearch(mixed $value): string
+    {
+        if (!is_string($value)) {
+            throw new InvalidArgumentException('Busca inválida.');
+        }
+        $value = trim($value);
+        $length = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+        if (str_contains($value, "\0") || $length > 150) {
+            throw new InvalidArgumentException('Busca inválida.');
+        }
+        return $value;
+    }
+
+    /** @param array<int,mixed> $values @return int[] */
+    private function batchAccountIds(array $values): array
+    {
+        if (count($values) < 2 || count($values) > 100) {
+            throw new InvalidArgumentException('Selecione de 2 a 100 contas para a baixa em lote.');
+        }
+        $ids = [];
+        foreach ($values as $value) {
+            $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if (!is_int($id)) {
+                throw new InvalidArgumentException('Conta inválida para a baixa em lote.');
+            }
+            $ids[] = $id;
+        }
+        if (count(array_unique($ids, SORT_NUMERIC)) !== count($ids)) {
+            throw new InvalidArgumentException('Não repita contas na baixa em lote.');
+        }
+        sort($ids, SORT_NUMERIC);
+        return $ids;
+    }
+
+    private function paymentForm(string $form): string
+    {
+        $form = trim($form);
+        if (!in_array($form, self::PAYMENT_FORMS, true)) {
+            throw new InvalidArgumentException('Forma de pagamento inválida.');
+        }
+        return $form;
+    }
+
+    private function paymentNotes(?string $notes): ?string
+    {
+        $notes = trim((string) ($notes ?? ''));
+        if ($notes === '') return null;
+        $length = function_exists('mb_strlen') ? mb_strlen($notes, 'UTF-8') : strlen($notes);
+        if (str_contains($notes, "\0") || $length > 255) {
+            throw new InvalidArgumentException('Observação de pagamento inválida.');
+        }
+        return $notes;
+    }
+
+    private function moneyToCents(string $value): int
+    {
+        $value = str_replace(' ', '', trim($value));
+        if (str_contains($value, ',')) {
+            $value = str_replace(',', '.', str_replace('.', '', $value));
+        }
+        if (!preg_match('/^\d+(?:\.\d{1,2})?$/', $value)) {
+            throw new InvalidArgumentException('Valor monetário inválido.');
+        }
+        [$whole, $fraction] = array_pad(explode('.', $value, 2), 2, '');
+        if (strlen($whole) > 16) {
+            throw new InvalidArgumentException('Valor monetário excede o limite permitido.');
+        }
+        $wholeValue = (int) $whole;
+        if ($wholeValue > intdiv(PHP_INT_MAX - 99, 100)) {
+            throw new InvalidArgumentException('Valor monetário excede o limite permitido.');
+        }
+        return ($wholeValue * 100) + (int) str_pad($fraction, 2, '0');
+    }
+
+    private function centsToDecimal(int $value): string
+    {
+        return intdiv($value, 100) . '.' . str_pad((string) ($value % 100), 2, '0', STR_PAD_LEFT);
     }
 
     private function format(mixed $value): string

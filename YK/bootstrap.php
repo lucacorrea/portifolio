@@ -6,6 +6,7 @@ use App\Core\Environment;
 use App\Core\Application;
 use App\Core\MigrationException;
 use App\Core\MigrationRunner;
+use App\Core\WebMigrationCoordinator;
 
 $vendorAutoload = __DIR__ . '/vendor/autoload.php';
 if (is_file($vendorAutoload)) {
@@ -131,6 +132,21 @@ try {
         }
         if ($autoMigrate) {
             (new MigrationRunner($database->connection()))->run(__DIR__ . '/database/migrations');
+        }
+    } else {
+        $webMigrations = filter_var(
+            $environment->get('DB_WEB_MIGRATIONS', 'true'),
+            FILTER_VALIDATE_BOOLEAN,
+            FILTER_NULL_ON_FAILURE
+        );
+        if ($webMigrations === true) {
+            (new WebMigrationCoordinator(
+                __DIR__ . '/database/migrations',
+                __DIR__ . '/storage/cache/web-migration-state.json',
+                __DIR__ . '/storage/cache/web-migration.lock',
+                static fn (): bool => (new MigrationRunner($database->connection()))
+                    ->run(__DIR__ . '/database/migrations', 0)
+            ))->run();
         }
     }
 

@@ -8,6 +8,7 @@ use App\Repositories\SettingsRepository;
 use App\Security\Auth;
 use App\Security\Csrf;
 use App\Services\ProductService;
+use App\Services\UploadService;
 
 Auth::requireLogin();
 
@@ -15,6 +16,7 @@ $user = Auth::user();
 $empresaId = (int)($user['empresa_id'] ?? 0);
 $currentNivel = (string)($user['nivel'] ?? '');
 $productService = new ProductService();
+$uploadService = new UploadService();
 
 function canProductFormAccess(string $action, string $nivel): bool
 {
@@ -67,75 +69,13 @@ function productFormImageUrl(mixed $image): string
     return '../assets/img/prod-placeholder.svg';
 }
 
-function storeProductImage(int $empresaId, string $currentImage): array
-{
-    $file = $_FILES['imageFile'] ?? null;
-
-    if (!is_array($file) || (int)($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-        return [$currentImage, null];
-    }
-
-    if ((int)($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-        throw new InvalidArgumentException('Não foi possível receber a imagem do produto.');
-    }
-
-    if ((int)($file['size'] ?? 0) <= 0 || (int)$file['size'] > 2 * 1024 * 1024) {
-        throw new InvalidArgumentException('A imagem deve ter no máximo 2MB.');
-    }
-
-    $tmpName = (string)($file['tmp_name'] ?? '');
-    if ($tmpName === '' || !is_uploaded_file($tmpName)) {
-        throw new InvalidArgumentException('Arquivo de imagem inválido.');
-    }
-
-    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmpName);
-    $extensions = [
-        'image/jpeg' => 'jpg',
-        'image/png' => 'png',
-        'image/webp' => 'webp',
-        'image/gif' => 'gif',
-    ];
-
-    if (!is_string($mime) || !isset($extensions[$mime]) || @getimagesize($tmpName) === false) {
-        throw new InvalidArgumentException('Formato de imagem inválido. Use JPG, PNG, WEBP ou GIF.');
-    }
-
-    $directory = BASE_PATH . '/uploads/produtos';
-    if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
-        throw new RuntimeException('Não foi possível preparar o diretório de imagens.');
-    }
-
-    $filename = sprintf('empresa-%d-%s.%s', $empresaId, bin2hex(random_bytes(8)), $extensions[$mime]);
-    $absolutePath = $directory . '/' . $filename;
-
-    if (!move_uploaded_file($tmpName, $absolutePath)) {
-        throw new RuntimeException('Não foi possível salvar a imagem do produto.');
-    }
-
-    return ['uploads/produtos/' . $filename, $absolutePath];
-}
-
-function removeProductUpload(?string $absolutePath): void
-{
-    if ($absolutePath === null || !is_file($absolutePath)) {
-        return;
-    }
-
-    $uploadDirectory = realpath(BASE_PATH . '/uploads/produtos');
-    $fileDirectory = realpath(dirname($absolutePath));
-
-    if ($uploadDirectory !== false && $fileDirectory === $uploadDirectory) {
-        @unlink($absolutePath);
-    }
-}
-
 function removePreviousProductImage(string $image, string $newImage): void
 {
     if ($image === '' || $image === $newImage || !preg_match('#^uploads/produtos/[A-Za-z0-9._-]+$#', $image)) {
         return;
     }
 
-    removeProductUpload(BASE_PATH . '/' . $image);
+    (new UploadService())->removeProductUpload(BASE_PATH . '/' . $image);
 }
 
 function productFormData(array $source, array $fallback = []): array
@@ -246,7 +186,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $currentImage = (string)($existingProduct['image'] ?? '');
         $formData['image'] = $currentImage;
-        [$image, $uploadedAbsolutePath] = storeProductImage($empresaId, $currentImage);
+        [$image, $uploadedAbsolutePath] = $uploadService->storeProductImage(
+            $empresaId,
+            is_array($_FILES['imageFile'] ?? null) ? $_FILES['imageFile'] : null,
+            $currentImage
+        );
 
         $payload = [
             'id' => $productId,
@@ -278,10 +222,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         redirectProductList('success', $productId > 0 ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.');
     } catch (InvalidArgumentException | RuntimeException $e) {
-        removeProductUpload($uploadedAbsolutePath);
+        $uploadService->removeProductUpload($uploadedAbsolutePath);
         $formError = $e->getMessage();
     } catch (Throwable $e) {
-        removeProductUpload($uploadedAbsolutePath);
+        $uploadService->removeProductUpload($uploadedAbsolutePath);
         log_app_exception($e);
         $formError = 'Não foi possível salvar o produto. Verifique os dados e tente novamente.';
     }
@@ -373,13 +317,13 @@ require_once __DIR__ . '/layout/header.php';
           <button type="button" class="file-btn" data-select-product-image>Tirar foto</button>
         </div>
       </div>
-      <p class="product-form-help">JPG, PNG, WEBP ou GIF, com no máximo 2MB.</p>
+      <p class="product-form-help">JPG, PNG, WEBP ou GIF. Fotos grandes são reduzidas automaticamente para até 2MB.</p>
 
       <div class="product-form-section section-gap-small">
         <h2 class="product-form-section-title">Identificação</h2>
         <div class="form-grid">
           <div class="field"><label for="productName">Nome do produto</label><input id="productName" name="name" maxlength="180" value="<?= e($formData['name']) ?>" required></div>
-          <div class="field"><label for="productSku">SKU / Código interno</label><input id="productSku" name="sku" maxlength="80" value="<?= e($formData['sku']) ?>" required></div>
+          <div class="field"><label for="productSku">SKU / Código interno</label><input id="productSku" name="sku" maxlength="80" value="<?= e($formData['sku']) ?>"></div>
           <div class="field product-barcode-field">
             <label for="productBarcode">Código de barras / GTIN</label>
             <div class="product-barcode-actions">
@@ -409,12 +353,12 @@ require_once __DIR__ . '/layout/header.php';
       <div class="product-form-section">
         <h2 class="product-form-section-title">Estoque e preço</h2>
         <div class="form-grid">
-          <div class="field"><label for="productCost">Preço de custo</label><input id="productCost" name="cost" type="number" min="0" step="0.01" value="<?= e($formData['cost']) ?>" required></div>
+          <div class="field"><label for="productCost">Preço de custo</label><input id="productCost" name="cost" type="number" min="0" step="0.01" value="<?= e($formData['cost']) ?>"></div>
           <div class="field"><label for="productPrice">Preço de venda</label><input id="productPrice" name="price" type="number" min="0" step="0.01" value="<?= e($formData['price']) ?>" required></div>
           <div class="field"><label for="productStock">Quantidade em estoque</label><input id="productStock" name="stock" type="number" min="0" step="0.001" value="<?= e($formData['stock']) ?>" required></div>
           <div class="field"><label for="productMinStock">Limite mínimo</label><input id="productMinStock" name="minStock" type="number" min="0" step="0.001" value="<?= e($formData['minStock']) ?>" required></div>
-          <div class="field"><label for="productLot">Lote</label><input id="productLot" name="lot" maxlength="80" value="<?= e($formData['lot']) ?>" required></div>
-          <div class="field"><label for="productExpiry">Data de validade</label><input id="productExpiry" name="expiry" type="date" value="<?= e($formData['expiry']) ?>" required></div>
+          <div class="field"><label for="productLot">Lote</label><input id="productLot" name="lot" maxlength="80" value="<?= e($formData['lot']) ?>"></div>
+          <div class="field"><label for="productExpiry">Data de validade</label><input id="productExpiry" name="expiry" type="date" value="<?= e($formData['expiry']) ?>"></div>
         </div>
       </div>
 

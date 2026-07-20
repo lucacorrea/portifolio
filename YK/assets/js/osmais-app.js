@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     .toLowerCase();
 
   const isInteractiveTarget = (target) => Boolean(target.closest(
-    'a, button, input, select, textarea, label, form, [contenteditable="true"], [role="button"]'
+    'a, button, input, select, textarea, label, form, summary, [contenteditable="true"], [data-bs-toggle], [role="button"], [role="link"], audio[controls], video[controls]'
   ));
 
   const rowActionTitle = (row, toggle) => {
@@ -362,12 +362,12 @@ document.addEventListener('DOMContentLoaded', () => {
     hint.innerHTML = '<i class="bi bi-cursor" aria-hidden="true"></i><span></span>';
     hint.querySelector('span').textContent = coarsePointer.matches
       ? 'Toque na linha para ver as ações.'
-      : 'Dê dois cliques na linha ou use Enter para ver as ações.';
+      : 'Clique na linha ou use Enter para ver as ações.';
     wrapper.before(hint);
   };
 
   const enhanceActionTable = (table) => {
-    if (table.dataset.rowActionsReady === 'true' || table.closest('.modal, dialog')) return;
+    if (table.closest('.modal, dialog')) return;
 
     const headers = Array.from(table.tHead?.rows[0]?.cells || []);
     const actionIndex = headers.findIndex((header) => normalizedText(header.textContent) === 'acoes');
@@ -375,15 +375,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const rows = Array.from(table.tBodies).flatMap((body) => Array.from(body.rows));
     const sources = rows.map((row) => ({ row, cell: row.cells[actionIndex] }))
-      .filter(({ cell }) => cell?.querySelector('.dropdown-menu'));
-    if (sources.length === 0) return;
+      .filter(({ row, cell }) => !row.classList.contains('row-actions-trigger') && cell?.querySelector(`.dropdown-menu ${actionItemSelector}`));
+    if (sources.length === 0) {
+      if (actionableRows(table).length === 0) {
+        table.classList.remove('row-actions-table');
+        delete table.dataset.rowActionsReady;
+        headers[actionIndex].classList.remove('row-actions-source-cell');
+        const hint = table.closest('.table-panel-wrap')?.previousElementSibling;
+        if (hint?.classList.contains('row-actions-hint')) hint.remove();
+      }
+      return;
+    }
 
     table.dataset.rowActionsReady = 'true';
     table.classList.add('row-actions-table');
     headers[actionIndex].classList.add('row-actions-source-cell');
     rows.forEach((row) => row.cells[actionIndex]?.classList.add('row-actions-source-cell'));
 
-    let hasFocusableRow = false;
+    let hasFocusableRow = actionableRows(table).length > 0;
     sources.forEach(({ row, cell }) => {
       const menu = cell.querySelector('.dropdown-menu');
       const toggle = cell.querySelector('.btn-action[data-bs-toggle="dropdown"]');
@@ -397,6 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
       row.setAttribute('aria-haspopup', 'dialog');
       row.setAttribute('aria-controls', 'row-actions-dialog');
       row.setAttribute('aria-describedby', 'row-actions-table-instructions');
+      row.setAttribute('aria-label', row.dataset.rowActionsTitle);
       hasFocusableRow = true;
     });
 
@@ -404,18 +414,19 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   if (rowActionsDialog && rowActionsHost && typeof rowActionsDialog.showModal === 'function') {
-    document.querySelectorAll('table.os-table').forEach(enhanceActionTable);
+    window.OSMais = window.OSMais || {};
+    window.OSMais.refreshActionTables = (root = document) => {
+      closeActionMenu();
+      if (activeRowActions) restoreRowActions({ restoreFocus: false });
+      root.querySelectorAll('table.os-table').forEach(enhanceActionTable);
+    };
+    window.OSMais.refreshActionTables();
 
-    document.addEventListener('dblclick', (event) => {
+    document.addEventListener('click', (event) => {
       const row = event.target.closest('tr.row-actions-trigger');
-      if (!row || isInteractiveTarget(event.target)) return;
-      setCurrentRow(row);
-      openRowActions(row);
-    });
-
-    document.addEventListener('pointerup', (event) => {
-      const row = event.target.closest('tr.row-actions-trigger');
-      if (!row || isInteractiveTarget(event.target) || !['touch', 'pen'].includes(event.pointerType)) return;
+      const selection = window.getSelection()?.toString().trim();
+      if (!row || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey
+        || event.shiftKey || event.altKey || selection || isInteractiveTarget(event.target)) return;
       setCurrentRow(row);
       openRowActions(row);
     });

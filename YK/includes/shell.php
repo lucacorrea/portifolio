@@ -43,6 +43,15 @@ try {
   header('Location: acesso-negado.php', true, 303);
   exit;
 }
+
+if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpRequest') === 0) {
+  header('Content-Type: text/html; charset=utf-8');
+  header('Cache-Control: no-store, no-cache, must-revalidate');
+  header('X-Content-Type-Options: nosniff');
+  header('Vary: X-Requested-With');
+  require $pageContent;
+  exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -56,7 +65,7 @@ try {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/dashboard.css">
+  <link rel="stylesheet" href="assets/css/dashboard.css?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/css/dashboard.css') ?>">
 </head>
 <body>
   <div class="os-wrapper">
@@ -80,7 +89,7 @@ try {
   </div>
 
   <p class="visually-hidden" id="row-actions-table-instructions">
-    Para abrir as ações de um registro, dê dois cliques na linha, toque em uma tela sensível ou pressione Enter ou Espaço.
+    Para abrir as ações de um registro, clique ou toque na linha, ou pressione Enter ou Espaço.
   </p>
   <dialog class="row-actions-dialog" id="row-actions-dialog" aria-labelledby="row-actions-dialog-title" aria-describedby="row-actions-dialog-description">
     <div class="row-actions-dialog-content">
@@ -99,9 +108,11 @@ try {
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/js/osmais-app.js"></script>
+  <script src="assets/js/osmais-app.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/osmais-app.js') ?>"></script>
+  <script src="assets/js/live-filters.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/live-filters.js') ?>"></script>
   <?php foreach (($pageScripts ?? []) as $script): ?>
-  <script src="<?= htmlspecialchars($script, ENT_QUOTES, 'UTF-8') ?>"></script>
+  <?php $scriptPath = dirname(__DIR__) . '/' . ltrim((string) $script, '/'); ?>
+  <script src="<?= htmlspecialchars((string) $script, ENT_QUOTES, 'UTF-8') ?>?v=<?= is_file($scriptPath) ? (int) filemtime($scriptPath) : 1 ?>"></script>
   <?php endforeach; ?>
 </body>
 </html>

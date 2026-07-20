@@ -20,7 +20,12 @@ try {
     /** @var Database $database */
     $database = $app['database'];
 
-    (new MigrationRunner($database->connection()))->run(dirname(__DIR__) . '/database/migrations');
+    $completed = (new MigrationRunner($database->connection()))
+        ->run(dirname(__DIR__) . '/database/migrations');
+    if (!$completed) {
+        fwrite(STDERR, 'Outra execução de migrations ainda está em andamento.' . PHP_EOL);
+        exit(2);
+    }
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Não foi possível executar as migrations. Consulte storage/logs/app.log.' . PHP_EOL);
     exit(1);

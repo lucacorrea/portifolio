@@ -28,10 +28,10 @@ function badge_class(string $text): string {
   $map = [
     'Aberta' => 'blue', 'Agendada' => 'blue', 'Agendado' => 'blue', 'Enviado' => 'blue',
     'Confirmado' => 'teal', 'Em deslocamento' => 'purple',
-    'Em execução' => 'amber', 'Em andamento' => 'amber', 'Rascunho' => 'gray',
+    'Em execução' => 'amber', 'Em andamento' => 'amber', 'Rascunho' => 'gray', 'Sem meta' => 'gray',
     'Aguardando peça' => 'purple', 'Aguardando pagamento' => 'purple', 'Aguardando aprovação' => 'purple',
-    'Finalizada' => 'green', 'Concluído' => 'green', 'Aprovado' => 'green', 'Ativo' => 'green', 'Emitida' => 'green', 'Pago' => 'green',
-    'Cancelado' => 'red', 'Urgente' => 'red', 'Alta' => 'red', 'Vencido' => 'red', 'Recusado' => 'red', 'Sem estoque' => 'red',
+    'Finalizada' => 'green', 'Concluído' => 'green', 'Aprovado' => 'green', 'Ativo' => 'green', 'Emitida' => 'green', 'Pago' => 'green', 'Meta atingida' => 'green',
+    'Fechada' => 'gray', 'Estornada' => 'red', 'Cancelada' => 'red', 'Cancelado' => 'red', 'Urgente' => 'red', 'Alta' => 'red', 'Vencido' => 'red', 'Recusado' => 'red', 'Sem estoque' => 'red',
     'Baixa' => 'blue', 'Média' => 'amber',
     'Estoque baixo' => 'amber', 'Convertido em OS' => 'teal', 'Pendente' => 'amber',
   ];
@@ -54,7 +54,7 @@ function metric_card(string $label, string $value, string $icon, string $accent,
 }
 
 function metric_grid(array $cards): void {
-  echo '<div class="metrics-grid">';
+  echo '<div class="metrics-grid" data-live-region="metrics">';
   foreach ($cards as $card) {
     echo metric_card($card[0], (string) $card[1], $card[2], $card[3], $card[4] ?? '');
   }
@@ -217,7 +217,6 @@ function render_common_modals(): void {
   modal_shell('modal-venda', 'Venda avulsa', venda_modal_body(), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar venda</button><button class="btn-modal-save" type="button">Finalizar venda</button><button class="btn-modal-secondary" type="button">Imprimir cupom</button>');
   modal_shell('modal-lembrete', 'Novo lembrete', lembrete_modal_body());
   modal_shell('modal-recibo', 'Novo Recibo Visual', form_section('Recibo', '<div class="form-row">' . field('Cliente','João Almeida') . field('Referência','OS-00254') . field('Valor','120,00') . field('Data','2026-06-18','date') . '</div>' . field('Referente a','Diagnóstico técnico em ar-condicionado janela.','textarea')));
-  modal_shell('modal-relatorio', 'Exportação Visual', form_section('Relatório', '<div class="form-row">' . select_field('Tipo',['Visão Geral','Produtividade','Serviços por Funcionário','Financeiro','Estoque']) . field('Período inicial','2026-06-01','date') . field('Período final','2026-06-30','date') . select_field('Formato visual',['Tela','PDF futuro','Planilha futura']) . '</div>' . field('Observações','Botão apenas visual; exportação real será implementada em outra etapa.','textarea')), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Exportar visualmente</button>');
   modal_shell('modal-config', 'Salvar Configurações Visuais', form_section('Confirmação visual', '<p class="section-note">As configurações exibidas nesta tela são apenas demonstrativas nesta etapa. Nenhuma informação será persistida.</p>'), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Salvar visualmente</button>');
   modal_shell('modal-servico-semanal', 'Adicionar Serviço Semanal', servico_semanal_modal_body(), '<button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="button">Adicionar visualmente</button>');
 }
@@ -529,7 +528,6 @@ function render_operational_page(string $key): void {
     'painel-semanal' => render_painel_semanal(),
     'caixa' => render_caixa(),
     'faturamento' => render_faturamento(),
-    'relatorios' => render_relatorios(),
     'configuracoes' => render_configuracoes(),
     default => empty_state('Página não configurada', 'Layout visual ainda não definido.'),
   };
@@ -582,18 +580,6 @@ function render_faturamento(): void {
   echo '</div><div class="tab-pane fade" id="pagamentos">';
   ui_table(['Data','Cliente','Referência','Forma','Valor','Status','Ações'], [['18/06/2026','Padaria Santa Luzia','OS-00255','Pix',money(520),ui_badge('Pago'),action_menu()]]);
   echo '</div></div></div></section>';
-}
-
-function render_relatorios(): void {
-  echo '<section class="panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-bar-chart-line"></i>Relatórios</div></div><div class="p-3"><ul class="nav nav-pills visual-tabs"><li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#rel-geral" type="button">Visão Geral</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rel-prod" type="button">Produtividade</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rel-func" type="button">Serviços por Funcionário</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rel-fin" type="button">Financeiro</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rel-est" type="button">Estoque</button></li></ul><div class="tab-content pt-3"><div class="tab-pane fade show active" id="rel-geral">';
-  metric_grid([['Meta mensal','120 OS','bi-bullseye','#2563EB'],['Realizados','92','bi-check-circle','#16A34A'],['Pendentes','28','bi-hourglass','#D97706'],['Valor produzido',money(48720),'bi-cash-stack','#7C3AED']]);
-  echo '<div class="report-bars"><div><span>Preventiva</span><b style="width:72%"></b></div><div><span>Corretiva</span><b style="width:54%"></b></div><div><span>Instalação</span><b style="width:44%"></b></div></div></div><div class="tab-pane fade" id="rel-prod">';
-  metric_grid([['Meta mensal','120','bi-bullseye','#2563EB'],['Serviços realizados','92','bi-check2-circle','#16A34A'],['Serviços pendentes','28','bi-hourglass','#D97706'],['Percentual da meta','76%','bi-percent','#0EA5E9'],['Valor produzido',money(48720),'bi-cash-stack','#7C3AED']]);
-  echo '</div><div class="tab-pane fade" id="rel-func"><h3 class="section-heading">Instaladores</h3>';
-  ui_table(['Funcionário','Função','Serviços','Valor total','Percentual','Extra estimado','Situação'], [['Carlos Ferreira','Instalador','28',money(14200),'31%','R$ 620,00',ui_badge('Ativo')],['Ana Martins','Instalador','21',money(11750),'24%','R$ 480,00',ui_badge('Ativo')]]);
-  echo '<h3 class="section-heading mt-4">Ajudantes</h3>';
-  ui_table(['Funcionário','Função','Serviços','Valor total','Percentual','Extra estimado','Situação'], [['Rafael Souza','Ajudante','24',money(9800),'26%','R$ 320,00',ui_badge('Ativo')]]);
-  echo '</div><div class="tab-pane fade" id="rel-fin"><p class="section-note">Gráficos financeiros demonstrativos.</p></div><div class="tab-pane fade" id="rel-est"><p class="section-note">Indicadores visuais de estoque.</p></div></div></div></section>';
 }
 
 function render_configuracoes(): void {
