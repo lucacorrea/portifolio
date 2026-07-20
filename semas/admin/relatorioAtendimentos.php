@@ -242,10 +242,25 @@ if ($exportFlag === '1') {
     xmlns:html="http://www.w3.org/TR/REC-html40">
     <Styles>
       <Style ss:ID="sTitle">
-        <Font ss:Bold="1" ss:Size="14" /><Alignment ss:Horizontal="Center" ss:Vertical="Center" />
+        <Font ss:Bold="1" ss:Size="14" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" />
+        <Interior ss:Color="#F2F4F7" ss:Pattern="Solid" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
       <Style ss:ID="sMeta">
         <Font ss:Bold="1" />
+        <Alignment ss:Horizontal="Left" ss:Vertical="Center" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
       <Style ss:ID="sHeader">
         <Font ss:Bold="1" /><Alignment ss:Horizontal="Center" ss:Vertical="Center" /><Interior ss:Color="#F2F4F7" ss:Pattern="Solid" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
