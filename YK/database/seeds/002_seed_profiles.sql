@@ -48,6 +48,14 @@ DELETE perfil_permissao
  WHERE permissao.codigo = 'relatorio.meta_comissao.configurar'
    AND perfil.nome NOT IN ('Administrador', 'Dono');
 
+INSERT IGNORE INTO perfil_permissoes (perfil_id, permissao_id)
+SELECT perfil.id, permissao.id
+  FROM perfis perfil
+  JOIN permissoes permissao
+ WHERE perfil.nome IN ('Administrador', 'Dono', 'Gerente')
+   AND permissao.codigo IN ('contas_pagar.quitar', 'contas_pagar.estornar_pagamento')
+   AND permissao.status = 'ativo';
+
 INSERT IGNORE INTO perfil_permissoes (
     perfil_id,
     permissao_id

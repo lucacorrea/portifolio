@@ -63,26 +63,39 @@ $accountData = $accountPayload->invoke($account, [
     'data_emissao' => '2026-07-18',
     'vencimento_em' => '2026-07-25',
     'valor' => '1.234,56',
+    'forma_pagamento' => 'boleto',
 ]);
 payablesAssertSame('1234.56', $accountData['valor'], 'O valor deve ser normalizado sem usar float.');
+payablesAssertSame(1, $accountData['quantidade_parcelas'], 'Conta à vista deve gerar exatamente uma parcela.');
+$plan = AccountsPayableManagementService::installmentPlan('100.00', '2026-01-31', 3);
+payablesAssertSame('33.34', $plan[0]['valor'], 'A diferença de centavos deve ficar na primeira parcela.');
+payablesAssertSame('2026-02-28', $plan[1]['vencimento_em'], 'Parcelas mensais devem respeitar o último dia de fevereiro.');
+payablesAssertSame('2026-03-31', $plan[2]['vencimento_em'], 'A data original deve ser retomada quando o mês permitir.');
 payablesAssertThrows(
     static fn() => $accountPayload->invoke($account, [
-        'fornecedor_id' => '7', 'descricao' => 'Conta', 'vencimento_em' => '2026-07-25', 'valor' => '0',
+        'fornecedor_id' => '7', 'descricao' => 'Conta', 'vencimento_em' => '2026-07-25', 'valor' => '0', 'forma_pagamento' => 'pix',
     ]),
     'Conta com valor zero deve ser rejeitada.'
 );
 payablesAssertThrows(
     static fn() => $accountPayload->invoke($account, [
         'fornecedor_id' => '7', 'descricao' => 'Conta', 'data_emissao' => '2026-07-26',
-        'vencimento_em' => '2026-07-25', 'valor' => '10,00',
+        'vencimento_em' => '2026-07-25', 'valor' => '10,00', 'forma_pagamento' => 'pix',
     ]),
     'Vencimento anterior à emissão deve ser rejeitado.'
 );
 payablesAssertThrows(
     static fn() => $accountPayload->invoke($account, [
-        'fornecedor_id' => '7', 'descricao' => 'Conta', 'vencimento_em' => '0001-01-01', 'valor' => '10,00',
+        'fornecedor_id' => '7', 'descricao' => 'Conta', 'vencimento_em' => '0001-01-01', 'valor' => '10,00', 'forma_pagamento' => 'pix',
     ]),
     'Datas fora do intervalo do MariaDB devem ser rejeitadas.'
+);
+payablesAssertThrows(
+    static fn() => $accountPayload->invoke($account, [
+        'fornecedor_id' => '7', 'descricao' => 'Conta parcelada', 'vencimento_em' => '2026-07-25',
+        'valor' => '100,00', 'tipo_pagamento' => 'parcelado', 'quantidade_parcelas' => '1', 'forma_pagamento' => 'pix',
+    ]),
+    'Conta parcelada deve exigir pelo menos duas parcelas.'
 );
 
 echo "PayablesValidationTest: OK\n";

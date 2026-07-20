@@ -10,7 +10,7 @@ use PDO;
 
 final class CashManagementService
 {
-    private const FORMS = ['dinheiro', 'pix', 'cartao_debito', 'cartao_credito', 'transferencia', 'outro'];
+    private const FORMS = ['dinheiro', 'pix', 'boleto', 'cartao_debito', 'cartao_credito', 'transferencia', 'cheque', 'outro'];
 
     public function __construct(private readonly PDO $connection)
     {

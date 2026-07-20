@@ -3442,3 +3442,39 @@ body::-webkit-scrollbar-thumb:hover {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Contas a pagar: leitura rápida por situação, sem depender apenas dos badges. */
+.payable-row { --payable-status-color: #92400e; }
+.payable-row--pendente { --payable-status-color: #92400e; }
+.payable-row--vencida { --payable-status-color: #b91c1c; background: #fff7f7; }
+.payable-row--parcial { --payable-status-color: #1d4ed8; background: #f7faff; }
+.payable-row--paga { --payable-status-color: #15803d; background: #f7fcf8; }
+.payable-row--cancelada { --payable-status-color: #64748b; background: #f8fafc; }
+.payable-row > td:not(.table-actions-cell),
+.payable-row > td:not(.table-actions-cell) strong,
+.payable-row > td:not(.table-actions-cell) small { color: var(--payable-status-color); }
+.payable-row--cancelada > td:not(.table-actions-cell) { text-decoration: line-through; }
+
+.payable-installment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 250px;
+}
+
+.payable-installment {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: .72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.payable-installment--pendente { color: #92400e; background: #fffbeb; }
+.payable-installment--vencida { color: #b91c1c; background: #fef2f2; }
+.payable-installment--paga { color: #15803d; background: #f0fdf4; }
+.payable-installment--cancelada { color: #64748b; background: #f1f5f9; }
+.payable-installment-table .btn-filter { min-height: 30px; padding: 5px 9px; }

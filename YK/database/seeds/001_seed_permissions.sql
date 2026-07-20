@@ -114,6 +114,8 @@ VALUES
     ('Financeiro', 'contas_pagar', 'contas_pagar.criar', 'Criar contas a pagar', 'Permite inserir manualmente contas de fornecedores.', 1562),
     ('Financeiro', 'contas_pagar', 'contas_pagar.editar', 'Editar contas a pagar', 'Permite alterar contas a pagar pendentes.', 1563),
     ('Financeiro', 'contas_pagar', 'contas_pagar.cancelar', 'Cancelar contas a pagar', 'Permite cancelar contas a pagar preservando a auditoria.', 1564),
+    ('Financeiro', 'contas_pagar', 'contas_pagar.quitar', 'Quitar parcelas a pagar', 'Permite registrar a quitação individual de parcelas.', 1565),
+    ('Financeiro', 'contas_pagar', 'contas_pagar.estornar_pagamento', 'Estornar quitação a pagar', 'Permite estornar quitações preservando o histórico.', 1566),
     ('Financeiro', 'contas_receber', 'contas_receber.visualizar', 'Visualizar contas a receber', 'Permite acessar a carteira de contas a receber.', 1570),
     ('Financeiro', 'contas_receber', 'contas_receber.registrar_pagamento', 'Registrar pagamento de conta', 'Permite registrar pagamentos posteriores de OS.', 1580),
     ('Financeiro', 'contas_receber', 'contas_receber.baixa_lote', 'Baixa em lote', 'Permite registrar baixa em lote de contas do mesmo cliente.', 1585),

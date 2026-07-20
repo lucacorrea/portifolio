@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(14, count($migrationPaths), 'A sequência atual deve conter 14 migrations.');
+migrationAssertSame(15, count($migrationPaths), 'A sequência atual deve conter 15 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -61,5 +61,12 @@ migrationAssertSame(true, str_contains((string) $commissionMigration, 'relatorio
 migrationAssertSame(true, str_contains((string) $commissionMigration, 'relatorio.meta_comissao.configurar'), 'A permissão de configuração deve ser criada.');
 migrationAssertSame(false, str_contains((string) $commissionMigration, 'DAYOFMONTH('), 'A migration deve evitar função incompatível com o analisador SQL da hospedagem.');
 migrationAssertSame(false, str_contains((string) $commissionMigration, 'desativada_por IS NULL'), 'Coluna com ON DELETE SET NULL não pode participar de CHECK no MariaDB da hospedagem.');
+
+$installmentMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/015_accounts_payable_installments.sql');
+migrationAssertSame(true, is_string($installmentMigration), 'A migration de parcelas deve ser legível.');
+migrationAssertSame(true, str_contains((string) $installmentMigration, 'contas_pagar_parcelas'), 'A estrutura de parcelas deve ser criada.');
+migrationAssertSame(true, str_contains((string) $installmentMigration, 'contas_pagar_parcela_eventos'), 'Quitações e estornos devem preservar histórico.');
+migrationAssertSame(true, str_contains((string) $installmentMigration, 'contas_pagar.estornar_pagamento'), 'O estorno deve possuir permissão própria.');
+migrationAssertSame(true, str_contains((string) $installmentMigration, 'caixa_movimentacao_id'), 'Quitações devem estar vinculadas às movimentações do Caixa.');
 
 echo "MigrationRunnerTest: OK\n";
