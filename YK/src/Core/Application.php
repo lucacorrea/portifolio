@@ -345,7 +345,7 @@ final class Application
     public function cashManagement(): CashManagementService
     {
         if ($this->cashManagement === null) {
-            $this->cashManagement = new CashManagementService($this->database->connection());
+            $this->cashManagement = new CashManagementService($this->database->connection(), $this->inventoryManagement());
         }
 
         return $this->cashManagement;
@@ -366,7 +366,7 @@ final class Application
     public function accountsPayableManagement(): AccountsPayableManagementService
     {
         if ($this->accountsPayableManagement === null) {
-            $this->accountsPayableManagement = new AccountsPayableManagementService($this->database->connection());
+            $this->accountsPayableManagement = new AccountsPayableManagementService($this->database->connection(), $this->cashManagement());
         }
 
         return $this->accountsPayableManagement;
@@ -442,9 +442,7 @@ final class Application
     public function serviceOrderLifecycle(): ServiceOrderLifecycleService
     {
         if ($this->serviceOrderLifecycle === null) {
-            $this->serviceOrderLifecycle = new ServiceOrderLifecycleService(
-                $this->database->connection()
-            );
+            $this->serviceOrderLifecycle = new ServiceOrderLifecycleService($this->database->connection(), $this->cashManagement());
         }
 
         return $this->serviceOrderLifecycle;

@@ -16,6 +16,7 @@
             "@php tests/SafeRedirectTest.php",
             "@php tests/ProductionReportServiceTest.php",
             "@php tests/PayablesValidationTest.php",
+            "@php tests/CashManagementValidationTest.php",
             "@php tests/MigrationRunnerTest.php",
             "@php tests/WebMigrationCoordinatorTest.php"
         ]

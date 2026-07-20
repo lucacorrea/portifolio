@@ -66,6 +66,81 @@ final class InventoryManagementService
         }
     }
 
+    public function consumeForSale(int $saleId, int $productId, string $quantity, int $userId): int
+    {
+        $qty = $this->quantity($quantity);
+        $statement = $this->connection->prepare('SELECT id, nome, estoque FROM produtos WHERE id = :id AND status = "ativo" FOR UPDATE');
+        $statement->execute(['id' => $productId]);
+        $product = $statement->fetch();
+        if ($product === false) throw new InvalidArgumentException('Produto do PDV não encontrado ou inativo.');
+
+        $current = (float) $product['estoque'];
+        $next = $current - $qty;
+        if ($next < 0.0) {
+            throw new InvalidArgumentException('Estoque insuficiente para ' . $product['nome'] . '. Disponível: ' . number_format($current, 3, ',', '.') . '.');
+        }
+
+        $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id')->execute([
+            'id' => $productId,
+            'stock' => number_format($next, 3, '.', ''),
+        ]);
+        $this->connection->prepare(
+            'INSERT INTO estoque_movimentacoes
+                (produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior, usuario_id, observacao)
+             VALUES (:product_id, NULL, "saida_venda", :quantity, :previous, :next, :user_id, :notes)'
+        )->execute([
+            'product_id' => $productId,
+            'quantity' => number_format($qty, 3, '.', ''),
+            'previous' => number_format($current, 3, '.', ''),
+            'next' => number_format($next, 3, '.', ''),
+            'user_id' => $userId,
+            'notes' => 'Baixa pelo PDV na venda #' . $saleId . '.',
+        ]);
+        return (int) $this->connection->lastInsertId();
+    }
+
+    public function restoreSaleMovement(int $movementId, int $saleId, int $userId, string $reason): int
+    {
+        $statement = $this->connection->prepare(
+            'SELECT movimento.*, produto.estoque, produto.nome
+               FROM estoque_movimentacoes movimento
+               JOIN produtos produto ON produto.id = movimento.produto_id
+              WHERE movimento.id = :id
+              FOR UPDATE'
+        );
+        $statement->execute(['id' => $movementId]);
+        $movement = $statement->fetch();
+        if ($movement === false || (string) $movement['tipo'] !== 'saida_venda') {
+            throw new InvalidArgumentException('Movimentação de estoque da venda não encontrada.');
+        }
+        $statement = $this->connection->prepare('SELECT id FROM estoque_movimentacoes WHERE estornado_de_id = :id LIMIT 1');
+        $statement->execute(['id' => $movementId]);
+        if ($statement->fetchColumn() !== false) throw new InvalidArgumentException('Estoque desta venda já foi estornado.');
+
+        $current = (float) $movement['estoque'];
+        $quantity = (float) $movement['quantidade'];
+        $next = $current + $quantity;
+        $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id')->execute([
+            'id' => $movement['produto_id'],
+            'stock' => number_format($next, 3, '.', ''),
+        ]);
+        $this->connection->prepare(
+            'INSERT INTO estoque_movimentacoes
+                (produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior,
+                 estornado_de_id, usuario_id, observacao)
+             VALUES (:product_id, NULL, "estorno", :quantity, :previous, :next, :source_id, :user_id, :notes)'
+        )->execute([
+            'product_id' => $movement['produto_id'],
+            'quantity' => $movement['quantidade'],
+            'previous' => number_format($current, 3, '.', ''),
+            'next' => number_format($next, 3, '.', ''),
+            'source_id' => $movementId,
+            'user_id' => $userId,
+            'notes' => substr('Estorno da venda #' . $saleId . '. Motivo: ' . $reason, 0, 255),
+        ]);
+        return (int) $this->connection->lastInsertId();
+    }
+
     public function createNegativeStockAuthorization(int $orderId, int $productId, string $requested, string $available, int $requestedBy, int $authorizedBy, string $reason): int
     {
         $req = $this->quantity($requested);

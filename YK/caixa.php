@@ -2,8 +2,9 @@
 $pageKey = 'caixa';
 $activePage = 'caixa';
 $pageTitle = 'Caixa';
-$pageSubtitle = 'Movimentacoes reais do dia';
+$pageSubtitle = 'Sessão, PDV, estoque e movimentações auditáveis';
 $requiredPermission = 'caixa.visualizar';
 $pageContent = __DIR__ . '/pages/caixa.php';
+$pageScripts = ['assets/js/caixa.js'];
 
 require __DIR__ . '/includes/shell.php';

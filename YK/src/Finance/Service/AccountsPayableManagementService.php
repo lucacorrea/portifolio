@@ -14,7 +14,7 @@ use Throwable;
 final class AccountsPayableManagementService
 {
     use AccountsPayableInstallmentPlan;
-    public function __construct(private readonly PDO $connection)
+    public function __construct(private readonly PDO $connection, private readonly CashManagementService $cash)
     {
     }
 

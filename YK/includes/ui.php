@@ -31,7 +31,7 @@ function badge_class(string $text): string {
     'Em execução' => 'amber', 'Em andamento' => 'amber', 'Rascunho' => 'gray', 'Sem meta' => 'gray',
     'Aguardando peça' => 'purple', 'Aguardando pagamento' => 'purple', 'Aguardando aprovação' => 'purple',
     'Finalizada' => 'green', 'Concluído' => 'green', 'Aprovado' => 'green', 'Ativo' => 'green', 'Emitida' => 'green', 'Pago' => 'green', 'Meta atingida' => 'green',
-    'Cancelado' => 'red', 'Urgente' => 'red', 'Alta' => 'red', 'Vencido' => 'red', 'Recusado' => 'red', 'Sem estoque' => 'red',
+    'Fechada' => 'gray', 'Estornada' => 'red', 'Cancelada' => 'red', 'Cancelado' => 'red', 'Urgente' => 'red', 'Alta' => 'red', 'Vencido' => 'red', 'Recusado' => 'red', 'Sem estoque' => 'red',
     'Baixa' => 'blue', 'Média' => 'amber',
     'Estoque baixo' => 'amber', 'Convertido em OS' => 'teal', 'Pendente' => 'amber',
   ];

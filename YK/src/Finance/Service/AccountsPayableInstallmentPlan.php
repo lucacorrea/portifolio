@@ -27,45 +27,21 @@ trait AccountsPayableInstallmentPlan
     {
         $description = 'Pagamento ' . $installment['account_code'] . ' parcela ' . $installment['numero']
             . ' - ' . $installment['supplier_name'];
-        $statement = $this->connection->prepare(
-            'INSERT INTO caixa_movimentacoes
-                (tipo, origem_tipo, origem_id, descricao, forma_pagamento, valor, data_movimento, usuario_id)
-             VALUES ("saida", "conta_pagar_parcela", :origin_id, :description, :method, :amount, NOW(), :user_id)'
+        return $this->cash->registerExit(
+            'conta_pagar_parcela', (int) $installment['id'],
+            function_exists('mb_substr') ? mb_substr($description, 0, 255, 'UTF-8') : substr($description, 0, 255),
+            $method, (string) $installment['valor'], $userId
         );
-        $statement->execute([
-            'origin_id' => $installment['id'],
-            'description' => function_exists('mb_substr') ? mb_substr($description, 0, 255, 'UTF-8') : substr($description, 0, 255),
-            'method' => $method,
-            'amount' => $installment['valor'],
-            'user_id' => $userId,
-        ]);
-        return (int) $this->connection->lastInsertId();
     }
 
     /** @param array<string,mixed> $installment */
     private function reverseInstallmentCashOutflow(array $installment, string $reason, int $userId): ?int
     {
         if ($installment['caixa_movimentacao_id'] === null) return null;
-        $statement = $this->connection->prepare('SELECT * FROM caixa_movimentacoes WHERE id = :id FOR UPDATE');
-        $statement->execute(['id' => $installment['caixa_movimentacao_id']]);
-        $cash = $statement->fetch();
-        if ($cash === false || (string) $cash['tipo'] !== 'saida') throw new InvalidArgumentException('Saída original do Caixa não encontrada.');
-        $statement = $this->connection->prepare('SELECT id FROM caixa_movimentacoes WHERE estornado_de_id = :id LIMIT 1');
-        $statement->execute(['id' => $cash['id']]);
-        if ($statement->fetchColumn() !== false) throw new InvalidArgumentException('A saída desta parcela já foi estornada.');
-        $description = 'Estorno: ' . $cash['descricao'] . '. Motivo: ' . $reason;
-        $statement = $this->connection->prepare(
-            'INSERT INTO caixa_movimentacoes
-                (tipo, origem_tipo, origem_id, descricao, forma_pagamento, valor, data_movimento, usuario_id, estornado_de_id)
-             VALUES ("estorno_saida", "conta_pagar_estorno", :origin_id, :description, :method, :amount, NOW(), :user_id, :source_id)'
+        return $this->cash->reverseMovement(
+            (int) $installment['caixa_movimentacao_id'], 'conta_pagar_estorno', (int) $installment['id'],
+            'Estorno do pagamento da parcela ' . $installment['numero'] . ': ' . $reason, $userId
         );
-        $statement->execute([
-            'origin_id' => $installment['id'],
-            'description' => function_exists('mb_substr') ? mb_substr($description, 0, 255, 'UTF-8') : substr($description, 0, 255),
-            'method' => $cash['forma_pagamento'], 'amount' => $cash['valor'],
-            'user_id' => $userId, 'source_id' => $cash['id'],
-        ]);
-        return (int) $this->connection->lastInsertId();
     }
 
     /** @return array<int,array{numero:int,vencimento_em:string,valor:string}> */

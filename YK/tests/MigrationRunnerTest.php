@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(15, count($migrationPaths), 'A sequência atual deve conter 15 migrations.');
+migrationAssertSame(16, count($migrationPaths), 'A sequência atual deve conter 16 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -68,5 +68,13 @@ migrationAssertSame(true, str_contains((string) $installmentMigration, 'contas_p
 migrationAssertSame(true, str_contains((string) $installmentMigration, 'contas_pagar_parcela_eventos'), 'Quitações e estornos devem preservar histórico.');
 migrationAssertSame(true, str_contains((string) $installmentMigration, 'contas_pagar.estornar_pagamento'), 'O estorno deve possuir permissão própria.');
 migrationAssertSame(true, str_contains((string) $installmentMigration, 'caixa_movimentacao_id'), 'Quitações devem estar vinculadas às movimentações do Caixa.');
+
+$cashMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/016_cash_register_pos.sql');
+migrationAssertSame(true, is_string($cashMigration), 'A migration do Caixa deve ser legível.');
+migrationAssertSame(true, str_contains((string) $cashMigration, 'caixa_sessoes'), 'A sessão operacional de Caixa deve ser criada.');
+migrationAssertSame(true, str_contains((string) $cashMigration, 'uq_caixa_sessao_aberta'), 'Somente uma sessão de Caixa pode permanecer aberta.');
+migrationAssertSame(true, str_contains((string) $cashMigration, 'caixa_sessao_id'), 'Movimentações e vendas devem identificar sua sessão de Caixa.');
+migrationAssertSame(true, str_contains((string) $cashMigration, 'saida_venda'), 'O estoque deve identificar baixas originadas pelo PDV.');
+migrationAssertSame(true, str_contains((string) $cashMigration, 'caixa.registrar_venda'), 'A operação do PDV deve possuir permissão própria.');
 
 echo "MigrationRunnerTest: OK\n";
