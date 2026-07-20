@@ -597,6 +597,285 @@ try {
       flex-wrap: wrap;
     }
 
+
+    /* ===== Estilo padrão de tabela + ordenação tipo prisma ===== */
+    .relatorio-table-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.15rem;
+    }
+
+    .relatorio-table-title {
+      margin: 0 0 .3rem;
+      color: #25396f;
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+
+    .relatorio-table-subtitle {
+      margin: 0;
+      color: #7c8db5;
+      font-size: .96rem;
+      font-weight: 500;
+    }
+
+    .dt-search-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      margin-left: auto;
+    }
+
+    .dt-search-input {
+      width: 100%;
+      min-width: 320px;
+      max-width: 430px;
+      height: 38px;
+      padding: .55rem .9rem;
+      border: 1px solid #9bb4f5;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      font-size: 15px;
+      box-shadow: none;
+      outline: none;
+      transition: all .2s ease;
+    }
+
+    .dt-search-input::placeholder {
+      color: #7f8a99;
+      opacity: 1;
+    }
+
+    .dt-search-input:focus {
+      border-color: #9ab0f5;
+      box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+    }
+
+    .dt-search-clear {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border: 1px solid #cfd6df;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .2s ease;
+      padding: 0;
+    }
+
+    .dt-search-clear i {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .dt-search-clear:hover {
+      border-color: #435ebe;
+      color: #435ebe;
+      background: #f8f9ff;
+    }
+
+    #tblAtend.atendimentos-table {
+      width: 100% !important;
+      border-collapse: separate;
+      border-spacing: 0;
+      color: #526a80;
+      white-space: nowrap;
+    }
+
+    #tblAtend.atendimentos-table thead th {
+      position: relative;
+      background: #fff !important;
+      color: #2f3f4f;
+      font-weight: 800;
+      font-size: .94rem;
+      text-align: center;
+      vertical-align: middle;
+      white-space: nowrap;
+      padding: .9rem 2.05rem .9rem .75rem;
+      border-top: 0 !important;
+      border-left: 0 !important;
+      border-right: 0 !important;
+      border-bottom: 2px solid #dbe1ea !important;
+    }
+
+    #tblAtend.atendimentos-table thead th.sortable-th {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #tblAtend.atendimentos-table thead th.sortable-th:hover {
+      color: #25396f;
+    }
+
+    .sort-prisma {
+      position: absolute;
+      right: .78rem;
+      top: 50%;
+      width: 10px;
+      height: 16px;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .sort-prisma::before,
+    .sort-prisma::after {
+      content: "";
+      position: absolute;
+      left: 1px;
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+    }
+
+    .sort-prisma::before {
+      top: 0;
+      border-bottom: 7px solid #e3e7ec;
+    }
+
+    .sort-prisma::after {
+      bottom: 0;
+      border-top: 7px solid #e3e7ec;
+    }
+
+    #tblAtend.atendimentos-table thead th.sort-asc .sort-prisma::before {
+      border-bottom-color: #9aa4b2;
+    }
+
+    #tblAtend.atendimentos-table thead th.sort-desc .sort-prisma::after {
+      border-top-color: #9aa4b2;
+    }
+
+    #tblAtend.atendimentos-table tbody td {
+      padding: .78rem .75rem;
+      vertical-align: middle;
+      border-top: 0 !important;
+      border-left: 0 !important;
+      border-right: 0 !important;
+      border-bottom: 1px solid #e2e6ea !important;
+      color: #526a80;
+      font-size: .96rem;
+      background: #fff;
+    }
+
+    #tblAtend.atendimentos-table tbody tr:nth-child(even) td {
+      background: #f6f7f9;
+    }
+
+    #tblAtend.atendimentos-table tbody tr:hover td {
+      background: #eef1f5;
+    }
+
+    #tblAtend.atendimentos-table .td-data,
+    #tblAtend.atendimentos-table .td-bairro,
+    #tblAtend.atendimentos-table .td-qtd,
+    #tblAtend.atendimentos-table .td-valor-unit,
+    #tblAtend.atendimentos-table .td-valor-total {
+      text-align: center;
+    }
+
+    #tblAtend.atendimentos-table .td-solicitante,
+    #tblAtend.atendimentos-table .td-beneficio,
+    #tblAtend.atendimentos-table .td-resp {
+      text-align: left;
+    }
+
+    .custom-pagination-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eef1f4;
+      flex-wrap: wrap;
+    }
+
+    .custom-pagination-left,
+    .custom-pagination-center,
+    .custom-pagination-right {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+
+    .custom-pagination-center {
+      flex: 1;
+      justify-content: center;
+    }
+
+    .custom-page-info {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #435ebe;
+      white-space: nowrap;
+    }
+
+    .custom-length-label {
+      color: #6c757d;
+      font-weight: 600;
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+
+    .custom-length-select {
+      min-width: 72px;
+      padding: .45rem 2rem .45rem .75rem;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background-color: #fff;
+      color: #495057;
+      font-weight: 600;
+      outline: none;
+    }
+
+    .custom-length-select:focus {
+      border-color: #435ebe;
+      box-shadow: 0 0 0 .15rem rgba(67, 94, 190, .15);
+    }
+
+    @media (max-width: 991.98px) {
+      .relatorio-table-head {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .dt-search-wrap {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .dt-search-input {
+        min-width: 0;
+        max-width: 100%;
+        flex: 1 1 auto;
+      }
+    }
+
+    @media (max-width: 767.98px) {
+      .custom-pagination-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .custom-pagination-left,
+      .custom-pagination-center,
+      .custom-pagination-right {
+        justify-content: center;
+        width: 100%;
+      }
+    }
+
     /* Informação do total geral */
     .total-geral-info {
       background-color: #e7f3ff;
@@ -910,33 +1189,38 @@ try {
         <!-- Tabela -->
         <section class="section mb-4">
           <div class="card">
-            <div class="card-header d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
-              <span class="fw-semibold">Detalhe de atendimentos</span>
-              <div class="d-flex gap-2 align-items-center">
-                <input id="qLive" class="form-control form-control-sm" placeholder="Buscar por solicitante/bairro/benefício/responsável/CPF..." autocomplete="off" />
-                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClear"><i class="bi bi-x-circle"></i></button>
-              </div>
-            </div>
-
             <div class="card-body">
+              <div class="relatorio-table-head">
+                <div>
+                  <h5 class="relatorio-table-title">Detalhe de atendimentos</h5>
+                  <p class="relatorio-table-subtitle" id="totalRowsLabel">0 registros encontrados</p>
+                </div>
+                <div class="dt-search-wrap">
+                  <input id="qLive" class="dt-search-input" placeholder="Buscar por solicitante/bairro/benefício/responsável/CPF..." autocomplete="off" />
+                  <button class="dt-search-clear" type="button" id="btnClear" title="Limpar pesquisa" aria-label="Limpar pesquisa">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                </div>
+              </div>
+
               <div class="table-responsive-md">
-                <table id="tblAtend" class="table table-striped table-hover align-middle w-100 text-nowrap">
-                  <thead class="table-light">
+                <table id="tblAtend" class="table align-middle w-100 text-nowrap atendimentos-table">
+                  <thead>
                     <tr>
-                      <th>Data / Hora</th>
-                      <th>Solicitante</th>
-                      <th>Bairro</th>
-                      <th>Benefício</th>
-                      <th>Responsável</th>
-                      <th class="text-end">Qtd</th>
-                      <th class="text-end">Valor Unit.</th>
-                      <th class="text-end">Valor Total</th>
+                      <th class="sortable-th sort-desc" data-sort-key="dateTime" data-sort-type="datetime" tabindex="0" role="button" aria-label="Ordenar por Data e Hora"><span>Data / Hora</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="solicitante" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Solicitante"><span>Solicitante</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="bairro" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Bairro"><span>Bairro</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="beneficio" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Benefício"><span>Benefício</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="responsavel" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Responsável"><span>Responsável</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="qtd" data-sort-type="number" tabindex="0" role="button" aria-label="Ordenar por Quantidade"><span>Qtd</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="valorUnit" data-sort-type="number" tabindex="0" role="button" aria-label="Ordenar por Valor Unitário"><span>Valor Unit.</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="valorTotal" data-sort-type="number" tabindex="0" role="button" aria-label="Ordenar por Valor Total"><span>Valor Total</span><span class="sort-prisma" aria-hidden="true"></span></th>
                     </tr>
                   </thead>
                   <tbody id="tbody">
                     <?php if (!$rows): ?>
-                      <tr>
-                        <td colspan="8" class="text-center text-muted">Nenhum atendimento encontrado.</td>
+                      <tr id="trNoResults">
+                        <td colspan="8" class="text-center text-muted py-4">Nenhum atendimento encontrado.</td>
                       </tr>
                       <?php else: foreach ($rows as $r): ?>
                         <?php
@@ -977,6 +1261,7 @@ try {
                           data-cpf="<?= e($cpfDigits) ?>"
                           data-date="<?= e($dataISO) ?>"
                           data-time="<?= e($horaISO) ?>"
+                          data-date-time="<?= e(trim($dataISO . ' ' . $horaISO)) ?>"
                           data-bairro-id="<?= $bairroId ?>"
                           data-beneficio-id="<?= $beneficioId ?>"
                           data-solicitante="<?= e($kSol) ?>"
@@ -985,37 +1270,41 @@ try {
                           data-responsavel="<?= e($kRes) ?>"
                           data-qtd="<?= $qtd ?>"
                           data-cesta="<?= $isCesta ?>"
-                          data-valor-unit="<?= number_format($vu, 2, '.', '') ?>">
-                          <td><?= e($dtHoraBR) ?></td>
+                          data-valor-unit="<?= number_format($vu, 2, '.', '') ?>"
+                          data-valor-total="<?= number_format($vt, 2, '.', '') ?>">
+                          <td class="td-data"><?= e($dtHoraBR) ?></td>
                           <td class="td-solicitante" title="<?= e($solNome) ?>"><?= e($solNome) ?></td>
-                          <td title="<?= e($bairroNome) ?>"><?= e($bairroNome !== '' ? $bairroNome : '—') ?></td>
+                          <td class="td-bairro" title="<?= e($bairroNome) ?>"><?= e($bairroNome !== '' ? $bairroNome : '—') ?></td>
                           <td class="td-beneficio" title="<?= e($benefNome) ?>"><?= e($benefNome) ?></td>
                           <td class="td-resp" title="<?= e($respNome) ?>"><?= e($respNome !== '' ? $respNome : '—') ?></td>
-                          <td class="text-end"><?= (int)$qtd ?></td>
-                          <td class="text-end"><?= e('R$ ' . number_format($vu, 2, ',', '.')) ?></td>
-                          <td class="text-end"><?= e('R$ ' . number_format($vt, 2, ',', '.')) ?></td>
+                          <td class="td-qtd"><?= (int)$qtd ?></td>
+                          <td class="td-valor-unit"><?= e('R$ ' . number_format($vu, 2, ',', '.')) ?></td>
+                          <td class="td-valor-total"><?= e('R$ ' . number_format($vt, 2, ',', '.')) ?></td>
                         </tr>
-                    <?php endforeach;
-                    endif; ?>
+                    <?php endforeach; ?>
+                      <tr id="trNoResults" class="d-none">
+                        <td colspan="8" class="text-center text-muted py-4">Nenhum atendimento encontrado.</td>
+                      </tr>
+                    <?php endif; ?>
                   </tbody>
                 </table>
               </div>
 
-              <div class="mt-2 tfoot-pager">
-                <div class="d-flex align-items-center gap-2">
-                  <button class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
-                  <button class="btn btn-outline-secondary btn-sm" id="btnNext">Próxima</button>
+              <div class="custom-pagination-bar">
+                <div class="custom-pagination-left">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="btnNext">Próxima</button>
                 </div>
-                <div class="flex-grow-1 d-flex justify-content-center">
-                  <strong id="lblPagina">Página 1 de 1</strong>
+                <div class="custom-pagination-center">
+                  <span class="custom-page-info" id="lblPagina">Página 1 de 1</span>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                  <label for="selPerPage" class="form-label m-0">por página</label>
-                  <select id="selPerPage" class="form-select form-select-sm" style="width:auto">
-                    <option>10</option>
-                    <option>20</option>
-                    <option>50</option>
-                    <option>100</option>
+                <div class="custom-pagination-right">
+                  <label for="selPerPage" class="custom-length-label">por página</label>
+                  <select id="selPerPage" class="custom-length-select">
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
                   </select>
                 </div>
               </div>
@@ -1060,6 +1349,7 @@ try {
 
       const tbody = document.getElementById('tbody');
       const allRows = Array.from(tbody?.querySelectorAll('tr[data-id]') || []);
+      const noResultsRow = document.getElementById('trNoResults');
 
       const inpSearch = document.getElementById('qLive');
       const btnClear = document.getElementById('btnClear');
@@ -1076,6 +1366,8 @@ try {
       const lblPagina = document.getElementById('lblPagina');
 
       const btnExport = document.getElementById('btnExportXLS');
+      const sortableHeaders = Array.from(document.querySelectorAll('#tblAtend thead th[data-sort-key]'));
+      const totalRowsLabel = document.getElementById('totalRowsLabel');
 
       // Export form hidden inputs
       const frmExport = document.getElementById('frmExport');
@@ -1101,6 +1393,15 @@ try {
       let page = 1;
       let perPage = parseInt(selPerPage.value, 10) || 10;
       let filteredRows = allRows.slice();
+      let sortState = {
+        key: 'dateTime',
+        dir: 'desc',
+        type: 'datetime'
+      };
+      const collator = new Intl.Collator('pt-BR', {
+        numeric: true,
+        sensitivity: 'base'
+      });
 
       // Charts
       const palette = (n) => Array.from({
@@ -1132,6 +1433,80 @@ try {
       };
       Chart.register(htmlLegendPlugin);
 
+
+      function normalizeText(value) {
+        return String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim();
+      }
+
+      function parseNumber(value) {
+        const raw = String(value ?? '').trim();
+        if (!raw) return Number.NEGATIVE_INFINITY;
+        const n = Number(raw.replace(/R\$/g, '').replace(/\s+/g, '').replace(/\./g, '').replace(',', '.'));
+        return Number.isFinite(n) ? n : Number.NEGATIVE_INFINITY;
+      }
+
+      function getSortValue(tr, key, type) {
+        const ds = tr.dataset || {};
+
+        if (type === 'datetime') {
+          const value = ds.dateTime || `${ds.date || ''} ${ds.time || ''}`.trim();
+          return value || '';
+        }
+
+        if (type === 'number') {
+          return parseNumber(ds[key] ?? '');
+        }
+
+        if (type === 'digits') {
+          return String(ds[key] ?? '').replace(/\D+/g, '');
+        }
+
+        return normalizeText(ds[key] ?? '');
+      }
+
+      function sortRows(rows) {
+        const { key, dir, type } = sortState;
+        const factor = dir === 'desc' ? -1 : 1;
+
+        rows.sort((a, b) => {
+          const av = getSortValue(a, key, type);
+          const bv = getSortValue(b, key, type);
+
+          let result;
+          if (type === 'number') {
+            result = av === bv ? 0 : (av > bv ? 1 : -1);
+          } else {
+            result = collator.compare(String(av), String(bv));
+          }
+
+          if (result === 0) {
+            result = collator.compare(a.dataset.solicitante || '', b.dataset.solicitante || '');
+          }
+
+          return result * factor;
+        });
+
+        return rows;
+      }
+
+      function updateSortIndicators() {
+        sortableHeaders.forEach(th => {
+          th.classList.remove('sort-asc', 'sort-desc');
+          if (th.dataset.sortKey === sortState.key) {
+            th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+          }
+        });
+      }
+
+      function updateRowsInDom(rows) {
+        rows.forEach(row => tbody.appendChild(row));
+        if (noResultsRow) tbody.appendChild(noResultsRow);
+      }
+
       function renderPage() {
         const total = filteredRows.length;
         const pages = Math.max(1, Math.ceil(total / perPage));
@@ -1141,11 +1516,22 @@ try {
         const end = start + perPage;
 
         allRows.forEach(r => r.style.display = 'none');
-        filteredRows.slice(start, end).forEach(r => r.style.display = '');
+
+        if (total === 0) {
+          if (noResultsRow) noResultsRow.classList.remove('d-none');
+        } else {
+          if (noResultsRow) noResultsRow.classList.add('d-none');
+          filteredRows.slice(start, end).forEach(r => r.style.display = '');
+        }
 
         lblPagina.textContent = `Página ${page} de ${pages}`;
-        btnPrev.disabled = page <= 1;
-        btnNext.disabled = page >= pages;
+        btnPrev.disabled = page <= 1 || total === 0;
+        btnNext.disabled = page >= pages || total === 0;
+
+        if (totalRowsLabel) {
+          const plural = total === 1 ? 'registro encontrado' : 'registros encontrados';
+          totalRowsLabel.textContent = `${total.toLocaleString('pt-BR')} ${plural}`;
+        }
       }
 
       function getFilteredMeta() {
@@ -1339,10 +1725,44 @@ try {
           return true;
         });
 
+        sortRows(filteredRows);
+        updateRowsInDom(filteredRows);
         page = 1;
         renderPage();
         renderKPIsAndCharts();
       }
+
+
+      sortableHeaders.forEach(th => {
+        const sortAction = () => {
+          const key = th.dataset.sortKey || 'dateTime';
+          const type = th.dataset.sortType || 'text';
+
+          if (sortState.key === key) {
+            sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortState = {
+              key,
+              type,
+              dir: type === 'number' ? 'desc' : 'asc'
+            };
+          }
+
+          updateSortIndicators();
+          sortRows(filteredRows);
+          updateRowsInDom(filteredRows);
+          page = 1;
+          renderPage();
+        };
+
+        th.addEventListener('click', sortAction);
+        th.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            sortAction();
+          }
+        });
+      });
 
       inpDI.addEventListener('change', applyFilters);
       inpDF.addEventListener('change', applyFilters);
@@ -1397,6 +1817,9 @@ try {
       });
 
       // Inicializar com todos os dados
+      updateSortIndicators();
+      sortRows(filteredRows);
+      updateRowsInDom(filteredRows);
       renderPage();
       renderKPIsAndCharts();
     });
