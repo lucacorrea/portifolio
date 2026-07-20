@@ -13,6 +13,12 @@ $companyLogo = CompanyBranding::safeLogoUrl($company['logo'] ?? null);
 ?>
 
 <div class="page-body settings-page">
+<?php if ($authorization->canAny(['nota_fiscal.configurar', 'nota_fiscal.gerenciar_credenciais'])): ?>
+<div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <span><i class="bi bi-shield-lock me-2"></i>Certificado A1, CSC e homologação ficam em uma área fiscal protegida.</span>
+    <a class="btn-filter btn-filter-primary" href="configuracoes-fiscais.php">Abrir configuração fiscal</a>
+</div>
+<?php endif; ?>
 <section class="panel">
     <div class="panel-header">
         <div class="panel-title"><i class="bi bi-building"></i>Dados da empresa</div>
@@ -51,9 +57,55 @@ $companyLogo = CompanyBranding::safeLogoUrl($company['logo'] ?? null);
                     <input class="form-control-os" id="company-phone" type="tel" name="telefone" maxlength="30" value="<?= h((string) ($company['telefone'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="company-address">Endereço</label>
+                    <label class="form-label" for="company-email">E-mail</label>
+                    <input class="form-control-os" id="company-email" type="email" name="email" maxlength="150" value="<?= h((string) ($company['email'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>>
+                </div>
+            </div>
+
+            <h3 class="form-section-title">Dados fiscais do emitente</h3>
+            <p class="text-muted">Estes dados serão usados na validação antes da comunicação com a SEFAZ.</p>
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label class="form-label" for="company-ie">Inscrição estadual</label>
+                    <input class="form-control-os" id="company-ie" name="inscricao_estadual" maxlength="40" value="<?= h((string) ($company['inscricao_estadual'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="company-im">Inscrição municipal</label>
+                    <input class="form-control-os" id="company-im" name="inscricao_municipal" maxlength="40" value="<?= h((string) ($company['inscricao_municipal'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="company-crt">Regime tributário (CRT)</label>
+                    <select class="form-select form-control-os" id="company-crt" name="crt" <?= $canEdit ? '' : 'disabled' ?>>
+                        <option value="">Selecione</option>
+                        <?php foreach ([1 => 'Simples Nacional', 2 => 'Simples Nacional - excesso', 3 => 'Regime normal', 4 => 'MEI'] as $crt => $label): ?>
+                            <option value="<?= $crt ?>" <?= (int) ($company['crt'] ?? 0) === $crt ? 'selected' : '' ?>><?= h($label) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="company-cnae">CNAE principal</label>
+                    <input class="form-control-os" id="company-cnae" inputmode="numeric" name="cnae_principal" maxlength="10" value="<?= h((string) ($company['cnae_principal'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="company-address">Endereço completo (documentos legados)</label>
                     <input class="form-control-os" id="company-address" name="endereco" maxlength="255" value="<?= h((string) ($company['endereco'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>>
                 </div>
+            </div>
+            <div class="form-row-3">
+                <div class="form-group"><label class="form-label" for="company-street">Logradouro</label><input class="form-control-os" id="company-street" name="endereco_logradouro" maxlength="150" value="<?= h((string) ($company['endereco_logradouro'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>></div>
+                <div class="form-group"><label class="form-label" for="company-number">Número</label><input class="form-control-os" id="company-number" name="endereco_numero" maxlength="30" value="<?= h((string) ($company['endereco_numero'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>></div>
+                <div class="form-group"><label class="form-label" for="company-complement">Complemento</label><input class="form-control-os" id="company-complement" name="endereco_complemento" maxlength="100" value="<?= h((string) ($company['endereco_complemento'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>></div>
+            </div>
+            <div class="form-row-3">
+                <div class="form-group"><label class="form-label" for="company-district">Bairro</label><input class="form-control-os" id="company-district" name="endereco_bairro" maxlength="100" value="<?= h((string) ($company['endereco_bairro'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>></div>
+                <div class="form-group"><label class="form-label" for="company-city">Cidade</label><input class="form-control-os" id="company-city" name="endereco_cidade" maxlength="100" value="<?= h((string) ($company['endereco_cidade'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>></div>
+                <div class="form-group"><label class="form-label" for="company-state">UF</label><input class="form-control-os" id="company-state" name="endereco_uf" maxlength="2" value="<?= h((string) ($company['endereco_uf'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label" for="company-postal-code">CEP</label><input class="form-control-os" id="company-postal-code" inputmode="numeric" name="endereco_cep" maxlength="9" value="<?= h((string) ($company['endereco_cep'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>></div>
+                <div class="form-group"><label class="form-label" for="company-city-code">Código do município (IBGE)</label><input class="form-control-os" id="company-city-code" inputmode="numeric" name="codigo_municipio_ibge" maxlength="7" value="<?= h((string) ($company['codigo_municipio_ibge'] ?? '')) ?>" <?= $canEdit ? '' : 'disabled' ?>></div>
             </div>
 
             <h3 class="form-section-title">Identidade visual</h3>

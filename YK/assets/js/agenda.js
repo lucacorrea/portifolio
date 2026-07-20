@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const statusOperations = {
     agendada: ['start_travel', 'start_execution', 'wait_part', 'cancel'],
     em_deslocamento: ['start_execution', 'wait_part', 'cancel'],
-    em_execucao: ['wait_part', 'finalize', 'cancel'],
+    em_execucao: ['wait_part', 'cancel'],
     aguardando_peca: ['start_execution', 'cancel'],
   };
 

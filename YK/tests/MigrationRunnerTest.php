@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(16, count($migrationPaths), 'A sequência atual deve conter 16 migrations.');
+migrationAssertSame(18, count($migrationPaths), 'A sequência atual deve conter 18 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -76,5 +76,25 @@ migrationAssertSame(true, str_contains((string) $cashMigration, 'uq_caixa_sessao
 migrationAssertSame(true, str_contains((string) $cashMigration, 'caixa_sessao_id'), 'Movimentações e vendas devem identificar sua sessão de Caixa.');
 migrationAssertSame(true, str_contains((string) $cashMigration, 'saida_venda'), 'O estoque deve identificar baixas originadas pelo PDV.');
 migrationAssertSame(true, str_contains((string) $cashMigration, 'caixa.registrar_venda'), 'A operação do PDV deve possuir permissão própria.');
+
+$fiscalMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/017_secure_fiscal_foundation.sql');
+migrationAssertSame(true, is_string($fiscalMigration), 'A migration da fundação fiscal deve ser legível.');
+migrationAssertSame(true, str_contains((string) $fiscalMigration, 'fiscal_certificados'), 'Certificados devem possuir armazenamento de metadados próprio.');
+migrationAssertSame(true, str_contains((string) $fiscalMigration, 'senha_ciphertext'), 'Senha do certificado deve ser armazenada somente cifrada.');
+migrationAssertSame(true, str_contains((string) $fiscalMigration, 'senha_tag'), 'Senha cifrada deve preservar a tag de autenticação AEAD.');
+migrationAssertSame(true, str_contains((string) $fiscalMigration, 'csc_ciphertext'), 'CSC deve ser armazenado somente cifrado.');
+migrationAssertSame(true, str_contains((string) $fiscalMigration, 'csc_tag'), 'CSC cifrado deve preservar a tag de autenticação AEAD.');
+migrationAssertSame(true, str_contains((string) $fiscalMigration, 'uq_fiscal_configuracao_ativa'), 'Ambiente e modelo devem possuir apenas uma configuração ativa.');
+migrationAssertSame(true, str_contains((string) $fiscalMigration, 'uq_fiscal_serie_ambiente_modelo'), 'Numeração deve ser isolada por ambiente, modelo e série.');
+migrationAssertSame(true, str_contains((string) $fiscalMigration, 'fiscal_auditoria'), 'Operações fiscais sensíveis devem possuir auditoria própria.');
+migrationAssertSame(false, str_contains((string) $fiscalMigration, 'certificado_senha VARCHAR'), 'Segredos fiscais não podem ser armazenados em texto puro.');
+migrationAssertSame(false, str_contains((string) $fiscalMigration, ' csc VARCHAR'), 'CSC não pode ser armazenado em texto puro na fundação nova.');
+
+$agendaReminderMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/018_complete_agenda_reminders.sql');
+migrationAssertSame(true, is_string($agendaReminderMigration), 'A migration de conclusão dos lembretes deve ser legível.');
+migrationAssertSame(true, str_contains((string) $agendaReminderMigration, "ENUM('ativo', 'concluido', 'cancelado')"), 'Conclusão não pode reutilizar o estado cancelado.');
+migrationAssertSame(true, str_contains((string) $agendaReminderMigration, 'concluido_em'), 'A conclusão deve registrar data e hora.');
+migrationAssertSame(true, str_contains((string) $agendaReminderMigration, 'concluido_por'), 'A conclusão deve registrar o usuário responsável.');
+migrationAssertSame(true, str_contains((string) $agendaReminderMigration, 'fk_agenda_lembretes_concluido_usuario'), 'A auditoria da conclusão deve preservar integridade referencial.');
 
 echo "MigrationRunnerTest: OK\n";

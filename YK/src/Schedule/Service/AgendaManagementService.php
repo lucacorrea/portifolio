@@ -17,10 +17,10 @@ final class AgendaManagementService
     }
 
     /** @return AgendaReminder[] */
-    public function listRemindersBetween(DateTimeImmutable $start, DateTimeImmutable $end): array
+    public function listRemindersBetween(DateTimeImmutable $start, DateTimeImmutable $end, bool $includeCompleted = false): array
     {
         if ($end <= $start) throw new InvalidArgumentException('Período inválido.');
-        return $this->reminders->findBetween($start, $end);
+        return $this->reminders->findBetween($start, $end, $includeCompleted ? ['ativo', 'concluido'] : ['ativo']);
     }
 
     public function getReminder(int $id): AgendaReminder
@@ -31,6 +31,37 @@ final class AgendaManagementService
     }
 
     public function createReminder(AgendaReminderFormData $data): void { $this->reminders->create($data); }
-    public function updateReminder(int $id, AgendaReminderFormData $data): void { $this->getReminder($id); $this->reminders->update($id, $data); }
-    public function cancelReminder(int $id): void { $this->getReminder($id); $this->reminders->cancel($id); }
+    public function updateReminder(int $id, AgendaReminderFormData $data): void
+    {
+        if (!$this->getReminder($id)->isActive()) throw new InvalidArgumentException('Somente lembretes ativos podem ser editados.');
+        if (!$this->reminders->update($id, $data)) {
+            throw new InvalidArgumentException('O lembrete foi alterado por outro usuário. Atualize a Agenda.');
+        }
+    }
+
+    public function cancelReminder(int $id): void
+    {
+        $reminder = $this->getReminder($id);
+        if ($reminder->isCanceled()) return;
+        if (!$reminder->isActive()) throw new InvalidArgumentException('Somente lembretes ativos podem ser cancelados.');
+        if ($this->reminders->cancel($id)) return;
+
+        $current = $this->getReminder($id);
+        if (!$current->isCanceled()) {
+            throw new InvalidArgumentException('O lembrete foi alterado por outro usuário. Atualize a Agenda.');
+        }
+    }
+
+    public function completeReminder(int $id, int $userId): void
+    {
+        $reminder = $this->getReminder($id);
+        if ($reminder->isCompleted()) return;
+        if (!$reminder->isActive()) throw new InvalidArgumentException('Somente lembretes ativos podem ser marcados como feitos.');
+        if ($this->reminders->complete($id, $userId)) return;
+
+        $current = $this->getReminder($id);
+        if (!$current->isCompleted()) {
+            throw new InvalidArgumentException('O lembrete foi alterado por outro usuário. Atualize a Agenda.');
+        }
+    }
 }

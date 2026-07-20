@@ -31,6 +31,7 @@ final class SafeRedirect
         'faturamento.php',
         'relatorios.php',
         'configuracoes.php',
+        'configuracoes-fiscais.php',
         'usuarios.php',
         'perfis-acesso.php',
         'perfil-formulario.php',
@@ -51,7 +52,7 @@ final class SafeRedirect
 
         $decoded = rawurldecode($next);
         if (
-            str_contains($decoded, "\0")
+            preg_match('/[\x00-\x1F\x7F]/', $decoded) === 1
             || str_contains($decoded, '..')
             || str_starts_with($decoded, '/')
             || str_starts_with($decoded, '\\')

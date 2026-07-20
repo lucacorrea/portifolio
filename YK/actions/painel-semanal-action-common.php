@@ -13,7 +13,11 @@ function painel_semanal_redirect(App\Core\Application $application, string $targ
 function painel_semanal_return_target(?string $modal = null): string
 {
     if (isset($GLOBALS['application']) && $GLOBALS['application'] instanceof App\Core\Application && trim((string) ($_POST['return_to'] ?? '')) !== '') {
-        return os_return_target($GLOBALS['application'], 'painel-semanal.php', $modal === null ? [] : ['modal' => $modal]);
+        $target = os_return_target($GLOBALS['application'], 'painel-semanal.php', $modal === null ? [] : ['modal' => $modal]);
+        $path = parse_url($target, PHP_URL_PATH);
+        if (is_string($path) && basename($path) === 'painel-semanal.php') {
+            return $target;
+        }
     }
 
     $week = (string) ($_POST['return_week'] ?? date('Y-m-d'));

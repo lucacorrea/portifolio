@@ -22,6 +22,10 @@ final class Environment
         'DB_AUTO_MIGRATE',
         'DB_WEB_MIGRATIONS',
 
+        'FISCAL_INTEGRATION_ENABLED',
+        'FISCAL_PRODUCTION_ENABLED',
+        'FISCAL_MASTER_KEY',
+
         'SESSION_NAME',
         'SESSION_TIMEOUT',
         'SESSION_ABSOLUTE_TIMEOUT',
