@@ -2757,7 +2757,14 @@ body.sidebar-collapsed .nav-link-os {
 }
 
 .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-card {
-  grid-template-columns: 98px minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "time meta actions"
+    "content content content";
+  align-items: start;
+  gap: 8px 10px;
+  min-height: 108px;
+  padding: 12px 13px;
   border: 0;
   border-bottom: 1px solid var(--line-soft);
   border-radius: 0;
@@ -2768,14 +2775,57 @@ body.sidebar-collapsed .nav-link-os {
 }
 
 .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-heading {
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 1px;
+  align-items: baseline;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 3px 8px;
 }
 
 .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-meta {
-  align-items: flex-end;
-  flex-direction: column;
+  grid-area: meta;
+  align-items: center;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-time {
+  grid-area: time;
+  font-size: 14px;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-content {
+  grid-area: content;
+  gap: 5px;
+  padding-left: 35px;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-content .week-service-client {
+  font-size: 14px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-content .week-service-title {
+  font-size: 12.5px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-content .week-service-details {
+  align-items: flex-start;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-content .week-service-details > span {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+.operational-page[data-page="agenda"] .agenda-status-card .agenda-event-actions {
+  grid-area: actions;
+  align-self: center;
 }
 
 .operational-page[data-page="agenda"] .agenda-inline-action {
@@ -2801,7 +2851,15 @@ body.sidebar-collapsed .nav-link-os {
   }
 
   .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-card {
-    grid-template-columns: 92px minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-meta {
+    grid-area: meta;
+  }
+
+  .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-actions {
+    grid-area: actions;
   }
 }
 
@@ -2859,7 +2917,21 @@ body.sidebar-collapsed .nav-link-os {
   }
 
   .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-card {
-    grid-template-columns: 82px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    min-height: 102px;
+    padding: 11px;
+  }
+
+  .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-content {
+    padding-left: 0;
+  }
+
+  .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-meta {
+    grid-area: meta;
+  }
+
+  .operational-page[data-page="agenda"] .agenda-status-card .agenda-event-actions {
+    grid-area: actions;
   }
 }
 
