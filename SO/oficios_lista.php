@@ -1497,11 +1497,7 @@ include 'views/layout/header.php';
                         <i class="fas fa-trash"></i> Excluir definitivamente
                     </button>
                 </div>
-                <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
-
-            </form>
-
-        <?php endif; ?>
+</form>
         </div>
     </div>
 
@@ -1649,14 +1645,21 @@ include 'views/layout/header.php';
         <div class="modal-header-custom">
 
             <div>
+
                 <h3>
+
                     <i class="fas fa-check-circle text-success"></i>
+
                     Aprovar Solicitações
+
                 </h3>
 
                 <small>
+
                     Escolha o fornecedor para concluir a aprovação.
+
                 </small>
+
             </div>
 
             <button
@@ -1677,31 +1680,29 @@ include 'views/layout/header.php';
                 <i class="fas fa-info-circle"></i>
 
                 <strong id="totalSelecionados">
+
                     0 solicitações selecionadas
+
                 </strong>
 
             </div>
 
             <div class="form-group">
 
-                <label>
-
-                    Fornecedor
-
-                </label>
+                <label>Fornecedor</label>
 
                 <select
                     name="fornecedor_id"
                     class="form-control form-control-lg"
                     required>
 
-                    <option value="">Selecione um fornecedor...</option>
+                    <option value="">Selecione...</option>
 
-                    <?php foreach ($fornecedores_list as $f): ?>
+                    <?php foreach($fornecedores_list as $f): ?>
 
-                        <option value="<?= $f['id'] ?>">
+                        <option value="<?= $f['id']; ?>">
 
-                            <?= htmlspecialchars($f['nome']) ?>
+                            <?= htmlspecialchars($f['nome']); ?>
 
                         </option>
 
@@ -1716,10 +1717,9 @@ include 'views/layout/header.php';
                 <label>Observação</label>
 
                 <textarea
-                    class="form-control"
-                    rows="4"
                     name="observacao"
-                    placeholder="Observação opcional..."></textarea>
+                    class="form-control"
+                    rows="4"></textarea>
 
             </div>
 
@@ -1729,7 +1729,7 @@ include 'views/layout/header.php';
 
             <button
                 type="button"
-                class="btn btn-light"
+                class="btn btn-secondary"
                 onclick="fecharModalAprovacao()">
 
                 Cancelar
@@ -1740,7 +1740,7 @@ include 'views/layout/header.php';
                 type="submit"
                 class="btn btn-success">
 
-                <i class="fas fa-check"></i>
+                <i class="fas fa-check-circle"></i>
 
                 Aprovar Solicitações
 
@@ -1751,5 +1751,9 @@ include 'views/layout/header.php';
     </div>
 
 </div>
+ <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
 
+            </form>
+
+        <?php endif; ?>
 <?php include 'views/layout/footer.php'; ?>
