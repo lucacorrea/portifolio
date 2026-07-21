@@ -1144,11 +1144,15 @@ include 'views/layout/header.php';
 
                     <div>
                         <button
-                            type="submit"
-                            class="btn btn-success btn-sm"
-                            onclick="return confirmarAprovacao();">
+                            class="btn btn-success"
+                            type="button"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalAprovacao">
+
                             <i class="fas fa-check-circle"></i>
+
                             Aprovar Selecionados
+
                         </button>
 
                         <span id="contadorSelecionados"
@@ -1161,6 +1165,24 @@ include 'views/layout/header.php';
                 </div>
 
             <?php endif; ?>
+            <select
+                class="form-control"
+                name="fornecedor_id"
+                required>
+
+                <option value="">Selecione...</option>
+
+                <?php foreach ($fornecedores_list as $f): ?>
+
+                    <option value="<?= $f['id'] ?>">
+
+                        <?= $f['nome'] ?>
+
+                    </option>
+
+                <?php endforeach; ?>
+
+            </select>
 
             <div class="table-responsive lista-table-wrap">
                 <table class="table-vcenter text-nowrap lista-table">
