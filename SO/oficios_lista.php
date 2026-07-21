@@ -948,6 +948,154 @@ include 'views/layout/header.php';
         line-height: 1.45;
     }
 
+    .modal-aprovacao {
+
+        position: fixed;
+
+        inset: 0;
+
+        background: rgba(0, 0, 0, .65);
+
+        display: none;
+
+        justify-content: center;
+
+        align-items: center;
+
+        z-index: 99999;
+
+        backdrop-filter: blur(5px);
+
+    }
+
+    .modal-aprovacao.show {
+
+        display: flex;
+
+        animation: fade .25s;
+
+    }
+
+    .modal-aprovacao-box {
+
+        width: 600px;
+
+        max-width: 95%;
+
+        background: #fff;
+
+        border-radius: 16px;
+
+        overflow: hidden;
+
+        box-shadow: 0 30px 80px rgba(0, 0, 0, .35);
+
+        animation: zoom .25s;
+
+    }
+
+    .modal-header-custom {
+
+        display: flex;
+
+        justify-content: space-between;
+
+        align-items: center;
+
+        padding: 22px;
+
+        border-bottom: 1px solid #eee;
+
+    }
+
+    .modal-header-custom h3 {
+
+        margin: 0;
+
+        font-size: 22px;
+
+    }
+
+    .modal-header-custom small {
+
+        color: #888;
+
+    }
+
+    .modal-body-custom {
+
+        padding: 25px;
+
+    }
+
+    .modal-footer-custom {
+
+        padding: 20px;
+
+        border-top: 1px solid #eee;
+
+        display: flex;
+
+        justify-content: flex-end;
+
+        gap: 10px;
+
+    }
+
+    .btn-fechar-modal {
+
+        border: none;
+
+        background: none;
+
+        font-size: 22px;
+
+        cursor: pointer;
+
+    }
+
+    .form-control-lg {
+
+        height: 55px;
+
+        font-size: 17px;
+
+        border-radius: 10px;
+
+    }
+
+    @keyframes fade {
+
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+
+    }
+
+    @keyframes zoom {
+
+        from {
+
+            opacity: 0;
+
+            transform: scale(.90);
+
+        }
+
+        to {
+
+            opacity: 1;
+
+            transform: scale(1);
+
+        }
+
+    }
+
     .modal-oficio-footer {
         display: flex;
         justify-content: flex-end;
@@ -1144,10 +1292,9 @@ include 'views/layout/header.php';
 
                     <div>
                         <button
-                            class="btn btn-success"
                             type="button"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalAprovacao">
+                            class="btn btn-success btn-sm"
+                            onclick="abrirModalAprovacao()">
 
                             <i class="fas fa-check-circle"></i>
 
@@ -1165,24 +1312,7 @@ include 'views/layout/header.php';
                 </div>
 
             <?php endif; ?>
-            <select
-                class="form-control"
-                name="fornecedor_id"
-                required>
 
-                <option value="">Selecione...</option>
-
-                <?php foreach ($fornecedores_list as $f): ?>
-
-                    <option value="<?= $f['id'] ?>">
-
-                        <?= $f['nome'] ?>
-
-                    </option>
-
-                <?php endforeach; ?>
-
-            </select>
 
             <div class="table-responsive lista-table-wrap">
                 <table class="table-vcenter text-nowrap lista-table">
@@ -1480,4 +1610,146 @@ include 'views/layout/header.php';
 
     }
 </script>
+<script>
+    function abrirModalAprovacao() {
+
+        let total = document.querySelectorAll('.checkOficio:checked').length;
+
+        if (total == 0) {
+
+            alert("Selecione pelo menos uma solicitação.");
+
+            return;
+
+        }
+
+        document.getElementById("totalSelecionados").innerHTML =
+
+            total + " solicitação(ões) selecionada(s)";
+
+        document
+            .getElementById("modalAprovacao")
+            .classList.add("show");
+
+    }
+
+    function fecharModalAprovacao() {
+
+        document
+            .getElementById("modalAprovacao")
+            .classList.remove("show");
+
+    }
+</script>
+<!-- Modal Aprovação -->
+<div class="modal-aprovacao" id="modalAprovacao">
+
+    <div class="modal-aprovacao-box">
+
+        <div class="modal-header-custom">
+
+            <div>
+                <h3>
+                    <i class="fas fa-check-circle text-success"></i>
+                    Aprovar Solicitações
+                </h3>
+
+                <small>
+                    Escolha o fornecedor para concluir a aprovação.
+                </small>
+            </div>
+
+            <button
+                type="button"
+                class="btn-fechar-modal"
+                onclick="fecharModalAprovacao()">
+
+                <i class="fas fa-times"></i>
+
+            </button>
+
+        </div>
+
+        <div class="modal-body-custom">
+
+            <div class="alert alert-info">
+
+                <i class="fas fa-info-circle"></i>
+
+                <strong id="totalSelecionados">
+                    0 solicitações selecionadas
+                </strong>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+
+                    Fornecedor
+
+                </label>
+
+                <select
+                    name="fornecedor_id"
+                    class="form-control form-control-lg"
+                    required>
+
+                    <option value="">Selecione um fornecedor...</option>
+
+                    <?php foreach ($fornecedores_list as $f): ?>
+
+                        <option value="<?= $f['id'] ?>">
+
+                            <?= htmlspecialchars($f['nome']) ?>
+
+                        </option>
+
+                    <?php endforeach; ?>
+
+                </select>
+
+            </div>
+
+            <div class="form-group mt-3">
+
+                <label>Observação</label>
+
+                <textarea
+                    class="form-control"
+                    rows="4"
+                    name="observacao"
+                    placeholder="Observação opcional..."></textarea>
+
+            </div>
+
+        </div>
+
+        <div class="modal-footer-custom">
+
+            <button
+                type="button"
+                class="btn btn-light"
+                onclick="fecharModalAprovacao()">
+
+                Cancelar
+
+            </button>
+
+            <button
+                type="submit"
+                class="btn btn-success">
+
+                <i class="fas fa-check"></i>
+
+                Aprovar Solicitações
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
 <?php include 'views/layout/footer.php'; ?>
