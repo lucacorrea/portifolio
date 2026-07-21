@@ -866,7 +866,7 @@ try {
         .stat-card,
         .chart-container {
             border: 1px solid #e6e9ef !important;
-            border-left: 0 !important;
+            border-left: 1px solid #e6e9ef !important;
             border-radius: 14px !important;
             box-shadow: none !important;
             background: #fff !important;
@@ -937,6 +937,18 @@ try {
         #chartDaily {
             height: 100%;
             min-height: 300px;
+        }
+
+        #chartUsers .apexcharts-text,
+        #chartUsers .apexcharts-title-text,
+        #chartUsers .apexcharts-xaxis text,
+        #chartUsers .apexcharts-yaxis text,
+        #chartUsers .apexcharts-data-labels text,
+        #chartUsers .apexcharts-datalabel,
+        #chartUsers .apexcharts-xaxis-title-text,
+        #chartUsers .apexcharts-yaxis-title-text {
+            fill: #000000 !important;
+            color: #000000 !important;
         }
 
         .chart-placeholder {
@@ -2092,6 +2104,15 @@ try {
                             colors: ['#0d6efd'],
                             dataLabels: {
                                 enabled: true,
+                                offsetX: 4,
+                                style: {
+                                    colors: ['#000000'],
+                                    fontSize: '12px',
+                                    fontWeight: 700
+                                },
+                                background: {
+                                    enabled: false
+                                },
                                 formatter: function(val) {
                                     return val;
                                 }
