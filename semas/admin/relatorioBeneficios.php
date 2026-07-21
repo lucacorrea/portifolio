@@ -365,8 +365,11 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
       }
 
       .meta {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
+        text-align: left;
+        background-color: #FFFFFF;
+        color: #000000;
       }
 
       .header-cell {
@@ -393,6 +396,14 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
         text-align: center;
       }
 
+      td.center, th.center, .cell-center {
+        text-align: center;
+      }
+
+      td.left, th.left, .cell-left {
+        text-align: left;
+      }
+
       .nowrap {
         white-space: nowrap;
       }
@@ -412,17 +423,17 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
       </colgroup>
 
       <tr>
-        <th class="title" colspan="7">Relatório de Benefícios — ANEXO</th>
+        <th class="title" colspan="7" style="background-color:#F2F4F7;color:#000000;text-align:center;font-size:20px;font-weight:700;">Relatório de Benefícios — ANEXO</th>
       </tr>
 
       <tr>
-        <th class="meta" colspan="7">
+        <th class="meta" colspan="7" style="text-align:left;font-size:14px;font-weight:700;">
           Gerado em: <?= h($genTxt) ?> &nbsp;&nbsp;&nbsp; Filtros: <?= h($fTxt) ?>
         </th>
       </tr>
 
       <tr>
-        <th class="meta" colspan="7">
+        <th class="meta" colspan="7" style="text-align:left;font-size:14px;font-weight:700;">
           Benefícios ativos: <?= (int)$kpiAtivos ?> &nbsp;&nbsp; Tipos de benefícios: <?= (int)$kpiTipos ?>
           &nbsp;&nbsp; Quantidade entregue (no período): <?= (int)$entregasTotal ?>
           &nbsp;&nbsp; Valor total (no período): <?= h(money_br((float)$valorTotal)) ?>
@@ -430,24 +441,24 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
       </tr>
 
       <tr>
-        <th class="nowrap header-cell">Nome</th>
-        <th class="nowrap header-cell">Categoria</th>
-        <th class="nowrap header-cell">Periodicidade</th>
-        <th class="nowrap header-cell">Valor Padrão</th>
-        <th class="nowrap header-cell">Status</th>
-        <th class="nowrap header-cell">Qtd Entregue</th>
-        <th class="nowrap header-cell">Valor Total</th>
+        <th class="nowrap header-cell" style="background-color:#F2F4F7;color:#000000;text-align:center;font-size:13px;font-weight:700;">Nome</th>
+        <th class="nowrap header-cell" style="background-color:#F2F4F7;color:#000000;text-align:center;font-size:13px;font-weight:700;">Categoria</th>
+        <th class="nowrap header-cell" style="background-color:#F2F4F7;color:#000000;text-align:center;font-size:13px;font-weight:700;">Periodicidade</th>
+        <th class="nowrap header-cell" style="background-color:#F2F4F7;color:#000000;text-align:center;font-size:13px;font-weight:700;">Valor Padrão</th>
+        <th class="nowrap header-cell" style="background-color:#F2F4F7;color:#000000;text-align:center;font-size:13px;font-weight:700;">Status</th>
+        <th class="nowrap header-cell" style="background-color:#F2F4F7;color:#000000;text-align:center;font-size:13px;font-weight:700;">Qtd Entregue</th>
+        <th class="nowrap header-cell" style="background-color:#F2F4F7;color:#000000;text-align:center;font-size:13px;font-weight:700;">Valor Total</th>
       </tr>
 
       <?php foreach ($rows as $r): ?>
         <tr>
-          <td class="cell-text left"><?= h((string)$r['nome']) ?></td>
-          <td class="cell-text center"><?= h((string)$r['categoria']) ?></td>
-          <td class="cell-text center"><?= h((string)$r['periodicidade']) ?></td>
-          <td class="cell-text center" style="mso-number-format:'\@';"><?= h(money_br((float)$r['valor_padrao'])) ?></td>
-          <td class="cell-text center"><?= h((string)$r['status']) ?></td>
-          <td class="cell-text center"><?= (int)$r['qtd_entregue'] ?></td>
-          <td class="cell-text center" style="mso-number-format:'\@';"><?= h(money_br((float)$r['valor_total'])) ?></td>
+          <td class="cell-text left" style="text-align:left;"><?= h((string)$r['nome']) ?></td>
+          <td class="cell-text center" style="text-align:center;"><?= h((string)$r['categoria']) ?></td>
+          <td class="cell-text center" style="text-align:center;"><?= h((string)$r['periodicidade']) ?></td>
+          <td class="cell-text center" style="text-align:center;mso-number-format:'\@';"><?= h(money_br((float)$r['valor_padrao'])) ?></td>
+          <td class="cell-text center" style="text-align:center;"><?= h((string)$r['status']) ?></td>
+          <td class="cell-text center" style="text-align:center;"><?= (int)$r['qtd_entregue'] ?></td>
+          <td class="cell-text center" style="text-align:center;mso-number-format:'\@';"><?= h(money_br((float)$r['valor_total'])) ?></td>
         </tr>
       <?php endforeach; ?>
     </table>
