@@ -357,13 +357,32 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
       }
 
       .title {
-        font-size: 16px;
+        font-size: 20px;
+        font-weight: 700;
+        text-align: center;
+        background-color: #F2F4F7;
+        color: #000000;
+      }
+
+      .meta {
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .header-cell {
+        background-color: #F2F4F7;
+        color: #000000;
+        font-size: 13px;
         font-weight: 700;
         text-align: center;
       }
 
-      .meta {
-        font-size: 11px;
+      .cell-text {
+        font-size: 12px;
+      }
+
+      .left {
+        text-align: left;
       }
 
       .right {
@@ -411,24 +430,24 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
       </tr>
 
       <tr>
-        <th class="nowrap">Nome</th>
-        <th class="nowrap">Categoria</th>
-        <th class="nowrap">Periodicidade</th>
-        <th class="nowrap right">Valor Padrão</th>
-        <th class="nowrap center">Status</th>
-        <th class="nowrap right">Qtd Entregue</th>
-        <th class="nowrap right">Valor Total</th>
+        <th class="nowrap header-cell">Nome</th>
+        <th class="nowrap header-cell">Categoria</th>
+        <th class="nowrap header-cell">Periodicidade</th>
+        <th class="nowrap header-cell">Valor Padrão</th>
+        <th class="nowrap header-cell">Status</th>
+        <th class="nowrap header-cell">Qtd Entregue</th>
+        <th class="nowrap header-cell">Valor Total</th>
       </tr>
 
       <?php foreach ($rows as $r): ?>
         <tr>
-          <td><?= h((string)$r['nome']) ?></td>
-          <td><?= h((string)$r['categoria']) ?></td>
-          <td><?= h((string)$r['periodicidade']) ?></td>
-          <td class="right" style="mso-number-format:'\@';"><?= h(money_br((float)$r['valor_padrao'])) ?></td>
-          <td class="center"><?= h((string)$r['status']) ?></td>
-          <td class="right"><?= (int)$r['qtd_entregue'] ?></td>
-          <td class="right" style="mso-number-format:'\@';"><?= h(money_br((float)$r['valor_total'])) ?></td>
+          <td class="cell-text left"><?= h((string)$r['nome']) ?></td>
+          <td class="cell-text center"><?= h((string)$r['categoria']) ?></td>
+          <td class="cell-text center"><?= h((string)$r['periodicidade']) ?></td>
+          <td class="cell-text center" style="mso-number-format:'\@';"><?= h(money_br((float)$r['valor_padrao'])) ?></td>
+          <td class="cell-text center"><?= h((string)$r['status']) ?></td>
+          <td class="cell-text center"><?= (int)$r['qtd_entregue'] ?></td>
+          <td class="cell-text center" style="mso-number-format:'\@';"><?= h(money_br((float)$r['valor_total'])) ?></td>
         </tr>
       <?php endforeach; ?>
     </table>
