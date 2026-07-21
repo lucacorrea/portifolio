@@ -2038,6 +2038,276 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
       text-overflow: ellipsis;
     }
 
+
+
+    /* ===== PADRÃO CLEAN DE TABELA / BUSCA / ORDENAÇÃO ===== */
+    .relatorio-search-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .relatorio-search-input {
+      width: 100%;
+      min-width: 280px;
+      height: 38px;
+      padding: .55rem .9rem;
+      border: 1px solid #9bb4f5;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      font-size: 14px;
+      box-shadow: none;
+      outline: none;
+      transition: all .2s ease;
+    }
+
+    .relatorio-search-input::placeholder {
+      color: #7f8a99;
+      opacity: 1;
+    }
+
+    .relatorio-search-input:focus {
+      border-color: #9ab0f5;
+      box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+    }
+
+    .relatorio-search-clear {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border: 1px solid #cfd6df;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .2s ease;
+      padding: 0;
+    }
+
+    .relatorio-search-clear i {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .relatorio-search-clear:hover {
+      border-color: #435ebe;
+      color: #435ebe;
+      background: #f8f9ff;
+    }
+
+    #tblBenef {
+      width: 100% !important;
+      table-layout: auto;
+      border-collapse: collapse !important;
+      border-spacing: 0 !important;
+      background: #fff !important;
+      margin-bottom: 0 !important;
+      white-space: nowrap;
+    }
+
+    #tblBenef thead,
+    #tblBenef thead tr,
+    #tblBenef thead th {
+      background: #fff !important;
+    }
+
+    #tblBenef thead th {
+      color: #495057 !important;
+      font-size: 15px !important;
+      font-weight: 700 !important;
+      text-align: center !important;
+      padding: 13px 10px !important;
+      border: 0 !important;
+      border-top: 1px solid #d7dce2 !important;
+      border-bottom: 2px solid #d7dce2 !important;
+      white-space: nowrap !important;
+      vertical-align: middle !important;
+    }
+
+    #tblBenef thead th.sortable-th {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+
+    .sort-header-btn {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: 700;
+      padding: 0 22px 0 0;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 20px;
+      cursor: pointer;
+      line-height: 1.2;
+      position: relative;
+      text-align: center;
+    }
+
+    .sort-header-btn:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .sort-indicator {
+      position: absolute;
+      top: 50%;
+      right: 2px;
+      width: 12px;
+      height: 18px;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .sort-indicator::before,
+    .sort-indicator::after {
+      position: absolute;
+      left: 0;
+      width: 12px;
+      text-align: center;
+      font-size: 9px;
+      line-height: 9px;
+      color: #e1e5ea;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .sort-indicator::before {
+      content: "▲";
+      top: 0;
+    }
+
+    .sort-indicator::after {
+      content: "▼";
+      bottom: 0;
+    }
+
+    #tblBenef thead th.sort-asc .sort-indicator::before,
+    #tblBenef thead th.sort-desc .sort-indicator::after {
+      color: #8a95a3;
+    }
+
+    #tblBenef thead th.sort-asc .sort-indicator::after,
+    #tblBenef thead th.sort-desc .sort-indicator::before {
+      color: #e1e5ea;
+    }
+
+    #tblBenef tbody td {
+      padding: 11px 10px !important;
+      vertical-align: middle !important;
+      border: 0 !important;
+      border-bottom: 1px solid #dfe3e8 !important;
+      background: transparent !important;
+      color: #536779 !important;
+      white-space: nowrap !important;
+      text-align: center !important;
+    }
+
+    #tblBenef tbody tr:nth-child(even) {
+      background: #f7f8fa !important;
+    }
+
+    #tblBenef tbody tr:nth-child(odd) {
+      background: #fff !important;
+    }
+
+    #tblBenef tbody tr:hover {
+      background: #f1f4f8 !important;
+    }
+
+    #tblBenef tbody tr:last-child td {
+      border-bottom: 2px solid #435ebe !important;
+    }
+
+    #tblBenef td.td-nome {
+      max-width: 520px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left !important;
+      font-weight: 600;
+      color: #43576b !important;
+    }
+
+    .tfoot-pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e9ecef;
+      flex-wrap: wrap;
+      background: #fff !important;
+    }
+
+    .tfoot-pager .btn {
+      min-width: 96px;
+      padding: .5rem 1rem;
+      border: 1px solid #d0d7de;
+      background: #fff;
+      color: #6c757d;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: all .2s ease;
+    }
+
+    .tfoot-pager .btn:hover:not(:disabled) {
+      border-color: #435ebe;
+      color: #435ebe;
+      background: #f8f9ff;
+    }
+
+    .tfoot-pager .btn:disabled {
+      background: #f5f6f8;
+      color: #b5b8bf;
+      border-color: #dfe3e8;
+      cursor: not-allowed;
+    }
+
+    #lblPagina {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #435ebe;
+      white-space: nowrap;
+    }
+
+    #selPerPage {
+      min-width: 72px;
+      padding: .45rem 2rem .45rem .75rem;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background-color: #fff;
+      color: #495057;
+      font-weight: 600;
+      outline: none;
+    }
+
+    #selPerPage:focus {
+      border-color: #435ebe;
+      box-shadow: 0 0 0 .15rem rgba(67, 94, 190, .15);
+    }
+
+    .stat.card,
+    .card.stat {
+      border: 0 !important;
+      border-left: 0 !important;
+      box-shadow: none !important;
+      background: #fff !important;
+    }
+
     @media(max-width:576.98px) {
       .page-title h3 {
         font-size: 1.25rem;
@@ -2464,22 +2734,28 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
           <div class="card">
             <div class="card-header d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
               <span class="fw-semibold">Lista de Benefícios (ajudas_tipos)</span>
-              <div class="d-flex gap-2 align-items-center">
-                <input id="qLive" class="form-control form-control-sm" placeholder="Buscar benefício (nome)..."
+              <div class="relatorio-search-wrap">
+                <input id="qLive" class="relatorio-search-input" placeholder="Buscar benefício (nome)..."
                   autocomplete="off" />
-                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClear"><i
+                <button class="relatorio-search-clear" type="button" id="btnClear" title="Limpar pesquisa" aria-label="Limpar pesquisa"><i
                     class="bi bi-x-circle"></i></button>
               </div>
             </div>
 
             <div class="card-body">
               <div class="table-responsive-md">
-                <table id="tblBenef" class="table table-striped table-hover align-middle w-100 text-nowrap">
-                  <thead class="table-light">
+                <table id="tblBenef" class="table table-hover align-middle w-100 text-nowrap mb-0">
+                  <thead>
                     <tr>
-                      <th>Benefício</th>
-                      <th class="text-end">Pessoas</th>
-                      <th class="text-end">% do período</th>
+                      <th class="sortable-th" data-sort-key="nome" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por benefício">Benefício <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="count" data-sort-type="number">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por pessoas">Pessoas <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="pct" data-sort-type="number">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por percentual do período">% do período <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
                     </tr>
                   </thead>
                   <tbody id="tbodyBenef"></tbody>
@@ -2612,6 +2888,12 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
       let page = 1;
       let perPage = parseInt(selPerPage.value, 10) || 10;
       let currentBenefTable = [];
+      let sortState = {
+        key: 'count',
+        type: 'number',
+        dir: 'desc'
+      };
+      const sortableHeaders = Array.from(document.querySelectorAll('#tblBenef thead th.sortable-th'));
 
       const palette = (n) =>
         Array.from({
@@ -2843,7 +3125,77 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
           data.grouping === 'month' ? 'Agrupado por mês (período grande)' : 'Agrupado por dia';
       }
 
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function normalizeText(value) {
+        return String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim();
+      }
+
+      function getSortValue(row, key, type) {
+        const value = row ? row[key] : '';
+
+        if (type === 'number') {
+          const numberValue = Number(value || 0);
+          return Number.isFinite(numberValue) ? numberValue : 0;
+        }
+
+        return normalizeText(value);
+      }
+
+      function updateSortHeaders() {
+        sortableHeaders.forEach((th) => {
+          th.classList.remove('sort-asc', 'sort-desc');
+          const btn = th.querySelector('.sort-header-btn');
+          if (!btn) return;
+
+          if ((th.dataset.sortKey || '') === sortState.key) {
+            th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+            btn.setAttribute('aria-sort', sortState.dir === 'asc' ? 'ascending' : 'descending');
+          } else {
+            btn.removeAttribute('aria-sort');
+          }
+        });
+      }
+
+      function applySort() {
+        const dir = sortState.dir === 'desc' ? -1 : 1;
+        const key = sortState.key;
+        const type = sortState.type || 'text';
+
+        currentBenefTable.sort((a, b) => {
+          const av = getSortValue(a, key, type);
+          const bv = getSortValue(b, key, type);
+
+          if (type === 'number') {
+            if (av < bv) return -1 * dir;
+            if (av > bv) return 1 * dir;
+            return normalizeText(a?.nome).localeCompare(normalizeText(b?.nome), 'pt-BR') * dir;
+          }
+
+          const cmp = String(av).localeCompare(String(bv), 'pt-BR', {
+            numeric: true,
+            sensitivity: 'base'
+          });
+
+          if (cmp !== 0) return cmp * dir;
+          return (Number(b?.count || 0) - Number(a?.count || 0));
+        });
+      }
+
       function renderTable() {
+        applySort();
+        updateSortHeaders();
         const total = currentBenefTable.length;
         const pages = Math.max(1, Math.ceil(total / perPage));
         if (page > pages) page = pages;
@@ -2858,16 +3210,16 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
             `<tr><td colspan="3" class="text-center text-muted">Sem resultados.</td></tr>`;
         } else {
           for (const r of slice) {
-            const pct = (r.pct ?? 0).toLocaleString('pt-BR', {
+            const pct = Number(r.pct ?? 0).toLocaleString('pt-BR', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             });
-            const nome = (r.nome || '—');
+            const nome = r.nome || '—';
             const tr = document.createElement('tr');
             tr.innerHTML = `
-            <td class="td-nome" title="${String(nome).replace(/"/g, '&quot;')}">${nome}</td>
-            <td class="text-end">${r.count ?? 0}</td>
-            <td class="text-end">${pct}%</td>
+            <td class="td-nome" title="${escapeHtml(nome)}">${escapeHtml(nome)}</td>
+            <td>${Number(r.count ?? 0)}</td>
+            <td>${pct}%</td>
           `;
             tbodyBenef.appendChild(tr);
           }
@@ -3104,6 +3456,28 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
         inpSearch.value = '';
         fetchData();
         inpSearch.focus();
+      });
+
+      sortableHeaders.forEach((th) => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sortKey || '';
+          const type = th.dataset.sortType || 'text';
+          if (!key) return;
+
+          if (sortState.key === key) {
+            sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortState = {
+              key,
+              type,
+              dir: type === 'number' ? 'desc' : 'asc'
+            };
+          }
+
+          sortState.type = type;
+          page = 1;
+          renderTable();
+        });
       });
 
       selPerPage.addEventListener('change', () => {
