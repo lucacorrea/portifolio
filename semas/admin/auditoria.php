@@ -614,18 +614,46 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes') {
 ========================= */
 if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
     header('Content-Type: application/vnd.ms-excel; charset=utf-8');
-    header('Content-Disposition: attachment; filename=auditoria_' . date('Y-m-d_H-i-s') . '.xls');
+    header('Content-Disposition: attachment; filename=auditoria_anexo_' . date('Y-m-d_H-i-s') . '.xls');
     header('Pragma: no-cache');
     header('Expires: 0');
 
-    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>';
-    echo 'table{border-collapse:collapse;width:100%;font-family:Arial,sans-serif}';
-    echo 'th{background:#4CAF50;color:#fff;font-weight:bold;padding:8px;border:1px solid #ddd}';
-    echo 'td{padding:8px;border:1px solid #ddd;vertical-align:top}';
-    echo 'tr:nth-child(even){background:#f7f7f7}';
-    echo '</style></head><body>';
-    echo '<table>';
-    echo '<tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Entidade</th><th>Detalhes</th></tr>';
+    $gerado_em_dispositivo = trim((string)($_GET['gerado_em'] ?? ''));
+    if ($gerado_em_dispositivo === '') {
+        $gerado_em_dispositivo = date('d/m/Y H:i:s');
+    }
+
+    $filtros_exportacao = [];
+
+    if ($filtro_usuario !== '') {
+        $filtros_exportacao[] = 'Usuário: ' . $filtro_usuario;
+    }
+
+    if ($filtro_acao !== '') {
+        $filtros_exportacao[] = 'Ação: ' . $filtro_acao;
+    }
+
+    if ($filtro_entidade !== '') {
+        $filtros_exportacao[] = 'Entidade: ' . $filtro_entidade;
+    }
+
+    if ($filtro_data_inicio !== '') {
+        $filtros_exportacao[] = 'Data inicial: ' . safe_date($filtro_data_inicio);
+    }
+
+    if ($filtro_data_fim !== '') {
+        $filtros_exportacao[] = 'Data final: ' . safe_date($filtro_data_fim);
+    }
+
+    if ($filtro_termo !== '') {
+        $filtros_exportacao[] = 'Termo pesquisado: ' . $filtro_termo;
+    }
+
+    $texto_filtros_exportacao = !empty($filtros_exportacao)
+        ? implode(' | ', $filtros_exportacao)
+        : 'Nenhum filtro aplicado';
+
+    $linhas_exportacao = [];
 
     try {
         $sql = "
@@ -643,21 +671,169 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            echo '<tr>';
-            echo '<td>' . safe_datetime($row['evento_data'] ?? '', 'd/m/Y H:i:s') . '</td>';
-            echo '<td>' . safe_html($row['usuario'] ?? '') . '</td>';
-            echo '<td>' . safe_html($row['acao'] ?? '') . '</td>';
-            echo '<td>' . safe_html($row['entidade'] ?? '') . '</td>';
-            echo '<td>' . safe_html($row['detalhes'] ?? '') . '</td>';
-            echo '</tr>';
-        }
+        $linhas_exportacao = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
-        echo '<tr><td colspan="5">Erro ao exportar dados.</td></tr>';
+        $linhas_exportacao = [];
     }
 
-    echo '</table></body></html>';
+    $total_exportado = count($linhas_exportacao);
+
+    echo "\xEF\xBB\xBF";
+    echo '<!DOCTYPE html>';
+    echo '<html lang="pt-br">';
+    echo '<head>';
+    echo '<meta charset="UTF-8">';
+    echo '<style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Calibri, Arial, sans-serif;
+            color: #000;
+            background: #fff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-family: Calibri, Arial, sans-serif;
+        }
+
+        td, th {
+            border: 1px solid #000;
+            padding: 7px 8px;
+            vertical-align: middle;
+            white-space: normal;
+        }
+
+        .titulo {
+            background: #F2F4F7;
+            font-size: 16px;
+            font-weight: 700;
+            text-align: center;
+            height: 32px;
+        }
+
+        .meta {
+            background: #FFFFFF;
+            font-size: 11px;
+            font-weight: 700;
+            text-align: left;
+            height: 24px;
+        }
+
+        .cabecalho {
+            background: #F2F4F7;
+            color: #000;
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            height: 28px;
+        }
+
+        .centro {
+            text-align: center;
+        }
+
+        .esquerda {
+            text-align: left;
+        }
+
+        .linha-par {
+            background: #FFFFFF;
+        }
+
+        .linha-impar {
+            background: #FFFFFF;
+        }
+
+        .rodape {
+            background: #F2F4F7;
+            font-weight: 700;
+            text-align: left;
+        }
+
+        .col-data {
+            width: 18%;
+        }
+
+        .col-usuario {
+            width: 18%;
+        }
+
+        .col-acao {
+            width: 13%;
+        }
+
+        .col-entidade {
+            width: 13%;
+        }
+
+        .col-detalhes {
+            width: 38%;
+        }
+    </style>';
+    echo '</head>';
+    echo '<body>';
+    echo '<table>';
+
+    echo '<colgroup>';
+    echo '<col class="col-data">';
+    echo '<col class="col-usuario">';
+    echo '<col class="col-acao">';
+    echo '<col class="col-entidade">';
+    echo '<col class="col-detalhes">';
+    echo '</colgroup>';
+
+    echo '<tr>';
+    echo '<th colspan="5" class="titulo">Auditoria - ANEXO</th>';
+    echo '</tr>';
+
+    echo '<tr>';
+    echo '<td colspan="5" class="meta">Total: ' . format_number($total_exportado) . ' registros</td>';
+    echo '</tr>';
+
+    echo '<tr>';
+    echo '<td colspan="5" class="meta">Filtros: ' . safe_html($texto_filtros_exportacao) . '</td>';
+    echo '</tr>';
+
+    echo '<tr>';
+    echo '<td colspan="5" class="meta">Gerado em: ' . safe_html($gerado_em_dispositivo) . '</td>';
+    echo '</tr>';
+
+    echo '<tr>';
+    echo '<th class="cabecalho">Data/Hora</th>';
+    echo '<th class="cabecalho">Usuário</th>';
+    echo '<th class="cabecalho">Ação</th>';
+    echo '<th class="cabecalho">Entidade</th>';
+    echo '<th class="cabecalho">Detalhes</th>';
+    echo '</tr>';
+
+    if (!empty($linhas_exportacao)) {
+        foreach ($linhas_exportacao as $indice => $row) {
+            $classe_linha = ($indice % 2 === 0) ? 'linha-par' : 'linha-impar';
+
+            echo '<tr class="' . $classe_linha . '">';
+            echo '<td class="centro">' . safe_datetime($row['evento_data'] ?? '', 'd/m/Y H:i:s') . '</td>';
+            echo '<td class="centro">' . safe_html($row['usuario'] ?? '') . '</td>';
+            echo '<td class="centro">' . safe_html($row['acao'] ?? '') . '</td>';
+            echo '<td class="centro">' . safe_html($row['entidade'] ?? '') . '</td>';
+            echo '<td class="esquerda">' . safe_html($row['detalhes'] ?? '') . '</td>';
+            echo '</tr>';
+        }
+    } else {
+        echo '<tr>';
+        echo '<td colspan="5" class="centro">Nenhum registro encontrado.</td>';
+        echo '</tr>';
+    }
+
+    echo '<tr>';
+    echo '<td colspan="5" class="rodape">Total exportado: ' . format_number($total_exportado) . ' registros</td>';
+    echo '</tr>';
+
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
     exit;
 }
 
@@ -2388,8 +2564,21 @@ try {
 
         function exportarExcel() {
             const params = new URLSearchParams(window.location.search);
+            const agora = new Date();
+
+            const dataDispositivo = agora.toLocaleDateString('pt-BR');
+            const horaDispositivo = agora.toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
             params.set('exportar', 'excel');
+            params.set('gerado_em', `${dataDispositivo} ${horaDispositivo}`);
             params.delete('ajax');
+            params.delete('pagina');
+            params.delete('u_page');
+
             window.location.href = `${window.location.pathname}?${params.toString()}`;
         }
 
