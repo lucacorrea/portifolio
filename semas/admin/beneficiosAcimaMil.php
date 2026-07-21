@@ -1374,14 +1374,17 @@ if (!empty($beneficios)) {
                                             </tbody>
                                             <tfoot>
                                                 <tr>
-                                                    <th colspan="3" class="text-end">Total Geral:</th>
+                                                    <th class="text-start">Total Geral:</th>
+                                                    <th></th>
+                                                    <th></th>
                                                     <th class="text-center"><?= count($beneficios) ?> reg.</th>
                                                     <th class="text-center"><?= (int)$total_quantidade ?></th>
                                                     <th></th>
-                                                    <th class="<?= $classe_total ?>">
+                                                    <th class="<?= $classe_total ?> text-center">
                                                         <strong><?= formatarMoeda($total_valor) ?></strong>
                                                     </th>
-                                                    <th colspan="2"></th>
+                                                    <th></th>
+                                                    <th></th>
                                                 </tr>
                                             </tfoot>
                                         </table>
@@ -1762,7 +1765,25 @@ if (!empty($beneficios)) {
                                             .trim();
                                     },
                                     body: function(data, row, column) {
-                                        let texto = $('<div>').html(data).text()
+                                        const conteudo = $('<div>').html(data);
+
+                                        if (column === 1) {
+                                            const nome = conteudo.find('strong').first().text()
+                                                .replace(/\u00A0/g, ' ')
+                                                .replace(/\s+/g, ' ')
+                                                .trim();
+
+                                            const telefone = conteudo.find('small').first().text()
+                                                .replace(/\u00A0/g, ' ')
+                                                .replace(/\s+/g, ' ')
+                                                .trim();
+
+                                            if (nome || telefone) {
+                                                return telefone ? nome + '\n' + telefone : nome;
+                                            }
+                                        }
+
+                                        let texto = conteudo.text()
                                             .replace(/\u00A0/g, ' ')
                                             .replace(/\s+/g, ' ')
                                             .trim();
@@ -1776,11 +1797,20 @@ if (!empty($beneficios)) {
 
                                         return texto;
                                     },
-                                    footer: function(data) {
-                                        return $('<div>').html(data).text()
-                                            .replace(/\u00A0/g, ' ')
-                                            .replace(/\s+/g, ' ')
-                                            .trim();
+                                    footer: function(data, row, column) {
+                                        if (column === 0) {
+                                            return 'Total Geral:';
+                                        }
+                                        if (column === 3) {
+                                            return <?= json_encode($total_entregas . ' reg.', JSON_UNESCAPED_UNICODE) ?>;
+                                        }
+                                        if (column === 4) {
+                                            return <?= json_encode((string)$total_quantidade, JSON_UNESCAPED_UNICODE) ?>;
+                                        }
+                                        if (column === 6) {
+                                            return <?= json_encode(formatarMoeda($total_valor), JSON_UNESCAPED_UNICODE) ?>;
+                                        }
+                                        return '';
                                     }
                                 }
                             },
@@ -2040,7 +2070,7 @@ if (!empty($beneficios)) {
                                 );
 
                                 const firstRow = sheetData.firstChild;
-                                $($(temp).find('row').get().reverse()).each(function() {
+                                $($(temp).find('row').get()).each(function() {
                                     sheetData.insertBefore(this, firstRow);
                                 });
 
@@ -2067,7 +2097,7 @@ if (!empty($beneficios)) {
                                         if (rowNumber === 5) {
                                             $(this).attr('s', styleHeader);
                                         } else if (rowNumber > 5) {
-                                            if (['B', 'D', 'I'].includes(col)) {
+                                            if (col === 'B') {
                                                 $(this).attr('s', styleLeft);
                                             } else {
                                                 $(this).attr('s', styleCenter);
@@ -2259,7 +2289,7 @@ if (!empty($beneficios)) {
 
                                             cell.margin = [3, 4, 3, 4];
                                             cell.fontSize = rowIndex === 0 ? 9 : 8;
-                                            cell.alignment = [1, 3, 8].includes(colIndex) ? 'left' : 'center';
+                                            cell.alignment = colIndex === 1 ? 'left' : 'center';
 
                                             if (rowIndex === 0) {
                                                 cell.fillColor = '#F2F4F7';
