@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Finance\Service;
 
+require_once __DIR__ . '/AccountsReceivableOrderPayments.php';
+
 use DateTimeImmutable;
 use InvalidArgumentException;
 use PDO;
 
 final class AccountsReceivableManagementService
 {
+    use AccountsReceivableOrderPayments;
+
     private const PAYMENT_FORMS = ['dinheiro', 'pix', 'cartao_debito', 'cartao_credito', 'transferencia', 'outro'];
     private const ELIGIBLE_PAYMENT_STATUSES = ['pendente', 'parcial', 'vencida'];
 
@@ -64,8 +68,10 @@ final class AccountsReceivableManagementService
         }
         $search = $this->filterSearch($filters['search'] ?? '');
         if ($search !== '') {
-            $where[] = '(c.nome LIKE :search OR os.numero LIKE :search)';
-            $params['search'] = '%' . $search . '%';
+            $where[] = '(c.nome LIKE :search_client OR os.numero LIKE :search_order)';
+            $searchPattern = '%' . $search . '%';
+            $params['search_client'] = $searchPattern;
+            $params['search_order'] = $searchPattern;
         }
 
         $sql = 'SELECT cr.*, os.numero AS os_numero, c.id AS cliente_id,
@@ -89,6 +95,41 @@ final class AccountsReceivableManagementService
         $statement = $this->connection->prepare($sql);
         $statement->execute($params);
         return $statement->fetchAll();
+    }
+
+    /** @param int[] $orderIds @return array<int,array{id:int,status:string,valor_total:string,valor_recebido:string,saldo:string}> */
+    public function balancesForOrders(array $orderIds): array
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $orderIds),
+            static fn(int $id): bool => $id > 0
+        )));
+        if ($ids === []) return [];
+
+        $placeholders = [];
+        $params = [];
+        foreach ($ids as $index => $id) {
+            $key = 'order_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $id;
+        }
+        $statement = $this->connection->prepare(
+            'SELECT id, ordem_servico_id, status, valor_total, valor_recebido, saldo
+               FROM contas_receber
+              WHERE ordem_servico_id IN (' . implode(', ', $placeholders) . ')'
+        );
+        $statement->execute($params);
+        $balances = [];
+        foreach ($statement->fetchAll() as $row) {
+            $balances[(int) $row['ordem_servico_id']] = [
+                'id' => (int) $row['id'],
+                'status' => (string) $row['status'],
+                'valor_total' => (string) $row['valor_total'],
+                'valor_recebido' => (string) $row['valor_recebido'],
+                'saldo' => (string) $row['saldo'],
+            ];
+        }
+        return $balances;
     }
 
     public function upsertForOrder(int $orderId, string $total, string $received, ?string $dueDate, ?string $reminderDate, ?string $notes, int $userId): ?int
@@ -144,7 +185,7 @@ final class AccountsReceivableManagementService
         return $id;
     }
 
-    public function registerPayment(int $accountId, string $value, string $form, ?string $notes, int $userId): void
+    public function registerPayment(int $accountId, string $value, string $form, ?string $notes, int $userId): int
     {
         $ownsTransaction = !$this->connection->inTransaction();
         if ($ownsTransaction) $this->connection->beginTransaction();
@@ -158,9 +199,10 @@ final class AccountsReceivableManagementService
             if ($amount <= 0 || $amount > $this->moneyToCents((string) $account['saldo'])) {
                 throw new InvalidArgumentException('Valor de pagamento inválido para o saldo.');
             }
-            $this->applyPaymentToLockedAccount($account, $amount, $form, $notes, $userId);
+            $paymentId = $this->applyPaymentToLockedAccount($account, $amount, $form, $notes, $userId);
 
             if ($ownsTransaction) $this->connection->commit();
+            return $paymentId;
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
             throw $exception;
@@ -273,7 +315,15 @@ final class AccountsReceivableManagementService
     }
 
     /** @param array<string,mixed> $account */
-    private function applyPaymentToLockedAccount(array $account, int $amount, string $form, ?string $notes, int $userId): void
+    private function applyPaymentToLockedAccount(
+        array $account,
+        int $amount,
+        string $form,
+        ?string $notes,
+        int $userId,
+        ?string $paymentToken = null,
+        string $cashDescription = 'Recebimento de conta a receber'
+    ): int
     {
         $form = $this->paymentForm($form);
         $notes = $this->paymentNotes($notes);
@@ -282,15 +332,16 @@ final class AccountsReceivableManagementService
         $cashId = $this->cash->registerEntry(
             'conta_receber_pagamento',
             $accountId,
-            'Recebimento de conta a receber',
+            $cashDescription,
             $form,
             $value,
             $userId
         );
         $statement = $this->connection->prepare(
             'INSERT INTO ordem_servico_pagamentos
-                (ordem_servico_id, valor, forma_pagamento, recebido_em, observacao, status, registrado_por, caixa_movimentacao_id)
-             VALUES (:order_id, :value, :form, NOW(), :notes, "ativo", :user_id, :cash_id)'
+                (ordem_servico_id, valor, forma_pagamento, recebido_em, observacao, status,
+                 registrado_por, caixa_movimentacao_id, payment_token)
+             VALUES (:order_id, :value, :form, NOW(), :notes, "ativo", :user_id, :cash_id, :payment_token)'
         );
         $statement->execute([
             'order_id' => $account['ordem_servico_id'],
@@ -299,7 +350,9 @@ final class AccountsReceivableManagementService
             'notes' => $notes,
             'user_id' => $userId,
             'cash_id' => $cashId,
+            'payment_token' => $paymentToken,
         ]);
+        $paymentId = (int) $this->connection->lastInsertId();
 
         $received = $this->moneyToCents((string) $account['valor_recebido']) + $amount;
         $total = $this->moneyToCents((string) $account['valor_total']);
@@ -314,6 +367,7 @@ final class AccountsReceivableManagementService
             'status' => $status,
         ]);
         $this->event($accountId, $status === 'paga' ? 'quitacao' : 'pagamento', 'Pagamento registrado.', $value, $userId);
+        return $paymentId;
     }
 
     private function findIdByOrder(int $orderId): int

@@ -190,9 +190,9 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
         <?php if ($receipt['cliente_documento']): ?><p><strong>Documento:</strong> <?= receipt_print_h($receipt['cliente_documento']) ?></p><?php endif; ?>
     </section>
     <section class="details">
-        <div><strong>Ordem de Serviço:</strong> <?= receipt_print_h($receipt['os_numero']) ?></div>
+        <?php if (!empty($receipt['os_numero'])): ?><div><strong>Ordem de Serviço:</strong> <?= receipt_print_h($receipt['os_numero']) ?></div><?php endif; ?>
         <div><strong>Forma de pagamento:</strong> <?= receipt_print_h(receipt_print_form($receipt['forma_pagamento'])) ?></div>
-        <div><strong>Pagamento recebido em:</strong> <?= receipt_print_h(receipt_print_date($receipt['pagamento_recebido_em'])) ?></div>
+        <div><strong>Recebido em:</strong> <?= receipt_print_h(receipt_print_date($receipt['pagamento_recebido_em'] ?: $receipt['emitido_em'])) ?></div>
         <div><strong>Emitido por:</strong> <?= receipt_print_h($receipt['emitido_por_nome']) ?></div>
     </section>
     <?php if ($isCanceled): ?>

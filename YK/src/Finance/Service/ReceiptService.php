@@ -10,6 +10,11 @@ use Throwable;
 
 final class ReceiptService
 {
+    private const PAYMENT_FORMS = [
+        'dinheiro', 'pix', 'boleto', 'cartao_debito', 'cartao_credito',
+        'transferencia', 'cheque', 'outro',
+    ];
+
     public function __construct(private readonly PDO $connection)
     {
     }
@@ -99,6 +104,111 @@ final class ReceiptService
             }
             throw $exception;
         }
+    }
+
+    /** @return array{id:int,created:bool} */
+    public function emitStandalone(array $data, int $userId): array
+    {
+        if ($userId <= 0) {
+            throw new InvalidArgumentException('Usuário inválido para emissão do recibo.');
+        }
+        $clientId = $this->optionalPositiveInt($data['cliente_id'] ?? null);
+        $clientName = $this->optionalText($data['cliente_nome'] ?? null, 150);
+        $clientDocument = $this->optionalText($data['cliente_documento'] ?? null, 20);
+        $description = $this->requiredText($data['descricao'] ?? '', 2000, 'Informe a descrição do recibo.');
+        $value = $this->money($data['valor'] ?? null);
+        $paymentForm = $this->paymentForm($data['forma_pagamento'] ?? null);
+
+        $ownsTransaction = !$this->connection->inTransaction();
+        if ($ownsTransaction) $this->connection->beginTransaction();
+        try {
+            if ($clientId !== null) {
+                $client = $this->lockClient($clientId);
+                $clientName = (string) $client['nome'];
+                $clientDocument = $this->optionalText($client['documento'] ?? null, 20);
+            } elseif ($clientName === null) {
+                throw new InvalidArgumentException('Informe o cliente avulso ou selecione um cliente cadastrado.');
+            }
+
+            $company = $this->companySnapshot();
+            $statement = $this->connection->prepare(
+                'INSERT INTO recibos
+                    (numero, cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
+                     os_numero, pagamento_recebido_em, empresa_nome, empresa_documento, empresa_telefone,
+                     empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, status, emitido_por)
+                 VALUES
+                    (NULL, :client_id, NULL, NULL, :client_name, :client_document,
+                     NULL, CURRENT_TIMESTAMP, :company_name, :company_document, :company_phone,
+                     :company_address, :company_logo, :description, :value, :payment_form, "emitido", :user_id)'
+            );
+            $statement->execute([
+                'client_id' => $clientId,
+                'client_name' => $clientName,
+                'client_document' => $clientDocument,
+                'company_name' => $company['name'],
+                'company_document' => $company['document'],
+                'company_phone' => $company['phone'],
+                'company_address' => $company['address'],
+                'company_logo' => $company['logo'],
+                'description' => $description,
+                'value' => $value,
+                'payment_form' => $paymentForm,
+                'user_id' => $userId,
+            ]);
+            $receiptId = (int) $this->connection->lastInsertId();
+            $this->connection->prepare('UPDATE recibos SET numero = :number WHERE id = :id')
+                ->execute(['id' => $receiptId, 'number' => sprintf('REC-%06d', $receiptId)]);
+            if ($ownsTransaction) $this->connection->commit();
+            return ['id' => $receiptId, 'created' => true];
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public function listReceipts(array $filters = []): array
+    {
+        $search = $this->filterText($filters['search'] ?? '', 150);
+        $status = $this->filterChoice($filters['status'] ?? '', ['', 'emitido', 'cancelado']);
+        $type = $this->filterChoice($filters['type'] ?? '', ['', 'os', 'avulso']);
+        $limit = filter_var($filters['limit'] ?? 200, FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1, 'max_range' => 300],
+        ]);
+        if (!is_int($limit)) {
+            throw new InvalidArgumentException('Limite da listagem de recibos inválido.');
+        }
+
+        $where = [];
+        $params = [];
+        if ($search !== '') {
+            $where[] = '(receipt.numero LIKE :search_number
+                OR receipt.cliente_nome LIKE :search_client
+                OR receipt.descricao LIKE :search_description
+                OR receipt.os_numero LIKE :search_order)';
+            $searchPattern = '%' . $search . '%';
+            $params['search_number'] = $searchPattern;
+            $params['search_client'] = $searchPattern;
+            $params['search_description'] = $searchPattern;
+            $params['search_order'] = $searchPattern;
+        }
+        if ($status !== '') {
+            $where[] = 'receipt.status = :status';
+            $params['status'] = $status;
+        }
+        if ($type === 'os') $where[] = 'receipt.ordem_servico_id IS NOT NULL';
+        if ($type === 'avulso') $where[] = 'receipt.ordem_servico_id IS NULL';
+
+        $sql = 'SELECT receipt.id, receipt.numero, receipt.cliente_id, receipt.cliente_nome,
+                       receipt.descricao, receipt.valor, receipt.forma_pagamento, receipt.status,
+                       receipt.emitido_em, receipt.ordem_servico_id, receipt.os_numero,
+                       receipt.pagamento_id
+                  FROM recibos receipt';
+        if ($where !== []) $sql .= ' WHERE ' . implode(' AND ', $where);
+        $sql .= ' ORDER BY receipt.emitido_em DESC, receipt.id DESC LIMIT ' . $limit;
+        $statement = $this->connection->prepare($sql);
+        $statement->execute($params);
+        return $statement->fetchAll();
     }
 
     /** @return array<string,mixed> */
@@ -211,6 +321,89 @@ final class ReceiptService
         $statement->execute(['payment_id' => $paymentId]);
         $receipt = $statement->fetch();
         return $receipt === false ? null : $receipt;
+    }
+
+    /** @return array<string,mixed> */
+    private function lockClient(int $clientId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT id, nome, documento FROM clientes WHERE id = :id LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute(['id' => $clientId]);
+        $client = $statement->fetch();
+        if ($client === false) {
+            throw new InvalidArgumentException('Cliente cadastrado não encontrado.');
+        }
+        return $client;
+    }
+
+    private function optionalPositiveInt(mixed $value): ?int
+    {
+        if ($value === null || trim((string) $value) === '') return null;
+        $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if (!is_int($id)) throw new InvalidArgumentException('Cliente inválido para o recibo.');
+        return $id;
+    }
+
+    private function requiredText(mixed $value, int $max, string $message): string
+    {
+        $text = $this->optionalText($value, $max);
+        if ($text === null) throw new InvalidArgumentException($message);
+        return $text;
+    }
+
+    private function optionalText(mixed $value, int $max): ?string
+    {
+        $text = trim((string) ($value ?? ''));
+        if ($text === '') return null;
+        $length = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
+        if ($length > $max || str_contains($text, "\0") || $text !== strip_tags($text)) {
+            throw new InvalidArgumentException('Dados do recibo inválidos.');
+        }
+        return $text;
+    }
+
+    private function money(mixed $value): string
+    {
+        $raw = str_replace(' ', '', trim((string) ($value ?? '')));
+        if (str_contains($raw, ',')) $raw = str_replace(',', '.', str_replace('.', '', $raw));
+        if (preg_match('/^\d+(?:\.\d{1,2})?$/', $raw) !== 1) {
+            throw new InvalidArgumentException('Valor do recibo inválido.');
+        }
+        [$whole, $fraction] = array_pad(explode('.', $raw, 2), 2, '');
+        if (strlen($whole) > 10) throw new InvalidArgumentException('Valor do recibo excede o limite permitido.');
+        $normalized = ltrim($whole, '0');
+        if ($normalized === '') $normalized = '0';
+        $money = $normalized . '.' . str_pad($fraction, 2, '0');
+        if ($money === '0.00') throw new InvalidArgumentException('O valor do recibo deve ser maior que zero.');
+        return $money;
+    }
+
+    private function paymentForm(mixed $value): string
+    {
+        $form = trim((string) ($value ?? ''));
+        if (!in_array($form, self::PAYMENT_FORMS, true)) {
+            throw new InvalidArgumentException('Forma de pagamento do recibo inválida.');
+        }
+        return $form;
+    }
+
+    private function filterText(mixed $value, int $max): string
+    {
+        if (!is_string($value)) throw new InvalidArgumentException('Filtro de recibos inválido.');
+        $value = trim($value);
+        $length = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+        if ($length > $max || str_contains($value, "\0")) throw new InvalidArgumentException('Filtro de recibos inválido.');
+        return $value;
+    }
+
+    /** @param string[] $allowed */
+    private function filterChoice(mixed $value, array $allowed): string
+    {
+        if (!is_string($value) || !in_array(trim($value), $allowed, true)) {
+            throw new InvalidArgumentException('Filtro de recibos inválido.');
+        }
+        return trim($value);
     }
 
     /** @return array{name:?string,document:?string,phone:?string,address:?string,logo:?string} */

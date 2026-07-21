@@ -59,9 +59,24 @@ final class ServiceOrderLifecycleService
             $this->connection->prepare(
                 'UPDATE ordens_servico
                     SET status = :status,
-                        finalizada_em = NULL
+                        finalizada_em = NULL,
+                        subtotal_servicos = COALESCE(:services, subtotal_servicos),
+                        subtotal_produtos = COALESCE(:products, subtotal_produtos),
+                        subtotal_outros = COALESCE(:others, subtotal_outros),
+                        desconto = COALESCE(:discount, desconto),
+                        acrescimo = COALESCE(:increase, acrescimo),
+                        total = COALESCE(:total, total)
                   WHERE id = :id'
-            )->execute(['id' => $orderId, 'status' => $status]);
+            )->execute([
+                'id' => $orderId,
+                'status' => $status,
+                'services' => $finalization['subtotal_servicos_origem'],
+                'products' => $finalization['subtotal_produtos_origem'],
+                'others' => $finalization['subtotal_outros_origem'],
+                'discount' => $finalization['desconto_origem'],
+                'increase' => $finalization['acrescimo_origem'],
+                'total' => $finalization['total_origem'],
+            ]);
         });
     }
 
@@ -120,7 +135,9 @@ final class ServiceOrderLifecycleService
     private function lockActiveFinalization(int $orderId): ?array
     {
         $statement = $this->connection->prepare(
-            'SELECT id, status_origem
+            'SELECT id, status_origem,
+                    subtotal_servicos_origem, subtotal_produtos_origem, subtotal_outros_origem,
+                    desconto_origem, acrescimo_origem, total_origem
                FROM ordem_servico_finalizacoes
               WHERE ordem_servico_id = :order_id AND ativa = 1
               LIMIT 1

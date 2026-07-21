@@ -261,16 +261,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById('modal-os-finalize');
     if (!modal) return;
     const fields = {
-      valor_recebido: data.valor_recebido,
-      forma_pagamento: data.forma_pagamento,
       vencimento_em: data.vencimento_em,
       proximo_lembrete_em: data.proximo_lembrete_em,
       observacao: data.observacao,
+      saldo_observacao: data.saldo_observacao,
     };
     Object.entries(fields).forEach(function ([name, value]) {
       const input = modal.querySelector('[name="' + name + '"]');
       if (input) input.value = value || '';
     });
+    const recoveredItem = Array.isArray(data.execution_items) ? data.execution_items[0] : null;
+    if (recoveredItem) {
+      ['type', 'description', 'quantity', 'unit_price', 'discount'].forEach(function (field) {
+        const input = modal.querySelector('[name="execution_items[0][' + field + ']"]');
+        if (input && recoveredItem[field] !== undefined) input.value = recoveredItem[field];
+      });
+    }
     if (recoveryError) {
       const body = modal.querySelector('.modal-body');
       const alert = document.createElement('div');
@@ -279,6 +285,15 @@ document.addEventListener('DOMContentLoaded', function () {
       alert.textContent = recoveryError;
       body?.prepend(alert);
     }
+  }
+
+  function paymentToken() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (character) {
+      const random = Math.floor(Math.random() * 16);
+      const value = character === 'x' ? random : ((random & 3) | 8);
+      return value.toString(16);
+    });
   }
 
   function legacyTeamFromData(data) {
@@ -485,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.addEventListener('click', function (event) {
-    const button = event.target.closest?.('.js-os-view, .js-os-edit, .js-os-team, .js-os-status, .js-os-finalize, .js-os-cancel, .js-os-reverse, .js-os-delete, .js-os-receipt');
+    const button = event.target.closest?.('.js-os-view, .js-os-edit, .js-os-team, .js-os-status, .js-os-finalize, .js-os-pay, .js-os-cancel, .js-os-reverse, .js-os-delete, .js-os-receipt');
     if (!button) return;
 
     if (button.classList.contains('js-os-view')) {
@@ -506,6 +521,13 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('os-status-message').textContent = 'Confirmar operação "' + (button.dataset.label || 'alterar status') + '"?';
     } else if (button.classList.contains('js-os-finalize')) {
       setValue('os-finalize-id', button.dataset.orderId);
+    } else if (button.classList.contains('js-os-pay')) {
+      const total = String(button.dataset.orderTotal || '0').replace('.', ',');
+      setValue('os-pay-id', button.dataset.orderId);
+      setValue('os-pay-value', total);
+      setValue('os-pay-token', paymentToken());
+      setValue('os-pay-notes', '');
+      setText('os-pay-summary', (button.dataset.orderNumber || 'OS') + ' — total ' + money(parseNumber(total)) + '. Informe o valor efetivamente recebido.');
     } else if (button.classList.contains('js-os-cancel')) {
       setValue('os-cancel-id', button.dataset.orderId);
     } else if (button.classList.contains('js-os-reverse')) {
@@ -544,4 +566,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById('modal-os-finalize');
     if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
   }
+
+  document.querySelector('#modal-os-pay form')?.addEventListener('submit', function (event) {
+    if (!event.currentTarget.checkValidity()) return;
+    const submit = event.currentTarget.querySelector('[type="submit"]');
+    if (submit) {
+      submit.disabled = true;
+      submit.setAttribute('aria-busy', 'true');
+    }
+  });
 });

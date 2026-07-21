@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -361,6 +361,16 @@ final class MigrationRunner
             18 => $this->allColumns('agenda_lembretes', ['concluido_em', 'concluido_por'])
                 && $this->allForeignKeys(['fk_agenda_lembretes_concluido_usuario'])
                 && $this->columnTypeContains('agenda_lembretes', 'status', "'concluido'"),
+            19 => $this->allColumns('ordem_servico_pagamentos', ['payment_token'])
+                && $this->allColumns('ordem_servico_finalizacoes', [
+                    'subtotal_servicos_origem', 'subtotal_produtos_origem', 'subtotal_outros_origem',
+                    'desconto_origem', 'acrescimo_origem', 'total_origem',
+                ])
+                && $this->allIndexes([['ordem_servico_pagamentos', 'uq_os_pagamento_token']])
+                && $this->permissionSatisfied('os.estornar')
+                && $this->permissionSatisfied('os.excluir')
+                && $this->permissionSatisfied('contas_receber.registrar_pagamento')
+                && $this->permissionSatisfied('recibo.emitir'),
             default => null,
         };
     }

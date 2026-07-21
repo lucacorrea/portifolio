@@ -386,7 +386,9 @@ final class Application
     {
         if ($this->paymentManagement === null) {
             $this->paymentManagement = new PaymentManagementService(
-                $this->accountsReceivableManagement()
+                $this->database->connection(),
+                $this->accountsReceivableManagement(),
+                $this->receiptService()
             );
         }
 
@@ -432,7 +434,6 @@ final class Application
                 $connection,
                 new ServiceOrderRepository($connection),
                 $this->inventoryManagement(),
-                $this->cashManagement(),
                 $this->accountsReceivableManagement()
             );
         }

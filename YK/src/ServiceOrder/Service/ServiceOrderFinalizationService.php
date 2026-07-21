@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\ServiceOrder\Service;
 
 use App\Finance\Service\AccountsReceivableManagementService;
-use App\Finance\Service\CashManagementService;
 use App\Inventory\Service\InventoryManagementService;
 use App\ServiceOrder\Repository\ServiceOrderRepository;
-use DateTimeImmutable;
 use InvalidArgumentException;
 use PDO;
 use Throwable;
@@ -19,7 +17,6 @@ final class ServiceOrderFinalizationService
         private readonly PDO $connection,
         private readonly ServiceOrderRepository $orders,
         private readonly InventoryManagementService $inventory,
-        private readonly CashManagementService $cash,
         private readonly AccountsReceivableManagementService $accounts
     ) {
     }
@@ -50,18 +47,35 @@ final class ServiceOrderFinalizationService
             $increase = $this->money($data['acrescimo'] ?? '0');
             $total = max(0.0, array_sum($totals) - $discount + $increase);
             $paymentValue = $this->money($data['valor_recebido'] ?? '0');
-            if ($paymentValue > $total) throw new InvalidArgumentException('Pagamento maior que o total executado.');
+            if ($paymentValue > 0.0) {
+                throw new InvalidArgumentException('Finalize a OS sem recebimento e use a ação Pagar OS depois da finalização.');
+            }
+            if ($total <= 0.0) {
+                throw new InvalidArgumentException('O total executado deve ser maior que zero para gerar a conta a receber.');
+            }
 
             $this->connection->prepare(
                 'INSERT INTO ordem_servico_finalizacoes
-                    (ordem_servico_id, status_origem, subtotal_servicos, subtotal_produtos, subtotal_outros,
+                    (ordem_servico_id, status_origem,
+                     subtotal_servicos_origem, subtotal_produtos_origem, subtotal_outros_origem,
+                     desconto_origem, acrescimo_origem, total_origem,
+                     subtotal_servicos, subtotal_produtos, subtotal_outros,
                      desconto, acrescimo, total_executado, observacao, finalizado_por)
                  VALUES
-                    (:order_id, :source_status, :services, :products, :others, :discount, :increase,
+                    (:order_id, :source_status,
+                     :source_services, :source_products, :source_others,
+                     :source_discount, :source_increase, :source_total,
+                     :services, :products, :others, :discount, :increase,
                      :total, :notes, :user_id)'
             )->execute([
                 'order_id' => $orderId,
                 'source_status' => $order->status(),
+                'source_services' => $order->servicesSubtotal(),
+                'source_products' => $order->productsSubtotal(),
+                'source_others' => $order->othersSubtotal(),
+                'source_discount' => $order->discount(),
+                'source_increase' => $order->increase(),
+                'source_total' => $order->total(),
                 'services' => number_format($totals['servico'], 2, '.', ''),
                 'products' => number_format($totals['produto'], 2, '.', ''),
                 'others' => number_format($totals['outro'], 2, '.', ''),
@@ -104,37 +118,29 @@ final class ServiceOrderFinalizationService
                 }
             }
 
-            if ($paymentValue > 0.0) {
-                $form = (string) ($data['forma_pagamento'] ?? '');
-                $cashId = $this->cash->registerEntry(
-                    'os_pagamento',
-                    $orderId,
-                    'Recebimento de OS ' . $order->displayNumber() . ' - Cliente: ' . $order->clientName(),
-                    $form,
-                    number_format($paymentValue, 2, '.', ''),
-                    $userId,
-                    new DateTimeImmutable((string) ($data['recebido_em'] ?? 'now'))
-                );
-                $this->connection->prepare(
-                    'INSERT INTO ordem_servico_pagamentos
-                        (ordem_servico_id, valor, forma_pagamento, recebido_em, observacao, status, registrado_por, caixa_movimentacao_id)
-                     VALUES
-                        (:order_id, :value, :form, :received_at, :notes, "ativo", :user_id, :cash_id)'
-                )->execute([
-                    'order_id' => $orderId,
-                    'value' => number_format($paymentValue, 2, '.', ''),
-                    'form' => $form,
-                    'received_at' => (new DateTimeImmutable((string) ($data['recebido_em'] ?? 'now')))->format('Y-m-d H:i:s'),
-                    'notes' => $this->optionalText($data['pagamento_observacao'] ?? null, 255),
-                    'user_id' => $userId,
-                    'cash_id' => $cashId,
-                ]);
-            }
+            $this->connection->prepare(
+                'UPDATE ordens_servico
+                    SET subtotal_servicos = :services,
+                        subtotal_produtos = :products,
+                        subtotal_outros = :others,
+                        desconto = :discount,
+                        acrescimo = :increase,
+                        total = :total
+                  WHERE id = :id'
+            )->execute([
+                'id' => $orderId,
+                'services' => number_format($totals['servico'], 2, '.', ''),
+                'products' => number_format($totals['produto'], 2, '.', ''),
+                'others' => number_format($totals['outro'], 2, '.', ''),
+                'discount' => number_format($discount, 2, '.', ''),
+                'increase' => number_format($increase, 2, '.', ''),
+                'total' => number_format($total, 2, '.', ''),
+            ]);
 
             $this->accounts->upsertForOrder(
                 $orderId,
                 number_format($total, 2, '.', ''),
-                number_format($paymentValue, 2, '.', ''),
+                '0.00',
                 $this->optionalDate($data['vencimento_em'] ?? null),
                 $this->optionalDate($data['proximo_lembrete_em'] ?? null),
                 $this->optionalText($data['saldo_observacao'] ?? null, 1000),
