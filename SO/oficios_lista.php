@@ -1190,6 +1190,23 @@ include 'views/layout/header.php';
                     <tbody>
                         <?php foreach ($oficios as $o): ?>
                             <tr>
+                                <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
+
+                                    <td>
+
+                                        <?php if ($o['status'] == 'ENVIADO'): ?>
+
+                                            <input
+                                                type="checkbox"
+                                                name="oficios[]"
+                                                class="checkOficio"
+                                                value="<?php echo $o['id']; ?>">
+
+                                        <?php endif; ?>
+
+                                    </td>
+
+                                <?php endif; ?>
                                 <td style="font-weight: 600; color: var(--primary);">
                                     <?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>
                                 </td>
@@ -1272,7 +1289,7 @@ include 'views/layout/header.php';
 
                         <?php if (empty($oficios)): ?>
                             <tr>
-                                <td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-muted);">
+                                <td colspan="<?php echo in_array($nivel_user, ['ADMIN', 'SUPORTE']) ? 9 : 8; ?>">
                                     Nenhuma solicitação encontrada.
                                 </td>
                             </tr>
@@ -1333,7 +1350,11 @@ include 'views/layout/header.php';
                         <i class="fas fa-trash"></i> Excluir definitivamente
                     </button>
                 </div>
+                <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
+
             </form>
+
+        <?php endif; ?>
         </div>
     </div>
 
@@ -1387,5 +1408,61 @@ include 'views/layout/header.php';
         });
     </script>
 <?php endif; ?>
+<script>
 
+const selecionarTodos=document.getElementById('selecionarTodos');
+
+if(selecionarTodos){
+
+selecionarTodos.addEventListener('change',function(){
+
+document.querySelectorAll('.checkOficio').forEach(c=>{
+
+c.checked=this.checked;
+
+});
+
+atualizarContador();
+
+});
+
+}
+
+document.querySelectorAll('.checkOficio').forEach(c=>{
+
+c.addEventListener('change',atualizarContador);
+
+});
+
+function atualizarContador(){
+
+let total=document.querySelectorAll('.checkOficio:checked').length;
+
+document.getElementById('contadorSelecionados').innerHTML=
+
+total+' selecionados';
+
+}
+
+function confirmarAprovacao(){
+
+let total=document.querySelectorAll('.checkOficio:checked').length;
+
+if(total==0){
+
+alert('Selecione pelo menos uma solicitação.');
+
+return false;
+
+}
+
+return confirm(
+
+'Deseja aprovar '+total+' solicitação(ões)?'
+
+);
+
+}
+
+</script>
 <?php include 'views/layout/footer.php'; ?>
