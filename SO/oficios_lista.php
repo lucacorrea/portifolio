@@ -1190,7 +1190,16 @@ include 'views/layout/header.php';
                     <tbody>
                         <?php foreach ($oficios as $o): ?>
                             <tr>
-                             
+                                <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
+
+                                    <td>
+                                        <input type="checkbox"
+                                            class="checkOficio"
+                                            name="oficios[]"
+                                            value="<?php echo $o['id']; ?>">
+                                    </td>
+
+                                <?php endif; ?>
 
 
                                 <td style="font-weight: 600; color: var(--primary);">
