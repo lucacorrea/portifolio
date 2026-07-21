@@ -147,10 +147,26 @@ try {
         }
 
         .table-beneficios {
+            width: 100% !important;
+            min-width: 1180px;
+            table-layout: fixed;
             border-collapse: separate;
             border-spacing: 0;
             margin-bottom: 0;
             color: #52697f;
+        }
+
+        .table-beneficios th,
+        .table-beneficios td {
+            box-sizing: border-box;
+        }
+
+        .table-beneficios .col-text {
+            text-align: left !important;
+        }
+
+        .table-beneficios .col-center {
+            text-align: center !important;
         }
 
         .table-beneficios thead th {
@@ -218,11 +234,18 @@ try {
         }
 
         .sortable-th .th-inner {
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            justify-content: center;
             gap: .45rem;
             width: 100%;
+        }
+
+        .sortable-th.col-text .th-inner {
+            justify-content: flex-start;
+        }
+
+        .sortable-th.col-center .th-inner {
+            justify-content: center;
         }
 
         .sort-prisma {
@@ -520,32 +543,42 @@ try {
                                 </div>
                             </div>
 
-                            <div class="table-responsive-md">
+                            <div class="table-responsive">
                                 <table class="table table-beneficios align-middle w-100 text-nowrap" id="tbl">
+                                    <colgroup>
+                                        <col style="width: 18%;">
+                                        <col style="width: 16%;">
+                                        <col style="width: 15%;">
+                                        <col style="width: 13%;">
+                                        <col style="width: 8%;">
+                                        <col style="width: 20%;">
+                                        <col style="width: 7%;">
+                                        <col style="width: 7%;">
+                                    </colgroup>
                                     <thead>
                                         <tr>
-                                            <th class="sortable-th" data-sort-key="nome" data-sort-type="text">
+                                            <th class="sortable-th col-text" data-sort-key="nome" data-sort-type="text">
                                                 <span class="th-inner">Nome <span class="sort-prisma"><span class="sort-up">▲</span><span class="sort-down">▼</span></span></span>
                                             </th>
-                                            <th class="sortable-th" data-sort-key="categoria" data-sort-type="text">
+                                            <th class="sortable-th col-text" data-sort-key="categoria" data-sort-type="text">
                                                 <span class="th-inner">Categoria <span class="sort-prisma"><span class="sort-up">▲</span><span class="sort-down">▼</span></span></span>
                                             </th>
-                                            <th class="sortable-th d-none d-sm-table-cell" data-sort-key="periodicidade" data-sort-type="text">
+                                            <th class="sortable-th col-text d-none d-sm-table-cell" data-sort-key="periodicidade" data-sort-type="text">
                                                 <span class="th-inner">Periodicidade <span class="sort-prisma"><span class="sort-up">▲</span><span class="sort-down">▼</span></span></span>
                                             </th>
-                                            <th class="sortable-th text-nowrap d-none d-md-table-cell" data-sort-key="valor" data-sort-type="number">
+                                            <th class="sortable-th col-center text-nowrap d-none d-md-table-cell" data-sort-key="valor" data-sort-type="number">
                                                 <span class="th-inner">Valor Padrão <span class="sort-prisma"><span class="sort-up">▲</span><span class="sort-down">▼</span></span></span>
                                             </th>
-                                            <th class="sortable-th text-nowrap d-none d-lg-table-cell" data-sort-key="qtd" data-sort-type="number">
+                                            <th class="sortable-th col-center text-nowrap d-none d-lg-table-cell" data-sort-key="qtd" data-sort-type="number">
                                                 <span class="th-inner">Qtd <span class="sort-prisma"><span class="sort-up">▲</span><span class="sort-down">▼</span></span></span>
                                             </th>
-                                            <th class="sortable-th d-none d-xl-table-cell" data-sort-key="doc" data-sort-type="text">
+                                            <th class="sortable-th col-text d-none d-xl-table-cell" data-sort-key="doc" data-sort-type="text">
                                                 <span class="th-inner">Documento Exigido <span class="sort-prisma"><span class="sort-up">▲</span><span class="sort-down">▼</span></span></span>
                                             </th>
-                                            <th class="sortable-th text-nowrap" data-sort-key="status" data-sort-type="text">
+                                            <th class="sortable-th col-center text-nowrap" data-sort-key="status" data-sort-type="text">
                                                 <span class="th-inner">Status <span class="sort-prisma"><span class="sort-up">▲</span><span class="sort-down">▼</span></span></span>
                                             </th>
-                                            <th class="text-center text-nowrap">Ações</th>
+                                            <th class="col-center text-nowrap">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbody">
@@ -572,24 +605,24 @@ try {
                                                 data-qtd="<?= e((string)$qtdSort) ?>"
                                                 data-valor-search="<?= e($valorDigits) ?>"
                                                 data-qtd-search="<?= e($qtdDigits) ?>">
-                                                <td class="beneficio-nome" title="<?= e($b['descricao'] ?? '') ?>">
+                                                <td class="beneficio-nome col-text" title="<?= e($b['descricao'] ?? '') ?>">
                                                     <span class="cell-truncate"><?= e($b['nome']) ?></span>
                                                 </td>
-                                                <td><?= e($b['categoria'] ?? '-') ?></td>
-                                                <td class="d-none d-sm-table-cell"><?= e($b['periodicidade'] ?? '-') ?></td>
-                                                <td class="text-nowrap text-center d-none d-md-table-cell"><?= moneyBR($b['valor_padrao']) ?></td>
-                                                <td class="text-nowrap text-center d-none d-lg-table-cell"><?= (int)($b['qtd_padrao'] ?? 0) ?></td>
-                                                <td class="beneficio-doc d-none d-xl-table-cell" title="<?= e($b['doc_exigido'] ?? '-') ?>">
+                                                <td class="col-text"><?= e($b['categoria'] ?? '-') ?></td>
+                                                <td class="col-text d-none d-sm-table-cell"><?= e($b['periodicidade'] ?? '-') ?></td>
+                                                <td class="col-center text-nowrap d-none d-md-table-cell"><?= moneyBR($b['valor_padrao']) ?></td>
+                                                <td class="col-center text-nowrap d-none d-lg-table-cell"><?= (int)($b['qtd_padrao'] ?? 0) ?></td>
+                                                <td class="beneficio-doc col-text d-none d-xl-table-cell" title="<?= e($b['doc_exigido'] ?? '-') ?>">
                                                     <span class="cell-truncate"><?= e($b['doc_exigido'] ?? '-') ?></span>
                                                 </td>
-                                                <td class="text-nowrap text-center">
+                                                <td class="col-center text-nowrap">
                                                     <?php if (($b['status'] ?? 'Ativa') === 'Ativa'): ?>
                                                         <span class="badge bg-success badge-status">Ativa</span>
                                                     <?php else: ?>
                                                         <span class="badge bg-secondary badge-status">Inativa</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="text-center table-actions">
+                                                <td class="col-center table-actions">
                                                     <div class="d-inline-flex align-items-center gap-2 flex-nowrap">
                                                         <?php if (($b['status'] ?? 'Ativa') === 'Ativa'): ?>
                                                             <a href="ajudas/toggleBeneficio.php?id=<?= (int)$b['id'] ?>&to=Inativa"
