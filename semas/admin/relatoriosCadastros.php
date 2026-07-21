@@ -655,7 +655,7 @@ function fetchAggregates(PDO $pdo, array $in): array
 /**
  * ✅ lista pessoas (solicitantes) para exportação.
  */
-function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 10000): array
+function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 0): array
 {
   [$periodo, $di, $df, $bairroIds, $beneficioIds, $empregoIds, $sexo, $q, $baseDT, $where, $params] = buildFilters($pdo, $in);
 
@@ -664,8 +664,13 @@ function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 10000): array
   $st->execute($params);
   $total = (int)$st->fetchColumn();
 
-  $limit = max(1, min($maxRows, $total > 0 ? $total : $maxRows));
-  $truncated = ($total > $limit);
+  $limitSql = '';
+  $truncated = false;
+  if ($maxRows > 0 && $total > $maxRows) {
+    $limit = $maxRows;
+    $limitSql = ' LIMIT ' . (int)$limit;
+    $truncated = true;
+  }
 
   $sql = "
     SELECT
@@ -693,7 +698,7 @@ function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 10000): array
     LEFT JOIN ajudas_tipos at ON at.id = s.ajuda_tipo_id
     WHERE " . implode(' AND ', $where) . "
     ORDER BY DATE($baseDT) ASC, s.nome ASC
-    LIMIT $limit
+    $limitSql
   ";
   $st = $pdo->prepare($sql);
   $st->execute($params);
@@ -705,7 +710,7 @@ function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 10000): array
 /**
  * ✅ Busca Histórico de Solicitações para a aba solicitacoes.
  */
-function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 10000): array
+function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 0): array
 {
   // Reaproveita normalizações do buildFilters
   [$periodo, $di, $df, $bairroIds, $beneficioIds, $empregoIds, $sexo, $q, $baseDT, $wherePessoa, $paramsPessoa] = buildFilters($pdo, $in);
@@ -750,8 +755,13 @@ function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 10000):
   $st->execute($params);
   $total = (int)$st->fetchColumn();
 
-  $limit = max(1, min($maxRows, $total > 0 ? $total : $maxRows));
-  $truncated = ($total > $limit);
+  $limitSql = '';
+  $truncated = false;
+  if ($maxRows > 0 && $total > $maxRows) {
+    $limit = $maxRows;
+    $limitSql = ' LIMIT ' . (int)$limit;
+    $truncated = true;
+  }
 
   // Lista
   $sql = "
@@ -780,7 +790,7 @@ function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 10000):
     LEFT JOIN ajudas_tipos at ON at.id = sol.ajuda_tipo_id
     WHERE " . implode(' AND ', $where) . "
     ORDER BY DATE(COALESCE(s.created_at, s.updated_at)) ASC, s.nome ASC, sol.data_solicitacao ASC
-    LIMIT $limit
+    $limitSql
   ";
 
 
@@ -794,7 +804,7 @@ function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 10000):
 function normalizeWorkStatus(?string $trabalho): string
 {
   $trab = trim((string)$trabalho);
-  $trabNorm = mb_strtolower($trab, 'UTF-8');
+  $trabNorm = function_exists('mb_strtolower') ? mb_strtolower($trab, 'UTF-8') : strtolower($trab);
   $trabNorm = strtr($trabNorm, [
     'á' => 'a',
     'à' => 'a',
@@ -813,7 +823,7 @@ function normalizeWorkStatus(?string $trabalho): string
   return ($trabNorm === 'empregado(a)' || $trabNorm === 'empregado') ? 'Sim' : 'Não';
 }
 
-function reportExportContext(PDO $pdo, array $payload, string $geradoEm, int $maxRows = 10000): array
+function reportExportContext(PDO $pdo, array $payload, string $geradoEm, int $maxRows = 0): array
 {
   $data = fetchAggregates($pdo, $payload);
 
@@ -837,7 +847,7 @@ function reportExportContext(PDO $pdo, array $payload, string $geradoEm, int $ma
   $bairroNome = $bairroNomes ? implode(', ', $bairroNomes) : 'Todos';
   $benefNomes = lookupNames($pdo, 'ajudas_tipos', $beneficioIds);
   $benefNome = $benefNomes ? implode(', ', $benefNomes) : 'Todos';
-  $empregoRows = fetchEmploymentOptions($pdo, $empregoIds);
+  $empregoRows = $empregoIds ? fetchEmploymentOptions($pdo, $empregoIds) : [];
   $empregoNome = $empregoRows ? implode(', ', array_map(static fn(array $row): string => (string)$row['nome'], $empregoRows)) : 'Todos';
 
   $linhaFiltros = [];
@@ -928,7 +938,7 @@ $exportFlag = (string)($_POST['export'] ?? $_GET['export'] ?? '');
 if ($exportFlag === '1') {
 
   $payload = $_POST ?: $_GET;
-  $ctx = reportExportContext($pdo, $payload, reportGeneratedAt($payload), 10000);
+  $ctx = reportExportContext($pdo, $payload, reportGeneratedAt($payload), 0);
   $data = $ctx['data'];
   $geradoEm = $ctx['gerado_em'];
   $totalGeral = $ctx['total_geral'];
@@ -958,14 +968,33 @@ if ($exportFlag === '1') {
     return htmlspecialchars((string)$s, ENT_QUOTES | ENT_XML1, 'UTF-8');
   };
 
-  $wrapWords = function (string $text, int $every = 7): string {
-    $words = preg_split('/\s+/', trim($text));
-    if (count($words) <= $every) return trim($text);
-    $lines = array_chunk($words, $every);
-    return implode("\n", array_map(function ($chunk) {
-      return implode(' ', $chunk);
-    }, $lines));
+  $wrapWords = function (string $text, int $chars = 115): string {
+    $text = trim(preg_replace('/\s+/', ' ', $text) ?? $text);
+    if ($text === '') return '';
+    return wordwrap($text, $chars, "\n", false);
   };
+
+  $excelRowHeight = function (string $text, int $charsPerLine = 115, int $min = 22, int $max = 110): int {
+    $text = trim((string)$text);
+    if ($text === '') return $min;
+
+    $lines = 0;
+    foreach (preg_split('/\R/', $text) ?: [] as $line) {
+      $len = max(1, function_exists('mb_strlen') ? mb_strlen($line, 'UTF-8') : strlen($line));
+      $lines += max(1, (int)ceil($len / max(1, $charsPerLine)));
+    }
+
+    // Altura enxuta: suficiente para caber o texto, sem folga grande entre as linhas.
+    return max($min, min($max, 14 + ($lines * 10)));
+  };
+
+  $filtrosTexto = implode('  |  ', $linhaFiltros);
+  $totalBenefTexto = "Total de pessoas cadastradas (GERAL): {$totalGeral}  |  Total no período: {$totalPeriodo}";
+  $totalPeopleTexto = "Total de pessoas listadas: {$peopleTotal}";
+  $totalSolicTexto = "Total de solicitações listadas: {$solicTotal}";
+
+  $metaHeightBenef = $excelRowHeight($filtrosTexto, 130, 24, 70);
+  $metaHeightWide = $excelRowHeight($filtrosTexto, 190, 24, 60);
 
   // Print area da aba beneficios (A:C)
   $rowsData = is_array($data['benef_table'] ?? null) ? count($data['benef_table']) : 0;
@@ -990,31 +1019,95 @@ if ($exportFlag === '1') {
 
     <Styles>
       <Style ss:ID="sTitle">
-        <Font ss:Bold="1" ss:Size="16" /><Alignment ss:Horizontal="Center" ss:Vertical="Center" />
+        <Font ss:Bold="1" ss:Size="15" ss:Color="#000000" />
+        <Interior ss:Color="#F2F4F7" ss:Pattern="Solid" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
 
       <Style ss:ID="sMeta">
-        <Font ss:Bold="1" ss:Size="12" /><Alignment ss:Vertical="Center" ss:WrapText="1" />
+        <Font ss:Bold="1" ss:Size="10" />
+        <Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
 
       <Style ss:ID="sHeader">
-        <Font ss:Bold="1" ss:Size="13" /><Interior ss:Color="#F2F4F7" ss:Pattern="Solid" /><Alignment ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Font ss:Bold="1" ss:Size="10" />
+        <Interior ss:Color="#F2F4F7" ss:Pattern="Solid" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
 
       <Style ss:ID="sText">
-        <Font ss:Size="13" /><Alignment ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
+      </Style>
+
+      <Style ss:ID="sTextLeft">
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
 
       <Style ss:ID="sNum">
-        <Font ss:Size="13" /><Alignment ss:Horizontal="Right" ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders><NumberFormat ss:Format="0" />
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
+        <NumberFormat ss:Format="0" />
       </Style>
 
       <Style ss:ID="sPct">
-        <Font ss:Size="13" /><Alignment ss:Horizontal="Right" ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders><NumberFormat ss:Format="0.00%" />
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
+        <NumberFormat ss:Format="0.00%" />
       </Style>
 
       <Style ss:ID="sLongText">
-        <Font ss:Size="13" /><Alignment ss:Vertical="Top" ss:WrapText="1" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
     </Styles>
 
@@ -1043,16 +1136,15 @@ if ($exportFlag === '1') {
           </Cell>
         </Row>
 
-        <Row ss:Height="26">
+        <Row ss:Height="<?= (int)$metaHeightBenef ?>">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="2">
-            <Data ss:Type="String"><?= $xmlEsc(implode('  |  ', $linhaFiltros)) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($filtrosTexto) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="24">
+        <Row ss:Height="26">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="2">
-            <Data
-              ss:Type="String"><?= $xmlEsc("Total de pessoas cadastradas (GERAL): {$totalGeral}  |  Total no período: {$totalPeriodo}") ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($totalBenefTexto) ?></Data>
           </Cell>
         </Row>
 
@@ -1068,8 +1160,8 @@ if ($exportFlag === '1') {
           $pct = (float) ($r['pct'] ?? 0.0);
           $pct01 = $pct / 100.0;
           ?>
-          <Row ss:Height="24">
-            <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc((string) ($r['nome'] ?? '—')) ?></Data></Cell>
+          <Row ss:AutoFitHeight="1">
+            <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc((string) ($r['nome'] ?? '—')) ?></Data></Cell>
             <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $count ?></Data></Cell>
             <Cell ss:StyleID="sPct"><Data ss:Type="Number"><?= $pct01 ?></Data></Cell>
           </Row>
@@ -1103,7 +1195,7 @@ if ($exportFlag === '1') {
     </Worksheet>
 
     <!-- ======================
-       ABA 2: PESSOAS (NOMES) - ✅ FONTE 13pt E COLUNAS MAIORES
+       ABA 2: PESSOAS (NOMES)
        ====================== -->
     <Worksheet ss:Name="pessoas">
       <Names>
@@ -1119,7 +1211,7 @@ if ($exportFlag === '1') {
         <Column ss:Width="280" />
         <Column ss:Width="120" />
         <Column ss:Width="120" />
-        <Column ss:Width="350" />
+        <Column ss:Width="620" />
 
         <Row ss:Height="30">
           <Cell ss:StyleID="sTitle" ss:MergeAcross="8">
@@ -1133,16 +1225,15 @@ if ($exportFlag === '1') {
           </Cell>
         </Row>
 
-        <Row ss:Height="26">
+        <Row ss:Height="<?= (int)$metaHeightWide ?>">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
-            <Data ss:Type="String"><?= $xmlEsc(implode('  |  ', $linhaFiltros)) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($filtrosTexto) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="24">
+        <Row ss:Height="26">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
-            <Data
-              ss:Type="String"><?= $xmlEsc("Total de pessoas listadas: {$peopleTotal}" . ($peopleTrunc ? "  (⚠ lista truncada por limite de exportação)" : "")) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($totalPeopleTexto) ?></Data>
           </Cell>
         </Row>
 
@@ -1159,7 +1250,7 @@ if ($exportFlag === '1') {
         </Row>
 
         <?php if (empty($peopleRows)): ?>
-          <Row ss:Height="24">
+          <Row ss:AutoFitHeight="1">
             <Cell ss:StyleID="sText" ss:MergeAcross="8">
               <Data ss:Type="String"><?= $xmlEsc('Nenhum registro encontrado para os filtros selecionados.') ?></Data>
             </Cell>
@@ -1176,13 +1267,14 @@ if ($exportFlag === '1') {
             $dtcad = (string) ($p['data_cadastro'] ?? '');
             $dtcadBR = $dtcad ? fmtDateBR($dtcad) : '—';
             $isEmpregado = normalizeWorkStatus((string) ($p['trabalho'] ?? ''));
-            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 7);
+            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 125);
+            $rowHeight = $excelRowHeight($resumo, 125, 22, 95);
             ?>
-            <Row ss:Height="24">
+            <Row ss:Height="<?= (int)$rowHeight ?>">
               <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $i ?></Data></Cell>
-              <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
+              <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($cpf) ?></Data></Cell>
-              <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($endComp) ?></Data></Cell>
+              <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($endComp) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($tel) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($benef) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($dtcadBR) ?></Data></Cell>
@@ -1221,7 +1313,7 @@ if ($exportFlag === '1') {
     </Worksheet>
 
     <!-- ======================
-       ABA 3: SOLICITAÇÕES - ✅ FONTE 13pt E COLUNAS MAIORES
+       ABA 3: SOLICITAÇÕES
        ====================== -->
     <Worksheet ss:Name="solicitacoes">
       <Names>
@@ -1237,7 +1329,7 @@ if ($exportFlag === '1') {
         <Column ss:Width="280" />
         <Column ss:Width="120" />
         <Column ss:Width="120" />
-        <Column ss:Width="450" />
+        <Column ss:Width="660" />
 
         <Row ss:Height="30">
           <Cell ss:StyleID="sTitle" ss:MergeAcross="8">
@@ -1251,16 +1343,15 @@ if ($exportFlag === '1') {
           </Cell>
         </Row>
 
-        <Row ss:Height="26">
+        <Row ss:Height="<?= (int)$metaHeightWide ?>">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
-            <Data ss:Type="String"><?= $xmlEsc(implode('  |  ', $linhaFiltros)) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($filtrosTexto) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="24">
+        <Row ss:Height="26">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
-            <Data
-              ss:Type="String"><?= $xmlEsc("Total de solicitações listadas: {$solicTotal}" . ($solicTrunc ? "  (⚠ lista truncada)" : "")) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($totalSolicTexto) ?></Data>
           </Cell>
         </Row>
 
@@ -1277,7 +1368,7 @@ if ($exportFlag === '1') {
         </Row>
 
         <?php if (empty($solicRows)): ?>
-          <Row ss:Height="24">
+          <Row ss:AutoFitHeight="1">
             <Cell ss:StyleID="sText" ss:MergeAcross="8">
               <Data ss:Type="String"><?= $xmlEsc('Nenhuma solicitação encontrada para os filtros selecionados.') ?></Data>
             </Cell>
@@ -1295,13 +1386,14 @@ if ($exportFlag === '1') {
             $dtcadBR = $dtcad ? fmtDateBR($dtcad) : '—';
             $dtsol = (string) ($p['data_solicitacao'] ?? '');
             $dtsolBR = $dtsol ? fmtDateBR($dtsol) : '—';
-            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 7);
+            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 135);
+            $rowHeight = $excelRowHeight($resumo, 135, 22, 105);
             ?>
-            <Row ss:Height="24">
+            <Row ss:Height="<?= (int)$rowHeight ?>">
               <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $i ?></Data></Cell>
-              <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
+              <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($cpf) ?></Data></Cell>
-              <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($endComp) ?></Data></Cell>
+              <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($endComp) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($tel) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($benef) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($dtcadBR) ?></Data></Cell>
@@ -1330,7 +1422,7 @@ if ($exportFlag === '1') {
 $printFlag = (string)($_GET['print'] ?? $_POST['print'] ?? '');
 if ($printFlag === '1') {
   $payload = $_POST ?: $_GET;
-  $ctx = reportExportContext($pdo, $payload, reportGeneratedAt($payload), 10000);
+  $ctx = reportExportContext($pdo, $payload, reportGeneratedAt($payload), 0);
 
   $data = $ctx['data'];
   $geradoEm = (string)$ctx['gerado_em'];
@@ -1946,6 +2038,276 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
       text-overflow: ellipsis;
     }
 
+
+
+    /* ===== PADRÃO CLEAN DE TABELA / BUSCA / ORDENAÇÃO ===== */
+    .relatorio-search-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .relatorio-search-input {
+      width: 100%;
+      min-width: 280px;
+      height: 38px;
+      padding: .55rem .9rem;
+      border: 1px solid #9bb4f5;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      font-size: 14px;
+      box-shadow: none;
+      outline: none;
+      transition: all .2s ease;
+    }
+
+    .relatorio-search-input::placeholder {
+      color: #7f8a99;
+      opacity: 1;
+    }
+
+    .relatorio-search-input:focus {
+      border-color: #9ab0f5;
+      box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+    }
+
+    .relatorio-search-clear {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border: 1px solid #cfd6df;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .2s ease;
+      padding: 0;
+    }
+
+    .relatorio-search-clear i {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .relatorio-search-clear:hover {
+      border-color: #435ebe;
+      color: #435ebe;
+      background: #f8f9ff;
+    }
+
+    #tblBenef {
+      width: 100% !important;
+      table-layout: auto;
+      border-collapse: collapse !important;
+      border-spacing: 0 !important;
+      background: #fff !important;
+      margin-bottom: 0 !important;
+      white-space: nowrap;
+    }
+
+    #tblBenef thead,
+    #tblBenef thead tr,
+    #tblBenef thead th {
+      background: #fff !important;
+    }
+
+    #tblBenef thead th {
+      color: #495057 !important;
+      font-size: 15px !important;
+      font-weight: 700 !important;
+      text-align: center !important;
+      padding: 13px 10px !important;
+      border: 0 !important;
+      border-top: 1px solid #d7dce2 !important;
+      border-bottom: 2px solid #d7dce2 !important;
+      white-space: nowrap !important;
+      vertical-align: middle !important;
+    }
+
+    #tblBenef thead th.sortable-th {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+
+    .sort-header-btn {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: 700;
+      padding: 0 22px 0 0;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 20px;
+      cursor: pointer;
+      line-height: 1.2;
+      position: relative;
+      text-align: center;
+    }
+
+    .sort-header-btn:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .sort-indicator {
+      position: absolute;
+      top: 50%;
+      right: 2px;
+      width: 12px;
+      height: 18px;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .sort-indicator::before,
+    .sort-indicator::after {
+      position: absolute;
+      left: 0;
+      width: 12px;
+      text-align: center;
+      font-size: 9px;
+      line-height: 9px;
+      color: #e1e5ea;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .sort-indicator::before {
+      content: "▲";
+      top: 0;
+    }
+
+    .sort-indicator::after {
+      content: "▼";
+      bottom: 0;
+    }
+
+    #tblBenef thead th.sort-asc .sort-indicator::before,
+    #tblBenef thead th.sort-desc .sort-indicator::after {
+      color: #8a95a3;
+    }
+
+    #tblBenef thead th.sort-asc .sort-indicator::after,
+    #tblBenef thead th.sort-desc .sort-indicator::before {
+      color: #e1e5ea;
+    }
+
+    #tblBenef tbody td {
+      padding: 11px 10px !important;
+      vertical-align: middle !important;
+      border: 0 !important;
+      border-bottom: 1px solid #dfe3e8 !important;
+      background: transparent !important;
+      color: #536779 !important;
+      white-space: nowrap !important;
+      text-align: center !important;
+    }
+
+    #tblBenef tbody tr:nth-child(even) {
+      background: #f7f8fa !important;
+    }
+
+    #tblBenef tbody tr:nth-child(odd) {
+      background: #fff !important;
+    }
+
+    #tblBenef tbody tr:hover {
+      background: #f1f4f8 !important;
+    }
+
+    #tblBenef tbody tr:last-child td {
+      border-bottom: 2px solid #435ebe !important;
+    }
+
+    #tblBenef td.td-nome {
+      max-width: 520px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left !important;
+      font-weight: 600;
+      color: #43576b !important;
+    }
+
+    .tfoot-pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e9ecef;
+      flex-wrap: wrap;
+      background: #fff !important;
+    }
+
+    .tfoot-pager .btn {
+      min-width: 96px;
+      padding: .5rem 1rem;
+      border: 1px solid #d0d7de;
+      background: #fff;
+      color: #6c757d;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: all .2s ease;
+    }
+
+    .tfoot-pager .btn:hover:not(:disabled) {
+      border-color: #435ebe;
+      color: #435ebe;
+      background: #f8f9ff;
+    }
+
+    .tfoot-pager .btn:disabled {
+      background: #f5f6f8;
+      color: #b5b8bf;
+      border-color: #dfe3e8;
+      cursor: not-allowed;
+    }
+
+    #lblPagina {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #435ebe;
+      white-space: nowrap;
+    }
+
+    #selPerPage {
+      min-width: 72px;
+      padding: .45rem 2rem .45rem .75rem;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background-color: #fff;
+      color: #495057;
+      font-weight: 600;
+      outline: none;
+    }
+
+    #selPerPage:focus {
+      border-color: #435ebe;
+      box-shadow: 0 0 0 .15rem rgba(67, 94, 190, .15);
+    }
+
+    .stat.card,
+    .card.stat {
+      border: 0 !important;
+      border-left: 0 !important;
+      box-shadow: none !important;
+      background: #fff !important;
+    }
+
     @media(max-width:576.98px) {
       .page-title h3 {
         font-size: 1.25rem;
@@ -2372,22 +2734,28 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
           <div class="card">
             <div class="card-header d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
               <span class="fw-semibold">Lista de Benefícios (ajudas_tipos)</span>
-              <div class="d-flex gap-2 align-items-center">
-                <input id="qLive" class="form-control form-control-sm" placeholder="Buscar benefício (nome)..."
+              <div class="relatorio-search-wrap">
+                <input id="qLive" class="relatorio-search-input" placeholder="Buscar benefício (nome)..."
                   autocomplete="off" />
-                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClear"><i
+                <button class="relatorio-search-clear" type="button" id="btnClear" title="Limpar pesquisa" aria-label="Limpar pesquisa"><i
                     class="bi bi-x-circle"></i></button>
               </div>
             </div>
 
             <div class="card-body">
               <div class="table-responsive-md">
-                <table id="tblBenef" class="table table-striped table-hover align-middle w-100 text-nowrap">
-                  <thead class="table-light">
+                <table id="tblBenef" class="table table-hover align-middle w-100 text-nowrap mb-0">
+                  <thead>
                     <tr>
-                      <th>Benefício</th>
-                      <th class="text-end">Pessoas</th>
-                      <th class="text-end">% do período</th>
+                      <th class="sortable-th" data-sort-key="nome" data-sort-type="text">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por benefício">Benefício <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="count" data-sort-type="number">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por pessoas">Pessoas <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
+                      <th class="sortable-th" data-sort-key="pct" data-sort-type="number">
+                        <button type="button" class="sort-header-btn" aria-label="Ordenar por percentual do período">% do período <span class="sort-indicator" aria-hidden="true"></span></button>
+                      </th>
                     </tr>
                   </thead>
                   <tbody id="tbodyBenef"></tbody>
@@ -2520,6 +2888,12 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
       let page = 1;
       let perPage = parseInt(selPerPage.value, 10) || 10;
       let currentBenefTable = [];
+      let sortState = {
+        key: 'count',
+        type: 'number',
+        dir: 'desc'
+      };
+      const sortableHeaders = Array.from(document.querySelectorAll('#tblBenef thead th.sortable-th'));
 
       const palette = (n) =>
         Array.from({
@@ -2751,7 +3125,77 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
           data.grouping === 'month' ? 'Agrupado por mês (período grande)' : 'Agrupado por dia';
       }
 
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function normalizeText(value) {
+        return String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim();
+      }
+
+      function getSortValue(row, key, type) {
+        const value = row ? row[key] : '';
+
+        if (type === 'number') {
+          const numberValue = Number(value || 0);
+          return Number.isFinite(numberValue) ? numberValue : 0;
+        }
+
+        return normalizeText(value);
+      }
+
+      function updateSortHeaders() {
+        sortableHeaders.forEach((th) => {
+          th.classList.remove('sort-asc', 'sort-desc');
+          const btn = th.querySelector('.sort-header-btn');
+          if (!btn) return;
+
+          if ((th.dataset.sortKey || '') === sortState.key) {
+            th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+            btn.setAttribute('aria-sort', sortState.dir === 'asc' ? 'ascending' : 'descending');
+          } else {
+            btn.removeAttribute('aria-sort');
+          }
+        });
+      }
+
+      function applySort() {
+        const dir = sortState.dir === 'desc' ? -1 : 1;
+        const key = sortState.key;
+        const type = sortState.type || 'text';
+
+        currentBenefTable.sort((a, b) => {
+          const av = getSortValue(a, key, type);
+          const bv = getSortValue(b, key, type);
+
+          if (type === 'number') {
+            if (av < bv) return -1 * dir;
+            if (av > bv) return 1 * dir;
+            return normalizeText(a?.nome).localeCompare(normalizeText(b?.nome), 'pt-BR') * dir;
+          }
+
+          const cmp = String(av).localeCompare(String(bv), 'pt-BR', {
+            numeric: true,
+            sensitivity: 'base'
+          });
+
+          if (cmp !== 0) return cmp * dir;
+          return (Number(b?.count || 0) - Number(a?.count || 0));
+        });
+      }
+
       function renderTable() {
+        applySort();
+        updateSortHeaders();
         const total = currentBenefTable.length;
         const pages = Math.max(1, Math.ceil(total / perPage));
         if (page > pages) page = pages;
@@ -2766,16 +3210,16 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
             `<tr><td colspan="3" class="text-center text-muted">Sem resultados.</td></tr>`;
         } else {
           for (const r of slice) {
-            const pct = (r.pct ?? 0).toLocaleString('pt-BR', {
+            const pct = Number(r.pct ?? 0).toLocaleString('pt-BR', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             });
-            const nome = (r.nome || '—');
+            const nome = r.nome || '—';
             const tr = document.createElement('tr');
             tr.innerHTML = `
-            <td class="td-nome" title="${String(nome).replace(/"/g, '&quot;')}">${nome}</td>
-            <td class="text-end">${r.count ?? 0}</td>
-            <td class="text-end">${pct}%</td>
+            <td class="td-nome" title="${escapeHtml(nome)}">${escapeHtml(nome)}</td>
+            <td>${Number(r.count ?? 0)}</td>
+            <td>${pct}%</td>
           `;
             tbodyBenef.appendChild(tr);
           }
@@ -3012,6 +3456,28 @@ $initial = fetchAggregates($pdo, ['periodo' => 'mensal']);
         inpSearch.value = '';
         fetchData();
         inpSearch.focus();
+      });
+
+      sortableHeaders.forEach((th) => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sortKey || '';
+          const type = th.dataset.sortType || 'text';
+          if (!key) return;
+
+          if (sortState.key === key) {
+            sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortState = {
+              key,
+              type,
+              dir: type === 'number' ? 'desc' : 'asc'
+            };
+          }
+
+          sortState.type = type;
+          page = 1;
+          renderTable();
+        });
       });
 
       selPerPage.addEventListener('change', () => {

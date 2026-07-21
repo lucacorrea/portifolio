@@ -7,7 +7,7 @@ require_once __DIR__ . '/auth/authGuard.php';
 auth_guard();
 
 /* Apenas usuários com perfil 'suporte' ou 'admin' podem acessar auditoria */
-$allowed_roles = ['suporte', 'admin'];
+$allowed_roles = ['suporte', 'admin', 'secretario', 'prefeito'];
 if (!in_array(($_SESSION['user_role'] ?? ''), $allowed_roles, true)) {
     header('Location: index.php');
     exit();
@@ -323,7 +323,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'grafico_usuarios') {
         foreach ($rows as $row) {
             $usuario = (string)($row['usuario'] ?? 'Desconhecido');
             $usuariosCompletos[] = $usuario;
-            $labels[] = truncate_text($usuario, 18);
+            $labels[] = $usuario;
             $series[] = (int)($row['total_acoes'] ?? 0);
         }
 
@@ -614,18 +614,46 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalhes') {
 ========================= */
 if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
     header('Content-Type: application/vnd.ms-excel; charset=utf-8');
-    header('Content-Disposition: attachment; filename=auditoria_' . date('Y-m-d_H-i-s') . '.xls');
+    header('Content-Disposition: attachment; filename=auditoria_anexo_' . date('Y-m-d_H-i-s') . '.xls');
     header('Pragma: no-cache');
     header('Expires: 0');
 
-    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>';
-    echo 'table{border-collapse:collapse;width:100%;font-family:Arial,sans-serif}';
-    echo 'th{background:#4CAF50;color:#fff;font-weight:bold;padding:8px;border:1px solid #ddd}';
-    echo 'td{padding:8px;border:1px solid #ddd;vertical-align:top}';
-    echo 'tr:nth-child(even){background:#f7f7f7}';
-    echo '</style></head><body>';
-    echo '<table>';
-    echo '<tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Entidade</th><th>Detalhes</th></tr>';
+    $gerado_em_dispositivo = trim((string)($_GET['gerado_em'] ?? ''));
+    if ($gerado_em_dispositivo === '') {
+        $gerado_em_dispositivo = date('d/m/Y H:i:s');
+    }
+
+    $filtros_exportacao = [];
+
+    if ($filtro_usuario !== '') {
+        $filtros_exportacao[] = 'Usuário: ' . $filtro_usuario;
+    }
+
+    if ($filtro_acao !== '') {
+        $filtros_exportacao[] = 'Ação: ' . $filtro_acao;
+    }
+
+    if ($filtro_entidade !== '') {
+        $filtros_exportacao[] = 'Entidade: ' . $filtro_entidade;
+    }
+
+    if ($filtro_data_inicio !== '') {
+        $filtros_exportacao[] = 'Data inicial: ' . safe_date($filtro_data_inicio);
+    }
+
+    if ($filtro_data_fim !== '') {
+        $filtros_exportacao[] = 'Data final: ' . safe_date($filtro_data_fim);
+    }
+
+    if ($filtro_termo !== '') {
+        $filtros_exportacao[] = 'Termo pesquisado: ' . $filtro_termo;
+    }
+
+    $texto_filtros_exportacao = !empty($filtros_exportacao)
+        ? implode(' | ', $filtros_exportacao)
+        : 'Nenhum filtro aplicado';
+
+    $linhas_exportacao = [];
 
     try {
         $sql = "
@@ -638,26 +666,173 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
             FROM ($baseSql) aud
             $whereSql
             ORDER BY aud.evento_data DESC, aud.origem_id DESC
-            LIMIT 5000
         ";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            echo '<tr>';
-            echo '<td>' . safe_datetime($row['evento_data'] ?? '', 'd/m/Y H:i:s') . '</td>';
-            echo '<td>' . safe_html($row['usuario'] ?? '') . '</td>';
-            echo '<td>' . safe_html($row['acao'] ?? '') . '</td>';
-            echo '<td>' . safe_html($row['entidade'] ?? '') . '</td>';
-            echo '<td>' . safe_html($row['detalhes'] ?? '') . '</td>';
-            echo '</tr>';
-        }
+        $linhas_exportacao = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
-        echo '<tr><td colspan="5">Erro ao exportar dados.</td></tr>';
+        $linhas_exportacao = [];
     }
 
-    echo '</table></body></html>';
+    $total_exportado = count($linhas_exportacao);
+
+    echo "\xEF\xBB\xBF";
+    echo '<!DOCTYPE html>';
+    echo '<html lang="pt-br">';
+    echo '<head>';
+    echo '<meta charset="UTF-8">';
+    echo '<style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Calibri, Arial, sans-serif;
+            color: #000;
+            background: #fff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-family: Calibri, Arial, sans-serif;
+        }
+
+        td, th {
+            border: 1px solid #000;
+            padding: 7px 8px;
+            vertical-align: middle;
+            white-space: normal;
+        }
+
+        .titulo {
+            background: #F2F4F7;
+            font-size: 20px;
+            font-weight: 700;
+            text-align: center;
+            height: 38px;
+        }
+
+        .meta {
+            background: #FFFFFF;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: left;
+            height: 30px;
+        }
+
+        .cabecalho {
+            background: #F2F4F7;
+            color: #000;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            height: 32px;
+        }
+
+        .centro {
+            text-align: center;
+        }
+
+        .esquerda {
+            text-align: left;
+        }
+
+        .linha-par {
+            background: #FFFFFF;
+        }
+
+        .linha-impar {
+            background: #FFFFFF;
+        }
+
+        .rodape {
+            background: #F2F4F7;
+            font-weight: 700;
+            text-align: left;
+        }
+
+        .col-data {
+            width: 18%;
+        }
+
+        .col-usuario {
+            width: 18%;
+        }
+
+        .col-acao {
+            width: 13%;
+        }
+
+        .col-entidade {
+            width: 13%;
+        }
+
+        .col-detalhes {
+            width: 38%;
+        }
+    </style>';
+    echo '</head>';
+    echo '<body>';
+    echo '<table>';
+
+    echo '<colgroup>';
+    echo '<col class="col-data">';
+    echo '<col class="col-usuario">';
+    echo '<col class="col-acao">';
+    echo '<col class="col-entidade">';
+    echo '<col class="col-detalhes">';
+    echo '</colgroup>';
+
+    echo '<tr>';
+    echo '<th colspan="5" class="titulo">Auditoria - ANEXO</th>';
+    echo '</tr>';
+
+    echo '<tr>';
+    echo '<td colspan="5" class="meta">Total: ' . format_number($total_exportado) . ' registros</td>';
+    echo '</tr>';
+
+    echo '<tr>';
+    echo '<td colspan="5" class="meta">Filtros: ' . safe_html($texto_filtros_exportacao) . '</td>';
+    echo '</tr>';
+
+    echo '<tr>';
+    echo '<td colspan="5" class="meta">Gerado em: ' . safe_html($gerado_em_dispositivo) . '</td>';
+    echo '</tr>';
+
+    echo '<tr>';
+    echo '<th class="cabecalho">Data/Hora</th>';
+    echo '<th class="cabecalho">Usuário</th>';
+    echo '<th class="cabecalho">Ação</th>';
+    echo '<th class="cabecalho">Entidade</th>';
+    echo '<th class="cabecalho">Detalhes</th>';
+    echo '</tr>';
+
+    if (!empty($linhas_exportacao)) {
+        foreach ($linhas_exportacao as $indice => $row) {
+            $classe_linha = ($indice % 2 === 0) ? 'linha-par' : 'linha-impar';
+
+            echo '<tr class="' . $classe_linha . '">';
+            echo '<td class="centro">' . safe_datetime($row['evento_data'] ?? '', 'd/m/Y H:i:s') . '</td>';
+            echo '<td class="esquerda">' . safe_html($row['usuario'] ?? '') . '</td>';
+            echo '<td class="centro">' . safe_html($row['acao'] ?? '') . '</td>';
+            echo '<td class="centro">' . safe_html($row['entidade'] ?? '') . '</td>';
+            echo '<td class="esquerda">' . safe_html($row['detalhes'] ?? '') . '</td>';
+            echo '</tr>';
+        }
+    } else {
+        echo '<tr>';
+        echo '<td colspan="5" class="centro">Nenhum registro encontrado.</td>';
+        echo '</tr>';
+    }
+
+    echo '<tr>';
+    echo '<td colspan="5" class="rodape">Total exportado: ' . format_number($total_exportado) . ' registros</td>';
+    echo '</tr>';
+
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
     exit;
 }
 
@@ -700,7 +875,11 @@ $estatisticas = array_merge([
 /* =========================
    PAGINAÇÃO REGISTROS
 ========================= */
-$registros_por_pagina = 30;
+$opcoes_por_pagina = [10, 20, 30, 50, 100];
+$registros_por_pagina = isset($_GET['por_pagina']) ? (int)$_GET['por_pagina'] : 10;
+if (!in_array($registros_por_pagina, $opcoes_por_pagina, true)) {
+    $registros_por_pagina = 10;
+}
 $pagina_atual = isset($_GET['pagina']) ? max(1, (int)$_GET['pagina']) : 1;
 $total_paginas = max(1, (int)ceil($total_registros / $registros_por_pagina));
 if ($pagina_atual > $total_paginas) {
@@ -779,7 +958,11 @@ try {
    AGORA DIRETO DAS DUAS TABELAS
    E RESPEITANDO FILTROS
 ========================= */
-$perPageUsers = 6;
+$opcoes_usuarios_por_pagina = [5, 10, 20, 50];
+$perPageUsers = isset($_GET['u_por_pagina']) ? (int)$_GET['u_por_pagina'] : 10;
+if (!in_array($perPageUsers, $opcoes_usuarios_por_pagina, true)) {
+    $perPageUsers = 10;
+}
 $usersPage = isset($_GET['u_page']) ? max(1, (int)$_GET['u_page']) : 1;
 
 try {
@@ -853,9 +1036,25 @@ try {
     <link rel="shortcut icon" href="../dist/assets/images/logo/logo_pmc_2025.jpg">
 
     <style>
+        .card,
+        .audit-card,
+        .stat-card,
+        .chart-container {
+            border: 1px solid #e6e9ef !important;
+            border-left: 1px solid #e6e9ef !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+            background: #fff !important;
+        }
+
         .audit-card {
             cursor: pointer;
-            border: 1px solid #ccc;
+            transition: background-color .2s ease, border-color .2s ease;
+        }
+
+        .audit-card:hover {
+            background: #f8fafc !important;
+            border-color: #d8dee8 !important;
         }
 
         .badge-acao {
@@ -879,24 +1078,7 @@ try {
         }
 
         .stat-card {
-            border-left: 4px solid;
             min-height: 85px;
-        }
-
-        .stat-card-total {
-            border-left-color: #0d6efd;
-        }
-
-        .stat-card-users {
-            border-left-color: #198754;
-        }
-
-        .stat-card-first {
-            border-left-color: #0dcaf0;
-        }
-
-        .stat-card-last {
-            border-left-color: #dc3545;
         }
 
         .stat-number {
@@ -913,10 +1095,7 @@ try {
         }
 
         .chart-container {
-            background: #fff;
-            border-radius: 8px;
             padding: 15px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, .06);
             height: 100%;
             min-height: 350px;
             display: flex;
@@ -933,6 +1112,18 @@ try {
         #chartDaily {
             height: 100%;
             min-height: 300px;
+        }
+
+        #chartUsers .apexcharts-text,
+        #chartUsers .apexcharts-title-text,
+        #chartUsers .apexcharts-xaxis text,
+        #chartUsers .apexcharts-yaxis text,
+        #chartUsers .apexcharts-data-labels text,
+        #chartUsers .apexcharts-datalabel,
+        #chartUsers .apexcharts-xaxis-title-text,
+        #chartUsers .apexcharts-yaxis-title-text {
+            fill: #000000 !important;
+            color: #000000 !important;
         }
 
         .chart-placeholder {
@@ -1168,14 +1359,128 @@ try {
             margin-bottom: 0;
         }
 
+        /* Paginação clean no mesmo padrão das demais telas */
+        .custom-pagination-bar {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .custom-pagination-left,
+        .custom-pagination-center,
+        .custom-pagination-right {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+        }
+
+        .custom-pagination-left {
+            justify-content: flex-start;
+        }
+
+        .custom-pagination-center {
+            justify-content: center;
+        }
+
+        .custom-pagination-right {
+            justify-content: flex-end;
+        }
+
+        .custom-page-btn {
+            min-width: 96px;
+            padding: .5rem 1rem;
+            border: 1px solid #d0d7de;
+            background: #fff;
+            color: #435ebe;
+            border-radius: 6px;
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .custom-page-btn:hover {
+            border-color: #435ebe;
+            color: #435ebe;
+            background: #f8f9ff;
+        }
+
+        .custom-page-btn.disabled {
+            background: #f5f6f8;
+            color: #b5b8bf;
+            border-color: #dfe3e8;
+            pointer-events: none;
+        }
+
+        .custom-page-info {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #435ebe;
+            white-space: nowrap;
+        }
+
+        .custom-length-label {
+            color: #6c757d;
+            font-weight: 600;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .custom-length-select {
+            min-width: 88px;
+            padding: .45rem 2rem .45rem .75rem;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            background-color: #fff;
+            color: #495057;
+            font-weight: 600;
+            outline: none;
+        }
+
+        /* Modal de detalhes centralizada e com conteúdo responsivo */
+        .modal-detalhes .modal-dialog {
+            width: min(700px, calc(100% - 2rem));
+            max-width: 700px;
+            margin: 1rem auto;
+        }
+
+        .modal-detalhes .modal-content {
+            overflow: hidden;
+        }
+
+        .modal-detalhes .modal-body .card {
+            border: 0 !important;
+            border-radius: 0 !important;
+        }
+
+        .modal-detalhes .modal-body table th,
+        .modal-detalhes .modal-body table td {
+            vertical-align: middle;
+        }
+
         @media (max-width: 768px) {
             .modal-detalhes .modal-dialog {
-                margin: 10px;
-                max-width: calc(100% - 20px);
+                width: calc(100% - 20px);
+                max-width: none;
+                margin: 10px auto;
             }
 
             .modal-detalhes .modal-body {
                 max-height: 80vh;
+            }
+
+            .custom-pagination-bar {
+                grid-template-columns: 1fr;
+            }
+
+            .custom-pagination-left,
+            .custom-pagination-center,
+            .custom-pagination-right {
+                justify-content: center;
+                width: 100%;
             }
 
             .timeline-container,
@@ -1187,8 +1492,51 @@ try {
 
         @media (max-width: 576px) {
             .modal-detalhes .modal-dialog {
-                margin: 5px;
-                max-width: calc(100% - 10px);
+                width: calc(100% - 10px);
+                margin: 5px auto;
+            }
+
+            .modal-detalhes .modal-header,
+            .modal-detalhes .modal-footer {
+                padding-left: .85rem;
+                padding-right: .85rem;
+            }
+
+            .modal-detalhes .modal-body .table-responsive {
+                overflow: visible;
+            }
+
+            .modal-detalhes .modal-body table,
+            .modal-detalhes .modal-body tbody,
+            .modal-detalhes .modal-body tr,
+            .modal-detalhes .modal-body th,
+            .modal-detalhes .modal-body td {
+                display: block;
+                width: 100% !important;
+            }
+
+            .modal-detalhes .modal-body tr {
+                padding: .8rem .9rem;
+                border-bottom: 1px solid #e9ecef;
+                text-align: center;
+            }
+
+            .modal-detalhes .modal-body th,
+            .modal-detalhes .modal-body td {
+                border: 0 !important;
+                padding: .15rem 0 !important;
+                text-align: center !important;
+            }
+
+            .modal-detalhes .modal-body th {
+                margin-bottom: .25rem;
+                color: #25396f;
+                font-weight: 800;
+            }
+
+            .modal-detalhes .modal-body td {
+                color: #52697f;
+                overflow-wrap: anywhere;
             }
 
             .audit-header {
@@ -1567,52 +1915,39 @@ try {
                                     <?php endif; ?>
                                 </div>
 
-                                <?php if ($total_paginas > 1): ?>
+                                <?php if ($total_paginas > 1 || $total_registros > 0): ?>
                                     <?php
-                                    $qs = $_GET;
-                                    $mkUrl = function (array $query): string {
-                                        return '?' . http_build_query($query);
-                                    };
-                                    $window = 2;
-                                    $start = max(1, $pagina_atual - $window);
-                                    $end = min($total_paginas, $pagina_atual + $window);
+                                    $qsAnterior = $_GET;
+                                    $qsProxima = $_GET;
+                                    $qsAnterior['pagina'] = max(1, $pagina_atual - 1);
+                                    $qsProxima['pagina'] = min($total_paginas, $pagina_atual + 1);
                                     ?>
-                                    <nav class="mt-3" aria-label="Paginação de registros">
-                                        <ul class="pagination pagination-sm justify-content-end mb-0">
-                                            <li class="page-item <?= ($pagina_atual <= 1) ? 'disabled' : '' ?>">
-                                                <?php $qs['pagina'] = max(1, $pagina_atual - 1); ?>
-                                                <a class="page-link" href="<?= $mkUrl($qs) ?>">Anterior</a>
-                                            </li>
+                                    <div class="custom-pagination-bar" aria-label="Paginação de registros">
+                                        <div class="custom-pagination-left">
+                                            <a class="custom-page-btn <?= $pagina_atual <= 1 ? 'disabled' : '' ?>"
+                                               href="?<?= http_build_query($qsAnterior) ?>">Anterior</a>
+                                            <a class="custom-page-btn <?= $pagina_atual >= $total_paginas ? 'disabled' : '' ?>"
+                                               href="?<?= http_build_query($qsProxima) ?>">Próximo</a>
+                                        </div>
 
-                                            <?php if ($start > 1): ?>
-                                                <?php $qs['pagina'] = 1; ?>
-                                                <li class="page-item"><a class="page-link" href="<?= $mkUrl($qs) ?>">1</a></li>
-                                                <?php if ($start > 2): ?>
-                                                    <li class="page-item disabled"><span class="page-link">…</span></li>
-                                                <?php endif; ?>
-                                            <?php endif; ?>
+                                        <div class="custom-pagination-center">
+                                            <span class="custom-page-info">
+                                                Página <?= $total_registros > 0 ? $pagina_atual : 0 ?> de <?= $total_registros > 0 ? $total_paginas : 0 ?>
+                                            </span>
+                                        </div>
 
-                                            <?php for ($p = $start; $p <= $end; $p++): ?>
-                                                <?php $qs['pagina'] = $p; ?>
-                                                <li class="page-item <?= ($p === $pagina_atual) ? 'active' : '' ?>">
-                                                    <a class="page-link" href="<?= $mkUrl($qs) ?>"><?= $p ?></a>
-                                                </li>
-                                            <?php endfor; ?>
-
-                                            <?php if ($end < $total_paginas): ?>
-                                                <?php if ($end < $total_paginas - 1): ?>
-                                                    <li class="page-item disabled"><span class="page-link">…</span></li>
-                                                <?php endif; ?>
-                                                <?php $qs['pagina'] = $total_paginas; ?>
-                                                <li class="page-item"><a class="page-link" href="<?= $mkUrl($qs) ?>"><?= $total_paginas ?></a></li>
-                                            <?php endif; ?>
-
-                                            <li class="page-item <?= ($pagina_atual >= $total_paginas) ? 'disabled' : '' ?>">
-                                                <?php $qs['pagina'] = min($total_paginas, $pagina_atual + 1); ?>
-                                                <a class="page-link" href="<?= $mkUrl($qs) ?>">Próxima</a>
-                                            </li>
-                                        </ul>
-                                    </nav>
+                                        <div class="custom-pagination-right">
+                                            <label class="custom-length-label" for="registrosPorPagina">por página</label>
+                                            <select id="registrosPorPagina" class="custom-length-select"
+                                                    onchange="alterarQuantidadePagina('por_pagina', this.value, 'pagina')">
+                                                <?php foreach ($opcoes_por_pagina as $opcao): ?>
+                                                    <option value="<?= $opcao ?>" <?= $registros_por_pagina === $opcao ? 'selected' : '' ?>>
+                                                        <?= $opcao ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -1713,54 +2048,40 @@ try {
                                     </div>
                                 </div>
 
-                                <?php if ($totalUsersPages > 1): ?>
+                                <?php if ($totalUsersPages > 1 || $totalUsers > 0): ?>
                                     <?php
-                                    $qs = $_GET;
-                                    $mkUrl = function (array $query): string {
-                                        return '?' . http_build_query($query);
-                                    };
-
-                                    $window = 2;
-                                    $start = max(1, $usersPage - $window);
-                                    $end = min($totalUsersPages, $usersPage + $window);
+                                    $qsUsersAnterior = $_GET;
+                                    $qsUsersProxima = $_GET;
+                                    $qsUsersAnterior['u_page'] = max(1, $usersPage - 1);
+                                    $qsUsersProxima['u_page'] = min($totalUsersPages, $usersPage + 1);
                                     ?>
                                     <div class="px-3 pb-3">
-                                        <nav aria-label="Paginação usuários" class="mt-2">
-                                            <ul class="pagination pagination-sm justify-content-end mb-0">
-                                                <li class="page-item <?= ($usersPage <= 1) ? 'disabled' : '' ?>">
-                                                    <?php $qs['u_page'] = max(1, $usersPage - 1); ?>
-                                                    <a class="page-link" href="<?= $mkUrl($qs) ?>">Anterior</a>
-                                                </li>
+                                        <div class="custom-pagination-bar" aria-label="Paginação de usuários">
+                                            <div class="custom-pagination-left">
+                                                <a class="custom-page-btn <?= $usersPage <= 1 ? 'disabled' : '' ?>"
+                                                   href="?<?= http_build_query($qsUsersAnterior) ?>">Anterior</a>
+                                                <a class="custom-page-btn <?= $usersPage >= $totalUsersPages ? 'disabled' : '' ?>"
+                                                   href="?<?= http_build_query($qsUsersProxima) ?>">Próximo</a>
+                                            </div>
 
-                                                <?php if ($start > 1): ?>
-                                                    <?php $qs['u_page'] = 1; ?>
-                                                    <li class="page-item"><a class="page-link" href="<?= $mkUrl($qs) ?>">1</a></li>
-                                                    <?php if ($start > 2): ?>
-                                                        <li class="page-item disabled"><span class="page-link">…</span></li>
-                                                    <?php endif; ?>
-                                                <?php endif; ?>
+                                            <div class="custom-pagination-center">
+                                                <span class="custom-page-info">
+                                                    Página <?= $totalUsers > 0 ? $usersPage : 0 ?> de <?= $totalUsers > 0 ? $totalUsersPages : 0 ?>
+                                                </span>
+                                            </div>
 
-                                                <?php for ($p = $start; $p <= $end; $p++): ?>
-                                                    <?php $qs['u_page'] = $p; ?>
-                                                    <li class="page-item <?= ($p === $usersPage) ? 'active' : '' ?>">
-                                                        <a class="page-link" href="<?= $mkUrl($qs) ?>"><?= $p ?></a>
-                                                    </li>
-                                                <?php endfor; ?>
-
-                                                <?php if ($end < $totalUsersPages): ?>
-                                                    <?php if ($end < $totalUsersPages - 1): ?>
-                                                        <li class="page-item disabled"><span class="page-link">…</span></li>
-                                                    <?php endif; ?>
-                                                    <?php $qs['u_page'] = $totalUsersPages; ?>
-                                                    <li class="page-item"><a class="page-link" href="<?= $mkUrl($qs) ?>"><?= $totalUsersPages ?></a></li>
-                                                <?php endif; ?>
-
-                                                <li class="page-item <?= ($usersPage >= $totalUsersPages) ? 'disabled' : '' ?>">
-                                                    <?php $qs['u_page'] = min($totalUsersPages, $usersPage + 1); ?>
-                                                    <a class="page-link" href="<?= $mkUrl($qs) ?>">Próxima</a>
-                                                </li>
-                                            </ul>
-                                        </nav>
+                                            <div class="custom-pagination-right">
+                                                <label class="custom-length-label" for="usuariosPorPagina">por página</label>
+                                                <select id="usuariosPorPagina" class="custom-length-select"
+                                                        onchange="alterarQuantidadePagina('u_por_pagina', this.value, 'u_page')">
+                                                    <?php foreach ($opcoes_usuarios_por_pagina as $opcao): ?>
+                                                        <option value="<?= $opcao ?>" <?= $perPageUsers === $opcao ? 'selected' : '' ?>>
+                                                            <?= $opcao ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -1860,7 +2181,7 @@ try {
 
     <!-- Modal Detalhes -->
     <div class="modal fade modal-detalhes" id="modalDetalhes" tabindex="-1" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalDetalhesLabel">
@@ -1931,6 +2252,8 @@ try {
                             chart: {
                                 type: 'bar',
                                 height: 350,
+                                foreColor: '#000000',
+                                offsetX: 8,
                                 toolbar: {
                                     show: true,
                                     tools: {
@@ -1956,29 +2279,71 @@ try {
                             colors: ['#0d6efd'],
                             dataLabels: {
                                 enabled: true,
+                                offsetX: 4,
+                                style: {
+                                    colors: ['#000000'],
+                                    fontSize: '12px',
+                                    fontWeight: 700
+                                },
+                                background: {
+                                    enabled: false
+                                },
                                 formatter: function(val) {
                                     return val;
                                 }
                             },
+                            grid: {
+                                padding: {
+                                    left: 12,
+                                    right: 12
+                                }
+                            },
                             xaxis: {
                                 categories: data.labels,
+                                labels: {
+                                    style: {
+                                        colors: '#000000',
+                                        fontSize: '12px',
+                                        fontWeight: 600
+                                    }
+                                },
                                 title: {
-                                    text: 'Número de Ações'
+                                    text: 'Número de Ações',
+                                    style: {
+                                        color: '#000000'
+                                    }
                                 }
                             },
                             yaxis: {
                                 labels: {
+                                    minWidth: 130,
+                                    maxWidth: 180,
+                                    offsetX: 0,
+                                    style: {
+                                        colors: '#000000',
+                                        fontSize: '12px',
+                                        fontWeight: 600
+                                    },
                                     formatter: function(value, index) {
-                                        if (typeof index === 'number' && data.usuarios_completos && data.usuarios_completos[index]) {
-                                            return data.usuarios_completos[index];
-                                        }
-                                        return value;
+                                        const nomeCompleto = (
+                                            typeof index === 'number' &&
+                                            data.usuarios_completos &&
+                                            data.usuarios_completos[index]
+                                        ) ? String(data.usuarios_completos[index]) : String(value || '');
+
+                                        return nomeCompleto.length > 24
+                                            ? nomeCompleto.substring(0, 24).trimEnd() + '...'
+                                            : nomeCompleto;
                                     }
                                 }
                             },
                             title: {
                                 text: `Top ${data.total_usuarios} Usuários Mais Ativos`,
-                                align: 'center'
+                                align: 'center',
+                                style: {
+                                    color: '#000000',
+                                    fontWeight: 700
+                                }
                             },
                             tooltip: {
                                 custom: function({
@@ -2189,10 +2554,30 @@ try {
                 });
         }
 
+        function alterarQuantidadePagina(parametro, valor, parametroPagina) {
+            const url = new URL(window.location.href);
+            url.searchParams.set(parametro, valor);
+            url.searchParams.set(parametroPagina, '1');
+            window.location.href = url.toString();
+        }
+
         function exportarExcel() {
             const params = new URLSearchParams(window.location.search);
+            const agora = new Date();
+
+            const dataDispositivo = agora.toLocaleDateString('pt-BR');
+            const horaDispositivo = agora.toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
             params.set('exportar', 'excel');
+            params.set('gerado_em', `${dataDispositivo} ${horaDispositivo}`);
             params.delete('ajax');
+            params.delete('pagina');
+            params.delete('u_page');
+
             window.location.href = `${window.location.pathname}?${params.toString()}`;
         }
 

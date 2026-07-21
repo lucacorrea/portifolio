@@ -18,6 +18,28 @@ if (!isset($pdo) || !$pdo instanceof PDO) {
     die('Erro de conexão');
 }
 
+/*
+|--------------------------------------------------------------------------
+| NORMALIZAÇÃO DO STATUS DAS ENTREGAS
+|--------------------------------------------------------------------------
+| Regra de negócio: se o registro existe em ajudas_entregas, ele já foi
+| efetivamente entregue. Portanto, registros antigos marcados como "Não",
+| vazios ou NULL devem ser corrigidos para "Sim".
+|
+| Esta atualização corrige também as contagens utilizadas por outras telas,
+| pois grava o status correto diretamente no banco de dados.
+*/
+$sql_normalizar_status = "
+    UPDATE ajudas_entregas
+       SET entregue = 'Sim'
+     WHERE entregue IS NULL
+        OR TRIM(entregue) = ''
+        OR LOWER(TRIM(entregue)) NOT IN ('sim')
+";
+
+$stmt_normalizar_status = $pdo->prepare($sql_normalizar_status);
+$stmt_normalizar_status->execute();
+
 // Função para formatar valor monetário
 function formatarMoeda($valor)
 {
@@ -82,7 +104,7 @@ $sql_base = "
         ae.valor_aplicado,
         ae.observacao,
         ae.responsavel as responsavel_entrega,
-        ae.entregue,
+        'Sim' AS entregue,
         ae.pessoa_cpf,
         
         s.id as solicitante_id,
@@ -136,8 +158,12 @@ if (!empty($filtro_bairro)) {
 }
 
 if ($filtro_status !== 'todos') {
-    $sql_base .= " AND ae.entregue = :status";
-    $params[':status'] = $filtro_status;
+    if ($filtro_status === 'Sim') {
+        $sql_base .= " AND ae.entregue = 'Sim'";
+    } else {
+        // Não existem pendências em ajudas_entregas.
+        $sql_base .= " AND 1 = 0";
+    }
 }
 
 if (!empty($filtro_data_inicio)) {
@@ -1419,7 +1445,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
 
                                 <?php if ($filtro_status !== 'todos'): ?>
                                     <span class="badge-filtro filtro-badge">
-                                        Status: <?= $filtro_status == 'Sim' ? 'Entregue' : 'Pendente' ?>
+                                        Status: Entregue
                                         <a href="#" class="text-white ms-1" onclick="removerFiltro('status')">×</a>
                                     </span>
                                 <?php endif; ?>
@@ -1756,8 +1782,8 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                             <div class="cell-ellipsis"><?= htmlspecialchars((string)($entrega['responsavel_entrega'] ?? 'N/A')) ?></div>
                                                         </td>
                                                         <td class="text-nowrap text-center">
-                                                            <span class="status-clean <?= ($entrega['entregue'] === 'Sim') ? 'status-entregue' : 'status-pendente' ?>">
-                                                                <?= ($entrega['entregue'] === 'Sim') ? 'Entregue' : 'Pendente' ?>
+                                                            <span class="status-clean status-entregue">
+                                                                Entregue
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -1961,8 +1987,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                     <label class="form-label fw-bold">Status</label>
                                     <select name="status" class="form-select">
                                         <option value="todos">Todos os status</option>
-                                        <option value="Sim" <?= ($filtro_status == 'Sim') ? 'selected' : '' ?>>Entregue</option>
-                                        <option value="Não" <?= ($filtro_status == 'Não') ? 'selected' : '' ?>>Pendente</option>
+                                        <option value="Sim" <?= ($filtro_status === 'Sim') ? 'selected' : '' ?>>Entregue</option>
                                     </select>
                                 </div>
 
@@ -1993,7 +2018,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
 
                         <div class="alert alert-info mt-3">
                             <i class="bi bi-info-circle"></i>
-                            <strong>Nota:</strong> Agora exibindo todas as entregas (com e sem valor aplicado). Use os filtros para resultados específicos.
+                            <strong>Nota:</strong> Todo registro existente em <code>ajudas_entregas</code> é contabilizado como entregue, inclusive registros antigos que estavam com status incorreto.
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -2225,7 +2250,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                 filtros.push(<?= json_encode('Bairro: ' . ($bairro_nome ?? 'Selecionado'), JSON_UNESCAPED_UNICODE) ?>);
                             <?php endif; ?>
                             <?php if ($filtro_status !== 'todos'): ?>
-                                filtros.push(<?= json_encode('Status: ' . ($filtro_status === 'Sim' ? 'Entregue' : 'Pendente'), JSON_UNESCAPED_UNICODE) ?>);
+                                filtros.push(<?= json_encode('Status: Entregue', JSON_UNESCAPED_UNICODE) ?>);
                             <?php endif; ?>
                             <?php if ($filtro_data_inicio): ?>
                                 filtros.push(<?= json_encode('Data inicial: ' . date('d/m/Y', strtotime($filtro_data_inicio)), JSON_UNESCAPED_UNICODE) ?>);
