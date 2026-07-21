@@ -1762,30 +1762,6 @@ try {
                                         </div>
                                     </div>
                                 <?php endif; ?>
-                                            <?php endif; ?>
-
-                                            <?php for ($p = $start; $p <= $end; $p++): ?>
-                                                <?php $qs['pagina'] = $p; ?>
-                                                <li class="page-item <?= ($p === $pagina_atual) ? 'active' : '' ?>">
-                                                    <a class="page-link" href="<?= $mkUrl($qs) ?>"><?= $p ?></a>
-                                                </li>
-                                            <?php endfor; ?>
-
-                                            <?php if ($end < $total_paginas): ?>
-                                                <?php if ($end < $total_paginas - 1): ?>
-                                                    <li class="page-item disabled"><span class="page-link">…</span></li>
-                                                <?php endif; ?>
-                                                <?php $qs['pagina'] = $total_paginas; ?>
-                                                <li class="page-item"><a class="page-link" href="<?= $mkUrl($qs) ?>"><?= $total_paginas ?></a></li>
-                                            <?php endif; ?>
-
-                                            <li class="page-item <?= ($pagina_atual >= $total_paginas) ? 'disabled' : '' ?>">
-                                                <?php $qs['pagina'] = min($total_paginas, $pagina_atual + 1); ?>
-                                                <a class="page-link" href="<?= $mkUrl($qs) ?>">Próxima</a>
-                                            </li>
-                                        </ul>
-                                    </nav>
-                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -1919,31 +1895,6 @@ try {
                                                 </select>
                                             </div>
                                         </div>
-                                    </div>
-                                <?php endif; ?>
-                                                <?php endif; ?>
-
-                                                <?php for ($p = $start; $p <= $end; $p++): ?>
-                                                    <?php $qs['u_page'] = $p; ?>
-                                                    <li class="page-item <?= ($p === $usersPage) ? 'active' : '' ?>">
-                                                        <a class="page-link" href="<?= $mkUrl($qs) ?>"><?= $p ?></a>
-                                                    </li>
-                                                <?php endfor; ?>
-
-                                                <?php if ($end < $totalUsersPages): ?>
-                                                    <?php if ($end < $totalUsersPages - 1): ?>
-                                                        <li class="page-item disabled"><span class="page-link">…</span></li>
-                                                    <?php endif; ?>
-                                                    <?php $qs['u_page'] = $totalUsersPages; ?>
-                                                    <li class="page-item"><a class="page-link" href="<?= $mkUrl($qs) ?>"><?= $totalUsersPages ?></a></li>
-                                                <?php endif; ?>
-
-                                                <li class="page-item <?= ($usersPage >= $totalUsersPages) ? 'disabled' : '' ?>">
-                                                    <?php $qs['u_page'] = min($totalUsersPages, $usersPage + 1); ?>
-                                                    <a class="page-link" href="<?= $mkUrl($qs) ?>">Próxima</a>
-                                                </li>
-                                            </ul>
-                                        </nav>
                                     </div>
                                 <?php endif; ?>
                             </div>
