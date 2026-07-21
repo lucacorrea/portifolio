@@ -1497,10 +1497,128 @@ include 'views/layout/header.php';
                         <i class="fas fa-trash"></i> Excluir definitivamente
                     </button>
                 </div>
-</form>
+                <div class="modal-aprovacao" id="modalAprovacao">
+
+                    <div class="modal-aprovacao-box">
+
+                        <div class="modal-header-custom">
+
+                            <div>
+
+                                <h3>
+
+                                    <i class="fas fa-check-circle text-success"></i>
+
+                                    Aprovar Solicitações
+
+                                </h3>
+
+                                <small>
+
+                                    Escolha o fornecedor para concluir a aprovação.
+
+                                </small>
+
+                            </div>
+
+                            <button
+                                type="button"
+                                class="btn-fechar-modal"
+                                onclick="fecharModalAprovacao()">
+
+                                <i class="fas fa-times"></i>
+
+                            </button>
+
+                        </div>
+
+                        <div class="modal-body-custom">
+
+                            <div class="alert alert-info">
+
+                                <i class="fas fa-info-circle"></i>
+
+                                <strong id="totalSelecionados">
+
+                                    0 solicitações selecionadas
+
+                                </strong>
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label>Fornecedor</label>
+
+                                <select
+                                    name="fornecedor_id"
+                                    class="form-control form-control-lg"
+                                    required>
+
+                                    <option value="">Selecione...</option>
+
+                                    <?php foreach ($fornecedores_list as $f): ?>
+
+                                        <option value="<?= $f['id']; ?>">
+
+                                            <?= htmlspecialchars($f['nome']); ?>
+
+                                        </option>
+
+                                    <?php endforeach; ?>
+
+                                </select>
+
+                            </div>
+
+                            <div class="form-group mt-3">
+
+                                <label>Observação</label>
+
+                                <textarea
+                                    name="observacao"
+                                    class="form-control"
+                                    rows="4"></textarea>
+
+                            </div>
+
+                        </div>
+
+                        <div class="modal-footer-custom">
+
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                onclick="fecharModalAprovacao()">
+
+                                Cancelar
+
+                            </button>
+
+                            <button
+                                type="submit"
+                                class="btn btn-success">
+
+                                <i class="fas fa-check-circle"></i>
+
+                                Aprovar Solicitações
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </form>
         </div>
     </div>
 
+    <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
+
+        </form>
+
+    <?php endif; ?>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const modal = document.getElementById('delete-oficio-modal');
@@ -1637,123 +1755,5 @@ include 'views/layout/header.php';
 
     }
 </script>
-<!-- Modal Aprovação -->
-<div class="modal-aprovacao" id="modalAprovacao">
 
-    <div class="modal-aprovacao-box">
-
-        <div class="modal-header-custom">
-
-            <div>
-
-                <h3>
-
-                    <i class="fas fa-check-circle text-success"></i>
-
-                    Aprovar Solicitações
-
-                </h3>
-
-                <small>
-
-                    Escolha o fornecedor para concluir a aprovação.
-
-                </small>
-
-            </div>
-
-            <button
-                type="button"
-                class="btn-fechar-modal"
-                onclick="fecharModalAprovacao()">
-
-                <i class="fas fa-times"></i>
-
-            </button>
-
-        </div>
-
-        <div class="modal-body-custom">
-
-            <div class="alert alert-info">
-
-                <i class="fas fa-info-circle"></i>
-
-                <strong id="totalSelecionados">
-
-                    0 solicitações selecionadas
-
-                </strong>
-
-            </div>
-
-            <div class="form-group">
-
-                <label>Fornecedor</label>
-
-                <select
-                    name="fornecedor_id"
-                    class="form-control form-control-lg"
-                    required>
-
-                    <option value="">Selecione...</option>
-
-                    <?php foreach($fornecedores_list as $f): ?>
-
-                        <option value="<?= $f['id']; ?>">
-
-                            <?= htmlspecialchars($f['nome']); ?>
-
-                        </option>
-
-                    <?php endforeach; ?>
-
-                </select>
-
-            </div>
-
-            <div class="form-group mt-3">
-
-                <label>Observação</label>
-
-                <textarea
-                    name="observacao"
-                    class="form-control"
-                    rows="4"></textarea>
-
-            </div>
-
-        </div>
-
-        <div class="modal-footer-custom">
-
-            <button
-                type="button"
-                class="btn btn-secondary"
-                onclick="fecharModalAprovacao()">
-
-                Cancelar
-
-            </button>
-
-            <button
-                type="submit"
-                class="btn btn-success">
-
-                <i class="fas fa-check-circle"></i>
-
-                Aprovar Solicitações
-
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
- <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
-
-            </form>
-
-        <?php endif; ?>
 <?php include 'views/layout/footer.php'; ?>
