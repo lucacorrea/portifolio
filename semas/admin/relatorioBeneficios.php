@@ -407,7 +407,39 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
       .nowrap {
         white-space: nowrap;
       }
-    </style>
+  
+
+    @media (max-width: 991.98px) {
+      .relatorio-table-head {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .dt-search-wrap {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .dt-search-input {
+        min-width: 0;
+        max-width: 100%;
+        flex: 1 1 auto;
+      }
+
+      .custom-pagination-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .custom-pagination-left,
+      .custom-pagination-center,
+      .custom-pagination-right {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+  </style>
   </head>
 
   <body>
@@ -640,6 +672,274 @@ $benefs = $pdo->query("
       align-items: center;
       gap: .5rem;
       white-space: nowrap
+    }
+
+
+    /* ===== PADRÃO CLEAN DA TABELA / ORDENAÇÃO ===== */
+    .relatorio-table-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.15rem;
+    }
+
+    .relatorio-table-title {
+      color: #25396f;
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .relatorio-table-subtitle {
+      color: #7c8db5;
+      margin: .3rem 0 0;
+      font-size: .95rem;
+    }
+
+    .dt-search-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: .5rem;
+      flex-wrap: nowrap;
+      margin-left: auto;
+    }
+
+    .dt-search-input {
+      width: 100%;
+      min-width: 330px;
+      max-width: 460px;
+      height: 38px;
+      padding: .55rem .9rem;
+      border: 1px solid #b8c7f7;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      font-size: 14px;
+      box-shadow: none;
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .dt-search-input::placeholder {
+      color: #7f8a99;
+      opacity: 1;
+    }
+
+    .dt-search-input:focus {
+      border-color: #9ab0f5;
+      box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+    }
+
+    .dt-search-clear {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border: 1px solid #cfd6df;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .2s ease;
+      padding: 0;
+    }
+
+    .dt-search-clear i {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .dt-search-clear:hover {
+      border-color: #435ebe;
+      color: #435ebe;
+      background: #f8f9ff;
+    }
+
+    #table1.beneficios-table {
+      width: 100% !important;
+      border-collapse: separate;
+      border-spacing: 0;
+      color: #526a80;
+      white-space: nowrap;
+    }
+
+    #table1.beneficios-table thead th {
+      position: relative;
+      background: #fff !important;
+      color: #2f3f4f;
+      font-weight: 800;
+      font-size: .94rem;
+      text-align: center;
+      vertical-align: middle;
+      white-space: nowrap;
+      padding: .9rem 2.05rem .9rem .75rem;
+      border-top: 0 !important;
+      border-left: 0 !important;
+      border-right: 0 !important;
+      border-bottom: 2px solid #dbe1ea !important;
+    }
+
+    #table1.beneficios-table thead th.sortable-th {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #table1.beneficios-table thead th.sortable-th:hover {
+      color: #25396f;
+    }
+
+    .sort-prisma {
+      position: absolute;
+      right: .78rem;
+      top: 50%;
+      width: 10px;
+      height: 16px;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .sort-prisma::before,
+    .sort-prisma::after {
+      content: "";
+      position: absolute;
+      left: 1px;
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+    }
+
+    .sort-prisma::before {
+      top: 0;
+      border-bottom: 7px solid #e3e7ec;
+    }
+
+    .sort-prisma::after {
+      bottom: 0;
+      border-top: 7px solid #e3e7ec;
+    }
+
+    #table1.beneficios-table thead th.sort-asc .sort-prisma::before {
+      border-bottom-color: #9aa4b2;
+    }
+
+    #table1.beneficios-table thead th.sort-desc .sort-prisma::after {
+      border-top-color: #9aa4b2;
+    }
+
+    #table1.beneficios-table tbody td {
+      padding: .78rem .75rem;
+      vertical-align: middle;
+      border-top: 0 !important;
+      border-left: 0 !important;
+      border-right: 0 !important;
+      border-bottom: 1px solid #e2e6ea !important;
+      color: #526a80;
+      font-size: .96rem;
+      background: #fff;
+    }
+
+    #table1.beneficios-table tbody tr:nth-child(even) td {
+      background: #f6f7f9;
+    }
+
+    #table1.beneficios-table tbody tr:hover td {
+      background: #eef1f5;
+    }
+
+    #table1.beneficios-table .td-nome {
+      text-align: left;
+      font-weight: 700;
+      color: #3f5870;
+    }
+
+    #table1.beneficios-table .td-center {
+      text-align: center;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 62px;
+      padding: .22rem .58rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 800;
+      line-height: 1.2;
+      border: 1px solid transparent;
+    }
+
+    .status-pill.status-active {
+      background: #108757;
+      color: #fff;
+      border-color: #108757;
+    }
+
+    .status-pill.status-muted {
+      background: #f2f4f7;
+      color: #667085;
+      border-color: #d9dee7;
+    }
+
+    .custom-pagination-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eef1f4;
+      flex-wrap: wrap;
+    }
+
+    .custom-pagination-left,
+    .custom-pagination-center,
+    .custom-pagination-right {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+
+    .custom-pagination-center {
+      flex: 1;
+      justify-content: center;
+    }
+
+    .custom-page-info {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #435ebe;
+      white-space: nowrap;
+    }
+
+    .custom-length-label {
+      color: #6c757d;
+      font-weight: 600;
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+
+    .custom-length-select {
+      min-width: 72px;
+      padding: .45rem 2rem .45rem .75rem;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background-color: #fff;
+      color: #495057;
+      font-weight: 600;
+      outline: none;
+    }
+
+    .custom-length-select:focus {
+      border-color: #435ebe;
+      box-shadow: 0 0 0 .15rem rgba(67, 94, 190, .15);
     }
 
     @media (max-width:576.98px) {
@@ -961,39 +1261,51 @@ $benefs = $pdo->query("
         <!-- Tabela + paginação -->
         <section class="section mb-4">
           <div class="card">
-            <div class="card-header">
-              <span class="fw-semibold">Catálogo de Benefícios (com uso no período)</span>
-            </div>
-
             <div class="card-body">
+              <div class="relatorio-table-head">
+                <div>
+                  <h5 class="relatorio-table-title">Catálogo de Benefícios (com uso no período)</h5>
+                  <p class="relatorio-table-subtitle" id="tableRowsLabel">0 registros encontrados</p>
+                </div>
+
+                <div class="dt-search-wrap">
+                  <input id="qTable" class="dt-search-input" placeholder="Buscar por nome/categoria/periodicidade/status..." autocomplete="off">
+                  <button class="dt-search-clear" type="button" id="btnClearTable" title="Limpar pesquisa" aria-label="Limpar pesquisa">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                </div>
+              </div>
+
               <div class="table-responsive-md">
-                <table id="table1" class="table table-striped table-hover align-middle w-100 text-nowrap">
+                <table id="table1" class="table align-middle w-100 text-nowrap beneficios-table">
                   <thead>
                     <tr>
-                      <th>Nome</th>
-                      <th>Categoria</th>
-                      <th>Periodicidade</th>
-                      <th class="text-end">Valor Padrão</th>
-                      <th>Status</th>
-                      <th class="text-end">Qtd Entregue</th>
-                      <th class="text-end">Valor Total</th>
+                      <th class="sortable-th sort-asc" data-sort-key="nome" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Nome"><span>Nome</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="categoria" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Categoria"><span>Categoria</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="periodicidade" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Periodicidade"><span>Periodicidade</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="valor_padrao" data-sort-type="number" tabindex="0" role="button" aria-label="Ordenar por Valor Padrão"><span>Valor Padrão</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="status" data-sort-type="text" tabindex="0" role="button" aria-label="Ordenar por Status"><span>Status</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="qtd_entregue" data-sort-type="number" tabindex="0" role="button" aria-label="Ordenar por Quantidade Entregue"><span>Qtd Entregue</span><span class="sort-prisma" aria-hidden="true"></span></th>
+                      <th class="sortable-th" data-sort-key="valor_total" data-sort-type="number" tabindex="0" role="button" aria-label="Ordenar por Valor Total"><span>Valor Total</span><span class="sort-prisma" aria-hidden="true"></span></th>
                     </tr>
                   </thead>
                   <tbody><!-- via JS --></tbody>
                 </table>
               </div>
 
-              <div class="table-footer">
-                <div class="d-flex gap-2">
+              <div class="custom-pagination-bar">
+                <div class="custom-pagination-left">
                   <button class="btn btn-outline-secondary btn-sm" id="btnPrev">Anterior</button>
                   <button class="btn btn-outline-secondary btn-sm" id="btnNext">Próxima</button>
                 </div>
 
-                <div class="page-info" id="pageInfo">Página 1 de 1</div>
+                <div class="custom-pagination-center">
+                  <span class="custom-page-info" id="pageInfo">Página 1 de 1</span>
+                </div>
 
-                <div class="perpage">
-                  <span class="text-muted">por página</span>
-                  <select id="perPage" class="form-select form-select-sm" style="width:auto">
+                <div class="custom-pagination-right">
+                  <label for="perPage" class="custom-length-label">por página</label>
+                  <select id="perPage" class="form-select form-select-sm custom-length-select" style="width:auto">
                     <option value="6">6</option>
                     <option value="10" selected>10</option>
                     <option value="25">25</option>
@@ -1037,8 +1349,18 @@ $benefs = $pdo->query("
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       });
-      const parseDate = s => new Date(s + 'T00:00:00');
-      const fmtDateBR = s => parseDate(s).toLocaleDateString('pt-BR');
+
+      const fmtDateBR = s => {
+        if (!s) return '';
+        const d = new Date(String(s) + 'T00:00:00');
+        return Number.isNaN(d.getTime()) ? String(s) : d.toLocaleDateString('pt-BR');
+      };
+
+      const normalizeText = value => String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 
       const els = {
         dataInicio: document.getElementById('dataInicio'),
@@ -1056,15 +1378,20 @@ $benefs = $pdo->query("
         kpiValor: document.getElementById('kpiValor'),
 
         tbody: document.querySelector('#table1 tbody'),
+        qTable: document.getElementById('qTable'),
+        btnClearTable: document.getElementById('btnClearTable'),
+        tableRowsLabel: document.getElementById('tableRowsLabel'),
         btnPrev: document.getElementById('btnPrev'),
         btnNext: document.getElementById('btnNext'),
         pageInfo: document.getElementById('pageInfo'),
         perPage: document.getElementById('perPage'),
       };
 
+      const sortableHeaders = Array.from(document.querySelectorAll('#table1 thead th[data-sort-key]'));
+
       const palette = n => Array.from({
-        length: n
-      }, (_, i) => `hsl(${Math.round((360/n)*i)} 70% 55%)`);
+        length: Math.max(0, n)
+      }, (_, i) => `hsl(${Math.round((360 / Math.max(1, n)) * i)} 70% 55%)`);
 
       let chartBarBenef = null;
       let chartDonutCat = null;
@@ -1079,23 +1406,16 @@ $benefs = $pdo->query("
             valor_total: 0
           },
           charts: {
-            benef: {
-              labels: [],
-              values: []
-            },
-            cat: {
-              labels: [],
-              values: []
-            },
-            data: {
-              labels: [],
-              values: []
-            }
+            benef: { labels: [], values: [] },
+            cat: { labels: [], values: [] },
+            data: { labels: [], values: [] }
           },
           table: []
         },
         page: 1,
         perPage: Number(els.perPage.value || 10),
+        sortKey: 'nome',
+        sortDir: 'asc',
         lastParamsKey: ''
       };
 
@@ -1132,6 +1452,7 @@ $benefs = $pdo->query("
           renderAll();
         } catch (e) {
           console.error(e);
+          els.tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Não foi possível carregar os dados.</td></tr>';
         }
       }
 
@@ -1141,7 +1462,6 @@ $benefs = $pdo->query("
         els.kpiTipos.textContent = k.tipos ?? 0;
         els.kpiEntregas.textContent = k.entregas ?? 0;
         els.kpiValor.textContent = money(k.valor_total ?? 0);
-
         els.txtFiltros.textContent = 'Filtros: ' + (state.data.filtros_texto || '—');
       }
 
@@ -1149,14 +1469,27 @@ $benefs = $pdo->query("
         const el = document.getElementById(containerId);
         if (!el) return;
         el.innerHTML = '';
+
         labels.forEach((lab, i) => {
           const item = document.createElement('div');
           item.className = 'legend-item';
-          item.innerHTML = `
-        <span class="legend-swatch" style="background:${colors[i]}"></span>
-        <span class="legend-label" title="${lab}">${lab}</span>
-        <span class="legend-value">${values[i]}</span>
-      `;
+
+          const swatch = document.createElement('span');
+          swatch.className = 'legend-swatch';
+          swatch.style.background = colors[i];
+
+          const label = document.createElement('span');
+          label.className = 'legend-label';
+          label.title = String(lab || '');
+          label.textContent = String(lab || '');
+
+          const value = document.createElement('span');
+          value.className = 'legend-value';
+          value.textContent = String(values[i] ?? 0);
+
+          item.appendChild(swatch);
+          item.appendChild(label);
+          item.appendChild(value);
           el.appendChild(item);
         });
       }
@@ -1169,9 +1502,9 @@ $benefs = $pdo->query("
         const dateLabels = state.data.charts?.data?.labels || [];
         const dateValues = state.data.charts?.data?.values || [];
 
-        chartBarBenef && chartBarBenef.destroy();
-        chartDonutCat && chartDonutCat.destroy();
-        chartLinhaData && chartLinhaData.destroy();
+        if (chartBarBenef) chartBarBenef.destroy();
+        if (chartDonutCat) chartDonutCat.destroy();
+        if (chartLinhaData) chartLinhaData.destroy();
 
         chartBarBenef = new Chart(document.getElementById('chartBarBenef'), {
           type: 'bar',
@@ -1185,27 +1518,10 @@ $benefs = $pdo->query("
           },
           options: {
             maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                display: false
-              }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-              x: {
-                grid: {
-                  display: false
-                },
-                ticks: {
-                  autoSkip: true,
-                  maxRotation: 0
-                }
-              },
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  precision: 0
-                }
-              }
+              x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0 } },
+              y: { beginAtZero: true, ticks: { precision: 0 } }
             }
           }
         });
@@ -1215,18 +1531,11 @@ $benefs = $pdo->query("
           type: 'doughnut',
           data: {
             labels: catLabels,
-            datasets: [{
-              data: catValues,
-              backgroundColor: catColors
-            }]
+            datasets: [{ data: catValues, backgroundColor: catColors }]
           },
           options: {
             maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                display: false
-              }
-            },
+            plugins: { legend: { display: false } },
             cutout: '55%'
           }
         });
@@ -1245,30 +1554,58 @@ $benefs = $pdo->query("
           },
           options: {
             maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                display: false
-              }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-              x: {
-                grid: {
-                  display: false
-                }
-              },
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  precision: 0
-                }
-              }
+              x: { grid: { display: false } },
+              y: { beginAtZero: true, ticks: { precision: 0 } }
             }
           }
         });
       }
 
+      function getComparableValue(row, key, type) {
+        const value = row?.[key];
+        if (type === 'number') return Number(value || 0);
+        return normalizeText(value);
+      }
+
+      function getFilteredSortedRows() {
+        const rows = Array.isArray(state.data.table) ? state.data.table.slice() : [];
+        const q = normalizeText(els.qTable.value || '');
+
+        let visible = rows;
+        if (q) {
+          visible = rows.filter(row => {
+            const haystack = normalizeText([
+              row.nome,
+              row.categoria,
+              row.periodicidade,
+              row.status,
+              money(row.valor_padrao || 0),
+              row.qtd_entregue,
+              money(row.valor_total || 0)
+            ].join(' '));
+            return haystack.includes(q);
+          });
+        }
+
+        const activeHeader = sortableHeaders.find(th => th.dataset.sortKey === state.sortKey);
+        const type = activeHeader?.dataset.sortType || 'text';
+        const dirFactor = state.sortDir === 'desc' ? -1 : 1;
+
+        visible.sort((a, b) => {
+          const av = getComparableValue(a, state.sortKey, type);
+          const bv = getComparableValue(b, state.sortKey, type);
+
+          if (type === 'number') return (av - bv) * dirFactor;
+          return String(av).localeCompare(String(bv), 'pt-BR', { sensitivity: 'base' }) * dirFactor;
+        });
+
+        return visible;
+      }
+
       function getPagedRows() {
-        const rows = state.data.table || [];
+        const rows = getFilteredSortedRows();
         const total = rows.length;
         const per = state.perPage;
         const pages = Math.max(1, Math.ceil(total / per));
@@ -1276,51 +1613,76 @@ $benefs = $pdo->query("
 
         const start = (state.page - 1) * per;
         const end = start + per;
-        return {
-          slice: rows.slice(start, end),
-          total,
-          pages
-        };
+        return { slice: rows.slice(start, end), total, pages };
+      }
+
+      function appendCell(tr, text, className = '') {
+        const td = document.createElement('td');
+        td.className = className;
+        td.textContent = text ?? '';
+        tr.appendChild(td);
+        return td;
       }
 
       function renderTable() {
-        const {
-          slice,
-          total,
-          pages
-        } = getPagedRows();
+        const { slice, total, pages } = getPagedRows();
         els.tbody.innerHTML = '';
-
-        for (const r of slice) {
-          const tr = document.createElement('tr');
-          const statusBadge = (r.status === 'Ativa') ?
-            '<span class="badge bg-success">Ativa</span>' :
-            '<span class="badge bg-secondary">Inativa</span>';
-
-          tr.innerHTML = `
-        <td class="truncate" title="${(r.nome||'')}">${(r.nome||'')}</td>
-        <td>${(r.categoria||'')}</td>
-        <td>${(r.periodicidade||'')}</td>
-        <td class="text-end">${money(r.valor_padrao||0)}</td>
-        <td>${statusBadge}</td>
-        <td class="text-end">${Number(r.qtd_entregue||0)}</td>
-        <td class="text-end">${money(r.valor_total||0)}</td>
-      `;
-          els.tbody.appendChild(tr);
-        }
-
-        els.pageInfo.textContent = `Página ${state.page} de ${pages}`;
-        els.btnPrev.disabled = (state.page <= 1);
-        els.btnNext.disabled = (state.page >= pages);
 
         if (total === 0) {
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td colspan="7" class="text-center text-muted py-4">Sem dados para os filtros selecionados.</td>`;
+          const td = document.createElement('td');
+          td.colSpan = 7;
+          td.className = 'text-center text-muted py-4';
+          td.textContent = 'Sem dados para os filtros selecionados.';
+          tr.appendChild(td);
           els.tbody.appendChild(tr);
-          els.pageInfo.textContent = `Página 1 de 1`;
+          els.tableRowsLabel.textContent = '0 registros encontrados';
+          els.pageInfo.textContent = 'Página 1 de 1';
           els.btnPrev.disabled = true;
           els.btnNext.disabled = true;
+          updateSortHeaders();
+          return;
         }
+
+        for (const r of slice) {
+          const tr = document.createElement('tr');
+
+          const nomeCell = appendCell(tr, String(r.nome || ''), 'td-nome');
+          nomeCell.title = String(r.nome || '');
+
+          appendCell(tr, String(r.categoria || ''), 'td-center');
+          appendCell(tr, String(r.periodicidade || ''), 'td-center');
+          appendCell(tr, money(r.valor_padrao || 0), 'td-center');
+
+          const statusCell = document.createElement('td');
+          statusCell.className = 'td-center';
+          const status = String(r.status || '');
+          const pill = document.createElement('span');
+          pill.className = status === 'Ativa' ? 'status-pill status-active' : 'status-pill status-muted';
+          pill.textContent = status || '—';
+          statusCell.appendChild(pill);
+          tr.appendChild(statusCell);
+
+          appendCell(tr, String(Number(r.qtd_entregue || 0)), 'td-center');
+          appendCell(tr, money(r.valor_total || 0), 'td-center');
+
+          els.tbody.appendChild(tr);
+        }
+
+        els.tableRowsLabel.textContent = `${total} registros encontrados`;
+        els.pageInfo.textContent = `Página ${state.page} de ${pages}`;
+        els.btnPrev.disabled = state.page <= 1;
+        els.btnNext.disabled = state.page >= pages;
+        updateSortHeaders();
+      }
+
+      function updateSortHeaders() {
+        sortableHeaders.forEach(th => {
+          th.classList.remove('sort-asc', 'sort-desc');
+          if (th.dataset.sortKey === state.sortKey) {
+            th.classList.add(state.sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+          }
+        });
       }
 
       function renderAll() {
@@ -1329,14 +1691,52 @@ $benefs = $pdo->query("
         renderTable();
       }
 
-      // Eventos filtros
       [els.dataInicio, els.dataFim, els.categoria, els.status, els.beneficio].forEach(el => {
         el.addEventListener('change', loadData);
       });
 
       els.btnReset.addEventListener('click', () => {
         document.getElementById('filters').reset();
+        els.qTable.value = '';
+        state.page = 1;
         loadData();
+      });
+
+      els.qTable.addEventListener('input', () => {
+        state.page = 1;
+        renderTable();
+      });
+
+      els.btnClearTable.addEventListener('click', () => {
+        els.qTable.value = '';
+        state.page = 1;
+        renderTable();
+        els.qTable.focus();
+      });
+
+      sortableHeaders.forEach(th => {
+        const toggleSort = () => {
+          const key = th.dataset.sortKey;
+          if (!key) return;
+
+          if (state.sortKey === key) {
+            state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            state.sortKey = key;
+            state.sortDir = 'asc';
+          }
+
+          state.page = 1;
+          renderTable();
+        };
+
+        th.addEventListener('click', toggleSort);
+        th.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleSort();
+          }
+        });
       });
 
       els.perPage.addEventListener('change', () => {
@@ -1346,8 +1746,10 @@ $benefs = $pdo->query("
       });
 
       els.btnPrev.addEventListener('click', () => {
-        state.page--;
-        renderTable();
+        if (state.page > 1) {
+          state.page--;
+          renderTable();
+        }
       });
 
       els.btnNext.addEventListener('click', () => {
@@ -1355,7 +1757,6 @@ $benefs = $pdo->query("
         renderTable();
       });
 
-      // Export Excel: gerado em do DISPOSITIVO (local)
       els.btnExportXLS.addEventListener('click', () => {
         const p = new URLSearchParams();
         if (els.dataInicio.value) p.set('dataInicio', els.dataInicio.value);
@@ -1365,12 +1766,11 @@ $benefs = $pdo->query("
         if (els.beneficio.value) p.set('beneficio', els.beneficio.value);
 
         p.set('export', '1');
-        p.set('gen_txt', new Date().toLocaleString('pt-BR')); // ✅ horário local do dispositivo
+        p.set('gen_txt', new Date().toLocaleString('pt-BR'));
 
         window.open('relatorioBeneficios.php?' + p.toString(), '_blank');
       });
 
-      // inicial
       loadData();
     });
   </script>
