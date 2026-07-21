@@ -1614,11 +1614,7 @@ include 'views/layout/header.php';
         </div>
     </div>
 
-    <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
-
-        </form>
-
-    <?php endif; ?>
+   
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const modal = document.getElementById('delete-oficio-modal');
@@ -1755,5 +1751,10 @@ include 'views/layout/header.php';
 
     }
 </script>
+ <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
+
+        </form>
+
+    <?php endif; ?>
 
 <?php include 'views/layout/footer.php'; ?>
