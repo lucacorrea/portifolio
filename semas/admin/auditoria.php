@@ -666,7 +666,6 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
             FROM ($baseSql) aud
             $whereSql
             ORDER BY aud.evento_data DESC, aud.origem_id DESC
-            LIMIT 5000
         ";
 
         $stmt = $pdo->prepare($sql);
@@ -708,27 +707,27 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
 
         .titulo {
             background: #F2F4F7;
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 700;
             text-align: center;
-            height: 32px;
+            height: 38px;
         }
 
         .meta {
             background: #FFFFFF;
-            font-size: 11px;
+            font-size: 14px;
             font-weight: 700;
             text-align: left;
-            height: 24px;
+            height: 30px;
         }
 
         .cabecalho {
             background: #F2F4F7;
             color: #000;
-            font-size: 11px;
+            font-size: 14px;
             font-weight: 700;
             text-align: center;
-            height: 28px;
+            height: 32px;
         }
 
         .centro {
@@ -815,7 +814,7 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
 
             echo '<tr class="' . $classe_linha . '">';
             echo '<td class="centro">' . safe_datetime($row['evento_data'] ?? '', 'd/m/Y H:i:s') . '</td>';
-            echo '<td class="centro">' . safe_html($row['usuario'] ?? '') . '</td>';
+            echo '<td class="esquerda">' . safe_html($row['usuario'] ?? '') . '</td>';
             echo '<td class="centro">' . safe_html($row['acao'] ?? '') . '</td>';
             echo '<td class="centro">' . safe_html($row['entidade'] ?? '') . '</td>';
             echo '<td class="esquerda">' . safe_html($row['detalhes'] ?? '') . '</td>';
