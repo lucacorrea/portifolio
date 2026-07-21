@@ -7,7 +7,7 @@ require_once __DIR__ . '/auth/authGuard.php';
 auth_guard();
 
 /* Apenas usuários com perfil 'suporte' ou 'admin' podem acessar auditoria */
-$allowed_roles = ['suporte', 'admin'];
+$allowed_roles = ['suporte', 'admin', 'secretario', 'prefeito'];
 if (!in_array(($_SESSION['user_role'] ?? ''), $allowed_roles, true)) {
     header('Location: index.php');
     exit();
