@@ -960,7 +960,261 @@ if (!empty($beneficios)) {
                 height: 270px;
             }
         }
-    </style>
+    
+        /* ===== ESTILO CLEAN PADRÃO DAS TABELAS DO ANEXO ===== */
+        .card {
+            border: 0;
+            border-radius: 14px;
+        }
+
+        .card-statistic {
+            border: 1px solid #e6e9ef !important;
+            border-left: 0 !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+            background: #fff !important;
+            color: #2d3748 !important;
+        }
+
+        .card-statistic:nth-child(1),
+        .card-statistic:nth-child(2),
+        .card-statistic:nth-child(3),
+        .card-statistic:nth-child(4) {
+            border-left: 0 !important;
+            border-left-color: transparent !important;
+        }
+
+        .card-statistic .statistic-icon,
+        .card-statistic:nth-child(1) .statistic-icon,
+        .card-statistic:nth-child(2) .statistic-icon,
+        .card-statistic:nth-child(3) .statistic-icon,
+        .card-statistic:nth-child(4) .statistic-icon {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+        }
+
+        .valor-destaque {
+            color: #25396f !important;
+        }
+
+        .valor-cell,
+        .valor-alto,
+        .valor-nulo,
+        .top5-item .text-danger {
+            color: #52697f !important;
+            font-weight: 700;
+        }
+
+        .filtros-ativos,
+        .alert-info {
+            background: #fff !important;
+            border: 1px solid #e1e6ec !important;
+            color: #52697f !important;
+            border-radius: 10px !important;
+        }
+
+        .badge-filtro {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+            border-radius: 999px !important;
+            font-weight: 700;
+        }
+
+        .badge-filtro a {
+            color: #52697f !important;
+            text-decoration: none;
+        }
+
+        .btn-filtro-applied {
+            background-color: #435ebe !important;
+            border-color: #435ebe !important;
+            color: #fff !important;
+        }
+
+        .dt-search-input {
+            height: 38px;
+            border: 1px solid #9bb4f5;
+            border-radius: 4px;
+            background: #fff;
+            color: #495057;
+            box-shadow: none;
+        }
+
+        .dt-search-input:focus {
+            border-color: #9ab0f5;
+            box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+        }
+
+        .dt-search-clear {
+            border: 1px solid #cfd6df;
+            background: #fff;
+            color: #495057;
+        }
+
+        .dt-search-clear:hover {
+            border-color: #435ebe;
+            color: #435ebe;
+            background: #f8f9ff;
+        }
+
+        #tabelaBeneficios {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            margin-bottom: 0 !important;
+            color: #52697f !important;
+            background: #fff !important;
+            width: 100% !important;
+        }
+
+        #tabelaBeneficios thead th {
+            background: #fff !important;
+            color: #2d3748 !important;
+            font-size: .95rem !important;
+            font-weight: 800 !important;
+            border: 0 !important;
+            border-bottom: 1px solid #d6dce5 !important;
+            padding: .95rem .75rem !important;
+            vertical-align: middle !important;
+            position: relative !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+        }
+
+        #tabelaBeneficios tbody td {
+            border: 0 !important;
+            border-bottom: 1px solid #e1e6ec !important;
+            padding: .8rem .75rem !important;
+            vertical-align: middle !important;
+            color: #52697f !important;
+            font-size: .95rem !important;
+            background: transparent !important;
+        }
+
+        #tabelaBeneficios tbody tr:nth-child(odd) td {
+            background: #fff !important;
+        }
+
+        #tabelaBeneficios tbody tr:nth-child(even) td {
+            background: #f6f7f9 !important;
+        }
+
+        #tabelaBeneficios tbody tr:hover td {
+            background: #eef1f5 !important;
+        }
+
+        #tabelaBeneficios tfoot th,
+        #tabelaBeneficios tfoot td {
+            background: #fff !important;
+            border: 0 !important;
+            border-top: 1px solid #d6dce5 !important;
+            color: #52697f !important;
+            padding: .9rem .75rem !important;
+        }
+
+        #tabelaBeneficios .clean-text-pill,
+        #tabelaBeneficios .status-pendente {
+            display: inline-block;
+            max-width: 100%;
+            color: #52697f !important;
+            font-weight: 600;
+            background: transparent !important;
+            border: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+
+        #tabelaBeneficios .status-entregue {
+            background: #198754 !important;
+            color: #fff !important;
+            border: 0 !important;
+            border-radius: .35rem !important;
+            padding: .35rem .55rem !important;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        #tabelaBeneficios .text-danger,
+        #tabelaBeneficios .text-success,
+        #tabelaBeneficios .text-warning,
+        #tabelaBeneficios .text-info,
+        #tabelaBeneficios .text-primary {
+            color: #52697f !important;
+        }
+
+        #tabelaBeneficios thead th.sorting,
+        #tabelaBeneficios thead th.sorting_asc,
+        #tabelaBeneficios thead th.sorting_desc,
+        #tabelaBeneficios thead th.sorting_asc_disabled,
+        #tabelaBeneficios thead th.sorting_desc_disabled {
+            cursor: pointer;
+            user-select: none;
+            padding-right: 1.65rem !important;
+        }
+
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc_disabled::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc_disabled::before {
+            content: "▲" !important;
+            right: .55rem !important;
+            top: calc(50% - 8px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc_disabled::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc_disabled::after {
+            content: "▼" !important;
+            right: .55rem !important;
+            top: calc(50% + 1px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc::after {
+            color: #8d98a7 !important;
+        }
+
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting:hover::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting:hover::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc:hover::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc:hover::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc:hover::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc:hover::after {
+            color: #b7c0cc !important;
+        }
+
+        .custom-pagination-bar {
+            border-top: 1px solid #e9ecef;
+        }
+
+        .custom-page-info {
+            color: #435ebe;
+            font-weight: 800;
+        }
+
+        .custom-length-select {
+            background-color: #fff;
+        }
+
+</style>
 </head>
 
 <body>
@@ -1317,7 +1571,7 @@ if (!empty($beneficios)) {
                                     </div>
 
                                     <div class="table-responsive">
-                                        <table id="tabelaBeneficios" class="table table-hover table-striped w-100">
+                                        <table id="tabelaBeneficios" class="table table-hover w-100 clean-data-table">
                                             <thead>
                                                 <tr>
                                                     <th>Data/Hora</th>
@@ -1352,7 +1606,7 @@ if (!empty($beneficios)) {
                                                         </td>
                                                         <td class="d-none d-md-table-cell"><?= formatarCPF($beneficio['pessoa_cpf']) ?></td>
                                                         <td>
-                                                            <span class="badge bg-primary d-inline-block text-truncate" style="max-width: 120px;">
+                                                            <span class="clean-text-pill d-inline-block text-truncate" style="max-width: 120px;">
                                                                 <?= htmlspecialchars((string)$beneficio['tipo_nome']) ?>
                                                             </span>
                                                         </td>
@@ -1363,9 +1617,9 @@ if (!empty($beneficios)) {
                                                         </td>
                                                         <td>
                                                             <?php if (($beneficio['entregue'] ?? '') === 'Sim'): ?>
-                                                                <span class="badge badge-entregue bg-success">Entregue</span>
+                                                                <span class="badge status-entregue">Entregue</span>
                                                             <?php else: ?>
-                                                                <span class="badge badge-pendente bg-warning text-dark">Pendente</span>
+                                                                <span class="status-pendente">Pendente</span>
                                                             <?php endif; ?>
                                                         </td>
                                                         <td class="d-none d-md-table-cell"><?= htmlspecialchars((string)($beneficio['responsavel_entrega'] ?? 'N/A')) ?></td>
