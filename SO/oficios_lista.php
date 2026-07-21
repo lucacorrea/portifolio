@@ -7,7 +7,8 @@ $page_title = "Lista de Solicitações";
 $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
 $status_options = ['PENDENTE_ITENS', 'ENVIADO', 'EM_ANALISE', 'APROVADO', 'REPROVADO', 'ARQUIVADO'];
 
-function oficios_lista_return_url(array $source, array $status_options): string {
+function oficios_lista_return_url(array $source, array $status_options): string
+{
     $safe = [];
 
     if (isset($source['busca']) && is_scalar($source['busca'])) {
@@ -40,7 +41,8 @@ function oficios_lista_return_url(array $source, array $status_options): string 
     return 'oficios_lista.php' . ($query !== '' ? '?' . $query : '');
 }
 
-function oficios_lista_local_upload_path(?string $path): ?string {
+function oficios_lista_local_upload_path(?string $path): ?string
+{
     $path = trim((string)$path);
 
     if ($path === '') {
@@ -189,7 +191,8 @@ $export = trim((string)($_GET['export'] ?? ''));
 $data_inicio_valida = $data_inicio_filtro !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio_filtro);
 $data_fim_valida = $data_fim_filtro !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim_filtro);
 
-function parse_money_filter_value($valor): ?float {
+function parse_money_filter_value($valor): ?float
+{
     $valor = trim((string)$valor);
 
     if ($valor === '') {
@@ -213,7 +216,8 @@ function parse_money_filter_value($valor): ?float {
     return (float)$valor;
 }
 
-function secretaria_sigla_label($nome): string {
+function secretaria_sigla_label($nome): string
+{
     $nome = trim((string)$nome);
 
     if ($nome === '') {
@@ -386,9 +390,10 @@ if ($export === 'pdf_fornecedores') {
     }
 
     header('Content-Type: text/html; charset=UTF-8');
-    ?>
+?>
     <!DOCTYPE html>
     <html lang="pt-br">
+
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -400,7 +405,9 @@ if ($export === 'pdf_fornecedores') {
                 margin: 8mm;
             }
 
-            * { box-sizing: border-box; }
+            * {
+                box-sizing: border-box;
+            }
 
             body {
                 margin: 0;
@@ -547,24 +554,56 @@ if ($export === 'pdf_fornecedores') {
                 font-size: 8px;
             }
 
-            .col-numero { width: 16%; }
-            .col-data { width: 12%; }
-            .col-valor { width: 12%; }
-            .col-status { width: 15%; }
-            .col-usuario { width: 20%; }
-            .col-secretaria { width: 25%; }
+            .col-numero {
+                width: 16%;
+            }
 
-            .text-center { text-align: center; }
-            .text-right { text-align: right; }
+            .col-data {
+                width: 12%;
+            }
+
+            .col-valor {
+                width: 12%;
+            }
+
+            .col-status {
+                width: 15%;
+            }
+
+            .col-usuario {
+                width: 20%;
+            }
+
+            .col-secretaria {
+                width: 25%;
+            }
+
+            .text-center {
+                text-align: center;
+            }
+
+            .text-right {
+                text-align: right;
+            }
+
             .total-fornecedor td {
                 background: #e5e7eb;
                 font-weight: bold;
             }
 
             @media print {
-                body { background: #ffffff !important; }
-                .no-print { display: none !important; }
-                .pdf-wrap { padding: 0 !important; }
+                body {
+                    background: #ffffff !important;
+                }
+
+                .no-print {
+                    display: none !important;
+                }
+
+                .pdf-wrap {
+                    padding: 0 !important;
+                }
+
                 .folha-fornecedor {
                     width: 100% !important;
                     min-height: auto !important;
@@ -573,6 +612,7 @@ if ($export === 'pdf_fornecedores') {
             }
         </style>
     </head>
+
     <body>
         <div class="print-toolbar no-print">
             <div class="toolbar-title">Relatório de Ofícios por Fornecedor</div>
@@ -673,8 +713,9 @@ if ($export === 'pdf_fornecedores') {
             <?php endif; ?>
         </div>
     </body>
+
     </html>
-    <?php
+<?php
     exit();
 }
 
@@ -721,7 +762,8 @@ $stmt->execute($params);
 $oficios = $stmt->fetchAll();
 
 // Função auxiliar para manter parâmetros na URL da paginação
-function get_pagination_url($page) {
+function get_pagination_url($page)
+{
     $params = $_GET;
     $params['page'] = $page;
     return '?' . http_build_query($params);
@@ -774,6 +816,7 @@ include 'views/layout/header.php';
     }
 
     @media (max-width: 1200px) {
+
         .filtro-busca,
         .filtro-fornecedor {
             grid-column: span 6;
@@ -1094,133 +1137,167 @@ include 'views/layout/header.php';
         </div>
 
         <?php display_flash(); ?>
+        <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
+            <form action="aprovar_multiplos.php" method="POST" id="form-aprovacao-lote">
 
-        <div class="table-responsive lista-table-wrap">
-            <table class="table-vcenter text-nowrap lista-table">
-                <thead>
-                    <tr>
-                        <th>Número</th>
-                        <th>Secretaria</th>
-                        <th>Fornecedor</th>
-                        <th>Data</th>
-                        <th style="text-align: right;">Valor</th>
-                        <th>Status</th>
-                        <th>Cadastrado por</th>
-                        <th class="w-1">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($oficios as $o): ?>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+
+                    <div>
+                        <button
+                            type="submit"
+                            class="btn btn-success btn-sm"
+                            onclick="return confirmarAprovacao();">
+                            <i class="fas fa-check-circle"></i>
+                            Aprovar Selecionados
+                        </button>
+
+                        <span id="contadorSelecionados"
+                            style="margin-left:15px;font-weight:bold;color:#666">
+                            0 selecionados
+                        </span>
+
+                    </div>
+
+                </div>
+
+            <?php endif; ?>
+
+            <div class="table-responsive lista-table-wrap">
+                <table class="table-vcenter text-nowrap lista-table">
+                    <thead>
                         <tr>
-                            <td style="font-weight: 600; color: var(--primary);">
-                                <?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>
-                            </td>
-                            <td>
-                                <span class="text-muted" title="<?php echo htmlspecialchars($o['secretaria'], ENT_QUOTES, 'UTF-8'); ?>">
-                                    <?php echo htmlspecialchars(secretaria_sigla_label($o['secretaria']), ENT_QUOTES, 'UTF-8'); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <?php $fornecedores_oficio = trim((string)($o['fornecedores'] ?? '')); ?>
-                                <span class="text-muted fornecedor-lista" title="<?php echo htmlspecialchars($fornecedores_oficio !== '' ? $fornecedores_oficio : 'Sem aquisição vinculada', ENT_QUOTES, 'UTF-8'); ?>">
-                                    <?php echo htmlspecialchars($fornecedores_oficio !== '' ? $fornecedores_oficio : '---', ENT_QUOTES, 'UTF-8'); ?>
-                                </span>
-                            </td>
-                            <td><?php echo format_date($o['criado_em']); ?></td>
-                            <td style="text-align: right; font-weight: 700; color: #157347;">
-                                <?php echo $o['valor_orcamento'] !== null && $o['valor_orcamento'] !== '' ? format_money($o['valor_orcamento']) : '---'; ?>
-                            </td>
-                            <td>
-                                <?php
-                                $status_badge = 'pending';
-                                if ($o['status'] == 'APROVADO') {
-                                    $status_badge = 'approved';
-                                } elseif (in_array($o['status'], ['REPROVADO', 'ARQUIVADO'], true)) {
-                                    $status_badge = 'rejected';
-                                }
-                                ?>
-                                <span class="badge badge-<?php echo $status_badge; ?>">
-                                    <?php echo htmlspecialchars($o['status'], ENT_QUOTES, 'UTF-8'); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="text-muted"><?php echo htmlspecialchars($o['usuario'], ENT_QUOTES, 'UTF-8'); ?></span>
-                            </td>
-                            <td>
-                                <div class="acoes-wrap">
-                                    <a href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar/Imprimir">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
 
-                                    <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
-                                        <a href="oficios_editar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Editar Ofício e Itens">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                    <?php endif; ?>
+                            <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
 
-                                    <?php 
-                                        if ($o['status'] == 'ENVIADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): 
+                                <th width="40">
+
+                                    <input type="checkbox" id="selecionarTodos">
+
+                                </th>
+
+                            <?php endif; ?>
+
+                            <th>Número</th>
+                            <th>Secretaria</th>
+                            <th>Fornecedor</th>
+                            <th>Data</th>
+                            <th style="text-align: right;">Valor</th>
+                            <th>Status</th>
+                            <th>Cadastrado por</th>
+                            <th class="w-1">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($oficios as $o): ?>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--primary);">
+                                    <?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>
+                                </td>
+                                <td>
+                                    <span class="text-muted" title="<?php echo htmlspecialchars($o['secretaria'], ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php echo htmlspecialchars(secretaria_sigla_label($o['secretaria']), ENT_QUOTES, 'UTF-8'); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php $fornecedores_oficio = trim((string)($o['fornecedores'] ?? '')); ?>
+                                    <span class="text-muted fornecedor-lista" title="<?php echo htmlspecialchars($fornecedores_oficio !== '' ? $fornecedores_oficio : 'Sem aquisição vinculada', ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php echo htmlspecialchars($fornecedores_oficio !== '' ? $fornecedores_oficio : '---', ENT_QUOTES, 'UTF-8'); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo format_date($o['criado_em']); ?></td>
+                                <td style="text-align: right; font-weight: 700; color: #157347;">
+                                    <?php echo $o['valor_orcamento'] !== null && $o['valor_orcamento'] !== '' ? format_money($o['valor_orcamento']) : '---'; ?>
+                                </td>
+                                <td>
+                                    <?php
+                                    $status_badge = 'pending';
+                                    if ($o['status'] == 'APROVADO') {
+                                        $status_badge = 'approved';
+                                    } elseif (in_array($o['status'], ['REPROVADO', 'ARQUIVADO'], true)) {
+                                        $status_badge = 'rejected';
+                                    }
                                     ?>
-                                        <a href="analisar_oficio.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Analisar">
-                                            <i class="fas fa-gavel"></i> Analisar
+                                    <span class="badge badge-<?php echo $status_badge; ?>">
+                                        <?php echo htmlspecialchars($o['status'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-muted"><?php echo htmlspecialchars($o['usuario'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                </td>
+                                <td>
+                                    <div class="acoes-wrap">
+                                        <a href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar/Imprimir">
+                                            <i class="fas fa-eye"></i>
                                         </a>
-                                    <?php endif; ?>
- 
-                                    <a href="oficios_anexar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Anexar Ofício de Solicitação" style="color: var(--secondary); border-color: var(--secondary);">
-                                        <i class="fas fa-paperclip"></i>
-                                    </a>
 
-                                    <?php if ($o['status'] == 'APROVADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): ?>
-                                        <a href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Gerar Aquisição">
-                                            <i class="fas fa-shopping-cart"></i> Gerar
+                                        <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
+                                            <a href="oficios_editar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Editar Ofício e Itens">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        <?php endif; ?>
+
+                                        <?php
+                                        if ($o['status'] == 'ENVIADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')):
+                                        ?>
+                                            <a href="analisar_oficio.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Analisar">
+                                                <i class="fas fa-gavel"></i> Analisar
+                                            </a>
+                                        <?php endif; ?>
+
+                                        <a href="oficios_anexar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Anexar Ofício de Solicitação" style="color: var(--secondary); border-color: var(--secondary);">
+                                            <i class="fas fa-paperclip"></i>
                                         </a>
-                                    <?php endif; ?>
 
-                                    <?php if ($nivel_user === 'SUPORTE'): ?>
-                                        <button
-                                            type="button"
-                                            class="btn btn-outline btn-sm btn-delete-oficio"
-                                            title="Excluir ofício e aquisições vinculadas"
-                                            data-delete-oficio
-                                            data-oficio-id="<?php echo (int)$o['id']; ?>"
-                                            data-oficio-numero="<?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>"
-                                        >
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                                        <?php if ($o['status'] == 'APROVADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): ?>
+                                            <a href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Gerar Aquisição">
+                                                <i class="fas fa-shopping-cart"></i> Gerar
+                                            </a>
+                                        <?php endif; ?>
 
-                    <?php if (empty($oficios)): ?>
-                        <tr>
-                            <td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-muted);">
-                                Nenhuma solicitação encontrada.
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                                        <?php if ($nivel_user === 'SUPORTE'): ?>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline btn-sm btn-delete-oficio"
+                                                title="Excluir ofício e aquisições vinculadas"
+                                                data-delete-oficio
+                                                data-oficio-id="<?php echo (int)$o['id']; ?>"
+                                                data-oficio-numero="<?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
 
-        <?php if ($total_paginas > 1): ?>
-            <div class="paginacao-box">
-                <a href="<?php echo $pagina_atual > 1 ? get_pagination_url($pagina_atual - 1) : '#'; ?>"
-                   class="btn btn-outline btn-sm <?php echo $pagina_atual <= 1 ? 'disabled' : ''; ?>">
-                    <i class="fas fa-angle-left"></i> Anterior
-                </a>
-
-                <span class="paginacao-info">
-                    Página <?php echo $pagina_atual; ?> de <?php echo $total_paginas; ?>
-                </span>
-
-                <a href="<?php echo $pagina_atual < $total_paginas ? get_pagination_url($pagina_atual + 1) : '#'; ?>"
-                   class="btn btn-outline btn-sm <?php echo $pagina_atual >= $total_paginas ? 'disabled' : ''; ?>">
-                    Próxima <i class="fas fa-angle-right"></i>
-                </a>
+                        <?php if (empty($oficios)): ?>
+                            <tr>
+                                <td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-muted);">
+                                    Nenhuma solicitação encontrada.
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
-        <?php endif; ?>
+
+            <?php if ($total_paginas > 1): ?>
+                <div class="paginacao-box">
+                    <a href="<?php echo $pagina_atual > 1 ? get_pagination_url($pagina_atual - 1) : '#'; ?>"
+                        class="btn btn-outline btn-sm <?php echo $pagina_atual <= 1 ? 'disabled' : ''; ?>">
+                        <i class="fas fa-angle-left"></i> Anterior
+                    </a>
+
+                    <span class="paginacao-info">
+                        Página <?php echo $pagina_atual; ?> de <?php echo $total_paginas; ?>
+                    </span>
+
+                    <a href="<?php echo $pagina_atual < $total_paginas ? get_pagination_url($pagina_atual + 1) : '#'; ?>"
+                        class="btn btn-outline btn-sm <?php echo $pagina_atual >= $total_paginas ? 'disabled' : ''; ?>">
+                        Próxima <i class="fas fa-angle-right"></i>
+                    </a>
+                </div>
+            <?php endif; ?>
     </div>
 </div>
 
@@ -1261,53 +1338,53 @@ include 'views/layout/header.php';
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const modal = document.getElementById('delete-oficio-modal');
-        const form = document.getElementById('delete-oficio-form');
-        const oficioId = document.getElementById('delete-oficio-id');
-        const oficioNumero = document.getElementById('delete-oficio-numero');
-        const senhaInput = document.getElementById('senha-suporte');
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('delete-oficio-modal');
+            const form = document.getElementById('delete-oficio-form');
+            const oficioId = document.getElementById('delete-oficio-id');
+            const oficioNumero = document.getElementById('delete-oficio-numero');
+            const senhaInput = document.getElementById('senha-suporte');
 
-        if (!modal || !form || !oficioId || !oficioNumero || !senhaInput) {
-            return;
-        }
+            if (!modal || !form || !oficioId || !oficioNumero || !senhaInput) {
+                return;
+            }
 
-        function closeModal() {
-            modal.classList.remove('is-open');
-            modal.setAttribute('aria-hidden', 'true');
-            form.reset();
-            oficioId.value = '';
-            oficioNumero.textContent = '';
-        }
+            function closeModal() {
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
+                form.reset();
+                oficioId.value = '';
+                oficioNumero.textContent = '';
+            }
 
-        document.querySelectorAll('[data-delete-oficio]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                oficioId.value = button.getAttribute('data-oficio-id') || '';
-                oficioNumero.textContent = button.getAttribute('data-oficio-numero') || '';
-                modal.classList.add('is-open');
-                modal.setAttribute('aria-hidden', 'false');
-                setTimeout(function () {
-                    senhaInput.focus();
-                }, 50);
+            document.querySelectorAll('[data-delete-oficio]').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    oficioId.value = button.getAttribute('data-oficio-id') || '';
+                    oficioNumero.textContent = button.getAttribute('data-oficio-numero') || '';
+                    modal.classList.add('is-open');
+                    modal.setAttribute('aria-hidden', 'false');
+                    setTimeout(function() {
+                        senhaInput.focus();
+                    }, 50);
+                });
+            });
+
+            document.querySelectorAll('[data-close-delete-modal]').forEach(function(button) {
+                button.addEventListener('click', closeModal);
+            });
+
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+                    closeModal();
+                }
             });
         });
-
-        document.querySelectorAll('[data-close-delete-modal]').forEach(function (button) {
-            button.addEventListener('click', closeModal);
-        });
-
-        modal.addEventListener('click', function (event) {
-            if (event.target === modal) {
-                closeModal();
-            }
-        });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && modal.classList.contains('is-open')) {
-                closeModal();
-            }
-        });
-    });
     </script>
 <?php endif; ?>
 
