@@ -18,6 +18,28 @@ if (!isset($pdo) || !$pdo instanceof PDO) {
     die('Erro de conexão');
 }
 
+/*
+|--------------------------------------------------------------------------
+| NORMALIZAÇÃO DO STATUS DAS ENTREGAS
+|--------------------------------------------------------------------------
+| Regra de negócio: se o registro existe em ajudas_entregas, ele já foi
+| efetivamente entregue. Portanto, registros antigos marcados como "Não",
+| vazios ou NULL devem ser corrigidos para "Sim".
+|
+| Esta atualização corrige também as contagens utilizadas por outras telas,
+| pois grava o status correto diretamente no banco de dados.
+*/
+$sql_normalizar_status = "
+    UPDATE ajudas_entregas
+       SET entregue = 'Sim'
+     WHERE entregue IS NULL
+        OR TRIM(entregue) = ''
+        OR LOWER(TRIM(entregue)) NOT IN ('sim')
+";
+
+$stmt_normalizar_status = $pdo->prepare($sql_normalizar_status);
+$stmt_normalizar_status->execute();
+
 // Função para formatar valor monetário
 function formatarMoeda($valor)
 {
@@ -82,7 +104,6 @@ $sql_base = "
         ae.valor_aplicado,
         ae.observacao,
         ae.responsavel as responsavel_entrega,
-        ae.entregue AS status_banco_original,
         'Sim' AS entregue,
         ae.pessoa_cpf,
         
@@ -136,10 +157,13 @@ if (!empty($filtro_bairro)) {
     $params[':bairro'] = $filtro_bairro;
 }
 
-if ($filtro_status !== 'todos' && $filtro_status !== 'Sim') {
-    // Todo registro presente em ajudas_entregas representa uma entrega concluída.
-    // Portanto, esta página não possui registros pendentes.
-    $sql_base .= " AND 1 = 0";
+if ($filtro_status !== 'todos') {
+    if ($filtro_status === 'Sim') {
+        $sql_base .= " AND ae.entregue = 'Sim'";
+    } else {
+        // Não existem pendências em ajudas_entregas.
+        $sql_base .= " AND 1 = 0";
+    }
 }
 
 if (!empty($filtro_data_inicio)) {
@@ -1994,7 +2018,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
 
                         <div class="alert alert-info mt-3">
                             <i class="bi bi-info-circle"></i>
-                            <strong>Nota:</strong> Esta página exibe somente registros efetivamente entregues, pois todos os dados vêm da tabela <code>ajudas_entregas</code>. O valor aplicado pode estar preenchido ou não.
+                            <strong>Nota:</strong> Todo registro existente em <code>ajudas_entregas</code> é contabilizado como entregue, inclusive registros antigos que estavam com status incorreto.
                         </div>
                     </div>
                     <div class="modal-footer">
