@@ -968,13 +968,13 @@ if ($exportFlag === '1') {
     return htmlspecialchars((string)$s, ENT_QUOTES | ENT_XML1, 'UTF-8');
   };
 
-  $wrapWords = function (string $text, int $chars = 72): string {
+  $wrapWords = function (string $text, int $chars = 115): string {
     $text = trim(preg_replace('/\s+/', ' ', $text) ?? $text);
     if ($text === '') return '';
     return wordwrap($text, $chars, "\n", false);
   };
 
-  $excelRowHeight = function (string $text, int $charsPerLine = 70, int $min = 22, int $max = 220): int {
+  $excelRowHeight = function (string $text, int $charsPerLine = 115, int $min = 22, int $max = 110): int {
     $text = trim((string)$text);
     if ($text === '') return $min;
 
@@ -984,16 +984,17 @@ if ($exportFlag === '1') {
       $lines += max(1, (int)ceil($len / max(1, $charsPerLine)));
     }
 
-    return max($min, min($max, 16 + ($lines * 14)));
+    // Altura enxuta: suficiente para caber o texto, sem folga grande entre as linhas.
+    return max($min, min($max, 14 + ($lines * 10)));
   };
 
   $filtrosTexto = implode('  |  ', $linhaFiltros);
   $totalBenefTexto = "Total de pessoas cadastradas (GERAL): {$totalGeral}  |  Total no período: {$totalPeriodo}";
-  $totalPeopleTexto = "Total de pessoas listadas: {$peopleTotal}" . ($peopleTrunc ? "  (lista truncada por limite de exportação)" : "");
-  $totalSolicTexto = "Total de solicitações listadas: {$solicTotal}" . ($solicTrunc ? "  (lista truncada)" : "");
+  $totalPeopleTexto = "Total de pessoas listadas: {$peopleTotal}";
+  $totalSolicTexto = "Total de solicitações listadas: {$solicTotal}";
 
-  $metaHeightBenef = $excelRowHeight($filtrosTexto, 90, 24, 95);
-  $metaHeightWide = $excelRowHeight($filtrosTexto, 155, 24, 80);
+  $metaHeightBenef = $excelRowHeight($filtrosTexto, 130, 24, 70);
+  $metaHeightWide = $excelRowHeight($filtrosTexto, 190, 24, 60);
 
   // Print area da aba beneficios (A:C)
   $rowsData = is_array($data['benef_table'] ?? null) ? count($data['benef_table']) : 0;
@@ -1194,7 +1195,7 @@ if ($exportFlag === '1') {
     </Worksheet>
 
     <!-- ======================
-       ABA 2: PESSOAS (NOMES) - ✅ FONTE 13pt E COLUNAS MAIORES
+       ABA 2: PESSOAS (NOMES)
        ====================== -->
     <Worksheet ss:Name="pessoas">
       <Names>
@@ -1210,7 +1211,7 @@ if ($exportFlag === '1') {
         <Column ss:Width="280" />
         <Column ss:Width="120" />
         <Column ss:Width="120" />
-        <Column ss:Width="520" />
+        <Column ss:Width="620" />
 
         <Row ss:Height="30">
           <Cell ss:StyleID="sTitle" ss:MergeAcross="8">
@@ -1266,8 +1267,8 @@ if ($exportFlag === '1') {
             $dtcad = (string) ($p['data_cadastro'] ?? '');
             $dtcadBR = $dtcad ? fmtDateBR($dtcad) : '—';
             $isEmpregado = normalizeWorkStatus((string) ($p['trabalho'] ?? ''));
-            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 72);
-            $rowHeight = $excelRowHeight($resumo, 72, 24, 180);
+            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 125);
+            $rowHeight = $excelRowHeight($resumo, 125, 22, 95);
             ?>
             <Row ss:Height="<?= (int)$rowHeight ?>">
               <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $i ?></Data></Cell>
@@ -1312,7 +1313,7 @@ if ($exportFlag === '1') {
     </Worksheet>
 
     <!-- ======================
-       ABA 3: SOLICITAÇÕES - ✅ FONTE 13pt E COLUNAS MAIORES
+       ABA 3: SOLICITAÇÕES
        ====================== -->
     <Worksheet ss:Name="solicitacoes">
       <Names>
@@ -1328,7 +1329,7 @@ if ($exportFlag === '1') {
         <Column ss:Width="280" />
         <Column ss:Width="120" />
         <Column ss:Width="120" />
-        <Column ss:Width="560" />
+        <Column ss:Width="660" />
 
         <Row ss:Height="30">
           <Cell ss:StyleID="sTitle" ss:MergeAcross="8">
@@ -1385,8 +1386,8 @@ if ($exportFlag === '1') {
             $dtcadBR = $dtcad ? fmtDateBR($dtcad) : '—';
             $dtsol = (string) ($p['data_solicitacao'] ?? '');
             $dtsolBR = $dtsol ? fmtDateBR($dtsol) : '—';
-            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 78);
-            $rowHeight = $excelRowHeight($resumo, 78, 24, 200);
+            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 135);
+            $rowHeight = $excelRowHeight($resumo, 135, 22, 105);
             ?>
             <Row ss:Height="<?= (int)$rowHeight ?>">
               <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $i ?></Data></Cell>
@@ -1421,7 +1422,7 @@ if ($exportFlag === '1') {
 $printFlag = (string)($_GET['print'] ?? $_POST['print'] ?? '');
 if ($printFlag === '1') {
   $payload = $_POST ?: $_GET;
-  $ctx = reportExportContext($pdo, $payload, reportGeneratedAt($payload), 10000);
+  $ctx = reportExportContext($pdo, $payload, reportGeneratedAt($payload), 0);
 
   $data = $ctx['data'];
   $geradoEm = (string)$ctx['gerado_em'];
