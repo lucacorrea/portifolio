@@ -837,7 +837,7 @@ function reportExportContext(PDO $pdo, array $payload, string $geradoEm, int $ma
   $bairroNome = $bairroNomes ? implode(', ', $bairroNomes) : 'Todos';
   $benefNomes = lookupNames($pdo, 'ajudas_tipos', $beneficioIds);
   $benefNome = $benefNomes ? implode(', ', $benefNomes) : 'Todos';
-  $empregoRows = fetchEmploymentOptions($pdo, $empregoIds);
+  $empregoRows = $empregoIds ? fetchEmploymentOptions($pdo, $empregoIds) : [];
   $empregoNome = $empregoRows ? implode(', ', array_map(static fn(array $row): string => (string)$row['nome'], $empregoRows)) : 'Todos';
 
   $linhaFiltros = [];
@@ -990,31 +990,83 @@ if ($exportFlag === '1') {
 
     <Styles>
       <Style ss:ID="sTitle">
-        <Font ss:Bold="1" ss:Size="16" /><Alignment ss:Horizontal="Center" ss:Vertical="Center" />
+        <Font ss:Bold="1" ss:Size="15" ss:Color="#FFFFFF" />
+        <Interior ss:Color="#435EBE" ss:Pattern="Solid" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
       </Style>
 
       <Style ss:ID="sMeta">
-        <Font ss:Bold="1" ss:Size="12" /><Alignment ss:Vertical="Center" ss:WrapText="1" />
+        <Font ss:Bold="1" ss:Size="10" />
+        <Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1" />
       </Style>
 
       <Style ss:ID="sHeader">
-        <Font ss:Bold="1" ss:Size="13" /><Interior ss:Color="#F2F4F7" ss:Pattern="Solid" /><Alignment ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Font ss:Bold="1" ss:Size="10" />
+        <Interior ss:Color="#F2F4F7" ss:Pattern="Solid" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
 
       <Style ss:ID="sText">
-        <Font ss:Size="13" /><Alignment ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
+      </Style>
+
+      <Style ss:ID="sTextLeft">
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
 
       <Style ss:ID="sNum">
-        <Font ss:Size="13" /><Alignment ss:Horizontal="Right" ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders><NumberFormat ss:Format="0" />
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
+        <NumberFormat ss:Format="0" />
       </Style>
 
       <Style ss:ID="sPct">
-        <Font ss:Size="13" /><Alignment ss:Horizontal="Right" ss:Vertical="Center" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders><NumberFormat ss:Format="0.00%" />
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
+        <NumberFormat ss:Format="0.00%" />
       </Style>
 
       <Style ss:ID="sLongText">
-        <Font ss:Size="13" /><Alignment ss:Vertical="Top" ss:WrapText="1" /><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" /><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" /></Borders>
+        <Font ss:Size="10" />
+        <Alignment ss:Horizontal="Center" ss:Vertical="Top" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
     </Styles>
 
@@ -1037,26 +1089,26 @@ if ($exportFlag === '1') {
           </Cell>
         </Row>
 
-        <Row ss:Height="24">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="2">
             <Data ss:Type="String"><?= $xmlEsc('Gerado em: ' . $geradoEm) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="26">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="2">
             <Data ss:Type="String"><?= $xmlEsc(implode('  |  ', $linhaFiltros)) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="24">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="2">
             <Data
               ss:Type="String"><?= $xmlEsc("Total de pessoas cadastradas (GERAL): {$totalGeral}  |  Total no período: {$totalPeriodo}") ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="26">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Benefício (ajuda_tipo)</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Pessoas</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">% do período</Data></Cell>
@@ -1068,7 +1120,7 @@ if ($exportFlag === '1') {
           $pct = (float) ($r['pct'] ?? 0.0);
           $pct01 = $pct / 100.0;
           ?>
-          <Row ss:Height="24">
+          <Row ss:AutoFitHeight="1">
             <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc((string) ($r['nome'] ?? '—')) ?></Data></Cell>
             <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $count ?></Data></Cell>
             <Cell ss:StyleID="sPct"><Data ss:Type="Number"><?= $pct01 ?></Data></Cell>
@@ -1127,26 +1179,26 @@ if ($exportFlag === '1') {
           </Cell>
         </Row>
 
-        <Row ss:Height="24">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
             <Data ss:Type="String"><?= $xmlEsc('Gerado em: ' . $geradoEm) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="26">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
             <Data ss:Type="String"><?= $xmlEsc(implode('  |  ', $linhaFiltros)) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="24">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
             <Data
               ss:Type="String"><?= $xmlEsc("Total de pessoas listadas: {$peopleTotal}" . ($peopleTrunc ? "  (⚠ lista truncada por limite de exportação)" : "")) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="26">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Nº</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Nome</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">CPF</Data></Cell>
@@ -1159,7 +1211,7 @@ if ($exportFlag === '1') {
         </Row>
 
         <?php if (empty($peopleRows)): ?>
-          <Row ss:Height="24">
+          <Row ss:AutoFitHeight="1">
             <Cell ss:StyleID="sText" ss:MergeAcross="8">
               <Data ss:Type="String"><?= $xmlEsc('Nenhum registro encontrado para os filtros selecionados.') ?></Data>
             </Cell>
@@ -1178,11 +1230,11 @@ if ($exportFlag === '1') {
             $isEmpregado = normalizeWorkStatus((string) ($p['trabalho'] ?? ''));
             $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 7);
             ?>
-            <Row ss:Height="24">
+            <Row ss:AutoFitHeight="1">
               <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $i ?></Data></Cell>
-              <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
+              <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($cpf) ?></Data></Cell>
-              <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($endComp) ?></Data></Cell>
+              <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($endComp) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($tel) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($benef) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($dtcadBR) ?></Data></Cell>
@@ -1245,26 +1297,26 @@ if ($exportFlag === '1') {
           </Cell>
         </Row>
 
-        <Row ss:Height="24">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
             <Data ss:Type="String"><?= $xmlEsc('Gerado em: ' . $geradoEm) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="26">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
             <Data ss:Type="String"><?= $xmlEsc(implode('  |  ', $linhaFiltros)) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="24">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
             <Data
               ss:Type="String"><?= $xmlEsc("Total de solicitações listadas: {$solicTotal}" . ($solicTrunc ? "  (⚠ lista truncada)" : "")) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:Height="26">
+        <Row ss:AutoFitHeight="1">
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Nº</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Nome</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">CPF</Data></Cell>
@@ -1277,7 +1329,7 @@ if ($exportFlag === '1') {
         </Row>
 
         <?php if (empty($solicRows)): ?>
-          <Row ss:Height="24">
+          <Row ss:AutoFitHeight="1">
             <Cell ss:StyleID="sText" ss:MergeAcross="8">
               <Data ss:Type="String"><?= $xmlEsc('Nenhuma solicitação encontrada para os filtros selecionados.') ?></Data>
             </Cell>
@@ -1297,11 +1349,11 @@ if ($exportFlag === '1') {
             $dtsolBR = $dtsol ? fmtDateBR($dtsol) : '—';
             $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 7);
             ?>
-            <Row ss:Height="24">
+            <Row ss:AutoFitHeight="1">
               <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $i ?></Data></Cell>
-              <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
+              <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($cpf) ?></Data></Cell>
-              <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($endComp) ?></Data></Cell>
+              <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($endComp) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($tel) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($benef) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($dtcadBR) ?></Data></Cell>
