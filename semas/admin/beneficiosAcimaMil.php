@@ -2053,10 +2053,24 @@ if (!empty($beneficios)) {
                                 }
 
                                 function createMergedRow(rowNumber, text, styleId) {
+                                    let cells = '';
+
+                                    for (let columnIndex = 0; columnIndex < 9; columnIndex++) {
+                                        const column = columnName(columnIndex);
+
+                                        if (columnIndex === 0) {
+                                            cells += '<c r="' + column + rowNumber + '" t="inlineStr" s="' + styleId + '">' +
+                                                '<is><t xml:space="preserve">' + xmlEscape(text) + '</t></is>' +
+                                            '</c>';
+                                        } else {
+                                            cells += '<c r="' + column + rowNumber + '" t="inlineStr" s="' + styleId + '">' +
+                                                '<is><t xml:space="preserve"></t></is>' +
+                                            '</c>';
+                                        }
+                                    }
+
                                     return '<row r="' + rowNumber + '" ht="' + (rowNumber === 1 ? 26 : 21) + '" customHeight="1">' +
-                                        '<c r="A' + rowNumber + '" t="inlineStr" s="' + styleId + '">' +
-                                            '<is><t xml:space="preserve">' + xmlEscape(text) + '</t></is>' +
-                                        '</c>' +
+                                        cells +
                                     '</row>';
                                 }
 
