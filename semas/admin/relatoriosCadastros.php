@@ -655,7 +655,7 @@ function fetchAggregates(PDO $pdo, array $in): array
 /**
  * ✅ lista pessoas (solicitantes) para exportação.
  */
-function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 10000): array
+function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 0): array
 {
   [$periodo, $di, $df, $bairroIds, $beneficioIds, $empregoIds, $sexo, $q, $baseDT, $where, $params] = buildFilters($pdo, $in);
 
@@ -664,8 +664,13 @@ function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 10000): array
   $st->execute($params);
   $total = (int)$st->fetchColumn();
 
-  $limit = max(1, min($maxRows, $total > 0 ? $total : $maxRows));
-  $truncated = ($total > $limit);
+  $limitSql = '';
+  $truncated = false;
+  if ($maxRows > 0 && $total > $maxRows) {
+    $limit = $maxRows;
+    $limitSql = ' LIMIT ' . (int)$limit;
+    $truncated = true;
+  }
 
   $sql = "
     SELECT
@@ -693,7 +698,7 @@ function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 10000): array
     LEFT JOIN ajudas_tipos at ON at.id = s.ajuda_tipo_id
     WHERE " . implode(' AND ', $where) . "
     ORDER BY DATE($baseDT) ASC, s.nome ASC
-    LIMIT $limit
+    $limitSql
   ";
   $st = $pdo->prepare($sql);
   $st->execute($params);
@@ -705,7 +710,7 @@ function fetchPeopleForExport(PDO $pdo, array $in, int $maxRows = 10000): array
 /**
  * ✅ Busca Histórico de Solicitações para a aba solicitacoes.
  */
-function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 10000): array
+function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 0): array
 {
   // Reaproveita normalizações do buildFilters
   [$periodo, $di, $df, $bairroIds, $beneficioIds, $empregoIds, $sexo, $q, $baseDT, $wherePessoa, $paramsPessoa] = buildFilters($pdo, $in);
@@ -750,8 +755,13 @@ function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 10000):
   $st->execute($params);
   $total = (int)$st->fetchColumn();
 
-  $limit = max(1, min($maxRows, $total > 0 ? $total : $maxRows));
-  $truncated = ($total > $limit);
+  $limitSql = '';
+  $truncated = false;
+  if ($maxRows > 0 && $total > $maxRows) {
+    $limit = $maxRows;
+    $limitSql = ' LIMIT ' . (int)$limit;
+    $truncated = true;
+  }
 
   // Lista
   $sql = "
@@ -780,7 +790,7 @@ function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 10000):
     LEFT JOIN ajudas_tipos at ON at.id = sol.ajuda_tipo_id
     WHERE " . implode(' AND ', $where) . "
     ORDER BY DATE(COALESCE(s.created_at, s.updated_at)) ASC, s.nome ASC, sol.data_solicitacao ASC
-    LIMIT $limit
+    $limitSql
   ";
 
 
@@ -794,7 +804,7 @@ function fetchSolicitationsForExport(PDO $pdo, array $in, int $maxRows = 10000):
 function normalizeWorkStatus(?string $trabalho): string
 {
   $trab = trim((string)$trabalho);
-  $trabNorm = mb_strtolower($trab, 'UTF-8');
+  $trabNorm = function_exists('mb_strtolower') ? mb_strtolower($trab, 'UTF-8') : strtolower($trab);
   $trabNorm = strtr($trabNorm, [
     'á' => 'a',
     'à' => 'a',
@@ -813,7 +823,7 @@ function normalizeWorkStatus(?string $trabalho): string
   return ($trabNorm === 'empregado(a)' || $trabNorm === 'empregado') ? 'Sim' : 'Não';
 }
 
-function reportExportContext(PDO $pdo, array $payload, string $geradoEm, int $maxRows = 10000): array
+function reportExportContext(PDO $pdo, array $payload, string $geradoEm, int $maxRows = 0): array
 {
   $data = fetchAggregates($pdo, $payload);
 
@@ -928,7 +938,7 @@ $exportFlag = (string)($_POST['export'] ?? $_GET['export'] ?? '');
 if ($exportFlag === '1') {
 
   $payload = $_POST ?: $_GET;
-  $ctx = reportExportContext($pdo, $payload, reportGeneratedAt($payload), 10000);
+  $ctx = reportExportContext($pdo, $payload, reportGeneratedAt($payload), 0);
   $data = $ctx['data'];
   $geradoEm = $ctx['gerado_em'];
   $totalGeral = $ctx['total_geral'];
@@ -958,14 +968,32 @@ if ($exportFlag === '1') {
     return htmlspecialchars((string)$s, ENT_QUOTES | ENT_XML1, 'UTF-8');
   };
 
-  $wrapWords = function (string $text, int $every = 7): string {
-    $words = preg_split('/\s+/', trim($text));
-    if (count($words) <= $every) return trim($text);
-    $lines = array_chunk($words, $every);
-    return implode("\n", array_map(function ($chunk) {
-      return implode(' ', $chunk);
-    }, $lines));
+  $wrapWords = function (string $text, int $chars = 72): string {
+    $text = trim(preg_replace('/\s+/', ' ', $text) ?? $text);
+    if ($text === '') return '';
+    return wordwrap($text, $chars, "\n", false);
   };
+
+  $excelRowHeight = function (string $text, int $charsPerLine = 70, int $min = 22, int $max = 220): int {
+    $text = trim((string)$text);
+    if ($text === '') return $min;
+
+    $lines = 0;
+    foreach (preg_split('/\R/', $text) ?: [] as $line) {
+      $len = max(1, function_exists('mb_strlen') ? mb_strlen($line, 'UTF-8') : strlen($line));
+      $lines += max(1, (int)ceil($len / max(1, $charsPerLine)));
+    }
+
+    return max($min, min($max, 16 + ($lines * 14)));
+  };
+
+  $filtrosTexto = implode('  |  ', $linhaFiltros);
+  $totalBenefTexto = "Total de pessoas cadastradas (GERAL): {$totalGeral}  |  Total no período: {$totalPeriodo}";
+  $totalPeopleTexto = "Total de pessoas listadas: {$peopleTotal}" . ($peopleTrunc ? "  (lista truncada por limite de exportação)" : "");
+  $totalSolicTexto = "Total de solicitações listadas: {$solicTotal}" . ($solicTrunc ? "  (lista truncada)" : "");
+
+  $metaHeightBenef = $excelRowHeight($filtrosTexto, 90, 24, 95);
+  $metaHeightWide = $excelRowHeight($filtrosTexto, 155, 24, 80);
 
   // Print area da aba beneficios (A:C)
   $rowsData = is_array($data['benef_table'] ?? null) ? count($data['benef_table']) : 0;
@@ -990,14 +1018,26 @@ if ($exportFlag === '1') {
 
     <Styles>
       <Style ss:ID="sTitle">
-        <Font ss:Bold="1" ss:Size="15" ss:Color="#FFFFFF" />
-        <Interior ss:Color="#435EBE" ss:Pattern="Solid" />
+        <Font ss:Bold="1" ss:Size="15" ss:Color="#000000" />
+        <Interior ss:Color="#F2F4F7" ss:Pattern="Solid" />
         <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
 
       <Style ss:ID="sMeta">
         <Font ss:Bold="1" ss:Size="10" />
         <Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1" />
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" />
+          <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" />
+        </Borders>
       </Style>
 
       <Style ss:ID="sHeader">
@@ -1089,26 +1129,25 @@ if ($exportFlag === '1') {
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="24">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="2">
             <Data ss:Type="String"><?= $xmlEsc('Gerado em: ' . $geradoEm) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="<?= (int)$metaHeightBenef ?>">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="2">
-            <Data ss:Type="String"><?= $xmlEsc(implode('  |  ', $linhaFiltros)) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($filtrosTexto) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="26">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="2">
-            <Data
-              ss:Type="String"><?= $xmlEsc("Total de pessoas cadastradas (GERAL): {$totalGeral}  |  Total no período: {$totalPeriodo}") ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($totalBenefTexto) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="26">
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Benefício (ajuda_tipo)</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Pessoas</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">% do período</Data></Cell>
@@ -1121,7 +1160,7 @@ if ($exportFlag === '1') {
           $pct01 = $pct / 100.0;
           ?>
           <Row ss:AutoFitHeight="1">
-            <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc((string) ($r['nome'] ?? '—')) ?></Data></Cell>
+            <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc((string) ($r['nome'] ?? '—')) ?></Data></Cell>
             <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $count ?></Data></Cell>
             <Cell ss:StyleID="sPct"><Data ss:Type="Number"><?= $pct01 ?></Data></Cell>
           </Row>
@@ -1171,7 +1210,7 @@ if ($exportFlag === '1') {
         <Column ss:Width="280" />
         <Column ss:Width="120" />
         <Column ss:Width="120" />
-        <Column ss:Width="350" />
+        <Column ss:Width="520" />
 
         <Row ss:Height="30">
           <Cell ss:StyleID="sTitle" ss:MergeAcross="8">
@@ -1179,26 +1218,25 @@ if ($exportFlag === '1') {
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="24">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
             <Data ss:Type="String"><?= $xmlEsc('Gerado em: ' . $geradoEm) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="<?= (int)$metaHeightWide ?>">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
-            <Data ss:Type="String"><?= $xmlEsc(implode('  |  ', $linhaFiltros)) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($filtrosTexto) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="26">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
-            <Data
-              ss:Type="String"><?= $xmlEsc("Total de pessoas listadas: {$peopleTotal}" . ($peopleTrunc ? "  (⚠ lista truncada por limite de exportação)" : "")) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($totalPeopleTexto) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="26">
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Nº</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Nome</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">CPF</Data></Cell>
@@ -1228,9 +1266,10 @@ if ($exportFlag === '1') {
             $dtcad = (string) ($p['data_cadastro'] ?? '');
             $dtcadBR = $dtcad ? fmtDateBR($dtcad) : '—';
             $isEmpregado = normalizeWorkStatus((string) ($p['trabalho'] ?? ''));
-            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 7);
+            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 72);
+            $rowHeight = $excelRowHeight($resumo, 72, 24, 180);
             ?>
-            <Row ss:AutoFitHeight="1">
+            <Row ss:Height="<?= (int)$rowHeight ?>">
               <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $i ?></Data></Cell>
               <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($cpf) ?></Data></Cell>
@@ -1289,7 +1328,7 @@ if ($exportFlag === '1') {
         <Column ss:Width="280" />
         <Column ss:Width="120" />
         <Column ss:Width="120" />
-        <Column ss:Width="450" />
+        <Column ss:Width="560" />
 
         <Row ss:Height="30">
           <Cell ss:StyleID="sTitle" ss:MergeAcross="8">
@@ -1297,26 +1336,25 @@ if ($exportFlag === '1') {
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="24">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
             <Data ss:Type="String"><?= $xmlEsc('Gerado em: ' . $geradoEm) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="<?= (int)$metaHeightWide ?>">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
-            <Data ss:Type="String"><?= $xmlEsc(implode('  |  ', $linhaFiltros)) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($filtrosTexto) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="26">
           <Cell ss:StyleID="sMeta" ss:MergeAcross="8">
-            <Data
-              ss:Type="String"><?= $xmlEsc("Total de solicitações listadas: {$solicTotal}" . ($solicTrunc ? "  (⚠ lista truncada)" : "")) ?></Data>
+            <Data ss:Type="String"><?= $xmlEsc($totalSolicTexto) ?></Data>
           </Cell>
         </Row>
 
-        <Row ss:AutoFitHeight="1">
+        <Row ss:Height="26">
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Nº</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">Nome</Data></Cell>
           <Cell ss:StyleID="sHeader"><Data ss:Type="String">CPF</Data></Cell>
@@ -1347,9 +1385,10 @@ if ($exportFlag === '1') {
             $dtcadBR = $dtcad ? fmtDateBR($dtcad) : '—';
             $dtsol = (string) ($p['data_solicitacao'] ?? '');
             $dtsolBR = $dtsol ? fmtDateBR($dtsol) : '—';
-            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 7);
+            $resumo = $wrapWords((string) ($p['resumo_caso'] ?? ''), 78);
+            $rowHeight = $excelRowHeight($resumo, 78, 24, 200);
             ?>
-            <Row ss:AutoFitHeight="1">
+            <Row ss:Height="<?= (int)$rowHeight ?>">
               <Cell ss:StyleID="sNum"><Data ss:Type="Number"><?= $i ?></Data></Cell>
               <Cell ss:StyleID="sTextLeft"><Data ss:Type="String"><?= $xmlEsc($nome) ?></Data></Cell>
               <Cell ss:StyleID="sText"><Data ss:Type="String"><?= $xmlEsc($cpf) ?></Data></Cell>
