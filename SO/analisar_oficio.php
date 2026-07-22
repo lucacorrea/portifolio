@@ -19,23 +19,167 @@ if (!$oficio) {
     die("Ofício não encontrado.");
 }
 
+$fornecedores = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
+$fornecedores_by_id = [];
+foreach ($fornecedores as $fornecedor) {
+    $fornecedores_by_id[(int)$fornecedor['id']] = $fornecedor;
+}
+
+if (empty($_SESSION['csrf_analise_oficio'])) {
+    $_SESSION['csrf_analise_oficio'] = bin2hex(random_bytes(32));
+}
+$csrf_analise_oficio = (string)$_SESSION['csrf_analise_oficio'];
+$error = null;
+$fornecedor_id = 0;
+$justificativa_admin = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $status = $_POST['status'] ?? '';
-    $justificativa_admin = trim($_POST['justificativa_admin'] ?? '');
+    $status = is_scalar($_POST['status'] ?? null) ? (string)$_POST['status'] : '';
+    $justificativa_admin = is_scalar($_POST['justificativa_admin'] ?? null)
+        ? trim((string)$_POST['justificativa_admin'])
+        : '';
+    $csrf_token = is_scalar($_POST['csrf_token'] ?? null) ? (string)$_POST['csrf_token'] : '';
+    $fornecedor_post = $_POST['fornecedor_id'] ?? null;
+    $fornecedor_id = is_scalar($fornecedor_post) && ctype_digit((string)$fornecedor_post)
+        ? (int)$fornecedor_post
+        : 0;
 
-    $stmt = $pdo->prepare("UPDATE oficios SET status = ? WHERE id = ?");
-    $stmt->execute([$status, $id]);
-
-    log_action($pdo, "ANALISAR_SOLICITACAO", "Solicitação {$oficio['numero']} alterada para $status");
-
-    if ($status === 'APROVADO') {
-        flash_message('success', "Solicitação {$oficio['numero']} APROVADA! Agora você pode gerar a aquisição.");
-        header("Location: gerar_aquisicao.php?id=$id");
-    } else {
-        flash_message('danger', "Solicitação {$oficio['numero']} foi REPROVADA e ARQUIVADA.");
-        header("Location: oficios_lista.php");
+    if ($csrf_token === '' || !hash_equals($csrf_analise_oficio, $csrf_token)) {
+        $error = 'A sessão de análise expirou. Atualize a página e tente novamente.';
+    } elseif (!in_array($status, ['APROVADO', 'REPROVADO'], true)) {
+        $error = 'A decisão informada é inválida.';
+    } elseif ((string)$oficio['status'] !== 'ENVIADO') {
+        $error = 'Este ofício não está mais disponível para análise.';
+    } elseif ($status === 'APROVADO' && !isset($fornecedores_by_id[$fornecedor_id])) {
+        $error = 'Selecione um fornecedor válido para aprovar a solicitação.';
     }
-    exit();
+
+    if ($error === null) {
+        try {
+            $pdo->beginTransaction();
+
+            $stmt_lock = $pdo->prepare("SELECT id, numero, status, criado_em FROM oficios WHERE id = ? FOR UPDATE");
+            $stmt_lock->execute([$id]);
+            $oficio_atual = $stmt_lock->fetch(PDO::FETCH_ASSOC);
+
+            if (!$oficio_atual || (string)$oficio_atual['status'] !== 'ENVIADO') {
+                throw new DomainException('Este ofício foi alterado por outro usuário e não está mais disponível para análise.');
+            }
+
+            $aquisicao_id = null;
+            $numero_aquisicao = null;
+
+            if ($status === 'APROVADO') {
+                $stmt_fornecedor_lock = $pdo->prepare("SELECT id, nome FROM fornecedores WHERE id = ? FOR UPDATE");
+                $stmt_fornecedor_lock->execute([$fornecedor_id]);
+                $fornecedor_aprovado = $stmt_fornecedor_lock->fetch(PDO::FETCH_ASSOC);
+                if (!$fornecedor_aprovado) {
+                    throw new DomainException('O fornecedor selecionado não existe mais. Atualize a página e tente novamente.');
+                }
+
+                $stmt_existente = $pdo->prepare("SELECT id FROM aquisicoes WHERE oficio_id = ? ORDER BY id LIMIT 1 FOR UPDATE");
+                $stmt_existente->execute([$id]);
+                if ($stmt_existente->fetchColumn()) {
+                    throw new DomainException('Este ofício já possui aquisição vinculada e não pode gerar outra automaticamente.');
+                }
+
+                $stmt_itens = $pdo->prepare("
+                    SELECT id, produto, quantidade, valor_unitario
+                    FROM itens_oficio
+                    WHERE oficio_id = ?
+                    ORDER BY id
+                    FOR UPDATE
+                ");
+                $stmt_itens->execute([$id]);
+                $itens = $stmt_itens->fetchAll(PDO::FETCH_ASSOC);
+
+                if (empty($itens)) {
+                    throw new DomainException('Este ofício não possui itens para gerar a aquisição automaticamente.');
+                }
+
+                $valor_total = 0.0;
+                foreach ($itens as $item) {
+                    $valor_total += (float)$item['quantidade'] * (float)($item['valor_unitario'] ?? 0);
+                }
+
+                $stmt = $pdo->prepare("
+                    UPDATE oficios
+                    SET status = 'APROVADO', fornecedor_indicado_id = ?
+                    WHERE id = ? AND status = 'ENVIADO'
+                ");
+                $stmt->execute([$fornecedor_id, $id]);
+
+                if ($stmt->rowCount() !== 1) {
+                    throw new DomainException('O ofício foi alterado por outro usuário.');
+                }
+
+                $numero_aquisicao = generate_aquisicao_number($pdo);
+                $codigo_entrega = generate_unique_code($pdo);
+                $stmt_aquisicao = $pdo->prepare("
+                    INSERT INTO aquisicoes (numero_aq, codigo_entrega, oficio_id, fornecedor_id, valor_total, criado_em)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $stmt_aquisicao->execute([
+                    $numero_aquisicao,
+                    $codigo_entrega,
+                    $id,
+                    $fornecedor_id,
+                    $valor_total,
+                    $oficio_atual['criado_em'],
+                ]);
+                $aquisicao_id = (int)$pdo->lastInsertId();
+
+                $stmt_item_aquisicao = $pdo->prepare("
+                    INSERT INTO itens_aquisicao (aquisicao_id, oficio_item_id, produto, quantidade, valor_unitario)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+                foreach ($itens as $item) {
+                    $stmt_item_aquisicao->execute([
+                        $aquisicao_id,
+                        (int)$item['id'],
+                        $item['produto'],
+                        (float)$item['quantidade'],
+                        (float)($item['valor_unitario'] ?? 0),
+                    ]);
+                }
+            } else {
+                $stmt = $pdo->prepare("UPDATE oficios SET status = 'REPROVADO' WHERE id = ? AND status = 'ENVIADO'");
+                $stmt->execute([$id]);
+                if ($stmt->rowCount() !== 1) {
+                    throw new DomainException('O ofício foi alterado por outro usuário.');
+                }
+            }
+
+            $detalhes = "Solicitação {$oficio['numero']} alterada para {$status}";
+            if ($status === 'APROVADO') {
+                $detalhes .= ' com aquisição ' . $numero_aquisicao . ' gerada automaticamente para o fornecedor '
+                    . $fornecedor_aprovado['nome'];
+            }
+            log_action($pdo, 'ANALISAR_SOLICITACAO', $detalhes);
+
+            $pdo->commit();
+            $_SESSION['csrf_analise_oficio'] = bin2hex(random_bytes(32));
+
+            if ($status === 'APROVADO') {
+                flash_message('success', "Solicitação {$oficio['numero']} APROVADA e aquisição {$numero_aquisicao} gerada automaticamente.");
+                header("Location: aquisicoes_visualizar.php?id={$aquisicao_id}", true, 303);
+            } else {
+                flash_message('danger', "Solicitação {$oficio['numero']} foi REPROVADA e ARQUIVADA.");
+                header('Location: oficios_lista.php', true, 303);
+            }
+            exit();
+        } catch (DomainException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $error = $e->getMessage();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $error = 'Não foi possível concluir a análise. Atualize a página e tente novamente.';
+        }
+    }
 }
 
 $page_title = "Analisar Solicitação: " . $oficio['numero'];
@@ -207,13 +351,41 @@ include 'views/layout/header.php';
             </div>
 
             <form action="" method="POST" class="analise-form">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_analise_oficio, ENT_QUOTES, 'UTF-8'); ?>">
+
+                <?php if ($error !== null): ?>
+                    <div class="alert alert-danger"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
+                <?php endif; ?>
+
                 <div class="form-group">
                     <label class="form-label">Parecer / Observação da Administração</label>
                     <textarea
                         name="justificativa_admin"
                         class="form-control"
-                        placeholder="Descreva o motivo da aprovação ou reprovação..."><?php echo isset($_POST['justificativa_admin']) ? htmlspecialchars($_POST['justificativa_admin']) : ''; ?></textarea>
+                        placeholder="Descreva o motivo da aprovação ou reprovação..."><?php echo htmlspecialchars($justificativa_admin, ENT_QUOTES, 'UTF-8'); ?></textarea>
                 </div>
+
+                <div class="form-group">
+                    <label for="fornecedor-aprovacao" class="form-label">Fornecedor para aprovação</label>
+                    <select name="fornecedor_id" id="fornecedor-aprovacao" class="form-control" required>
+                        <option value="">Selecione o fornecedor...</option>
+                        <?php foreach ($fornecedores as $fornecedor): ?>
+                            <option
+                                value="<?php echo (int)$fornecedor['id']; ?>"
+                                <?php echo $fornecedor_id === (int)$fornecedor['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                                <?php if (!empty($fornecedor['cnpj'])): ?>
+                                    (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
+                                <?php endif; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="text-muted">Obrigatório para aprovar. A aquisição será gerada automaticamente com este fornecedor.</small>
+                </div>
+
+                <?php if (empty($fornecedores)): ?>
+                    <div class="alert alert-warning">Cadastre um fornecedor antes de aprovar esta solicitação.</div>
+                <?php endif; ?>
 
                 <div class="analise-actions">
                     <button
@@ -221,6 +393,7 @@ include 'views/layout/header.php';
                         name="status"
                         value="REPROVADO"
                         class="btn btn-reprovar"
+                        formnovalidate
                         onclick="return confirm('Tem certeza que deseja REPROVAR esta solicitação?')">
                         <i class="fas fa-times"></i> REPROVAR E ARQUIVAR
                     </button>
@@ -229,8 +402,9 @@ include 'views/layout/header.php';
                         type="submit"
                         name="status"
                         value="APROVADO"
+                        <?php echo empty($fornecedores) ? 'disabled' : ''; ?>
                         class="btn btn-aprovar">
-                        <i class="fas fa-check"></i> APROVAR SOLICITAÇÃO
+                        <i class="fas fa-check"></i> APROVAR E GERAR AQUISIÇÃO
                     </button>
                 </div>
             </form>

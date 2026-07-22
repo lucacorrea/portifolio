@@ -403,10 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception("Selecione um status válido para {$numero_referencia}.");
                 }
 
-                $data_aquisicao = parse_datetime_local_required(
-                    $empresa['criado_em'] ?? '',
-                    "a data de {$numero_referencia}"
-                );
+                $data_aquisicao = $criado_em;
 
                 $item_keys = array_values(array_unique(array_map('strval', $empresa['itens'] ?? [])));
                 if (empty($item_keys)) {
@@ -1298,8 +1295,8 @@ include 'views/layout/header.php';
                                     </div>
 
                                     <div class="form-group" style="margin:0;">
-                                        <label class="form-label">Data da Aquisição</label>
-                                        <input type="datetime-local" name="empresas[<?php echo (int)$empresa_idx; ?>][criado_em]" class="form-control" value="<?php echo htmlspecialchars($empresa['criado_em'] ?? $criado_em_value, ENT_QUOTES, 'UTF-8'); ?>" required>
+                                        <label class="form-label">Data da Aquisição (igual ao ofício)</label>
+                                        <input type="datetime-local" name="empresas[<?php echo (int)$empresa_idx; ?>][criado_em]" class="form-control" value="<?php echo htmlspecialchars($criado_em_value, ENT_QUOTES, 'UTF-8'); ?>" readonly required>
                                     </div>
 
                                     <div class="form-group" style="margin:0;">
@@ -1849,8 +1846,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             <select name="empresas[${index}][fornecedor_id]" class="form-control fornecedor-select" required>${buildFornecedorOptions(state.fornecedor_id)}</select>
                         </div>
                         <div class="form-group" style="margin:0;">
-                            <label class="form-label">Data da Aquisição</label>
-                            <input type="datetime-local" name="empresas[${index}][criado_em]" class="form-control" value="${escapeHtml(state.criado_em)}" required>
+                            <label class="form-label">Data da Aquisição (igual ao ofício)</label>
+                            <input type="datetime-local" name="empresas[${index}][criado_em]" class="form-control" value="${escapeHtml(document.querySelector('input[name="criado_em"]')?.value || '')}" readonly required>
                         </div>
                         <div class="form-group" style="margin:0;">
                             <label class="form-label">Status</label>

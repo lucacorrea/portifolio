@@ -38,12 +38,16 @@ CREATE TABLE IF NOT EXISTS oficios (
     resumo_itens TEXT DEFAULT NULL,
     status ENUM('PENDENTE_ITENS', 'ENVIADO', 'EM_ANALISE', 'APROVADO', 'REPROVADO', 'ARQUIVADO') DEFAULT 'PENDENTE_ITENS',
     usuario_id INT NOT NULL, -- Quem cadastrou
+    fornecedor_indicado_id INT NULL,
     arquivo_orcamento VARCHAR(255) DEFAULT NULL,
     arquivo_oficio VARCHAR(255) DEFAULT NULL,
     valor_orcamento DECIMAL(15,2) NULL DEFAULT NULL,
     criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_oficios_fornecedor_indicado (fornecedor_indicado_id),
     FOREIGN KEY (secretaria_id) REFERENCES secretarias(id),
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+    CONSTRAINT fk_oficios_fornecedor_indicado
+        FOREIGN KEY (fornecedor_indicado_id) REFERENCES fornecedores(id) ON DELETE SET NULL
 );
 
 -- Anexos do Ofício (orçamentos, fotos, scans e ofícios)
