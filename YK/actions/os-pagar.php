@@ -17,6 +17,7 @@ try {
         os_posted_positive_int('id'),
         (string) ($_POST['valor'] ?? ''),
         (string) ($_POST['forma_pagamento'] ?? ''),
+        (string) ($_POST['quantidade_parcelas'] ?? '1'),
         isset($_POST['observacao']) ? (string) $_POST['observacao'] : null,
         (string) ($_POST['payment_token'] ?? ''),
         $user->id()
@@ -34,10 +35,13 @@ try {
     );
     os_redirect($application, 'recibo-imprimir.php?id=' . $result['receipt_id']);
 } catch (InvalidArgumentException $exception) {
+    os_store_form_recovery('pay', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
+    os_redirect_back($application, 'ordens-servico.php', ['modal' => 'pay']);
 } catch (Throwable $exception) {
     error_log('Finalized service order payment failed: ' . $exception->getMessage());
-    $session->flash('danger', 'Não foi possível pagar a OS. Nenhum lançamento parcial foi mantido.');
+    $message = 'Não foi possível pagar a OS. Nenhum lançamento parcial foi mantido.';
+    os_store_form_recovery('pay', $_POST, $message);
+    $session->flash('danger', $message);
+    os_redirect_back($application, 'ordens-servico.php', ['modal' => 'pay']);
 }
-
-os_redirect_back($application, 'ordens-servico.php');

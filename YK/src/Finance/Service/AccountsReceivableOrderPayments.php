@@ -13,6 +13,7 @@ trait AccountsReceivableOrderPayments
         int $orderId,
         string $value,
         string $form,
+        int|string $installmentCount,
         ?string $notes,
         string $paymentToken,
         int $userId
@@ -22,7 +23,12 @@ trait AccountsReceivableOrderPayments
         }
         $paymentToken = $this->paymentToken($paymentToken);
         $form = $this->paymentForm($form);
+        $installmentCount = $this->installmentCount($installmentCount, $form);
         $notes = $this->paymentNotes($notes);
+        $amount = $this->moneyToCents($value);
+        if ($amount <= 0) {
+            throw new InvalidArgumentException('Valor de pagamento inválido para o saldo da OS.');
+        }
 
         $ownsTransaction = !$this->connection->inTransaction();
         if ($ownsTransaction) $this->connection->beginTransaction();
@@ -35,6 +41,14 @@ trait AccountsReceivableOrderPayments
                 }
                 if ((string) $existing['status'] !== 'ativo') {
                     throw new InvalidArgumentException('Este pagamento foi estornado e o identificador não pode ser reutilizado.');
+                }
+                if (
+                    $this->moneyToCents((string) $existing['valor']) !== $amount
+                    || (string) $existing['forma_pagamento'] !== $form
+                    || (int) $existing['quantidade_parcelas'] !== $installmentCount
+                    || ($existing['observacao'] === null ? null : (string) $existing['observacao']) !== $notes
+                ) {
+                    throw new InvalidArgumentException('O identificador já pertence a um pagamento com dados diferentes.');
                 }
                 if ($ownsTransaction) $this->connection->commit();
                 return [
@@ -51,8 +65,7 @@ trait AccountsReceivableOrderPayments
             if (!in_array((string) $account['status'], self::ELIGIBLE_PAYMENT_STATUSES, true)) {
                 throw new InvalidArgumentException('A situação da conta não permite novo pagamento.');
             }
-            $amount = $this->moneyToCents($value);
-            if ($amount <= 0 || $amount > $this->moneyToCents((string) $account['saldo'])) {
+            if ($amount > $this->moneyToCents((string) $account['saldo'])) {
                 throw new InvalidArgumentException('Valor de pagamento inválido para o saldo da OS.');
             }
 
@@ -62,6 +75,7 @@ trait AccountsReceivableOrderPayments
                 $form,
                 $notes,
                 $userId,
+                $installmentCount,
                 $paymentToken,
                 'Recebimento da OS ' . ((string) ($account['os_numero'] ?: ('#' . $orderId)))
             );
@@ -101,7 +115,8 @@ trait AccountsReceivableOrderPayments
     private function lockPaymentByToken(string $paymentToken): ?array
     {
         $statement = $this->connection->prepare(
-            'SELECT id, ordem_servico_id, status
+            'SELECT id, ordem_servico_id, valor, forma_pagamento, quantidade_parcelas,
+                    observacao, status
                FROM ordem_servico_pagamentos
               WHERE payment_token = :payment_token
               LIMIT 1
@@ -119,5 +134,19 @@ trait AccountsReceivableOrderPayments
             throw new InvalidArgumentException('Identificador idempotente do pagamento inválido.');
         }
         return $paymentToken;
+    }
+
+    private function installmentCount(int|string $installmentCount, string $form): int
+    {
+        $installmentCount = filter_var($installmentCount, FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1, 'max_range' => 60],
+        ]);
+        if (!is_int($installmentCount)) {
+            throw new InvalidArgumentException('Informe uma quantidade de parcelas entre 1 e 60.');
+        }
+        if (!in_array($form, ['boleto', 'cartao_credito'], true) && $installmentCount !== 1) {
+            throw new InvalidArgumentException('A forma de pagamento selecionada deve possuir exatamente uma parcela.');
+        }
+        return $installmentCount;
     }
 }

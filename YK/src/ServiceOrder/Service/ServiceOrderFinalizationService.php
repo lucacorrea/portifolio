@@ -21,7 +21,8 @@ final class ServiceOrderFinalizationService
     ) {
     }
 
-    public function finalize(int $orderId, array $data, int $userId): void
+    /** @return array{order_id:int,order_number:string,balance:string} */
+    public function finalize(int $orderId, array $data, int $userId): array
     {
         $this->connection->beginTransaction();
         try {
@@ -149,6 +150,11 @@ final class ServiceOrderFinalizationService
 
             $this->orders->updateStatus($orderId, 'finalizada');
             $this->connection->commit();
+            return [
+                'order_id' => $orderId,
+                'order_number' => $order->displayNumber(),
+                'balance' => number_format($total, 2, '.', ''),
+            ];
         } catch (Throwable $exception) {
             if ($this->connection->inTransaction()) $this->connection->rollBack();
             throw $exception;

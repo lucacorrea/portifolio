@@ -65,11 +65,13 @@ final class ReceiptService
                 'INSERT INTO recibos
                     (numero, cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
                      os_numero, pagamento_recebido_em, empresa_nome, empresa_documento, empresa_telefone,
-                     empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, status, emitido_por)
+                     empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, quantidade_parcelas,
+                     status, emitido_por)
                  VALUES
                     (NULL, :client_id, :order_id, :payment_id, :client_name, :client_document,
                      :order_number, :received_at, :company_name, :company_document, :company_phone,
-                     :company_address, :company_logo, :description, :value, :payment_form, "emitido", :user_id)'
+                     :company_address, :company_logo, :description, :value, :payment_form, :installment_count,
+                     "emitido", :user_id)'
             );
             $statement->execute([
                 'client_id' => $payment['cliente_id'],
@@ -87,6 +89,7 @@ final class ReceiptService
                 'description' => $description,
                 'value' => $payment['valor'],
                 'payment_form' => $payment['forma_pagamento'],
+                'installment_count' => $payment['quantidade_parcelas'],
                 'user_id' => $userId,
             ]);
             $receiptId = (int) $this->connection->lastInsertId();
@@ -135,11 +138,12 @@ final class ReceiptService
                 'INSERT INTO recibos
                     (numero, cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
                      os_numero, pagamento_recebido_em, empresa_nome, empresa_documento, empresa_telefone,
-                     empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, status, emitido_por)
+                     empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, quantidade_parcelas,
+                     status, emitido_por)
                  VALUES
                     (NULL, :client_id, NULL, NULL, :client_name, :client_document,
                      NULL, CURRENT_TIMESTAMP, :company_name, :company_document, :company_phone,
-                     :company_address, :company_logo, :description, :value, :payment_form, "emitido", :user_id)'
+                     :company_address, :company_logo, :description, :value, :payment_form, 1, "emitido", :user_id)'
             );
             $statement->execute([
                 'client_id' => $clientId,
@@ -200,7 +204,8 @@ final class ReceiptService
         if ($type === 'avulso') $where[] = 'receipt.ordem_servico_id IS NULL';
 
         $sql = 'SELECT receipt.id, receipt.numero, receipt.cliente_id, receipt.cliente_nome,
-                       receipt.descricao, receipt.valor, receipt.forma_pagamento, receipt.status,
+                       receipt.descricao, receipt.valor, receipt.forma_pagamento,
+                       receipt.quantidade_parcelas, receipt.status,
                        receipt.emitido_em, receipt.ordem_servico_id, receipt.os_numero,
                        receipt.pagamento_id
                   FROM recibos receipt';
@@ -240,7 +245,8 @@ final class ReceiptService
             return [];
         }
         $statement = $this->connection->prepare(
-            "SELECT payment.id, payment.valor, payment.forma_pagamento, payment.recebido_em,
+            "SELECT payment.id, payment.valor, payment.forma_pagamento, payment.quantidade_parcelas,
+                    payment.recebido_em,
                     receipt.id AS recibo_id, receipt.numero AS recibo_numero, receipt.status AS recibo_status
                FROM ordem_servico_pagamentos payment
           LEFT JOIN recibos receipt ON receipt.pagamento_id = payment.id
@@ -272,7 +278,8 @@ final class ReceiptService
 
         $statement = $this->connection->prepare(
             "SELECT payment.id, payment.ordem_servico_id, payment.valor, payment.forma_pagamento,
-                    payment.recebido_em, receipt.id AS recibo_id, receipt.numero AS recibo_numero,
+                    payment.quantidade_parcelas, payment.recebido_em,
+                    receipt.id AS recibo_id, receipt.numero AS recibo_numero,
                     receipt.status AS recibo_status
                FROM ordem_servico_pagamentos payment
           LEFT JOIN recibos receipt ON receipt.pagamento_id = payment.id
@@ -294,7 +301,8 @@ final class ReceiptService
     {
         $statement = $this->connection->prepare(
             'SELECT payment.id, payment.ordem_servico_id, payment.valor, payment.forma_pagamento,
-                    payment.recebido_em, payment.status, service_order.numero AS os_numero,
+                    payment.quantidade_parcelas, payment.recebido_em, payment.status,
+                    service_order.numero AS os_numero,
                     service_order.status AS os_status, service_order.excluida_em,
                     client.id AS cliente_id, client.nome AS cliente_nome,
                     client.documento AS cliente_documento

@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('week-create-service')?.addEventListener('change', syncCreateEndFromDuration);
 
   document.addEventListener('click', function (event) {
-    const button = event.target.closest?.('.js-week-details, .js-week-schedule, .js-week-team, .js-week-status, .js-week-cancel');
+    const button = event.target.closest?.('.js-week-details, .js-week-schedule, .js-week-team, .js-week-status, .js-week-cancel, .js-week-delete');
     if (!button) return;
 
     if (button.classList.contains('js-week-details')) {
@@ -238,6 +238,11 @@ document.addEventListener('DOMContentLoaded', function () {
       setValue('week-cancel-id', button.dataset.orderId);
       const message = document.getElementById('week-cancel-message');
       if (message) message.textContent = 'Cancelar a OS ' + (button.dataset.orderNumber || '') + '?';
+    } else if (button.classList.contains('js-week-delete')) {
+      setValue('week-delete-id', button.dataset.orderId);
+      setValue('week-delete-reason', '');
+      const number = document.getElementById('week-delete-number');
+      if (number) number.textContent = button.dataset.orderNumber || '';
     }
   });
 

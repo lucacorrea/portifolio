@@ -82,6 +82,7 @@ function receipt_print_form(mixed $value): string
     return [
         'dinheiro' => 'Dinheiro',
         'pix' => 'Pix',
+        'boleto' => 'Boleto',
         'cartao_debito' => 'Cartão de débito',
         'cartao_credito' => 'Cartão de crédito',
         'transferencia' => 'Transferência',
@@ -128,6 +129,11 @@ function receipt_print_logo(mixed $value): ?string
 
 $logo = receipt_print_logo($receipt['empresa_logo'] ?? null);
 $isCanceled = ($receipt['status'] ?? '') === 'cancelado';
+$installmentCount = filter_var($receipt['quantidade_parcelas'] ?? 1, FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 1, 'max_range' => 60],
+]);
+if (!is_int($installmentCount)) $installmentCount = 1;
+$showsInstallments = in_array((string) ($receipt['forma_pagamento'] ?? ''), ['boleto', 'cartao_credito'], true);
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -192,6 +198,7 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
     <section class="details">
         <?php if (!empty($receipt['os_numero'])): ?><div><strong>Ordem de Serviço:</strong> <?= receipt_print_h($receipt['os_numero']) ?></div><?php endif; ?>
         <div><strong>Forma de pagamento:</strong> <?= receipt_print_h(receipt_print_form($receipt['forma_pagamento'])) ?></div>
+        <?php if ($showsInstallments): ?><div><strong>Parcelas:</strong> <?= receipt_print_h((string) $installmentCount) ?>x</div><?php endif; ?>
         <div><strong>Recebido em:</strong> <?= receipt_print_h(receipt_print_date($receipt['pagamento_recebido_em'] ?: $receipt['emitido_em'])) ?></div>
         <div><strong>Emitido por:</strong> <?= receipt_print_h($receipt['emitido_por_nome']) ?></div>
     </section>

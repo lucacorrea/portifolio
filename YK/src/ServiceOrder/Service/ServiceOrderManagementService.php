@@ -464,7 +464,7 @@ final class ServiceOrderManagementService
             if ($item->type() === 'servico' && ($item->referenceId() === null || $this->services->findById($item->referenceId()) === null)) {
                 throw new InvalidArgumentException('Serviço da OS não encontrado.');
             }
-            if ($item->type() === 'produto' && ($item->referenceId() === null || $this->products->findById($item->referenceId()) === null)) {
+            if ($item->type() === 'produto' && ($item->referenceId() === null || $this->products->findByIdForUpdate($item->referenceId()) === null)) {
                 throw new InvalidArgumentException('Produto da OS não encontrado.');
             }
         }

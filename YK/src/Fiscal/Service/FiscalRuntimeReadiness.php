@@ -26,6 +26,8 @@ final class FiscalRuntimeReadiness
             'dom' => class_exists('DOMDocument'),
             'simplexml' => function_exists('simplexml_load_string'),
             'soap' => class_exists('SoapClient'),
+            'mbstring' => function_exists('mb_strlen') && function_exists('mb_convert_encoding'),
+            'zlib' => function_exists('gzencode'),
             'nfephp' => class_exists('NFePHP\\NFe\\Tools'),
         ], $integrationEnabled, $productionEnabled, is_string($key) && strlen($key) === 32);
     }
@@ -39,6 +41,8 @@ final class FiscalRuntimeReadiness
             'dom' => 'DOM para assinatura e validação XML',
             'simplexml' => 'SimpleXML para respostas dos webservices',
             'soap' => 'SOAP para serviços da SEFAZ',
+            'mbstring' => 'Multibyte para tratamento de textos fiscais',
+            'zlib' => 'Zlib para compactação dos lotes fiscais',
             'nfephp' => 'Biblioteca fiscal NFePHP/SPED-NFe',
         ];
         $checks = [];

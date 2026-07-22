@@ -6,6 +6,7 @@ require_once __DIR__ . '/../includes/ui.php';
 
 $canConfigure = $authorization->can('nota_fiscal.configurar');
 $canManageCredentials = $authorization->can('nota_fiscal.gerenciar_credenciais');
+$canTestIntegration = $authorization->can('nota_fiscal.testar_integracao');
 $runtime = $application->fiscalRuntimeReadiness()->inspect();
 $overview = null;
 try {
@@ -15,6 +16,7 @@ try {
 }
 $readiness = is_array($overview['readiness'] ?? null) ? $overview['readiness'] : null;
 $configuration = is_array($overview['configuration'] ?? null) ? $overview['configuration'] : null;
+$integrationTest = is_array($overview['integration_test'] ?? null) ? $overview['integration_test'] : null;
 $certificates = is_array($overview['certificates'] ?? null) ? $overview['certificates'] : [];
 $series = is_array($overview['series'] ?? null) ? $overview['series'] : [];
 ?>
@@ -93,8 +95,24 @@ $series = is_array($overview['series'] ?? null) ? $overview['series'] : [];
         <?php if ($readiness === null): ?><p class="text-muted">Checklist indisponível até a migração fiscal.</p><?php else: ?>
           <?php foreach ($readiness['errors'] as $error): ?><div class="alert alert-danger py-2"><?= h($error) ?></div><?php endforeach; ?>
           <?php foreach ($readiness['warnings'] as $warning): ?><div class="alert alert-warning py-2"><?= h($warning) ?></div><?php endforeach; ?>
-          <?php if ($readiness['errors'] === []): ?><div class="alert alert-success">Cadastros fiscais completos para ativação local em homologação.</div><?php endif; ?>
-          <?php if ($canConfigure && $configuration !== null && $readiness['ready'] && $configuration['status'] !== 'ativa'): ?><form method="post" action="actions/configuracao-fiscal-ativar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="configuracao_id" value="<?= (int) $configuration['id'] ?>"><button class="btn-modal-save" type="submit"><i class="bi bi-check2-circle"></i> Ativar configuração de homologação</button></form><?php endif; ?>
+          <?php if ($readiness['errors'] === []): ?><div class="alert alert-success">Cadastros fiscais completos para o teste em homologação.</div><?php endif; ?>
+
+          <?php if ($integrationTest !== null): ?>
+            <div class="alert <?= $integrationTest['success'] ? 'alert-success' : 'alert-danger' ?> py-2">
+              Último teste SEFAZ em <?= h(date('d/m/Y H:i', strtotime((string) $integrationTest['tested_at']))) ?>:
+              <strong><?= h((string) ($integrationTest['code'] ?: 'falha')) ?></strong> — <?= h((string) $integrationTest['message']) ?>
+            </div>
+          <?php endif; ?>
+
+          <?php if ($canTestIntegration && $configuration !== null && $runtime['homologation_ready']): ?>
+            <form class="mb-2" method="post" action="actions/configuracao-fiscal-testar-sefaz.php">
+              <?= $csrf->field() ?><?php return_to_field(); ?>
+              <input type="hidden" name="configuracao_id" value="<?= (int) $configuration['id'] ?>">
+              <button class="btn-modal-save" type="submit"><i class="bi bi-cloud-check"></i> Testar comunicação com a SEFAZ</button>
+            </form>
+          <?php endif; ?>
+
+          <?php if ($canConfigure && $configuration !== null && $readiness['ready'] && $runtime['homologation_ready'] && ($integrationTest['success'] ?? false) && $configuration['status'] !== 'ativa'): ?><form method="post" action="actions/configuracao-fiscal-ativar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="configuracao_id" value="<?= (int) $configuration['id'] ?>"><button class="btn-modal-save" type="submit"><i class="bi bi-check2-circle"></i> Ativar configuração de homologação</button></form><?php endif; ?>
         <?php endif; ?>
       </div>
     </section>

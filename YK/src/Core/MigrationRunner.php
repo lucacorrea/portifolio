@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -371,6 +371,13 @@ final class MigrationRunner
                 && $this->permissionSatisfied('os.excluir')
                 && $this->permissionSatisfied('contas_receber.registrar_pagamento')
                 && $this->permissionSatisfied('recibo.emitir'),
+            20 => $this->allColumns('produtos', ['excluido_em', 'excluido_por', 'motivo_exclusao'])
+                && $this->allIndexes([['produtos', 'idx_produtos_exclusao']])
+                && $this->allForeignKeys(['fk_produtos_exclusao_usuario'])
+                && $this->permissionSatisfied('produto.excluir'),
+            21 => $this->allColumns('ordem_servico_pagamentos', ['quantidade_parcelas'])
+                && $this->allColumns('recibos', ['quantidade_parcelas'])
+                && $this->columnTypeContains('ordem_servico_pagamentos', 'forma_pagamento', "'boleto'"),
             default => null,
         };
     }

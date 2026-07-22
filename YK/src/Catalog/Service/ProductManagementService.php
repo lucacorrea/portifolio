@@ -55,6 +55,17 @@ final class ProductManagementService
         $this->products->update($id, $data);
     }
 
+    public function deleteProduct(int $id, string $reason, int $userId): void
+    {
+        $reason = trim($reason);
+        $length = function_exists('mb_strlen') ? mb_strlen($reason, 'UTF-8') : strlen($reason);
+        if ($reason === '' || $length > 255 || str_contains($reason, "\0") || $reason !== strip_tags($reason)) {
+            throw new InvalidArgumentException('Informe um motivo válido com até 255 caracteres.');
+        }
+
+        $this->products->softDelete($id, $reason, $userId);
+    }
+
     private function assertUniqueBarcode(
         ?string $barcode,
         ?int $ignoreId = null

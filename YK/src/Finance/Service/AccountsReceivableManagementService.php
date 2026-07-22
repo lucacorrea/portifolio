@@ -14,7 +14,7 @@ final class AccountsReceivableManagementService
 {
     use AccountsReceivableOrderPayments;
 
-    private const PAYMENT_FORMS = ['dinheiro', 'pix', 'cartao_debito', 'cartao_credito', 'transferencia', 'outro'];
+    private const PAYMENT_FORMS = ['dinheiro', 'pix', 'boleto', 'cartao_debito', 'cartao_credito', 'transferencia', 'outro'];
     private const ELIGIBLE_PAYMENT_STATUSES = ['pendente', 'parcial', 'vencida'];
 
     public function __construct(
@@ -321,6 +321,7 @@ final class AccountsReceivableManagementService
         string $form,
         ?string $notes,
         int $userId,
+        int $installmentCount = 1,
         ?string $paymentToken = null,
         string $cashDescription = 'Recebimento de conta a receber'
     ): int
@@ -339,14 +340,15 @@ final class AccountsReceivableManagementService
         );
         $statement = $this->connection->prepare(
             'INSERT INTO ordem_servico_pagamentos
-                (ordem_servico_id, valor, forma_pagamento, recebido_em, observacao, status,
+                (ordem_servico_id, valor, forma_pagamento, quantidade_parcelas, recebido_em, observacao, status,
                  registrado_por, caixa_movimentacao_id, payment_token)
-             VALUES (:order_id, :value, :form, NOW(), :notes, "ativo", :user_id, :cash_id, :payment_token)'
+             VALUES (:order_id, :value, :form, :installment_count, NOW(), :notes, "ativo", :user_id, :cash_id, :payment_token)'
         );
         $statement->execute([
             'order_id' => $account['ordem_servico_id'],
             'value' => $value,
             'form' => $form,
+            'installment_count' => $installmentCount,
             'notes' => $notes,
             'user_id' => $userId,
             'cash_id' => $cashId,

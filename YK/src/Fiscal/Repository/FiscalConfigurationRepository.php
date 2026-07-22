@@ -50,6 +50,81 @@ final class FiscalConfigurationRepository
         return $row === false ? null : $row;
     }
 
+    /** @return array<string,mixed>|null */
+    public function connectionProfile(int $configurationId): ?array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT cfg.id, cfg.ambiente, cfg.modelo, cfg.uf, cfg.schema_versao,
+                    cfg.csc_id, cfg.csc_ciphertext, cfg.csc_nonce, cfg.csc_tag,
+                    cfg.csc_algoritmo, cfg.segredo_chave_versao AS csc_chave_versao,
+                    cert.arquivo_referencia, cert.titular_cnpj, cert.valido_ate,
+                    cert.status AS certificado_status, cert.senha_ciphertext,
+                    cert.senha_nonce, cert.senha_tag, cert.cifra_algoritmo,
+                    cert.chave_versao AS certificado_chave_versao,
+                    empresa.razao_social
+               FROM fiscal_configuracoes cfg
+               JOIN fiscal_certificados cert ON cert.id = cfg.certificado_id
+               JOIN configuracoes_empresa empresa ON empresa.id = 1
+              WHERE cfg.id = :id LIMIT 1'
+        );
+        $statement->execute(['id' => $configurationId]);
+        $row = $statement->fetch();
+
+        return $row === false ? null : $row;
+    }
+
+    /** @return array{success:bool,code:string,message:string,tested_at:string}|null */
+    public function latestIntegrationTest(int $configurationId): ?array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT acao, detalhes, criado_em
+               FROM fiscal_auditoria
+              WHERE entidade_tipo = \'configuracao\' AND entidade_id = :id
+                AND acao IN (\'teste_sefaz_sucesso\', \'teste_sefaz_falha\')
+              ORDER BY id DESC LIMIT 1'
+        );
+        $statement->execute(['id' => $configurationId]);
+        $row = $statement->fetch();
+        if ($row === false) {
+            return null;
+        }
+
+        $details = json_decode((string) ($row['detalhes'] ?? ''), true);
+        $details = is_array($details) ? $details : [];
+
+        return [
+            'success' => $row['acao'] === 'teste_sefaz_sucesso',
+            'code' => substr((string) ($details['code'] ?? ''), 0, 20),
+            'message' => substr((string) ($details['message'] ?? ''), 0, 180),
+            'tested_at' => (string) $row['criado_em'],
+        ];
+    }
+
+    public function hasSuccessfulIntegrationTest(int $configurationId): bool
+    {
+        return ($this->latestIntegrationTest($configurationId)['success'] ?? false) === true;
+    }
+
+    public function recordIntegrationTest(
+        int $configurationId,
+        string $environment,
+        string $model,
+        int $userId,
+        bool $success,
+        string $code,
+        string $message
+    ): void {
+        $this->audit(
+            'configuracao',
+            $configurationId,
+            $success ? 'teste_sefaz_sucesso' : 'teste_sefaz_falha',
+            $environment,
+            $model,
+            $userId,
+            ['code' => substr($code, 0, 20), 'message' => substr($message, 0, 180)]
+        );
+    }
+
     /** @return array<int,array<string,mixed>> */
     public function activeSeries(string $environment, string $model): array
     {
@@ -76,6 +151,16 @@ final class FiscalConfigurationRepository
         )->fetchAll();
     }
 
+    public function certificateFingerprintExists(string $fingerprint): bool
+    {
+        $statement = $this->connection->prepare(
+            'SELECT 1 FROM fiscal_certificados WHERE certificado_fingerprint_sha256 = :fingerprint LIMIT 1'
+        );
+        $statement->execute(['fingerprint' => $fingerprint]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
     /** @return array<string,int> */
     public function productReadiness(int $crt): array
     {
@@ -90,7 +175,7 @@ final class FiscalConfigurationRepository
                     SUM(CASE WHEN cst_cofins IS NULL OR cst_cofins NOT REGEXP \'^[0-9]{2}$\' THEN 1 ELSE 0 END) AS missing_cofins,
                     SUM(CASE WHEN unidade_tributavel IS NULL OR TRIM(unidade_tributavel) = \'\' THEN 1 ELSE 0 END) AS missing_tax_unit
                FROM produtos
-              WHERE status = \'ativo\' AND preco_venda > 0'
+              WHERE status = \'ativo\' AND excluido_em IS NULL AND preco_venda > 0'
         );
         $row = $statement->fetch() ?: [];
         return array_map('intval', $row);
@@ -195,20 +280,22 @@ final class FiscalConfigurationRepository
     /** @param array<string,mixed> $data */
     public function saveSeries(array $data, int $userId): void
     {
-        $this->connection->prepare(
-            'INSERT INTO fiscal_series
-                (ambiente, modelo, serie, proximo_numero, status, criado_por, atualizado_por)
-             VALUES (:environment, :model, :series, :next_number, \'ativa\', :user_id, :user_id)
-             ON DUPLICATE KEY UPDATE
-                proximo_numero = GREATEST(proximo_numero, VALUES(proximo_numero)),
-                status = \'ativa\', atualizado_por = VALUES(atualizado_por)'
-        )->execute([
-            'environment' => $data['environment'], 'model' => $data['model'],
-            'series' => $data['series'], 'next_number' => $data['next_number'], 'user_id' => $userId,
-        ]);
-        $this->audit('serie', null, 'configurada', $data['environment'], $data['model'], $userId, [
-            'series' => $data['series'], 'next_number' => $data['next_number'],
-        ]);
+        $this->transactional(function () use ($data, $userId): void {
+            $this->connection->prepare(
+                'INSERT INTO fiscal_series
+                    (ambiente, modelo, serie, proximo_numero, status, criado_por, atualizado_por)
+                 VALUES (:environment, :model, :series, :next_number, \'ativa\', :user_id, :user_id)
+                 ON DUPLICATE KEY UPDATE
+                    proximo_numero = GREATEST(proximo_numero, VALUES(proximo_numero)),
+                    status = \'ativa\', atualizado_por = VALUES(atualizado_por)'
+            )->execute([
+                'environment' => $data['environment'], 'model' => $data['model'],
+                'series' => $data['series'], 'next_number' => $data['next_number'], 'user_id' => $userId,
+            ]);
+            $this->audit('serie', null, 'configurada', $data['environment'], $data['model'], $userId, [
+                'series' => $data['series'], 'next_number' => $data['next_number'],
+            ]);
+        });
     }
 
     public function activateConfiguration(int $id, string $environment, string $model, int $userId): void
