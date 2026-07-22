@@ -43,6 +43,7 @@ $canTeam = $authorization->can('painel_semanal.alterar_dupla');
 $canSchedule = $authorization->can('painel_semanal.alterar_horario');
 $canStatus = $authorization->can('painel_semanal.alterar_status');
 $canCancel = $authorization->can('painel_semanal.cancelar');
+$canViewOs = $authorization->can('os.visualizar');
 
 function weekly_status_label(string $status): string { return ['agendada'=>'Agendada','em_deslocamento'=>'Em deslocamento','em_execucao'=>'Em execução','aguardando_peca'=>'Aguardando peça','finalizada'=>'Finalizada','cancelada'=>'Cancelada','aberta'=>'Aberta','aguardando_agendamento'=>'Aguardando agendamento'][$status] ?? $status; }
 function weekly_priority_label(string $priority): string { return ['baixa'=>'Baixa','media'=>'Média','alta'=>'Alta','urgente'=>'Urgente'][$priority] ?? 'Média'; }
@@ -80,23 +81,24 @@ $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday
                             <section class="team-group"><header class="team-group-header"><div class="team-info"><strong class="team-names"><?= h($teamName) ?></strong><span class="team-role"><?= h(count($teamOrders) . ' atendimento' . (count($teamOrders) === 1 ? '' : 's')) ?></span></div></header>
                                 <?php foreach ($teamOrders as $order): ?>
                                     <article class="week-service-card priority-<?= h($order->priority()) ?>" data-record-actions>
-                                        <div class="week-service-time"><?= h(weekly_time($order->scheduledStart(), $order->scheduledEnd())) ?></div>
-                                        <strong class="week-service-os"><?= h($order->displayNumber()) ?></strong>
-                                        <div class="week-service-client"><?= h($order->clientName()) ?></div>
-                                        <div class="week-service-title"><?= h($order->mainService() ?? 'Serviço não informado') ?></div>
-                                        <div class="week-service-meta"><span class="badge-soft badge-<?= h($order->status() === 'finalizada' ? 'green' : 'blue') ?>"><?= h(weekly_status_label($order->status())) ?></span><?php if ($order->priority() === 'urgente'): ?><span class="priority-label">Urgente</span><?php endif; ?></div>
-                                        <div class="mt-2 d-flex justify-content-end record-actions-source">
+                                        <div class="week-service-header">
+                                            <div><span class="week-service-time"><?= h(weekly_time($order->scheduledStart(), $order->scheduledEnd())) ?></span><strong class="week-service-os"><?= h($order->displayNumber()) ?></strong></div>
+                                            <div class="record-actions-source week-service-actions">
                                             <div class="dropdown table-action-dropdown">
                                                 <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações da OS <?= h($order->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
                                                 <ul class="dropdown-menu dropdown-menu-end">
-                                                    <?php if ($canEdit): ?><li><a class="dropdown-item" href="ordens-servico.php?search=<?= h(rawurlencode($order->displayNumber())) ?>"><i class="bi bi-eye"></i> Abrir OS</a></li><?php endif; ?>
+                                                    <?php if ($canViewOs): ?><li><a class="dropdown-item" href="ordens-servico.php?search=<?= h(rawurlencode($order->displayNumber())) ?>"><i class="bi bi-box-arrow-up-right"></i> Abrir OS</a></li><?php endif; ?>
                                                     <?php if ($canSchedule): ?><li><button class="dropdown-item js-week-schedule" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-start="<?= h($order->scheduledStart() ?? '') ?>" data-end="<?= h($order->scheduledEnd() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-week-schedule"><i class="bi bi-calendar-event"></i> Reagendar</button></li><?php endif; ?>
                                                     <?php if ($canTeam): ?><li><button class="dropdown-item js-week-team" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-primary-id="<?= h((string) ($order->primaryEmployeeId() ?? '')) ?>" data-support-id="<?= h((string) ($order->supportEmployeeId() ?? '')) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-team"><i class="bi bi-people"></i> Alterar equipe</button></li><?php endif; ?>
                                                     <?php if ($canStatus && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-week-status" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-current-status="<?= h($order->status()) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-status"><i class="bi bi-arrow-repeat"></i> Alterar status</button></li><?php endif; ?>
                                                     <?php if ($canCancel && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item text-danger js-week-cancel" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-cancel"><i class="bi bi-x-circle"></i> Cancelar</button></li><?php endif; ?>
                                                 </ul>
                                             </div>
+                                            </div>
                                         </div>
+                                        <div class="week-service-client" title="<?= h($order->clientName()) ?>"><?= h($order->clientName()) ?></div>
+                                        <div class="week-service-title" title="<?= h($order->mainService() ?? 'Serviço não informado') ?>"><?= h($order->mainService() ?? 'Serviço não informado') ?></div>
+                                        <div class="week-service-footer"><div class="week-service-meta"><span class="badge-soft badge-<?= h($order->status() === 'finalizada' ? 'green' : 'blue') ?>"><?= h(weekly_status_label($order->status())) ?></span><?php if ($order->priority() === 'urgente'): ?><span class="priority-label">Urgente</span><?php endif; ?></div><?php if ($canViewOs): ?><button class="week-details-button js-week-details" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-details" aria-haspopup="dialog" aria-label="Ver detalhes da OS <?= h($order->displayNumber()) ?>"><i class="bi bi-eye" aria-hidden="true"></i><span>Ver detalhes</span></button><?php endif; ?></div>
                                     </article>
                                 <?php endforeach; ?>
                             </section>
@@ -113,6 +115,25 @@ $days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday
 <?php function week_client_options(array $clients): void { foreach ($clients as $client) echo '<option value="' . h((string) $client->id()) . '">' . h($client->name()) . '</option>'; } ?>
 <?php function week_service_options(array $services): void { foreach ($services as $service) echo '<option value="' . h((string) $service->id()) . '" data-duration="' . h((string) $service->durationMinutes()) . '">' . h($service->displayCode() . ' — ' . $service->name()) . '</option>'; } ?>
 <?php function week_return_fields(DateTimeImmutable $weekStart): void { return_to_field(); echo '<input type="hidden" name="return_week" value="' . h($weekStart->format('Y-m-d')) . '">'; } ?>
+<?php if ($canViewOs): ?>
+<div class="modal fade" id="modal-week-details" tabindex="-1" aria-labelledby="week-details-title" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-content visual-modal">
+      <div class="modal-header"><div><h2 class="modal-title fs-5" id="week-details-title">Detalhes da OS</h2><p class="text-muted small mb-0" id="week-details-subtitle"></p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+      <div class="modal-body">
+        <div class="week-details-loading" id="week-details-loading" role="status">Carregando detalhes…</div>
+        <div class="alert alert-danger d-none" id="week-details-error" role="alert"></div>
+        <div class="d-none" id="week-details-content">
+          <section class="form-section"><h3 class="form-section-title">Informações principais</h3><div class="employee-detail-grid" id="week-details-summary"></div></section>
+          <section class="form-section"><h3 class="form-section-title">Equipe</h3><div class="week-details-team" id="week-details-team"></div></section>
+          <section class="form-section"><h3 class="form-section-title">Itens da OS</h3><div class="table-panel-wrap" id="week-details-items"></div></section>
+        </div>
+      </div>
+      <div class="modal-footer"><a class="btn-filter btn-filter-ghost" id="week-details-open-order" href="ordens-servico.php"><i class="bi bi-box-arrow-up-right"></i> Abrir OS</a><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Fechar</button></div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 <?php if ($canCreate): ?>
 <div class="modal fade" id="modal-week-create" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">

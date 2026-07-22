@@ -12,6 +12,13 @@ document.addEventListener('DOMContentLoaded', function () {
     em_execucao: ['wait_part'],
     aguardando_peca: ['start_execution'],
   };
+  const statusLabels = {
+    rascunho: 'Rascunho', aberta: 'Aberta', aguardando_agendamento: 'Aguardando agendamento',
+    agendada: 'Agendada', em_deslocamento: 'Em deslocamento', em_execucao: 'Em execução',
+    aguardando_peca: 'Aguardando peça', finalizada: 'Finalizada', cancelada: 'Cancelada',
+  };
+  const priorityLabels = { baixa: 'Baixa', media: 'Média', alta: 'Alta', urgente: 'Urgente' };
+  let detailRequest = 0;
 
   function toLocalInput(value) {
     if (!value) return '';
@@ -58,6 +65,132 @@ document.addEventListener('DOMContentLoaded', function () {
     body.prepend(alert);
   }
 
+  function formatDateTime(value) {
+    if (!value) return '-';
+    const date = new Date(String(value).replace(' ', 'T'));
+    if (Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(date);
+  }
+
+  function formatSchedule(start, end) {
+    if (!start) return 'Não agendado';
+    return formatDateTime(start) + (end ? ' até ' + formatDateTime(end) : '');
+  }
+
+  function detailItem(label, value) {
+    const item = document.createElement('div');
+    item.className = 'employee-detail-item';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const content = document.createElement('strong');
+    content.textContent = value === null || value === undefined || String(value).trim() === '' ? '-' : String(value);
+    item.append(name, content);
+    return item;
+  }
+
+  function clientAddress(order) {
+    const street = [order.client_address, order.client_number].filter(Boolean).join(', ');
+    const city = [order.client_district, order.client_city, order.client_state].filter(Boolean).join(' · ');
+    return [street, city].filter(Boolean).join(' — ') || '-';
+  }
+
+  function renderWeekDetails(data) {
+    const order = data.order || {};
+    const subtitle = document.getElementById('week-details-subtitle');
+    if (subtitle) subtitle.textContent = order.number || '';
+    const openOrder = document.getElementById('week-details-open-order');
+    if (openOrder) {
+      openOrder.href = 'ordens-servico.php?search=' + encodeURIComponent(order.number || '');
+      openOrder.classList.remove('disabled');
+      openOrder.removeAttribute('aria-disabled');
+    }
+
+    const summary = document.getElementById('week-details-summary');
+    summary.replaceChildren();
+    const equipment = [order.equipment_type, order.equipment_brand, order.equipment_model, order.equipment_capacity].filter(Boolean).join(' ');
+    const contact = order.client_whatsapp || order.client_phone || '-';
+    [
+      ['Número', order.number], ['Cliente', order.client_name], ['Contato', contact], ['Endereço', clientAddress(order)],
+      ['Status', statusLabels[order.status] || order.status], ['Prioridade', priorityLabels[order.priority] || order.priority],
+      ['Agendamento', formatSchedule(order.scheduled_start, order.scheduled_end)], ['Equipamento', equipment || '-'],
+      ['Número de série', order.equipment_serial_number], ['Ambiente', order.equipment_environment], ['Local', order.equipment_location],
+      ['Problema relatado', order.reported_problem], ['Problema identificado', order.identified_problem], ['Diagnóstico', order.diagnosis],
+      ['Solução', order.solution], ['Recomendação', order.recommendation], ['Observações internas', order.internal_notes], ['Observações', order.notes],
+      ['Criada em', formatDateTime(order.created_at)], ['Última atualização', formatDateTime(order.updated_at)],
+    ].forEach(function (pair) { summary.appendChild(detailItem(pair[0], pair[1])); });
+
+    const team = document.getElementById('week-details-team');
+    team.replaceChildren();
+    if (!Array.isArray(data.team) || data.team.length === 0) {
+      team.appendChild(detailItem('Equipe', 'Não definida'));
+    } else {
+      data.team.forEach(function (member) {
+        team.appendChild(detailItem(member.primary ? 'Responsável principal' : (member.role || 'Integrante'), member.display || member.employee_name));
+      });
+    }
+
+    const items = document.getElementById('week-details-items');
+    items.replaceChildren();
+    if (!Array.isArray(data.items) || data.items.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'text-muted mb-0';
+      empty.textContent = 'Nenhum item cadastrado.';
+      items.appendChild(empty);
+    } else {
+      const table = document.createElement('table');
+      table.className = 'os-table';
+      const head = document.createElement('thead');
+      const headRow = document.createElement('tr');
+      ['Tipo', 'Descrição', 'Qtd.', 'Unidade'].forEach(function (label) {
+        const th = document.createElement('th'); th.textContent = label; headRow.appendChild(th);
+      });
+      head.appendChild(headRow);
+      const body = document.createElement('tbody');
+      data.items.forEach(function (item) {
+        const row = document.createElement('tr');
+        [item.type, item.description, item.quantity, item.unit].forEach(function (value) {
+          const cell = document.createElement('td'); cell.textContent = value || '-'; row.appendChild(cell);
+        });
+        body.appendChild(row);
+      });
+      table.append(head, body);
+      items.appendChild(table);
+    }
+  }
+
+  async function loadWeekDetails(button) {
+    const request = ++detailRequest;
+    const loading = document.getElementById('week-details-loading');
+    const error = document.getElementById('week-details-error');
+    const content = document.getElementById('week-details-content');
+    const subtitle = document.getElementById('week-details-subtitle');
+    const openOrder = document.getElementById('week-details-open-order');
+    if (!loading || !error || !content) return;
+    loading.classList.remove('d-none');
+    error.classList.add('d-none');
+    content.classList.add('d-none');
+    if (subtitle) subtitle.textContent = button.dataset.orderNumber || '';
+    if (openOrder) {
+      openOrder.removeAttribute('href');
+      openOrder.classList.add('disabled');
+      openOrder.setAttribute('aria-disabled', 'true');
+    }
+    try {
+      const response = await fetch('actions/os-detalhes.php?id=' + encodeURIComponent(button.dataset.orderId || ''), { headers: { Accept: 'application/json' } });
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error || 'Não foi possível carregar os detalhes.');
+      if (request !== detailRequest) return;
+      renderWeekDetails(data);
+      loading.classList.add('d-none');
+      content.classList.remove('d-none');
+    } catch (loadError) {
+      if (request !== detailRequest) return;
+      loading.classList.add('d-none');
+      error.textContent = 'Não foi possível carregar os detalhes da OS.';
+      error.classList.remove('d-none');
+    }
+  }
+
   document.querySelectorAll('.js-primary-employee,.js-support-employee').forEach(function (select) {
     select.addEventListener('change', function () { updateEmployeeOptions(select.closest('form') || document); });
   });
@@ -79,10 +212,12 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('week-create-service')?.addEventListener('change', syncCreateEndFromDuration);
 
   document.addEventListener('click', function (event) {
-    const button = event.target.closest?.('.js-week-schedule, .js-week-team, .js-week-status, .js-week-cancel');
+    const button = event.target.closest?.('.js-week-details, .js-week-schedule, .js-week-team, .js-week-status, .js-week-cancel');
     if (!button) return;
 
-    if (button.classList.contains('js-week-schedule')) {
+    if (button.classList.contains('js-week-details')) {
+      loadWeekDetails(button);
+    } else if (button.classList.contains('js-week-schedule')) {
       setValue('week-schedule-id', button.dataset.orderId);
       setValue('week-schedule-start', toLocalInput(button.dataset.start));
       setValue('week-schedule-end', toLocalInput(button.dataset.end));
