@@ -93,7 +93,6 @@ final class ServiceOrderManagementService
             $this->validateReferences($data);
             $this->validateStateRequirements($data->status(), $team, $schedule);
             if ($team !== null && $team->hasMembers()) $this->validateEmployees($team);
-            if ($team !== null && $team->hasMembers() && $schedule !== null) $this->validateConflicts(null, $team, $schedule);
 
             return $this->orders->create(
                 $data,
@@ -156,9 +155,6 @@ final class ServiceOrderManagementService
             $this->validateStateRequirements($data->status(), $team, $schedule);
             if ($team !== null && $team->hasMembers()) {
                 $this->validateEmployees($team);
-            }
-            if ($team !== null && $team->hasMembers() && $schedule !== null) {
-                $this->validateConflicts(null, $team, $schedule);
             }
 
             return $this->orders->create(

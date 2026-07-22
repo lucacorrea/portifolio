@@ -91,6 +91,7 @@ $lifecycleSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Servi
 $receiptSource = file_get_contents(dirname(__DIR__) . '/src/Finance/Service/ReceiptService.php');
 $accountsSource = file_get_contents(dirname(__DIR__) . '/src/Finance/Service/AccountsReceivableManagementService.php');
 $orderRepositorySource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Repository/ServiceOrderRepository.php');
+$orderManagementSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderManagementService.php');
 financialFlowAssert(is_string($finalizationAction), 'Action de finalização deve ser legível.');
 financialFlowAssert(!str_contains((string) $finalizationAction, "requirePermission('os.finalizar_com_pagamento')"), 'Finalização não pode exigir permissão de pagamento.');
 financialFlowAssert(str_contains((string) $paymentAction, "os_action_context('contas_receber.registrar_pagamento')"), 'Pagamento de OS deve exigir permissão financeira.');
@@ -109,5 +110,14 @@ financialFlowAssert(
     str_contains((string) $orderRepositorySource, 'if ($includeStatus)'),
     'Binding compartilhado deve incluir :status somente nas queries que possuem esse placeholder.'
 );
+
+$manualCreateStart = strpos((string) $orderManagementSource, 'public function createOrder(');
+$budgetCreateStart = strpos((string) $orderManagementSource, 'public function createOrderFromApprovedBudget(');
+$approvalStart = strpos((string) $orderManagementSource, 'public function approveBudgetAndCreateOrder(');
+financialFlowAssert($manualCreateStart !== false && $budgetCreateStart !== false && $approvalStart !== false, 'Fluxos de criação de OS devem ser localizáveis.');
+$manualCreateSource = substr((string) $orderManagementSource, $manualCreateStart, $budgetCreateStart - $manualCreateStart);
+$budgetCreateSource = substr((string) $orderManagementSource, $budgetCreateStart, $approvalStart - $budgetCreateStart);
+financialFlowAssert(!str_contains($manualCreateSource, 'validateConflicts'), 'Nova OS manual deve aceitar sobreposição de horário da equipe.');
+financialFlowAssert(!str_contains($budgetCreateSource, 'validateConflicts'), 'Nova OS de orçamento deve aceitar sobreposição de horário da equipe.');
 
 echo "ServiceOrderFinancialFlowValidationTest: OK\n";
