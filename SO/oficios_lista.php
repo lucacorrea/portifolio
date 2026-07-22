@@ -7,6 +7,16 @@ $page_title = "Lista de Solicitações";
 $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
 $status_options = ['PENDENTE_ITENS', 'ENVIADO', 'EM_ANALISE', 'APROVADO', 'REPROVADO', 'ARQUIVADO'];
 
+if (empty($_SESSION['csrf_aprovacao_multipla'])) {
+    $_SESSION['csrf_aprovacao_multipla'] = bin2hex(random_bytes(32));
+}
+$csrf_aprovacao_multipla = (string)$_SESSION['csrf_aprovacao_multipla'];
+
+if (empty($_SESSION['csrf_datas_multiplas'])) {
+    $_SESSION['csrf_datas_multiplas'] = bin2hex(random_bytes(32));
+}
+$csrf_datas_multiplas = (string)$_SESSION['csrf_datas_multiplas'];
+
 function oficios_lista_return_url(array $source, array $status_options): string
 {
     $safe = [];
@@ -1287,14 +1297,19 @@ include 'views/layout/header.php';
         <?php display_flash(); ?>
         <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
             <form action="aprovar_multiplos.php" method="POST" id="form-aprovacao-lote">
+                <input type="hidden" name="csrf_token" value="<?php echo h($csrf_aprovacao_multipla); ?>">
+                <input type="hidden" name="csrf_data_token" value="<?php echo h($csrf_datas_multiplas); ?>">
+                <input type="hidden" name="return_query" value="<?php echo h($_SERVER['QUERY_STRING'] ?? ''); ?>">
 
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px;flex-wrap:wrap">
 
-                    <div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                         <button
                             type="button"
                             class="btn btn-success btn-sm"
-                            onclick="abrirModalAprovacao()">
+                            id="btn-aprovar-selecionados"
+                            onclick="abrirModalAprovacao()"
+                            disabled>
 
                             <i class="fas fa-check-circle"></i>
 
@@ -1302,8 +1317,18 @@ include 'views/layout/header.php';
 
                         </button>
 
+                        <button
+                            type="button"
+                            class="btn btn-outline btn-sm"
+                            id="btn-editar-datas"
+                            onclick="abrirModalDatas()"
+                            disabled>
+                            <i class="fas fa-calendar-alt"></i>
+                            Editar data em lote
+                        </button>
+
                         <span id="contadorSelecionados"
-                            style="margin-left:15px;font-weight:bold;color:#666">
+                            style="font-weight:bold;color:#666">
                             0 selecionados
                         </span>
 
@@ -1323,7 +1348,7 @@ include 'views/layout/header.php';
 
                                 <th width="40">
 
-                                    <input type="checkbox" id="selecionarTodos">
+                                    <input type="checkbox" id="selecionarTodos" aria-label="Selecionar todos os ofícios desta página">
 
                                 </th>
 
@@ -1348,7 +1373,9 @@ include 'views/layout/header.php';
                                         <input type="checkbox"
                                             class="checkOficio"
                                             name="oficios[]"
-                                            value="<?php echo $o['id']; ?>">
+                                            value="<?php echo (int)$o['id']; ?>"
+                                            data-status="<?php echo h($o['status']); ?>"
+                                            aria-label="Selecionar ofício <?php echo h($o['numero']); ?>">
                                     </td>
 
                                 <?php endif; ?>
@@ -1462,6 +1489,87 @@ include 'views/layout/header.php';
                     </a>
                 </div>
             <?php endif; ?>
+
+            <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
+                <div class="modal-aprovacao" id="modalAprovacao" aria-hidden="true">
+                    <div class="modal-aprovacao-box" role="dialog" aria-modal="true" aria-labelledby="modal-aprovacao-title">
+                        <div class="modal-header-custom">
+                            <div>
+                                <h3 id="modal-aprovacao-title">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    Aprovar solicitações
+                                </h3>
+                                <small>Confirme a aprovação dos ofícios selecionados.</small>
+                            </div>
+                            <button type="button" class="btn-fechar-modal" onclick="fecharModalAprovacao()" aria-label="Fechar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div class="modal-body-custom">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong id="totalSelecionados">0 solicitações selecionadas</strong>
+                            </div>
+                            <p style="margin: 0; color: var(--text-muted);">
+                                Somente os selecionados com status ENVIADO serão aprovados. A geração da aquisição e a escolha de fornecedor continuam no fluxo próprio de cada ofício.
+                            </p>
+                        </div>
+
+                        <div class="modal-footer-custom">
+                            <button type="button" class="btn btn-secondary" onclick="fecharModalAprovacao()">Cancelar</button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check-circle"></i>
+                                Confirmar aprovação
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-aprovacao" id="modalDatas" aria-hidden="true">
+                    <div class="modal-aprovacao-box" role="dialog" aria-modal="true" aria-labelledby="modal-datas-title">
+                        <div class="modal-header-custom">
+                            <div>
+                                <h3 id="modal-datas-title">
+                                    <i class="fas fa-calendar-alt" style="color: var(--primary);"></i>
+                                    Editar datas em lote
+                                </h3>
+                                <small>A nova data será aplicada aos ofícios e às aquisições vinculadas.</small>
+                            </div>
+                            <button type="button" class="btn-fechar-modal" onclick="fecharModalDatas()" aria-label="Fechar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div class="modal-body-custom">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong id="totalDatasSelecionadas">0 solicitações selecionadas</strong>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="nova-data-lote" class="form-label">Nova data</label>
+                                <input
+                                    type="date"
+                                    name="nova_data"
+                                    id="nova-data-lote"
+                                    class="form-control form-control-lg"
+                                    value="<?php echo date('Y-m-d'); ?>">
+                                <small class="text-muted">O horário original de cada registro será preservado.</small>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer-custom">
+                            <button type="button" class="btn btn-secondary" onclick="fecharModalDatas()">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i>
+                                Atualizar datas
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <?php endif; ?>
     </div>
 </div>
 
@@ -1496,119 +1604,6 @@ include 'views/layout/header.php';
                     <button type="submit" class="btn btn-danger-action btn-sm">
                         <i class="fas fa-trash"></i> Excluir definitivamente
                     </button>
-                </div>
-                <div class="modal-aprovacao" id="modalAprovacao">
-
-                    <div class="modal-aprovacao-box">
-
-                        <div class="modal-header-custom">
-
-                            <div>
-
-                                <h3>
-
-                                    <i class="fas fa-check-circle text-success"></i>
-
-                                    Aprovar Solicitações
-
-                                </h3>
-
-                                <small>
-
-                                    Escolha o fornecedor para concluir a aprovação.
-
-                                </small>
-
-                            </div>
-
-                            <button
-                                type="button"
-                                class="btn-fechar-modal"
-                                onclick="fecharModalAprovacao()">
-
-                                <i class="fas fa-times"></i>
-
-                            </button>
-
-                        </div>
-
-                        <div class="modal-body-custom">
-
-                            <div class="alert alert-info">
-
-                                <i class="fas fa-info-circle"></i>
-
-                                <strong id="totalSelecionados">
-
-                                    0 solicitações selecionadas
-
-                                </strong>
-
-                            </div>
-
-                            <div class="form-group">
-
-                                <label>Fornecedor</label>
-
-                                <select
-                                    name="fornecedor_id"
-                                    class="form-control form-control-lg"
-                                    required>
-
-                                    <option value="">Selecione...</option>
-
-                                    <?php foreach ($fornecedores_list as $f): ?>
-
-                                        <option value="<?= $f['id']; ?>">
-
-                                            <?= htmlspecialchars($f['nome']); ?>
-
-                                        </option>
-
-                                    <?php endforeach; ?>
-
-                                </select>
-
-                            </div>
-
-                            <div class="form-group mt-3">
-
-                                <label>Observação</label>
-
-                                <textarea
-                                    name="observacao"
-                                    class="form-control"
-                                    rows="4"></textarea>
-
-                            </div>
-
-                        </div>
-
-                        <div class="modal-footer-custom">
-
-                            <button
-                                type="button"
-                                class="btn btn-secondary"
-                                onclick="fecharModalAprovacao()">
-
-                                Cancelar
-
-                            </button>
-
-                            <button
-                                type="submit"
-                                class="btn btn-success">
-
-                                <i class="fas fa-check-circle"></i>
-
-                                Aprovar Solicitações
-
-                            </button>
-
-                        </div>
-
-                    </div>
-
                 </div>
             </form>
         </div>
@@ -1693,16 +1688,37 @@ include 'views/layout/header.php';
     function atualizarContador() {
 
         let total = document.querySelectorAll('.checkOficio:checked').length;
+        let totalAprovaveis = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
 
-        document.getElementById('contadorSelecionados').innerHTML =
+        const contador = document.getElementById('contadorSelecionados');
+        const botaoAprovar = document.getElementById('btn-aprovar-selecionados');
+        const botaoEditarDatas = document.getElementById('btn-editar-datas');
+        const elegiveis = document.querySelectorAll('.checkOficio');
 
-            total + ' selecionados';
+        if (contador) {
+            contador.textContent = total + ' selecionado(s)';
+        }
+
+        if (botaoAprovar) {
+            botaoAprovar.disabled = totalAprovaveis === 0;
+        }
+
+        if (botaoEditarDatas) {
+            botaoEditarDatas.disabled = total === 0;
+        }
+
+        if (selecionarTodos) {
+            selecionarTodos.checked = elegiveis.length > 0 && total === elegiveis.length;
+            selecionarTodos.indeterminate = total > 0 && total < elegiveis.length;
+            selecionarTodos.disabled = elegiveis.length === 0;
+        }
 
     }
 
     function confirmarAprovacao() {
 
-        let total = document.querySelectorAll('.checkOficio:checked').length;
+        let total = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
+        let totalSelecionados = document.querySelectorAll('.checkOficio:checked').length;
 
         if (total == 0) {
 
@@ -1733,13 +1749,20 @@ include 'views/layout/header.php';
 
         }
 
-        document.getElementById("totalSelecionados").innerHTML =
+        const formLote = document.getElementById('form-aprovacao-lote');
+        const campoNovaData = document.getElementById('nova-data-lote');
+        formLote.setAttribute('action', 'aprovar_multiplos.php');
+        campoNovaData.required = false;
 
-            total + " solicitação(ões) selecionada(s)";
+        document.getElementById("totalSelecionados").textContent =
+
+            total + " apta(s) para aprovação entre " + totalSelecionados + " selecionada(s)";
 
         document
             .getElementById("modalAprovacao")
             .classList.add("show");
+
+        document.getElementById("modalAprovacao").setAttribute("aria-hidden", "false");
 
     }
 
@@ -1749,12 +1772,70 @@ include 'views/layout/header.php';
             .getElementById("modalAprovacao")
             .classList.remove("show");
 
+        document.getElementById("modalAprovacao").setAttribute("aria-hidden", "true");
+
     }
+
+    const modalAprovacao = document.getElementById('modalAprovacao');
+    if (modalAprovacao) {
+        modalAprovacao.addEventListener('click', function(event) {
+            if (event.target === modalAprovacao) {
+                fecharModalAprovacao();
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && modalAprovacao.classList.contains('show')) {
+                fecharModalAprovacao();
+            }
+        });
+    }
+
+    function abrirModalDatas() {
+        const total = document.querySelectorAll('.checkOficio:checked').length;
+
+        if (total === 0) {
+            alert('Selecione pelo menos uma solicitação.');
+            return;
+        }
+
+        document.getElementById('totalDatasSelecionadas').textContent =
+            total + ' solicitação(ões) selecionada(s)';
+
+        const formLote = document.getElementById('form-aprovacao-lote');
+        const campoNovaData = document.getElementById('nova-data-lote');
+        formLote.setAttribute('action', 'atualizar_datas_multiplas.php');
+        campoNovaData.required = true;
+
+        const modal = document.getElementById('modalDatas');
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        campoNovaData.focus();
+    }
+
+    function fecharModalDatas() {
+        const modal = document.getElementById('modalDatas');
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+        document.getElementById('nova-data-lote').required = false;
+    }
+
+    const modalDatas = document.getElementById('modalDatas');
+    if (modalDatas) {
+        modalDatas.addEventListener('click', function(event) {
+            if (event.target === modalDatas) {
+                fecharModalDatas();
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && modalDatas.classList.contains('show')) {
+                fecharModalDatas();
+            }
+        });
+    }
+
+    atualizarContador();
 </script>
- <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
-
-        </form>
-
-    <?php endif; ?>
 
 <?php include 'views/layout/footer.php'; ?>
