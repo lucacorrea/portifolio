@@ -90,6 +90,7 @@ $standaloneReceiptAction = file_get_contents(dirname(__DIR__) . '/actions/recibo
 $lifecycleSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderLifecycleService.php');
 $receiptSource = file_get_contents(dirname(__DIR__) . '/src/Finance/Service/ReceiptService.php');
 $accountsSource = file_get_contents(dirname(__DIR__) . '/src/Finance/Service/AccountsReceivableManagementService.php');
+$orderRepositorySource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Repository/ServiceOrderRepository.php');
 financialFlowAssert(is_string($finalizationAction), 'Action de finalização deve ser legível.');
 financialFlowAssert(!str_contains((string) $finalizationAction, "requirePermission('os.finalizar_com_pagamento')"), 'Finalização não pode exigir permissão de pagamento.');
 financialFlowAssert(str_contains((string) $paymentAction, "os_action_context('contas_receber.registrar_pagamento')"), 'Pagamento de OS deve exigir permissão financeira.');
@@ -100,5 +101,13 @@ financialFlowAssert(str_contains((string) $lifecycleSource, 'total_origem'), 'Es
 financialFlowAssert(str_contains((string) $lifecycleSource, 'reversePaymentsAndCash'), 'Estorno deve preservar a compensação financeira e de Caixa.');
 financialFlowAssert(!str_contains((string) $receiptSource, 'LIKE :search OR'), 'Busca de recibos não pode reutilizar placeholders com prepared statements nativos.');
 financialFlowAssert(!str_contains((string) $accountsSource, 'LIKE :search OR'), 'Busca de contas a receber não pode reutilizar placeholders com prepared statements nativos.');
+financialFlowAssert(
+    str_contains((string) $orderRepositorySource, '$this->bindForm($statement, $data, $totals, false);'),
+    'Edição de OS não pode vincular o parâmetro :status ausente do UPDATE.'
+);
+financialFlowAssert(
+    str_contains((string) $orderRepositorySource, 'if ($includeStatus)'),
+    'Binding compartilhado deve incluir :status somente nas queries que possuem esse placeholder.'
+);
 
 echo "ServiceOrderFinancialFlowValidationTest: OK\n";
