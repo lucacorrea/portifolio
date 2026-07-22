@@ -1240,7 +1240,272 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
             text-shadow: 0 1px 1px rgba(0, 0, 0, .25);
         }
 
-    </style>
+    
+
+        /* ===== REFORÇO FINAL: TABELA CLEAN PADRÃO ANEXO ===== */
+        .card {
+            border: 1px solid #e6e9ef !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+            background: #fff !important;
+        }
+
+        .card-header {
+            background: #fff !important;
+            border-bottom: 1px solid #eef1f4 !important;
+        }
+
+        .card-statistic {
+            border: 1px solid #e6e9ef !important;
+            border-left: 0 !important;
+            box-shadow: none !important;
+            background: #fff !important;
+        }
+
+        .card-statistic::before,
+        .card-statistic::after {
+            display: none !important;
+            content: none !important;
+        }
+
+        .statistic-icon {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+        }
+
+        .valor-destaque,
+        .valor-top10,
+        .valor-cell,
+        .valor-alto,
+        .valor-nulo {
+            color: #52697f !important;
+        }
+
+        .valor-total-aplicado,
+        #tabelaValores .status-clean.status-entregue {
+            color: #198754 !important;
+        }
+
+        .valores-toolbar {
+            justify-content: flex-end !important;
+            margin-bottom: 1rem !important;
+        }
+
+        .dt-search-input {
+            min-width: 360px;
+            max-width: 520px;
+            border: 1px solid #b8c7f7 !important;
+            border-radius: 4px !important;
+            background: #fff !important;
+            box-shadow: none !important;
+        }
+
+        .dt-search-clear {
+            border: 1px solid #cfd6df !important;
+            background: #fff !important;
+            color: #495057 !important;
+        }
+
+        #tabelaValores.tabela-clean-anexo,
+        #tabelaValores {
+            width: 100% !important;
+            min-width: 1490px !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            table-layout: fixed !important;
+            margin-bottom: 0 !important;
+            color: #52697f !important;
+            background: #fff !important;
+        }
+
+        #tabelaValores thead th {
+            background: #fff !important;
+            color: #2d3748 !important;
+            font-weight: 800 !important;
+            font-size: .95rem !important;
+            text-align: center !important;
+            border: 0 !important;
+            border-bottom: 1px solid #d6dce5 !important;
+            padding: .95rem 1.65rem .95rem .75rem !important;
+            vertical-align: middle !important;
+            white-space: nowrap !important;
+        }
+
+        #tabelaValores tbody td {
+            background: transparent !important;
+            color: #52697f !important;
+            border: 0 !important;
+            border-bottom: 1px solid #e1e6ec !important;
+            padding: .82rem .75rem !important;
+            vertical-align: middle !important;
+            font-size: .93rem !important;
+        }
+
+        #tabelaValores tbody tr:nth-child(odd) td {
+            background: #fff !important;
+        }
+
+        #tabelaValores tbody tr:nth-child(even) td {
+            background: #f6f7f9 !important;
+        }
+
+        #tabelaValores tbody tr:hover td {
+            background: #eef1f5 !important;
+        }
+
+        #tabelaValores tbody tr.table-warning td,
+        #tabelaValores tbody tr.valor-nulo td {
+            color: #52697f !important;
+        }
+
+        #tabelaValores tfoot th,
+        #tabelaValores tfoot td {
+            background: #fff !important;
+            border: 0 !important;
+            border-top: 1px solid #d6dce5 !important;
+            color: #52697f !important;
+            padding: .9rem .75rem !important;
+            vertical-align: middle !important;
+        }
+
+        #tabelaValores .clean-text-pill,
+        #tabelaValores .status-clean {
+            display: inline-block !important;
+            max-width: 100% !important;
+            color: #52697f !important;
+            background: transparent !important;
+            border: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            font-weight: 600 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        #tabelaValores .status-clean.status-entregue {
+            font-weight: 800 !important;
+        }
+
+        #tabelaValores .dado-incompleto,
+        #tabelaValores .text-danger,
+        #tabelaValores .text-warning,
+        #tabelaValores .text-info,
+        #tabelaValores .text-primary,
+        #tabelaValores .text-success {
+            color: #52697f !important;
+        }
+
+        #tabelaValores .cell-ellipsis {
+            display: block !important;
+            width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::before {
+            content: "▲" !important;
+            right: .55rem !important;
+            top: calc(50% - 8px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::after {
+            content: "▼" !important;
+            right: .55rem !important;
+            top: calc(50% + 1px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after {
+            color: #8d98a7 !important;
+        }
+
+        .table-stats {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            color: #52697f !important;
+        }
+
+        .table-stats thead th {
+            background: #fff !important;
+            color: #2d3748 !important;
+            border-bottom: 1px solid #d6dce5 !important;
+            font-weight: 800 !important;
+            text-align: center !important;
+        }
+
+        .table-stats tbody tr:nth-child(odd) td {
+            background: #fff !important;
+        }
+
+        .table-stats tbody tr:nth-child(even) td {
+            background: #f6f7f9 !important;
+        }
+
+        .table-stats tbody td {
+            color: #52697f !important;
+            border-bottom: 1px solid #e1e6ec !important;
+            vertical-align: middle !important;
+        }
+
+        @media (max-width: 768px) {
+            .dt-search-input {
+                min-width: 0 !important;
+                max-width: 100% !important;
+            }
+        }
+
+
+        /* ===== STATUS ENTREGUE EM BADGE VERDE ===== */
+        #tabelaValores .status-clean.status-entregue {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: auto !important;
+            min-width: auto !important;
+            max-width: 100% !important;
+            min-height: 24px !important;
+            padding: .35rem .62rem !important;
+            border: 1px solid #198754 !important;
+            border-radius: 6px !important;
+            background: #198754 !important;
+            color: #fff !important;
+            font-size: .78rem !important;
+            font-weight: 800 !important;
+            line-height: 1 !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            box-shadow: none !important;
+        }
+
+        #tabelaValores .status-clean.status-entregue:hover {
+            background: #157347 !important;
+            border-color: #157347 !important;
+            color: #fff !important;
+        }
+</style>
 </head>
 
 <body>
@@ -1373,7 +1638,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                     <div class="col-12 col-md-8">
                         <h3>Valores Aplicados em Benefícios</h3>
                         <p class="text-muted mb-2 mb-md-0">Controle financeiro completo de todas as entregas do ANEXO</p>
-                        <small class="text-info">
+                        <small class="text-muted">
                             <i class="bi bi-info-circle"></i> Mostrando dados de todas as <?= $total_geral ?> entregas cadastradas no sistema
                         </small>
                     </div>
@@ -1614,7 +1879,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                 </div>
                                             </div>
                                             <div class="text-end flex-shrink-0">
-                                                <div class="valor-destaque <?= ((float)$entrega['valor_aplicado'] > 0) ? 'text-danger' : 'valor-nulo' ?>" style="font-size: 0.9rem;">
+                                                <div class="valor-destaque valor-top10 <?= ((float)$entrega['valor_aplicado'] > 0) ? '' : 'valor-nulo' ?>" style="font-size: 0.9rem;">
                                                     <?= ((float)$entrega['valor_aplicado'] > 0) ? formatarMoeda($entrega['valor_aplicado']) : 'Sem valor' ?>
                                                 </div>
                                             </div>
@@ -1678,7 +1943,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                     </div>
 
                                     <div class="table-responsive">
-                                        <table id="tabelaValores" class="table table-hover table-striped align-middle mb-0">
+                                        <table id="tabelaValores" class="table table-hover align-middle mb-0 tabela-clean-anexo">
                                             <colgroup>
                                                 <col style="width: 90px;">
                                                 <col style="width: 250px;">
