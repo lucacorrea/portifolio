@@ -54,6 +54,9 @@ if ($csrf_token === '' || $session_token === '' || !hash_equals($session_token, 
     exit;
 }
 
+// Evita que o redirect de retorno dispare imediatamente outro processamento automático.
+$_SESSION['auto_geracao_indicadas_skip_once'] = true;
+
 try {
     $pdo->beginTransaction();
 
@@ -63,6 +66,16 @@ try {
         INNER JOIN fornecedores f ON f.id = o.fornecedor_indicado_id
         WHERE o.status = 'APROVADO'
           AND o.fornecedor_indicado_id IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM aquisicoes a_existente
+              WHERE a_existente.oficio_id = o.id
+          )
+          AND EXISTS (
+              SELECT 1
+              FROM itens_oficio io_existente
+              WHERE io_existente.oficio_id = o.id
+          )
         ORDER BY o.id
         LIMIT 500
         FOR UPDATE

@@ -22,6 +22,37 @@ if (empty($_SESSION['csrf_gerar_aquisicoes_indicadas'])) {
 }
 $csrf_gerar_aquisicoes_indicadas = (string)$_SESSION['csrf_gerar_aquisicoes_indicadas'];
 
+$auto_gerar_aquisicoes_indicadas = false;
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)) {
+    if (!empty($_SESSION['auto_geracao_indicadas_skip_once'])) {
+        unset($_SESSION['auto_geracao_indicadas_skip_once']);
+    } else {
+        try {
+            $stmt_auto_gerar = $pdo->query("
+                SELECT 1
+                FROM oficios o_auto
+                INNER JOIN fornecedores f_auto ON f_auto.id = o_auto.fornecedor_indicado_id
+                WHERE o_auto.status = 'APROVADO'
+                  AND o_auto.fornecedor_indicado_id IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM aquisicoes a_auto
+                      WHERE a_auto.oficio_id = o_auto.id
+                  )
+                  AND EXISTS (
+                      SELECT 1
+                      FROM itens_oficio io_auto
+                      WHERE io_auto.oficio_id = o_auto.id
+                  )
+                LIMIT 1
+            ");
+            $auto_gerar_aquisicoes_indicadas = (bool)$stmt_auto_gerar->fetchColumn();
+        } catch (Throwable $e) {
+            $auto_gerar_aquisicoes_indicadas = false;
+        }
+    }
+}
+
 function oficios_lista_return_url(array $source, array $status_options): string
 {
     $safe = [];
@@ -1328,16 +1359,28 @@ include 'views/layout/header.php';
 
         <?php display_flash(); ?>
         <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
-            <form action="gerar_aquisicoes_indicadas.php" method="POST" style="margin-bottom: 15px;">
-                <input type="hidden" name="csrf_token" value="<?php echo h($csrf_gerar_aquisicoes_indicadas); ?>">
-                <input type="hidden" name="return_query" value="<?php echo h($_SERVER['QUERY_STRING'] ?? ''); ?>">
-                <button
-                    type="submit"
-                    class="btn btn-outline btn-sm"
-                    onclick="return confirm('Gerar aquisições para todos os ofícios aprovados com fornecedor indicado e sem aquisição?');">
-                    <i class="fas fa-shopping-cart"></i> Gerar aquisições indicadas
-                </button>
-            </form>
+            <?php if ($auto_gerar_aquisicoes_indicadas): ?>
+                <div class="alert alert-info" id="auto-geracao-indicadas-aviso">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Gerando automaticamente as aquisições que possuem fornecedor indicado...
+                </div>
+                <form action="gerar_aquisicoes_indicadas.php" method="POST" id="form-auto-gerar-indicadas" style="display:none;">
+                    <input type="hidden" name="csrf_token" value="<?php echo h($csrf_gerar_aquisicoes_indicadas); ?>">
+                    <input type="hidden" name="return_query" value="<?php echo h($_SERVER['QUERY_STRING'] ?? ''); ?>">
+                </form>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const form = document.getElementById('form-auto-gerar-indicadas');
+                        if (form) {
+                            if (typeof form.requestSubmit === 'function') {
+                                form.requestSubmit();
+                            } else {
+                                form.submit();
+                            }
+                        }
+                    });
+                </script>
+            <?php endif; ?>
 
             <form action="aprovar_multiplos.php" method="POST" id="form-aprovacao-lote">
                 <input type="hidden" name="csrf_token" value="<?php echo h($csrf_aprovacao_multipla); ?>">
@@ -1486,7 +1529,7 @@ include 'views/layout/header.php';
                                             <i class="fas fa-paperclip"></i>
                                         </a>
 
-                                        <?php if ($o['status'] == 'APROVADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): ?>
+                                        <?php if ($o['status'] == 'APROVADO' && (int)($o['total_aquisicoes'] ?? 0) === 0 && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): ?>
                                             <a href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Gerar Aquisição">
                                                 <i class="fas fa-shopping-cart"></i> Gerar
                                             </a>
