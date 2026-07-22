@@ -1528,9 +1528,9 @@ include 'views/layout/header.php';
                             <div>
                                 <h3 id="modal-aprovacao-title">
                                     <i class="fas fa-check-circle text-success"></i>
-                                    Aprovar e informar fornecedor
+                                    Aprovar e gerar aquisição
                                 </h3>
-                                <small>O fornecedor será aplicado aos ofícios elegíveis selecionados.</small>
+                                <small>Uma aquisição será gerada automaticamente para cada ofício elegível selecionado.</small>
                             </div>
                             <button type="button" class="btn-fechar-modal" onclick="fecharModalAprovacao()" aria-label="Fechar">
                                 <i class="fas fa-times"></i>
@@ -1557,7 +1557,7 @@ include 'views/layout/header.php';
                                     <?php endforeach; ?>
                                 </select>
                                 <small class="text-muted">
-                                    ENVIADO: aprova e informa o fornecedor. APROVADO sem aquisição: altera somente o fornecedor indicado.
+                                    ENVIADO: aprova e gera a aquisição. APROVADO sem aquisição: gera a aquisição com o fornecedor selecionado.
                                 </small>
                             </div>
 
@@ -1802,8 +1802,8 @@ include 'views/layout/header.php';
         campoNovaData.required = false;
         campoFornecedor.required = true;
 
-        let resumo = totalEnviados + ' será(ão) aprovado(s) e ' + totalAprovados
-            + ' receberá(ão) somente o fornecedor.';
+        let resumo = totalEnviados + ' será(ão) aprovado(s) e ' + totalElegiveis
+            + ' aquisição(ões) será(ão) gerada(s) automaticamente.';
         if (totalIgnorados > 0) {
             resumo += ' ' + totalIgnorados + ' não é(são) elegível(is) para esta operação.';
         }

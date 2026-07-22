@@ -101,62 +101,84 @@ try {
         exit;
     }
 
+    $stmt_aquisicoes = $pdo->prepare("SELECT oficio_id FROM aquisicoes WHERE oficio_id IN ($placeholders) FOR UPDATE");
+    $stmt_aquisicoes->execute($ids);
+    $oficios_com_aquisicao = array_fill_keys(
+        array_map('intval', $stmt_aquisicoes->fetchAll(PDO::FETCH_COLUMN)),
+        true
+    );
+
     $stmt = $pdo->prepare("
-        SELECT
-            o.id,
-            o.numero,
-            o.status,
-            o.fornecedor_indicado_id,
-            EXISTS (SELECT 1 FROM aquisicoes a WHERE a.oficio_id = o.id) AS possui_aquisicao
-        FROM oficios o
-        WHERE o.id IN ($placeholders)
-        ORDER BY o.id
+        SELECT id, numero, status
+        FROM oficios
+        WHERE id IN ($placeholders)
+        ORDER BY id
         FOR UPDATE
     ");
     $stmt->execute($ids);
     $oficios_encontrados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $ids_aprovar = [];
-    $ids_atualizar_fornecedor = [];
-    $numeros_alterados = [];
-    $sem_alteracao = 0;
+    $oficios_elegiveis = [];
     $com_aquisicao = 0;
-
     foreach ($oficios_encontrados as $oficio) {
         $oficio_id = (int)$oficio['id'];
-        $status = (string)$oficio['status'];
-
-        if ($status === 'ENVIADO') {
-            $ids_aprovar[] = $oficio_id;
-            $numeros_alterados[] = (string)$oficio['numero'];
+        if (!in_array((string)$oficio['status'], ['ENVIADO', 'APROVADO'], true)) {
             continue;
         }
 
-        if ($status === 'APROVADO') {
-            if (!empty($oficio['possui_aquisicao'])) {
-                $com_aquisicao++;
-                continue;
-            }
+        if (isset($oficios_com_aquisicao[$oficio_id])) {
+            $com_aquisicao++;
+            continue;
+        }
 
-            if ((int)($oficio['fornecedor_indicado_id'] ?? 0) === $fornecedor_id) {
-                $sem_alteracao++;
-                continue;
-            }
+        $oficios_elegiveis[$oficio_id] = $oficio;
+    }
 
-            $ids_atualizar_fornecedor[] = $oficio_id;
-            $numeros_alterados[] = (string)$oficio['numero'];
+    $itens_por_oficio = [];
+    if (!empty($oficios_elegiveis)) {
+        $ids_elegiveis = array_keys($oficios_elegiveis);
+        $placeholders_elegiveis = implode(',', array_fill(0, count($ids_elegiveis), '?'));
+        $stmt_itens = $pdo->prepare("
+            SELECT id, oficio_id, produto, quantidade, valor_unitario
+            FROM itens_oficio
+            WHERE oficio_id IN ($placeholders_elegiveis)
+            ORDER BY oficio_id, id
+            FOR UPDATE
+        ");
+        $stmt_itens->execute($ids_elegiveis);
+
+        foreach ($stmt_itens->fetchAll(PDO::FETCH_ASSOC) as $item) {
+            $itens_por_oficio[(int)$item['oficio_id']][] = $item;
         }
     }
 
-    if (empty($ids_aprovar) && empty($ids_atualizar_fornecedor)) {
-        $pdo->rollBack();
-        $ignorados = count($ids) - $sem_alteracao - $com_aquisicao;
-        if ($com_aquisicao > 0) {
-            $mensagem = $com_aquisicao . ' ofício(s) aprovado(s) já possui(em) aquisição. Altere o fornecedor na própria aquisição.';
-        } elseif ($sem_alteracao > 0) {
-            $mensagem = 'Os ofícios aprovados selecionados já possuem esse fornecedor indicado.';
+    $ids_aprovar = [];
+    $ids_aprovados = [];
+    $oficios_processar = [];
+    $sem_itens = 0;
+    foreach ($oficios_elegiveis as $oficio_id => $oficio) {
+        if (empty($itens_por_oficio[$oficio_id])) {
+            $sem_itens++;
+            continue;
+        }
+
+        $oficios_processar[$oficio_id] = $oficio;
+        if ((string)$oficio['status'] === 'ENVIADO') {
+            $ids_aprovar[] = $oficio_id;
         } else {
-            $mensagem = 'Nenhuma solicitação selecionada está com status ENVIADO ou APROVADO.';
+            $ids_aprovados[] = $oficio_id;
+        }
+    }
+
+    if (empty($oficios_processar)) {
+        $pdo->rollBack();
+        $ignorados = count($ids) - $com_aquisicao - $sem_itens;
+        $mensagem = 'Nenhum ofício selecionado pôde gerar aquisição automaticamente.';
+        if ($com_aquisicao > 0) {
+            $mensagem .= ' ' . $com_aquisicao . ' já possuía(m) aquisição.';
+        }
+        if ($sem_itens > 0) {
+            $mensagem .= ' ' . $sem_itens . ' não possui(em) itens para gerar a aquisição.';
         }
         if ($ignorados > 0) {
             $mensagem .= ' ' . $ignorados . ' item(ns) com outro status foram ignorados.';
@@ -171,42 +193,77 @@ try {
         $stmt_update = $pdo->prepare("
             UPDATE oficios
             SET status = 'APROVADO', fornecedor_indicado_id = ?
-            WHERE status = 'ENVIADO'
-              AND id IN ($update_placeholders)
+            WHERE status = 'ENVIADO' AND id IN ($update_placeholders)
         ");
         $stmt_update->execute(array_merge([$fornecedor_id], $ids_aprovar));
     }
 
-    if (!empty($ids_atualizar_fornecedor)) {
-        $update_placeholders = implode(',', array_fill(0, count($ids_atualizar_fornecedor), '?'));
+    if (!empty($ids_aprovados)) {
+        $update_placeholders = implode(',', array_fill(0, count($ids_aprovados), '?'));
         $stmt_update = $pdo->prepare("
             UPDATE oficios
             SET fornecedor_indicado_id = ?
-            WHERE status = 'APROVADO'
-              AND id IN ($update_placeholders)
+            WHERE status = 'APROVADO' AND id IN ($update_placeholders)
         ");
-        $stmt_update->execute(array_merge([$fornecedor_id], $ids_atualizar_fornecedor));
+        $stmt_update->execute(array_merge([$fornecedor_id], $ids_aprovados));
+    }
+
+    $stmt_aquisicao = $pdo->prepare("
+        INSERT INTO aquisicoes (numero_aq, codigo_entrega, oficio_id, fornecedor_id, valor_total)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+    $stmt_item_aquisicao = $pdo->prepare("
+        INSERT INTO itens_aquisicao (aquisicao_id, oficio_item_id, produto, quantidade, valor_unitario)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+    $numeros_oficio = [];
+    foreach ($oficios_processar as $oficio_id => $oficio) {
+        $itens = $itens_por_oficio[$oficio_id];
+        $valor_total = 0.0;
+        foreach ($itens as $item) {
+            $valor_total += (float)$item['quantidade'] * (float)($item['valor_unitario'] ?? 0);
+        }
+
+        $stmt_aquisicao->execute([
+            generate_aquisicao_number($pdo),
+            generate_unique_code($pdo),
+            $oficio_id,
+            $fornecedor_id,
+            $valor_total,
+        ]);
+        $aquisicao_id = (int)$pdo->lastInsertId();
+
+        foreach ($itens as $item) {
+            $stmt_item_aquisicao->execute([
+                $aquisicao_id,
+                (int)$item['id'],
+                $item['produto'],
+                (float)$item['quantidade'],
+                (float)($item['valor_unitario'] ?? 0),
+            ]);
+        }
+        $numeros_oficio[] = (string)$oficio['numero'];
     }
 
     log_action(
         $pdo,
-        'APROVACAO_FORNECEDOR_MULTIPLOS_OFICIOS',
-        count($ids_aprovar) . ' solicitação(ões) aprovada(s) e '
-            . count($ids_atualizar_fornecedor) . ' fornecedor(es) atualizado(s) para '
-            . $fornecedor['nome'] . ': ' . implode(', ', $numeros_alterados)
+        'APROVACAO_GERACAO_AQUISICAO_MULTIPLOS_OFICIOS',
+        count($ids_aprovar) . ' solicitação(ões) aprovada(s), '
+            . count($oficios_processar) . ' aquisição(ões) gerada(s) para '
+            . $fornecedor['nome'] . ': ' . implode(', ', $numeros_oficio)
     );
 
     $pdo->commit();
     $_SESSION['csrf_aprovacao_multipla'] = bin2hex(random_bytes(32));
 
-    $ignorados = count($ids) - count($ids_aprovar) - count($ids_atualizar_fornecedor) - $sem_alteracao - $com_aquisicao;
+    $ignorados = count($ids) - count($oficios_processar) - $com_aquisicao - $sem_itens;
     $mensagem = count($ids_aprovar) . ' solicitação(ões) aprovada(s) e '
-        . count($ids_atualizar_fornecedor) . ' fornecedor(es) atualizado(s) com sucesso.';
-    if ($sem_alteracao > 0) {
-        $mensagem .= ' ' . $sem_alteracao . ' já possuía(m) o fornecedor indicado.';
-    }
+        . count($oficios_processar) . ' aquisição(ões) gerada(s) para ' . $fornecedor['nome'] . '.';
     if ($com_aquisicao > 0) {
-        $mensagem .= ' ' . $com_aquisicao . ' já possuía(m) aquisição e deve(m) ser alterado(s) pela tela da aquisição.';
+        $mensagem .= ' ' . $com_aquisicao . ' já possuía(m) aquisição e foi(ram) preservado(s).';
+    }
+    if ($sem_itens > 0) {
+        $mensagem .= ' ' . $sem_itens . ' não possui(em) itens e não gerou(ram) aquisição.';
     }
     if ($ignorados > 0) {
         $mensagem .= ' ' . $ignorados . ' item(ns) com outro status foram ignorados.';
