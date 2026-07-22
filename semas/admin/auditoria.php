@@ -1408,10 +1408,21 @@ try {
             background: #f8f9ff;
         }
 
-        .custom-page-btn.disabled {
+        .custom-page-btn.disabled,
+        .custom-page-btn:disabled {
             background: #f5f6f8;
             color: #b5b8bf;
             border-color: #dfe3e8;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+
+        button.custom-page-btn {
+            cursor: pointer;
+        }
+
+        .pagination-loading {
+            opacity: .55;
             pointer-events: none;
         }
 
@@ -1438,6 +1449,56 @@ try {
             color: #495057;
             font-weight: 600;
             outline: none;
+        }
+
+
+
+        /* Paginação dinâmica no padrão das outras telas */
+        .custom-pagination-bar {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 1rem !important;
+            margin-top: 1rem !important;
+            padding-top: 1rem !important;
+            border-top: 1px solid #e9ecef !important;
+            flex-wrap: wrap !important;
+        }
+
+        .custom-pagination-left,
+        .custom-pagination-center,
+        .custom-pagination-right {
+            display: flex !important;
+            align-items: center !important;
+            gap: .75rem !important;
+        }
+
+        .custom-pagination-center {
+            flex: 1 1 auto !important;
+            justify-content: center !important;
+        }
+
+        .custom-pagination-right {
+            justify-content: flex-end !important;
+        }
+
+        .custom-page-btn {
+            min-width: 96px !important;
+            padding: .5rem 1rem !important;
+            border: 1px solid #d0d7de !important;
+            background: #fff !important;
+            color: #6c757d !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+            text-decoration: none !important;
+            text-align: center !important;
+            transition: all .2s ease !important;
+        }
+
+        .custom-page-btn:hover:not(:disabled) {
+            border-color: #435ebe !important;
+            color: #435ebe !important;
+            background: #f8f9ff !important;
         }
 
         /* Modal de detalhes centralizada e com conteúdo responsivo */
@@ -1850,7 +1911,7 @@ try {
                             </div>
 
                             <div class="card-body">
-                                <div class="audit-log">
+                                <div class="audit-log" id="auditLogRegistros">
                                     <?php if (empty($registros)): ?>
                                         <div class="text-center text-muted py-5">
                                             <i class="bi bi-search display-6 d-block mb-2"></i>
@@ -1916,18 +1977,20 @@ try {
                                 </div>
 
                                 <?php if ($total_paginas > 1 || $total_registros > 0): ?>
-                                    <?php
-                                    $qsAnterior = $_GET;
-                                    $qsProxima = $_GET;
-                                    $qsAnterior['pagina'] = max(1, $pagina_atual - 1);
-                                    $qsProxima['pagina'] = min($total_paginas, $pagina_atual + 1);
-                                    ?>
-                                    <div class="custom-pagination-bar" aria-label="Paginação de registros">
+                                    <div class="custom-pagination-bar" id="paginationRegistros" aria-label="Paginação de registros">
                                         <div class="custom-pagination-left">
-                                            <a class="custom-page-btn <?= $pagina_atual <= 1 ? 'disabled' : '' ?>"
-                                               href="?<?= http_build_query($qsAnterior) ?>">Anterior</a>
-                                            <a class="custom-page-btn <?= $pagina_atual >= $total_paginas ? 'disabled' : '' ?>"
-                                               href="?<?= http_build_query($qsProxima) ?>">Próximo</a>
+                                            <button type="button"
+                                                    class="custom-page-btn js-registros-page"
+                                                    data-page="<?= max(1, $pagina_atual - 1) ?>"
+                                                    <?= $pagina_atual <= 1 ? 'disabled' : '' ?>>
+                                                Anterior
+                                            </button>
+                                            <button type="button"
+                                                    class="custom-page-btn js-registros-page"
+                                                    data-page="<?= min($total_paginas, $pagina_atual + 1) ?>"
+                                                    <?= $pagina_atual >= $total_paginas ? 'disabled' : '' ?>>
+                                                Próximo
+                                            </button>
                                         </div>
 
                                         <div class="custom-pagination-center">
@@ -1938,8 +2001,9 @@ try {
 
                                         <div class="custom-pagination-right">
                                             <label class="custom-length-label" for="registrosPorPagina">por página</label>
-                                            <select id="registrosPorPagina" class="custom-length-select"
-                                                    onchange="alterarQuantidadePagina('por_pagina', this.value, 'pagina')">
+                                            <select id="registrosPorPagina"
+                                                    class="custom-length-select"
+                                                    onchange="carregarPaginaRegistros(1, this.value)">
                                                 <?php foreach ($opcoes_por_pagina as $opcao): ?>
                                                     <option value="<?= $opcao ?>" <?= $registros_por_pagina === $opcao ? 'selected' : '' ?>>
                                                         <?= $opcao ?>
@@ -2017,7 +2081,7 @@ try {
                                                     <th>Última Ação</th>
                                                 </tr>
                                             </thead>
-                                            <tbody>
+                                            <tbody id="usersTableBody">
                                                 <?php if (!empty($top_users_table)): ?>
                                                     <?php foreach ($top_users_table as $user): ?>
                                                         <tr>
@@ -2049,19 +2113,21 @@ try {
                                 </div>
 
                                 <?php if ($totalUsersPages > 1 || $totalUsers > 0): ?>
-                                    <?php
-                                    $qsUsersAnterior = $_GET;
-                                    $qsUsersProxima = $_GET;
-                                    $qsUsersAnterior['u_page'] = max(1, $usersPage - 1);
-                                    $qsUsersProxima['u_page'] = min($totalUsersPages, $usersPage + 1);
-                                    ?>
-                                    <div class="px-3 pb-3">
+                                    <div class="px-3 pb-3" id="paginationUsuarios">
                                         <div class="custom-pagination-bar" aria-label="Paginação de usuários">
                                             <div class="custom-pagination-left">
-                                                <a class="custom-page-btn <?= $usersPage <= 1 ? 'disabled' : '' ?>"
-                                                   href="?<?= http_build_query($qsUsersAnterior) ?>">Anterior</a>
-                                                <a class="custom-page-btn <?= $usersPage >= $totalUsersPages ? 'disabled' : '' ?>"
-                                                   href="?<?= http_build_query($qsUsersProxima) ?>">Próximo</a>
+                                                <button type="button"
+                                                        class="custom-page-btn js-usuarios-page"
+                                                        data-page="<?= max(1, $usersPage - 1) ?>"
+                                                        <?= $usersPage <= 1 ? 'disabled' : '' ?>>
+                                                    Anterior
+                                                </button>
+                                                <button type="button"
+                                                        class="custom-page-btn js-usuarios-page"
+                                                        data-page="<?= min($totalUsersPages, $usersPage + 1) ?>"
+                                                        <?= $usersPage >= $totalUsersPages ? 'disabled' : '' ?>>
+                                                    Próximo
+                                                </button>
                                             </div>
 
                                             <div class="custom-pagination-center">
@@ -2072,8 +2138,9 @@ try {
 
                                             <div class="custom-pagination-right">
                                                 <label class="custom-length-label" for="usuariosPorPagina">por página</label>
-                                                <select id="usuariosPorPagina" class="custom-length-select"
-                                                        onchange="alterarQuantidadePagina('u_por_pagina', this.value, 'u_page')">
+                                                <select id="usuariosPorPagina"
+                                                        class="custom-length-select"
+                                                        onchange="carregarPaginaUsuarios(1, this.value)">
                                                     <?php foreach ($opcoes_usuarios_por_pagina as $opcao): ?>
                                                         <option value="<?= $opcao ?>" <?= $perPageUsers === $opcao ? 'selected' : '' ?>>
                                                             <?= $opcao ?>
@@ -2554,11 +2621,128 @@ try {
                 });
         }
 
+        function montarUrlPaginacao(atualizacoes) {
+            const params = new URLSearchParams(window.location.search);
+
+            Object.keys(atualizacoes).forEach(function(chave) {
+                const valor = atualizacoes[chave];
+                if (valor === null || valor === undefined || valor === '') {
+                    params.delete(chave);
+                } else {
+                    params.set(chave, String(valor));
+                }
+            });
+
+            params.delete('ajax');
+            params.delete('exportar');
+
+            const query = params.toString();
+            return query ? `${window.location.pathname}?${query}` : window.location.pathname;
+        }
+
+        async function atualizarTrechosPaginados(url, seletores) {
+            const posicaoAtual = window.scrollY;
+
+            seletores.forEach(function(seletor) {
+                const alvo = document.querySelector(seletor);
+                if (alvo) alvo.classList.add('pagination-loading');
+            });
+
+            try {
+                const resposta = await fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!resposta.ok) {
+                    throw new Error('Falha ao carregar página.');
+                }
+
+                const html = await resposta.text();
+                const documento = new DOMParser().parseFromString(html, 'text/html');
+
+                seletores.forEach(function(seletor) {
+                    const atual = document.querySelector(seletor);
+                    const novo = documento.querySelector(seletor);
+
+                    if (atual && novo) {
+                        atual.outerHTML = novo.outerHTML;
+                    }
+                });
+
+                highlightSearchTerms();
+                window.scrollTo(0, posicaoAtual);
+            } catch (erro) {
+                console.error(erro);
+                alert('Não foi possível carregar a página. Tente novamente.');
+            } finally {
+                seletores.forEach(function(seletor) {
+                    const alvo = document.querySelector(seletor);
+                    if (alvo) alvo.classList.remove('pagination-loading');
+                });
+            }
+        }
+
+        function carregarPaginaRegistros(pagina, porPagina = null) {
+            const seletorQuantidade = document.getElementById('registrosPorPagina');
+            const quantidade = porPagina || (seletorQuantidade ? seletorQuantidade.value : <?= (int)$registros_por_pagina ?>);
+
+            const url = montarUrlPaginacao({
+                pagina: Math.max(1, parseInt(pagina, 10) || 1),
+                por_pagina: quantidade
+            });
+
+            return atualizarTrechosPaginados(url, ['#auditLogRegistros', '#paginationRegistros']);
+        }
+
+        function carregarPaginaUsuarios(pagina, porPagina = null) {
+            const seletorQuantidade = document.getElementById('usuariosPorPagina');
+            const quantidade = porPagina || (seletorQuantidade ? seletorQuantidade.value : <?= (int)$perPageUsers ?>);
+
+            const url = montarUrlPaginacao({
+                u_page: Math.max(1, parseInt(pagina, 10) || 1),
+                u_por_pagina: quantidade
+            });
+
+            return atualizarTrechosPaginados(url, ['#usersTableBody', '#paginationUsuarios']);
+        }
+
+        document.addEventListener('click', function(event) {
+            const botaoRegistros = event.target.closest('.js-registros-page');
+            if (botaoRegistros) {
+                event.preventDefault();
+                if (!botaoRegistros.disabled) {
+                    carregarPaginaRegistros(botaoRegistros.dataset.page || 1);
+                }
+                return;
+            }
+
+            const botaoUsuarios = event.target.closest('.js-usuarios-page');
+            if (botaoUsuarios) {
+                event.preventDefault();
+                if (!botaoUsuarios.disabled) {
+                    carregarPaginaUsuarios(botaoUsuarios.dataset.page || 1);
+                }
+            }
+        });
+
         function alterarQuantidadePagina(parametro, valor, parametroPagina) {
-            const url = new URL(window.location.href);
-            url.searchParams.set(parametro, valor);
-            url.searchParams.set(parametroPagina, '1');
-            window.location.href = url.toString();
+            if (parametro === 'por_pagina') {
+                carregarPaginaRegistros(1, valor);
+                return;
+            }
+
+            if (parametro === 'u_por_pagina') {
+                carregarPaginaUsuarios(1, valor);
+                return;
+            }
+
+            const url = montarUrlPaginacao({
+                [parametro]: valor,
+                [parametroPagina]: 1
+            });
+            window.location.href = url;
         }
 
         function exportarExcel() {
@@ -2599,7 +2783,28 @@ try {
             });
         }
 
+
+        function limparParametrosPaginacaoDaUrl() {
+            const url = new URL(window.location.href);
+            let alterou = false;
+
+            ['pagina', 'u_page'].forEach(function(parametro) {
+                if (url.searchParams.has(parametro)) {
+                    url.searchParams.delete(parametro);
+                    alterou = true;
+                }
+            });
+
+            if (alterou) {
+                const query = url.searchParams.toString();
+                const novaUrl = query ? `${url.pathname}?${query}` : url.pathname;
+                window.history.replaceState({}, '', novaUrl);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            limparParametrosPaginacaoDaUrl();
+
             const yearEl = document.getElementById('current-year');
             if (yearEl) {
                 yearEl.textContent = new Date().getFullYear();
