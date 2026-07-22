@@ -18,6 +18,27 @@ try {
     // Adiciona as novas colunas SE elas ainda não existirem
     
     // Tabela oficios
+    $stmt = $pdo->query("SHOW COLUMNS FROM oficios LIKE 'fornecedor_indicado_id'");
+    if (!$stmt->fetch()) {
+        $pdo->exec("ALTER TABLE oficios ADD COLUMN fornecedor_indicado_id INT NULL AFTER usuario_id");
+        echo "Coluna fornecedor_indicado_id adicionada em oficios.<br>";
+    }
+
+    if (!db_index_exists($pdo, 'oficios', 'idx_oficios_fornecedor_indicado')) {
+        $pdo->exec("CREATE INDEX idx_oficios_fornecedor_indicado ON oficios (fornecedor_indicado_id)");
+        echo "Indice de fornecedor indicado criado em oficios.<br>";
+    }
+
+    if (!db_foreign_key_exists($pdo, 'oficios', 'fk_oficios_fornecedor_indicado')) {
+        $pdo->exec("
+            ALTER TABLE oficios
+            ADD CONSTRAINT fk_oficios_fornecedor_indicado
+            FOREIGN KEY (fornecedor_indicado_id) REFERENCES fornecedores(id)
+            ON DELETE SET NULL
+        ");
+        echo "Relacionamento de fornecedor indicado criado em oficios.<br>";
+    }
+
     $stmt = $pdo->query("SHOW COLUMNS FROM oficios LIKE 'arquivo_orcamento'");
     if (!$stmt->fetch()) {
         $pdo->exec("ALTER TABLE oficios ADD COLUMN arquivo_orcamento VARCHAR(255) DEFAULT NULL AFTER usuario_id");

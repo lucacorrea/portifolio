@@ -481,6 +481,13 @@ include 'views/layout/header.php';
                         <?php
                         $empresa_post = $empresas_form[$empresa_idx] ?? [];
                         $fornecedor_selected = (int)($empresa_post['fornecedor_id'] ?? 0);
+                        if (
+                            $_SERVER['REQUEST_METHOD'] !== 'POST'
+                            && $empresa_idx === 0
+                            && isset($fornecedores_by_id[(int)($oficio['fornecedor_indicado_id'] ?? 0)])
+                        ) {
+                            $fornecedor_selected = (int)$oficio['fornecedor_indicado_id'];
+                        }
                         $itens_selected = array_map('intval', $empresa_post['itens'] ?? []);
                         if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $empresa_idx === 0 && $qtd_empresas_form === 1) {
                             $itens_selected = array_map('intval', array_column($items, 'id'));

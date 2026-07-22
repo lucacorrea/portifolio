@@ -25,6 +25,31 @@ function db_add_column_if_missing(PDO $pdo, string $table, string $column, strin
     }
 }
 
+function db_index_exists(PDO $pdo, string $table, string $index): bool {
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND INDEX_NAME = ?
+    ");
+    $stmt->execute([$table, $index]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
+function db_foreign_key_exists(PDO $pdo, string $table, string $constraint): bool {
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM information_schema.TABLE_CONSTRAINTS
+        WHERE CONSTRAINT_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND CONSTRAINT_NAME = ?
+          AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+    ");
+    $stmt->execute([$table, $constraint]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
 function db_secretarias_relatorio_seed(): array {
     return [
         ['COMIÇÃO DE CONTRATAÇÃO DE COARI-CCC', 'CCC2026', '#D9E3F4'],
@@ -126,6 +151,18 @@ try {
         db_sync_secretarias_relatorio($pdo);
 
         if (db_table_exists($pdo, 'oficios')) {
+            db_add_column_if_missing($pdo, 'oficios', 'fornecedor_indicado_id', "fornecedor_indicado_id INT NULL AFTER usuario_id");
+            if (!db_index_exists($pdo, 'oficios', 'idx_oficios_fornecedor_indicado')) {
+                $pdo->exec("CREATE INDEX idx_oficios_fornecedor_indicado ON oficios (fornecedor_indicado_id)");
+            }
+            if (db_table_exists($pdo, 'fornecedores') && !db_foreign_key_exists($pdo, 'oficios', 'fk_oficios_fornecedor_indicado')) {
+                $pdo->exec("
+                    ALTER TABLE oficios
+                    ADD CONSTRAINT fk_oficios_fornecedor_indicado
+                    FOREIGN KEY (fornecedor_indicado_id) REFERENCES fornecedores(id)
+                    ON DELETE SET NULL
+                ");
+            }
             db_add_column_if_missing($pdo, 'oficios', 'arquivo_orcamento', "arquivo_orcamento VARCHAR(255) DEFAULT NULL AFTER usuario_id");
             db_add_column_if_missing($pdo, 'oficios', 'arquivo_oficio', "arquivo_oficio VARCHAR(255) DEFAULT NULL AFTER arquivo_orcamento");
             db_add_column_if_missing($pdo, 'oficios', 'valor_orcamento', "valor_orcamento DECIMAL(15,2) NULL DEFAULT NULL AFTER arquivo_oficio");

@@ -58,6 +58,14 @@ if ($session_token === '' || $csrf_token === '' || !hash_equals($session_token, 
     exit;
 }
 
+$fornecedor_post = $_POST['fornecedor_id'] ?? null;
+if (!is_scalar($fornecedor_post) || !ctype_digit((string)$fornecedor_post) || (int)$fornecedor_post <= 0) {
+    flash_message('warning', 'Selecione um fornecedor válido para concluir a operação em lote.');
+    header("Location: {$return_url}", true, 303);
+    exit;
+}
+$fornecedor_id = (int)$fornecedor_post;
+
 $posted_ids = $_POST['oficios'] ?? [];
 if (!is_array($posted_ids)) {
     $posted_ids = [];
@@ -82,44 +90,126 @@ $placeholders = implode(',', array_fill(0, count($ids), '?'));
 try {
     $pdo->beginTransaction();
 
-    $stmt = $pdo->prepare("
-        SELECT id, numero
-        FROM oficios
-        WHERE status = 'ENVIADO'
-          AND id IN ($placeholders)
-        ORDER BY id
-        FOR UPDATE
-    ");
-    $stmt->execute($ids);
-    $oficios_aprovaveis = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt_fornecedor = $pdo->prepare("SELECT id, nome FROM fornecedores WHERE id = ? FOR UPDATE");
+    $stmt_fornecedor->execute([$fornecedor_id]);
+    $fornecedor = $stmt_fornecedor->fetch(PDO::FETCH_ASSOC);
 
-    if (empty($oficios_aprovaveis)) {
+    if (!$fornecedor) {
         $pdo->rollBack();
-        flash_message('warning', 'Nenhuma das solicitações selecionadas está com status ENVIADO.');
-        header("Location: {$return_url}");
+        flash_message('warning', 'O fornecedor selecionado não existe mais. Atualize a página e tente novamente.');
+        header("Location: {$return_url}", true, 303);
         exit;
     }
 
-    $ids_aprovaveis = array_map('intval', array_column($oficios_aprovaveis, 'id'));
-    $update_placeholders = implode(',', array_fill(0, count($ids_aprovaveis), '?'));
-    $stmt_update = $pdo->prepare("UPDATE oficios SET status = 'APROVADO' WHERE status = 'ENVIADO' AND id IN ($update_placeholders)");
-    $stmt_update->execute($ids_aprovaveis);
+    $stmt = $pdo->prepare("
+        SELECT
+            o.id,
+            o.numero,
+            o.status,
+            o.fornecedor_indicado_id,
+            EXISTS (SELECT 1 FROM aquisicoes a WHERE a.oficio_id = o.id) AS possui_aquisicao
+        FROM oficios o
+        WHERE o.id IN ($placeholders)
+        ORDER BY o.id
+        FOR UPDATE
+    ");
+    $stmt->execute($ids);
+    $oficios_encontrados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $numeros = array_map(static function (array $oficio): string {
-        return (string)$oficio['numero'];
-    }, $oficios_aprovaveis);
+    $ids_aprovar = [];
+    $ids_atualizar_fornecedor = [];
+    $numeros_alterados = [];
+    $sem_alteracao = 0;
+    $com_aquisicao = 0;
+
+    foreach ($oficios_encontrados as $oficio) {
+        $oficio_id = (int)$oficio['id'];
+        $status = (string)$oficio['status'];
+
+        if ($status === 'ENVIADO') {
+            $ids_aprovar[] = $oficio_id;
+            $numeros_alterados[] = (string)$oficio['numero'];
+            continue;
+        }
+
+        if ($status === 'APROVADO') {
+            if (!empty($oficio['possui_aquisicao'])) {
+                $com_aquisicao++;
+                continue;
+            }
+
+            if ((int)($oficio['fornecedor_indicado_id'] ?? 0) === $fornecedor_id) {
+                $sem_alteracao++;
+                continue;
+            }
+
+            $ids_atualizar_fornecedor[] = $oficio_id;
+            $numeros_alterados[] = (string)$oficio['numero'];
+        }
+    }
+
+    if (empty($ids_aprovar) && empty($ids_atualizar_fornecedor)) {
+        $pdo->rollBack();
+        $ignorados = count($ids) - $sem_alteracao - $com_aquisicao;
+        if ($com_aquisicao > 0) {
+            $mensagem = $com_aquisicao . ' ofício(s) aprovado(s) já possui(em) aquisição. Altere o fornecedor na própria aquisição.';
+        } elseif ($sem_alteracao > 0) {
+            $mensagem = 'Os ofícios aprovados selecionados já possuem esse fornecedor indicado.';
+        } else {
+            $mensagem = 'Nenhuma solicitação selecionada está com status ENVIADO ou APROVADO.';
+        }
+        if ($ignorados > 0) {
+            $mensagem .= ' ' . $ignorados . ' item(ns) com outro status foram ignorados.';
+        }
+        flash_message('warning', $mensagem);
+        header("Location: {$return_url}", true, 303);
+        exit;
+    }
+
+    if (!empty($ids_aprovar)) {
+        $update_placeholders = implode(',', array_fill(0, count($ids_aprovar), '?'));
+        $stmt_update = $pdo->prepare("
+            UPDATE oficios
+            SET status = 'APROVADO', fornecedor_indicado_id = ?
+            WHERE status = 'ENVIADO'
+              AND id IN ($update_placeholders)
+        ");
+        $stmt_update->execute(array_merge([$fornecedor_id], $ids_aprovar));
+    }
+
+    if (!empty($ids_atualizar_fornecedor)) {
+        $update_placeholders = implode(',', array_fill(0, count($ids_atualizar_fornecedor), '?'));
+        $stmt_update = $pdo->prepare("
+            UPDATE oficios
+            SET fornecedor_indicado_id = ?
+            WHERE status = 'APROVADO'
+              AND id IN ($update_placeholders)
+        ");
+        $stmt_update->execute(array_merge([$fornecedor_id], $ids_atualizar_fornecedor));
+    }
+
     log_action(
         $pdo,
-        'APROVACAO_MULTIPLA_OFICIOS',
-        count($ids_aprovaveis) . ' solicitação(ões) aprovada(s): ' . implode(', ', $numeros)
+        'APROVACAO_FORNECEDOR_MULTIPLOS_OFICIOS',
+        count($ids_aprovar) . ' solicitação(ões) aprovada(s) e '
+            . count($ids_atualizar_fornecedor) . ' fornecedor(es) atualizado(s) para '
+            . $fornecedor['nome'] . ': ' . implode(', ', $numeros_alterados)
     );
 
     $pdo->commit();
+    $_SESSION['csrf_aprovacao_multipla'] = bin2hex(random_bytes(32));
 
-    $ignorados = count($ids) - count($ids_aprovaveis);
-    $mensagem = count($ids_aprovaveis) . ' solicitação(ões) aprovada(s) com sucesso.';
+    $ignorados = count($ids) - count($ids_aprovar) - count($ids_atualizar_fornecedor) - $sem_alteracao - $com_aquisicao;
+    $mensagem = count($ids_aprovar) . ' solicitação(ões) aprovada(s) e '
+        . count($ids_atualizar_fornecedor) . ' fornecedor(es) atualizado(s) com sucesso.';
+    if ($sem_alteracao > 0) {
+        $mensagem .= ' ' . $sem_alteracao . ' já possuía(m) o fornecedor indicado.';
+    }
+    if ($com_aquisicao > 0) {
+        $mensagem .= ' ' . $com_aquisicao . ' já possuía(m) aquisição e deve(m) ser alterado(s) pela tela da aquisição.';
+    }
     if ($ignorados > 0) {
-        $mensagem .= ' ' . $ignorados . ' item(ns) não foi(ram) alterado(s) porque não estava(m) com status ENVIADO.';
+        $mensagem .= ' ' . $ignorados . ' item(ns) com outro status foram ignorados.';
     }
     flash_message('success', $mensagem);
 } catch (Throwable $e) {
@@ -129,5 +219,5 @@ try {
     flash_message('danger', 'Não foi possível concluir a aprovação múltipla. Tente novamente.');
 }
 
-header("Location: {$return_url}");
+header("Location: {$return_url}", true, 303);
 exit;

@@ -250,7 +250,7 @@ if ($busca_texto !== '') {
     $valor_busca = parse_money_filter_value($busca_texto);
 
     $valor_clauses = ["CAST(o.valor_orcamento AS CHAR) LIKE ?"];
-    $params_busca = [$busca, $busca, $busca, $busca];
+    $params_busca = [$busca, $busca, $busca, $busca, $busca];
 
     if ($valor_busca !== null) {
         $valor_clauses[] = "ABS(COALESCE(o.valor_orcamento, 0) - ?) < 0.01";
@@ -267,6 +267,15 @@ if ($busca_texto !== '') {
             WHERE aq_busca.oficio_id = o.id
               AND f_busca.nome LIKE ?
         )
+        OR (
+            NOT EXISTS (SELECT 1 FROM aquisicoes aq_existente WHERE aq_existente.oficio_id = o.id)
+            AND EXISTS (
+                SELECT 1
+                FROM fornecedores f_indicado_busca
+                WHERE f_indicado_busca.id = o.fornecedor_indicado_id
+                  AND f_indicado_busca.nome LIKE ?
+            )
+        )
         OR " . implode(' OR ', $valor_clauses) . "
     )";
     foreach ($params_busca as $param_busca) {
@@ -278,12 +287,19 @@ if ($secretaria_id_filtro !== '' && ctype_digit($secretaria_id_filtro) && (int)$
     $params[] = (int)$secretaria_id_filtro;
 }
 if ($fornecedor_id_filtro !== '' && ctype_digit($fornecedor_id_filtro) && (int)$fornecedor_id_filtro > 0) {
-    $where_clauses[] = "EXISTS (
-        SELECT 1
-        FROM aquisicoes aq_filtro
-        WHERE aq_filtro.oficio_id = o.id
-          AND aq_filtro.fornecedor_id = ?
+    $where_clauses[] = "(
+        EXISTS (
+            SELECT 1
+            FROM aquisicoes aq_filtro
+            WHERE aq_filtro.oficio_id = o.id
+              AND aq_filtro.fornecedor_id = ?
+        )
+        OR (
+            o.fornecedor_indicado_id = ?
+            AND NOT EXISTS (SELECT 1 FROM aquisicoes aq_existente WHERE aq_existente.oficio_id = o.id)
+        )
     )";
+    $params[] = (int)$fornecedor_id_filtro;
     $params[] = (int)$fornecedor_id_filtro;
 }
 if ($data_inicio_valida) {
@@ -340,7 +356,8 @@ if ($export === 'pdf_fornecedores') {
     $params_export = $params;
     $fornecedor_export_condition = '';
     if ($fornecedor_id_filtro !== '' && ctype_digit($fornecedor_id_filtro) && (int)$fornecedor_id_filtro > 0) {
-        $fornecedor_export_condition = ' AND aq_rel.fornecedor_id = ?';
+        $fornecedor_export_condition = ' AND (aq_rel.fornecedor_id = ? OR (aq_rel.id IS NULL AND o.fornecedor_indicado_id = ?))';
+        $params_export[] = (int)$fornecedor_id_filtro;
         $params_export[] = (int)$fornecedor_id_filtro;
     }
 
@@ -353,12 +370,13 @@ if ($export === 'pdf_fornecedores') {
             o.status,
             s.nome AS secretaria,
             u.nome AS usuario,
-            COALESCE(f_rel.nome, 'SEM FORNECEDOR') AS fornecedor
+            COALESCE(f_rel.nome, f_indicado.nome, 'SEM FORNECEDOR') AS fornecedor
         FROM oficios o
         JOIN secretarias s ON o.secretaria_id = s.id
         JOIN usuarios u ON o.usuario_id = u.id
         LEFT JOIN aquisicoes aq_rel ON aq_rel.oficio_id = o.id
         LEFT JOIN fornecedores f_rel ON f_rel.id = aq_rel.fornecedor_id
+        LEFT JOIN fornecedores f_indicado ON f_indicado.id = o.fornecedor_indicado_id
         WHERE $where{$fornecedor_export_condition}
         GROUP BY
             o.id,
@@ -369,9 +387,11 @@ if ($export === 'pdf_fornecedores') {
             s.nome,
             u.nome,
             f_rel.id,
-            f_rel.nome
+            f_rel.nome,
+            f_indicado.id,
+            f_indicado.nome
         ORDER BY
-            COALESCE(f_rel.nome, 'SEM FORNECEDOR') ASC,
+            COALESCE(f_rel.nome, f_indicado.nome, 'SEM FORNECEDOR') ASC,
             o.criado_em DESC,
             o.id DESC
     ");
@@ -752,18 +772,25 @@ $stmt = $pdo->prepare("
         o.*,
         s.nome as secretaria,
         u.nome as usuario,
-        fornecedores_oficio.fornecedores
+        COALESCE(fornecedores_oficio.fornecedores, f_indicado.nome) AS fornecedores,
+        COALESCE(fornecedores_oficio.total_aquisicoes, 0) AS total_aquisicoes,
+        CASE
+            WHEN fornecedores_oficio.fornecedores IS NULL AND f_indicado.id IS NOT NULL THEN 1
+            ELSE 0
+        END AS fornecedor_apenas_indicado
     FROM oficios o
     JOIN secretarias s ON o.secretaria_id = s.id
     JOIN usuarios u ON o.usuario_id = u.id
     LEFT JOIN (
         SELECT
             aq.oficio_id,
+            COUNT(DISTINCT aq.id) AS total_aquisicoes,
             GROUP_CONCAT(DISTINCT f.nome ORDER BY f.nome ASC SEPARATOR ', ') AS fornecedores
         FROM aquisicoes aq
         INNER JOIN fornecedores f ON f.id = aq.fornecedor_id
         GROUP BY aq.oficio_id
     ) fornecedores_oficio ON fornecedores_oficio.oficio_id = o.id
+    LEFT JOIN fornecedores f_indicado ON f_indicado.id = o.fornecedor_indicado_id
     WHERE $where
     ORDER BY o.criado_em DESC
     LIMIT $itens_por_pagina OFFSET $offset
@@ -1313,7 +1340,7 @@ include 'views/layout/header.php';
 
                             <i class="fas fa-check-circle"></i>
 
-                            Aprovar Selecionados
+                            Aprovar / informar fornecedor
 
                         </button>
 
@@ -1375,6 +1402,7 @@ include 'views/layout/header.php';
                                             name="oficios[]"
                                             value="<?php echo (int)$o['id']; ?>"
                                             data-status="<?php echo h($o['status']); ?>"
+                                            data-has-aquisicao="<?php echo (int)$o['total_aquisicoes'] > 0 ? '1' : '0'; ?>"
                                             aria-label="Selecionar ofício <?php echo h($o['numero']); ?>">
                                     </td>
 
@@ -1391,9 +1419,12 @@ include 'views/layout/header.php';
                                 </td>
                                 <td>
                                     <?php $fornecedores_oficio = trim((string)($o['fornecedores'] ?? '')); ?>
-                                    <span class="text-muted fornecedor-lista" title="<?php echo htmlspecialchars($fornecedores_oficio !== '' ? $fornecedores_oficio : 'Sem aquisição vinculada', ENT_QUOTES, 'UTF-8'); ?>">
+                                    <span class="text-muted fornecedor-lista" title="<?php echo htmlspecialchars($fornecedores_oficio !== '' ? $fornecedores_oficio : 'Fornecedor ainda não informado', ENT_QUOTES, 'UTF-8'); ?>">
                                         <?php echo htmlspecialchars($fornecedores_oficio !== '' ? $fornecedores_oficio : '---', ENT_QUOTES, 'UTF-8'); ?>
                                     </span>
+                                    <?php if (!empty($o['fornecedor_apenas_indicado'])): ?>
+                                        <small class="text-muted" style="display:block;">Indicado na aprovação</small>
+                                    <?php endif; ?>
                                 </td>
                                 <td><?php echo format_date($o['criado_em']); ?></td>
                                 <td style="text-align: right; font-weight: 700; color: #157347;">
@@ -1497,9 +1528,9 @@ include 'views/layout/header.php';
                             <div>
                                 <h3 id="modal-aprovacao-title">
                                     <i class="fas fa-check-circle text-success"></i>
-                                    Aprovar solicitações
+                                    Aprovar e informar fornecedor
                                 </h3>
-                                <small>Confirme a aprovação dos ofícios selecionados.</small>
+                                <small>O fornecedor será aplicado aos ofícios elegíveis selecionados.</small>
                             </div>
                             <button type="button" class="btn-fechar-modal" onclick="fecharModalAprovacao()" aria-label="Fechar">
                                 <i class="fas fa-times"></i>
@@ -1511,16 +1542,37 @@ include 'views/layout/header.php';
                                 <i class="fas fa-info-circle"></i>
                                 <strong id="totalSelecionados">0 solicitações selecionadas</strong>
                             </div>
-                            <p style="margin: 0; color: var(--text-muted);">
-                                Somente os selecionados com status ENVIADO serão aprovados. A geração da aquisição e a escolha de fornecedor continuam no fluxo próprio de cada ofício.
-                            </p>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="fornecedor-aprovacao-lote" class="form-label">Fornecedor</label>
+                                <select
+                                    name="fornecedor_id"
+                                    id="fornecedor-aprovacao-lote"
+                                    class="form-control form-control-lg">
+                                    <option value="">Selecione o fornecedor...</option>
+                                    <?php foreach ($fornecedores_list as $fornecedor): ?>
+                                        <option value="<?php echo (int)$fornecedor['id']; ?>">
+                                            <?php echo h($fornecedor['nome']); ?><?php echo !empty($fornecedor['cnpj']) ? ' (' . h($fornecedor['cnpj']) . ')' : ''; ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="text-muted">
+                                    ENVIADO: aprova e informa o fornecedor. APROVADO sem aquisição: altera somente o fornecedor indicado.
+                                </small>
+                            </div>
+
+                            <?php if (empty($fornecedores_list)): ?>
+                                <div class="alert alert-warning" style="margin-top: 1rem; margin-bottom: 0;">
+                                    Cadastre um fornecedor antes de usar esta operação.
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="modal-footer-custom">
                             <button type="button" class="btn btn-secondary" onclick="fecharModalAprovacao()">Cancelar</button>
                             <button type="submit" class="btn btn-success">
                                 <i class="fas fa-check-circle"></i>
-                                Confirmar aprovação
+                                Confirmar operação
                             </button>
                         </div>
                     </div>
@@ -1662,6 +1714,7 @@ include 'views/layout/header.php';
 <?php endif; ?>
 <script>
     const selecionarTodos = document.getElementById('selecionarTodos');
+    const temFornecedoresAprovacao = <?php echo !empty($fornecedores_list) ? 'true' : 'false'; ?>;
 
     if (selecionarTodos) {
 
@@ -1688,7 +1741,9 @@ include 'views/layout/header.php';
     function atualizarContador() {
 
         let total = document.querySelectorAll('.checkOficio:checked').length;
-        let totalAprovaveis = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
+        let totalEnviados = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
+        let totalAprovados = document.querySelectorAll('.checkOficio:checked[data-status="APROVADO"][data-has-aquisicao="0"]').length;
+        let totalElegiveis = totalEnviados + totalAprovados;
 
         const contador = document.getElementById('contadorSelecionados');
         const botaoAprovar = document.getElementById('btn-aprovar-selecionados');
@@ -1700,7 +1755,7 @@ include 'views/layout/header.php';
         }
 
         if (botaoAprovar) {
-            botaoAprovar.disabled = totalAprovaveis === 0;
+            botaoAprovar.disabled = totalElegiveis === 0 || !temFornecedoresAprovacao;
         }
 
         if (botaoEditarDatas) {
@@ -1714,36 +1769,27 @@ include 'views/layout/header.php';
         }
 
     }
-
-    function confirmarAprovacao() {
-
-        let total = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
-        let totalSelecionados = document.querySelectorAll('.checkOficio:checked').length;
-
-        if (total == 0) {
-
-            alert('Selecione pelo menos uma solicitação.');
-
-            return false;
-
-        }
-
-        return confirm(
-
-            'Deseja aprovar ' + total + ' solicitação(ões)?'
-
-        );
-
-    }
 </script>
 <script>
     function abrirModalAprovacao() {
 
-        let total = document.querySelectorAll('.checkOficio:checked').length;
+        const totalSelecionados = document.querySelectorAll('.checkOficio:checked').length;
+        const totalEnviados = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
+        const totalAprovados = document.querySelectorAll('.checkOficio:checked[data-status="APROVADO"][data-has-aquisicao="0"]').length;
+        const totalElegiveis = totalEnviados + totalAprovados;
+        const totalIgnorados = totalSelecionados - totalElegiveis;
 
-        if (total == 0) {
+        if (totalElegiveis === 0) {
 
-            alert("Selecione pelo menos uma solicitação.");
+            alert('Selecione pelo menos uma solicitação com status ENVIADO ou APROVADO.');
+
+            return;
+
+        }
+
+        if (!temFornecedoresAprovacao) {
+
+            alert('Cadastre um fornecedor antes de usar esta operação.');
 
             return;
 
@@ -1751,18 +1797,24 @@ include 'views/layout/header.php';
 
         const formLote = document.getElementById('form-aprovacao-lote');
         const campoNovaData = document.getElementById('nova-data-lote');
+        const campoFornecedor = document.getElementById('fornecedor-aprovacao-lote');
         formLote.setAttribute('action', 'aprovar_multiplos.php');
         campoNovaData.required = false;
+        campoFornecedor.required = true;
 
-        document.getElementById("totalSelecionados").textContent =
-
-            total + " apta(s) para aprovação entre " + totalSelecionados + " selecionada(s)";
+        let resumo = totalEnviados + ' será(ão) aprovado(s) e ' + totalAprovados
+            + ' receberá(ão) somente o fornecedor.';
+        if (totalIgnorados > 0) {
+            resumo += ' ' + totalIgnorados + ' não é(são) elegível(is) para esta operação.';
+        }
+        document.getElementById('totalSelecionados').textContent = resumo;
 
         document
             .getElementById("modalAprovacao")
             .classList.add("show");
 
         document.getElementById("modalAprovacao").setAttribute("aria-hidden", "false");
+        campoFornecedor.focus();
 
     }
 
@@ -1773,6 +1825,7 @@ include 'views/layout/header.php';
             .classList.remove("show");
 
         document.getElementById("modalAprovacao").setAttribute("aria-hidden", "true");
+        document.getElementById('fornecedor-aprovacao-lote').required = false;
 
     }
 
@@ -1804,8 +1857,10 @@ include 'views/layout/header.php';
 
         const formLote = document.getElementById('form-aprovacao-lote');
         const campoNovaData = document.getElementById('nova-data-lote');
+        const campoFornecedor = document.getElementById('fornecedor-aprovacao-lote');
         formLote.setAttribute('action', 'atualizar_datas_multiplas.php');
         campoNovaData.required = true;
+        campoFornecedor.required = false;
 
         const modal = document.getElementById('modalDatas');
         modal.classList.add('show');
