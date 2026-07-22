@@ -14,12 +14,12 @@ try {
         os_posted_positive_int('id'),
         $user->id()
     );
-    $session->flash('success', 'Lembrete marcado como feito.');
+    $session->flash('success', 'Compromisso marcado como feito.');
 } catch (InvalidArgumentException $exception) {
     $session->flash('danger', $exception->getMessage());
 } catch (Throwable $exception) {
     error_log('Reminder completion failed: ' . $exception->getMessage());
-    $session->flash('danger', 'Não foi possível marcar o lembrete como feito.');
+    $session->flash('danger', 'Não foi possível marcar o compromisso como feito.');
 }
 
 agenda_redirect($application, $redirectTarget);

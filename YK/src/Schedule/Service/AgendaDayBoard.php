@@ -7,14 +7,8 @@ namespace App\Schedule\Service;
 final class AgendaDayBoard
 {
     private const GROUPS = [
-        'reminder_active' => ['Lembretes pendentes', 'bi-alarm'],
-        'agendada' => ['Agendadas', 'bi-calendar2-check'],
-        'em_deslocamento' => ['Em deslocamento', 'bi-truck'],
-        'em_execucao' => ['Em execução', 'bi-play-circle'],
-        'aguardando_peca' => ['Aguardando peça', 'bi-box-seam'],
-        'finalizada' => ['OS finalizadas', 'bi-check2-circle'],
-        'reminder_completed' => ['Lembretes feitos', 'bi-check-circle'],
-        'cancelada' => ['Canceladas', 'bi-x-circle'],
+        'reminder_active' => ['Compromissos pendentes', 'bi-alarm'],
+        'reminder_completed' => ['Compromissos feitos', 'bi-check-circle'],
         'other' => ['Outros', 'bi-three-dots'],
     ];
 
@@ -28,11 +22,13 @@ final class AgendaDayBoard
 
         foreach ($events as $event) {
             $type = (string) ($event['type'] ?? '');
+            if ($type !== 'reminder') {
+                continue;
+            }
             $status = (string) ($event['status'] ?? '');
             $key = match (true) {
-                $type === 'reminder' && $status === 'ativo' => 'reminder_active',
-                $type === 'reminder' && $status === 'concluido' => 'reminder_completed',
-                $type === 'service_order' && isset($groups[$status]) => $status,
+                $status === 'ativo' => 'reminder_active',
+                $status === 'concluido' => 'reminder_completed',
                 default => 'other',
             };
             $groups[$key]['events'][] = $event;

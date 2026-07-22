@@ -54,7 +54,7 @@ if ($authorization->can('orcamento.visualizar')) {
     $quickActions[] = ['Orçamentos', 'bi-file-earmark-text', 'orcamentos.php'];
 }
 if ($authorization->can('agenda.visualizar') && $authorization->can('agenda.criar_lembrete')) {
-    $quickActions[] = ['Novo lembrete', 'bi-alarm', 'agenda.php?modal=reminder'];
+    $quickActions[] = ['Novo compromisso', 'bi-calendar-plus', 'agenda.php?modal=reminder'];
 }
 if ($authorization->can('caixa.visualizar')) {
     $quickActions[] = ['Ver caixa', 'bi-cash-coin', 'caixa.php'];
