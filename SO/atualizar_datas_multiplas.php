@@ -30,6 +30,16 @@ function datas_lote_return_url(array $source): string
         }
     }
 
+    $por_pagina_options = [6, 10, 25, 50, 100];
+    if (
+        isset($source['por_pagina'])
+        && is_scalar($source['por_pagina'])
+        && ctype_digit((string)$source['por_pagina'])
+        && in_array((int)$source['por_pagina'], $por_pagina_options, true)
+    ) {
+        $safe['por_pagina'] = (int)$source['por_pagina'];
+    }
+
     $query = http_build_query($safe);
     return 'oficios_lista.php' . ($query !== '' ? '?' . $query : '');
 }
@@ -133,13 +143,13 @@ try {
     ");
     $stmt_update_oficios->execute($params_oficios);
 
-    $params_aquisicoes = array_merge([$nova_data], $ids_encontrados);
     $stmt_update_aquisicoes = $pdo->prepare("
-        UPDATE aquisicoes
-        SET criado_em = CONCAT(?, ' ', COALESCE(TIME(criado_em), '00:00:00'))
-        WHERE oficio_id IN ($placeholders_encontrados)
+        UPDATE aquisicoes a
+        INNER JOIN oficios o ON o.id = a.oficio_id
+        SET a.criado_em = o.criado_em
+        WHERE a.oficio_id IN ($placeholders_encontrados)
     ");
-    $stmt_update_aquisicoes->execute($params_aquisicoes);
+    $stmt_update_aquisicoes->execute($ids_encontrados);
 
     $numeros = array_map(static function (array $oficio): string {
         return (string)$oficio['numero'];

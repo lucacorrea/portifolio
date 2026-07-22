@@ -26,6 +26,16 @@ function gerar_indicadas_return_url(array $source): string
         }
     }
 
+    $por_pagina_options = [6, 10, 25, 50, 100];
+    if (
+        isset($source['por_pagina'])
+        && is_scalar($source['por_pagina'])
+        && ctype_digit((string)$source['por_pagina'])
+        && in_array((int)$source['por_pagina'], $por_pagina_options, true)
+    ) {
+        $safe['por_pagina'] = (int)$source['por_pagina'];
+    }
+
     $query = http_build_query($safe);
     return 'oficios_lista.php' . ($query !== '' ? '?' . $query : '');
 }
@@ -61,7 +71,7 @@ try {
     $pdo->beginTransaction();
 
     $stmt_oficios = $pdo->query("
-        SELECT o.id, o.numero, o.fornecedor_indicado_id, f.nome AS fornecedor
+        SELECT o.id, o.numero, o.fornecedor_indicado_id, o.criado_em, f.nome AS fornecedor
         FROM oficios o
         INNER JOIN fornecedores f ON f.id = o.fornecedor_indicado_id
         WHERE o.status = 'APROVADO'
@@ -133,8 +143,8 @@ try {
     }
 
     $stmt_aquisicao = $pdo->prepare("
-        INSERT INTO aquisicoes (numero_aq, codigo_entrega, oficio_id, fornecedor_id, valor_total)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO aquisicoes (numero_aq, codigo_entrega, oficio_id, fornecedor_id, valor_total, criado_em)
+        VALUES (?, ?, ?, ?, ?, ?)
     ");
     $stmt_item = $pdo->prepare("
         INSERT INTO itens_aquisicao (aquisicao_id, oficio_item_id, produto, quantidade, valor_unitario)
@@ -162,6 +172,7 @@ try {
             $oficio_id,
             (int)$oficio['fornecedor_indicado_id'],
             $valor_total,
+            $oficio['criado_em'],
         ]);
         $aquisicao_id = (int)$pdo->lastInsertId();
 

@@ -83,6 +83,16 @@ function oficios_lista_return_url(array $source, array $status_options): string
         $safe['page'] = (int)$source['page'];
     }
 
+    $por_pagina_options = [6, 10, 25, 50, 100];
+    if (
+        isset($source['por_pagina'])
+        && is_scalar($source['por_pagina'])
+        && ctype_digit((string)$source['por_pagina'])
+        && in_array((int)$source['por_pagina'], $por_pagina_options, true)
+    ) {
+        $safe['por_pagina'] = (int)$source['por_pagina'];
+    }
+
     $query = http_build_query($safe);
     return 'oficios_lista.php' . ($query !== '' ? '?' . $query : '');
 }
@@ -786,7 +796,12 @@ if ($export === 'pdf_fornecedores') {
 }
 
 // Configurações de Paginação
-$itens_por_pagina = 6;
+$por_pagina_options = [6, 10, 25, 50, 100];
+$por_pagina_request = is_scalar($_GET['por_pagina'] ?? null) ? (string)$_GET['por_pagina'] : '';
+$itens_por_pagina = ctype_digit($por_pagina_request)
+    && in_array((int)$por_pagina_request, $por_pagina_options, true)
+        ? (int)$por_pagina_request
+        : 6;
 $pagina_atual = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $pagina_atual = max(1, $pagina_atual);
 $offset = ($pagina_atual - 1) * $itens_por_pagina;
@@ -857,6 +872,10 @@ include 'views/layout/header.php';
         grid-column: span 3;
     }
 
+    .filtro-limite {
+        grid-column: span 2;
+    }
+
     .filtro-status {
         grid-column: span 2;
     }
@@ -897,7 +916,8 @@ include 'views/layout/header.php';
 
         .filtro-status,
         .filtro-secretaria,
-        .filtro-data {
+        .filtro-data,
+        .filtro-limite {
             grid-column: span 3;
         }
 
@@ -1218,6 +1238,7 @@ include 'views/layout/header.php';
         .filtro-secretaria,
         .filtro-fornecedor,
         .filtro-data,
+        .filtro-limite,
         .filtros-acoes {
             grid-column: span 1;
         }
@@ -1261,6 +1282,17 @@ include 'views/layout/header.php';
         </h3>
 
         <form action="" method="GET" class="filtros-grid">
+            <div class="form-group filtro-limite" style="margin-bottom: 0;">
+                <label class="form-label">Linhas por página</label>
+                <select name="por_pagina" class="form-control">
+                    <?php foreach ($por_pagina_options as $por_pagina_option): ?>
+                        <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
+                            <?php echo $por_pagina_option; ?> linhas
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
             <div class="form-group filtro-busca" style="margin-bottom: 0;">
                 <label class="form-label">Termo de busca</label>
                 <input type="text" name="busca" class="form-control" placeholder="Número, secretaria, fornecedor ou valor..." value="<?php echo htmlspecialchars($busca_texto, ENT_QUOTES, 'UTF-8'); ?>">

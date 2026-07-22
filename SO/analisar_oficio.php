@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo->beginTransaction();
 
-            $stmt_lock = $pdo->prepare("SELECT id, numero, status FROM oficios WHERE id = ? FOR UPDATE");
+            $stmt_lock = $pdo->prepare("SELECT id, numero, status, criado_em FROM oficios WHERE id = ? FOR UPDATE");
             $stmt_lock->execute([$id]);
             $oficio_atual = $stmt_lock->fetch(PDO::FETCH_ASSOC);
 
@@ -116,8 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $numero_aquisicao = generate_aquisicao_number($pdo);
                 $codigo_entrega = generate_unique_code($pdo);
                 $stmt_aquisicao = $pdo->prepare("
-                    INSERT INTO aquisicoes (numero_aq, codigo_entrega, oficio_id, fornecedor_id, valor_total)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO aquisicoes (numero_aq, codigo_entrega, oficio_id, fornecedor_id, valor_total, criado_em)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 ");
                 $stmt_aquisicao->execute([
                     $numero_aquisicao,
@@ -125,6 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $id,
                     $fornecedor_id,
                     $valor_total,
+                    $oficio_atual['criado_em'],
                 ]);
                 $aquisicao_id = (int)$pdo->lastInsertId();
 

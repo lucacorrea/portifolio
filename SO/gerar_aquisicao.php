@@ -145,8 +145,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 codigo_entrega,
                 oficio_id,
                 fornecedor_id,
-                valor_total
-            ) VALUES (?, ?, ?, ?, ?)
+                valor_total,
+                criado_em
+            ) VALUES (?, ?, ?, ?, ?, ?)
         ");
 
         $stmt_item_aq = $pdo->prepare("
@@ -171,6 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id,
                 $empresa['fornecedor_id'],
                 $empresa['valor_total'],
+                $oficio['criado_em'],
             ]);
 
             $aq_id = (int)$pdo->lastInsertId();

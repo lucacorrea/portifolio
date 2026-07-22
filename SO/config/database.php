@@ -210,6 +210,37 @@ try {
         if (db_table_exists($pdo, 'itens_oficio')) {
             db_add_column_if_missing($pdo, 'itens_oficio', 'valor_unitario', "valor_unitario DECIMAL(15,2) NULL DEFAULT 0.00 AFTER unidade");
         }
+
+        if (
+            db_table_exists($pdo, 'aquisicoes')
+            && db_table_exists($pdo, 'oficios')
+            && db_table_exists($pdo, 'logs')
+        ) {
+            $migrationKey = 'MIGRACAO_DATA_AQUISICAO_IGUAL_OFICIO_V1';
+            $stmtMigration = $pdo->prepare("SELECT 1 FROM logs WHERE acao = ? LIMIT 1");
+            $stmtMigration->execute([$migrationKey]);
+
+            if (!$stmtMigration->fetchColumn()) {
+                $stmtSyncDates = $pdo->prepare("
+                    UPDATE aquisicoes a
+                    INNER JOIN oficios o ON o.id = a.oficio_id
+                    SET a.criado_em = o.criado_em
+                    WHERE o.criado_em IS NOT NULL
+                      AND NOT (a.criado_em <=> o.criado_em)
+                ");
+                $stmtSyncDates->execute();
+                $totalDatasSincronizadas = $stmtSyncDates->rowCount();
+
+                $stmtLogMigration = $pdo->prepare("
+                    INSERT INTO logs (usuario_id, acao, detalhes)
+                    VALUES (NULL, ?, ?)
+                ");
+                $stmtLogMigration->execute([
+                    $migrationKey,
+                    $totalDatasSincronizadas . ' aquisição(ões) tiveram criado_em alinhado ao respectivo ofício.',
+                ]);
+            }
+        }
     } catch (PDOException $e) {
         throw new PDOException("Erro ao atualizar a estrutura do banco: " . $e->getMessage(), (int)$e->getCode(), $e);
     }

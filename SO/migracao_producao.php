@@ -125,6 +125,16 @@ try {
         echo "Coluna oficio_item_id adicionada em itens_aquisicao.<br>";
     }
 
+    $stmtSyncDates = $pdo->prepare("
+        UPDATE aquisicoes a
+        INNER JOIN oficios o ON o.id = a.oficio_id
+        SET a.criado_em = o.criado_em
+        WHERE o.criado_em IS NOT NULL
+          AND NOT (a.criado_em <=> o.criado_em)
+    ");
+    $stmtSyncDates->execute();
+    echo $stmtSyncDates->rowCount() . " data(s) de aquisição alinhada(s) à data do respectivo ofício.<br>";
+
     echo "<h1>Migracao de producao concluida com sucesso!</h1>";
 
 } catch (PDOException $e) {
