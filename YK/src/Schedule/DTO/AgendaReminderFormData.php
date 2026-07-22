@@ -27,7 +27,7 @@ final class AgendaReminderFormData
             throw new InvalidArgumentException('Informe um título válido.');
         }
         $description = trim((string) ($data['description'] ?? $data['descricao'] ?? ''));
-        if (str_contains($description, "\0")) {
+        if (str_contains($description, "\0") || strlen($description) > 5000) {
             throw new InvalidArgumentException('Descrição inválida.');
         }
         $end = trim((string) ($data['end'] ?? $data['fim'] ?? ''));

@@ -130,6 +130,17 @@ $connection = new AgendaReminderFakePdo($rows);
 $repository = new AgendaReminderRepository($connection);
 $service = new AgendaManagementService($repository);
 
+try {
+    App\Schedule\DTO\AgendaReminderFormData::fromArray([
+        'title' => 'Reunião interna',
+        'description' => str_repeat('a', 5001),
+        'start' => '2026-07-20T08:00',
+    ]);
+    throw new RuntimeException('Descrição excessiva deveria ser rejeitada.');
+} catch (InvalidArgumentException $exception) {
+    agendaReminderAssert($exception->getMessage() === 'Descrição inválida.', 'Descrição deve ter limite validado no servidor.');
+}
+
 $service->completeReminder(1, 9);
 agendaReminderAssert($connection->rows[1]['status'] === 'concluido', 'Lembrete ativo deve ser concluído.');
 agendaReminderAssert($connection->rows[1]['concluido_por'] === 9, 'Conclusão deve registrar o usuário.');
@@ -164,15 +175,38 @@ $grouped = AgendaDayBoard::group([
     ['type'=>'service_order', 'status'=>'em_execucao', 'time'=>'2026-07-20 09:00:00', 'id'=>'os-1'],
     ['type'=>'reminder', 'status'=>'ativo', 'time'=>'2026-07-20 08:00:00', 'id'=>'reminder-1'],
     ['type'=>'reminder', 'status'=>'concluido', 'time'=>'2026-07-20 10:00:00', 'id'=>'reminder-2'],
-    ['type'=>'service_order', 'status'=>'novo_status', 'time'=>'2026-07-20 11:00:00', 'id'=>'other-1'],
+    ['type'=>'reminder', 'status'=>'novo_status', 'time'=>'2026-07-20 11:00:00', 'id'=>'other-1'],
 ]);
 $groupKeys = array_column($grouped, 'key');
-agendaReminderAssert($groupKeys === ['reminder_active', 'em_execucao', 'reminder_completed', 'other'], 'Cards diários devem seguir a ordem de status definida.');
+agendaReminderAssert($groupKeys === ['reminder_active', 'reminder_completed', 'other'], 'Cards diários devem conter somente os grupos de compromissos.');
 $groupedIds = [];
 foreach ($grouped as $group) foreach ($group['events'] as $event) $groupedIds[] = $event['id'];
 sort($groupedIds);
-agendaReminderAssert($groupedIds === ['os-1', 'other-1', 'reminder-1', 'reminder-2'], 'Cada evento deve aparecer exatamente uma vez e status futuros não podem desaparecer.');
-agendaReminderAssert($grouped[2]['label'] === 'Lembretes feitos', 'Lembretes concluídos devem permanecer no card Feitos.');
+agendaReminderAssert($groupedIds === ['other-1', 'reminder-1', 'reminder-2'], 'A Agenda deve ignorar OS e preservar cada compromisso exatamente uma vez.');
+agendaReminderAssert($grouped[1]['label'] === 'Compromissos feitos', 'Compromissos concluídos devem permanecer no card Feitos.');
+
+$agendaPage = file_get_contents(dirname(__DIR__) . '/pages/agenda.php');
+agendaReminderAssert(is_string($agendaPage), 'A página da Agenda deve existir.');
+foreach (['serviceOrderManagement', 'calendarBetween', 'teamMembersForOrders', "'type' => 'service_order'", 'agenda-reagendar.php', 'agenda-alterar-dupla.php', 'agenda-status.php', 'Abrir OS'] as $forbiddenAgendaCode) {
+    agendaReminderAssert(!str_contains($agendaPage, $forbiddenAgendaCode), 'A Agenda não pode conter integração de OS: ' . $forbiddenAgendaCode);
+}
+agendaReminderAssert(str_contains($agendaPage, 'Compromissos pendentes') || str_contains(file_get_contents(dirname(__DIR__) . '/src/Schedule/Service/AgendaDayBoard.php'), 'Compromissos pendentes'), 'A Agenda deve se apresentar como agenda de compromissos internos.');
+
+foreach (['agenda-reagendar.php', 'agenda-alterar-dupla.php', 'agenda-status.php'] as $legacyActionName) {
+    $legacyAction = file_get_contents(dirname(__DIR__) . '/actions/' . $legacyActionName);
+    agendaReminderAssert(is_string($legacyAction), 'A action legada deve responder com orientação segura.');
+    agendaReminderAssert(!str_contains($legacyAction, 'serviceOrderManagement()'), 'Actions legadas da Agenda não podem alterar OS.');
+}
+
+$uiHelpers = file_get_contents(dirname(__DIR__) . '/includes/ui.php');
+agendaReminderAssert(is_string($uiHelpers), 'Os helpers visuais devem existir.');
+$legacyAgendaStart = strpos($uiHelpers, 'function render_agenda(): void');
+$legacyAgendaEnd = strpos($uiHelpers, 'function render_caixa(): void');
+agendaReminderAssert($legacyAgendaStart !== false && $legacyAgendaEnd !== false, 'O renderizador legado da Agenda deve ser localizável.');
+$legacyAgendaRenderer = substr($uiHelpers, $legacyAgendaStart, $legacyAgendaEnd - $legacyAgendaStart);
+foreach (['OS-', 'Cliente ', 'Instalador:', 'Ajudante:', 'Serviço'] as $forbiddenLegacyText) {
+    agendaReminderAssert(!str_contains($legacyAgendaRenderer, $forbiddenLegacyText), 'O renderizador legado da Agenda não pode projetar OS: ' . $forbiddenLegacyText);
+}
 
 $action = file_get_contents(dirname(__DIR__) . '/actions/agenda-lembrete-concluir.php');
 agendaReminderAssert(is_string($action), 'A action de conclusão deve existir.');
