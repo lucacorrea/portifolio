@@ -614,7 +614,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
 
         #tabelaValores {
             width: 100% !important;
-            min-width: 1490px;
+            min-width: 1520px;
             border-collapse: collapse !important;
             table-layout: fixed;
         }
@@ -1310,7 +1310,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
         #tabelaValores.tabela-clean-anexo,
         #tabelaValores {
             width: 100% !important;
-            min-width: 1490px !important;
+            min-width: 1520px !important;
             border-collapse: separate !important;
             border-spacing: 0 !important;
             table-layout: fixed !important;
@@ -1504,6 +1504,87 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
             background: #157347 !important;
             border-color: #157347 !important;
             color: #fff !important;
+        }
+
+
+        /* ===== CORREÇÃO FINAL DO PRISMA DATA/HORA =====
+           Evita que o indicador de ordenação fique por cima do texto da primeira coluna. */
+        #tabelaValores colgroup col:first-child {
+            width: 120px !important;
+            min-width: 120px !important;
+        }
+
+        #tabelaValores thead th:first-child,
+        #tabelaValores tbody td:first-child,
+        #tabelaValores tfoot th:first-child,
+        #tabelaValores tfoot td:first-child {
+            width: 120px !important;
+            min-width: 120px !important;
+        }
+
+        #tabelaValores thead th:first-child {
+            text-align: left !important;
+            padding-left: .75rem !important;
+            padding-right: 2.55rem !important;
+        }
+
+        #tabelaValores thead th.sorting,
+        #tabelaValores thead th.sorting_asc,
+        #tabelaValores thead th.sorting_desc,
+        #tabelaValores thead th.sorting_asc_disabled,
+        #tabelaValores thead th.sorting_desc_disabled {
+            position: relative !important;
+            padding-right: 2.15rem !important;
+            background-image: none !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::before {
+            content: "▲" !important;
+            position: absolute !important;
+            right: .8rem !important;
+            left: auto !important;
+            top: 50% !important;
+            bottom: auto !important;
+            transform: translateY(-90%) !important;
+            width: auto !important;
+            height: auto !important;
+            display: block !important;
+            font-size: 9px !important;
+            line-height: 9px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+            pointer-events: none !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::after {
+            content: "▼" !important;
+            position: absolute !important;
+            right: .8rem !important;
+            left: auto !important;
+            top: 50% !important;
+            bottom: auto !important;
+            transform: translateY(10%) !important;
+            width: auto !important;
+            height: auto !important;
+            display: block !important;
+            font-size: 9px !important;
+            line-height: 9px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+            pointer-events: none !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after {
+            color: #8d98a7 !important;
         }
 </style>
 </head>
@@ -1945,7 +2026,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                     <div class="table-responsive">
                                         <table id="tabelaValores" class="table table-hover align-middle mb-0 tabela-clean-anexo">
                                             <colgroup>
-                                                <col style="width: 90px;">
+                                                <col style="width: 120px;">
                                                 <col style="width: 250px;">
                                                 <col style="width: 120px;">
                                                 <col style="width: 120px;">
