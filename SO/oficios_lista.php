@@ -17,6 +17,11 @@ if (empty($_SESSION['csrf_datas_multiplas'])) {
 }
 $csrf_datas_multiplas = (string)$_SESSION['csrf_datas_multiplas'];
 
+if (empty($_SESSION['csrf_gerar_aquisicoes_indicadas'])) {
+    $_SESSION['csrf_gerar_aquisicoes_indicadas'] = bin2hex(random_bytes(32));
+}
+$csrf_gerar_aquisicoes_indicadas = (string)$_SESSION['csrf_gerar_aquisicoes_indicadas'];
+
 function oficios_lista_return_url(array $source, array $status_options): string
 {
     $safe = [];
@@ -1323,6 +1328,17 @@ include 'views/layout/header.php';
 
         <?php display_flash(); ?>
         <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
+            <form action="gerar_aquisicoes_indicadas.php" method="POST" style="margin-bottom: 15px;">
+                <input type="hidden" name="csrf_token" value="<?php echo h($csrf_gerar_aquisicoes_indicadas); ?>">
+                <input type="hidden" name="return_query" value="<?php echo h($_SERVER['QUERY_STRING'] ?? ''); ?>">
+                <button
+                    type="submit"
+                    class="btn btn-outline btn-sm"
+                    onclick="return confirm('Gerar aquisições para todos os ofícios aprovados com fornecedor indicado e sem aquisição?');">
+                    <i class="fas fa-shopping-cart"></i> Gerar aquisições indicadas
+                </button>
+            </form>
+
             <form action="aprovar_multiplos.php" method="POST" id="form-aprovacao-lote">
                 <input type="hidden" name="csrf_token" value="<?php echo h($csrf_aprovacao_multipla); ?>">
                 <input type="hidden" name="csrf_data_token" value="<?php echo h($csrf_datas_multiplas); ?>">
