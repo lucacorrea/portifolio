@@ -108,6 +108,27 @@ $navGroups = [
             'permission' => 'caixa.visualizar',
         ],
         [
+            'key' => 'frente-caixa',
+            'label' => 'Frente de Caixa',
+            'icon' => 'bi-shop-window',
+            'href' => 'frente-caixa.php',
+            'permission' => 'caixa.registrar_venda',
+        ],
+        [
+            'key' => 'caixa-vendas',
+            'label' => 'Vendas do Caixa',
+            'icon' => 'bi-receipt',
+            'href' => 'caixa-vendas.php',
+            'permission' => 'venda_avulsa.visualizar',
+        ],
+        [
+            'key' => 'caixa-movimentacoes',
+            'label' => 'Movimentações',
+            'icon' => 'bi-arrow-left-right',
+            'href' => 'caixa-movimentacoes.php',
+            'permission' => 'caixa.visualizar',
+        ],
+        [
             'key' => 'contas-receber',
             'label' => 'Contas a Receber',
             'icon' => 'bi-wallet2',
@@ -156,6 +177,8 @@ $navGroups = [
                 'relatorio.estoque',
                 'relatorio.produtividade',
                 'relatorio.funcionarios',
+                'relatorio.comissao.visualizar',
+                'relatorio.meta_comissao.configurar',
             ],
         ],
         [
@@ -164,6 +187,18 @@ $navGroups = [
             'icon' => 'bi-sliders',
             'href' => 'configuracoes.php',
             'permission' => 'configuracao.visualizar',
+        ],
+        [
+            'key' => 'configuracoes-fiscais',
+            'label' => 'Configuração Fiscal',
+            'icon' => 'bi-shield-lock',
+            'href' => 'configuracoes-fiscais.php',
+            'permissions_any' => [
+                'nota_fiscal.configurar',
+                'nota_fiscal.gerenciar_credenciais',
+                'nota_fiscal.testar_integracao',
+                'nota_fiscal.ativar_producao',
+            ],
         ],
     ],
 

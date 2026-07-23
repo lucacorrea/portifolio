@@ -162,6 +162,7 @@ final class BudgetRepository
     {
         $this->connection->beginTransaction();
         try {
+            $this->lockProductReferences($data);
             $totals = $data->totals();
             $statement = $this->connection->prepare(
                 'INSERT INTO orcamentos
@@ -195,6 +196,7 @@ final class BudgetRepository
         $this->assertPositiveId($id);
         $this->connection->beginTransaction();
         try {
+            $this->lockProductReferences($data);
             $totals = $data->totals();
             $statement = $this->connection->prepare(
                 'UPDATE orcamentos
@@ -379,6 +381,41 @@ final class BudgetRepository
                 'subtotal' => $item->subtotal(),
                 'order' => $item->order(),
             ]);
+        }
+    }
+
+    private function lockProductReferences(BudgetFormData $data): void
+    {
+        $productIds = [];
+        foreach ($data->items() as $item) {
+            if ($item->type() === 'produto' && $item->referenceId() !== null) {
+                $productIds[] = $item->referenceId();
+            }
+        }
+        $productIds = array_values(array_unique($productIds));
+        sort($productIds, SORT_NUMERIC);
+        if ($productIds === []) {
+            return;
+        }
+
+        $placeholders = [];
+        $parameters = [];
+        foreach ($productIds as $index => $productId) {
+            $key = 'product_' . $index;
+            $placeholders[] = ':' . $key;
+            $parameters[$key] = $productId;
+        }
+        $statement = $this->connection->prepare(
+            'SELECT id
+               FROM produtos
+              WHERE id IN (' . implode(', ', $placeholders) . ')
+                AND excluido_em IS NULL
+              ORDER BY id
+              FOR UPDATE'
+        );
+        $statement->execute($parameters);
+        if (count($statement->fetchAll()) !== count($productIds)) {
+            throw new InvalidArgumentException('Produto do orçamento não encontrado.');
         }
     }
 

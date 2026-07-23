@@ -18,14 +18,21 @@ final class SafeRedirect
         'painel-semanal.php',
         'produtos.php',
         'pecas.php',
+        'fornecedores.php',
         'servicos.php',
         'funcionarios.php',
         'tecnicos.php',
         'caixa.php',
+        'frente-caixa.php',
+        'caixa-vendas.php',
+        'caixa-movimentacoes.php',
         'contas-receber.php',
+        'contas-pagar.php',
         'faturamento.php',
         'relatorios.php',
         'configuracoes.php',
+        'configuracoes-fiscais.php',
+        'usuarios.php',
         'perfis-acesso.php',
         'perfil-formulario.php',
         'perfil-permissoes.php',
@@ -45,7 +52,7 @@ final class SafeRedirect
 
         $decoded = rawurldecode($next);
         if (
-            str_contains($decoded, "\0")
+            preg_match('/[\x00-\x1F\x7F]/', $decoded) === 1
             || str_contains($decoded, '..')
             || str_starts_with($decoded, '/')
             || str_starts_with($decoded, '\\')

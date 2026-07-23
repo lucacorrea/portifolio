@@ -28,7 +28,7 @@ final class ServiceOrderRepository
     public function findAll(array $filters = []): array
     {
         [$where, $params] = $this->filters($filters);
-        return $this->selectOrders($where, $params, 'os.criado_em DESC, os.id DESC');
+        return $this->selectOrders($where, $params, 'os.agendado_inicio DESC, os.id DESC');
     }
 
     /** @return array<string,int> */
@@ -231,7 +231,7 @@ final class ServiceOrderRepository
               WHERE id = :id'
         );
         $statement->bindValue('id', $id, PDO::PARAM_INT);
-        $this->bindForm($statement, $data, $totals);
+        $this->bindForm($statement, $data, $totals, false);
         $statement->execute();
         $this->syncOperationalBudgetKey($id);
         $this->replaceItems($id, $data->items());
@@ -571,11 +571,13 @@ final class ServiceOrderRepository
         return array_map(static fn(array $row): ServiceOrder => ServiceOrder::fromArray($row), $statement->fetchAll());
     }
 
-    private function bindForm(\PDOStatement $statement, ServiceOrderFormData $data, array $totals): void
+    private function bindForm(\PDOStatement $statement, ServiceOrderFormData $data, array $totals, bool $includeStatus = true): void
     {
         $statement->bindValue('client_id', $data->clientId(), PDO::PARAM_INT);
         $statement->bindValue('budget_id', $data->budgetId(), $data->budgetId() === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
-        $statement->bindValue('status', $data->status());
+        if ($includeStatus) {
+            $statement->bindValue('status', $data->status());
+        }
         $statement->bindValue('priority', $data->priority());
         $statement->bindValue('equipment_type', $data->equipmentType());
         $statement->bindValue('equipment_brand', $data->equipmentBrand());

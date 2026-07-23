@@ -21,7 +21,6 @@ try {
     }
 
     $payload = $_POST;
-    $payload['status'] = 'agendada';
     $payload['items'] = [[
         'type' => 'servico',
         'reference_id' => $service->id(),
@@ -33,17 +32,22 @@ try {
     ]];
 
     $schedule = ServiceOrderScheduleData::fromArray($payload);
-    if ($schedule === null) {
-        throw new InvalidArgumentException('Informe início e fim do agendamento.');
-    }
+    $teamData = ServiceOrderTeamData::fromArray($payload);
+    $team = $teamData->hasMembers() ? $teamData : null;
+    $payload['status'] = $schedule === null ? 'aguardando_agendamento' : 'agendada';
 
     $order = $application->serviceOrderManagement()->createOrder(
         ServiceOrderFormData::fromArray($payload),
-        ServiceOrderTeamData::fromArray($payload),
+        $team,
         $schedule
     );
 
-    $session->flash('success', 'Serviço adicionado ao painel como ' . $order->displayNumber() . '.');
+    $session->flash(
+        'success',
+        $schedule === null
+            ? $order->displayNumber() . ' criada e aguardando agendamento.'
+            : 'Serviço agendado no painel como ' . $order->displayNumber() . '.'
+    );
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('create', $_POST, $exception->getMessage());
     $redirectTarget = painel_semanal_return_target('create');

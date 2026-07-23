@@ -11,8 +11,8 @@
 - Cada integrante possui função operacional.
 - Quando houver equipe, exatamente um funcionário deve ser o principal.
 - Para agendar, a OS deve possuir pelo menos um funcionário e um principal.
-- Todos os integrantes devem ser considerados na validação de conflito.
-- Agenda e Serviços da Semana são projeções das OS.
+- No cadastro de uma nova OS, horários são estimativos e conflitos de equipe não bloqueiam a criação; nas alterações posteriores que validam conflito, todos os integrantes devem ser considerados.
+- Agenda é exclusiva para compromissos internos; Serviços da Semana é a projeção das OS.
 - Serviços da Semana não deve redirecionar o usuário para a página de OS ao salvar.
 - Orçamentos aprovados podem gerar uma OS operacional por vez.
 - Finalização de OS deve integrar serviços, peças, estoque, pagamentos, Caixa e Contas a Receber.

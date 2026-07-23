@@ -9,7 +9,7 @@ require __DIR__ . '/os-action-common.php';
 os_require_post_request();
 [$application, $session] = os_action_context('configuracao.editar');
 
-$logoStorage = new CompanyLogoStorage(dirname(__DIR__) . '/storage');
+$logoStorage = CompanyLogoStorage::forProjectRoot(dirname(__DIR__));
 $newLogo = null;
 
 try {

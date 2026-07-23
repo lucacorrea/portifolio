@@ -33,7 +33,7 @@ final class DashboardRepository
         )->fetchColumn();
         $lowStock = $this->connection->query(
             "SELECT COUNT(*) FROM produtos
-              WHERE status = 'ativo' AND estoque <= estoque_minimo"
+              WHERE status = 'ativo' AND excluido_em IS NULL AND estoque <= estoque_minimo"
         )->fetchColumn();
 
         return [

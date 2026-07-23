@@ -17,15 +17,35 @@ final class AgendaReminderRepository
     }
 
     /** @return AgendaReminder[] */
-    public function findBetween(DateTimeImmutable $start, DateTimeImmutable $end, string $status = 'ativo'): array
+    public function findBetween(DateTimeImmutable $start, DateTimeImmutable $end, array $statuses = ['ativo']): array
     {
+        $statuses = array_values(array_unique(array_filter(
+            $statuses,
+            static fn(mixed $status): bool => is_string($status) && in_array($status, ['ativo', 'concluido', 'cancelado'], true)
+        )));
+        if ($statuses === []) {
+            return [];
+        }
+
+        $statusPlaceholders = [];
+        $parameters = [
+            'start' => $start->format('Y-m-d H:i:s'),
+            'end' => $end->format('Y-m-d H:i:s'),
+        ];
+        foreach ($statuses as $index => $status) {
+            $key = 'status_' . $index;
+            $statusPlaceholders[] = ':' . $key;
+            $parameters[$key] = $status;
+        }
+
         $statement = $this->connection->prepare(
             'SELECT id, titulo, descricao, inicio, fim, status
                FROM agenda_lembretes
-              WHERE inicio >= :start AND inicio < :end AND status = :status
+              WHERE inicio >= :start AND inicio < :end
+                AND status IN (' . implode(', ', $statusPlaceholders) . ')
               ORDER BY inicio ASC, id ASC'
         );
-        $statement->execute(['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s'), 'status' => $status]);
+        $statement->execute($parameters);
         return array_map(static fn(array $row): AgendaReminder => AgendaReminder::fromArray($row), $statement->fetchAll());
     }
 
@@ -46,21 +66,40 @@ final class AgendaReminderRepository
         $statement->execute($this->params($data));
     }
 
-    public function update(int $id, AgendaReminderFormData $data): void
+    public function update(int $id, AgendaReminderFormData $data): bool
     {
         if ($id <= 0) throw new InvalidArgumentException('ID de lembrete inválido.');
         $params = $this->params($data);
         $params['id'] = $id;
         $statement = $this->connection->prepare(
-            'UPDATE agenda_lembretes SET titulo = :title, descricao = :description, inicio = :start, fim = :end WHERE id = :id'
+            "UPDATE agenda_lembretes
+                SET titulo = :title, descricao = :description, inicio = :start, fim = :end
+              WHERE id = :id AND status = 'ativo'"
         );
         $statement->execute($params);
+        return $statement->rowCount() === 1;
     }
 
-    public function cancel(int $id): void
+    public function cancel(int $id): bool
     {
         if ($id <= 0) throw new InvalidArgumentException('ID de lembrete inválido.');
-        $this->connection->prepare("UPDATE agenda_lembretes SET status = 'cancelado' WHERE id = :id")->execute(['id' => $id]);
+        $statement = $this->connection->prepare("UPDATE agenda_lembretes SET status = 'cancelado' WHERE id = :id AND status = 'ativo'");
+        $statement->execute(['id' => $id]);
+        return $statement->rowCount() === 1;
+    }
+
+    public function complete(int $id, int $userId): bool
+    {
+        if ($id <= 0) throw new InvalidArgumentException('ID de lembrete inválido.');
+        if ($userId <= 0) throw new InvalidArgumentException('Usuário inválido.');
+
+        $statement = $this->connection->prepare(
+            "UPDATE agenda_lembretes
+                SET status = 'concluido', concluido_em = COALESCE(concluido_em, CURRENT_TIMESTAMP), concluido_por = :user_id
+              WHERE id = :id AND status = 'ativo'"
+        );
+        $statement->execute(['id' => $id, 'user_id' => $userId]);
+        return $statement->rowCount() === 1;
     }
 
     private function params(AgendaReminderFormData $data): array

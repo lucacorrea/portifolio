@@ -261,16 +261,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById('modal-os-finalize');
     if (!modal) return;
     const fields = {
-      valor_recebido: data.valor_recebido,
-      forma_pagamento: data.forma_pagamento,
       vencimento_em: data.vencimento_em,
       proximo_lembrete_em: data.proximo_lembrete_em,
       observacao: data.observacao,
+      saldo_observacao: data.saldo_observacao,
     };
     Object.entries(fields).forEach(function ([name, value]) {
       const input = modal.querySelector('[name="' + name + '"]');
       if (input) input.value = value || '';
     });
+    const recoveredItem = Array.isArray(data.execution_items) ? data.execution_items[0] : null;
+    if (recoveredItem) {
+      ['type', 'description', 'quantity', 'unit_price', 'discount'].forEach(function (field) {
+        const input = modal.querySelector('[name="execution_items[0][' + field + ']"]');
+        if (input && recoveredItem[field] !== undefined) input.value = recoveredItem[field];
+      });
+    }
     if (recoveryError) {
       const body = modal.querySelector('.modal-body');
       const alert = document.createElement('div');
@@ -544,4 +550,5 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById('modal-os-finalize');
     if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
   }
+
 });

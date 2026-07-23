@@ -705,6 +705,7 @@ $createMustChangeChecked = $createRecoveryError === null
 
             <div class="modal-body">
                 <?= $csrf->field() ?>
+                <?php return_to_field(); ?>
 
                 <div
                     class="alert alert-danger <?= $createRecoveryError === null ? 'd-none' : '' ?>"
@@ -1252,6 +1253,7 @@ $editMustChangeChecked = user_recovery_value(
 
             <div class="modal-body">
                 <?= $csrf->field() ?>
+                <?php return_to_field(); ?>
 
                 <div
                     class="alert alert-danger <?= $editRecoveryError === null ? 'd-none' : '' ?>"
@@ -1550,6 +1552,7 @@ $passwordMustChangeChecked = $passwordRecoveryError === null
 
             <div class="modal-body">
                 <?= $csrf->field() ?>
+                <?php return_to_field(); ?>
 
                 <div
                     class="alert alert-danger <?= $passwordRecoveryError === null ? 'd-none' : '' ?>"
@@ -1713,6 +1716,7 @@ $passwordMustChangeChecked = $passwordRecoveryError === null
 
             <div class="modal-body">
                 <?= $csrf->field() ?>
+                <?php return_to_field(); ?>
 
                 <input
                     type="hidden"

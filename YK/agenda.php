@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 $activePage = 'agenda';
 $pageTitle = 'Agenda';
-$pageSubtitle = 'Atendimentos e lembretes por data e horário';
-$primaryActionLabel = 'Novo Lembrete';
-$primaryActionIcon = 'bi-alarm';
+$pageSubtitle = 'Compromissos e assuntos internos da empresa';
+$primaryActionLabel = 'Novo compromisso';
+$primaryActionIcon = 'bi-calendar-plus';
 $primaryActionTarget = '#modal-lembrete';
 $primaryActionPermission = 'agenda.criar_lembrete';
 $requiredPermission = 'agenda.visualizar';

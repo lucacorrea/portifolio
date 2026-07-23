@@ -4,16 +4,28 @@
     "type": "project",
     "license": "proprietary",
     "require": {
-        "smalot/pdfparser": "^2.12"
+        "smalot/pdfparser": "^2.12",
+        "nfephp-org/sped-nfe": "^5.2"
     },
     "scripts": {
         "migrate": "@php scripts/migrate.php",
         "test": [
             "@php tests/EnvironmentTest.php",
+            "@php tests/AgendaReminderStatusTest.php",
+            "@php tests/WeeklyPanelUiTest.php",
+            "@php tests/ProductDeletionTest.php",
             "@php tests/ClientPdfImportTest.php",
             "@php tests/EmployeeFormDataTest.php",
             "@php tests/CompanyBrandingTest.php",
+            "@php tests/SafeRedirectTest.php",
+            "@php tests/ProductionReportServiceTest.php",
             "@php tests/PayablesValidationTest.php",
+            "@php tests/CashManagementValidationTest.php",
+            "@php tests/ServiceOrderFinancialFlowValidationTest.php",
+            "@php tests/FiscalSecurityComponentsTest.php",
+            "@php tests/FiscalConfigurationValidationTest.php",
+            "@php tests/FiscalRuntimeReadinessTest.php",
+            "@php tests/FiscalUiSecurityTest.php",
             "@php tests/MigrationRunnerTest.php",
             "@php tests/WebMigrationCoordinatorTest.php"
         ]

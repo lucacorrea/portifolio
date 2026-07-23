@@ -15,7 +15,7 @@ try {
     $data = AgendaReminderFormData::fromArray($_POST);
     if ($isEditing) $application->agendaManagement()->updateReminder(os_posted_positive_int('id'), $data);
     else $application->agendaManagement()->createReminder($data);
-    $session->flash('success', 'Lembrete salvo.');
+    $session->flash('success', 'Compromisso salvo.');
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('reminder', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());
@@ -23,7 +23,7 @@ try {
     agenda_redirect($application, $redirectTarget);
 } catch (Throwable $exception) {
     error_log('Reminder save failed: ' . $exception->getMessage());
-    $session->flash('danger', 'Não foi possível salvar o lembrete.');
+    $session->flash('danger', 'Não foi possível salvar o compromisso.');
 }
 
 agenda_redirect($application, $redirectTarget);

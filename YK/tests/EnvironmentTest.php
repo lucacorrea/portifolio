@@ -21,10 +21,12 @@ function environmentAssertSame(mixed $expected, mixed $actual, string $message):
 
 $previousValue = getenv('DB_AUTO_MIGRATE');
 $previousWebValue = getenv('DB_WEB_MIGRATIONS');
+$previousEnvPath = getenv('YK_ENV_PATH');
 
 try {
     putenv('DB_AUTO_MIGRATE');
     putenv('DB_WEB_MIGRATIONS');
+    putenv('YK_ENV_PATH');
     unset($_ENV['DB_AUTO_MIGRATE'], $_SERVER['DB_AUTO_MIGRATE']);
     unset($_ENV['DB_WEB_MIGRATIONS'], $_SERVER['DB_WEB_MIGRATIONS']);
 
@@ -45,9 +47,36 @@ try {
     );
 
     environmentAssertSame(
-        'true',
-        $environment->get('DB_WEB_MIGRATIONS', 'true'),
-        'DB_WEB_MIGRATIONS deve permitir atualização interna por padrão.'
+        'false',
+        $environment->get('DB_WEB_MIGRATIONS', 'false'),
+        'DB_WEB_MIGRATIONS deve permanecer desativado por padrão para proteger a disponibilidade.'
+    );
+
+    environmentAssertSame(
+        'false',
+        $environment->get('FISCAL_INTEGRATION_ENABLED', 'false'),
+        'A integração fiscal deve nascer desativada.'
+    );
+
+    environmentAssertSame(
+        'false',
+        $environment->get('FISCAL_PRODUCTION_ENABLED', 'false'),
+        'A emissão fiscal em produção deve exigir liberação explícita.'
+    );
+
+    environmentAssertSame(
+        '/home/usuario/configuracoes/yk/.env',
+        str_replace('\\', '/', Environment::resolveFilePath('/home/usuario/public_html/YK')),
+        'O .env padrão deve ser procurado dentro de configuracoes/yk.'
+    );
+
+    $bootstrapSource = file_get_contents(dirname(__DIR__) . '/bootstrap.php');
+    environmentAssertSame(
+        true,
+        is_string($bootstrapSource)
+            && str_contains($bootstrapSource, "max(86400, (int) \$environment->get('SESSION_TIMEOUT'")
+            && str_contains($bootstrapSource, "max(86400, (int) \$environment->get('SESSION_ABSOLUTE_TIMEOUT'"),
+        'Configurações antigas não devem reduzir a sessão para menos de 24 horas.'
     );
 } finally {
     if ($previousValue === false) {
@@ -65,6 +94,11 @@ try {
         putenv('DB_WEB_MIGRATIONS=' . $previousWebValue);
         $_ENV['DB_WEB_MIGRATIONS'] = $previousWebValue;
         $_SERVER['DB_WEB_MIGRATIONS'] = $previousWebValue;
+    }
+    if ($previousEnvPath === false) {
+        putenv('YK_ENV_PATH');
+    } else {
+        putenv('YK_ENV_PATH=' . $previousEnvPath);
     }
 }
 

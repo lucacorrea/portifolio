@@ -296,7 +296,7 @@ foreach ($benefMap as $b) {
                             <ul class="submenu">
                                 <li class="submenu-item "><a href="relatoriosCadastros.php">Cadastros</a></li>
                                 <li class="submenu-item"><a href="relatorioAtendimentos.php">Atendimentos</a></li>
-                                <li class="submenu-item"><a href="relatoriosBeneficios.php">Benefícios</a></li>
+                                <li class="submenu-item"><a href="relatorioBeneficios.php">Benefícios</a></li>
                             </ul>
                         </li>
 

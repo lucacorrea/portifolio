@@ -173,10 +173,10 @@ $companyDetails = array_values(array_filter([
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orçamento <?= h($budget->displayNumber()) ?></title>
     <style>
-        @page { size: A5 landscape; margin: 6mm; }
+        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; }
         body { margin: 0; background: #e8f0f4; color: #0f172a; font-family: Arial, sans-serif; font-size: 10px; }
-        .print-page { width: 210mm; min-height: 148mm; margin: 12px auto; padding: 8mm; background: #fff; box-shadow: 0 8px 30px rgba(15, 23, 42, .12); }
+        .print-page { width: 210mm; min-height: 148.5mm; margin: 12px auto; padding: 6mm 7mm 5mm; background: #fff; box-shadow: 0 8px 30px rgba(15, 23, 42, .12); }
         .document-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 7px; border-bottom: 2px solid #0f7894; }
         .company-heading { min-width: 0; display: flex; align-items: center; gap: 9px; }
         .company-logo { position: relative; width: 34mm; height: 18mm; display: flex; flex: 0 0 34mm; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #dbe7ee; border-radius: 6px; background: #f8fbfc; }
@@ -204,19 +204,21 @@ $companyDetails = array_values(array_filter([
         .item-table .quantity-column { width: 9%; }
         .item-table .money-column { width: 14.66%; }
         .numeric { text-align: right !important; white-space: nowrap; }
-        .financial-row { display: grid; grid-template-columns: minmax(0, 1fr) 72mm; align-items: start; gap: 9px; }
+        .document-closing { display: grid; grid-template-columns: minmax(0, 1fr) 72mm; align-items: stretch; gap: 10mm; margin-top: 8px; break-inside: avoid; }
+        .closing-main { display: flex; min-width: 0; flex-direction: column; }
+        .financial-summary h2 { margin-bottom: 2px; }
         .notes { min-height: 43px; margin: 0; padding: 6px; border: 1px solid #dbe7ee; border-radius: 4px; line-height: 1.35; overflow-wrap: anywhere; }
         .totals { width: 100%; break-inside: avoid; }
         .totals div { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid #dbe7ee; }
         .totals .total { border-bottom: 0; color: #0f7894; font-size: 13px; font-weight: 800; }
-        .signature { display: flex; justify-content: center; margin-top: 18px; break-inside: avoid; }
+        .signature { display: flex; justify-content: center; margin-top: auto; padding-top: 16px; break-inside: avoid; }
         .signature div { width: 72mm; padding-top: 4px; border-top: 1px solid #0f172a; color: #475569; text-align: center; }
         .document-footer { margin-top: 7px; color: #64748b; font-size: 8px; text-align: center; }
         .print-actions { position: sticky; top: 0; z-index: 2; padding: 9px; background: #e8f0f4; text-align: center; }
         .print-actions button { padding: 8px 15px; border: 0; border-radius: 6px; background: #0f7894; color: #fff; cursor: pointer; font-weight: 700; }
         @media print {
             body { background: #fff; }
-            .print-page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+            .print-page { width: 210mm; min-height: 148.5mm; margin: 0; padding: 6mm 7mm 5mm; box-shadow: none; }
             .print-actions { display: none; }
         }
     </style>
@@ -259,12 +261,13 @@ $companyDetails = array_values(array_filter([
         <?php budget_print_items($items, 'produto', 'Produtos'); ?>
         <?php budget_print_items($items, 'outro', 'Outros itens'); ?>
 
-        <section class="document-section financial-row">
-            <div>
+        <section class="document-closing">
+            <div class="closing-main">
                 <h2>Observações</h2>
                 <p class="notes"><?= nl2br(h($budget->notes() ?? 'Sem observações.')) ?></p>
+                <div class="signature"><div>Assinatura do cliente</div></div>
             </div>
-            <div>
+            <div class="financial-summary">
                 <h2>Resumo financeiro</h2>
                 <div class="totals">
                     <div><span>Subtotal serviços</span><strong><?= h(budget_print_money($budget->servicesSubtotal())) ?></strong></div>
@@ -277,7 +280,6 @@ $companyDetails = array_values(array_filter([
             </div>
         </section>
 
-        <section class="signature"><div>Assinatura do cliente</div></section>
         <footer class="document-footer">Documento comercial não fiscal.</footer>
     </main>
 </body>

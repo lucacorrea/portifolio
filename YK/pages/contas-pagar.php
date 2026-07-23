@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Finance\Service\AccountsPayableManagementService;
+
 require_once __DIR__ . '/../includes/ui.php';
 require_once __DIR__ . '/../actions/financial-registration-action-common.php';
 
@@ -29,12 +31,39 @@ function payable_date(?string $value): string
 function payable_status_label(string $status, string $display = ''): string
 {
     if ($display !== '') return $display;
-    return ['pendente'=>'Pendente','vencida'=>'Vencida','paga'=>'Paga','cancelada'=>'Cancelada'][$status] ?? ucfirst($status);
+    return ['pendente'=>'Pendente','vencida'=>'Vencida','parcial'=>'Parcialmente paga','paga'=>'Paga','cancelada'=>'Cancelada'][$status] ?? ucfirst($status);
 }
 
 function payable_status_badge(string $status): string
 {
-    return ['pendente'=>'amber','vencida'=>'red','paga'=>'green','cancelada'=>'gray'][$status] ?? 'gray';
+    return ['pendente'=>'amber','vencida'=>'red','parcial'=>'blue','paga'=>'green','cancelada'=>'gray'][$status] ?? 'gray';
+}
+
+function payable_payment_label(string $method): string
+{
+    return ['dinheiro'=>'Dinheiro','pix'=>'Pix','boleto'=>'Boleto','cartao_credito'=>'Cartão de crédito','cartao_debito'=>'Cartão de débito','transferencia'=>'Transferência','cheque'=>'Cheque','outro'=>'Outro'][$method] ?? 'Não informada';
+}
+
+function payable_installment_status(array $installment): string
+{
+    $status = payable_value($installment, 'status', 'pendente');
+    return $status === 'pendente' && payable_value($installment, 'vencimento_em') < date('Y-m-d') ? 'vencida' : $status;
+}
+
+function payable_current_installment(array $installments): ?array
+{
+    foreach ($installments as $installment) {
+        if (is_array($installment) && payable_value($installment, 'status') === 'pendente') return $installment;
+    }
+    $last = end($installments);
+    return is_array($last) ? $last : null;
+}
+
+function payable_payment_options(string $selected = ''): void
+{
+    foreach (AccountsPayableManagementService::paymentMethods() as $method) {
+        ?><option value="<?= h($method) ?>" <?= $selected === $method ? 'selected' : '' ?>><?= h(payable_payment_label($method)) ?></option><?php
+    }
 }
 
 function payable_status_url(array $filters, string $status): string
@@ -58,6 +87,9 @@ function payable_supplier_options(array $suppliers, string $selected = ''): void
 
 function payable_form_fields(string $prefix, array $suppliers, array $data = []): void
 {
+    $paymentType = payable_value($data, 'tipo_pagamento', 'avista');
+    $installmentCount = payable_value($data, 'quantidade_parcelas', $paymentType === 'parcelado' ? '2' : '1');
+    $paymentMethod = payable_value($data, 'forma_pagamento');
     ?>
     <section class="form-section">
         <h3 class="form-section-title">Fornecedor e referência</h3>
@@ -73,7 +105,16 @@ function payable_form_fields(string $prefix, array $suppliers, array $data = [])
             <div class="form-group"><label class="form-label" for="<?= h($prefix) ?>-emissao">Data de emissão</label><input class="form-control-os" id="<?= h($prefix) ?>-emissao" name="data_emissao" value="<?= h(payable_value($data, 'data_emissao')) ?>" type="date"></div>
             <div class="form-group"><label class="form-label" for="<?= h($prefix) ?>-vencimento">Vencimento</label><input class="form-control-os" id="<?= h($prefix) ?>-vencimento" name="vencimento_em" value="<?= h(payable_value($data, 'vencimento_em')) ?>" type="date" required></div>
         </div>
-        <div class="form-group"><label class="form-label" for="<?= h($prefix) ?>-valor">Valor</label><input class="form-control-os" id="<?= h($prefix) ?>-valor" name="valor" value="<?= h(payable_value($data, 'valor')) ?>" inputmode="decimal" placeholder="0,00" maxlength="20" required></div>
+        <div class="form-group"><label class="form-label" for="<?= h($prefix) ?>-valor">Valor total</label><input class="form-control-os" id="<?= h($prefix) ?>-valor" name="valor" value="<?= h(payable_value($data, 'valor')) ?>" inputmode="decimal" placeholder="0,00" maxlength="20" required></div>
+    </section>
+    <section class="form-section">
+        <h3 class="form-section-title">Condição de pagamento</h3>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label" for="<?= h($prefix) ?>-tipo-pagamento">Pagamento</label><select class="form-control-os js-payable-payment-type" id="<?= h($prefix) ?>-tipo-pagamento" name="tipo_pagamento" required><option value="avista" <?= $paymentType === 'avista' ? 'selected' : '' ?>>À vista</option><option value="parcelado" <?= $paymentType === 'parcelado' ? 'selected' : '' ?>>Parcelado</option></select></div>
+            <div class="form-group js-payable-installment-count" <?= $paymentType === 'parcelado' ? '' : 'hidden' ?>><label class="form-label" for="<?= h($prefix) ?>-parcelas">Quantidade de parcelas</label><input class="form-control-os" id="<?= h($prefix) ?>-parcelas" name="quantidade_parcelas" type="number" min="2" max="60" value="<?= h($installmentCount) ?>" <?= $paymentType === 'parcelado' ? 'required' : '' ?>></div>
+            <div class="form-group"><label class="form-label" for="<?= h($prefix) ?>-forma-pagamento">Forma prevista</label><select class="form-control-os" id="<?= h($prefix) ?>-forma-pagamento" name="forma_pagamento" required><option value="">Selecione</option><?php payable_payment_options($paymentMethod); ?></select></div>
+        </div>
+        <p class="section-note mb-0">O vencimento informado será o da primeira parcela; as demais serão geradas mês a mês.</p>
     </section>
     <section class="form-section">
         <h3 class="form-section-title">Observações</h3>
@@ -91,7 +132,7 @@ $filters = [
     'search' => payable_filter('search', 150),
 ];
 $allowedBuckets = ['', 'vencidos', 'hoje', 'semana', '15dias'];
-$allowedStatuses = ['', 'pendente', 'vencida', 'paga', 'cancelada'];
+$allowedStatuses = ['', 'pendente', 'vencida', 'parcial', 'paga', 'cancelada'];
 if (!in_array($filters['bucket'], $allowedBuckets, true)) $filters['bucket'] = '';
 if (!in_array($filters['status'], $allowedStatuses, true)) $filters['status'] = '';
 if ($filters['supplier_id'] !== '' && (!ctype_digit($filters['supplier_id']) || (int) $filters['supplier_id'] < 1)) $filters['supplier_id'] = '';
@@ -105,10 +146,12 @@ $supplierFilters = $supplierService->supplierOptions();
 $canCreate = $authorization->can('contas_pagar.criar');
 $canEdit = $authorization->can('contas_pagar.editar');
 $canCancel = $authorization->can('contas_pagar.cancelar');
+$canSettle = $authorization->can('contas_pagar.quitar');
+$canReverse = $authorization->can('contas_pagar.estornar_pagamento');
 $recovery = financial_registration_consume_recovery('payable_form_recovery');
 $createData = ($recovery['mode'] ?? '') === 'create' ? $recovery['data'] : [];
 $editData = ($recovery['mode'] ?? '') === 'edit' ? $recovery['data'] : [];
-$statusButtons = [['', 'Todos', 'all'], ['pendente', 'Pendentes', 'amber'], ['vencida', 'Vencidas', 'red'], ['paga', 'Pagas', 'green'], ['cancelada', 'Canceladas', 'gray']];
+$statusButtons = [['', 'Todos', 'all'], ['pendente', 'Pendentes', 'amber'], ['vencida', 'Vencidas', 'red'], ['parcial', 'Parciais', 'blue'], ['paga', 'Pagas', 'green'], ['cancelada', 'Canceladas', 'gray']];
 ?>
 
 <div class="page-body accounts-payable-page">
@@ -122,7 +165,7 @@ $statusButtons = [['', 'Todos', 'all'], ['pendente', 'Pendentes', 'amber'], ['ve
 <form class="filter-bar" method="get" action="contas-pagar.php" data-live-filter="payables" data-live-regions="metrics results">
     <select class="filter-select" name="bucket" aria-label="Período de vencimento"><option value="">Todos os vencimentos</option><option value="vencidos" <?= $filters['bucket'] === 'vencidos' ? 'selected' : '' ?>>Vencidos</option><option value="hoje" <?= $filters['bucket'] === 'hoje' ? 'selected' : '' ?>>Vencem hoje</option><option value="semana" <?= $filters['bucket'] === 'semana' ? 'selected' : '' ?>>Próximos 7 dias</option><option value="15dias" <?= $filters['bucket'] === '15dias' ? 'selected' : '' ?>>Próximos 15 dias</option></select>
     <select class="filter-select" name="supplier_id" aria-label="Fornecedor"><option value="">Todos os fornecedores</option><?php foreach ($supplierFilters as $supplier): ?><option value="<?= h(payable_value($supplier, 'id')) ?>" <?= $filters['supplier_id'] === payable_value($supplier, 'id') ? 'selected' : '' ?>><?= h(payable_value($supplier, 'nome')) ?></option><?php endforeach; ?></select>
-    <select class="filter-select" name="status" aria-label="Status"><option value="">Todos os status</option><?php foreach (['pendente','vencida','paga','cancelada'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(payable_status_label($status)) ?></option><?php endforeach; ?></select>
+    <select class="filter-select" name="status" aria-label="Status"><option value="">Todos os status</option><?php foreach (['pendente','vencida','parcial','paga','cancelada'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(payable_status_label($status)) ?></option><?php endforeach; ?></select>
     <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Fornecedor, descrição ou documento" maxlength="150" aria-label="Pesquisar contas a pagar"></div>
     <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
     <a class="btn-filter btn-filter-ghost" href="contas-pagar.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar filtros</a>
@@ -135,10 +178,26 @@ $statusButtons = [['', 'Todos', 'all'], ['pendente', 'Pendentes', 'amber'], ['ve
     </div>
     <?php if ($hasMoreAccounts): ?><div class="px-3 py-2 text-muted small border-bottom" role="status">Exibindo as primeiras 300 contas. Refine os filtros para localizar as demais.</div><?php endif; ?>
     <?php if ($accounts === []): ?><?php empty_state('Nenhuma conta encontrada', 'Cadastre manualmente uma conta de fornecedor ou ajuste os filtros.'); ?><?php else: ?>
-    <div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Código</th><th>Fornecedor</th><th>Descrição</th><th>Documento</th><th>Emissão</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>
-    <?php foreach ($accounts as $account): $payload = json_encode($account, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?: '{}'; $status = payable_value($account, 'status', 'pendente'); $displayStatus = payable_value($account, 'status_exibicao', $status); $locked = in_array($status, ['paga','cancelada'], true); ?>
-        <tr><td><strong><?= h(payable_value($account, 'codigo')) ?></strong></td><td><?= h(payable_value($account, 'fornecedor_nome')) ?></td><td><strong><?= h(payable_value($account, 'descricao')) ?></strong></td><td><?= h(payable_value($account, 'documento', '-')) ?></td><td><?= h(payable_date(payable_value($account, 'data_emissao'))) ?></td><td><?= h(payable_date(payable_value($account, 'vencimento_em'))) ?></td><td><?= money(payable_value($account, 'valor', '0')) ?></td><td><span class="badge-soft badge-<?= h(payable_status_badge($displayStatus)) ?>"><?= h(payable_status_label($displayStatus)) ?></span></td>
-        <td class="table-actions-cell"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações da conta <?= h(payable_value($account, 'codigo')) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><button class="dropdown-item js-payable-view" type="button" data-account="<?= h($payload) ?>" data-bs-toggle="modal" data-bs-target="#modal-conta-pagar-view"><i class="bi bi-eye"></i> Visualizar</button></li><?php if ($canEdit && !$locked): ?><li><button class="dropdown-item js-payable-edit" type="button" data-account="<?= h($payload) ?>" data-bs-toggle="modal" data-bs-target="#modal-conta-pagar-edit"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?><?php if ($canCancel && !$locked): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger js-payable-cancel" type="button" data-account="<?= h($payload) ?>" data-bs-toggle="modal" data-bs-target="#modal-conta-pagar-cancel"><i class="bi bi-x-circle"></i> Cancelar</button></li><?php endif; ?></ul></div></td></tr>
+    <div class="table-panel-wrap"><table class="os-table payable-table"><thead><tr><th>Código</th><th>Fornecedor / descrição</th><th>Pagamento</th><th>Parcela atual</th><th>Valor total</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+    <?php foreach ($accounts as $account):
+        $payload = json_encode($account, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?: '{}';
+        $status = payable_value($account, 'status', 'pendente');
+        $displayStatus = payable_value($account, 'status_exibicao', $status);
+        $locked = $status !== 'pendente' || payable_value($account, 'possui_movimentacao', '0') === '1';
+        $installments = is_array($account['parcelas'] ?? null) ? $account['parcelas'] : [];
+        $currentInstallment = payable_current_installment($installments);
+        $rowStatus = $currentInstallment !== null ? payable_installment_status($currentInstallment) : $displayStatus;
+        $currentPayload = json_encode($currentInstallment, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?: '{}';
+    ?>
+        <tr class="payable-row payable-row--<?= h($rowStatus) ?>">
+            <td><strong><?= h(payable_value($account, 'codigo')) ?></strong><br><small><?= h(payable_value($account, 'documento', 'Sem documento')) ?></small></td>
+            <td><strong><?= h(payable_value($account, 'fornecedor_nome')) ?></strong><br><small><?= h(payable_value($account, 'descricao')) ?></small></td>
+            <td><strong><?= payable_value($account, 'tipo_pagamento') === 'parcelado' ? h(payable_value($account, 'quantidade_parcelas')) . 'x' : 'À vista' ?></strong><br><small><?= h(payable_payment_label(payable_value($account, 'forma_pagamento'))) ?></small></td>
+            <td><div class="payable-installment-list"><?php if ($currentInstallment !== null): $installmentStatus = payable_installment_status($currentInstallment); ?><span class="payable-installment payable-installment--<?= h($installmentStatus) ?>" title="<?= h(payable_status_label($installmentStatus) . ' — ' . money(payable_value($currentInstallment, 'valor', '0'))) ?>"><strong><?= h(payable_value($currentInstallment, 'numero')) ?>/<?= h(payable_value($account, 'quantidade_parcelas')) ?></strong> <?= h(payable_date(payable_value($currentInstallment, 'vencimento_em'))) ?> · <?= h(payable_status_label($installmentStatus)) ?></span><?php else: ?>—<?php endif; ?></div></td>
+            <td><strong><?= money(payable_value($account, 'valor', '0')) ?></strong><br><small><?= h(payable_value($account, 'parcelas_pagas', '0')) ?>/<?= h(payable_value($account, 'quantidade_parcelas', '1')) ?> quitada(s)</small></td>
+            <td><span class="badge-soft badge-<?= h(payable_status_badge($displayStatus)) ?>"><?= h(payable_status_label($displayStatus)) ?></span></td>
+            <td class="table-actions-cell"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações da conta <?= h(payable_value($account, 'codigo')) ?>"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><button class="dropdown-item js-payable-view" type="button" data-account="<?= h($payload) ?>" data-bs-toggle="modal" data-bs-target="#modal-conta-pagar-view"><i class="bi bi-eye"></i> Parcelas e detalhes</button></li><?php if ($canSettle && $currentInstallment !== null && payable_value($currentInstallment, 'status') === 'pendente'): ?><li><button class="dropdown-item js-payable-settle-installment" type="button" data-account="<?= h($payload) ?>" data-installment="<?= h($currentPayload) ?>"><i class="bi bi-check-circle"></i> Dar baixa na parcela atual</button></li><?php endif; ?><?php if ($canEdit && !$locked): ?><li><button class="dropdown-item js-payable-edit" type="button" data-account="<?= h($payload) ?>" data-bs-toggle="modal" data-bs-target="#modal-conta-pagar-edit"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?><?php if ($canCancel && !$locked): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger js-payable-cancel" type="button" data-account="<?= h($payload) ?>" data-bs-toggle="modal" data-bs-target="#modal-conta-pagar-cancel"><i class="bi bi-x-circle"></i> Cancelar título</button></li><?php endif; ?></ul></div></td>
+        </tr>
     <?php endforeach; ?>
     </tbody></table></div><?php endif; ?>
 </section>
@@ -146,8 +205,12 @@ $statusButtons = [['', 'Todos', 'all'], ['pendente', 'Pendentes', 'amber'], ['ve
 
 <?php if ($canCreate): ?><div class="modal fade" id="modal-conta-pagar" tabindex="-1" aria-hidden="true" <?= ($recovery['mode'] ?? '') === 'create' ? 'data-recovery-open="true"' : '' ?>><div class="modal-dialog modal-xl modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/conta-pagar-salvar.php" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Nova conta a pagar</h2><p class="text-muted small mb-0">A conta será cadastrada como pendente.</p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="operation" value="create"><?php if (($recovery['mode'] ?? '') === 'create'): ?><div class="alert alert-danger" role="alert"><?= h((string) $recovery['error']) ?></div><?php endif; ?><?php if ($activeSuppliers === []): ?><div class="alert alert-warning" role="alert">Cadastre e ative um fornecedor antes de incluir uma conta.</div><?php endif; ?><?php payable_form_fields('create-payable', $activeSuppliers, $createData); ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit" <?= $activeSuppliers === [] ? 'disabled' : '' ?>><i class="bi bi-check-lg"></i> Cadastrar conta</button></div></form></div></div><?php endif; ?>
 
-<div class="modal fade" id="modal-conta-pagar-view" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content visual-modal"><div class="modal-header"><div><h2 class="modal-title fs-5">Dados da conta</h2><p class="text-muted small mb-0" id="payable-view-subtitle"></p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body" id="payable-view-content"></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Fechar</button></div></div></div></div>
+<div class="modal fade" id="modal-conta-pagar-view" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content visual-modal"><div class="modal-header"><div><h2 class="modal-title fs-5">Parcelas e dados da conta</h2><p class="text-muted small mb-0" id="payable-view-subtitle"></p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body" id="payable-view-content" data-can-settle="<?= $canSettle ? '1' : '0' ?>" data-can-reverse="<?= $canReverse ? '1' : '0' ?>"></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Fechar</button></div></div></div></div>
 
 <?php if ($canEdit): ?><div class="modal fade" id="modal-conta-pagar-edit" tabindex="-1" aria-hidden="true" <?= ($recovery['mode'] ?? '') === 'edit' ? 'data-recovery-open="true"' : '' ?>><div class="modal-dialog modal-xl modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/conta-pagar-salvar.php" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Editar conta a pagar</h2><p class="text-muted small mb-0" id="payable-edit-subtitle"><?= h(payable_value($editData, 'codigo')) ?></p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="operation" value="update"><input type="hidden" name="id" value="<?= h(payable_value($editData, 'id')) ?>"><?php if (($recovery['mode'] ?? '') === 'edit'): ?><div class="alert alert-danger" role="alert"><?= h((string) $recovery['error']) ?></div><?php endif; ?><?php payable_form_fields('edit-payable', $activeSuppliers, $editData); ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check-lg"></i> Salvar alterações</button></div></form></div></div><?php endif; ?>
 
-<?php if ($canCancel): ?><div class="modal fade" id="modal-conta-pagar-cancel" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/conta-pagar-cancelar.php"><div class="modal-header"><h2 class="modal-title fs-5">Cancelar conta</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id"><p id="payable-cancel-message"></p><div class="form-group mb-0"><label class="form-label" for="payable-cancel-reason">Motivo do cancelamento</label><textarea class="form-control-os" id="payable-cancel-reason" name="motivo" maxlength="255" rows="3" required></textarea></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Voltar</button><button class="btn-modal-save" type="submit"><i class="bi bi-x-circle"></i> Confirmar cancelamento</button></div></form></div></div></div><?php endif; ?>
+<?php if ($canCancel): ?><div class="modal fade" id="modal-conta-pagar-cancel" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/conta-pagar-cancelar.php"><div class="modal-header"><h2 class="modal-title fs-5">Cancelar título</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id"><p id="payable-cancel-message"></p><div class="form-group mb-0"><label class="form-label" for="payable-cancel-reason">Motivo do cancelamento</label><textarea class="form-control-os" id="payable-cancel-reason" name="motivo" maxlength="255" rows="3" required></textarea></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Voltar</button><button class="btn-modal-save" type="submit"><i class="bi bi-x-circle"></i> Confirmar cancelamento</button></div></form></div></div></div><?php endif; ?>
+
+<?php if ($canSettle): ?><div class="modal fade" id="modal-conta-pagar-quitar" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/conta-pagar-parcela-quitar.php"><div class="modal-header"><h2 class="modal-title fs-5">Dar baixa na parcela</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="parcela_id"><p id="payable-settle-message"></p><div class="form-group"><label class="form-label" for="payable-settle-method">Forma utilizada</label><select class="form-control-os" id="payable-settle-method" name="forma_pagamento" required><?php payable_payment_options(); ?></select></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Voltar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check-circle"></i> Confirmar baixa</button></div></form></div></div></div><?php endif; ?>
+
+<?php if ($canReverse): ?><div class="modal fade" id="modal-conta-pagar-estornar" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/conta-pagar-parcela-estornar.php"><div class="modal-header"><h2 class="modal-title fs-5">Estornar quitação</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="parcela_id"><p id="payable-reverse-message"></p><div class="form-group"><label class="form-label" for="payable-reverse-reason">Motivo do estorno</label><textarea class="form-control-os" id="payable-reverse-reason" name="motivo" maxlength="255" rows="3" required></textarea></div><div class="alert alert-warning mb-0">A quitação não será apagada: o estorno ficará registrado no histórico.</div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Voltar</button><button class="btn-modal-save" type="submit"><i class="bi bi-arrow-counterclockwise"></i> Confirmar estorno</button></div></form></div></div></div><?php endif; ?>

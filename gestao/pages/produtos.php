@@ -8,6 +8,7 @@ use App\Repositories\SettingsRepository;
 use App\Security\Auth;
 use App\Security\Csrf;
 use App\Services\ProductService;
+use App\Services\UploadService;
 
 Auth::requireLogin();
 
@@ -77,8 +78,23 @@ function productImageUrl(mixed $image): string
     return '../assets/img/prod-placeholder.svg';
 }
 
+function productUploadAbsolutePath(mixed $image): ?string
+{
+    $path = ltrim(str_replace('\\', '/', trim((string)$image)), '/');
+
+    if ($path === '' || !preg_match('#^uploads/produtos/[A-Za-z0-9._-]+$#', $path)) {
+        return null;
+    }
+
+    return BASE_PATH . '/' . $path;
+}
+
 function productStatus(array $product, DateTimeImmutable $today, int $alertDays): array
 {
+    if (($product['active'] ?? true) === false) {
+        return ['key' => 'inativos', 'label' => 'Inativo', 'class' => 'red'];
+    }
+
     $expiry = trim((string)($product['expiry'] ?? ''));
     $stock = (float)($product['stock'] ?? 0);
     $minStock = (float)($product['minStock'] ?? 0);
@@ -106,6 +122,16 @@ function productStatus(array $product, DateTimeImmutable $today, int $alertDays)
 
 function productMatchesFilter(array $product, string $filter, DateTimeImmutable $today, int $alertDays): bool
 {
+    $active = ($product['active'] ?? true) === true;
+
+    if ($filter === 'inativos') {
+        return !$active;
+    }
+
+    if (!$active) {
+        return false;
+    }
+
     if ($filter === 'todos') {
         return true;
     }
@@ -143,7 +169,7 @@ try {
     exit('Acesso negado.');
 }
 
-$allowedFilters = ['todos', 'estoque_baixo', 'perto_validade', 'vencidos'];
+$allowedFilters = ['todos', 'estoque_baixo', 'perto_validade', 'vencidos', 'inativos'];
 $query = trim((string)($_GET['q'] ?? ''));
 $filter = (string)($_GET['filtro'] ?? 'todos');
 $filter = in_array($filter, $allowedFilters, true) ? $filter : 'todos';
@@ -157,6 +183,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         requireProductAccess('delete', $currentNivel);
 
+        $action = (string)($_POST['acao'] ?? 'inativar');
+        if (!in_array($action, ['inativar', 'ativar', 'excluir'], true)) {
+            throw new InvalidArgumentException('Ação inválida.');
+        }
+
         $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT, [
             'options' => ['min_range' => 1],
         ]);
@@ -165,8 +196,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new InvalidArgumentException('Produto inválido.');
         }
 
-        if (!$productService->find($empresaId, (int)$id)) {
+        if (!$productService->findWithStatus($empresaId, (int)$id, null)) {
             throw new InvalidArgumentException('Produto não encontrado.');
+        }
+
+        if ($action === 'ativar') {
+            $productService->activate($empresaId, (int)$id);
+            redirectProducts('success', 'Produto ativado com sucesso.', $query, $filter);
+        }
+
+        if ($action === 'excluir') {
+            $deletedProduct = $productService->deleteInactive($empresaId, (int)$id);
+            (new UploadService())->removeProductUpload(productUploadAbsolutePath($deletedProduct['image'] ?? ''));
+            redirectProducts('success', 'Produto excluído definitivamente.', $query, $filter);
         }
 
         $productService->inactivate($empresaId, (int)$id);
@@ -175,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirectProducts('danger', $e->getMessage(), $query, $filter);
     } catch (Throwable $e) {
         log_app_exception($e);
-        redirectProducts('danger', 'Não foi possível inativar o produto.', $query, $filter);
+        redirectProducts('danger', 'Não foi possível processar o produto.', $query, $filter);
     }
 }
 
@@ -190,7 +232,7 @@ try {
 $products = [];
 $loadError = null;
 try {
-    $products = $productService->list($empresaId, $query);
+    $products = $productService->list($empresaId, $query, $filter === 'inativos' ? false : true);
 } catch (Throwable $e) {
     log_app_exception($e);
     $loadError = 'Não foi possível carregar os produtos agora.';
@@ -276,6 +318,8 @@ require_once __DIR__ . '/layout/header.php';
 
     .product-card .card-actions button {
         min-height: 34px;
+        width: 100%;
+        border: 0;
     }
 
     .product-card .card-actions {
@@ -289,6 +333,44 @@ require_once __DIR__ . '/layout/header.php';
     .product-card .card-actions a {
         display: grid;
         place-items: center;
+    }
+
+    .product-card .card-actions.single {
+        grid-template-columns: 1fr;
+    }
+
+    .product-card .card-actions .success-mini {
+        color: var(--green);
+        background: rgba(37, 196, 132, .12);
+    }
+
+    .product-card.inactive {
+        border-color: rgba(230, 83, 103, .18);
+        background: #FFFDFD;
+    }
+
+    .product-status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .product-status-row .badge-row {
+        margin-top: 0;
+    }
+
+    .product-status-note {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 750;
+        text-align: right;
+    }
+
+    .product-card .card-actions .delete-mini {
+        color: #fff;
+        background: var(--red);
     }
 
     @media (max-width: 430px) {
@@ -340,6 +422,7 @@ require_once __DIR__ . '/layout/header.php';
         'estoque_baixo' => 'Estoque baixo',
         'perto_validade' => 'Perto da validade',
         'vencidos' => 'Vencidos',
+        'inativos' => 'Inativos',
     ];
     ?>
     <nav class="filter-pills" aria-label="Filtros de produtos">
@@ -359,10 +442,11 @@ require_once __DIR__ . '/layout/header.php';
         <?php foreach ($products as $product): ?>
             <?php
             $status = productStatus($product, $today, $expirationAlertDays);
+            $isActive = ($product['active'] ?? true) === true;
             $expiry = trim((string)($product['expiry'] ?? ''));
             $expiryLabel = $expiry !== '' ? date('d/m/Y', strtotime($expiry)) : 'Sem validade';
             ?>
-            <article class="product-card">
+            <article class="product-card <?= $isActive ? '' : 'inactive' ?>">
                 <img src="<?= e(productImageUrl($product['image'] ?? '')) ?>" alt="Imagem de <?= e((string)$product['name']) ?>">
                 <div class="product-info">
                     <h3><?= e((string)$product['name']) ?></h3>
@@ -374,20 +458,37 @@ require_once __DIR__ . '/layout/header.php';
                         <span>Mín. <?= e(formatProductNumber($product['minStock'])) ?></span>
                         <span>R$ <?= e(number_format((float)$product['price'], 2, ',', '.')) ?></span>
                     </div>
-                    <div class="badge-row">
-                        <span class="badge <?= e($status['class']) ?>"><?= e($status['label']) ?></span>
+                    <div class="product-status-row">
+                        <div class="badge-row">
+                            <span class="badge <?= $isActive ? 'green' : 'red' ?>"><?= $isActive ? 'Ativo' : 'Inativo' ?></span>
+                            <?php if ($isActive): ?>
+                                <span class="badge <?= e($status['class']) ?>"><?= e($status['label']) ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if (!$isActive): ?>
+                            <span class="product-status-note">Fora da venda</span>
+                        <?php endif; ?>
                     </div>
-                    <?php if (canProductAccess('edit', $currentNivel) || canProductAccess('delete', $currentNivel)): ?>
+                    <?php if (($isActive && canProductAccess('edit', $currentNivel)) || canProductAccess('delete', $currentNivel)): ?>
                         <div class="card-actions">
-                            <?php if (canProductAccess('edit', $currentNivel)): ?>
+                            <?php if ($isActive && canProductAccess('edit', $currentNivel)): ?>
                                 <a href="produto-form.php?id=<?= (int)$product['id'] ?>">Editar</a>
                             <?php endif; ?>
                             <?php if (canProductAccess('delete', $currentNivel)): ?>
-                                <form method="post" action="produtos.php?<?= e(http_build_query(array_filter(['q' => $query, 'filtro' => $filter]))) ?>" onsubmit="return confirm('Inativar este produto?');">
+                                <form method="post" action="produtos.php?<?= e(http_build_query(array_filter(['q' => $query, 'filtro' => $filter]))) ?>" onsubmit="return confirm('<?= $isActive ? 'Inativar este produto?' : 'Ativar este produto novamente?' ?>');">
                                     <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+                                    <input type="hidden" name="acao" value="<?= $isActive ? 'inativar' : 'ativar' ?>">
                                     <input type="hidden" name="id" value="<?= (int)$product['id'] ?>">
-                                    <button class="danger-mini" type="submit">Inativar</button>
+                                    <button class="<?= $isActive ? 'danger-mini' : 'success-mini' ?>" type="submit"><?= $isActive ? 'Inativar' : 'Ativar' ?></button>
                                 </form>
+                                <?php if (!$isActive): ?>
+                                    <form method="post" action="produtos.php?<?= e(http_build_query(array_filter(['q' => $query, 'filtro' => $filter]))) ?>" onsubmit="return confirm('Excluir definitivamente este produto inativo? Esta ação não pode ser desfeita.');">
+                                        <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
+                                        <input type="hidden" name="acao" value="excluir">
+                                        <input type="hidden" name="id" value="<?= (int)$product['id'] ?>">
+                                        <button class="delete-mini" type="submit">Excluir</button>
+                                    </form>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>

@@ -6,16 +6,24 @@ require __DIR__ . '/os-action-common.php';
 
 os_require_post_request();
 [$application, $session] = os_action_context('os.finalizar');
-$application->authorization()->requirePermission('os.finalizar_com_pagamento');
 
 try {
     $user = $application->authorization()->requireLogin();
-    $application->serviceOrderFinalization()->finalize(
+    $result = $application->serviceOrderFinalization()->finalize(
         os_posted_positive_int('id'),
         $_POST,
         $user->id()
     );
-    $session->flash('success', 'OS finalizada; pagamento, Caixa e Contas a Receber foram atualizados.');
+    if ($application->authorization()->can('contas_receber.registrar_pagamento')
+        && $application->authorization()->can('recibo.emitir')) {
+        os_store_post_completion_payment_prompt(
+            $result['order_id'],
+            $result['order_number'],
+            $result['balance']
+        );
+    }
+    $session->flash('success', 'OS finalizada e direcionada para Contas a Receber.');
+    os_redirect_back($application, 'ordens-servico.php', ['modal' => null]);
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('finalize', $_POST, $exception->getMessage());
     $session->flash('danger', $exception->getMessage());

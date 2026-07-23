@@ -26,7 +26,12 @@ if (isset($_GET['data_fim']) && $_GET['data_fim'] != '') {
 }
 
 // Paginação
-$itens_por_pagina = 10;
+$por_pagina_options = [6, 10, 25, 50, 100];
+$por_pagina_request = is_scalar($_GET['por_pagina'] ?? null) ? (string)$_GET['por_pagina'] : '';
+$itens_por_pagina = ctype_digit($por_pagina_request)
+    && in_array((int)$por_pagina_request, $por_pagina_options, true)
+        ? (int)$por_pagina_request
+        : 10;
 $pagina_atual = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $pagina_atual = max(1, $pagina_atual);
 $offset = ($pagina_atual - 1) * $itens_por_pagina;
@@ -64,7 +69,7 @@ include 'views/layout/header.php';
 <style>
     .filtros-grid {
         display: grid;
-        grid-template-columns: 1fr 2fr 1fr 1fr 52px;
+        grid-template-columns: 1fr 2fr 1fr 1fr 1fr 52px;
         gap: 1rem;
         align-items: end;
     }
@@ -192,6 +197,10 @@ include 'views/layout/header.php';
         <h4 class="card-title"><i class="fas fa-filter"></i> Filtragem Avançada</h4>
 
         <form action="" method="GET" class="filtros-grid">
+            <?php if (isset($_GET['status']) && is_scalar($_GET['status']) && (string)$_GET['status'] !== ''): ?>
+                <input type="hidden" name="status" value="<?php echo htmlspecialchars((string)$_GET['status'], ENT_QUOTES, 'UTF-8'); ?>">
+            <?php endif; ?>
+
             <div class="form-group">
                 <label class="form-label">Número do Processo</label>
                 <input
@@ -232,6 +241,17 @@ include 'views/layout/header.php';
                     name="data_fim"
                     class="form-control"
                     value="<?php echo htmlspecialchars($_GET['data_fim'] ?? ''); ?>">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Linhas por página</label>
+                <select name="por_pagina" class="form-control">
+                    <?php foreach ($por_pagina_options as $por_pagina_option): ?>
+                        <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
+                            <?php echo $por_pagina_option; ?> linhas
+                        </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
 
             <div class="form-group filtros-acoes">
@@ -361,7 +381,7 @@ include 'views/layout/header.php';
         <?php if ($total_paginas > 1): ?>
             <div class="paginacao-lista">
                 <a
-                    href="?page=<?php echo max(1, $pagina_atual - 1); ?>&busca=<?php echo urlencode($_GET['busca'] ?? ''); ?>&secretaria=<?php echo urlencode($_GET['secretaria'] ?? ''); ?>&data_inicio=<?php echo urlencode($_GET['data_inicio'] ?? ''); ?>&data_fim=<?php echo urlencode($_GET['data_fim'] ?? ''); ?>&status=<?php echo urlencode($_GET['status'] ?? ''); ?>"
+                    href="?page=<?php echo max(1, $pagina_atual - 1); ?>&busca=<?php echo urlencode($_GET['busca'] ?? ''); ?>&secretaria=<?php echo urlencode($_GET['secretaria'] ?? ''); ?>&data_inicio=<?php echo urlencode($_GET['data_inicio'] ?? ''); ?>&data_fim=<?php echo urlencode($_GET['data_fim'] ?? ''); ?>&status=<?php echo urlencode($_GET['status'] ?? ''); ?>&por_pagina=<?php echo $itens_por_pagina; ?>"
                     class="btn btn-outline btn-sm <?php echo $pagina_atual <= 1 ? 'disabled' : ''; ?>">
                     Anterior
                 </a>
@@ -371,7 +391,7 @@ include 'views/layout/header.php';
                 </span>
 
                 <a
-                    href="?page=<?php echo min($total_paginas, $pagina_atual + 1); ?>&busca=<?php echo urlencode($_GET['busca'] ?? ''); ?>&secretaria=<?php echo urlencode($_GET['secretaria'] ?? ''); ?>&data_inicio=<?php echo urlencode($_GET['data_inicio'] ?? ''); ?>&data_fim=<?php echo urlencode($_GET['data_fim'] ?? ''); ?>&status=<?php echo urlencode($_GET['status'] ?? ''); ?>"
+                    href="?page=<?php echo min($total_paginas, $pagina_atual + 1); ?>&busca=<?php echo urlencode($_GET['busca'] ?? ''); ?>&secretaria=<?php echo urlencode($_GET['secretaria'] ?? ''); ?>&data_inicio=<?php echo urlencode($_GET['data_inicio'] ?? ''); ?>&data_fim=<?php echo urlencode($_GET['data_fim'] ?? ''); ?>&status=<?php echo urlencode($_GET['status'] ?? ''); ?>&por_pagina=<?php echo $itens_por_pagina; ?>"
                     class="btn btn-outline btn-sm <?php echo $pagina_atual >= $total_paginas ? 'disabled' : ''; ?>">
                     Próxima
                 </a>

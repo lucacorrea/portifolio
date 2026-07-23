@@ -34,4 +34,7 @@ final class AgendaReminder
     public function start(): string { return $this->start; }
     public function end(): ?string { return $this->end; }
     public function status(): string { return $this->status; }
+    public function isActive(): bool { return $this->status === 'ativo'; }
+    public function isCompleted(): bool { return $this->status === 'concluido'; }
+    public function isCanceled(): bool { return $this->status === 'cancelado'; }
 }

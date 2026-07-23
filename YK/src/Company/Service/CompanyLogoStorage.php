@@ -22,6 +22,25 @@ final class CompanyLogoStorage
     {
     }
 
+    public static function forProjectRoot(string $projectRoot): self
+    {
+        return new self(self::resolveStorageRoot($projectRoot));
+    }
+
+    public static function resolveStorageRoot(string $projectRoot): string
+    {
+        $projectRoot = rtrim(trim($projectRoot), '/\\');
+        if ($projectRoot === '' || str_contains($projectRoot, "\0")) {
+            throw new InvalidArgumentException('Diretório do projeto inválido para armazenar a logo.');
+        }
+
+        return dirname($projectRoot, 2)
+            . DIRECTORY_SEPARATOR . 'configuracoes'
+            . DIRECTORY_SEPARATOR . 'yk'
+            . DIRECTORY_SEPARATOR . 'assets'
+            . DIRECTORY_SEPARATOR . 'img';
+    }
+
     /** @param array<string,mixed>|null $upload */
     public function store(?array $upload): ?string
     {
@@ -31,7 +50,7 @@ final class CompanyLogoStorage
         }
 
         [$temporaryPath, $mime] = $inspection;
-        $directory = $this->storageRoot . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'empresa';
+        $directory = $this->storageRoot;
         if (!is_dir($directory) && !mkdir($directory, 0750, true) && !is_dir($directory)) {
             throw new RuntimeException('Não foi possível preparar o armazenamento da logo.');
         }
@@ -51,10 +70,7 @@ final class CompanyLogoStorage
             return null;
         }
 
-        $candidate = $this->storageRoot
-            . DIRECTORY_SEPARATOR . 'uploads'
-            . DIRECTORY_SEPARATOR . 'empresa'
-            . DIRECTORY_SEPARATOR . $matches[1];
+        $candidate = $this->storageRoot . DIRECTORY_SEPARATOR . $matches[1];
         $root = realpath($this->storageRoot);
         $resolved = is_file($candidate) ? realpath($candidate) : false;
 

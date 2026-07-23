@@ -21,14 +21,19 @@ final class ProductService
         $this->categories = $categories ?? new CategoryRepository();
     }
 
-    public function list(int $empresaId, string $query = ''): array
+    public function list(int $empresaId, string $query = '', ?bool $active = true): array
     {
-        return $this->products->findAll($empresaId, $query);
+        return $this->products->findAll($empresaId, $query, $active);
     }
 
     public function find(int $empresaId, int $id): ?array
     {
         return $this->products->findById($empresaId, $id);
+    }
+
+    public function findWithStatus(int $empresaId, int $id, ?bool $active = true): ?array
+    {
+        return $this->products->findByIdWithStatus($empresaId, $id, $active);
     }
 
     public function findByCode(int $empresaId, string $code): ?array
@@ -64,8 +69,8 @@ final class ProductService
             throw new InvalidArgumentException('Informe uma categoria válida.');
         }
 
-        if (!Validator::required($sku) || !Validator::max($sku, 80)) {
-            throw new InvalidArgumentException('Informe um SKU válido.');
+        if (!Validator::max($sku, 80)) {
+            throw new InvalidArgumentException('O código interno deve ter no máximo 80 caracteres.');
         }
 
         if ($barcode !== '' && !Validator::max($barcode, 80)) {
@@ -79,15 +84,28 @@ final class ProductService
             }
         }
 
-        if (!Validator::required($lot) || !Validator::max($lot, 80)) {
-            throw new InvalidArgumentException('Informe um lote válido.');
+        if ($sku === '') {
+            $sku = $this->generateSku($empresaId, $id);
         }
 
-        if (!Validator::required($expiry) || !Validator::date($expiry)) {
+        if ($lot !== '' && !Validator::max($lot, 80)) {
+            throw new InvalidArgumentException('O lote deve ter no máximo 80 caracteres.');
+        }
+
+        if ($expiry !== '' && !Validator::date($expiry)) {
             throw new InvalidArgumentException('Informe uma validade válida.');
         }
 
-        foreach (['cost', 'price', 'stock', 'minStock'] as $field) {
+        $cost = $payload['cost'] ?? 0;
+        if ($cost === '') {
+            $cost = 0;
+        }
+
+        if (!Validator::decimal($cost)) {
+            throw new InvalidArgumentException('O preço de custo deve ser numérico.');
+        }
+
+        foreach (['price', 'stock', 'minStock'] as $field) {
             if (!Validator::decimal($payload[$field] ?? 0)) {
                 throw new InvalidArgumentException('Valores de preço e estoque devem ser numéricos.');
             }
@@ -123,7 +141,7 @@ final class ProductService
             'validade' => $expiry,
             'quantidade' => (float)($payload['stock'] ?? 0),
             'estoque_minimo' => (float)($payload['minStock'] ?? 0),
-            'preco_custo' => (float)($payload['cost'] ?? 0),
+            'preco_custo' => (float)$cost,
             'preco_venda' => (float)($payload['price'] ?? 0),
             'imagem' => $image,
             'descricao' => $description,
@@ -168,12 +186,60 @@ final class ProductService
         $this->products->inactivate($empresaId, $id);
     }
 
+    public function activate(int $empresaId, int $id): void
+    {
+        if ($id <= 0) {
+            throw new InvalidArgumentException('Produto inválido.');
+        }
+
+        $this->products->activate($empresaId, $id);
+    }
+
+    public function deleteInactive(int $empresaId, int $id): array
+    {
+        if ($id <= 0) {
+            throw new InvalidArgumentException('Produto inválido.');
+        }
+
+        $product = $this->products->findByIdWithStatus($empresaId, $id, null);
+        if ($product === null) {
+            throw new InvalidArgumentException('Produto não encontrado.');
+        }
+
+        if (($product['active'] ?? true) === true) {
+            throw new InvalidArgumentException('Inative o produto antes de excluir definitivamente.');
+        }
+
+        if ($this->products->hasSaleHistory($empresaId, $id)) {
+            throw new InvalidArgumentException('Este produto possui vendas vinculadas. Mantenha inativo para preservar o histórico.');
+        }
+
+        if (!$this->products->deleteInactive($empresaId, $id)) {
+            throw new InvalidArgumentException('Não foi possível excluir o produto inativo. Atualize a lista e tente novamente.');
+        }
+
+        return $product;
+    }
+
     private function normalizeBarcode(string $barcode): string
     {
         $barcode = preg_replace('/[\x00-\x1F\x7F\s-]+/u', '', $barcode) ?? '';
         $barcode = trim($barcode);
 
         return mb_substr($barcode, 0, 80);
+    }
+
+    private function generateSku(int $empresaId, int $productId): string
+    {
+        for ($attempt = 0; $attempt < 6; $attempt++) {
+            $suffix = strtoupper(bin2hex(random_bytes($attempt < 3 ? 3 : 4)));
+            $sku = 'AUTO-' . $empresaId . '-' . $suffix;
+            if ($this->products->findByCode($empresaId, $sku) === null) {
+                return mb_substr($sku, 0, 80);
+            }
+        }
+
+        return mb_substr('AUTO-' . $empresaId . '-' . ($productId > 0 ? $productId : time()) . '-' . bin2hex(random_bytes(2)), 0, 80);
     }
 
     private function cleanText(string $value, int $maxLength): string

@@ -7,7 +7,7 @@ require_once __DIR__ . '/auth/authGuard.php';
 auth_guard();
 
 /* Apenas usuários com perfil 'suporte' ou 'admin' podem acessar auditoria */
-$allowed_roles = ['suporte', 'admin'];
+$allowed_roles = ['suporte', 'admin', 'secretario', 'prefeito'];
 if (!in_array(($_SESSION['user_role'] ?? ''), $allowed_roles, true)) {
     header('Location: index.php');
     exit();
@@ -960,7 +960,261 @@ if (!empty($beneficios)) {
                 height: 270px;
             }
         }
-    </style>
+    
+        /* ===== ESTILO CLEAN PADRÃO DAS TABELAS DO ANEXO ===== */
+        .card {
+            border: 0;
+            border-radius: 14px;
+        }
+
+        .card-statistic {
+            border: 1px solid #e6e9ef !important;
+            border-left: 0 !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+            background: #fff !important;
+            color: #2d3748 !important;
+        }
+
+        .card-statistic:nth-child(1),
+        .card-statistic:nth-child(2),
+        .card-statistic:nth-child(3),
+        .card-statistic:nth-child(4) {
+            border-left: 0 !important;
+            border-left-color: transparent !important;
+        }
+
+        .card-statistic .statistic-icon,
+        .card-statistic:nth-child(1) .statistic-icon,
+        .card-statistic:nth-child(2) .statistic-icon,
+        .card-statistic:nth-child(3) .statistic-icon,
+        .card-statistic:nth-child(4) .statistic-icon {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+        }
+
+        .valor-destaque {
+            color: #25396f !important;
+        }
+
+        .valor-cell,
+        .valor-alto,
+        .valor-nulo,
+        .top5-item .text-danger {
+            color: #52697f !important;
+            font-weight: 700;
+        }
+
+        .filtros-ativos,
+        .alert-info {
+            background: #fff !important;
+            border: 1px solid #e1e6ec !important;
+            color: #52697f !important;
+            border-radius: 10px !important;
+        }
+
+        .badge-filtro {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+            border-radius: 999px !important;
+            font-weight: 700;
+        }
+
+        .badge-filtro a {
+            color: #52697f !important;
+            text-decoration: none;
+        }
+
+        .btn-filtro-applied {
+            background-color: #435ebe !important;
+            border-color: #435ebe !important;
+            color: #fff !important;
+        }
+
+        .dt-search-input {
+            height: 38px;
+            border: 1px solid #9bb4f5;
+            border-radius: 4px;
+            background: #fff;
+            color: #495057;
+            box-shadow: none;
+        }
+
+        .dt-search-input:focus {
+            border-color: #9ab0f5;
+            box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+        }
+
+        .dt-search-clear {
+            border: 1px solid #cfd6df;
+            background: #fff;
+            color: #495057;
+        }
+
+        .dt-search-clear:hover {
+            border-color: #435ebe;
+            color: #435ebe;
+            background: #f8f9ff;
+        }
+
+        #tabelaBeneficios {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            margin-bottom: 0 !important;
+            color: #52697f !important;
+            background: #fff !important;
+            width: 100% !important;
+        }
+
+        #tabelaBeneficios thead th {
+            background: #fff !important;
+            color: #2d3748 !important;
+            font-size: .95rem !important;
+            font-weight: 800 !important;
+            border: 0 !important;
+            border-bottom: 1px solid #d6dce5 !important;
+            padding: .95rem .75rem !important;
+            vertical-align: middle !important;
+            position: relative !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+        }
+
+        #tabelaBeneficios tbody td {
+            border: 0 !important;
+            border-bottom: 1px solid #e1e6ec !important;
+            padding: .8rem .75rem !important;
+            vertical-align: middle !important;
+            color: #52697f !important;
+            font-size: .95rem !important;
+            background: transparent !important;
+        }
+
+        #tabelaBeneficios tbody tr:nth-child(odd) td {
+            background: #fff !important;
+        }
+
+        #tabelaBeneficios tbody tr:nth-child(even) td {
+            background: #f6f7f9 !important;
+        }
+
+        #tabelaBeneficios tbody tr:hover td {
+            background: #eef1f5 !important;
+        }
+
+        #tabelaBeneficios tfoot th,
+        #tabelaBeneficios tfoot td {
+            background: #fff !important;
+            border: 0 !important;
+            border-top: 1px solid #d6dce5 !important;
+            color: #52697f !important;
+            padding: .9rem .75rem !important;
+        }
+
+        #tabelaBeneficios .clean-text-pill,
+        #tabelaBeneficios .status-pendente {
+            display: inline-block;
+            max-width: 100%;
+            color: #52697f !important;
+            font-weight: 600;
+            background: transparent !important;
+            border: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+
+        #tabelaBeneficios .status-entregue {
+            background: #198754 !important;
+            color: #fff !important;
+            border: 0 !important;
+            border-radius: .35rem !important;
+            padding: .35rem .55rem !important;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        #tabelaBeneficios .text-danger,
+        #tabelaBeneficios .text-success,
+        #tabelaBeneficios .text-warning,
+        #tabelaBeneficios .text-info,
+        #tabelaBeneficios .text-primary {
+            color: #52697f !important;
+        }
+
+        #tabelaBeneficios thead th.sorting,
+        #tabelaBeneficios thead th.sorting_asc,
+        #tabelaBeneficios thead th.sorting_desc,
+        #tabelaBeneficios thead th.sorting_asc_disabled,
+        #tabelaBeneficios thead th.sorting_desc_disabled {
+            cursor: pointer;
+            user-select: none;
+            padding-right: 1.65rem !important;
+        }
+
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc_disabled::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc_disabled::before {
+            content: "▲" !important;
+            right: .55rem !important;
+            top: calc(50% - 8px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc_disabled::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc_disabled::after {
+            content: "▼" !important;
+            right: .55rem !important;
+            top: calc(50% + 1px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc::after {
+            color: #8d98a7 !important;
+        }
+
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting:hover::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting:hover::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc:hover::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_asc:hover::after,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc:hover::before,
+        table.dataTable#tabelaBeneficios thead > tr > th.sorting_desc:hover::after {
+            color: #b7c0cc !important;
+        }
+
+        .custom-pagination-bar {
+            border-top: 1px solid #e9ecef;
+        }
+
+        .custom-page-info {
+            color: #435ebe;
+            font-weight: 800;
+        }
+
+        .custom-length-select {
+            background-color: #fff;
+        }
+
+</style>
 </head>
 
 <body>
@@ -1317,7 +1571,7 @@ if (!empty($beneficios)) {
                                     </div>
 
                                     <div class="table-responsive">
-                                        <table id="tabelaBeneficios" class="table table-hover table-striped w-100">
+                                        <table id="tabelaBeneficios" class="table table-hover w-100 clean-data-table">
                                             <thead>
                                                 <tr>
                                                     <th>Data/Hora</th>
@@ -1352,10 +1606,9 @@ if (!empty($beneficios)) {
                                                         </td>
                                                         <td class="d-none d-md-table-cell"><?= formatarCPF($beneficio['pessoa_cpf']) ?></td>
                                                         <td>
-                                                            <span class="badge bg-primary d-inline-block text-truncate" style="max-width: 120px;">
+                                                            <span class="clean-text-pill d-inline-block text-truncate" style="max-width: 120px;">
                                                                 <?= htmlspecialchars((string)$beneficio['tipo_nome']) ?>
                                                             </span>
-                                                            <div><small class="text-muted"><?= htmlspecialchars((string)$beneficio['tipo_categoria']) ?></small></div>
                                                         </td>
                                                         <td class="text-center"><?= $quantidade ?></td>
                                                         <td class="<?= $classe_valor ?>"><?= formatarMoeda($valor_unitario) ?></td>
@@ -1364,9 +1617,9 @@ if (!empty($beneficios)) {
                                                         </td>
                                                         <td>
                                                             <?php if (($beneficio['entregue'] ?? '') === 'Sim'): ?>
-                                                                <span class="badge badge-entregue bg-success">Entregue</span>
+                                                                <span class="badge status-entregue">Entregue</span>
                                                             <?php else: ?>
-                                                                <span class="badge badge-pendente bg-warning text-dark">Pendente</span>
+                                                                <span class="status-pendente">Pendente</span>
                                                             <?php endif; ?>
                                                         </td>
                                                         <td class="d-none d-md-table-cell"><?= htmlspecialchars((string)($beneficio['responsavel_entrega'] ?? 'N/A')) ?></td>
@@ -1375,14 +1628,17 @@ if (!empty($beneficios)) {
                                             </tbody>
                                             <tfoot>
                                                 <tr>
-                                                    <th colspan="3" class="text-end">Total Geral:</th>
+                                                    <th class="text-start">Total Geral:</th>
+                                                    <th></th>
+                                                    <th></th>
                                                     <th class="text-center"><?= count($beneficios) ?> reg.</th>
                                                     <th class="text-center"><?= (int)$total_quantidade ?></th>
                                                     <th></th>
-                                                    <th class="<?= $classe_total ?>">
+                                                    <th class="<?= $classe_total ?> text-center">
                                                         <strong><?= formatarMoeda($total_valor) ?></strong>
                                                     </th>
-                                                    <th colspan="2"></th>
+                                                    <th></th>
+                                                    <th></th>
                                                 </tr>
                                             </tfoot>
                                         </table>
@@ -1749,59 +2005,599 @@ if (!empty($beneficios)) {
                             extend: 'excelHtml5',
                             text: '<i class="bi bi-file-earmark-excel"></i> Excel',
                             className: 'btn btn-success btn-sm d-none',
-                            title: 'Beneficios_Acima_Mil_<?= date('Y-m-d') ?>',
+                            title: null,
                             filename: 'beneficios_acima_mil_<?= date('Y-m-d') ?>',
+                            footer: true,
                             exportOptions: {
                                 columns: ':visible',
+                                stripHtml: true,
                                 format: {
+                                    header: function(data) {
+                                        return $('<div>').html(data).text()
+                                            .replace(/\u00A0/g, ' ')
+                                            .replace(/\s+/g, ' ')
+                                            .trim();
+                                    },
                                     body: function(data, row, column) {
-                                        const texto = $('<div>').html(data).text().trim();
+                                        const conteudo = $('<div>').html(data);
 
-                                        if (column === 5 || column === 6) {
-                                            return texto
+                                        if (column === 1) {
+                                            const nome = conteudo.find('strong').first().text()
+                                                .replace(/\u00A0/g, ' ')
                                                 .replace(/\s+/g, ' ')
-                                                .replace('R$ ', '')
-                                                .replace(/\./g, '')
-                                                .replace(',', '.');
+                                                .trim();
+
+                                            const telefone = conteudo.find('small').first().text()
+                                                .replace(/\u00A0/g, ' ')
+                                                .replace(/\s+/g, ' ')
+                                                .trim();
+
+                                            if (nome || telefone) {
+                                                return telefone ? nome + '\n' + telefone : nome;
+                                            }
                                         }
 
-                                        return texto.replace(/\s+/g, ' ');
+                                        let texto = conteudo.text()
+                                            .replace(/\u00A0/g, ' ')
+                                            .replace(/\s+/g, ' ')
+                                            .trim();
+
+                                        if (column === 0) {
+                                            const partes = texto.match(/^(\d{2}\/\d{2}\/\d{4})\s*(\d{2}:\d{2})?$/);
+                                            if (partes) {
+                                                texto = partes[1] + (partes[2] ? ' às ' + partes[2] : '');
+                                            }
+                                        }
+
+                                        return texto;
+                                    },
+                                    footer: function(data, row, column) {
+                                        if (column === 0) {
+                                            return 'Total Geral:';
+                                        }
+                                        if (column === 3) {
+                                            return <?= json_encode($total_entregas . ' reg.', JSON_UNESCAPED_UNICODE) ?>;
+                                        }
+                                        if (column === 4) {
+                                            return <?= json_encode((string)$total_quantidade, JSON_UNESCAPED_UNICODE) ?>;
+                                        }
+                                        if (column === 6) {
+                                            return <?= json_encode(formatarMoeda($total_valor), JSON_UNESCAPED_UNICODE) ?>;
+                                        }
+                                        return '';
                                     }
                                 }
+                            },
+                            customize: function(xlsx) {
+                                const sheet = xlsx.xl.worksheets['sheet1.xml'];
+                                const styles = xlsx.xl['styles.xml'];
+                                const sheetData = $('sheetData', sheet)[0];
+
+                                const tituloTexto = <?= json_encode('BENEFÍCIOS ACIMA DE R$ ' . number_format($filtro_valor_min, 2, ',', '.') . ' - ANEXO', JSON_UNESCAPED_UNICODE) ?>;
+                                const resumoTexto = <?= json_encode(
+                                    'Total: ' . $total_entregas . ' entregas | Quantidade: ' . $total_quantidade .
+                                    ' | Pessoas atendidas: ' . $total_pessoas .
+                                    ' | Valor total: ' . formatarMoeda($total_valor) .
+                                    ' | Valor médio: ' . ($total_entregas > 0 ? formatarMoeda($total_valor / $total_entregas) : 'R$ 0,00'),
+                                    JSON_UNESCAPED_UNICODE
+                                ) ?>;
+
+                                const filtros = [];
+                                <?php if ($filtro_mes !== 'todos'): ?>
+                                    filtros.push(<?= json_encode('Mês: ' . date('m/Y', strtotime($filtro_mes . '-01')), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_ano !== 'todos'): ?>
+                                    filtros.push(<?= json_encode('Ano: ' . $filtro_ano, JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_beneficio): ?>
+                                    filtros.push(<?= json_encode('Benefício: ' . ($beneficio_nome ?? 'Selecionado'), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_bairro): ?>
+                                    <?php
+                                    $bairro_nome_exportacao = '';
+                                    foreach ($bairros as $bairro_item_exportacao) {
+                                        if ((string)$bairro_item_exportacao['id'] === (string)$filtro_bairro) {
+                                            $bairro_nome_exportacao = (string)$bairro_item_exportacao['nome'];
+                                            break;
+                                        }
+                                    }
+                                    ?>
+                                    filtros.push(<?= json_encode('Bairro: ' . ($bairro_nome_exportacao !== '' ? $bairro_nome_exportacao : 'Selecionado'), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_status !== 'todos'): ?>
+                                    filtros.push(<?= json_encode('Status: ' . ($filtro_status === 'Sim' ? 'Entregue' : 'Pendente'), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_valor_min != 1000): ?>
+                                    filtros.push(<?= json_encode('Valor mínimo: R$ ' . number_format($filtro_valor_min, 2, ',', '.'), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php else: ?>
+                                    filtros.push(<?= json_encode('Valor mínimo: R$ 1.000,00', JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_data_inicio): ?>
+                                    filtros.push(<?= json_encode('Data inicial: ' . date('d/m/Y', strtotime($filtro_data_inicio)), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_data_fim): ?>
+                                    filtros.push(<?= json_encode('Data final: ' . date('d/m/Y', strtotime($filtro_data_fim)), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_responsavel): ?>
+                                    filtros.push(<?= json_encode('Responsável: ' . $filtro_responsavel, JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                filtros.push(<?= json_encode(
+                                    'Ordenação: ' .
+                                    ($ordenacao === 'valor_desc' ? 'Maior valor' :
+                                    ($ordenacao === 'valor_asc' ? 'Menor valor' :
+                                    ($ordenacao === 'data_desc' ? 'Data mais recente' :
+                                    ($ordenacao === 'data_asc' ? 'Data mais antiga' : 'Nome A-Z')))),
+                                    JSON_UNESCAPED_UNICODE
+                                ) ?>);
+
+                                const pesquisaAtual = tabelaBeneficios ? tabelaBeneficios.search().trim() : '';
+                                if (pesquisaAtual) {
+                                    filtros.push('Pesquisa: ' + pesquisaAtual);
+                                }
+
+                                const filtrosTexto = 'Filtros: ' + (filtros.length ? filtros.join(' | ') : 'Nenhum filtro aplicado');
+                                const agora = new Date();
+                                const geradoTexto = 'Gerado em: ' +
+                                    agora.toLocaleDateString('pt-BR') + ' ' +
+                                    agora.toLocaleTimeString('pt-BR');
+
+                                function appendXml(parent, xml) {
+                                    const parsed = $.parseXML('<root>' + xml + '</root>');
+                                    $(parsed).find('root').children().each(function() {
+                                        parent.append(this);
+                                    });
+                                }
+
+                                function addFont(options) {
+                                    const fonts = $('fonts', styles);
+                                    const id = $('font', fonts).length;
+
+                                    appendXml(fonts,
+                                        '<font>' +
+                                            (options.bold ? '<b/>' : '') +
+                                            '<sz val="' + (options.size || 11) + '"/>' +
+                                            '<color rgb="' + (options.color || 'FF000000') + '"/>' +
+                                            '<name val="Calibri"/>' +
+                                            '<family val="2"/>' +
+                                        '</font>'
+                                    );
+
+                                    fonts.attr('count', $('font', fonts).length);
+                                    return id;
+                                }
+
+                                function addFill(color) {
+                                    const fills = $('fills', styles);
+                                    const id = $('fill', fills).length;
+
+                                    appendXml(fills,
+                                        '<fill><patternFill patternType="solid">' +
+                                            '<fgColor rgb="' + color + '"/>' +
+                                            '<bgColor indexed="64"/>' +
+                                        '</patternFill></fill>'
+                                    );
+
+                                    fills.attr('count', $('fill', fills).length);
+                                    return id;
+                                }
+
+                                function addBorder() {
+                                    const borders = $('borders', styles);
+                                    const id = $('border', borders).length;
+
+                                    appendXml(borders,
+                                        '<border>' +
+                                            '<left style="thin"><color rgb="FF000000"/></left>' +
+                                            '<right style="thin"><color rgb="FF000000"/></right>' +
+                                            '<top style="thin"><color rgb="FF000000"/></top>' +
+                                            '<bottom style="thin"><color rgb="FF000000"/></bottom>' +
+                                            '<diagonal/>' +
+                                        '</border>'
+                                    );
+
+                                    borders.attr('count', $('border', borders).length);
+                                    return id;
+                                }
+
+                                function addStyle(options) {
+                                    const cellXfs = $('cellXfs', styles);
+                                    const id = $('xf', cellXfs).length;
+
+                                    appendXml(cellXfs,
+                                        '<xf numFmtId="0" fontId="' + (options.fontId || 0) +
+                                        '" fillId="' + (options.fillId || 0) +
+                                        '" borderId="' + (options.borderId || 0) +
+                                        '" xfId="0"' +
+                                            (options.fontId ? ' applyFont="1"' : '') +
+                                            (options.fillId ? ' applyFill="1"' : '') +
+                                            (options.borderId ? ' applyBorder="1"' : '') +
+                                            ' applyAlignment="1">' +
+                                            '<alignment horizontal="' + (options.horizontal || 'center') +
+                                            '" vertical="center" wrapText="1"/>' +
+                                        '</xf>'
+                                    );
+
+                                    cellXfs.attr('count', $('xf', cellXfs).length);
+                                    return id;
+                                }
+
+                                const fontTitle = addFont({ bold: true, size: 16 });
+                                const fontMeta = addFont({ bold: true, size: 12 });
+                                const fontHeader = addFont({ bold: true, size: 12 });
+
+                                const grayFill = addFill('FFF2F4F7');
+                                const blackBorder = addBorder();
+
+                                const styleTitle = addStyle({
+                                    fontId: fontTitle,
+                                    fillId: grayFill,
+                                    borderId: blackBorder,
+                                    horizontal: 'center'
+                                });
+                                const styleMeta = addStyle({
+                                    fontId: fontMeta,
+                                    borderId: blackBorder,
+                                    horizontal: 'left'
+                                });
+                                const styleHeader = addStyle({
+                                    fontId: fontHeader,
+                                    fillId: grayFill,
+                                    borderId: blackBorder,
+                                    horizontal: 'center'
+                                });
+                                const styleCenter = addStyle({
+                                    borderId: blackBorder,
+                                    horizontal: 'center'
+                                });
+                                const styleLeft = addStyle({
+                                    borderId: blackBorder,
+                                    horizontal: 'left'
+                                });
+
+                                function columnName(index) {
+                                    let name = '';
+                                    index++;
+
+                                    while (index > 0) {
+                                        const remainder = (index - 1) % 26;
+                                        name = String.fromCharCode(65 + remainder) + name;
+                                        index = Math.floor((index - 1) / 26);
+                                    }
+
+                                    return name;
+                                }
+
+                                function shiftCellReference(reference, offset) {
+                                    return String(reference || '').replace(/([A-Z]+)(\d+)/, function(match, col, row) {
+                                        return col + (parseInt(row, 10) + offset);
+                                    });
+                                }
+
+                                const existingRows = $('row', sheet).toArray();
+
+                                existingRows.forEach(function(row) {
+                                    const newRowNumber = parseInt($(row).attr('r'), 10) + 4;
+                                    $(row).attr('r', newRowNumber);
+
+                                    $('c', row).each(function() {
+                                        $(this).attr('r', shiftCellReference($(this).attr('r'), 4));
+                                    });
+                                });
+
+                                $('mergeCells mergeCell', sheet).each(function() {
+                                    const ref = $(this).attr('ref');
+                                    if (!ref) return;
+
+                                    const parts = ref.split(':');
+                                    $(this).attr(
+                                        'ref',
+                                        parts.map(function(part) {
+                                            return shiftCellReference(part, 4);
+                                        }).join(':')
+                                    );
+                                });
+
+                                function xmlEscape(value) {
+                                    return String(value)
+                                        .replace(/&/g, '&amp;')
+                                        .replace(/</g, '&lt;')
+                                        .replace(/>/g, '&gt;')
+                                        .replace(/"/g, '&quot;')
+                                        .replace(/'/g, '&apos;');
+                                }
+
+                                function createMergedRow(rowNumber, text, styleId) {
+                                    let cells = '';
+
+                                    for (let columnIndex = 0; columnIndex < 9; columnIndex++) {
+                                        const column = columnName(columnIndex);
+
+                                        if (columnIndex === 0) {
+                                            cells += '<c r="' + column + rowNumber + '" t="inlineStr" s="' + styleId + '">' +
+                                                '<is><t xml:space="preserve">' + xmlEscape(text) + '</t></is>' +
+                                            '</c>';
+                                        } else {
+                                            cells += '<c r="' + column + rowNumber + '" t="inlineStr" s="' + styleId + '">' +
+                                                '<is><t xml:space="preserve"></t></is>' +
+                                            '</c>';
+                                        }
+                                    }
+
+                                    return '<row r="' + rowNumber + '" ht="' + (rowNumber === 1 ? 26 : 21) + '" customHeight="1">' +
+                                        cells +
+                                    '</row>';
+                                }
+
+                                const temp = $.parseXML(
+                                    '<root>' +
+                                        createMergedRow(1, tituloTexto, styleTitle) +
+                                        createMergedRow(2, resumoTexto, styleMeta) +
+                                        createMergedRow(3, filtrosTexto, styleMeta) +
+                                        createMergedRow(4, geradoTexto, styleMeta) +
+                                    '</root>'
+                                );
+
+                                const firstRow = sheetData.firstChild;
+                                $($(temp).find('row').get()).each(function() {
+                                    sheetData.insertBefore(this, firstRow);
+                                });
+
+                                let mergeCells = $('mergeCells', sheet);
+                                if (!mergeCells.length) {
+                                    const mergeNode = $.parseXML('<mergeCells count="0"></mergeCells>').documentElement;
+                                    $('worksheet', sheet)[0].appendChild(mergeNode);
+                                    mergeCells = $('mergeCells', sheet);
+                                }
+
+                                ['A1:I1', 'A2:I2', 'A3:I3', 'A4:I4'].forEach(function(ref) {
+                                    const mergeCell = $.parseXML('<mergeCell ref="' + ref + '"/>').documentElement;
+                                    mergeCells[0].appendChild(mergeCell);
+                                });
+                                mergeCells.attr('count', $('mergeCell', mergeCells).length);
+
+                                $('row', sheet).each(function() {
+                                    const rowNumber = parseInt($(this).attr('r'), 10);
+
+                                    $('c', this).each(function() {
+                                        const ref = $(this).attr('r') || '';
+                                        const col = ref.replace(/[0-9]/g, '');
+
+                                        if (rowNumber === 5) {
+                                            $(this).attr('s', styleHeader);
+                                        } else if (rowNumber > 5) {
+                                            if (col === 'B') {
+                                                $(this).attr('s', styleLeft);
+                                            } else {
+                                                $(this).attr('s', styleCenter);
+                                            }
+                                        }
+                                    });
+                                });
+
+                                $('cols', sheet).remove();
+
+                                const colsXml =
+                                    '<cols>' +
+                                        '<col min="1" max="1" width="19" customWidth="1"/>' +
+                                        '<col min="2" max="2" width="34" customWidth="1"/>' +
+                                        '<col min="3" max="3" width="18" customWidth="1"/>' +
+                                        '<col min="4" max="4" width="28" customWidth="1"/>' +
+                                        '<col min="5" max="5" width="10" customWidth="1"/>' +
+                                        '<col min="6" max="7" width="17" customWidth="1"/>' +
+                                        '<col min="8" max="8" width="14" customWidth="1"/>' +
+                                        '<col min="9" max="9" width="27" customWidth="1"/>' +
+                                    '</cols>';
+
+                                const colsNode = $.parseXML(colsXml).documentElement;
+                                const worksheet = $('worksheet', sheet)[0];
+                                worksheet.insertBefore(colsNode, sheetData);
+
+                                $('dimension', sheet).attr('ref', 'A1:I' + $('row', sheet).length);
+                                $('autoFilter', sheet).remove();
                             }
                         },
                         {
                             extend: 'pdfHtml5',
                             text: '<i class="bi bi-file-earmark-pdf"></i> PDF',
                             className: 'btn btn-danger btn-sm d-none',
-                            title: 'Benefícios Acima de R$ <?= number_format($filtro_valor_min, 2, ',', '.') ?> - ANEXO',
+                            title: null,
                             filename: 'beneficios_acima_mil_<?= date('Y-m-d') ?>',
+                            footer: true,
                             exportOptions: {
                                 columns: ':visible',
+                                stripHtml: true,
                                 format: {
+                                    header: function(data) {
+                                        return $('<div>').html(data).text()
+                                            .replace(/\u00A0/g, ' ')
+                                            .replace(/\s+/g, ' ')
+                                            .trim();
+                                    },
                                     body: function(data) {
-                                        return $('<div>').html(data).text().trim().replace(/\s+/g, ' ');
+                                        return $('<div>').html(data).text()
+                                            .replace(/\u00A0/g, ' ')
+                                            .replace(/\s+/g, ' ')
+                                            .trim();
+                                    },
+                                    footer: function(data) {
+                                        return $('<div>').html(data).text()
+                                            .replace(/\u00A0/g, ' ')
+                                            .replace(/\s+/g, ' ')
+                                            .trim();
                                     }
                                 }
                             },
                             customize: function(doc) {
-                                if (doc.content[1] && doc.content[1].table) {
-                                    doc.content[1].table.widths = ['11%', '18%', '12%', '14%', '7%', '11%', '12%', '7%', '8%'];
+                                const tituloTexto = <?= json_encode('BENEFÍCIOS ACIMA DE R$ ' . number_format($filtro_valor_min, 2, ',', '.') . ' - ANEXO', JSON_UNESCAPED_UNICODE) ?>;
+                                const resumoTexto = <?= json_encode(
+                                    'Total: ' . $total_entregas . ' entregas | Quantidade: ' . $total_quantidade .
+                                    ' | Pessoas atendidas: ' . $total_pessoas .
+                                    ' | Valor total: ' . formatarMoeda($total_valor) .
+                                    ' | Valor médio: ' . ($total_entregas > 0 ? formatarMoeda($total_valor / $total_entregas) : 'R$ 0,00'),
+                                    JSON_UNESCAPED_UNICODE
+                                ) ?>;
+
+                                const filtros = [];
+                                <?php if ($filtro_mes !== 'todos'): ?>
+                                    filtros.push(<?= json_encode('Mês: ' . date('m/Y', strtotime($filtro_mes . '-01')), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_ano !== 'todos'): ?>
+                                    filtros.push(<?= json_encode('Ano: ' . $filtro_ano, JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_beneficio): ?>
+                                    filtros.push(<?= json_encode('Benefício: ' . ($beneficio_nome ?? 'Selecionado'), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_bairro): ?>
+                                    filtros.push(<?= json_encode('Bairro selecionado', JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_status !== 'todos'): ?>
+                                    filtros.push(<?= json_encode('Status: ' . ($filtro_status === 'Sim' ? 'Entregue' : 'Pendente'), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                filtros.push(<?= json_encode('Valor mínimo: R$ ' . number_format($filtro_valor_min, 2, ',', '.'), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php if ($filtro_data_inicio): ?>
+                                    filtros.push(<?= json_encode('Data inicial: ' . date('d/m/Y', strtotime($filtro_data_inicio)), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_data_fim): ?>
+                                    filtros.push(<?= json_encode('Data final: ' . date('d/m/Y', strtotime($filtro_data_fim)), JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                <?php if ($filtro_responsavel): ?>
+                                    filtros.push(<?= json_encode('Responsável: ' . $filtro_responsavel, JSON_UNESCAPED_UNICODE) ?>);
+                                <?php endif; ?>
+                                filtros.push(<?= json_encode(
+                                    'Ordenação: ' .
+                                    ($ordenacao === 'valor_desc' ? 'Maior valor' :
+                                    ($ordenacao === 'valor_asc' ? 'Menor valor' :
+                                    ($ordenacao === 'data_desc' ? 'Data mais recente' :
+                                    ($ordenacao === 'data_asc' ? 'Data mais antiga' : 'Nome A-Z')))),
+                                    JSON_UNESCAPED_UNICODE
+                                ) ?>);
+
+                                const pesquisaAtual = tabelaBeneficios ? tabelaBeneficios.search().trim() : '';
+                                if (pesquisaAtual) {
+                                    filtros.push('Pesquisa: ' + pesquisaAtual);
                                 }
 
-                                doc.styles.tableHeader = {
-                                    fillColor: '#0d6efd',
-                                    color: 'white',
-                                    bold: true,
-                                    fontSize: 9
+                                const filtrosTexto = 'Filtros: ' + (filtros.length ? filtros.join(' | ') : 'Nenhum filtro aplicado');
+                                const agora = new Date();
+                                const geradoTexto = 'Gerado em: ' +
+                                    agora.toLocaleDateString('pt-BR') + ' ' +
+                                    agora.toLocaleTimeString('pt-BR');
+
+                                const tableIndex = doc.content.findIndex(function(item) {
+                                    return item && item.table;
+                                });
+
+                                const cabecalho = {
+                                    margin: [0, 0, 0, 10],
+                                    table: {
+                                        widths: ['*'],
+                                        body: [
+                                            [{
+                                                text: tituloTexto,
+                                                alignment: 'center',
+                                                bold: true,
+                                                fontSize: 16,
+                                                color: '#FFFFFF',
+                                                fillColor: '#435EBE',
+                                                margin: [6, 8, 6, 8]
+                                            }],
+                                            [{
+                                                text: resumoTexto,
+                                                alignment: 'left',
+                                                bold: true,
+                                                fontSize: 10,
+                                                color: '#000000',
+                                                fillColor: '#F2F4F7',
+                                                margin: [5, 5, 5, 5]
+                                            }],
+                                            [{
+                                                text: filtrosTexto,
+                                                alignment: 'left',
+                                                bold: true,
+                                                fontSize: 9,
+                                                color: '#000000',
+                                                fillColor: '#FFFFFF',
+                                                margin: [5, 5, 5, 5]
+                                            }],
+                                            [{
+                                                text: geradoTexto,
+                                                alignment: 'left',
+                                                bold: true,
+                                                fontSize: 9,
+                                                color: '#000000',
+                                                fillColor: '#FFFFFF',
+                                                margin: [5, 5, 5, 5]
+                                            }]
+                                        ]
+                                    },
+                                    layout: {
+                                        hLineWidth: function() { return 0.7; },
+                                        vLineWidth: function() { return 0.7; },
+                                        hLineColor: function() { return '#000000'; },
+                                        vLineColor: function() { return '#000000'; },
+                                        paddingLeft: function() { return 0; },
+                                        paddingRight: function() { return 0; },
+                                        paddingTop: function() { return 0; },
+                                        paddingBottom: function() { return 0; }
+                                    }
                                 };
 
-                                doc.defaultStyle = {
-                                    fontSize: 8
-                                };
+                                if (tableIndex >= 0) {
+                                    doc.content.splice(tableIndex, 0, cabecalho);
+                                    const tabela = doc.content[tableIndex + 1];
+
+                                    tabela.table.widths = ['10%', '18%', '12%', '15%', '6%', '11%', '11%', '8%', '9%'];
+
+                                    tabela.table.body.forEach(function(row, rowIndex) {
+                                        row.forEach(function(cell, colIndex) {
+                                            if (typeof cell !== 'object') {
+                                                row[colIndex] = { text: String(cell ?? '') };
+                                                cell = row[colIndex];
+                                            }
+
+                                            cell.margin = [3, 4, 3, 4];
+                                            cell.fontSize = rowIndex === 0 ? 9 : 8;
+                                            cell.alignment = colIndex === 1 ? 'left' : 'center';
+
+                                            if (rowIndex === 0) {
+                                                cell.fillColor = '#F2F4F7';
+                                                cell.color = '#000000';
+                                                cell.bold = true;
+                                                cell.alignment = 'center';
+                                            }
+                                        });
+                                    });
+
+                                    tabela.layout = {
+                                        hLineWidth: function() { return 0.6; },
+                                        vLineWidth: function() { return 0.6; },
+                                        hLineColor: function() { return '#000000'; },
+                                        vLineColor: function() { return '#000000'; },
+                                        paddingLeft: function() { return 2; },
+                                        paddingRight: function() { return 2; },
+                                        paddingTop: function() { return 2; },
+                                        paddingBottom: function() { return 2; }
+                                    };
+                                } else {
+                                    doc.content.unshift(cabecalho);
+                                }
 
                                 doc.pageOrientation = 'landscape';
-                                doc.pageMargins = [20, 20, 20, 20];
+                                doc.pageSize = 'A4';
+                                doc.pageMargins = [18, 18, 18, 18];
+                                doc.defaultStyle = {
+                                    fontSize: 8,
+                                    color: '#000000'
+                                };
+
+                                doc.footer = function(currentPage, pageCount) {
+                                    return {
+                                        text: 'Página ' + currentPage + ' de ' + pageCount,
+                                        alignment: 'center',
+                                        fontSize: 8,
+                                        margin: [0, 6, 0, 0]
+                                    };
+                                };
                             }
                         },
                         {

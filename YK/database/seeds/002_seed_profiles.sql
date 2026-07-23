@@ -25,6 +25,37 @@ CROSS JOIN permissoes permissao
 WHERE perfil.nome = 'Administrador'
   AND permissao.status = 'ativo';
 
+INSERT IGNORE INTO perfil_permissoes (perfil_id, permissao_id)
+SELECT perfil.id, permissao.id
+  FROM perfis perfil
+  JOIN permissoes permissao
+ WHERE perfil.nome IN ('Administrador', 'Dono', 'Gerente')
+   AND permissao.codigo = 'relatorio.comissao.visualizar'
+   AND permissao.status = 'ativo';
+
+INSERT IGNORE INTO perfil_permissoes (perfil_id, permissao_id)
+SELECT perfil.id, permissao.id
+  FROM perfis perfil
+  JOIN permissoes permissao
+ WHERE perfil.nome IN ('Administrador', 'Dono')
+   AND permissao.codigo = 'relatorio.meta_comissao.configurar'
+   AND permissao.status = 'ativo';
+
+DELETE perfil_permissao
+  FROM perfil_permissoes perfil_permissao
+  JOIN perfis perfil ON perfil.id = perfil_permissao.perfil_id
+  JOIN permissoes permissao ON permissao.id = perfil_permissao.permissao_id
+ WHERE permissao.codigo = 'relatorio.meta_comissao.configurar'
+   AND perfil.nome NOT IN ('Administrador', 'Dono');
+
+INSERT IGNORE INTO perfil_permissoes (perfil_id, permissao_id)
+SELECT perfil.id, permissao.id
+  FROM perfis perfil
+  JOIN permissoes permissao
+ WHERE perfil.nome IN ('Administrador', 'Dono', 'Gerente')
+   AND permissao.codigo IN ('contas_pagar.quitar', 'contas_pagar.estornar_pagamento')
+   AND permissao.status = 'ativo';
+
 INSERT IGNORE INTO perfil_permissoes (
     perfil_id,
     permissao_id

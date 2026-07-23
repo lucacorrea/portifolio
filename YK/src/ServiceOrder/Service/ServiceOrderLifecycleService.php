@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\ServiceOrder\Service;
 
+use App\Finance\Service\CashManagementService;
 use InvalidArgumentException;
 use PDO;
 use Throwable;
@@ -12,7 +13,7 @@ final class ServiceOrderLifecycleService
 {
     private const REVERSIBLE_STATUSES = ['agendada', 'em_execucao', 'aguardando_peca'];
 
-    public function __construct(private readonly PDO $connection)
+    public function __construct(private readonly PDO $connection, private readonly CashManagementService $cash)
     {
     }
 
@@ -58,9 +59,24 @@ final class ServiceOrderLifecycleService
             $this->connection->prepare(
                 'UPDATE ordens_servico
                     SET status = :status,
-                        finalizada_em = NULL
+                        finalizada_em = NULL,
+                        subtotal_servicos = COALESCE(:services, subtotal_servicos),
+                        subtotal_produtos = COALESCE(:products, subtotal_produtos),
+                        subtotal_outros = COALESCE(:others, subtotal_outros),
+                        desconto = COALESCE(:discount, desconto),
+                        acrescimo = COALESCE(:increase, acrescimo),
+                        total = COALESCE(:total, total)
                   WHERE id = :id'
-            )->execute(['id' => $orderId, 'status' => $status]);
+            )->execute([
+                'id' => $orderId,
+                'status' => $status,
+                'services' => $finalization['subtotal_servicos_origem'],
+                'products' => $finalization['subtotal_produtos_origem'],
+                'others' => $finalization['subtotal_outros_origem'],
+                'discount' => $finalization['desconto_origem'],
+                'increase' => $finalization['acrescimo_origem'],
+                'total' => $finalization['total_origem'],
+            ]);
         });
     }
 
@@ -119,7 +135,9 @@ final class ServiceOrderLifecycleService
     private function lockActiveFinalization(int $orderId): ?array
     {
         $statement = $this->connection->prepare(
-            'SELECT id, status_origem
+            'SELECT id, status_origem,
+                    subtotal_servicos_origem, subtotal_produtos_origem, subtotal_outros_origem,
+                    desconto_origem, acrescimo_origem, total_origem
                FROM ordem_servico_finalizacoes
               WHERE ordem_servico_id = :order_id AND ativa = 1
               LIMIT 1
@@ -197,16 +215,6 @@ final class ServiceOrderLifecycleService
         $statement->execute(['order_id' => $order['id']]);
         $payments = $statement->fetchAll();
 
-        $lockCash = $this->connection->prepare('SELECT * FROM caixa_movimentacoes WHERE id = :id FOR UPDATE');
-        $hasCashReversal = $this->connection->prepare('SELECT id FROM caixa_movimentacoes WHERE estornado_de_id = :id LIMIT 1');
-        $insertCashReversal = $this->connection->prepare(
-            'INSERT INTO caixa_movimentacoes
-                (tipo, origem_tipo, origem_id, descricao, forma_pagamento, valor, data_movimento,
-                 usuario_id, estornado_de_id)
-             VALUES
-                ("estorno_entrada", "os_estorno", :order_id, :description, :form, :value,
-                 CURRENT_TIMESTAMP, :user_id, :source_id)'
-        );
         $reversePayment = $this->connection->prepare(
             "UPDATE ordem_servico_pagamentos
                 SET status = 'estornado', estornado_em = CURRENT_TIMESTAMP,
@@ -218,22 +226,10 @@ final class ServiceOrderLifecycleService
         foreach ($payments as $payment) {
             $ids[] = (int) $payment['id'];
             if ($payment['caixa_movimentacao_id'] !== null) {
-                $lockCash->execute(['id' => $payment['caixa_movimentacao_id']]);
-                $cash = $lockCash->fetch();
-                if ($cash === false || $cash['tipo'] !== 'entrada') {
-                    throw new InvalidArgumentException('Movimentação original de caixa do pagamento não foi encontrada.');
-                }
-                $hasCashReversal->execute(['id' => $cash['id']]);
-                if ($hasCashReversal->fetch() === false) {
-                    $insertCashReversal->execute([
-                        'order_id' => $order['id'],
-                        'description' => $this->limit('Estorno: ' . $cash['descricao'], 255),
-                        'form' => $cash['forma_pagamento'],
-                        'value' => $cash['valor'],
-                        'user_id' => $userId,
-                        'source_id' => $cash['id'],
-                    ]);
-                }
+                $this->cash->reverseMovement(
+                    (int) $payment['caixa_movimentacao_id'], 'os_estorno', (int) $order['id'],
+                    $this->limit('Estorno da OS ' . ($order['numero'] ?: '#' . $order['id']) . ': ' . $reason, 255), $userId
+                );
             }
             $reversePayment->execute([
                 'id' => $payment['id'],

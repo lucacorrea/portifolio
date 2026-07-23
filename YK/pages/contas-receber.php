@@ -61,7 +61,7 @@ function cr_status_label(string $status): string { return ['pendente'=>'Pendente
 
 <section class="panel" data-live-region="results">
     <div class="panel-header"><div class="panel-title"><i class="bi bi-wallet2"></i>Contas a Receber</div><?php if ($canBatch): ?><button class="btn-filter btn-filter-primary" id="cr-batch-open" type="button" data-bs-toggle="modal" data-bs-target="#modal-cr-batch" disabled><i class="bi bi-check2-square"></i> Dar baixa em lote</button><?php endif; ?></div>
-    <?php if ($canBatch): ?><div class="cr-batch-selection" id="cr-batch-selection" role="status" aria-live="polite">Selecione pelo menos duas contas em aberto do mesmo cliente.</div><?php endif; ?>
+    <?php if ($canBatch): ?><div class="cr-batch-selection" role="note"><i class="bi bi-check2-square" aria-hidden="true"></i><span id="cr-batch-selection" role="status" aria-live="polite">Selecione pelo menos duas contas em aberto do mesmo cliente para dar baixa de uma só vez.</span></div><?php endif; ?>
     <?php if ($accounts === []): ?>
         <?php empty_state('Nenhuma conta encontrada', 'Pagamentos e saldos de OS finalizadas aparecerão aqui.'); ?>
     <?php else: ?>

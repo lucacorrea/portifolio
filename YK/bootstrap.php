@@ -100,12 +100,32 @@ try {
         throw new RuntimeException('Porta de banco invalida.');
     }
 
+    $fiscalIntegrationEnabled = filter_var(
+        $environment->get('FISCAL_INTEGRATION_ENABLED', 'false'),
+        FILTER_VALIDATE_BOOLEAN,
+        FILTER_NULL_ON_FAILURE
+    );
+    $fiscalProductionEnabled = filter_var(
+        $environment->get('FISCAL_PRODUCTION_ENABLED', 'false'),
+        FILTER_VALIDATE_BOOLEAN,
+        FILTER_NULL_ON_FAILURE
+    );
+    if ($fiscalIntegrationEnabled === null || $fiscalProductionEnabled === null) {
+        throw new RuntimeException('Configuração de integração fiscal inválida.');
+    }
+
+    $sessionTimeout = max(86400, (int) $environment->get('SESSION_TIMEOUT', '86400'));
+    $sessionAbsoluteTimeout = max(86400, (int) $environment->get('SESSION_ABSOLUTE_TIMEOUT', '86400'));
+
     $settings = [
         'app_env' => $appEnv,
         'app_debug' => $appDebug,
+        'project_root' => __DIR__,
+        'fiscal_integration_enabled' => $fiscalIntegrationEnabled,
+        'fiscal_production_enabled' => $fiscalProductionEnabled,
         'session_name' => $environment->get('SESSION_NAME', 'YKSESSID'),
-        'session_timeout' => (int) $environment->get('SESSION_TIMEOUT', '1800'),
-        'session_absolute_timeout' => (int) $environment->get('SESSION_ABSOLUTE_TIMEOUT', '28800'),
+        'session_timeout' => $sessionTimeout,
+        'session_absolute_timeout' => $sessionAbsoluteTimeout,
         'session_regenerate_interval' => (int) $environment->get('SESSION_REGENERATE_INTERVAL', '900'),
         'session_cookie_path' => $environment->get('SESSION_COOKIE_PATH', '/YK'),
         'login_max_attempts' => (int) $environment->get('LOGIN_MAX_ATTEMPTS', '5'),
@@ -135,7 +155,7 @@ try {
         }
     } else {
         $webMigrations = filter_var(
-            $environment->get('DB_WEB_MIGRATIONS', 'true'),
+            $environment->get('DB_WEB_MIGRATIONS', 'false'),
             FILTER_VALIDATE_BOOLEAN,
             FILTER_NULL_ON_FAILURE
         );

@@ -2,16 +2,18 @@
 $pageKey = 'faturamento';
 $activePage = 'faturamento';
 $pageTitle = 'Notas e Faturamento';
-$pageSubtitle = 'Controle visual de notas, valores e status financeiro';
-$primaryActionLabel = 'Novo Recibo';
+$pageSubtitle = 'Documentos fiscais, recibos e prontidão da integração';
+$primaryActionLabel = 'Novo recibo';
 $primaryActionIcon = 'bi-receipt-cutoff';
-$primaryActionTarget = '#modal-recibo';
+$primaryActionTarget = '#modal-standalone-receipt';
 $primaryActionPermission = 'recibo.emitir';
 $requiredAnyPermission = [
   'nota_fiscal.visualizar',
   'recibo.visualizar',
+  'recibo.emitir',
   'boleto.visualizar',
 ];
-$pageContent = __DIR__ . '/pages/operational.php';
+$pageContent = __DIR__ . '/pages/faturamento.php';
+$pageScripts = ['assets/js/faturamento.js'];
 
 require __DIR__ . '/includes/shell.php';

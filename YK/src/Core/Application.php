@@ -31,6 +31,8 @@ use App\Finance\Service\PaymentManagementService;
 use App\Finance\Service\ReceiptService;
 use App\Inventory\Service\InventoryManagementService;
 use App\Purchasing\Service\SupplierManagementService;
+use App\Report\Repository\ProductionReportRepository;
+use App\Report\Service\ProductionReportService;
 use App\Security\CsrfTokenManager;
 use App\Security\PrivilegedAuthorizationService;
 use App\Security\SafeRedirect;
@@ -48,6 +50,8 @@ use App\Workforce\Service\EmployeeManagementService;
 
 final class Application
 {
+    use FiscalApplicationServices;
+
     private ?SessionManager $session = null;
 
     private ?CsrfTokenManager $csrf = null;
@@ -87,7 +91,7 @@ final class Application
     private ?ServiceOrderFinalizationService $serviceOrderFinalization = null;
     private ?ServiceOrderLifecycleService $serviceOrderLifecycle = null;
     private ?DashboardService $dashboardService = null;
-
+    private ?ProductionReportService $productionReportService = null;
     private ?SafeRedirect $redirect = null;
 
     public function __construct(
@@ -119,11 +123,11 @@ final class Application
                 ),
                 (int) (
                     $this->settings['session_timeout']
-                    ?? 1800
+                    ?? 86400
                 ),
                 (int) (
                     $this->settings['session_absolute_timeout']
-                    ?? 28800
+                    ?? 86400
                 ),
                 (int) (
                     $this->settings['session_regenerate_interval']
@@ -342,7 +346,7 @@ final class Application
     public function cashManagement(): CashManagementService
     {
         if ($this->cashManagement === null) {
-            $this->cashManagement = new CashManagementService($this->database->connection());
+            $this->cashManagement = new CashManagementService($this->database->connection(), $this->inventoryManagement());
         }
 
         return $this->cashManagement;
@@ -363,7 +367,7 @@ final class Application
     public function accountsPayableManagement(): AccountsPayableManagementService
     {
         if ($this->accountsPayableManagement === null) {
-            $this->accountsPayableManagement = new AccountsPayableManagementService($this->database->connection());
+            $this->accountsPayableManagement = new AccountsPayableManagementService($this->database->connection(), $this->cashManagement());
         }
 
         return $this->accountsPayableManagement;
@@ -382,7 +386,9 @@ final class Application
     {
         if ($this->paymentManagement === null) {
             $this->paymentManagement = new PaymentManagementService(
-                $this->accountsReceivableManagement()
+                $this->database->connection(),
+                $this->accountsReceivableManagement(),
+                $this->receiptService()
             );
         }
 
@@ -428,7 +434,6 @@ final class Application
                 $connection,
                 new ServiceOrderRepository($connection),
                 $this->inventoryManagement(),
-                $this->cashManagement(),
                 $this->accountsReceivableManagement()
             );
         }
@@ -439,9 +444,7 @@ final class Application
     public function serviceOrderLifecycle(): ServiceOrderLifecycleService
     {
         if ($this->serviceOrderLifecycle === null) {
-            $this->serviceOrderLifecycle = new ServiceOrderLifecycleService(
-                $this->database->connection()
-            );
+            $this->serviceOrderLifecycle = new ServiceOrderLifecycleService($this->database->connection(), $this->cashManagement());
         }
 
         return $this->serviceOrderLifecycle;
@@ -455,6 +458,23 @@ final class Application
         }
 
         return $this->dashboardService;
+    }
+
+    public function reports(): ProductionReportService
+    {
+        if ($this->productionReportService === null) {
+            $connection = $this->database->connection();
+            $this->productionReportService = new ProductionReportService(
+                new ProductionReportRepository($connection)
+            );
+        }
+
+        return $this->productionReportService;
+    }
+
+    public function productionReports(): ProductionReportService
+    {
+        return $this->reports();
     }
 
     public function redirect(): SafeRedirect

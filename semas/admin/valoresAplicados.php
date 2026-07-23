@@ -18,6 +18,28 @@ if (!isset($pdo) || !$pdo instanceof PDO) {
     die('Erro de conexão');
 }
 
+/*
+|--------------------------------------------------------------------------
+| NORMALIZAÇÃO DO STATUS DAS ENTREGAS
+|--------------------------------------------------------------------------
+| Regra de negócio: se o registro existe em ajudas_entregas, ele já foi
+| efetivamente entregue. Portanto, registros antigos marcados como "Não",
+| vazios ou NULL devem ser corrigidos para "Sim".
+|
+| Esta atualização corrige também as contagens utilizadas por outras telas,
+| pois grava o status correto diretamente no banco de dados.
+*/
+$sql_normalizar_status = "
+    UPDATE ajudas_entregas
+       SET entregue = 'Sim'
+     WHERE entregue IS NULL
+        OR TRIM(entregue) = ''
+        OR LOWER(TRIM(entregue)) NOT IN ('sim')
+";
+
+$stmt_normalizar_status = $pdo->prepare($sql_normalizar_status);
+$stmt_normalizar_status->execute();
+
 // Função para formatar valor monetário
 function formatarMoeda($valor)
 {
@@ -82,7 +104,7 @@ $sql_base = "
         ae.valor_aplicado,
         ae.observacao,
         ae.responsavel as responsavel_entrega,
-        ae.entregue,
+        'Sim' AS entregue,
         ae.pessoa_cpf,
         
         s.id as solicitante_id,
@@ -136,8 +158,12 @@ if (!empty($filtro_bairro)) {
 }
 
 if ($filtro_status !== 'todos') {
-    $sql_base .= " AND ae.entregue = :status";
-    $params[':status'] = $filtro_status;
+    if ($filtro_status === 'Sim') {
+        $sql_base .= " AND ae.entregue = 'Sim'";
+    } else {
+        // Não existem pendências em ajudas_entregas.
+        $sql_base .= " AND 1 = 0";
+    }
 }
 
 if (!empty($filtro_data_inicio)) {
@@ -588,7 +614,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
 
         #tabelaValores {
             width: 100% !important;
-            min-width: 1490px;
+            min-width: 1520px;
             border-collapse: collapse !important;
             table-layout: fixed;
         }
@@ -894,7 +920,673 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                 margin-top: 0.5rem;
             }
         }
-    </style>
+    
+
+        /* ===== ESTILO CLEAN PADRÃO DAS TABELAS DO ANEXO ===== */
+        .card-statistic {
+            border: 1px solid #e6e9ef !important;
+            border-left: 0 !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+            background: #fff !important;
+            color: #2d3748 !important;
+        }
+
+        .card-statistic:nth-child(1),
+        .card-statistic:nth-child(2),
+        .card-statistic:nth-child(3),
+        .card-statistic:nth-child(4) {
+            border-left: 0 !important;
+            border-left-color: transparent !important;
+        }
+
+        .card-statistic .statistic-icon,
+        .card-statistic:nth-child(1) .statistic-icon,
+        .card-statistic:nth-child(2) .statistic-icon,
+        .card-statistic:nth-child(3) .statistic-icon,
+        .card-statistic:nth-child(4) .statistic-icon {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+        }
+
+        .valor-destaque,
+        .valor-cell,
+        .valor-alto,
+        .valor-nulo {
+            color: #52697f !important;
+        }
+
+        .valor-destaque {
+            color: #25396f !important;
+        }
+
+        .valor-cell,
+        .valor-alto {
+            font-weight: 700;
+        }
+
+        .filtros-ativos,
+        .alert-info {
+            background: #fff !important;
+            border: 1px solid #e1e6ec !important;
+            color: #52697f !important;
+            border-radius: 10px !important;
+        }
+
+        .badge-filtro {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+            border-radius: 999px !important;
+            font-weight: 700;
+        }
+
+        .badge-filtro a {
+            color: #52697f !important;
+            text-decoration: none;
+        }
+
+        .dt-search-input {
+            height: 38px;
+            border: 1px solid #9bb4f5;
+            border-radius: 4px;
+            background: #fff;
+            color: #495057;
+            box-shadow: none;
+        }
+
+        .dt-search-input:focus {
+            border-color: #9ab0f5;
+            box-shadow: 0 0 0 .12rem rgba(67, 94, 190, .12);
+        }
+
+        .dt-search-clear {
+            border: 1px solid #cfd6df;
+            background: #fff;
+            color: #495057;
+        }
+
+        .dt-search-clear:hover {
+            border-color: #435ebe;
+            color: #435ebe;
+            background: #f8f9ff;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #tabelaValores {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            margin-bottom: 0 !important;
+            color: #52697f !important;
+            background: #fff !important;
+        }
+
+        #tabelaValores thead th {
+            background: #fff !important;
+            color: #2d3748 !important;
+            font-size: .95rem !important;
+            font-weight: 800 !important;
+            border: 0 !important;
+            border-bottom: 1px solid #d6dce5 !important;
+            padding: .95rem .75rem !important;
+            vertical-align: middle !important;
+            position: relative !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+        }
+
+        #tabelaValores tbody td {
+            border: 0 !important;
+            border-bottom: 1px solid #e1e6ec !important;
+            padding: .8rem .75rem !important;
+            vertical-align: middle !important;
+            color: #52697f !important;
+            font-size: .95rem !important;
+            background: transparent !important;
+        }
+
+        #tabelaValores tbody tr:nth-child(odd) td {
+            background: #fff !important;
+        }
+
+        #tabelaValores tbody tr:nth-child(even) td {
+            background: #f6f7f9 !important;
+        }
+
+        #tabelaValores tbody tr:hover td {
+            background: #eef1f5 !important;
+        }
+
+        #tabelaValores tbody tr.table-warning td {
+            background: inherit !important;
+            color: #52697f !important;
+        }
+
+        #tabelaValores tfoot th,
+        #tabelaValores tfoot td {
+            background: #fff !important;
+            border: 0 !important;
+            border-top: 1px solid #d6dce5 !important;
+            color: #52697f !important;
+            padding: .9rem .75rem !important;
+        }
+
+        #tabelaValores .cell-ellipsis {
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #tabelaValores .clean-text-pill,
+        #tabelaValores .status-clean {
+            display: inline-block;
+            max-width: 100%;
+            color: #52697f !important;
+            font-weight: 600;
+            background: transparent !important;
+            border: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+
+        #tabelaValores .status-clean {
+            font-weight: 700;
+        }
+
+        #tabelaValores .text-danger,
+        #tabelaValores .text-success,
+        #tabelaValores .text-warning,
+        #tabelaValores .text-info,
+        #tabelaValores .text-primary {
+            color: #52697f !important;
+        }
+
+        #tabelaValores thead th.sorting,
+        #tabelaValores thead th.sorting_asc,
+        #tabelaValores thead th.sorting_desc,
+        #tabelaValores thead th.sorting_asc_disabled,
+        #tabelaValores thead th.sorting_desc_disabled {
+            cursor: pointer;
+            user-select: none;
+            padding-right: 1.65rem !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::before {
+            content: "▲" !important;
+            right: .55rem !important;
+            top: calc(50% - 8px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::after {
+            content: "▼" !important;
+            right: .55rem !important;
+            top: calc(50% + 1px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after {
+            color: #8d98a7 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting:hover::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting:hover::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc:hover::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc:hover::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc:hover::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc:hover::after {
+            color: #b7c0cc !important;
+        }
+
+        .custom-pagination-bar {
+            border-top: 1px solid #e9ecef;
+        }
+
+        .custom-page-info {
+            color: #435ebe;
+            font-weight: 800;
+        }
+
+        .custom-length-select {
+            background-color: #fff;
+        }
+
+        .table-stats thead th {
+            background: #fff !important;
+            border-bottom: 1px solid #d6dce5 !important;
+        }
+
+        .table-stats tbody td,
+        .table-stats tbody th {
+            border-bottom: 1px solid #e1e6ec !important;
+        }
+
+        .progress-bar {
+            background-color: #8d98a7 !important;
+        }
+
+        /* ===== CORES DE DESTAQUE FINANCEIRO E STATUS ===== */
+        .valor-total-aplicado {
+            color: #198754 !important;
+        }
+
+        #tabelaValores .status-clean.status-entregue {
+            color: #198754 !important;
+        }
+
+        #tabelaValores .status-clean.status-pendente {
+            color: #b7791f !important;
+        }
+
+        /* Barra percentual: verde, com texto branco somente quando couber dentro */
+        .table-stats .progress.progress-percentual {
+            position: relative;
+            overflow: hidden;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .table-stats .progress.progress-percentual .progress-bar {
+            background-color: #198754 !important;
+            transition: width .25s ease;
+        }
+
+        .table-stats .progress-percentual-label {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            color: #212529;
+            font-size: .75rem;
+            font-weight: 700;
+            line-height: 20px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .table-stats .progress-percentual-label.label-in-bar {
+            color: #fff;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, .25);
+        }
+
+    
+
+        /* ===== REFORÇO FINAL: TABELA CLEAN PADRÃO ANEXO ===== */
+        .card {
+            border: 1px solid #e6e9ef !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+            background: #fff !important;
+        }
+
+        .card-header {
+            background: #fff !important;
+            border-bottom: 1px solid #eef1f4 !important;
+        }
+
+        .card-statistic {
+            border: 1px solid #e6e9ef !important;
+            border-left: 0 !important;
+            box-shadow: none !important;
+            background: #fff !important;
+        }
+
+        .card-statistic::before,
+        .card-statistic::after {
+            display: none !important;
+            content: none !important;
+        }
+
+        .statistic-icon {
+            background: #f6f7f9 !important;
+            color: #52697f !important;
+            border: 1px solid #e1e6ec !important;
+        }
+
+        .valor-destaque,
+        .valor-top10,
+        .valor-cell,
+        .valor-alto,
+        .valor-nulo {
+            color: #52697f !important;
+        }
+
+        .valor-total-aplicado,
+        #tabelaValores .status-clean.status-entregue {
+            color: #198754 !important;
+        }
+
+        .valores-toolbar {
+            justify-content: flex-end !important;
+            margin-bottom: 1rem !important;
+        }
+
+        .dt-search-input {
+            min-width: 360px;
+            max-width: 520px;
+            border: 1px solid #b8c7f7 !important;
+            border-radius: 4px !important;
+            background: #fff !important;
+            box-shadow: none !important;
+        }
+
+        .dt-search-clear {
+            border: 1px solid #cfd6df !important;
+            background: #fff !important;
+            color: #495057 !important;
+        }
+
+        #tabelaValores.tabela-clean-anexo,
+        #tabelaValores {
+            width: 100% !important;
+            min-width: 1520px !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            table-layout: fixed !important;
+            margin-bottom: 0 !important;
+            color: #52697f !important;
+            background: #fff !important;
+        }
+
+        #tabelaValores thead th {
+            background: #fff !important;
+            color: #2d3748 !important;
+            font-weight: 800 !important;
+            font-size: .95rem !important;
+            text-align: center !important;
+            border: 0 !important;
+            border-bottom: 1px solid #d6dce5 !important;
+            padding: .95rem 1.65rem .95rem .75rem !important;
+            vertical-align: middle !important;
+            white-space: nowrap !important;
+        }
+
+        #tabelaValores tbody td {
+            background: transparent !important;
+            color: #52697f !important;
+            border: 0 !important;
+            border-bottom: 1px solid #e1e6ec !important;
+            padding: .82rem .75rem !important;
+            vertical-align: middle !important;
+            font-size: .93rem !important;
+        }
+
+        #tabelaValores tbody tr:nth-child(odd) td {
+            background: #fff !important;
+        }
+
+        #tabelaValores tbody tr:nth-child(even) td {
+            background: #f6f7f9 !important;
+        }
+
+        #tabelaValores tbody tr:hover td {
+            background: #eef1f5 !important;
+        }
+
+        #tabelaValores tbody tr.table-warning td,
+        #tabelaValores tbody tr.valor-nulo td {
+            color: #52697f !important;
+        }
+
+        #tabelaValores tfoot th,
+        #tabelaValores tfoot td {
+            background: #fff !important;
+            border: 0 !important;
+            border-top: 1px solid #d6dce5 !important;
+            color: #52697f !important;
+            padding: .9rem .75rem !important;
+            vertical-align: middle !important;
+        }
+
+        #tabelaValores .clean-text-pill,
+        #tabelaValores .status-clean {
+            display: inline-block !important;
+            max-width: 100% !important;
+            color: #52697f !important;
+            background: transparent !important;
+            border: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            font-weight: 600 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        #tabelaValores .status-clean.status-entregue {
+            font-weight: 800 !important;
+        }
+
+        #tabelaValores .dado-incompleto,
+        #tabelaValores .text-danger,
+        #tabelaValores .text-warning,
+        #tabelaValores .text-info,
+        #tabelaValores .text-primary,
+        #tabelaValores .text-success {
+            color: #52697f !important;
+        }
+
+        #tabelaValores .cell-ellipsis {
+            display: block !important;
+            width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::before {
+            content: "▲" !important;
+            right: .55rem !important;
+            top: calc(50% - 8px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::after {
+            content: "▼" !important;
+            right: .55rem !important;
+            top: calc(50% + 1px) !important;
+            bottom: auto !important;
+            font-size: 10px !important;
+            line-height: 8px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after {
+            color: #8d98a7 !important;
+        }
+
+        .table-stats {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            color: #52697f !important;
+        }
+
+        .table-stats thead th {
+            background: #fff !important;
+            color: #2d3748 !important;
+            border-bottom: 1px solid #d6dce5 !important;
+            font-weight: 800 !important;
+            text-align: center !important;
+        }
+
+        .table-stats tbody tr:nth-child(odd) td {
+            background: #fff !important;
+        }
+
+        .table-stats tbody tr:nth-child(even) td {
+            background: #f6f7f9 !important;
+        }
+
+        .table-stats tbody td {
+            color: #52697f !important;
+            border-bottom: 1px solid #e1e6ec !important;
+            vertical-align: middle !important;
+        }
+
+        @media (max-width: 768px) {
+            .dt-search-input {
+                min-width: 0 !important;
+                max-width: 100% !important;
+            }
+        }
+
+
+        /* ===== STATUS ENTREGUE EM BADGE VERDE ===== */
+        #tabelaValores .status-clean.status-entregue {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: auto !important;
+            min-width: auto !important;
+            max-width: 100% !important;
+            min-height: 24px !important;
+            padding: .35rem .62rem !important;
+            border: 1px solid #198754 !important;
+            border-radius: 6px !important;
+            background: #198754 !important;
+            color: #fff !important;
+            font-size: .78rem !important;
+            font-weight: 800 !important;
+            line-height: 1 !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            box-shadow: none !important;
+        }
+
+        #tabelaValores .status-clean.status-entregue:hover {
+            background: #157347 !important;
+            border-color: #157347 !important;
+            color: #fff !important;
+        }
+
+
+        /* ===== CORREÇÃO FINAL DO PRISMA DATA/HORA =====
+           Evita que o indicador de ordenação fique por cima do texto da primeira coluna. */
+        #tabelaValores colgroup col:first-child {
+            width: 120px !important;
+            min-width: 120px !important;
+        }
+
+        #tabelaValores thead th:first-child,
+        #tabelaValores tbody td:first-child,
+        #tabelaValores tfoot th:first-child,
+        #tabelaValores tfoot td:first-child {
+            width: 120px !important;
+            min-width: 120px !important;
+        }
+
+        #tabelaValores thead th:first-child {
+            text-align: left !important;
+            padding-left: .75rem !important;
+            padding-right: 2.55rem !important;
+        }
+
+        #tabelaValores thead th.sorting,
+        #tabelaValores thead th.sorting_asc,
+        #tabelaValores thead th.sorting_desc,
+        #tabelaValores thead th.sorting_asc_disabled,
+        #tabelaValores thead th.sorting_desc_disabled {
+            position: relative !important;
+            padding-right: 2.15rem !important;
+            background-image: none !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::before {
+            content: "▲" !important;
+            position: absolute !important;
+            right: .8rem !important;
+            left: auto !important;
+            top: 50% !important;
+            bottom: auto !important;
+            transform: translateY(-90%) !important;
+            width: auto !important;
+            height: auto !important;
+            display: block !important;
+            font-size: 9px !important;
+            line-height: 9px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+            pointer-events: none !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc_disabled::after,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc_disabled::after {
+            content: "▼" !important;
+            position: absolute !important;
+            right: .8rem !important;
+            left: auto !important;
+            top: 50% !important;
+            bottom: auto !important;
+            transform: translateY(10%) !important;
+            width: auto !important;
+            height: auto !important;
+            display: block !important;
+            font-size: 9px !important;
+            line-height: 9px !important;
+            color: #dfe3e8 !important;
+            opacity: 1 !important;
+            pointer-events: none !important;
+        }
+
+        table.dataTable#tabelaValores thead > tr > th.sorting_asc::before,
+        table.dataTable#tabelaValores thead > tr > th.sorting_desc::after {
+            color: #8d98a7 !important;
+        }
+</style>
 </head>
 
 <body>
@@ -1027,7 +1719,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                     <div class="col-12 col-md-8">
                         <h3>Valores Aplicados em Benefícios</h3>
                         <p class="text-muted mb-2 mb-md-0">Controle financeiro completo de todas as entregas do ANEXO</p>
-                        <small class="text-info">
+                        <small class="text-muted">
                             <i class="bi bi-info-circle"></i> Mostrando dados de todas as <?= $total_geral ?> entregas cadastradas no sistema
                         </small>
                     </div>
@@ -1099,7 +1791,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
 
                                 <?php if ($filtro_status !== 'todos'): ?>
                                     <span class="badge-filtro filtro-badge">
-                                        Status: <?= $filtro_status == 'Sim' ? 'Entregue' : 'Pendente' ?>
+                                        Status: Entregue
                                         <a href="#" class="text-white ms-1" onclick="removerFiltro('status')">×</a>
                                     </span>
                                 <?php endif; ?>
@@ -1147,7 +1839,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                         </div>
                                         <div class="w-100">
                                             <h6 class="text-muted mb-1">Valor Total Aplicado</h6>
-                                            <div class="valor-destaque"><?= formatarMoeda($total_valor) ?></div>
+                                            <div class="valor-destaque valor-total-aplicado"><?= formatarMoeda($total_valor) ?></div>
                                             <small class="text-muted d-block mt-1">
                                                 <?= $total_entregas ?> entregas encontradas
                                                 <?php if ($filtros_aplicados): ?>
@@ -1268,7 +1960,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                 </div>
                                             </div>
                                             <div class="text-end flex-shrink-0">
-                                                <div class="valor-destaque <?= ((float)$entrega['valor_aplicado'] > 0) ? 'text-danger' : 'valor-nulo' ?>" style="font-size: 0.9rem;">
+                                                <div class="valor-destaque valor-top10 <?= ((float)$entrega['valor_aplicado'] > 0) ? '' : 'valor-nulo' ?>" style="font-size: 0.9rem;">
                                                     <?= ((float)$entrega['valor_aplicado'] > 0) ? formatarMoeda($entrega['valor_aplicado']) : 'Sem valor' ?>
                                                 </div>
                                             </div>
@@ -1290,7 +1982,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                         <i class="bi bi-file-earmark-excel"></i> <span>Excel</span>
                                     </button>
                                     <div class="dropdown">
-                                        <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             <i class="bi bi-eye"></i> Exibir
                                         </button>
                                         <ul class="dropdown-menu">
@@ -1312,7 +2004,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                         <p class="text-muted mb-0">Não há registros de entregas com os filtros selecionados.</p>
                                     </div>
                                 <?php else: ?>
-                                    <div class="alert alert-info mb-3">
+                                    <div class="alert alert-info mb-3 clean-info-box">
                                         <i class="bi bi-info-circle"></i>
                                         Mostrando <strong><?= $total_entregas ?></strong> entregas de um total de <strong><?= $total_geral ?></strong> no sistema.
                                         <?php if ($filtros_aplicados): ?>
@@ -1332,9 +2024,9 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                     </div>
 
                                     <div class="table-responsive">
-                                        <table id="tabelaValores" class="table table-hover table-striped align-middle mb-0">
+                                        <table id="tabelaValores" class="table table-hover align-middle mb-0 tabela-clean-anexo">
                                             <colgroup>
-                                                <col style="width: 90px;">
+                                                <col style="width: 120px;">
                                                 <col style="width: 250px;">
                                                 <col style="width: 120px;">
                                                 <col style="width: 120px;">
@@ -1409,11 +2101,11 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                         </td>
                                                         <td>
                                                             <?php if (!empty($tipo_nome)): ?>
-                                                                <span class="badge bg-primary d-inline-block text-truncate" style="max-width: 118px;">
+                                                                <span class="clean-text-pill cell-ellipsis" title="<?= htmlspecialchars($tipo_nome) ?>">
                                                                     <?= htmlspecialchars($tipo_nome) ?>
                                                                 </span>
                                                             <?php else: ?>
-                                                                <span class="badge badge-incompleto">Tipo não identificado</span>
+                                                                <span class="text-muted">Tipo não identificado</span>
                                                             <?php endif; ?>
                                                         </td>
                                                         <td class="text-center text-nowrap"><?= $quantidade ?></td>
@@ -1427,7 +2119,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                         </td>
                                                         <td>
                                                             <?php if (!empty($entrega['bairro_nome'])): ?>
-                                                                <span class="badge bg-info text-dark"><?= htmlspecialchars($entrega['bairro_nome']) ?></span>
+                                                                <span class="clean-text-pill cell-ellipsis" title="<?= htmlspecialchars($entrega['bairro_nome']) ?>"><?= htmlspecialchars($entrega['bairro_nome']) ?></span>
                                                             <?php else: ?>
                                                                 <span class="text-muted">N/A</span>
                                                             <?php endif; ?>
@@ -1436,8 +2128,8 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                             <div class="cell-ellipsis"><?= htmlspecialchars((string)($entrega['responsavel_entrega'] ?? 'N/A')) ?></div>
                                                         </td>
                                                         <td class="text-nowrap text-center">
-                                                            <span class="badge <?= ($entrega['entregue'] === 'Sim') ? 'bg-success' : 'bg-warning text-dark' ?>">
-                                                                <?= ($entrega['entregue'] === 'Sim') ? 'Entregue' : 'Pendente' ?>
+                                                            <span class="status-clean status-entregue">
+                                                                Entregue
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -1495,15 +2187,17 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                                     <td class="text-center valor-cell"><?= formatarMoeda($tipo['total_valor']) ?></td>
                                                     <td class="text-center"><?= formatarMoeda($tipo['valor_medio']) ?></td>
                                                     <td class="text-center">
-                                                        <div class="progress" style="height: 20px;">
-                                                            <div class="progress-bar bg-success"
+                                                        <div class="progress progress-percentual" style="height: 20px;">
+                                                            <div class="progress-bar"
                                                                 role="progressbar"
-                                                                style="width: <?= $percentual ?>%"
+                                                                style="width: <?= min(100, max(0, $percentual)) ?>%"
                                                                 aria-valuenow="<?= $percentual ?>"
                                                                 aria-valuemin="0"
                                                                 aria-valuemax="100">
-                                                                <?= number_format($percentual, 1, ',', '.') ?>%
                                                             </div>
+                                                            <span class="progress-percentual-label">
+                                                                <?= number_format($percentual, 1, ',', '.') ?>%
+                                                            </span>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -1639,8 +2333,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                                     <label class="form-label fw-bold">Status</label>
                                     <select name="status" class="form-select">
                                         <option value="todos">Todos os status</option>
-                                        <option value="Sim" <?= ($filtro_status == 'Sim') ? 'selected' : '' ?>>Entregue</option>
-                                        <option value="Não" <?= ($filtro_status == 'Não') ? 'selected' : '' ?>>Pendente</option>
+                                        <option value="Sim" <?= ($filtro_status === 'Sim') ? 'selected' : '' ?>>Entregue</option>
                                     </select>
                                 </div>
 
@@ -1671,7 +2364,7 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
 
                         <div class="alert alert-info mt-3">
                             <i class="bi bi-info-circle"></i>
-                            <strong>Nota:</strong> Agora exibindo todas as entregas (com e sem valor aplicado). Use os filtros para resultados específicos.
+                            <strong>Nota:</strong> Todo registro existente em <code>ajudas_entregas</code> é contabilizado como entregue, inclusive registros antigos que estavam com status incorreto.
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -1766,6 +2459,24 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
         let tabelaValores = null;
         let valorFilterModo = 'todos';
 
+        function ajustarContrastePercentuais() {
+            document.querySelectorAll('.progress-percentual').forEach(function(progress) {
+                const bar = progress.querySelector('.progress-bar');
+                const label = progress.querySelector('.progress-percentual-label');
+
+                if (!bar || !label) return;
+
+                label.classList.remove('label-in-bar');
+
+                const larguraBarra = bar.getBoundingClientRect().width;
+                const larguraTexto = label.scrollWidth + 10;
+
+                if (larguraBarra >= larguraTexto) {
+                    label.classList.add('label-in-bar');
+                }
+            });
+        }
+
         function renderCustomPagination() {
             if (!tabelaValores) return;
 
@@ -1833,38 +2544,295 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                     ],
                     dom: 'Brt',
                     buttons: [{
-                        extend: 'excel',
+                        extend: 'excelHtml5',
                         text: '<i class="bi bi-file-earmark-excel"></i> Excel',
                         className: 'btn btn-success btn-sm d-none',
-                        title: 'Valores Aplicados - ANEXO',
+                        title: null,
                         filename: 'valores_aplicados_<?= date('Y-m-d') ?>',
                         exportOptions: {
                             columns: ':visible',
                             stripHtml: true,
                             format: {
+                                header: function(data) {
+                                    return $('<div>').html(data).text().replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+                                },
                                 body: function(data, row, column) {
-                                    data = String(data).replace(/<[^>]*>/g, '');
+                                    let texto = $('<div>').html(data).text().replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
 
-                                    if (column === 6 || column === 7) {
-                                        let match = data.match(/[\d.,]+/);
-                                        if (match) {
-                                            let valor = match[0].replace(/\./g, '').replace(',', '.');
-                                            return parseFloat(valor) || 0;
+                                    if (column === 0) {
+                                        const partes = texto.match(/^(\d{2}\/\d{2}\/\d{4})\s*(\d{2}:\d{2}|--:--)?$/);
+                                        if (partes) {
+                                            texto = partes[1] + (partes[2] ? ' às ' + partes[2] : '');
                                         }
-                                        return 0;
                                     }
 
-                                    return data.trim();
+                                    return texto;
+                                },
+                                footer: function(data) {
+                                    return $('<div>').html(data).text().replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
                                 }
                             }
                         },
                         customize: function(xlsx) {
-                            var sheet = xlsx.xl.worksheets['sheet1.xml'];
-                            $('row c[r^="G"]', sheet).attr('s', '44');
-                            $('row c[r^="H"]', sheet).attr('s', '44');
-                            $('col', sheet).each(function() {
-                                $(this).attr('width', '15');
+                            const sheet = xlsx.xl.worksheets['sheet1.xml'];
+                            const styles = xlsx.xl['styles.xml'];
+                            const sharedStrings = xlsx.xl['sharedStrings.xml'];
+                            const sheetData = $('sheetData', sheet)[0];
+
+                            const tituloTexto = 'VALORES APLICADOS - ANEXO';
+                            const resumoTexto = 'Total: <?= $total_entregas ?> entregas | Quantidade: <?= $total_quantidade ?> itens | Pessoas atendidas: <?= $total_pessoas ?> | Valor Total: <?= formatarMoeda($total_valor) ?> | Valor Médio: <?= $total_entregas > 0 ? formatarMoeda($total_valor / $total_entregas) : 'R$ 0,00' ?>';
+
+                            const filtros = [];
+                            <?php if ($filtro_mes !== 'todos'): ?>
+                                filtros.push(<?= json_encode('Mês: ' . date('m/Y', strtotime($filtro_mes . '-01')), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_ano !== 'todos'): ?>
+                                filtros.push(<?= json_encode('Ano: ' . $filtro_ano, JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_beneficio): ?>
+                                filtros.push(<?= json_encode('Benefício: ' . ($beneficio_nome ?? 'Selecionado'), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_bairro): ?>
+                                filtros.push(<?= json_encode('Bairro: ' . ($bairro_nome ?? 'Selecionado'), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_status !== 'todos'): ?>
+                                filtros.push(<?= json_encode('Status: Entregue', JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_data_inicio): ?>
+                                filtros.push(<?= json_encode('Data inicial: ' . date('d/m/Y', strtotime($filtro_data_inicio)), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_data_fim): ?>
+                                filtros.push(<?= json_encode('Data final: ' . date('d/m/Y', strtotime($filtro_data_fim)), JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            <?php if ($filtro_responsavel): ?>
+                                filtros.push(<?= json_encode('Responsável: ' . $filtro_responsavel, JSON_UNESCAPED_UNICODE) ?>);
+                            <?php endif; ?>
+                            filtros.push(<?= json_encode('Ordenação: ' . ($ordenacao === 'data_asc' ? 'Data mais antiga' : ($ordenacao === 'valor_desc' ? 'Maior valor' : ($ordenacao === 'valor_asc' ? 'Menor valor' : ($ordenacao === 'nome_asc' ? 'Nome A-Z' : 'Data mais recente')))), JSON_UNESCAPED_UNICODE) ?>);
+
+                            if (valorFilterModo === 'com_valor') {
+                                filtros.push('Exibição: somente com valor');
+                            } else if (valorFilterModo === 'sem_valor') {
+                                filtros.push('Exibição: somente sem valor');
+                            } else {
+                                filtros.push('Exibição: todas as entregas');
+                            }
+
+                            const filtrosTexto = 'Filtros: ' + (filtros.length ? filtros.join(' | ') : 'Nenhum filtro aplicado');
+                            const agora = new Date();
+                            const geradoTexto = 'Gerado em: ' + agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+
+                            function appendXml(parent, xml) {
+                                const parsed = $.parseXML('<root>' + xml + '</root>');
+                                $(parsed).find('root').children().each(function() {
+                                    parent.append(this);
+                                });
+                            }
+
+                            function addFont(options) {
+                                const fonts = $('fonts', styles);
+                                const id = $('font', fonts).length;
+                                appendXml(fonts,
+                                    '<font>' +
+                                        (options.bold ? '<b/>' : '') +
+                                        '<sz val="' + (options.size || 11) + '"/>' +
+                                        '<color rgb="FF000000"/>' +
+                                        '<name val="Calibri"/>' +
+                                        '<family val="2"/>' +
+                                    '</font>'
+                                );
+                                fonts.attr('count', $('font', fonts).length);
+                                return id;
+                            }
+
+                            function addFill(color) {
+                                const fills = $('fills', styles);
+                                const id = $('fill', fills).length;
+                                appendXml(fills,
+                                    '<fill><patternFill patternType="solid">' +
+                                        '<fgColor rgb="' + color + '"/>' +
+                                        '<bgColor indexed="64"/>' +
+                                    '</patternFill></fill>'
+                                );
+                                fills.attr('count', $('fill', fills).length);
+                                return id;
+                            }
+
+                            function addBorder() {
+                                const borders = $('borders', styles);
+                                const id = $('border', borders).length;
+                                appendXml(borders,
+                                    '<border>' +
+                                        '<left style="thin"><color rgb="FF000000"/></left>' +
+                                        '<right style="thin"><color rgb="FF000000"/></right>' +
+                                        '<top style="thin"><color rgb="FF000000"/></top>' +
+                                        '<bottom style="thin"><color rgb="FF000000"/></bottom>' +
+                                        '<diagonal/>' +
+                                    '</border>'
+                                );
+                                borders.attr('count', $('border', borders).length);
+                                return id;
+                            }
+
+                            function addStyle(options) {
+                                const cellXfs = $('cellXfs', styles);
+                                const id = $('xf', cellXfs).length;
+                                const fontId = options.fontId || 0;
+                                const fillId = options.fillId || 0;
+                                const borderId = options.borderId || 0;
+                                appendXml(cellXfs,
+                                    '<xf numFmtId="0" fontId="' + fontId + '" fillId="' + fillId + '" borderId="' + borderId + '" xfId="0"' +
+                                        (options.fontId ? ' applyFont="1"' : '') +
+                                        (options.fillId ? ' applyFill="1"' : '') +
+                                        (options.borderId ? ' applyBorder="1"' : '') +
+                                        ' applyAlignment="1">' +
+                                        '<alignment horizontal="' + (options.horizontal || 'center') + '" vertical="center" wrapText="1"/>' +
+                                    '</xf>'
+                                );
+                                cellXfs.attr('count', $('xf', cellXfs).length);
+                                return id;
+                            }
+
+                            const fontTitle = addFont({ bold: true, size: 14 });
+                            const fontMeta = addFont({ bold: true, size: 11 });
+                            const fontHeader = addFont({ bold: true, size: 11 });
+                            const grayFill = addFill('FFF2F4F7');
+                            const blackBorder = addBorder();
+
+                            const styleTitle = addStyle({ fontId: fontTitle, fillId: grayFill, borderId: blackBorder, horizontal: 'center' });
+                            const styleMeta = addStyle({ fontId: fontMeta, borderId: blackBorder, horizontal: 'left' });
+                            const styleHeader = addStyle({ fontId: fontHeader, fillId: grayFill, borderId: blackBorder, horizontal: 'center' });
+                            const styleCenter = addStyle({ borderId: blackBorder, horizontal: 'center' });
+                            const styleLeft = addStyle({ borderId: blackBorder, horizontal: 'left' });
+
+                            function excelColName(index) {
+                                let name = '';
+                                index++;
+                                while (index > 0) {
+                                    const rem = (index - 1) % 26;
+                                    name = String.fromCharCode(65 + rem) + name;
+                                    index = Math.floor((index - 1) / 26);
+                                }
+                                return name;
+                            }
+
+                            function excelColIndex(ref) {
+                                const col = String(ref || '').replace(/[0-9]/g, '');
+                                let index = 0;
+                                for (let i = 0; i < col.length; i++) {
+                                    index = index * 26 + (col.charCodeAt(i) - 64);
+                                }
+                                return index - 1;
+                            }
+
+                            function getCellText(cell) {
+                                const $cell = $(cell);
+                                const type = $cell.attr('t');
+                                if (type === 'inlineStr') return $('is t', cell).text();
+                                if (type === 's') {
+                                    const sharedIndex = parseInt($('v', cell).text(), 10);
+                                    if (sharedStrings && !Number.isNaN(sharedIndex)) {
+                                        return $('si', sharedStrings).eq(sharedIndex).text();
+                                    }
+                                }
+                                return $('v', cell).text() || $('t', cell).text() || '';
+                            }
+
+                            const originalRows = $('row', sheet).toArray();
+                            let headerIndex = originalRows.findIndex(function(row) {
+                                const text = $('c', row).toArray().map(getCellText).join('|').toLowerCase();
+                                return text.includes('data/hora') && text.includes('beneficiário') && text.includes('valor total');
                             });
+                            if (headerIndex < 0) headerIndex = 0;
+
+                            let tableRows = originalRows.slice(headerIndex).map(function(row) {
+                                const values = new Array(11).fill('');
+                                $('c', row).each(function() {
+                                    const colIndex = excelColIndex($(this).attr('r'));
+                                    if (colIndex >= 0 && colIndex < 11) {
+                                        values[colIndex] = getCellText(this).replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+                                    }
+                                });
+                                return values;
+                            }).filter(function(values) {
+                                return values.some(function(value) { return String(value).trim() !== ''; });
+                            });
+
+                            const expectedHeader = ['Data/Hora', 'Beneficiário', 'Telefone', 'CPF', 'Benefício', 'Qtd', 'Valor Unit.', 'Valor Total', 'Bairro', 'Responsável', 'Status'];
+                            if (!tableRows.length || String(tableRows[0][0]).toLowerCase() !== 'data/hora') {
+                                tableRows.unshift(expectedHeader);
+                            }
+
+                            while (sheetData.firstChild) sheetData.removeChild(sheetData.firstChild);
+                            $('mergeCells', sheet).remove();
+                            $('autoFilter', sheet).remove();
+
+                            function createCell(colIndex, rowNumber, value, styleId) {
+                                const cell = sheet.createElement('c');
+                                cell.setAttribute('r', excelColName(colIndex) + rowNumber);
+                                cell.setAttribute('s', styleId);
+                                cell.setAttribute('t', 'inlineStr');
+                                const inlineString = sheet.createElement('is');
+                                const textNode = sheet.createElement('t');
+                                textNode.setAttribute('xml:space', 'preserve');
+                                textNode.textContent = value || '';
+                                inlineString.appendChild(textNode);
+                                cell.appendChild(inlineString);
+                                return cell;
+                            }
+
+                            function createRow(rowNumber, values, styleResolver, height) {
+                                const row = sheet.createElement('row');
+                                row.setAttribute('r', String(rowNumber));
+                                row.setAttribute('ht', String(height));
+                                row.setAttribute('customHeight', '1');
+                                for (let i = 0; i < 11; i++) {
+                                    const styleId = typeof styleResolver === 'function' ? styleResolver(i) : styleResolver;
+                                    row.appendChild(createCell(i, rowNumber, values[i] || '', styleId));
+                                }
+                                return row;
+                            }
+
+                            sheetData.appendChild(createRow(1, [tituloTexto], styleTitle, 26));
+                            sheetData.appendChild(createRow(2, [filtrosTexto], styleMeta, 34));
+                            sheetData.appendChild(createRow(3, [resumoTexto], styleMeta, 30));
+                            sheetData.appendChild(createRow(4, [geradoTexto], styleMeta, 22));
+                            sheetData.appendChild(createRow(5, tableRows[0], styleHeader, 24));
+
+                            for (let i = 1; i < tableRows.length; i++) {
+                                sheetData.appendChild(createRow(i + 5, tableRows[i], function(colIndex) {
+                                    return colIndex === 1 ? styleLeft : styleCenter;
+                                }, 24));
+                            }
+
+                            const mergeCellsNode = sheet.createElement('mergeCells');
+                            ['A1:K1', 'A2:K2', 'A3:K3', 'A4:K4'].forEach(function(ref) {
+                                const mergeCell = sheet.createElement('mergeCell');
+                                mergeCell.setAttribute('ref', ref);
+                                mergeCellsNode.appendChild(mergeCell);
+                            });
+                            mergeCellsNode.setAttribute('count', '4');
+                            sheetData.parentNode.insertBefore(mergeCellsNode, sheetData.nextSibling);
+
+                            let cols = $('cols', sheet)[0];
+                            if (!cols) {
+                                cols = sheet.createElement('cols');
+                                sheetData.parentNode.insertBefore(cols, sheetData);
+                            }
+                            while (cols.firstChild) cols.removeChild(cols.firstChild);
+
+                            const widths = [22, 38, 18, 18, 28, 10, 17, 18, 22, 30, 14];
+                            widths.forEach(function(width, index) {
+                                const col = sheet.createElement('col');
+                                col.setAttribute('min', String(index + 1));
+                                col.setAttribute('max', String(index + 1));
+                                col.setAttribute('width', String(width));
+                                col.setAttribute('customWidth', '1');
+                                cols.appendChild(col);
+                            });
+
+                            const totalRows = tableRows.length + 4;
+                            const dimension = $('dimension', sheet);
+                            if (dimension.length) dimension.attr('ref', 'A1:K' + totalRows);
                         }
                     }],
                     order: [],
@@ -1952,6 +2920,12 @@ $top10_entregas = $stmt_top10->fetchAll(PDO::FETCH_ASSOC);
                     }
                 });
             }
+
+            ajustarContrastePercentuais();
+
+            $(window).on('resize', function() {
+                ajustarContrastePercentuais();
+            });
 
             <?php if ($filtros_aplicados): ?>
                 $('button[data-bs-target="#modalFiltros"]').addClass('btn-filtro-applied');
