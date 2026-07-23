@@ -394,6 +394,10 @@ final class MigrationRunner
                 && $this->permissionSatisfied('cliente.excluir')
                 && $this->permissionSatisfied('orcamento.excluir')
                 && $this->permissionSatisfied('servico.excluir'),
+            23 => $this->permissionSatisfied('recibo.visualizar')
+                && $this->permissionSatisfied('recibo.emitir')
+                && $this->permissionSatisfied('recibo.reimprimir')
+                && $this->permissionSatisfied('recibo.cancelar'),
             default => null,
         };
     }

@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(22, count($migrationPaths), 'A sequência atual deve conter 22 migrations.');
+migrationAssertSame(23, count($migrationPaths), 'A sequência atual deve conter 23 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -127,6 +127,12 @@ foreach (['clientes', 'orcamentos', 'servicos'] as $table) {
 }
 foreach (['cliente.excluir', 'orcamento.excluir', 'servico.excluir'] as $permission) {
     migrationAssertSame(true, str_contains((string) $masterDataDeletionMigration, $permission), 'A migration deve reparar a permissão ' . $permission . '.');
+}
+
+$receiptPermissionMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/023_repair_receipt_permissions.sql');
+migrationAssertSame(true, is_string($receiptPermissionMigration), 'A migration de reparo das permissões de recibo deve ser legível.');
+foreach (['recibo.visualizar', 'recibo.emitir', 'recibo.reimprimir', 'recibo.cancelar'] as $permission) {
+    migrationAssertSame(true, str_contains((string) $receiptPermissionMigration, $permission), 'A migration deve reparar a permissão ' . $permission . '.');
 }
 
 echo "MigrationRunnerTest: OK\n";

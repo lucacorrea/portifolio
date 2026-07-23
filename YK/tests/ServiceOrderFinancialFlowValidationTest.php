@@ -106,6 +106,8 @@ $orderManagementSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder
 $paymentPageSource = file_get_contents(dirname(__DIR__) . '/pages/ordens-servico.php');
 $paymentScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/ordens-servico-pagamento.js');
 $receiptPrintSource = file_get_contents(dirname(__DIR__) . '/recibo-imprimir.php');
+$receivablePageSource = file_get_contents(dirname(__DIR__) . '/pages/contas-receber.php');
+$receivableScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/contas-receber.js');
 financialFlowAssert(is_string($finalizationAction), 'Action de finalização deve ser legível.');
 financialFlowAssert(!str_contains((string) $finalizationAction, "requirePermission('os.finalizar_com_pagamento')"), 'Finalização não pode exigir permissão de pagamento.');
 financialFlowAssert(str_contains((string) $finalizationAction, 'os_store_post_completion_payment_prompt'), 'Conclusão confirmada deve preparar a pergunta de pagamento posterior.');
@@ -135,6 +137,12 @@ financialFlowAssert(str_contains((string) $receiptPrintSource, 'Térmica 80 mm')
 financialFlowAssert(str_contains((string) $receiptPrintSource, 'A4 — impressora comum'), 'Seletor deve explicar a impressão em impressora comum.');
 financialFlowAssert(str_contains((string) $receiptPrintSource, 'DOCUMENTO NÃO FISCAL'), 'Ambos os formatos devem identificar claramente que o recibo não é fiscal.');
 financialFlowAssert(str_contains((string) $receiptPrintSource, 'window.setTimeout(function () { window.print(); }'), 'Impressão deve abrir somente depois da escolha do formato.');
+financialFlowAssert(is_string($receivablePageSource) && is_string($receivableScriptSource), 'Fluxo visual de Contas a Receber deve ser leg?vel.');
+financialFlowAssert(str_contains((string) $receivablePageSource, 'listActivePaymentsForOrders'), 'Contas a Receber deve carregar recibos dos pagamentos da OS.');
+financialFlowAssert(str_contains((string) $receivablePageSource, "account['status'] === 'paga'"), 'A op??o de recibo deve aparecer somente na conta paga.');
+financialFlowAssert(str_contains((string) $receivablePageSource, 'id="modal-cr-receipt"'), 'Contas a Receber deve permitir gerar recibo ausente.');
+financialFlowAssert(str_contains((string) $receivablePageSource, 'Recibo: <?= h(cr_payment_label($payment)) ?>'), 'Conta paga deve mostrar Recibo no menu de a??es.');
+financialFlowAssert(str_contains((string) $receivableScriptSource, "closest?.('.js-cr-receipt')"), 'Modal de recibo deve receber o pagamento selecionado.');
 financialFlowAssert(str_contains((string) $standaloneReceiptAction, "os_action_context('recibo.emitir')"), 'Recibo avulso deve exigir autorização própria.');
 financialFlowAssert(str_contains((string) $lifecycleSource, 'total_origem'), 'Estorno deve restaurar o total anterior da OS quando houver snapshot.');
 financialFlowAssert(str_contains((string) $lifecycleSource, 'reversePaymentsAndCash'), 'Estorno deve preservar a compensação financeira e de Caixa.');
