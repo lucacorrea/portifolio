@@ -6,6 +6,7 @@ $pageKey = 'configuracoes-fiscais';
 $activePage = 'configuracoes-fiscais';
 $pageTitle = 'Configuração Fiscal';
 $pageSubtitle = 'Certificado, homologação e requisitos para integração com a SEFAZ';
+$pageScripts = ['assets/js/configuracoes-fiscais.js'];
 $requiredAnyPermission = [
     'nota_fiscal.configurar',
     'nota_fiscal.gerenciar_credenciais',

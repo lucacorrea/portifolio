@@ -28,6 +28,11 @@ fiscalUiAssert(is_string($page) && str_contains($page, 'autocomplete="new-passwo
 fiscalUiAssert(!str_contains($page, "['csc_ciphertext']") && !str_contains($page, "['senha_ciphertext']"), 'A tela nunca pode renderizar material cifrado.');
 fiscalUiAssert(str_contains($page, 'Testar comunicação com a SEFAZ'), 'A configuração deve expor o teste real de homologação.');
 fiscalUiAssert(str_contains($page, "\$integrationTest['success']"), 'A ativação deve depender do último teste SEFAZ bem-sucedido.');
+$certificateScript = file_get_contents($root . '/assets/js/configuracoes-fiscais.js');
+fiscalUiAssert(
+    is_string($certificateScript) && str_contains($certificateScript, 'AbortController'),
+    'O envio do certificado deve encerrar o carregamento quando o servidor não responder.'
+);
 
 $billing = file_get_contents($root . '/pages/faturamento.php');
 fiscalUiAssert(is_string($billing) && str_contains($billing, 'A tela não simula notas fiscais.'), 'Faturamento não deve apresentar notas fictícias como reais.');

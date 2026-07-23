@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Fiscal\Storage;
 
 use InvalidArgumentException;
-use NFePHP\Common\Certificate;
+use NFePHP\Common\Certificate\PublicKey;
 use RuntimeException;
 use Throwable;
 
@@ -202,7 +202,7 @@ final class FiscalCertificateStorage
         }
 
         $subject = is_array($parsed['subject'] ?? null) ? $parsed['subject'] : [];
-        $subjectCnpj = $this->certificateCnpj($contents, $password, $subject);
+        $subjectCnpj = $this->certificateCnpj($certificates['cert'], $subject);
         if ($subjectCnpj === null) {
             throw new InvalidArgumentException('Não foi possível identificar o CNPJ do titular no certificado A1.');
         }
@@ -325,11 +325,11 @@ final class FiscalCertificateStorage
     }
 
     /** @param array<string,mixed> $subject */
-    private function certificateCnpj(string $contents, string $password, array $subject): ?string
+    private function certificateCnpj(string $certificate, array $subject): ?string
     {
-        if (class_exists(Certificate::class)) {
+        if (class_exists(PublicKey::class)) {
             try {
-                $oidCnpj = @Certificate::readPfx($contents, $password)->getCnpj();
+                $oidCnpj = (new PublicKey($certificate))->cnpj();
                 if (is_scalar($oidCnpj) && trim((string) $oidCnpj) !== '') {
                     return self::normalizeCnpj((string) $oidCnpj);
                 }

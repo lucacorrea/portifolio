@@ -98,7 +98,6 @@ fiscalSecurityAssert(
     $certificateCnpj->invoke(
         $storage,
         'certificado-sem-oid',
-        'senha',
         ['CN' => 'EMPRESA TESTE:11222333000181']
     ) === '11222333000181',
     'A leitura do CNPJ deve manter compatibilidade com o texto do titular.'

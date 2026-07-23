@@ -52,11 +52,12 @@ $series = is_array($overview['series'] ?? null) ? $overview['series'] : [];
         <?php else: ?><div class="alert alert-warning">Nenhum certificado A1 válido cadastrado.</div><?php endif; ?>
 
         <?php if ($canManageCredentials && $overview !== null): ?>
-          <form method="post" action="actions/configuracao-fiscal-certificado-salvar.php" enctype="multipart/form-data">
+          <form method="post" action="actions/configuracao-fiscal-certificado-salvar.php" enctype="multipart/form-data" data-fiscal-certificate-form>
             <?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="MAX_FILE_SIZE" value="2097152">
             <div class="form-group"><label class="form-label" for="fiscal-certificate">Certificado PFX/P12</label><input class="form-control-os" id="fiscal-certificate" type="file" name="certificado" accept=".pfx,.p12,application/x-pkcs12" required></div>
             <div class="form-group"><label class="form-label" for="fiscal-certificate-password">Senha do certificado</label><input class="form-control-os" id="fiscal-certificate-password" type="password" name="senha_certificado" maxlength="200" autocomplete="new-password" required></div>
-            <button class="btn-modal-save" type="submit"><i class="bi bi-shield-lock"></i> Validar e armazenar</button>
+            <div class="alert alert-danger py-2 d-none" role="alert" data-fiscal-certificate-feedback></div>
+            <button class="btn-modal-save" type="submit" data-fiscal-certificate-submit><i class="bi bi-shield-lock"></i> Validar e armazenar</button>
           </form>
         <?php endif; ?>
       </div>
