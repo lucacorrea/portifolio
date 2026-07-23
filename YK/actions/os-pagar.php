@@ -30,8 +30,8 @@ try {
     $session->flash(
         'success',
         $result['account_status'] === 'paga'
-            ? 'OS paga, Caixa atualizado e recibo emitido.'
-            : 'Pagamento parcial registrado, Caixa atualizado e recibo emitido.'
+            ? 'OS paga, Caixa atualizado e recibo emitido. Escolha o formato de impressão.'
+            : 'Pagamento parcial registrado, Caixa atualizado e recibo emitido. Escolha o formato de impressão.'
     );
     os_redirect($application, 'recibo-imprimir.php?id=' . $result['receipt_id']);
 } catch (InvalidArgumentException $exception) {

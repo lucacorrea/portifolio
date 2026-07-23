@@ -24,7 +24,7 @@ weeklyPanelAssert(str_contains($page, "can('os.excluir')"), 'Exclusão de OS dev
 weeklyPanelAssert((bool) preg_match('/record-actions-source[\s\S]*?js-week-delete[\s\S]*?<\/ul>/', $page), 'Excluir OS deve ficar dentro da modal de ações do card.');
 weeklyPanelAssert(str_contains($page, "\$order->status() !== 'finalizada'"), 'OS finalizada não deve oferecer exclusão antes do estorno.');
 weeklyPanelAssert(str_contains($page, 'action="actions/os-excluir.php"'), 'Exclusão semanal deve reutilizar a ação auditada de OS.');
-weeklyPanelAssert(str_contains($page, 'id="week-delete-reason" name="motivo" maxlength="255" rows="3" required'), 'Exclusão semanal deve exigir motivo limitado.');
+weeklyPanelAssert(!str_contains($page, 'week-delete-reason') && !str_contains($page, 'name="motivo"'), 'Exclusão semanal não deve exigir motivo.');
 weeklyPanelAssert(str_contains($page, 'modal-week-details'), 'Painel deve manter detalhes em modal sem sair da página.');
 weeklyPanelAssert(str_contains($page, 'data-record-actions'), 'Card deve preservar o diálogo global de ações.');
 weeklyPanelAssert(str_contains($page, 'table-action-dropdown'), 'Card deve preservar o dropdown de ações padronizado.');

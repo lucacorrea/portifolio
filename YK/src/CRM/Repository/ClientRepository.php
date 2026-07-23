@@ -20,7 +20,7 @@ final class ClientRepository
     /** @return Client[] */
     public function findAll(array $filters = []): array
     {
-        $where = [];
+        $where = ['excluido_em IS NULL'];
         $params = [];
         $search = trim((string) ($filters['search'] ?? ''));
         $limit = null;
@@ -85,11 +85,28 @@ final class ClientRepository
                     status, criado_em, atualizado_em
                FROM clientes
               WHERE id = :id
+                AND excluido_em IS NULL
               LIMIT 1'
         );
         $statement->execute(['id' => $id]);
         $row = $statement->fetch();
 
+        return $row === false ? null : Client::fromArray($row);
+    }
+
+    public function findByIdForUpdate(int $id): ?Client
+    {
+        $this->assertPositiveId($id);
+        $statement = $this->connection->prepare(
+            'SELECT id, codigo, tipo_pessoa, nome, documento, telefone, whatsapp, email,
+                    endereco, numero, complemento, bairro, cidade, uf, cep, observacoes,
+                    status, criado_em, atualizado_em
+               FROM clientes
+              WHERE id = :id AND excluido_em IS NULL
+              LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute(['id' => $id]);
+        $row = $statement->fetch();
         return $row === false ? null : Client::fromArray($row);
     }
 
@@ -101,7 +118,8 @@ final class ClientRepository
                     SUM(CASE WHEN status = 'ativo' THEN 1 ELSE 0 END) AS active,
                     SUM(CASE WHEN status = 'inativo' THEN 1 ELSE 0 END) AS inactive,
                     SUM(CASE WHEN criado_em >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') THEN 1 ELSE 0 END) AS new_month
-               FROM clientes"
+               FROM clientes
+              WHERE excluido_em IS NULL"
         );
         $row = $statement->fetch() ?: [];
 
@@ -179,8 +197,45 @@ final class ClientRepository
         if (!in_array($status, ['ativo', 'inativo'], true)) {
             throw new InvalidArgumentException('Status inválido.');
         }
-        $statement = $this->connection->prepare('UPDATE clientes SET status = :status WHERE id = :id');
+        $statement = $this->connection->prepare('UPDATE clientes SET status = :status WHERE id = :id AND excluido_em IS NULL');
         $statement->execute(['status' => $status, 'id' => $id]);
+    }
+
+    public function softDelete(int $id, int $userId): void
+    {
+        $this->assertPositiveId($id);
+        $this->assertPositiveId($userId);
+        $this->connection->beginTransaction();
+        try {
+            $statement = $this->connection->prepare(
+                'SELECT id, excluido_em FROM clientes WHERE id = :id FOR UPDATE'
+            );
+            $statement->execute(['id' => $id]);
+            $client = $statement->fetch();
+            if ($client === false) {
+                throw new InvalidArgumentException('Cliente não encontrado.');
+            }
+            if ($client['excluido_em'] !== null) {
+                $this->connection->commit();
+                return;
+            }
+            if ($this->hasActiveDocuments($id)) {
+                throw new InvalidArgumentException('Cliente com orçamento ou OS em andamento não pode ser excluído. Finalize ou cancele os documentos ativos primeiro.');
+            }
+
+            $update = $this->connection->prepare(
+                "UPDATE clientes
+                    SET status = 'inativo', excluido_em = CURRENT_TIMESTAMP, excluido_por = :user_id
+                  WHERE id = :id AND excluido_em IS NULL"
+            );
+            $update->execute(['id' => $id, 'user_id' => $userId]);
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     public function existsByDocument(string $document, ?int $ignoreId = null): bool
@@ -214,7 +269,7 @@ final class ClientRepository
     public function clientIdentityData(): array
     {
         $statement = $this->connection->query(
-            "SELECT nome, telefone FROM clientes WHERE telefone IS NOT NULL AND telefone <> ''"
+            "SELECT nome, telefone FROM clientes WHERE excluido_em IS NULL AND telefone IS NOT NULL AND telefone <> ''"
         );
         return $statement->fetchAll();
     }
@@ -286,6 +341,28 @@ final class ClientRepository
         $statement->bindValue('zip_code', $data->zipCode());
         $statement->bindValue('notes', $data->notes());
         $statement->bindValue('status', $data->status());
+    }
+
+    private function hasActiveDocuments(int $id): bool
+    {
+        $queries = [
+            "SELECT id FROM orcamentos
+              WHERE cliente_id = :id AND excluido_em IS NULL
+                AND status NOT IN ('aprovado', 'recusado')
+              LIMIT 1 FOR UPDATE",
+            "SELECT id FROM ordens_servico
+              WHERE cliente_id = :id AND excluida_em IS NULL
+                AND status NOT IN ('finalizada', 'cancelada')
+              LIMIT 1 FOR UPDATE",
+        ];
+        foreach ($queries as $sql) {
+            $statement = $this->connection->prepare($sql);
+            $statement->execute(['id' => $id]);
+            if ($statement->fetch() !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function assertPositiveId(int $id): void

@@ -11,7 +11,6 @@ try {
     $user = $application->authorization()->requireLogin();
     $application->productManagement()->deleteProduct(
         product_posted_positive_int('id'),
-        (string) ($_POST['motivo'] ?? ''),
         $user->id()
     );
     $session->flash('success', 'Produto excluído com auditoria e histórico preservados.');

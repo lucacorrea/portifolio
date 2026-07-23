@@ -51,4 +51,9 @@ final class ServiceManagementService
         $this->getService($id);
         $this->services->update($id, $data);
     }
+
+    public function deleteService(int $id, int $userId): void
+    {
+        $this->services->softDelete($id, $userId);
+    }
 }

@@ -55,6 +55,11 @@ final class ClientManagementService
         $this->clients->changeStatus($id, $status);
     }
 
+    public function deleteClient(int $id, int $userId): void
+    {
+        $this->clients->softDelete($id, $userId);
+    }
+
     private function assertUniqueDocument(?string $document, ?int $ignoreId = null): void
     {
         if ($document === null || $document === '') return;

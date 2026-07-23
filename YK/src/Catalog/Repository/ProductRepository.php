@@ -224,7 +224,7 @@ final class ProductRepository
         return (int) $statement->fetchColumn() > 0;
     }
 
-    public function softDelete(int $id, string $reason, int $userId): void
+    public function softDelete(int $id, int $userId): void
     {
         $this->assertPositiveId($id);
         $this->assertPositiveId($userId);
@@ -255,11 +255,11 @@ final class ProductRepository
                     SET status = "inativo",
                         excluido_em = CURRENT_TIMESTAMP,
                         excluido_por = :user_id,
-                        motivo_exclusao = :reason
+                        motivo_exclusao = NULL
                   WHERE id = :id
                     AND excluido_em IS NULL'
             );
-            $update->execute(['id' => $id, 'user_id' => $userId, 'reason' => $reason]);
+            $update->execute(['id' => $id, 'user_id' => $userId]);
             if ($update->rowCount() !== 1) {
                 throw new InvalidArgumentException('Produto não encontrado.');
             }

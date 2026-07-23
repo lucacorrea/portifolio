@@ -11,7 +11,6 @@ try {
     $user = $application->authorization()->requireLogin();
     $application->serviceOrderLifecycle()->softDelete(
         os_posted_positive_int('id'),
-        (string) ($_POST['motivo'] ?? ''),
         $user->id()
     );
     $session->flash('success', 'OS excluída da operação com auditoria preservada.');

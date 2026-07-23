@@ -12,6 +12,10 @@ $application = $app['application'];
 $session = $application->session();
 $session->start();
 
+header('Cache-Control: private, no-store, max-age=0');
+header('Pragma: no-cache');
+header('X-Content-Type-Options: nosniff');
+
 try {
     $authorization = $application->authorization();
     $user = $authorization->requireLogin();
@@ -24,6 +28,18 @@ $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT, ['options' => ['min_ran
 if (!is_int($id)) {
     http_response_code(404);
     exit('Recibo não encontrado.');
+}
+
+$format = $_GET['formato'] ?? null;
+if (is_array($format)) {
+    http_response_code(400);
+    exit('Formato de impressão inválido.');
+}
+$format = $format === null ? null : trim((string) $format);
+if ($format === '') $format = null;
+if ($format !== null && !in_array($format, ['termica', 'a4'], true)) {
+    http_response_code(400);
+    exit('Formato de impressão inválido.');
 }
 
 $grant = isset($_SESSION['receipt_initial_print_grant']) && is_array($_SESSION['receipt_initial_print_grant'])
@@ -47,7 +63,7 @@ try {
     exit;
 }
 
-if ($hasInitialPrintGrant) {
+if ($hasInitialPrintGrant && $format !== null) {
     unset($_SESSION['receipt_initial_print_grant']);
 }
 
@@ -134,18 +150,37 @@ $installmentCount = filter_var($receipt['quantidade_parcelas'] ?? 1, FILTER_VALI
 ]);
 if (!is_int($installmentCount)) $installmentCount = 1;
 $showsInstallments = in_array((string) ($receipt['forma_pagamento'] ?? ''), ['boleto', 'cartao_credito'], true);
+$isThermal = $format === 'termica';
+$isA4 = $format === 'a4';
 ?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Recibo <?= receipt_print_h($receipt['numero'] ?? '') ?></title>
+<title><?= $format === null ? 'Escolher impressão' : 'Recibo' ?> <?= receipt_print_h($receipt['numero'] ?? '') ?></title>
 <style>
-@page { size: A5 portrait; margin: 10mm; }
+<?php if ($isThermal): ?>
+@page { size: 80mm auto; margin: 3mm; }
+<?php elseif ($isA4): ?>
+@page { size: A4 portrait; margin: 15mm; }
+<?php endif; ?>
 * { box-sizing: border-box; }
 body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-serif; }
-.receipt { position: relative; width: 148mm; min-height: 190mm; margin: 14px auto; padding: 12mm; background: #fff; border: 1px solid #d1d5db; }
+.format-selector { min-height: 100vh; padding: 24px; display: grid; place-items: center; }
+.print-choice { width: min(100%, 680px); padding: 28px; border: 1px solid #d1d5db; border-radius: 14px; background: #fff; box-shadow: 0 12px 34px rgba(15, 23, 42, .12); }
+.print-choice h1 { margin: 0 0 8px; font-size: 24px; }
+.print-choice > p { margin: 0 0 22px; color: #4b5563; line-height: 1.5; }
+.format-options { display: grid; gap: 12px; margin: 0; padding: 0; border: 0; }
+.format-options legend { margin-bottom: 12px; font-weight: 700; }
+.format-option { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; padding: 16px; border: 2px solid #d1d5db; border-radius: 10px; cursor: pointer; }
+.format-option:has(input:checked) { border-color: #1d4ed8; background: #eff6ff; }
+.format-option input { grid-row: 1 / span 2; align-self: center; width: 18px; height: 18px; }
+.format-option strong { font-size: 16px; }
+.format-option span { color: #4b5563; font-size: 13px; line-height: 1.45; }
+.format-help { margin: 16px 0 0; padding: 12px; border-radius: 8px; background: #f3f4f6; color: #374151; font-size: 13px; line-height: 1.45; }
+.continue-button { width: 100%; margin-top: 18px; border: 0; border-radius: 8px; padding: 12px 18px; background: #1d4ed8; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+.receipt { position: relative; margin: 14px auto; background: #fff; border: 1px solid #d1d5db; overflow-wrap: anywhere; }
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 2px solid #111827; padding-bottom: 10px; }
 .company { display: flex; align-items: flex-start; gap: 12px; }
 .logo { width: 25mm; max-height: 20mm; object-fit: contain; }
@@ -160,16 +195,64 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
 .non-fiscal { margin-top: 16px; text-align: center; color: #4b5563; font-size: 10px; font-weight: 700; }
 .canceled { position: absolute; inset: 42% 0 auto; transform: rotate(-18deg); color: rgba(185, 28, 28, .22); font-size: 48px; font-weight: 800; text-align: center; pointer-events: none; }
 .cancel-note { margin-top: 12px; padding: 8px; border: 1px solid #dc2626; color: #991b1b; font-size: 11px; }
-.print-actions { width: 148mm; margin: 0 auto 14px; text-align: right; }
+.print-actions { width: min(calc(100% - 24px), 180mm); margin: 0 auto 14px; text-align: right; }
 .print-actions button { border: 0; border-radius: 6px; padding: 9px 15px; background: #1d4ed8; color: white; cursor: pointer; }
+.format-a4 .receipt { width: 180mm; min-height: 257mm; padding: 16mm; }
+.format-a4 .description { min-height: 70mm; font-size: 15px; }
+.format-a4 .signature { margin-top: 35mm; }
+.format-termica { font-family: "Arial Narrow", Arial, sans-serif; }
+.format-termica .receipt { width: 80mm; min-height: 0; padding: 4mm; }
+.format-termica .header { display: block; border-bottom: 1px dashed #111827; padding-bottom: 3mm; text-align: center; }
+.format-termica .company { display: block; }
+.format-termica .logo { width: 28mm; max-height: 18mm; margin: 0 auto 2mm; }
+.format-termica .company h1 { margin-bottom: 1mm; font-size: 14px; }
+.format-termica .company p, .format-termica .meta p { margin: 1px 0; font-size: 9px; }
+.format-termica .meta { margin-top: 2mm; text-align: center; white-space: normal; }
+.format-termica .title { margin: 4mm 0 3mm; font-size: 15px; letter-spacing: .04em; }
+.format-termica .amount { margin: 3mm 0; padding: 2.5mm; border: 1px dashed #111827; border-radius: 0; font-size: 18px; }
+.format-termica .description { min-height: 0; font-size: 10px; line-height: 1.45; }
+.format-termica .description p { margin: 2mm 0; }
+.format-termica .details { margin-top: 3mm; border-top: 1px dashed #777; padding-top: 2mm; font-size: 9px; line-height: 1.45; }
+.format-termica .signature { width: 92%; margin: 12mm auto 0; font-size: 9px; }
+.format-termica .non-fiscal { margin-top: 3mm; padding-top: 2mm; border-top: 1px dashed #777; color: #111827; font-size: 9px; }
+.format-termica .canceled { font-size: 32px; }
+.format-termica .cancel-note { font-size: 9px; }
 @media print {
     body { background: #fff; }
-    .receipt { width: auto; min-height: 0; margin: 0; padding: 0; border: 0; }
+    .receipt { min-height: 0; margin: 0; padding: 0; border: 0; }
+    .format-a4 .receipt { width: auto; }
+    .format-termica .receipt { width: 74mm; }
     .print-actions { display: none; }
 }
 </style>
 </head>
-<body>
+<?php if ($format === null): ?>
+<body class="format-selector">
+<main class="print-choice">
+    <h1>Como deseja imprimir o recibo?</h1>
+    <p>Recibo <?= receipt_print_h($receipt['numero'] ?? '') ?> da <?= receipt_print_h($receipt['os_numero'] ?? 'ordem de serviço') ?>.</p>
+    <form method="get" action="recibo-imprimir.php">
+        <input type="hidden" name="id" value="<?= receipt_print_h((string) $id) ?>">
+        <fieldset class="format-options">
+            <legend>Escolha o formato da impressão</legend>
+            <label class="format-option">
+                <input type="radio" name="formato" value="termica" required autofocus>
+                <strong>Térmica 80 mm</strong>
+                <span>Estilo cupom, parecido com impressão de nota, mas identificado como documento não fiscal.</span>
+            </label>
+            <label class="format-option">
+                <input type="radio" name="formato" value="a4" required>
+                <strong>A4 — impressora comum</strong>
+                <span>Layout maior para impressoras convencionais, em papel A4 retrato.</span>
+            </label>
+        </fieldset>
+        <p class="format-help">Depois da escolha, a janela de impressão do navegador será aberta para você selecionar a impressora física.</p>
+        <button class="continue-button" type="submit">Continuar para impressão</button>
+    </form>
+</main>
+</body>
+<?php else: ?>
+<body class="<?= $isThermal ? 'format-termica' : 'format-a4' ?>">
 <main class="receipt">
     <?php if ($isCanceled): ?><div class="canceled">CANCELADO</div><?php endif; ?>
     <header class="header">
@@ -212,5 +295,11 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
     <div class="non-fiscal">DOCUMENTO NÃO FISCAL</div>
 </main>
 <div class="print-actions"><button type="button" onclick="window.print()">Imprimir recibo</button></div>
+<script>
+window.addEventListener('load', function () {
+    window.setTimeout(function () { window.print(); }, 150);
+});
+</script>
 </body>
+<?php endif; ?>
 </html>

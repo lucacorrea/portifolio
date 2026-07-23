@@ -28,7 +28,7 @@ foreach ([$page, $action, $service, $repository, $budgetRepository, $orderServic
 productDeletionAssert(str_contains($page, "can('produto.excluir')"), 'Interface deve respeitar a permissão produto.excluir.');
 productDeletionAssert((bool) preg_match('/dropdown-menu[\s\S]*?js-product-delete[\s\S]*?<\/ul>/', $page), 'Excluir produto deve ficar dentro da modal global de ações.');
 productDeletionAssert(str_contains($page, 'action="actions/produto-excluir.php"'), 'Modal deve enviar para a ação de exclusão.');
-productDeletionAssert(str_contains($page, 'name="motivo"') && str_contains($page, 'maxlength="255"'), 'Motivo da exclusão deve ser obrigatório e limitado.');
+productDeletionAssert(!str_contains($page, 'delete-product-reason') && !str_contains($page, 'name="motivo"'), 'Exclusão de produto não deve exigir motivo.');
 productDeletionAssert(str_contains($action, "product_action_context('produto.excluir')"), 'Servidor deve exigir permissão de exclusão.');
 productDeletionAssert(str_contains($action, 'product_require_post_request()'), 'Exclusão deve aceitar somente POST.');
 productDeletionAssert(str_contains($service, 'deleteProduct'), 'Serviço deve expor exclusão lógica validada.');
