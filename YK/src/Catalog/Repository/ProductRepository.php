@@ -19,7 +19,7 @@ final class ProductRepository
     /** @return Product[] */
     public function findAll(array $filters = []): array
     {
-        $where = [];
+        $where = ['excluido_em IS NULL'];
         $params = [];
         $search = trim((string) ($filters['search'] ?? ''));
 
@@ -82,7 +82,28 @@ final class ProductRepository
                     localizacao, status, criado_em, atualizado_em
                FROM produtos
               WHERE id = :id
+                AND excluido_em IS NULL
               LIMIT 1'
+        );
+        $statement->execute(['id' => $id]);
+        $row = $statement->fetch();
+
+        return $row === false ? null : Product::fromArray($row);
+    }
+
+    public function findByIdForUpdate(int $id): ?Product
+    {
+        $this->assertPositiveId($id);
+
+        $statement = $this->connection->prepare(
+            'SELECT id, codigo, nome, descricao, categoria, fabricante, unidade,
+                    ncm, codigo_barras, preco_custo, preco_venda, estoque, estoque_minimo,
+                    localizacao, status, criado_em, atualizado_em
+               FROM produtos
+              WHERE id = :id
+                AND excluido_em IS NULL
+              LIMIT 1
+              FOR UPDATE'
         );
         $statement->execute(['id' => $id]);
         $row = $statement->fetch();
@@ -98,7 +119,8 @@ final class ProductRepository
                     SUM(CASE WHEN status = 'ativo' THEN 1 ELSE 0 END) AS active,
                     SUM(CASE WHEN estoque > 0 AND estoque <= estoque_minimo THEN 1 ELSE 0 END) AS low_stock,
                     SUM(CASE WHEN estoque <= 0 THEN 1 ELSE 0 END) AS out_of_stock
-               FROM produtos"
+               FROM produtos
+              WHERE excluido_em IS NULL"
         );
         $row = $statement->fetch() ?: [];
 
@@ -171,7 +193,8 @@ final class ProductRepository
                     estoque_minimo = :minimum_stock,
                     localizacao = :location,
                     status = :status
-              WHERE id = :id'
+              WHERE id = :id
+                AND excluido_em IS NULL'
         );
         $statement->bindValue('id', $id);
         $this->bindForm($statement, $data);
@@ -199,6 +222,76 @@ final class ProductRepository
         $statement->execute($params);
 
         return (int) $statement->fetchColumn() > 0;
+    }
+
+    public function softDelete(int $id, int $userId): void
+    {
+        $this->assertPositiveId($id);
+        $this->assertPositiveId($userId);
+        $this->connection->beginTransaction();
+
+        try {
+            $statement = $this->connection->prepare(
+                'SELECT id, estoque, excluido_em
+                   FROM produtos
+                  WHERE id = :id
+                  FOR UPDATE'
+            );
+            $statement->execute(['id' => $id]);
+            $product = $statement->fetch();
+
+            if ($product === false || $product['excluido_em'] !== null) {
+                throw new InvalidArgumentException('Produto não encontrado.');
+            }
+            if (abs((float) $product['estoque']) >= 0.0005) {
+                throw new InvalidArgumentException('Produto com saldo não pode ser excluído. Marque-o como inativo.');
+            }
+            if ($this->hasOperationalHistory($id)) {
+                throw new InvalidArgumentException('Produto já utilizado não pode ser excluído. Marque-o como inativo para preservar o histórico.');
+            }
+
+            $update = $this->connection->prepare(
+                'UPDATE produtos
+                    SET status = "inativo",
+                        excluido_em = CURRENT_TIMESTAMP,
+                        excluido_por = :user_id,
+                        motivo_exclusao = NULL
+                  WHERE id = :id
+                    AND excluido_em IS NULL'
+            );
+            $update->execute(['id' => $id, 'user_id' => $userId]);
+            if ($update->rowCount() !== 1) {
+                throw new InvalidArgumentException('Produto não encontrado.');
+            }
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
+    private function hasOperationalHistory(int $id): bool
+    {
+        $checks = [
+            "SELECT 1 FROM ordem_servico_itens WHERE tipo = 'produto' AND referencia_id = :id LIMIT 1",
+            "SELECT 1 FROM orcamento_itens WHERE tipo = 'produto' AND referencia_id = :id LIMIT 1",
+            'SELECT 1 FROM estoque_autorizacoes WHERE produto_id = :id LIMIT 1',
+            'SELECT 1 FROM estoque_movimentacoes WHERE produto_id = :id LIMIT 1',
+            'SELECT 1 FROM venda_avulsa_itens WHERE produto_id = :id LIMIT 1',
+        ];
+
+        foreach ($checks as $sql) {
+            $statement = $this->connection->prepare($sql);
+            $statement->execute(['id' => $id]);
+            if ($statement->fetchColumn() !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function bindForm(\PDOStatement $statement, ProductFormData $data): void

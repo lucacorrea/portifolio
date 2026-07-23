@@ -7,4 +7,9 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'Symfony\\Polyfill\\Mbstring\\' => array($vendorDir . '/symfony/polyfill-mbstring'),
+    'Psr\\Log\\' => array($vendorDir . '/psr/log/src'),
+    'NFePHP\\NFe\\' => array($vendorDir . '/nfephp-org/sped-nfe/src'),
+    'NFePHP\\Gtin\\' => array($vendorDir . '/nfephp-org/sped-gtin/src'),
+    'NFePHP\\Common\\' => array($vendorDir . '/nfephp-org/sped-common/src'),
+    'JsonSchema\\' => array($vendorDir . '/justinrainbow/json-schema/src/JsonSchema'),
 );

@@ -55,6 +55,11 @@ final class ProductManagementService
         $this->products->update($id, $data);
     }
 
+    public function deleteProduct(int $id, int $userId): void
+    {
+        $this->products->softDelete($id, $userId);
+    }
+
     private function assertUniqueBarcode(
         ?string $barcode,
         ?int $ignoreId = null

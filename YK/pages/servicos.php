@@ -25,6 +25,7 @@ sort($categories);
 $canCreate = $authorization->can('servico.criar');
 $canEdit = $authorization->can('servico.editar');
 $canChangePrice = $authorization->can('servico.alterar_preco');
+$canDelete = $authorization->can('servico.excluir');
 $recovery = service_consume_form_recovery();
 
 function service_recovery_data(?array $recovery, string $modal): array
@@ -170,6 +171,10 @@ metric_grid([
                                         data-service-status="<?= h($service->status()) ?>"
                                     ><i class="bi bi-pencil"></i> Editar</button></li>
                                 <?php endif; ?>
+                                <?php if ($canDelete): ?>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><button class="dropdown-item text-danger js-service-delete" type="button" data-bs-toggle="modal" data-bs-target="#modal-servico-delete" data-service-id="<?= h((string) $service->id()) ?>" data-service-name="<?= h($service->name()) ?>"><i class="bi bi-trash3"></i> Excluir serviço</button></li>
+                                <?php endif; ?>
                             </ul></div></td>
                         </tr>
                     <?php endforeach; ?>
@@ -208,6 +213,8 @@ function service_form_fields(array $data, bool $canChangePrice, string $prefix):
 <div class="modal fade" id="modal-servico-edit" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/servico-salvar.php" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Editar serviço</h2><p class="text-muted small mb-0" id="edit-service-subtitle"><?= h(service_value($editData, 'code')) ?></p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><div class="alert alert-danger <?= $editError === null ? 'd-none' : '' ?>" id="edit-service-form-error" role="alert"><?= h($editError ?? '') ?></div><input type="hidden" name="id" id="edit-service-id" value="<?= h(service_value($editData, 'id')) ?>"><section class="form-section"><h3 class="form-section-title">Código</h3><input class="form-control-os" id="edit-service-code" type="text" value="<?= h(service_value($editData, 'code')) ?>" readonly></section><?php service_form_fields($editData, $canChangePrice, 'edit-service'); ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check-lg"></i> Salvar</button></div></form></div></div>
 <?php endif; ?>
 
+<?php if ($canDelete): ?><div class="modal fade" id="modal-servico-delete" tabindex="-1" aria-labelledby="service-delete-title" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/servico-excluir.php"><div class="modal-header"><h2 class="modal-title fs-5" id="service-delete-title">Excluir serviço</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="delete-service-id"><p>Deseja excluir <strong id="delete-service-name"></strong>?</p><div class="alert alert-warning mb-0">O serviço sairá dos novos cadastros, mas continuará registrado nos orçamentos e OS anteriores.</div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-trash3"></i> Excluir serviço</button></div></form></div></div><?php endif; ?>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
@@ -217,10 +224,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function val(id, value) { const element = document.getElementById(id); if (element) { element.value = value || ''; } }
     function moneyValue(value) { const number = Number.parseFloat(value || '0'); return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
     document.addEventListener('click', function (event) {
-        const button = event.target.closest('.js-service-view, .js-service-edit');
+        const button = event.target.closest('.js-service-view, .js-service-edit, .js-service-delete');
         if (!button) return;
         if (button.classList.contains('js-service-view')) { text('view-service-subtitle', button.dataset.serviceCode); text('view-service-code', button.dataset.serviceCode); text('view-service-name', button.dataset.serviceName); text('view-service-category', button.dataset.serviceCategory); text('view-service-compatible-equipment', button.dataset.serviceCompatibleEquipment); text('view-service-duration', button.dataset.serviceDuration); text('view-service-value', moneyValue(button.dataset.serviceValue)); text('view-service-status', button.dataset.serviceStatus === 'ativo' ? 'Ativo' : 'Inativo'); text('view-service-created-at', button.dataset.serviceCreatedAt); text('view-service-updated-at', button.dataset.serviceUpdatedAt); text('view-service-description', button.dataset.serviceDescription); }
         if (button.classList.contains('js-service-edit')) { text('edit-service-subtitle', button.dataset.serviceCode); val('edit-service-id', button.dataset.serviceId); val('edit-service-code', button.dataset.serviceCode); val('edit-service-name', button.dataset.serviceName); val('edit-service-category', button.dataset.serviceCategory); val('edit-service-compatible-equipment', button.dataset.serviceCompatibleEquipment); val('edit-service-duration-minutes', button.dataset.serviceDurationMinutes); if (canChangePrice) { val('edit-service-value', button.dataset.serviceValue); } val('edit-service-description', button.dataset.serviceDescription); val('edit-service-status', button.dataset.serviceStatus || 'ativo'); }
+        if (button.classList.contains('js-service-delete')) { val('delete-service-id', button.dataset.serviceId); text('delete-service-name', button.dataset.serviceName || 'este serviço'); }
     });
     const createModal = document.getElementById('modal-servico');
     if (createModal) { createModal.addEventListener('show.bs.modal', function (event) { if (event.relatedTarget) { const form = createModal.querySelector('form'); if (form) { form.reset(); } text('create-service-form-error', ''); document.getElementById('create-service-form-error')?.classList.add('d-none'); } }); }

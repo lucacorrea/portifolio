@@ -2,7 +2,20 @@ Options -Indexes
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Credenciais, certificado A1 e dados fiscais nunca podem trafegar em HTTP.
+    RewriteCond %{HTTPS} !=on
+    RewriteRule ^ https://lucascorrea.pro%{REQUEST_URI} [R=301,L,NE]
+
     RewriteRule ^(config|src|database|scripts|storage|backups|tests|vendor)(/|$) - [F,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
 <IfModule mod_authz_core.c>

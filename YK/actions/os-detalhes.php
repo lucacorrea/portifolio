@@ -5,6 +5,8 @@ declare(strict_types=1);
 require __DIR__ . '/os-action-common.php';
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('X-Content-Type-Options: nosniff');
 
 try {
     [$application] = os_action_context('os.visualizar', false);
@@ -18,6 +20,13 @@ try {
             'number' => $order->displayNumber(),
             'client_id' => $order->clientId(),
             'client_name' => $order->clientName(),
+            'client_phone' => $order->clientPhone(),
+            'client_whatsapp' => $order->clientWhatsapp(),
+            'client_address' => $order->clientAddress(),
+            'client_number' => $order->clientNumber(),
+            'client_district' => $order->clientDistrict(),
+            'client_city' => $order->clientCity(),
+            'client_state' => $order->clientState(),
             'budget_id' => $order->budgetId(),
             'equipment_type' => $order->equipmentType(),
             'equipment_brand' => $order->equipmentBrand(),
@@ -41,6 +50,8 @@ try {
             'priority' => $order->priority(),
             'discount' => $order->discount(),
             'increase' => $order->increase(),
+            'created_at' => $order->createdAt(),
+            'updated_at' => $order->updatedAt(),
         ],
         'items' => array_map(static fn($item): array => [
             'id' => $item->id(), 'type' => $item->type(), 'origin' => $item->origin(), 'reference_id' => $item->referenceId(), 'budget_item_id' => $item->budgetItemId(), 'description' => $item->description(),

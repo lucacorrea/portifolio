@@ -26,6 +26,7 @@ sort($categories);
 
 $canCreate = $authorization->can('produto.criar');
 $canEdit = $authorization->can('produto.editar');
+$canDelete = $authorization->can('produto.excluir');
 $canCost = $authorization->can('produto.visualizar_preco_custo');
 $canSale = $authorization->can('produto.visualizar_preco_venda');
 $canProfit = $canCost && $canSale && $authorization->can('financeiro.visualizar_lucro');
@@ -228,6 +229,14 @@ metric_grid([
                                                 data-product-status="<?= h($product->status()) ?>"
                                             ><i class="bi bi-pencil"></i> Editar</button></li>
                                         <?php endif; ?>
+                                        <?php if ($canDelete): ?>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><button class="dropdown-item text-danger js-product-delete" type="button" data-bs-toggle="modal" data-bs-target="#modal-produto-delete"
+                                                data-product-id="<?= h((string) $product->id()) ?>"
+                                                data-product-code="<?= h($product->displayCode()) ?>"
+                                                data-product-name="<?= h($product->name()) ?>"
+                                            ><i class="bi bi-trash3"></i> Excluir produto</button></li>
+                                        <?php endif; ?>
                                     </ul>
                                 </div>
                             </td>
@@ -284,6 +293,10 @@ function product_form_fields(array $data, bool $canCost, bool $canSale, string $
 <div class="modal fade" id="modal-produto-edit" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/produto-salvar.php" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Editar produto</h2><p class="text-muted small mb-0" id="edit-product-subtitle"><?= h(product_value($editData, 'code')) ?></p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><div class="alert alert-danger <?= $editError === null ? 'd-none' : '' ?>" id="edit-product-form-error" role="alert"><?= h($editError ?? '') ?></div><input type="hidden" name="id" id="edit-product-id" value="<?= h(product_value($editData, 'id')) ?>"><section class="form-section"><h3 class="form-section-title">Código</h3><input class="form-control-os" id="edit-product-code" type="text" value="<?= h(product_value($editData, 'code')) ?>" readonly></section><?php product_form_fields($editData, $canCost, $canSale, 'edit-product', true); ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check-lg"></i> Salvar</button></div></form></div></div>
 <?php endif; ?>
 
+<?php if ($canDelete): ?>
+<div class="modal fade" id="modal-produto-delete" tabindex="-1" aria-labelledby="delete-product-title" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/produto-excluir.php"><div class="modal-header"><div><h2 class="modal-title fs-5" id="delete-product-title">Excluir produto</h2><p class="text-muted small mb-0" id="delete-product-subtitle"></p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="delete-product-id"><p>O produto será removido das telas por exclusão lógica.</p><div class="alert alert-warning mb-0">Somente produtos com saldo zero e nunca utilizados podem ser excluídos. Para produtos com histórico, altere o status para Inativo.</div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-trash3"></i> Excluir produto</button></div></form></div></div>
+<?php endif; ?>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
@@ -299,12 +312,13 @@ document.addEventListener('DOMContentLoaded', function () {
         val(prefix + '-id', data.productId); val(prefix + '-code', data.productCode); val(prefix + '-name', data.productName); val(prefix + '-description', data.productDescription); val(prefix + '-category', data.productCategory); val(prefix + '-manufacturer', data.productManufacturer); val(prefix + '-unit', data.productUnit); val(prefix + '-ncm', data.productNcm); val(prefix + '-barcode', data.productBarcode); val(prefix + '-stock', data.productStock); val(prefix + '-minimum-stock', data.productMinimumStock); val(prefix + '-location', data.productLocation); val(prefix + '-status', data.productStatus || 'ativo'); if (canCost) { val(prefix + '-cost-price', data.productCostPrice); } if (canSale) { val(prefix + '-sale-price', data.productSalePrice); }
     }
     document.addEventListener('click', function (event) {
-        const button = event.target.closest('.js-product-view, .js-product-edit');
+        const button = event.target.closest('.js-product-view, .js-product-edit, .js-product-delete');
         if (!button) return;
         if (button.classList.contains('js-product-view')) {
             text('view-product-subtitle', button.dataset.productCode); text('view-product-code', button.dataset.productCode); text('view-product-name', button.dataset.productName); text('view-product-description', button.dataset.productDescription); text('view-product-category', button.dataset.productCategory); text('view-product-manufacturer', button.dataset.productManufacturer); text('view-product-unit', button.dataset.productUnit); text('view-product-ncm', button.dataset.productNcm); text('view-product-barcode', button.dataset.productBarcode); if (canCost) { text('view-product-cost-price', moneyValue(button.dataset.productCostPrice)); } if (canSale) { text('view-product-sale-price', moneyValue(button.dataset.productSalePrice)); } if (canProfit) { text('view-product-unit-profit', moneyValue(button.dataset.productUnitProfit)); text('view-product-margin', percentValue(button.dataset.productMargin)); text('view-product-potential-profit', moneyValue(button.dataset.productPotentialProfit)); } text('view-product-stock', button.dataset.productStock); text('view-product-minimum-stock', button.dataset.productMinimumStock); text('view-product-location', button.dataset.productLocation); text('view-product-status', button.dataset.productStatus === 'ativo' ? 'Ativo' : 'Inativo');
         }
         if (button.classList.contains('js-product-edit')) { text('edit-product-subtitle', button.dataset.productCode); fillProduct('edit-product', button.dataset); }
+        if (button.classList.contains('js-product-delete')) { val('delete-product-id', button.dataset.productId); text('delete-product-subtitle', [button.dataset.productCode, button.dataset.productName].filter(Boolean).join(' — ')); }
     });
     const createModal = document.getElementById('modal-produto');
     if (createModal) { createModal.addEventListener('show.bs.modal', function (event) { if (event.relatedTarget) { const form = createModal.querySelector('form'); if (form) { form.reset(); } text('create-product-form-error', ''); document.getElementById('create-product-form-error')?.classList.add('d-none'); } }); }

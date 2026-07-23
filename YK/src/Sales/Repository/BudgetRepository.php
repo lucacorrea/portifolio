@@ -58,6 +58,7 @@ final class BudgetRepository
                JOIN clientes c ON c.id = o.cliente_id
                JOIN orcamento_itens i ON i.orcamento_id = o.id
               WHERE o.status = 'aprovado'
+                AND o.excluido_em IS NULL
                 AND EXISTS (
                     SELECT 1
                       FROM ordens_servico os_liberada
@@ -145,7 +146,8 @@ final class BudgetRepository
                 SUM(CASE WHEN status = 'aprovado' THEN 1 ELSE 0 END) AS approved,
                 SUM(CASE WHEN status IN ('enviado', 'aguardando_aprovacao') AND validade < CURRENT_DATE THEN 1 ELSE 0 END) AS expired,
                 SUM(CASE WHEN status = 'aprovado' THEN total ELSE 0 END) AS approved_value
-             FROM orcamentos"
+             FROM orcamentos
+             WHERE excluido_em IS NULL"
         );
         $row = $statement->fetch() ?: [];
         return [
@@ -162,6 +164,7 @@ final class BudgetRepository
     {
         $this->connection->beginTransaction();
         try {
+            $this->lockProductReferences($data);
             $totals = $data->totals();
             $statement = $this->connection->prepare(
                 'INSERT INTO orcamentos
@@ -195,6 +198,7 @@ final class BudgetRepository
         $this->assertPositiveId($id);
         $this->connection->beginTransaction();
         try {
+            $this->lockProductReferences($data);
             $totals = $data->totals();
             $statement = $this->connection->prepare(
                 'UPDATE orcamentos
@@ -210,7 +214,8 @@ final class BudgetRepository
                         desconto = :discount,
                         acrescimo = :increase,
                         total = :total
-                  WHERE id = :id'
+                  WHERE id = :id
+                    AND excluido_em IS NULL'
             );
             $statement->bindValue('id', $id, PDO::PARAM_INT);
             $this->bindForm($statement, $data, $totals);
@@ -230,7 +235,7 @@ final class BudgetRepository
         $statement = $this->connection->prepare(
             "UPDATE orcamentos
                 SET status = 'aprovado', aprovado_em = COALESCE(aprovado_em, CURRENT_TIMESTAMP), recusado_em = NULL, motivo_recusa = NULL
-              WHERE id = :id AND status <> 'aprovado'"
+              WHERE id = :id AND status <> 'aprovado' AND excluido_em IS NULL"
         );
         $statement->execute(['id' => $id]);
     }
@@ -241,9 +246,63 @@ final class BudgetRepository
         $statement = $this->connection->prepare(
             "UPDATE orcamentos
                 SET status = 'recusado', recusado_em = COALESCE(recusado_em, CURRENT_TIMESTAMP), motivo_recusa = :reason
-              WHERE id = :id AND status <> 'recusado'"
+              WHERE id = :id AND status <> 'recusado' AND excluido_em IS NULL"
         );
         $statement->execute(['id' => $id, 'reason' => $reason]);
+    }
+
+    public function softDelete(int $id, int $userId): void
+    {
+        $this->assertPositiveId($id);
+        $this->assertPositiveId($userId);
+        $ownsTransaction = !$this->connection->inTransaction();
+        try {
+            if ($ownsTransaction) {
+                $this->connection->beginTransaction();
+            }
+            $statement = $this->connection->prepare(
+                'SELECT id, status, excluido_em FROM orcamentos WHERE id = :id FOR UPDATE'
+            );
+            $statement->execute(['id' => $id]);
+            $budget = $statement->fetch();
+            if ($budget === false) {
+                throw new InvalidArgumentException('Orçamento não encontrado.');
+            }
+            if ($budget['excluido_em'] !== null) {
+                if ($ownsTransaction) {
+                    $this->connection->commit();
+                }
+                return;
+            }
+            if ($budget['status'] === 'aprovado') {
+                throw new InvalidArgumentException('Orçamento aprovado não pode ser excluído. Exclua ou estorne a OS vinculada antes.');
+            }
+
+            $linkedOrder = $this->connection->prepare(
+                'SELECT id FROM ordens_servico
+                  WHERE orcamento_id = :id AND excluida_em IS NULL
+                  LIMIT 1 FOR UPDATE'
+            );
+            $linkedOrder->execute(['id' => $id]);
+            if ($linkedOrder->fetch() !== false) {
+                throw new InvalidArgumentException('Orçamento com OS vinculada não pode ser excluído.');
+            }
+
+            $update = $this->connection->prepare(
+                'UPDATE orcamentos
+                    SET excluido_em = CURRENT_TIMESTAMP, excluido_por = :user_id
+                  WHERE id = :id AND excluido_em IS NULL'
+            );
+            $update->execute(['id' => $id, 'user_id' => $userId]);
+            if ($ownsTransaction) {
+                $this->connection->commit();
+            }
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     /** @return Budget[] */
@@ -321,6 +380,7 @@ final class BudgetRepository
     /** @param array<int,string> $where @return Budget[] */
     private function selectBudgets(array $where, array $params, string $orderBy, bool $forUpdate = false): array
     {
+        array_unshift($where, 'o.excluido_em IS NULL');
         $sql = 'SELECT o.id, o.numero, o.cliente_id, c.codigo AS cliente_codigo, c.nome AS cliente_nome,
                        c.documento AS cliente_documento,
                        o.data_emissao, o.validade, o.status, o.observacoes, o.motivo_recusa,
@@ -379,6 +439,43 @@ final class BudgetRepository
                 'subtotal' => $item->subtotal(),
                 'order' => $item->order(),
             ]);
+        }
+    }
+
+    private function lockProductReferences(BudgetFormData $data): void
+    {
+        $client = $this->connection->prepare(
+            'SELECT id FROM clientes WHERE id = :id AND excluido_em IS NULL FOR UPDATE'
+        );
+        $client->execute(['id' => $data->clientId()]);
+        if ($client->fetch() === false) {
+            throw new InvalidArgumentException('Cliente não encontrado.');
+        }
+
+        $references = ['produto' => [], 'servico' => []];
+        foreach ($data->items() as $item) {
+            if (isset($references[$item->type()]) && $item->referenceId() !== null) {
+                $references[$item->type()][] = $item->referenceId();
+            }
+        }
+        foreach (['produto' => ['produtos', 'Produto'], 'servico' => ['servicos', 'Serviço']] as $type => [$table, $label]) {
+            $ids = array_values(array_unique($references[$type]));
+            sort($ids, SORT_NUMERIC);
+            if ($ids === []) continue;
+            $placeholders = $parameters = [];
+            foreach ($ids as $index => $id) {
+                $key = $type . '_' . $index;
+                $placeholders[] = ':' . $key;
+                $parameters[$key] = $id;
+            }
+            $statement = $this->connection->prepare(
+                'SELECT id FROM ' . $table . ' WHERE id IN (' . implode(', ', $placeholders) . ')
+                  AND excluido_em IS NULL ORDER BY id FOR UPDATE'
+            );
+            $statement->execute($parameters);
+            if (count($statement->fetchAll()) !== count($ids)) {
+                throw new InvalidArgumentException($label . ' do orçamento não encontrado.');
+            }
         }
     }
 

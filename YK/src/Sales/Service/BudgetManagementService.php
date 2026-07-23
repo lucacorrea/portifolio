@@ -85,6 +85,11 @@ final class BudgetManagementService
         $this->budgets->reject($id, $reason);
     }
 
+    public function deleteBudget(int $id, int $userId): void
+    {
+        $this->budgets->softDelete($id, $userId);
+    }
+
     /** @return Budget[] */
     public function budgetsByClient(int $clientId): array
     {

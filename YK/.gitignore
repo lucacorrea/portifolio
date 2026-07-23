@@ -8,3 +8,7 @@ storage/uploads/*
 backups/
 *.bak
 *.backup
+*.pfx
+*.p12
+*.pem
+*.key

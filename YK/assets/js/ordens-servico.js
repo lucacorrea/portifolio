@@ -287,15 +287,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function paymentToken() {
-    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (character) {
-      const random = Math.floor(Math.random() * 16);
-      const value = character === 'x' ? random : ((random & 3) | 8);
-      return value.toString(16);
-    });
-  }
-
   function legacyTeamFromData(data) {
     const members = [];
     if (data.funcionario_principal_id) members.push({ employee_id: data.funcionario_principal_id, role: 'Responsável técnico', primary: true });
@@ -500,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.addEventListener('click', function (event) {
-    const button = event.target.closest?.('.js-os-view, .js-os-edit, .js-os-team, .js-os-status, .js-os-finalize, .js-os-pay, .js-os-cancel, .js-os-reverse, .js-os-delete, .js-os-receipt');
+    const button = event.target.closest?.('.js-os-view, .js-os-edit, .js-os-team, .js-os-status, .js-os-finalize, .js-os-cancel, .js-os-reverse, .js-os-delete, .js-os-receipt');
     if (!button) return;
 
     if (button.classList.contains('js-os-view')) {
@@ -521,13 +512,6 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('os-status-message').textContent = 'Confirmar operação "' + (button.dataset.label || 'alterar status') + '"?';
     } else if (button.classList.contains('js-os-finalize')) {
       setValue('os-finalize-id', button.dataset.orderId);
-    } else if (button.classList.contains('js-os-pay')) {
-      const total = String(button.dataset.orderTotal || '0').replace('.', ',');
-      setValue('os-pay-id', button.dataset.orderId);
-      setValue('os-pay-value', total);
-      setValue('os-pay-token', paymentToken());
-      setValue('os-pay-notes', '');
-      setText('os-pay-summary', (button.dataset.orderNumber || 'OS') + ' — total ' + money(parseNumber(total)) + '. Informe o valor efetivamente recebido.');
     } else if (button.classList.contains('js-os-cancel')) {
       setValue('os-cancel-id', button.dataset.orderId);
     } else if (button.classList.contains('js-os-reverse')) {
@@ -567,12 +551,4 @@ document.addEventListener('DOMContentLoaded', function () {
     if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
   }
 
-  document.querySelector('#modal-os-pay form')?.addEventListener('submit', function (event) {
-    if (!event.currentTarget.checkValidity()) return;
-    const submit = event.currentTarget.querySelector('[type="submit"]');
-    if (submit) {
-      submit.disabled = true;
-      submit.setAttribute('aria-busy', 'true');
-    }
-  });
 });

@@ -38,6 +38,10 @@ $paymentToken = $accountsReflection->getMethod('paymentToken');
 $paymentToken->setAccessible(true);
 $moneyToCents = $accountsReflection->getMethod('moneyToCents');
 $moneyToCents->setAccessible(true);
+$accountsPaymentForm = $accountsReflection->getMethod('paymentForm');
+$accountsPaymentForm->setAccessible(true);
+$installmentCount = $accountsReflection->getMethod('installmentCount');
+$installmentCount->setAccessible(true);
 
 $token = '9d0bf2e4-9c4f-4ed7-a7d9-11f1782c2374';
 financialFlowAssertSame($token, $paymentToken->invoke($accounts, $token), 'Token UUID deve ser aceito sem alteração.');
@@ -50,6 +54,12 @@ financialFlowAssertThrows(
     'Token com caracteres fora do contrato deve ser rejeitado.'
 );
 financialFlowAssertSame(123456, $moneyToCents->invoke($accounts, '1.234,56'), 'Pagamento deve operar em centavos.');
+financialFlowAssertSame('boleto', $accountsPaymentForm->invoke($accounts, 'boleto'), 'Boleto compensado deve ser aceito no pagamento da OS.');
+financialFlowAssertSame(12, $installmentCount->invoke($accounts, '12', 'cartao_credito'), 'Cartão de crédito deve aceitar parcelas válidas.');
+financialFlowAssertSame(3, $installmentCount->invoke($accounts, 3, 'boleto'), 'Boleto compensado deve preservar a quantidade de parcelas.');
+financialFlowAssertSame(1, $installmentCount->invoke($accounts, 1, 'pix'), 'Pagamento sem parcelamento deve possuir uma parcela.');
+financialFlowAssertThrows(static fn() => $installmentCount->invoke($accounts, 2, 'pix'), 'Pix não pode persistir parcelamento inconsistente.');
+financialFlowAssertThrows(static fn() => $installmentCount->invoke($accounts, 61, 'cartao_credito'), 'Parcelamento acima do limite deve ser rejeitado.');
 
 $receiptReflection = new ReflectionClass(ReceiptService::class);
 $receipt = $receiptReflection->newInstanceWithoutConstructor();
@@ -59,6 +69,7 @@ $receiptForm = $receiptReflection->getMethod('paymentForm');
 $receiptForm->setAccessible(true);
 financialFlowAssertSame('1234.56', $receiptMoney->invoke($receipt, '1.234,56'), 'Recibo avulso deve normalizar valor sem float.');
 financialFlowAssertSame('pix', $receiptForm->invoke($receipt, 'pix'), 'Forma de pagamento conhecida deve ser aceita.');
+financialFlowAssertSame('boleto', $receiptForm->invoke($receipt, 'boleto'), 'Recibo deve reconhecer boleto compensado.');
 financialFlowAssertThrows(static fn() => $receiptMoney->invoke($receipt, '0'), 'Recibo de valor zero deve ser rejeitado.');
 financialFlowAssertThrows(static fn() => $receiptForm->invoke($receipt, 'cripto'), 'Forma desconhecida deve ser rejeitada.');
 
@@ -90,15 +101,61 @@ $standaloneReceiptAction = file_get_contents(dirname(__DIR__) . '/actions/recibo
 $lifecycleSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderLifecycleService.php');
 $receiptSource = file_get_contents(dirname(__DIR__) . '/src/Finance/Service/ReceiptService.php');
 $accountsSource = file_get_contents(dirname(__DIR__) . '/src/Finance/Service/AccountsReceivableManagementService.php');
+$orderRepositorySource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Repository/ServiceOrderRepository.php');
+$orderManagementSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderManagementService.php');
+$paymentPageSource = file_get_contents(dirname(__DIR__) . '/pages/ordens-servico.php');
+$paymentScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/ordens-servico-pagamento.js');
+$receiptPrintSource = file_get_contents(dirname(__DIR__) . '/recibo-imprimir.php');
 financialFlowAssert(is_string($finalizationAction), 'Action de finalização deve ser legível.');
 financialFlowAssert(!str_contains((string) $finalizationAction, "requirePermission('os.finalizar_com_pagamento')"), 'Finalização não pode exigir permissão de pagamento.');
+financialFlowAssert(str_contains((string) $finalizationAction, 'os_store_post_completion_payment_prompt'), 'Conclusão confirmada deve preparar a pergunta de pagamento posterior.');
+financialFlowAssert(str_contains((string) $finalizationAction, "['modal' => null]"), 'Sucesso na conclusão deve remover recovery antigo antes de abrir o pagamento.');
 financialFlowAssert(str_contains((string) $paymentAction, "os_action_context('contas_receber.registrar_pagamento')"), 'Pagamento de OS deve exigir permissão financeira.');
 financialFlowAssert(str_contains((string) $paymentAction, "can('recibo.emitir')"), 'Pagamento com recibo deve exigir permissão de emissão.');
 financialFlowAssert(str_contains((string) $paymentAction, "'payment_token'"), 'Action de pagamento deve receber token idempotente.');
+financialFlowAssert(str_contains((string) $paymentAction, "'quantidade_parcelas'"), 'Action de pagamento deve receber a quantidade de parcelas.');
+financialFlowAssert(str_contains((string) $paymentAction, "os_store_form_recovery('pay'"), 'Erro no pagamento deve preservar os dados para nova tentativa segura.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'O cliente já pagou este serviço?'), 'A página deve perguntar se a OS concluída foi paga.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'name="quantidade_parcelas"'), 'A modal deve possuir campo acessível de parcelas.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'Boleto já compensado'), 'A interface não pode confundir boleto emitido com boleto pago.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'id="os-pay-leave-pending" type="button" data-bs-dismiss="modal">Não, deixar pendente'), 'Não pago deve fechar a modal sem POST financeiro.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'aria-labelledby="os-pay-title"'), 'A modal de pagamento deve possuir nome acessível.');
+financialFlowAssert(str_contains((string) $paymentPageSource, '$isOrderPaid'), 'A opção de recibo na OS deve depender da quitação do serviço.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'if ($isOrderPaid)'), 'Pagamento parcial não deve exibir a opção final de recibo na lista de OS.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'Recibo: <?= h(os_payment_label($payment)) ?>'), 'OS paga deve mostrar a opção Recibo identificando o pagamento.');
+financialFlowAssert(str_contains((string) $paymentScriptSource, "method.value === 'boleto' || method.value === 'cartao_credito'"), 'Parcelas devem aparecer somente para boleto e cartão de crédito.');
+financialFlowAssert(str_contains((string) $paymentScriptSource, 'clearModalQuery();'), 'Recuperação do pagamento deve ser consumida sem reabrir uma modal vazia no refresh.');
+financialFlowAssert(is_string($receiptPrintSource), 'Página de impressão de recibo deve ser legível.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, "!in_array(\$format, ['termica', 'a4'], true)"), 'Formato do recibo deve usar allowlist estrita no servidor.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, '$hasInitialPrintGrant && $format !== null'), 'Escolha do formato não pode consumir o grant da primeira impressão.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'Cache-Control: private, no-store'), 'Recibo com dados pessoais não deve ser armazenado em cache compartilhado.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, '@page { size: 80mm auto;'), 'Recibo térmico deve possuir largura real de 80 mm.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, '@page { size: A4 portrait;'), 'Recibo para impressora comum deve usar A4 retrato.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'Térmica 80 mm'), 'Seletor deve explicar a impressão térmica.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'A4 — impressora comum'), 'Seletor deve explicar a impressão em impressora comum.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'DOCUMENTO NÃO FISCAL'), 'Ambos os formatos devem identificar claramente que o recibo não é fiscal.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'window.setTimeout(function () { window.print(); }'), 'Impressão deve abrir somente depois da escolha do formato.');
 financialFlowAssert(str_contains((string) $standaloneReceiptAction, "os_action_context('recibo.emitir')"), 'Recibo avulso deve exigir autorização própria.');
 financialFlowAssert(str_contains((string) $lifecycleSource, 'total_origem'), 'Estorno deve restaurar o total anterior da OS quando houver snapshot.');
 financialFlowAssert(str_contains((string) $lifecycleSource, 'reversePaymentsAndCash'), 'Estorno deve preservar a compensação financeira e de Caixa.');
 financialFlowAssert(!str_contains((string) $receiptSource, 'LIKE :search OR'), 'Busca de recibos não pode reutilizar placeholders com prepared statements nativos.');
 financialFlowAssert(!str_contains((string) $accountsSource, 'LIKE :search OR'), 'Busca de contas a receber não pode reutilizar placeholders com prepared statements nativos.');
+financialFlowAssert(
+    str_contains((string) $orderRepositorySource, '$this->bindForm($statement, $data, $totals, false);'),
+    'Edição de OS não pode vincular o parâmetro :status ausente do UPDATE.'
+);
+financialFlowAssert(
+    str_contains((string) $orderRepositorySource, 'if ($includeStatus)'),
+    'Binding compartilhado deve incluir :status somente nas queries que possuem esse placeholder.'
+);
+
+$manualCreateStart = strpos((string) $orderManagementSource, 'public function createOrder(');
+$budgetCreateStart = strpos((string) $orderManagementSource, 'public function createOrderFromApprovedBudget(');
+$approvalStart = strpos((string) $orderManagementSource, 'public function approveBudgetAndCreateOrder(');
+financialFlowAssert($manualCreateStart !== false && $budgetCreateStart !== false && $approvalStart !== false, 'Fluxos de criação de OS devem ser localizáveis.');
+$manualCreateSource = substr((string) $orderManagementSource, $manualCreateStart, $budgetCreateStart - $manualCreateStart);
+$budgetCreateSource = substr((string) $orderManagementSource, $budgetCreateStart, $approvalStart - $budgetCreateStart);
+financialFlowAssert(!str_contains($manualCreateSource, 'validateConflicts'), 'Nova OS manual deve aceitar sobreposição de horário da equipe.');
+financialFlowAssert(!str_contains($budgetCreateSource, 'validateConflicts'), 'Nova OS de orçamento deve aceitar sobreposição de horário da equipe.');
 
 echo "ServiceOrderFinancialFlowValidationTest: OK\n";

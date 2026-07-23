@@ -16,7 +16,7 @@ final class InventoryManagementService
     public function consumeForOrder(int $orderId, int $productId, string $quantity, int $userId, ?int $authorizationId = null): void
     {
         $qty = $this->quantity($quantity);
-        $statement = $this->connection->prepare('SELECT id, nome, estoque FROM produtos WHERE id = :id FOR UPDATE');
+        $statement = $this->connection->prepare('SELECT id, nome, estoque FROM produtos WHERE id = :id AND excluido_em IS NULL FOR UPDATE');
         $statement->execute(['id' => $productId]);
         $product = $statement->fetch();
         if ($product === false) throw new InvalidArgumentException('Produto da finalização não encontrado.');
@@ -69,7 +69,7 @@ final class InventoryManagementService
     public function consumeForSale(int $saleId, int $productId, string $quantity, int $userId): int
     {
         $qty = $this->quantity($quantity);
-        $statement = $this->connection->prepare('SELECT id, nome, estoque FROM produtos WHERE id = :id AND status = "ativo" FOR UPDATE');
+        $statement = $this->connection->prepare('SELECT id, nome, estoque FROM produtos WHERE id = :id AND status = "ativo" AND excluido_em IS NULL FOR UPDATE');
         $statement->execute(['id' => $productId]);
         $product = $statement->fetch();
         if ($product === false) throw new InvalidArgumentException('Produto do PDV não encontrado ou inativo.');

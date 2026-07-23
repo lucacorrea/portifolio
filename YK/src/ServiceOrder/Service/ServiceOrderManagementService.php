@@ -93,7 +93,6 @@ final class ServiceOrderManagementService
             $this->validateReferences($data);
             $this->validateStateRequirements($data->status(), $team, $schedule);
             if ($team !== null && $team->hasMembers()) $this->validateEmployees($team);
-            if ($team !== null && $team->hasMembers() && $schedule !== null) $this->validateConflicts(null, $team, $schedule);
 
             return $this->orders->create(
                 $data,
@@ -156,9 +155,6 @@ final class ServiceOrderManagementService
             $this->validateStateRequirements($data->status(), $team, $schedule);
             if ($team !== null && $team->hasMembers()) {
                 $this->validateEmployees($team);
-            }
-            if ($team !== null && $team->hasMembers() && $schedule !== null) {
-                $this->validateConflicts(null, $team, $schedule);
             }
 
             return $this->orders->create(
@@ -462,13 +458,13 @@ final class ServiceOrderManagementService
 
     private function validateReferences(ServiceOrderFormData $data): void
     {
-        $client = $this->clients->findById($data->clientId());
+        $client = $this->clients->findByIdForUpdate($data->clientId());
         if ($client === null) throw new InvalidArgumentException('Cliente não encontrado.');
         foreach ($data->items() as $item) {
-            if ($item->type() === 'servico' && ($item->referenceId() === null || $this->services->findById($item->referenceId()) === null)) {
+            if ($item->type() === 'servico' && ($item->referenceId() === null || $this->services->findByIdForUpdate($item->referenceId()) === null)) {
                 throw new InvalidArgumentException('Serviço da OS não encontrado.');
             }
-            if ($item->type() === 'produto' && ($item->referenceId() === null || $this->products->findById($item->referenceId()) === null)) {
+            if ($item->type() === 'produto' && ($item->referenceId() === null || $this->products->findByIdForUpdate($item->referenceId()) === null)) {
                 throw new InvalidArgumentException('Produto da OS não encontrado.');
             }
         }

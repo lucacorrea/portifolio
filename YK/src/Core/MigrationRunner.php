@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -371,6 +371,29 @@ final class MigrationRunner
                 && $this->permissionSatisfied('os.excluir')
                 && $this->permissionSatisfied('contas_receber.registrar_pagamento')
                 && $this->permissionSatisfied('recibo.emitir'),
+            20 => $this->allColumns('produtos', ['excluido_em', 'excluido_por', 'motivo_exclusao'])
+                && $this->allIndexes([['produtos', 'idx_produtos_exclusao']])
+                && $this->allForeignKeys(['fk_produtos_exclusao_usuario'])
+                && $this->permissionSatisfied('produto.excluir'),
+            21 => $this->allColumns('ordem_servico_pagamentos', ['quantidade_parcelas'])
+                && $this->allColumns('recibos', ['quantidade_parcelas'])
+                && $this->columnTypeContains('ordem_servico_pagamentos', 'forma_pagamento', "'boleto'"),
+            22 => $this->allColumns('clientes', ['excluido_em', 'excluido_por'])
+                && $this->allColumns('orcamentos', ['excluido_em', 'excluido_por'])
+                && $this->allColumns('servicos', ['excluido_em', 'excluido_por'])
+                && $this->allIndexes([
+                    ['clientes', 'idx_clientes_exclusao'],
+                    ['orcamentos', 'idx_orcamentos_exclusao'],
+                    ['servicos', 'idx_servicos_exclusao'],
+                ])
+                && $this->allForeignKeys([
+                    'fk_clientes_exclusao_usuario',
+                    'fk_orcamentos_exclusao_usuario',
+                    'fk_servicos_exclusao_usuario',
+                ])
+                && $this->permissionSatisfied('cliente.excluir')
+                && $this->permissionSatisfied('orcamento.excluir')
+                && $this->permissionSatisfied('servico.excluir'),
             default => null,
         };
     }

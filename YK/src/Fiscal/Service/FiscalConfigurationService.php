@@ -23,7 +23,8 @@ final class FiscalConfigurationService
     public function __construct(
         private readonly FiscalConfigurationRepository $repository,
         private readonly ?FiscalSecretVault $vault = null,
-        private readonly ?FiscalCertificateStorage $certificateStorage = null
+        private readonly ?FiscalCertificateStorage $certificateStorage = null,
+        private readonly ?FiscalRuntimeReadiness $runtimeReadiness = null
     ) {
     }
 
@@ -32,13 +33,17 @@ final class FiscalConfigurationService
     {
         $environment = self::environment($environment);
         $model = self::model($model);
+        $configuration = $this->repository->latestConfiguration($environment, $model);
         return [
             'environment' => $environment,
             'model' => $model,
-            'configuration' => $this->repository->latestConfiguration($environment, $model),
+            'configuration' => $configuration,
             'certificates' => $this->repository->activeCertificates(),
             'series' => $this->repository->activeSeries($environment, $model),
             'readiness' => $this->readiness($environment, $model),
+            'integration_test' => $configuration === null
+                ? null
+                : $this->repository->latestIntegrationTest((int) $configuration['id']),
         ];
     }
 
@@ -61,6 +66,9 @@ final class FiscalConfigurationService
             $companyCnpj,
             null,
             function (array $metadata) use ($secret, $userId, &$certificateId): void {
+                if ($this->repository->certificateFingerprintExists($metadata['fingerprint'])) {
+                    throw new InvalidArgumentException('Este certificado A1 já está cadastrado.');
+                }
                 $certificateId = $this->repository->insertCertificate($metadata, $secret, $userId);
             }
         );
@@ -170,13 +178,45 @@ final class FiscalConfigurationService
         $series = $this->repository->activeSeries($environment, $model);
         if ($series === []) $errors[] = 'Cadastre ao menos uma série ativa para o ambiente e modelo.';
         $productChecks = $this->repository->productReadiness($crt);
-        foreach (['missing_ncm', 'missing_origin', 'missing_cfop', 'missing_icms_code', 'missing_pis', 'missing_cofins', 'missing_tax_unit'] as $field) {
-            if (($productChecks[$field] ?? 0) > 0) $errors[] = 'Existem produtos de venda com cadastro tributário incompleto.';
+        $productLabels = [
+            'missing_ncm' => 'NCM',
+            'missing_origin' => 'origem',
+            'missing_cfop' => 'CFOP',
+            'missing_icms_code' => 'CST/CSOSN',
+            'missing_pis' => 'CST PIS',
+            'missing_cofins' => 'CST COFINS',
+            'missing_tax_unit' => 'unidade tributável',
+        ];
+        $missingProductData = [];
+        foreach ($productLabels as $field => $label) {
+            $count = (int) ($productChecks[$field] ?? 0);
+            if ($count > 0) $missingProductData[] = sprintf('%s (%d)', $label, $count);
+        }
+        if ($missingProductData !== []) {
+            $errors[] = 'Cadastro tributário de produtos incompleto: ' . implode(', ', $missingProductData) . '.';
         }
         $clientChecks = $this->repository->clientReadiness();
-        if (($clientChecks['identified_without_address'] ?? 0) > 0) $warnings[] = 'Há clientes identificados sem endereço completo para NF-e.';
-        if (($clientChecks['contributors_without_ie'] ?? 0) > 0) $warnings[] = 'Há clientes contribuintes sem inscrição estadual.';
-        if (($clientChecks['invalid_city_code'] ?? 0) > 0) $warnings[] = 'Há clientes com código IBGE inválido.';
+        $clientsWithoutAddress = (int) ($clientChecks['identified_without_address'] ?? 0);
+        if ($clientsWithoutAddress > 0) {
+            $warnings[] = sprintf(
+                'Aviso: %d cliente(s) identificado(s) estão sem endereço completo para NF-e.',
+                $clientsWithoutAddress
+            );
+        }
+        $contributorsWithoutIe = (int) ($clientChecks['contributors_without_ie'] ?? 0);
+        if ($contributorsWithoutIe > 0) {
+            $warnings[] = sprintf(
+                'Aviso: %d cliente(s) contribuinte(s) estão sem inscrição estadual.',
+                $contributorsWithoutIe
+            );
+        }
+        $clientsWithInvalidCityCode = (int) ($clientChecks['invalid_city_code'] ?? 0);
+        if ($clientsWithInvalidCityCode > 0) {
+            $warnings[] = sprintf(
+                'Aviso: %d cliente(s) estão com código IBGE inválido.',
+                $clientsWithInvalidCityCode
+            );
+        }
         $blocked = $environment === 'producao';
         if ($blocked) $errors[] = 'Emissão em produção está bloqueada nesta etapa de fundação fiscal.';
 
@@ -199,6 +239,13 @@ final class FiscalConfigurationService
         }
         $readiness = $this->readiness('homologacao', (string) $configuration['modelo'], $configurationId);
         if (!$readiness['ready']) throw new InvalidArgumentException('A configuração fiscal possui pendências e não pode ser ativada.');
+        $runtime = $this->runtimeReadiness?->inspect();
+        if (!is_array($runtime) || !$runtime['homologation_ready']) {
+            throw new InvalidArgumentException('Conclua os requisitos técnicos do servidor antes de ativar a configuração.');
+        }
+        if (!$this->repository->hasSuccessfulIntegrationTest($configurationId)) {
+            throw new InvalidArgumentException('Teste a comunicação com a SEFAZ antes de ativar a configuração.');
+        }
         $this->repository->activateConfiguration($configurationId, 'homologacao', (string) $configuration['modelo'], $userId);
     }
 

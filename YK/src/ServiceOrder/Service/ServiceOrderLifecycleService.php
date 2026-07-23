@@ -80,10 +80,9 @@ final class ServiceOrderLifecycleService
         });
     }
 
-    public function softDelete(int $orderId, string $reason, int $userId): void
+    public function softDelete(int $orderId, int $userId): void
     {
-        $reason = $this->requiredReason($reason);
-        $this->transactional(function () use ($orderId, $reason, $userId): void {
+        $this->transactional(function () use ($orderId, $userId): void {
             $order = $this->lockOrder($orderId);
             if ($order['excluida_em'] !== null) {
                 return;
@@ -99,14 +98,13 @@ final class ServiceOrderLifecycleService
                 'UPDATE ordens_servico
                     SET excluida_em = CURRENT_TIMESTAMP,
                         excluida_por = :user_id,
-                        motivo_exclusao = :reason,
+                        motivo_exclusao = NULL,
                         orcamento_liberado = CASE WHEN orcamento_id IS NULL THEN orcamento_liberado ELSE 1 END,
                         orcamento_operacional_chave = NULL
                   WHERE id = :id AND excluida_em IS NULL'
             )->execute([
                 'id' => $orderId,
                 'user_id' => $userId,
-                'reason' => $reason,
             ]);
         });
     }

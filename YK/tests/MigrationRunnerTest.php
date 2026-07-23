@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(19, count($migrationPaths), 'A sequência atual deve conter 19 migrations.');
+migrationAssertSame(22, count($migrationPaths), 'A sequência atual deve conter 22 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -104,5 +104,29 @@ migrationAssertSame(true, str_contains((string) $orderPaymentMigration, 'uq_os_p
 migrationAssertSame(true, str_contains((string) $orderPaymentMigration, 'total_origem'), 'Estorno deve conseguir restaurar os totais anteriores da OS.');
 migrationAssertSame(true, str_contains((string) $orderPaymentMigration, 'os.excluir'), 'A permissão de exclusão lógica deve ser reparada na migration.');
 migrationAssertSame(true, str_contains((string) $orderPaymentMigration, 'recibo.emitir'), 'Emissão de recibo deve possuir permissão ativa.');
+
+$productDeletionMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/020_product_soft_deletion.sql');
+migrationAssertSame(true, is_string($productDeletionMigration), 'A migration de exclusão lógica de produtos deve ser legível.');
+migrationAssertSame(true, str_contains((string) $productDeletionMigration, 'excluido_em'), 'Produto excluído deve registrar data e hora.');
+migrationAssertSame(true, str_contains((string) $productDeletionMigration, 'excluido_por'), 'Produto excluído deve registrar o usuário responsável.');
+migrationAssertSame(true, str_contains((string) $productDeletionMigration, 'motivo_exclusao'), 'Produto excluído deve registrar o motivo.');
+migrationAssertSame(true, str_contains((string) $productDeletionMigration, 'idx_produtos_exclusao'), 'Consultas devem possuir índice para exclusão lógica.');
+migrationAssertSame(true, str_contains((string) $productDeletionMigration, 'fk_produtos_exclusao_usuario'), 'Auditoria da exclusão deve preservar integridade referencial.');
+migrationAssertSame(true, str_contains((string) $productDeletionMigration, 'produto.excluir'), 'A permissão de excluir produtos deve ser reparada.');
+
+$serviceOrderInstallmentsMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/021_service_order_payment_installments.sql');
+migrationAssertSame(true, is_string($serviceOrderInstallmentsMigration), 'A migration de parcelas do pagamento de OS deve ser legível.');
+migrationAssertSame(true, str_contains((string) $serviceOrderInstallmentsMigration, 'quantidade_parcelas'), 'Pagamento e recibo devem persistir as parcelas.');
+migrationAssertSame(true, str_contains((string) $serviceOrderInstallmentsMigration, "'boleto'"), 'Pagamento de OS deve reconhecer boleto compensado.');
+migrationAssertSame(true, str_contains((string) $serviceOrderInstallmentsMigration, 'ALTER TABLE recibos'), 'Recibo deve manter snapshot da quantidade de parcelas.');
+
+$masterDataDeletionMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/022_master_data_soft_deletion.sql');
+migrationAssertSame(true, is_string($masterDataDeletionMigration), 'A migration de exclusão lógica dos cadastros deve ser legível.');
+foreach (['clientes', 'orcamentos', 'servicos'] as $table) {
+    migrationAssertSame(true, str_contains((string) $masterDataDeletionMigration, 'ALTER TABLE ' . $table), 'A migration deve preparar exclusão lógica em ' . $table . '.');
+}
+foreach (['cliente.excluir', 'orcamento.excluir', 'servico.excluir'] as $permission) {
+    migrationAssertSame(true, str_contains((string) $masterDataDeletionMigration, $permission), 'A migration deve reparar a permissão ' . $permission . '.');
+}
 
 echo "MigrationRunnerTest: OK\n";

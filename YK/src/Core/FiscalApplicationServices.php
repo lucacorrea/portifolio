@@ -8,12 +8,14 @@ use App\Fiscal\Repository\FiscalConfigurationRepository;
 use App\Fiscal\Security\FiscalSecretVault;
 use App\Fiscal\Service\FiscalConfigurationService;
 use App\Fiscal\Service\FiscalRuntimeReadiness;
+use App\Fiscal\Service\FiscalSefazConnectionService;
 use App\Fiscal\Storage\FiscalCertificateStorage;
 
 trait FiscalApplicationServices
 {
     private ?FiscalConfigurationService $fiscalConfigurationService = null;
     private ?FiscalRuntimeReadiness $fiscalRuntimeReadiness = null;
+    private ?FiscalSefazConnectionService $fiscalSefazConnectionService = null;
 
     public function fiscalConfiguration(): FiscalConfigurationService
     {
@@ -32,7 +34,8 @@ trait FiscalApplicationServices
             $this->fiscalConfigurationService = new FiscalConfigurationService(
                 new FiscalConfigurationRepository($connection),
                 $vault,
-                FiscalCertificateStorage::forProjectRoot($projectRoot)
+                FiscalCertificateStorage::forProjectRoot($projectRoot),
+                $this->fiscalRuntimeReadiness()
             );
         }
 
@@ -49,5 +52,21 @@ trait FiscalApplicationServices
         }
 
         return $this->fiscalRuntimeReadiness;
+    }
+
+    public function fiscalSefazConnection(): FiscalSefazConnectionService
+    {
+        if ($this->fiscalSefazConnectionService === null) {
+            $connection = $this->database->connection();
+            $projectRoot = (string) ($this->settings['project_root'] ?? dirname(__DIR__, 2));
+            $this->fiscalSefazConnectionService = new FiscalSefazConnectionService(
+                new FiscalConfigurationRepository($connection),
+                FiscalSecretVault::fromEnvironment(),
+                FiscalCertificateStorage::forProjectRoot($projectRoot),
+                $this->fiscalRuntimeReadiness()
+            );
+        }
+
+        return $this->fiscalSefazConnectionService;
     }
 }

@@ -13,7 +13,7 @@ trait PointOfSaleOperations
     {
         return $this->connection->query(
             'SELECT id, codigo, nome, unidade, codigo_barras, preco_venda, estoque
-               FROM produtos WHERE status = "ativo" AND estoque > 0 AND preco_venda > 0
+               FROM produtos WHERE status = "ativo" AND excluido_em IS NULL AND estoque > 0 AND preco_venda > 0
               ORDER BY nome, id'
         )->fetchAll();
     }
@@ -60,7 +60,7 @@ trait PointOfSaleOperations
             $products = [];
             $subtotal = 0;
             foreach ($items as $item) {
-                $statement = $this->connection->prepare('SELECT id, nome, unidade, preco_venda, estoque FROM produtos WHERE id = :id AND status = "ativo" FOR UPDATE');
+                $statement = $this->connection->prepare('SELECT id, nome, unidade, preco_venda, estoque FROM produtos WHERE id = :id AND status = "ativo" AND excluido_em IS NULL FOR UPDATE');
                 $statement->execute(['id' => $item['product_id']]);
                 $product = $statement->fetch();
                 if ($product === false) throw new InvalidArgumentException('Produto do PDV não encontrado ou inativo.');

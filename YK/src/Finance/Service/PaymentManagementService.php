@@ -27,6 +27,7 @@ final class PaymentManagementService
         int $orderId,
         string $value,
         string $form,
+        int|string $installmentCount,
         ?string $notes,
         string $paymentToken,
         int $userId
@@ -38,6 +39,7 @@ final class PaymentManagementService
                 $orderId,
                 $value,
                 $form,
+                $installmentCount,
                 $notes,
                 $paymentToken,
                 $userId

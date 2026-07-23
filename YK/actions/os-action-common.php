@@ -150,3 +150,33 @@ function os_consume_form_recovery(): ?array
     }
     return ['modal' => $recovery['modal'], 'error' => $recovery['error'], 'data' => $recovery['data']];
 }
+
+function os_store_post_completion_payment_prompt(int $orderId, string $orderNumber, string $balance): void
+{
+    if ($orderId <= 0 || !preg_match('/^\d+(?:\.\d{1,2})?$/', $balance)) {
+        return;
+    }
+
+    $_SESSION['os_post_completion_payment_prompt'] = [
+        'order_id' => $orderId,
+        'order_number' => trim($orderNumber),
+        'balance' => number_format((float) $balance, 2, '.', ''),
+    ];
+}
+
+/** @return array{order_id:int,order_number:string,balance:string}|null */
+function os_consume_post_completion_payment_prompt(): ?array
+{
+    $prompt = $_SESSION['os_post_completion_payment_prompt'] ?? null;
+    unset($_SESSION['os_post_completion_payment_prompt']);
+    if (!is_array($prompt)) return null;
+
+    $orderId = filter_var($prompt['order_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    $orderNumber = trim((string) ($prompt['order_number'] ?? ''));
+    $balance = trim((string) ($prompt['balance'] ?? ''));
+    if (!is_int($orderId) || $orderNumber === '' || !preg_match('/^\d+(?:\.\d{2})$/', $balance)) {
+        return null;
+    }
+
+    return ['order_id' => $orderId, 'order_number' => $orderNumber, 'balance' => $balance];
+}
