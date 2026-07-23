@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Fiscal\Storage;
 
 use InvalidArgumentException;
+use NFePHP\Common\Certificate;
 use RuntimeException;
 use Throwable;
 
@@ -200,9 +201,13 @@ final class FiscalCertificateStorage
             throw new InvalidArgumentException('O certificado fiscal está fora do período de validade.');
         }
 
-        $subjectCnpj = $this->subjectCnpj(is_array($parsed['subject'] ?? null) ? $parsed['subject'] : []);
-        if ($subjectCnpj === null || !hash_equals($expectedCnpj, $subjectCnpj)) {
-            throw new InvalidArgumentException('O certificado não pertence ao CNPJ informado.');
+        $subject = is_array($parsed['subject'] ?? null) ? $parsed['subject'] : [];
+        $subjectCnpj = $this->certificateCnpj($contents, $password, $subject);
+        if ($subjectCnpj === null) {
+            throw new InvalidArgumentException('Não foi possível identificar o CNPJ do titular no certificado A1.');
+        }
+        if (!hash_equals($expectedCnpj, $subjectCnpj)) {
+            throw new InvalidArgumentException('O CNPJ do certificado A1 não corresponde ao CNPJ cadastrado da empresa.');
         }
 
         $fingerprint = $this->certificateFingerprint($certificates['cert']);
@@ -317,6 +322,23 @@ final class FiscalCertificateStorage
         } finally {
             fclose($handle);
         }
+    }
+
+    /** @param array<string,mixed> $subject */
+    private function certificateCnpj(string $contents, string $password, array $subject): ?string
+    {
+        if (class_exists(Certificate::class)) {
+            try {
+                $oidCnpj = @Certificate::readPfx($contents, $password)->getCnpj();
+                if (is_scalar($oidCnpj) && trim((string) $oidCnpj) !== '') {
+                    return self::normalizeCnpj((string) $oidCnpj);
+                }
+            } catch (Throwable) {
+                // Mantém compatibilidade com certificados antigos sem o OID ICP-Brasil.
+            }
+        }
+
+        return $this->subjectCnpj($subject);
     }
 
     /** @param array<string,mixed> $subject */

@@ -178,13 +178,45 @@ final class FiscalConfigurationService
         $series = $this->repository->activeSeries($environment, $model);
         if ($series === []) $errors[] = 'Cadastre ao menos uma série ativa para o ambiente e modelo.';
         $productChecks = $this->repository->productReadiness($crt);
-        foreach (['missing_ncm', 'missing_origin', 'missing_cfop', 'missing_icms_code', 'missing_pis', 'missing_cofins', 'missing_tax_unit'] as $field) {
-            if (($productChecks[$field] ?? 0) > 0) $errors[] = 'Existem produtos de venda com cadastro tributário incompleto.';
+        $productLabels = [
+            'missing_ncm' => 'NCM',
+            'missing_origin' => 'origem',
+            'missing_cfop' => 'CFOP',
+            'missing_icms_code' => 'CST/CSOSN',
+            'missing_pis' => 'CST PIS',
+            'missing_cofins' => 'CST COFINS',
+            'missing_tax_unit' => 'unidade tributável',
+        ];
+        $missingProductData = [];
+        foreach ($productLabels as $field => $label) {
+            $count = (int) ($productChecks[$field] ?? 0);
+            if ($count > 0) $missingProductData[] = sprintf('%s (%d)', $label, $count);
+        }
+        if ($missingProductData !== []) {
+            $errors[] = 'Cadastro tributário de produtos incompleto: ' . implode(', ', $missingProductData) . '.';
         }
         $clientChecks = $this->repository->clientReadiness();
-        if (($clientChecks['identified_without_address'] ?? 0) > 0) $warnings[] = 'Há clientes identificados sem endereço completo para NF-e.';
-        if (($clientChecks['contributors_without_ie'] ?? 0) > 0) $warnings[] = 'Há clientes contribuintes sem inscrição estadual.';
-        if (($clientChecks['invalid_city_code'] ?? 0) > 0) $warnings[] = 'Há clientes com código IBGE inválido.';
+        $clientsWithoutAddress = (int) ($clientChecks['identified_without_address'] ?? 0);
+        if ($clientsWithoutAddress > 0) {
+            $warnings[] = sprintf(
+                'Aviso: %d cliente(s) identificado(s) estão sem endereço completo para NF-e.',
+                $clientsWithoutAddress
+            );
+        }
+        $contributorsWithoutIe = (int) ($clientChecks['contributors_without_ie'] ?? 0);
+        if ($contributorsWithoutIe > 0) {
+            $warnings[] = sprintf(
+                'Aviso: %d cliente(s) contribuinte(s) estão sem inscrição estadual.',
+                $contributorsWithoutIe
+            );
+        }
+        $clientsWithInvalidCityCode = (int) ($clientChecks['invalid_city_code'] ?? 0);
+        if ($clientsWithInvalidCityCode > 0) {
+            $warnings[] = sprintf(
+                'Aviso: %d cliente(s) estão com código IBGE inválido.',
+                $clientsWithInvalidCityCode
+            );
+        }
         $blocked = $environment === 'producao';
         if ($blocked) $errors[] = 'Emissão em produção está bloqueada nesta etapa de fundação fiscal.';
 
