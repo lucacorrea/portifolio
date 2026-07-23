@@ -1527,6 +1527,7 @@ function selectForQty(product) {
     pendingProduct = product;
     showPreview(product);
     const qtyInput = document.getElementById('pdvQty');
+    pdvSearch.value = '';
     qtyInput.focus();
     qtyInput.select();
     searchResults.classList.add('d-none');
@@ -1535,6 +1536,7 @@ function selectForQty(product) {
 function addToCart(product) {
     const qtyInput = document.getElementById('pdvQty');
     const qtyToAdd = parseFloat(qtyInput.value) || 1;
+    pendingProduct = null;
 
     // Se for preço variável, vamos garantir que o valor inicial seja 0 ou o preço base para facilitar a edição
     const existing = cart.find(i => i.id === product.id && (parseInt(product.preco_variavel) !== 1));
@@ -3764,8 +3766,17 @@ async function handleBarcode(val) {
         try {
             const response = await fetch(`vendas.php?action=search&term=${encodeURIComponent(val)}`);
             const products = await response.json();
-            if (products.length === 1) {
-                addToCart(products[0]);
+            const exactProducts = Array.isArray(products)
+                ? products.filter(p => {
+                    if (p.type === 'pre_sale') return false;
+                    const keys = [p.codigo, p.cean, p.qrcode]
+                        .filter(v => v !== null && v !== undefined)
+                        .map(v => String(v).trim());
+                    return keys.includes(String(val).trim());
+                })
+                : [];
+            if (exactProducts.length === 1) {
+                addToCart(exactProducts[0]);
                 pdvSearch.value = '';
             }
         } finally {
