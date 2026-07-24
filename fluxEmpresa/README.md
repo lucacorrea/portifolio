@@ -1,56 +1,44 @@
-# FluxEmpresa
+# K. Yamaguchi Refrigeração
 
-Sistema web SaaS para empresas controlarem solicitações, orçamentos, execução/entrega, comprovantes, pagamentos e prestação de contas.
+Layout visual em PHP, Bootstrap 5 e Bootstrap Icons para gestão de serviços de refrigeração.
 
-## Objetivo do MVP
+## Como executar
 
-Criar uma base segura em PHP puro + MySQL para operar múltiplas empresas dentro da mesma instalação, com isolamento por `empresa_id` e uma área de Super Admin da L&J para administrar todos os clientes sem precisar usar o login de cada empresa.
+```bash
+php -S localhost:8000
+```
 
-## Fluxo principal
+Acesse `http://localhost:8000/dashboard.php`.
 
-1. Empresa cadastra cliente.
-2. Empresa cadastra produtos/serviços.
-3. Operador cria solicitação/pedido.
-4. Sistema gera orçamento.
-5. Orçamento é exportado em PDF.
-6. Orçamento é enviado pelo WhatsApp.
-7. Cliente aprova.
-8. Empresa executa serviço ou entrega produto.
-9. Empresa anexa comprovantes/fotos/documentos.
-10. Financeiro controla pagamento.
-11. Sistema gera relatório de prestação de contas.
+## Escopo desta etapa
 
-## Perfis iniciais
+- Somente interface visual.
+- Dados fictícios fixos para demonstração do layout.
+- Sem banco de dados, APIs, autenticação, uploads, integrações, cálculos reais, PDF real, WhatsApp, localStorage ou persistência.
+- JavaScript limitado a sidebar mobile, tooltips, tabs, dropdowns e modais Bootstrap.
 
-- `SUPER_ADMIN`: L&J, acesso global a todas as empresas.
-- `ADMIN_EMPRESA`: dono/gestor da empresa cliente.
-- `OPERADOR`: cria solicitações, atualiza execução e anexos.
-- `FINANCEIRO`: controla pagamentos e relatórios financeiros.
+## Páginas
 
-## Segurança obrigatória
-
-- Nunca salvar credenciais reais no repositório.
-- Usar `.env` local baseado no `.env.example`.
-- Toda tabela operacional deve ter `empresa_id`.
-- Todas as consultas devem filtrar por `empresa_id`, exceto telas do `SUPER_ADMIN`.
-- Toda ação POST deve usar CSRF.
-- Uploads devem validar tamanho, extensão e MIME real.
-- Logs devem registrar ações sensíveis.
+- `dashboard.php`
+- `ordens-servico.php`
+- `orcamentos.php`
+- `clientes.php`
+- `agenda.php`
+- `pecas.php`
+- `servicos.php`
+- `funcionarios.php`
+- `caixa.php`
+- `faturamento.php`
+- `relatorios.php`
+- `configuracoes.php`
 
 ## Estrutura
 
-```txt
-fluxEmpresa/
-├── public/
-├── app/
-├── database/
-├── storage/
-├── .env.example
-├── .gitignore
-├── README.md
-└── IMPLEMENTACAO.md
-```
-
-## Status
-
-Estrutura inicial criada para o MVP. As próximas etapas são implementar autenticação real, migrations, CRUDs e geração de PDF/WhatsApp.
+- `includes/menu.php`: menu lateral e identidade K. Yamaguchi.
+- `includes/topbar.php`: breadcrumb, título, descrição e ação principal visual.
+- `includes/shell.php`: estrutura base compartilhada.
+- `includes/ui.php`: componentes e layouts visuais reutilizáveis.
+- `pages/dashboard.php`: renderização do dashboard.
+- `pages/operational.php`: renderização das páginas internas.
+- `assets/css/dashboard.css`: design system e responsividade.
+- `assets/js/osmais-app.js`: interações visuais mínimas.
