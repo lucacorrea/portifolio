@@ -106,6 +106,11 @@ function receipt_print_form(mixed $value): string
     ][(string) $value] ?? (string) $value;
 }
 
+function receipt_print_quantity(mixed $value): string
+{
+    return rtrim(rtrim(number_format((float) $value, 3, ',', '.'), '0'), ',');
+}
+
 function receipt_print_logo(mixed $value): ?string
 {
     $logo = trim((string) $value);
@@ -190,6 +195,10 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
 .title { margin: 22px 0 16px; text-align: center; font-size: 22px; letter-spacing: .08em; }
 .amount { margin: 16px 0; padding: 12px; border: 1px solid #9ca3af; border-radius: 6px; text-align: center; font-size: 21px; font-weight: 700; }
 .description { min-height: 50mm; font-size: 14px; line-height: 1.65; }
+.services { margin: 10px 0; font-size: 12px; }
+.services strong { display: block; margin-bottom: 4px; }
+.service-list { margin: 0; padding-left: 18px; }
+.service-list li + li { margin-top: 3px; }
 .details { border-top: 1px solid #d1d5db; padding-top: 10px; font-size: 12px; line-height: 1.6; }
 .signature { width: 75%; margin: 25mm auto 0; border-top: 1px solid #111827; padding-top: 5px; text-align: center; font-size: 11px; }
 .non-fiscal { margin-top: 16px; text-align: center; color: #4b5563; font-size: 10px; font-weight: 700; }
@@ -207,6 +216,7 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
 .format-a4 .amount { margin: 6px 0; padding: 7px; font-size: 18px; }
 .format-a4 .description { min-height: 25mm; font-size: 11px; line-height: 1.45; }
 .format-a4 .description p { margin: 6px 0; }
+.format-a4 .services { margin: 6px 0; font-size: 10px; }
 .format-a4 .details { padding-top: 6px; font-size: 10px; line-height: 1.45; }
 .format-a4 .signature { margin-top: 12mm; font-size: 10px; }
 .format-a4 .non-fiscal { margin-top: 7px; font-size: 8px; }
@@ -222,6 +232,10 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
 .format-termica .amount { margin: 3mm 0; padding: 2.5mm; border: 1px dashed #111827; border-radius: 0; font-size: 18px; }
 .format-termica .description { min-height: 0; font-size: 10px; line-height: 1.45; }
 .format-termica .description p { margin: 2mm 0; }
+.format-termica .services { margin: 2mm 0; font-size: 9px; line-height: 1.35; }
+.format-termica .services strong { margin-bottom: 1mm; }
+.format-termica .service-list { padding-left: 4mm; }
+.format-termica .service-list li + li { margin-top: 1mm; }
 .format-termica .details { margin-top: 3mm; border-top: 1px dashed #777; padding-top: 2mm; font-size: 9px; line-height: 1.45; }
 .format-termica .signature { width: 92%; margin: 12mm auto 0; font-size: 9px; }
 .format-termica .non-fiscal { margin-top: 3mm; padding-top: 2mm; border-top: 1px dashed #777; color: #111827; font-size: 9px; }
@@ -288,6 +302,20 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
         <p><strong>Cliente:</strong> <?= receipt_print_h($receipt['cliente_nome']) ?></p>
         <?php if ($receipt['cliente_documento']): ?><p><strong>Documento:</strong> <?= receipt_print_h($receipt['cliente_documento']) ?></p><?php endif; ?>
     </section>
+    <?php if (!empty($receipt['servicos'])): ?>
+        <section class="services">
+            <strong>Serviços realizados</strong>
+            <ul class="service-list">
+                <?php foreach ($receipt['servicos'] as $service): ?>
+                    <li>
+                        <?= receipt_print_h($service['descricao'] ?? '') ?>
+                        — <?= receipt_print_h(receipt_print_quantity($service['quantidade'] ?? 0)) ?>
+                        <?= receipt_print_h($service['unidade'] ?? 'un') ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </section>
+    <?php endif; ?>
     <section class="details">
         <?php if (!empty($receipt['os_numero'])): ?><div><strong>Ordem de Serviço:</strong> <?= receipt_print_h($receipt['os_numero']) ?></div><?php endif; ?>
         <div><strong>Forma de pagamento:</strong> <?= receipt_print_h(receipt_print_form($receipt['forma_pagamento'])) ?></div>
