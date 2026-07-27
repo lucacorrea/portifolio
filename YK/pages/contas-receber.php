@@ -24,6 +24,19 @@ $canBatch = $authorization->can('contas_receber.baixa_lote');
 $canContact = $authorization->can('contas_receber.registrar_contato');
 $canIssueReceipt = $authorization->can('recibo.emitir');
 $canReprintReceipt = $authorization->can('recibo.reimprimir');
+$canViewFiscal = $authorization->can('nota_fiscal.visualizar');
+$canIssueFiscal = $authorization->can('nota_fiscal.emitir');
+$fiscalDocumentsByOrder = [];
+if ($canViewFiscal || $canIssueFiscal) {
+    try {
+        $fiscalDocumentsByOrder = $application->fiscalDocuments()->listByOrderIds(array_map(
+            static fn(array $account): int => (int) $account['ordem_servico_id'],
+            $accounts
+        ));
+    } catch (Throwable $exception) {
+        error_log('Receivables fiscal summary unavailable [' . get_class($exception) . '].');
+    }
+}
 $paymentsByOrder = ($canIssueReceipt || $canReprintReceipt)
     ? $application->receiptService()->listActivePaymentsForOrders(array_map(
         static fn(array $account): int => (int) $account['ordem_servico_id'],
@@ -80,7 +93,7 @@ function cr_payment_label(array $payment): string
     <?php else: ?>
     <div class="table-panel-wrap"><table class="os-table"><thead><tr><?php if ($canBatch): ?><th class="cr-select-column"><span class="visually-hidden">Selecionar</span></th><?php endif; ?><th>Cliente</th><th>OS</th><th>Valor total</th><th>Recebido</th><th>Saldo</th><th>Vencimento</th><th>Próximo lembrete</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
     <?php foreach ($accounts as $account): ?>
-        <?php $batchEligible = $canBatch && in_array((string) $account['status'], ['pendente','parcial','vencida'], true) && (float) $account['saldo'] > 0; $orderPayments = $paymentsByOrder[(int) $account['ordem_servico_id']] ?? []; ?>
+        <?php $batchEligible = $canBatch && in_array((string) $account['status'], ['pendente','parcial','vencida'], true) && (float) $account['saldo'] > 0; $orderPayments = $paymentsByOrder[(int) $account['ordem_servico_id']] ?? []; $accountFiscalDocuments = $fiscalDocumentsByOrder[(int) $account['ordem_servico_id']] ?? []; $accountFiscalModels = array_map(static fn(array $document): string => (string) $document['modelo'], $accountFiscalDocuments); ?>
         <tr>
             <?php if ($canBatch): ?><td class="cr-select-column"><?php if ($batchEligible): ?><input class="form-check-input js-cr-batch-account" type="checkbox" value="<?= h((string) $account['id']) ?>" data-client-id="<?= h((string) $account['cliente_id']) ?>" data-client-name="<?= h((string) $account['cliente_nome']) ?>" data-balance="<?= h((string) $account['saldo']) ?>" data-order="<?= h((string) $account['os_numero']) ?>" aria-label="Selecionar <?= h((string) $account['os_numero']) ?> de <?= h((string) $account['cliente_nome']) ?>"><?php endif; ?></td><?php endif; ?>
             <td><?= h((string) $account['cliente_nome']) ?></td>
@@ -101,6 +114,20 @@ function cr_payment_label(array $payment): string
                             <li><button class="dropdown-item js-cr-receipt" type="button" data-payment-id="<?= h((string) $payment['id']) ?>" data-order-number="<?= h((string) $account['os_numero']) ?>" data-payment-label="<?= h(cr_payment_label($payment)) ?>" data-bs-toggle="modal" data-bs-target="#modal-cr-receipt"><i class="bi bi-receipt-cutoff"></i> Gerar recibo: <?= h(cr_payment_label($payment)) ?></button></li>
                         <?php endif; ?>
                     <?php endforeach; ?>
+                <?php endif; ?>
+                <?php if ((string) $account['status'] === 'paga'): ?>
+                    <?php foreach ($accountFiscalDocuments as $fiscalDocument): ?>
+                        <?php if (($fiscalDocument['processamento_status'] ?? '') === 'autorizado' && $canViewFiscal): ?>
+                            <li><a class="dropdown-item" href="nota-fiscal-imprimir.php?id=<?= h((string) $fiscalDocument['id']) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir <?= ($fiscalDocument['modelo'] ?? '') === '55' ? 'DANFE' : 'DANFCE' ?> autorizada</a></li>
+                        <?php else: ?>
+                            <li><span class="dropdown-item-text text-muted"><i class="bi bi-file-earmark-lock"></i> Modelo <?= h((string) ($fiscalDocument['modelo'] ?? '')) ?>: <?= h((string) ($fiscalDocument['processamento_status'] ?? 'rascunho')) ?></span></li>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                    <?php if ($canIssueFiscal): ?>
+                        <?php foreach (['55' => 'NF-e de peças', '65' => 'NFC-e de peças'] as $fiscalModel => $fiscalLabel): ?>
+                            <?php if (!in_array($fiscalModel, $accountFiscalModels, true)): ?><li><form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $account['ordem_servico_id']) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-file-earmark-check"></i> Preparar <?= h($fiscalLabel) ?> em homologação</button></form></li><?php endif; ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <li><a class="dropdown-item" href="ordens-servico.php?search=<?= h(rawurlencode((string) $account['os_numero'])) ?>"><i class="bi bi-eye"></i> Abrir OS</a></li>
                 <?php if ($canContact && !empty($account['cliente_telefone'])): ?><li><a class="dropdown-item" target="_blank" href="https://wa.me/55<?= h(preg_replace('/\D+/', '', (string) $account['cliente_telefone'])) ?>?text=<?= h(rawurlencode('Ola, ' . $account['cliente_nome'] . '. Consta um saldo pendente de ' . cr_money((string) $account['saldo']) . ' referente a ' . $account['os_numero'] . ', com vencimento em ' . cr_date($account['vencimento_em'] ?? null) . '.')) ?>"><i class="bi bi-whatsapp"></i> Abrir WhatsApp</a></li><?php endif; ?>

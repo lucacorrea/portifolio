@@ -28,7 +28,9 @@ final class FiscalRuntimeReadiness
             'soap' => class_exists('SoapClient'),
             'mbstring' => function_exists('mb_strlen') && function_exists('mb_convert_encoding'),
             'zlib' => function_exists('gzencode'),
+            'gd' => extension_loaded('gd'),
             'nfephp' => class_exists('NFePHP\\NFe\\Tools'),
+            'sped_da' => class_exists('NFePHP\\DA\\NFe\\Danfe') && class_exists('NFePHP\\DA\\NFe\\Danfce'),
         ], $integrationEnabled, $productionEnabled, is_string($key) && strlen($key) === 32);
     }
 
@@ -43,7 +45,9 @@ final class FiscalRuntimeReadiness
             'soap' => 'SOAP para serviços da SEFAZ',
             'mbstring' => 'Multibyte para tratamento de textos fiscais',
             'zlib' => 'Zlib para compactação dos lotes fiscais',
+            'gd' => 'GD para códigos de barras e documentos auxiliares',
             'nfephp' => 'Biblioteca fiscal NFePHP/SPED-NFe',
+            'sped_da' => 'Biblioteca oficial NFePHP/SPED-DA para DANFE e DANFCE',
         ];
         $checks = [];
         foreach ($labels as $key => $label) {

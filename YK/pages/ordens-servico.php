@@ -75,6 +75,18 @@ $canReverse = $authorization->can('os.estornar');
 $canDelete = $authorization->can('os.excluir');
 $canIssueReceipt = $authorization->can('recibo.emitir');
 $canReprintReceipt = $authorization->can('recibo.reimprimir');
+$canViewFiscal = $authorization->can('nota_fiscal.visualizar');
+$canIssueFiscal = $authorization->can('nota_fiscal.emitir');
+$fiscalDocumentsByOrder = [];
+if ($canViewFiscal || $canIssueFiscal) {
+    try {
+        $fiscalDocumentsByOrder = $application->fiscalDocuments()->listByOrderIds(
+            array_map(static fn($order): int => $order->id(), $orders)
+        );
+    } catch (Throwable $exception) {
+        error_log('Service order fiscal summary unavailable [' . get_class($exception) . '].');
+    }
+}
 $paymentsByOrder = ($canIssueReceipt || $canReprintReceipt)
     ? $application->receiptService()->listActivePaymentsForOrders(array_map(
         static fn(ServiceOrder $order): int => $order->id(),
@@ -278,7 +290,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                 <thead><tr><th>OS</th><th>Cliente</th><th>Contato</th><th>Local</th><th>Funcionarios</th><th>Data do servico</th><?php if ($canViewValues): ?><th>Valor total</th><?php endif; ?><th>Status</th><th>Acoes</th></tr></thead>
                 <tbody>
                 <?php foreach ($orders as $order): ?>
-                    <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; $receivable = $receivableBalances[$order->id()] ?? null; $isOrderPaid = is_array($receivable) && (string) ($receivable['status'] ?? '') === 'paga'; ?>
+                    <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; $receivable = $receivableBalances[$order->id()] ?? null; $isOrderPaid = is_array($receivable) && (string) ($receivable['status'] ?? '') === 'paga'; $orderFiscalDocuments = $fiscalDocumentsByOrder[$order->id()] ?? []; $orderFiscalModels = array_map(static fn(array $document): string => (string) $document['modelo'], $orderFiscalDocuments); ?>
                     <tr>
                         <td>
                             <strong><?= h($order->displayNumber()) ?></strong>
@@ -312,7 +324,20 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                     <?php if ($canCancel && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item text-danger js-os-cancel" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os-cancel"><i class="bi bi-x-circle"></i> Cancelar servico</button></li><?php endif; ?>
                                     <?php if ($canReopen && $order->status() === 'cancelada'): ?><li><button class="dropdown-item js-os-status" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-operation="reopen" data-label="Reabrir" data-bs-toggle="modal" data-bs-target="#modal-os-status"><i class="bi bi-arrow-counterclockwise"></i> Reabrir</button></li><?php endif; ?>
                                     <?php if ($canPrint): ?><li><a class="dropdown-item" href="ordem-servico-imprimir.php?id=<?= h((string) $order->id()) ?>&valores=<?= $canViewValues ? '1' : '0' ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir / reimprimir OS</a></li><?php endif; ?>
-                                    <?php if ($canProof && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=0" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> Comprovante de servico</a></li><?php endif; ?>
+                                    <?php if ($canProof && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=0" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> Comprovante não fiscal sem valores</a></li><?php endif; ?>
+                                    <?php if ($canProof && $canViewValues && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=1" target="_blank" rel="noopener"><i class="bi bi-currency-dollar"></i> Comprovante não fiscal com valores</a></li><?php endif; ?>
+                                    <?php foreach ($orderFiscalDocuments as $fiscalDocument): ?>
+                                        <?php if (($fiscalDocument['processamento_status'] ?? '') === 'autorizado' && $canViewFiscal): ?>
+                                            <li><a class="dropdown-item" href="nota-fiscal-imprimir.php?id=<?= h((string) $fiscalDocument['id']) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir <?= ($fiscalDocument['modelo'] ?? '') === '55' ? 'DANFE' : 'DANFCE' ?> autorizada</a></li>
+                                        <?php else: ?>
+                                            <li><span class="dropdown-item-text text-muted"><i class="bi bi-file-earmark-lock"></i> Modelo <?= h((string) ($fiscalDocument['modelo'] ?? '')) ?>: <?= h((string) ($fiscalDocument['processamento_status'] ?? 'rascunho')) ?></span></li>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                    <?php if ($canIssueFiscal && $order->status() === 'finalizada'): ?>
+                                        <?php foreach (['55' => 'NF-e de peças', '65' => 'NFC-e de peças'] as $fiscalModel => $fiscalLabel): ?>
+                                            <?php if (!in_array($fiscalModel, $orderFiscalModels, true)): ?><li><form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-file-earmark-check"></i> Preparar <?= h($fiscalLabel) ?> em homologação</button></form></li><?php endif; ?>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                     <?php if ($isOrderPaid): ?>
                                         <?php foreach ($orderPayments as $payment): ?>
                                             <?php if (!empty($payment['recibo_id']) && $payment['recibo_status'] === 'emitido' && $canReprintReceipt): ?>

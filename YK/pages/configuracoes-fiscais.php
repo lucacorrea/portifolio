@@ -8,9 +8,14 @@ $canConfigure = $authorization->can('nota_fiscal.configurar');
 $canManageCredentials = $authorization->can('nota_fiscal.gerenciar_credenciais');
 $canTestIntegration = $authorization->can('nota_fiscal.testar_integracao');
 $runtime = $application->fiscalRuntimeReadiness()->inspect();
+$selectedModel = (string) ($_GET['modelo'] ?? '65');
+if (!in_array($selectedModel, ['55', '65'], true)) {
+    $selectedModel = '65';
+}
+$selectedDocumentLabel = $selectedModel === '55' ? 'NF-e' : 'NFC-e';
 $overview = null;
 try {
-    $overview = $application->fiscalConfiguration()->overview('homologacao', '65');
+    $overview = $application->fiscalConfiguration()->overview('homologacao', $selectedModel);
 } catch (Throwable $exception) {
     error_log('Fiscal configuration overview unavailable [' . get_class($exception) . '].');
 }
@@ -22,7 +27,11 @@ $series = is_array($overview['series'] ?? null) ? $overview['series'] : [];
 ?>
 
 <div class="page-body settings-page">
-  <div class="alert alert-info mb-4"><i class="bi bi-shield-check me-2"></i>A configuração começa em <strong>homologação</strong>. Produção e emissão permanecem bloqueadas até a validação técnica completa.</div>
+  <div class="alert alert-info mb-3"><i class="bi bi-shield-check me-2"></i>A configuração começa em <strong>homologação</strong>. Produção e emissão permanecem bloqueadas até a validação técnica completa.</div>
+  <nav class="d-flex flex-wrap gap-2 mb-4" aria-label="Modelo de documento fiscal">
+    <a class="btn-filter <?= $selectedModel === '55' ? 'btn-filter-primary' : 'btn-filter-ghost' ?>" href="configuracoes-fiscais.php?modelo=55"><i class="bi bi-file-earmark-text"></i> NF-e (modelo 55)</a>
+    <a class="btn-filter <?= $selectedModel === '65' ? 'btn-filter-primary' : 'btn-filter-ghost' ?>" href="configuracoes-fiscais.php?modelo=65"><i class="bi bi-receipt-cutoff"></i> NFC-e (modelo 65)</a>
+  </nav>
 
   <?php if ($overview === null): ?>
     <div class="alert alert-warning"><i class="bi bi-database-exclamation me-2"></i>A estrutura fiscal ainda não está disponível. Execute a migração 017 pelo processo controlado antes de configurar.</div>
@@ -64,18 +73,20 @@ $series = is_array($overview['series'] ?? null) ? $overview['series'] : [];
     </section>
 
     <section class="panel settings-panel">
-      <div class="panel-header"><div class="panel-title"><i class="bi bi-receipt"></i>NFC-e de homologação</div></div>
+      <div class="panel-header"><div class="panel-title"><i class="bi bi-receipt"></i><?= h($selectedDocumentLabel) ?> de homologação</div></div>
       <div class="p-3">
         <?php if ($configuration !== null): ?>
-          <div class="alert alert-info">Versão <?= (int) $configuration['versao'] ?> · série/modelo 65 · status <strong><?= h((string) $configuration['status']) ?></strong></div>
+          <div class="alert alert-info">Versão <?= (int) $configuration['versao'] ?> · modelo <?= h($selectedModel) ?> · status <strong><?= h((string) $configuration['status']) ?></strong></div>
         <?php endif; ?>
         <?php if ($canConfigure && $certificates !== [] && $overview !== null): ?>
           <form method="post" action="actions/configuracao-fiscal-salvar.php">
-            <?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="modelo" value="65">
+            <?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="modelo" value="<?= h($selectedModel) ?>">
             <div class="form-row"><div class="form-group"><label class="form-label" for="fiscal-state">UF</label><input class="form-control-os" id="fiscal-state" name="uf" value="AM" maxlength="2" required></div><div class="form-group"><label class="form-label" for="fiscal-schema">Schema NF-e</label><input class="form-control-os" id="fiscal-schema" name="schema_versao" value="4.00" maxlength="5" required></div></div>
             <div class="form-group"><label class="form-label" for="fiscal-certificate-id">Certificado</label><select class="form-select form-control-os" id="fiscal-certificate-id" name="certificado_id" required><?php foreach ($certificates as $certificate): ?><option value="<?= (int) $certificate['id'] ?>"><?= h((string) ($certificate['titular_nome'] ?? $certificate['titular_cnpj'])) ?> — <?= h(date('d/m/Y', strtotime((string) $certificate['valido_ate']))) ?></option><?php endforeach; ?></select></div>
-            <div class="form-row"><div class="form-group"><label class="form-label" for="fiscal-csc-id">ID do CSC</label><input class="form-control-os" id="fiscal-csc-id" name="csc_id" maxlength="40" autocomplete="off" required></div><div class="form-group"><label class="form-label" for="fiscal-csc">CSC de homologação</label><input class="form-control-os" id="fiscal-csc" type="password" name="csc" maxlength="120" autocomplete="new-password" required></div></div>
-            <input type="hidden" name="qr_code_versao" value="3">
+            <?php if ($selectedModel === '65'): ?>
+              <div class="form-row"><div class="form-group"><label class="form-label" for="fiscal-csc-id">ID do CSC</label><input class="form-control-os" id="fiscal-csc-id" name="csc_id" maxlength="40" autocomplete="off" required></div><div class="form-group"><label class="form-label" for="fiscal-csc">CSC de homologação</label><input class="form-control-os" id="fiscal-csc" type="password" name="csc" maxlength="120" autocomplete="new-password" required></div></div>
+              <input type="hidden" name="qr_code_versao" value="3">
+            <?php endif; ?>
             <button class="btn-modal-save" type="submit"><i class="bi bi-save"></i> Criar nova versão</button>
           </form>
         <?php elseif ($certificates === []): ?><p class="text-muted">Cadastre primeiro o certificado A1.</p><?php endif; ?>
@@ -86,7 +97,7 @@ $series = is_array($overview['series'] ?? null) ? $overview['series'] : [];
       <div class="panel-header"><div class="panel-title"><i class="bi bi-123"></i>Série e numeração</div></div>
       <div class="p-3">
         <?php foreach ($series as $serie): ?><div class="border rounded-3 p-3 mb-2"><strong>Série <?= (int) $serie['serie'] ?></strong><div class="small text-muted">Próximo número: <?= (int) $serie['proximo_numero'] ?></div></div><?php endforeach; ?>
-        <?php if ($canConfigure && $overview !== null): ?><form method="post" action="actions/configuracao-fiscal-serie-salvar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="modelo" value="65"><div class="form-row"><div class="form-group"><label class="form-label" for="fiscal-series">Série</label><input class="form-control-os" id="fiscal-series" type="number" name="serie" min="0" max="999" value="1" required></div><div class="form-group"><label class="form-label" for="fiscal-next-number">Próximo número</label><input class="form-control-os" id="fiscal-next-number" type="number" name="proximo_numero" min="1" max="999999999" value="1" required></div></div><button class="btn-modal-save" type="submit"><i class="bi bi-save"></i> Salvar série</button></form><?php endif; ?>
+        <?php if ($canConfigure && $overview !== null): ?><form method="post" action="actions/configuracao-fiscal-serie-salvar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="modelo" value="<?= h($selectedModel) ?>"><div class="form-row"><div class="form-group"><label class="form-label" for="fiscal-series">Série</label><input class="form-control-os" id="fiscal-series" type="number" name="serie" min="0" max="999" value="1" required></div><div class="form-group"><label class="form-label" for="fiscal-next-number">Próximo número</label><input class="form-control-os" id="fiscal-next-number" type="number" name="proximo_numero" min="1" max="999999999" value="1" required></div></div><button class="btn-modal-save" type="submit"><i class="bi bi-save"></i> Salvar série</button></form><?php endif; ?>
       </div>
     </section>
 

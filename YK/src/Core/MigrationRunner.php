@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -398,6 +398,38 @@ final class MigrationRunner
                 && $this->permissionSatisfied('recibo.emitir')
                 && $this->permissionSatisfied('recibo.reimprimir')
                 && $this->permissionSatisfied('recibo.cancelar'),
+            24 => $this->tableExists('fiscal_documento_eventos')
+                && $this->allColumns('documentos_fiscais', [
+                    'modelo', 'configuracao_id', 'serie_id', 'ordem_servico_id', 'conta_receber_id',
+                    'pagamento_id', 'finalidade', 'idempotency_key', 'processamento_status',
+                    'valor_produtos', 'valor_nota', 'snapshot_json', 'xml_autorizado_path',
+                    'xml_autorizado_sha256', 'autorizado_em', 'cancelado_em',
+                ])
+                && $this->allIndexes([
+                    ['documentos_fiscais', 'uq_documento_fiscal_idempotency'],
+                    ['documentos_fiscais', 'uq_documento_fiscal_origem_modelo'],
+                ])
+                && $this->allForeignKeys([
+                    'fk_documento_fiscal_configuracao', 'fk_documento_fiscal_serie',
+                    'fk_documento_fiscal_os', 'fk_documento_fiscal_conta',
+                    'fk_documento_fiscal_pagamento', 'fk_fiscal_documento_evento_documento',
+                    'fk_fiscal_documento_evento_usuario',
+                ])
+                && $this->permissionSatisfied('nota_fiscal.visualizar')
+                && $this->permissionSatisfied('nota_fiscal.emitir')
+                && $this->permissionSatisfied('nota_fiscal.cancelar'),
+            25 => $this->scalar(
+                "SELECT COUNT(*) FROM (
+                    SELECT INDEX_NAME
+                      FROM information_schema.STATISTICS
+                     WHERE TABLE_SCHEMA = DATABASE()
+                       AND TABLE_NAME = 'documentos_fiscais'
+                       AND INDEX_NAME = 'uq_documento_fiscal_numero'
+                     GROUP BY INDEX_NAME
+                    HAVING GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',') = 'ambiente,modelo,serie,numero'
+                       AND MIN(NON_UNIQUE) = 0
+                ) indice_fiscal"
+            ) === 1,
             default => null,
         };
     }

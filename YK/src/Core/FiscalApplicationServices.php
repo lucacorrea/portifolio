@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Fiscal\Repository\FiscalConfigurationRepository;
+use App\Fiscal\Repository\FiscalDocumentRepository;
 use App\Fiscal\Security\FiscalSecretVault;
 use App\Fiscal\Service\FiscalConfigurationService;
+use App\Fiscal\Service\FiscalDocumentPrintService;
+use App\Fiscal\Service\FiscalDocumentService;
 use App\Fiscal\Service\FiscalRuntimeReadiness;
 use App\Fiscal\Service\FiscalSefazConnectionService;
 use App\Fiscal\Storage\FiscalCertificateStorage;
@@ -68,5 +71,30 @@ trait FiscalApplicationServices
         }
 
         return $this->fiscalSefazConnectionService;
+    }
+    public function fiscalDocuments(): FiscalDocumentService
+    {
+        if ($this->fiscalDocumentService === null) {
+            $this->fiscalDocumentService = new FiscalDocumentService(
+                new FiscalDocumentRepository($this->database->connection()),
+                $this->fiscalConfiguration(),
+                $this->fiscalRuntimeReadiness()
+            );
+        }
+
+        return $this->fiscalDocumentService;
+    }
+
+    public function fiscalDocumentPrinter(): FiscalDocumentPrintService
+    {
+        if ($this->fiscalDocumentPrintService === null) {
+            $projectRoot = (string) ($this->settings['project_root'] ?? dirname(__DIR__, 2));
+            $this->fiscalDocumentPrintService = new FiscalDocumentPrintService(
+                new FiscalDocumentRepository($this->database->connection()),
+                FiscalDocumentStorage::forProjectRoot($projectRoot)
+            );
+        }
+
+        return $this->fiscalDocumentPrintService;
     }
 }

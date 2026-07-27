@@ -19,6 +19,20 @@ if ($canViewFiscal) {
 }
 $readiness = is_array($fiscalOverview['readiness'] ?? null) ? $fiscalOverview['readiness'] : null;
 $configuration = is_array($fiscalOverview['configuration'] ?? null) ? $fiscalOverview['configuration'] : null;
+$fiscalFilters = [
+  'search' => trim((string) ($_GET['fiscal_search'] ?? '')),
+  'status' => trim((string) ($_GET['fiscal_status'] ?? '')),
+  'modelo' => trim((string) ($_GET['fiscal_model'] ?? '')),
+  'ambiente' => trim((string) ($_GET['fiscal_environment'] ?? '')),
+];
+$fiscalDocuments = [];
+if ($canViewFiscal) {
+  try {
+    $fiscalDocuments = $application->fiscalDocuments()->listDocuments($fiscalFilters);
+  } catch (Throwable $exception) {
+    error_log('Fiscal document listing unavailable [' . get_class($exception) . '].');
+  }
+}
 $receiptFilters = [
   'search' => trim((string) ($_GET['search'] ?? '')),
   'status' => trim((string) ($_GET['receipt_status'] ?? '')),
@@ -66,9 +80,34 @@ function billing_receipt_type(array $receipt): string
       </div>
     </section>
 
-    <section class="panel mb-4">
-      <div class="panel-header"><div class="panel-title"><i class="bi bi-file-earmark-code"></i>Documentos NF-e / NFC-e</div></div>
-      <div class="empty-state py-5"><i class="bi bi-shield-exclamation"></i><h3>Emissão ainda não liberada</h3><p>A tela não simula notas fiscais. Os documentos aparecerão aqui somente após o adaptador oficial, o teste em homologação e a autorização real da SEFAZ.</p></div>
+    <section class="panel mb-4" id="documentos-fiscais">
+      <div class="panel-header"><div><div class="panel-title"><i class="bi bi-file-earmark-code"></i>Documentos NF-e / NFC-e</div><p class="text-muted small mb-0 mt-1">A tela não simula notas fiscais. DANFE e DANFCE só são liberados a partir do XML autorizado pela SEFAZ. Serviços permanecem separados e exigem NFS-e.</p></div></div>
+      <form class="filter-bar" method="get" action="faturamento.php" data-live-filter="fiscal-documents" data-live-regions="fiscal-results">
+        <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" name="fiscal_search" value="<?= h($fiscalFilters['search']) ?>" placeholder="Chave, cliente ou OS"></div>
+        <select class="filter-select" name="fiscal_model" aria-label="Modelo fiscal"><option value="">NF-e e NFC-e</option><option value="55" <?= $fiscalFilters['modelo'] === '55' ? 'selected' : '' ?>>NF-e (55)</option><option value="65" <?= $fiscalFilters['modelo'] === '65' ? 'selected' : '' ?>>NFC-e (65)</option></select>
+        <select class="filter-select" name="fiscal_status" aria-label="Status fiscal"><option value="">Todos os status</option><?php foreach (['preparado','processando','pendente_reconsulta','autorizado','rejeitado','denegado','cancelado','erro_tecnico'] as $status): ?><option value="<?= h($status) ?>" <?= $fiscalFilters['status'] === $status ? 'selected' : '' ?>><?= h(ucfirst(str_replace('_', ' ', $status))) ?></option><?php endforeach; ?></select>
+        <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
+        <a class="btn-filter btn-filter-ghost" href="faturamento.php#documentos-fiscais" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
+      </form>
+      <div data-live-region="fiscal-results">
+        <?php if ($fiscalDocuments === []): ?>
+          <div class="empty-state py-5"><i class="bi bi-shield-exclamation"></i><h3>Nenhum documento fiscal</h3><p>Use uma OS finalizada ou uma conta paga para preparar NF-e/NFC-e de peças. A impressão continuará bloqueada até a autorização real.</p></div>
+        <?php else: ?>
+          <div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Documento</th><th>Origem</th><th>Cliente</th><th>Valor</th><th>Status</th><th>Chave / motivo</th><th>Ações</th></tr></thead><tbody>
+          <?php foreach ($fiscalDocuments as $document): ?>
+            <tr>
+              <td><strong><?= ($document['modelo'] ?? '') === '55' ? 'NF-e' : 'NFC-e' ?> <?= h((string) ($document['serie'] ?? '')) ?>/<?= h((string) ($document['numero'] ?? '')) ?></strong><br><small class="text-muted"><?= h((string) ($document['ambiente'] ?? '')) ?></small></td>
+              <td><?= h((string) ($document['os_numero'] ?? '-')) ?></td>
+              <td><?= h((string) ($document['cliente_nome'] ?? '-')) ?></td>
+              <td><strong><?= h(billing_receipt_money($document['valor_nota'] ?? '0')) ?></strong></td>
+              <td><span class="badge-soft badge-<?= ($document['processamento_status'] ?? '') === 'autorizado' ? 'green' : (($document['processamento_status'] ?? '') === 'rejeitado' ? 'red' : 'amber') ?>"><?= h(ucfirst(str_replace('_', ' ', (string) ($document['processamento_status'] ?? 'rascunho')))) ?></span></td>
+              <td><?php if (!empty($document['chave'])): ?><small><?= h((string) $document['chave']) ?></small><?php else: ?><?= h((string) ($document['xmotivo'] ?? 'Aguardando transmissão/autorização')) ?><?php endif; ?></td>
+              <td class="table-actions-cell"><?php if (($document['processamento_status'] ?? '') === 'autorizado'): ?><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do documento fiscal"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item" href="nota-fiscal-imprimir.php?id=<?= h((string) $document['id']) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir <?= ($document['modelo'] ?? '') === '55' ? 'DANFE' : 'DANFCE' ?></a></li><?php if ($authorization->can('nota_fiscal.baixar_xml')): ?><li><a class="dropdown-item" href="nota-fiscal-xml.php?id=<?= h((string) $document['id']) ?>"><i class="bi bi-filetype-xml"></i> Baixar XML autorizado</a></li><?php endif; ?></ul></div><?php else: ?>—<?php endif; ?></td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody></table></div>
+        <?php endif; ?>
+      </div>
     </section>
   <?php endif; ?>
 
