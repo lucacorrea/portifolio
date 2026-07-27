@@ -49,4 +49,28 @@ try {
 }
 report_assert($invalid, 'Valor monetário com mais de duas casas deve ser rejeitado.');
 
+$decimalMethod = new ReflectionMethod(ProductionReportService::class, 'centsToDecimal');
+$decimalMethod->setAccessible(true);
+report_assert(
+    $decimalMethod->invoke(null, -150) === '-1.50',
+    'Saldo líquido negativo deve preservar sinal e casas decimais.'
+);
+
+$repositorySource = file_get_contents(dirname(__DIR__) . '/src/Report/Repository/ProductionReportRepository.php');
+$serviceSource = file_get_contents(dirname(__DIR__) . '/src/Report/Service/ProductionReportService.php');
+$pageSource = file_get_contents(dirname(__DIR__) . '/pages/relatorios.php');
+$entrySource = file_get_contents(dirname(__DIR__) . '/relatorios.php');
+$scriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/relatorios.js');
+report_assert(str_contains((string) $repositorySource, 'companyOrderDetails'), 'Empresa deve possuir detalhamento próprio sem duplicar OS por funcionário.');
+report_assert(str_contains((string) $repositorySource, 'LIMIT 200'), 'Detalhamento empresarial deve possuir limite de segurança.');
+report_assert(str_contains((string) $repositorySource, 'financialSummary'), 'Relatório completo deve separar fluxo financeiro da produção.');
+report_assert(str_contains((string) $repositorySource, 'itemRanking'), 'Relatório deve consolidar serviços e peças utilizados.');
+report_assert(str_contains((string) $serviceSource, "'financial' => false"), 'Serviço deve negar escopos de dados por padrão e liberá-los somente por permissão.');
+report_assert(str_contains((string) $pageSource, "can('relatorio.financeiro')"), 'Valores empresariais devem exigir permissão financeira.');
+report_assert(str_contains((string) $pageSource, "can('produto.visualizar_preco_custo')"), 'Custo do estoque deve exigir permissão específica.');
+report_assert(str_contains((string) $pageSource, 'data-report-panel="empresa"'), 'A visão da empresa deve possuir painel independente.');
+report_assert(str_contains((string) $pageSource, 'data-report-panel="funcionarios"'), 'A visão por funcionário deve possuir painel independente.');
+report_assert(str_contains((string) $pageSource, " ? '' : ' hidden'"), 'O painel inativo deve usar o atributo hidden.');
+report_assert(str_contains((string) $entrySource, 'assets/js/relatorios.js'), 'A página deve carregar o controlador das visões.');
+report_assert(str_contains((string) $scriptSource, 'panel.hidden ='), 'O controlador deve alternar a visibilidade real dos painéis.');
 echo "Production report service tests passed.\n";

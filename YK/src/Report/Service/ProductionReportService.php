@@ -19,86 +19,196 @@ final class ProductionReportService
     {
     }
 
-    /** @return array<string,mixed> */
-    public function monthlyReport(?string $competencia): array
+    /** @param array<string,bool> $scope @return array<string,mixed> */
+    public function monthlyReport(?string $competencia, array $scope = []): array
     {
+        $scope += [
+            'operational' => false,
+            'financial' => false,
+            'stock' => false,
+            'stock_cost' => false,
+            'employees' => false,
+            'commission' => false,
+            'goal' => false,
+        ];
+        $includeOperations = (bool) $scope['operational'];
+        $includeFinancial = (bool) $scope['financial'];
+        $includeStock = (bool) $scope['stock'];
+        $includeStockCost = (bool) $scope['stock_cost'];
+        $includeEmployees = (bool) $scope['employees'];
+        $includeCommission = (bool) $scope['commission'];
+        $includeGoal = (bool) $scope['goal'];
+
         $month = $this->competence($competencia);
         $start = $month->format('Y-m-01 00:00:00');
         $endExclusive = $month->modify('first day of next month')->format('Y-m-01 00:00:00');
-        $goalRow = $this->reports->activeGoal($month->format('Y-m-01'));
+        $goalRow = ($includeEmployees || $includeCommission || $includeGoal)
+            ? $this->reports->activeGoal($month->format('Y-m-01'))
+            : null;
         $goalCents = $goalRow === null ? 0 : self::databaseMoneyToCents((string) $goalRow['valor_meta']);
         $percentageUnits = $goalRow === null
             ? 0
             : self::databasePercentageToUnits((string) $goalRow['percentual_comissao']);
 
-        $summaryRow = $this->reports->summary($start, $endExclusive);
+        $summaryRow = ($includeOperations || $includeFinancial)
+            ? $this->reports->summary($start, $endExclusive, $includeFinancial)
+            : [];
+        $orders = (int) ($summaryRow['orders'] ?? 0);
         $companyTotal = self::databaseMoneyToCents((string) ($summaryRow['company_total'] ?? '0'));
-        $companyServices = self::databaseMoneyToCents((string) ($summaryRow['service_total'] ?? '0'));
+        $serviceTotal = self::databaseMoneyToCents((string) ($summaryRow['service_total'] ?? '0'));
+        $productTotal = self::databaseMoneyToCents((string) ($summaryRow['product_total'] ?? '0'));
+        $otherTotal = self::databaseMoneyToCents((string) ($summaryRow['other_total'] ?? '0'));
+        $discountTotal = self::databaseMoneyToCents((string) ($summaryRow['discount_total'] ?? '0'));
+        $increaseTotal = self::databaseMoneyToCents((string) ($summaryRow['increase_total'] ?? '0'));
+        $receivedTotal = self::databaseMoneyToCents((string) ($summaryRow['received_total'] ?? '0'));
+        $receivableBalance = self::databaseMoneyToCents((string) ($summaryRow['receivable_balance'] ?? '0'));
+        $averageTicket = $orders > 0 ? intdiv($companyTotal + intdiv($orders, 2), $orders) : 0;
+
+        $financialRow = $includeFinancial
+            ? $this->reports->financialSummary($start, $endExclusive)
+            : [];
+        $cashIn = self::databaseMoneyToCents((string) ($financialRow['cash_in'] ?? '0'));
+        $cashOut = self::databaseMoneyToCents((string) ($financialRow['cash_out'] ?? '0'));
+        $inventoryRow = $includeStock ? $this->reports->inventorySummary($includeStockCost) : [];
 
         $employees = [];
         $qualifiedCount = 0;
-        foreach ($this->reports->employeeProduction($start, $endExclusive) as $row) {
-            $realized = self::databaseMoneyToCents((string) ($row['realized'] ?? '0'));
-            $serviceTotal = self::databaseMoneyToCents((string) ($row['service_total'] ?? '0'));
-            $outcome = self::goalOutcome($realized, $goalCents, $percentageUnits, $goalRow !== null);
-            $qualified = $outcome['qualified'];
-            if ($qualified) {
-                ++$qualifiedCount;
+        if ($includeEmployees) {
+            foreach ($this->reports->employeeProduction($start, $endExclusive, $includeCommission) as $row) {
+                $realized = self::databaseMoneyToCents((string) ($row['realized'] ?? '0'));
+                $employeeServices = self::databaseMoneyToCents((string) ($row['service_total'] ?? '0'));
+                $outcome = self::goalOutcome(
+                    $realized,
+                    $goalCents,
+                    $percentageUnits,
+                    $goalRow !== null && $includeCommission
+                );
+                if ($outcome['qualified']) {
+                    ++$qualifiedCount;
+                }
+                $employee = [
+                    'id' => (int) ($row['id'] ?? 0),
+                    'code' => (string) ($row['codigo'] ?? ''),
+                    'name' => (string) ($row['nome'] ?? ''),
+                    'function' => (string) ($row['funcao'] ?? ''),
+                    'orders' => (int) ($row['orders'] ?? 0),
+                ];
+                if ($includeCommission) {
+                    $employee += [
+                        'realized' => self::centsToDecimal($realized),
+                        'service_total' => self::centsToDecimal($employeeServices),
+                        'progress_percent' => self::progressPercentage($realized, $goalCents),
+                        'remaining' => self::centsToDecimal(max(0, $goalCents - $realized)),
+                        'exceeded' => self::centsToDecimal(max(0, $realized - $goalCents)),
+                        'qualified' => $outcome['qualified'],
+                        'prize' => self::centsToDecimal($outcome['prize_cents']),
+                    ];
+                }
+                $employees[] = $employee;
             }
-
-            $employees[] = [
-                'id' => (int) ($row['id'] ?? 0),
-                'code' => (string) ($row['codigo'] ?? ''),
-                'name' => (string) ($row['nome'] ?? ''),
-                'function' => (string) ($row['funcao'] ?? ''),
-                'orders' => (int) ($row['orders'] ?? 0),
-                'realized' => self::centsToDecimal($realized),
-                'service_total' => self::centsToDecimal($serviceTotal),
-                'progress_percent' => self::progressPercentage($realized, $goalCents),
-                'remaining' => self::centsToDecimal(max(0, $goalCents - $realized)),
-                'exceeded' => self::centsToDecimal(max(0, $realized - $goalCents)),
-                'qualified' => $qualified,
-                'prize' => self::centsToDecimal($outcome['prize_cents']),
-            ];
         }
 
-        $details = array_map(
-            static fn(array $row): array => [
-                'employee_name' => (string) ($row['employee_name'] ?? ''),
-                'employee_function' => (string) ($row['employee_function'] ?? ''),
-                'order_number' => (string) ($row['order_number'] ?? ''),
-                'client_name' => (string) ($row['client_name'] ?? ''),
-                'finalized_at' => (string) ($row['finalized_at'] ?? ''),
-                'service_total' => self::centsToDecimal(
-                    self::databaseMoneyToCents((string) ($row['service_total'] ?? '0'))
-                ),
-                'executed_total' => self::centsToDecimal(
-                    self::databaseMoneyToCents((string) ($row['executed_total'] ?? '0'))
-                ),
-            ],
-            $this->reports->employeeOrderDetails($start, $endExclusive)
-        );
+        $employeeDetails = [];
+        if ($includeEmployees) {
+            foreach ($this->reports->employeeOrderDetails($start, $endExclusive, $includeCommission) as $row) {
+                $detail = [
+                    'employee_name' => (string) ($row['employee_name'] ?? ''),
+                    'employee_function' => (string) ($row['employee_function'] ?? ''),
+                    'order_number' => (string) ($row['order_number'] ?? ''),
+                    'client_name' => (string) ($row['client_name'] ?? ''),
+                    'finalized_at' => (string) ($row['finalized_at'] ?? ''),
+                ];
+                if ($includeCommission) {
+                    $detail += [
+                        'service_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['service_total'] ?? '0'))),
+                        'executed_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['executed_total'] ?? '0'))),
+                    ];
+                }
+                $employeeDetails[] = $detail;
+            }
+        }
+
+        $companyDetails = [];
+        if ($includeOperations || $includeFinancial) {
+            foreach ($this->reports->companyOrderDetails($start, $endExclusive, $includeFinancial) as $row) {
+                $companyDetails[] = [
+                    'order_number' => (string) ($row['order_number'] ?? ''),
+                    'client_name' => (string) ($row['client_name'] ?? ''),
+                    'finalized_at' => (string) ($row['finalized_at'] ?? ''),
+                    'service_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['service_total'] ?? '0'))),
+                    'product_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['product_total'] ?? '0'))),
+                    'other_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['other_total'] ?? '0'))),
+                    'discount_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['discount_total'] ?? '0'))),
+                    'increase_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['increase_total'] ?? '0'))),
+                    'executed_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['executed_total'] ?? '0'))),
+                    'received_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['received_total'] ?? '0'))),
+                    'balance' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['balance'] ?? '0'))),
+                    'payment_status' => (string) ($row['payment_status'] ?? 'pendente'),
+                ];
+            }
+        }
+
+        $mapRanking = static fn(array $row): array => [
+            'description' => (string) ($row['descricao'] ?? ''),
+            'unit' => (string) ($row['unidade'] ?? ''),
+            'orders' => (int) ($row['orders'] ?? 0),
+            'quantity' => (string) ($row['quantity'] ?? '0.000'),
+            'total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($row['total'] ?? '0'))),
+        ];
+        $serviceRanking = $includeOperations
+            ? array_map($mapRanking, $this->reports->itemRanking($start, $endExclusive, 'servico', $includeFinancial))
+            : [];
+        $productRanking = $includeStock
+            ? array_map($mapRanking, $this->reports->itemRanking($start, $endExclusive, 'produto', $includeFinancial))
+            : [];
 
         return [
             'competencia' => $month->format('Y-m'),
             'period_label' => self::MONTHS[(int) $month->format('n')] . ' de ' . $month->format('Y'),
             'goal' => [
                 'configured' => $goalRow !== null,
-                'amount' => self::centsToDecimal($goalCents),
-                'percentage' => self::percentageUnitsToDecimal($percentageUnits),
+                'amount' => $includeCommission ? self::centsToDecimal($goalCents) : '0.00',
+                'percentage' => $includeCommission ? self::percentageUnitsToDecimal($percentageUnits) : '0.00',
             ],
             'summary' => [
-                'orders' => (int) ($summaryRow['orders'] ?? 0),
+                'orders' => $orders,
+                'clients' => (int) ($summaryRow['clients'] ?? 0),
                 'company_total' => self::centsToDecimal($companyTotal),
-                'service_total' => self::centsToDecimal($companyServices),
+                'service_total' => self::centsToDecimal($serviceTotal),
+                'product_total' => self::centsToDecimal($productTotal),
+                'other_total' => self::centsToDecimal($otherTotal),
+                'discount_total' => self::centsToDecimal($discountTotal),
+                'increase_total' => self::centsToDecimal($increaseTotal),
+                'received_total' => self::centsToDecimal($receivedTotal),
+                'receivable_balance' => self::centsToDecimal($receivableBalance),
+                'average_ticket' => self::centsToDecimal($averageTicket),
+                'paid_orders' => (int) ($summaryRow['paid_orders'] ?? 0),
+                'open_orders' => (int) ($summaryRow['open_orders'] ?? 0),
                 'employee_count' => count($employees),
                 'qualified_count' => $qualifiedCount,
             ],
+            'financial' => [
+                'cash_in' => self::centsToDecimal($cashIn),
+                'cash_out' => self::centsToDecimal($cashOut),
+                'cash_net' => self::centsToDecimal($cashIn - $cashOut),
+                'paid_installments' => (int) ($financialRow['paid_installments'] ?? 0),
+                'paid_expenses' => self::centsToDecimal(self::databaseMoneyToCents((string) ($financialRow['paid_expenses'] ?? '0'))),
+                'sales' => (int) ($financialRow['sales'] ?? 0),
+                'sales_total' => self::centsToDecimal(self::databaseMoneyToCents((string) ($financialRow['sales_total'] ?? '0'))),
+            ],
+            'inventory' => [
+                'active_products' => (int) ($inventoryRow['active_products'] ?? 0),
+                'out_of_stock' => (int) ($inventoryRow['out_of_stock'] ?? 0),
+                'low_stock' => (int) ($inventoryRow['low_stock'] ?? 0),
+                'stock_cost_value' => self::centsToDecimal(self::databaseMoneyToCents((string) ($inventoryRow['stock_cost_value'] ?? '0'))),
+            ],
+            'company_details' => $companyDetails,
+            'service_ranking' => $serviceRanking,
+            'product_ranking' => $productRanking,
             'employees' => $employees,
-            'details' => $details,
+            'details' => $employeeDetails,
         ];
     }
-
     /** @param array<string,mixed> $data */
     public function saveMonthlyGoal(array $data, int $userId): void
     {
@@ -227,7 +337,10 @@ final class ProductionReportService
 
     private static function centsToDecimal(int $cents): string
     {
-        return intdiv($cents, 100) . '.' . str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
+        $absolute = abs($cents);
+        return ($cents < 0 ? '-' : '')
+            . intdiv($absolute, 100) . '.'
+            . str_pad((string) ($absolute % 100), 2, '0', STR_PAD_LEFT);
     }
 
     private static function percentageUnitsToDecimal(int $units): string
