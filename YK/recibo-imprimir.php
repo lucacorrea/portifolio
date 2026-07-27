@@ -74,6 +74,23 @@ try {
     exit('Recibo não encontrado.');
 }
 
+$paymentSituation = null;
+$orderId = (int) ($receipt['ordem_servico_id'] ?? 0);
+if ($orderId > 0) {
+    try {
+        $order = $application->serviceOrderManagement()->getOrder($orderId);
+        $activePayments = $application->receiptService()->listActivePaymentsForOrder($orderId);
+        $paidCents = array_sum(array_map(
+            static fn(array $payment): int => (int) round((float) ($payment['valor'] ?? 0) * 100),
+            $activePayments
+        ));
+        $totalCents = (int) round((float) $order->total() * 100);
+        $paymentSituation = $paidCents >= $totalCents ? 'Quitado' : 'Pagamento parcial';
+    } catch (Throwable) {
+        $paymentSituation = null;
+    }
+}
+
 function receipt_print_h(mixed $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -163,7 +180,7 @@ $isA4 = $format === 'a4';
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= $format === null ? 'Escolher impressão' : 'Recibo' ?> <?= receipt_print_h($receipt['numero'] ?? '') ?></title>
+<title><?= $format === null ? 'Escolher impressão' : 'Comprovante de Serviços e Pagamento' ?> <?= receipt_print_h($receipt['numero'] ?? '') ?></title>
 <style>
 <?php if ($isThermal): ?>
 @page { size: 80mm auto; margin: 3mm; }
@@ -194,6 +211,8 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
 .meta { text-align: right; white-space: nowrap; }
 .title { margin: 22px 0 16px; text-align: center; font-size: 22px; letter-spacing: .08em; }
 .amount { margin: 16px 0; padding: 12px; border: 1px solid #9ca3af; border-radius: 6px; text-align: center; font-size: 21px; font-weight: 700; }
+.amount span { display: block; margin-bottom: 3px; font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+.amount strong { font-size: inherit; }
 .description { min-height: 50mm; font-size: 14px; line-height: 1.65; }
 .services { margin: 10px 0; font-size: 12px; }
 .services strong { display: block; margin-bottom: 4px; }
@@ -253,8 +272,8 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
 <?php if ($format === null): ?>
 <body class="format-selector">
 <main class="print-choice">
-    <h1>Como deseja imprimir o recibo?</h1>
-    <p>Recibo <?= receipt_print_h($receipt['numero'] ?? '') ?> da <?= receipt_print_h($receipt['os_numero'] ?? 'ordem de serviço') ?>.</p>
+    <h1>Como deseja imprimir o comprovante?</h1>
+    <p>Comprovante <?= receipt_print_h($receipt['numero'] ?? '') ?> da <?= receipt_print_h($receipt['os_numero'] ?? 'ordem de serviço') ?>.</p>
     <form method="get" action="recibo-imprimir.php">
         <input type="hidden" name="id" value="<?= receipt_print_h((string) $id) ?>">
         <fieldset class="format-options">
@@ -262,7 +281,7 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
             <label class="format-option">
                 <input type="radio" name="formato" value="termica" required autofocus>
                 <strong>Térmica 80 mm</strong>
-                <span>Estilo cupom, parecido com impressão de nota, mas identificado como documento não fiscal.</span>
+                <span>Comprovante compacto para impressora térmica, identificado como documento não fiscal.</span>
             </label>
             <label class="format-option">
                 <input type="radio" name="formato" value="a4" required>
@@ -295,8 +314,11 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
         </div>
     </header>
 
-    <h2 class="title">RECIBO DE PAGAMENTO</h2>
-    <div class="amount"><?= receipt_print_h(receipt_print_money($receipt['valor'])) ?></div>
+    <h2 class="title">COMPROVANTE DE SERVIÇOS E PAGAMENTO</h2>
+    <div class="amount">
+        <span>Valor recebido</span>
+        <strong><?= receipt_print_h(receipt_print_money($receipt['valor'])) ?></strong>
+    </div>
     <section class="description">
         <p><?= receipt_print_h($receipt['descricao']) ?></p>
         <p><strong>Cliente:</strong> <?= receipt_print_h($receipt['cliente_nome']) ?></p>
@@ -316,10 +338,25 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
             </ul>
         </section>
     <?php endif; ?>
+    <?php if (!empty($receipt['pecas'])): ?>
+        <section class="services">
+            <strong>Peças e produtos utilizados</strong>
+            <ul class="service-list">
+                <?php foreach ($receipt['pecas'] as $part): ?>
+                    <li>
+                        <?= receipt_print_h($part['descricao'] ?? '') ?>
+                        — <?= receipt_print_h(receipt_print_quantity($part['quantidade'] ?? 0)) ?>
+                        <?= receipt_print_h($part['unidade'] ?? 'un') ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </section>
+    <?php endif; ?>
     <section class="details">
         <?php if (!empty($receipt['os_numero'])): ?><div><strong>Ordem de Serviço:</strong> <?= receipt_print_h($receipt['os_numero']) ?></div><?php endif; ?>
         <div><strong>Forma de pagamento:</strong> <?= receipt_print_h(receipt_print_form($receipt['forma_pagamento'])) ?></div>
         <?php if ($showsInstallments): ?><div><strong>Parcelas:</strong> <?= receipt_print_h((string) $installmentCount) ?>x</div><?php endif; ?>
+        <?php if ($paymentSituation !== null): ?><div><strong>Situação:</strong> <?= receipt_print_h($paymentSituation) ?></div><?php endif; ?>
         <div><strong>Recebido em:</strong> <?= receipt_print_h(receipt_print_date($receipt['pagamento_recebido_em'] ?: $receipt['emitido_em'])) ?></div>
         <div><strong>Emitido por:</strong> <?= receipt_print_h($receipt['emitido_por_nome']) ?></div>
     </section>
@@ -330,9 +367,9 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
         </div>
     <?php endif; ?>
     <div class="signature"><?= receipt_print_h($receipt['empresa_nome'] ?: 'Responsável pelo recebimento') ?></div>
-    <div class="non-fiscal">DOCUMENTO NÃO FISCAL</div>
+    <div class="non-fiscal">DOCUMENTO NÃO FISCAL — NÃO SUBSTITUI NF-e, NFC-e OU NFS-e</div>
 </main>
-<div class="print-actions"><button type="button" onclick="window.print()">Imprimir recibo</button></div>
+<div class="print-actions"><button type="button" onclick="window.print()">Imprimir comprovante</button></div>
 <script>
 window.addEventListener('load', function () {
     window.setTimeout(function () { window.print(); }, 150);

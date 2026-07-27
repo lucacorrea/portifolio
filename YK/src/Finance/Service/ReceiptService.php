@@ -219,6 +219,7 @@ final class ReceiptService
             throw new InvalidArgumentException('Recibo não encontrado.');
         }
         $receipt['servicos'] = [];
+        $receipt['pecas'] = [];
         $orderId = (int) ($receipt['ordem_servico_id'] ?? 0);
         if ($orderId > 0) {
             $services = $this->connection->prepare(
@@ -229,6 +230,15 @@ final class ReceiptService
             );
             $services->execute(['order_id' => $orderId]);
             $receipt['servicos'] = $services->fetchAll();
+
+            $parts = $this->connection->prepare(
+                "SELECT descricao, unidade, quantidade
+                   FROM ordem_servico_itens
+                  WHERE ordem_servico_id = :order_id AND tipo = 'produto'
+                  ORDER BY ordem, id"
+            );
+            $parts->execute(['order_id' => $orderId]);
+            $receipt['pecas'] = $parts->fetchAll();
         }
         return $receipt;
     }
