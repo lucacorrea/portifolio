@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -405,10 +405,7 @@ final class MigrationRunner
                     'valor_produtos', 'valor_nota', 'snapshot_json', 'xml_autorizado_path',
                     'xml_autorizado_sha256', 'autorizado_em', 'cancelado_em',
                 ])
-                && $this->allIndexes([
-                    ['documentos_fiscais', 'uq_documento_fiscal_idempotency'],
-                    ['documentos_fiscais', 'uq_documento_fiscal_origem_modelo'],
-                ])
+                && $this->allIndexes([['documentos_fiscais', 'uq_documento_fiscal_idempotency']])
                 && $this->allForeignKeys([
                     'fk_documento_fiscal_configuracao', 'fk_documento_fiscal_serie',
                     'fk_documento_fiscal_os', 'fk_documento_fiscal_conta',
@@ -430,6 +427,23 @@ final class MigrationRunner
                        AND MIN(NON_UNIQUE) = 0
                 ) indice_fiscal"
             ) === 1,
+            26 => $this->allColumns('recibos', [
+                    'cliente_nome', 'cliente_documento', 'os_numero', 'pagamento_recebido_em',
+                    'empresa_nome', 'empresa_documento', 'empresa_telefone', 'empresa_endereco',
+                    'empresa_logo', 'quantidade_parcelas',
+                ])
+                && $this->allColumns('ordem_servico_pagamentos', ['quantidade_parcelas'])
+                && $this->columnTypeContains('recibos', 'quantidade_parcelas', 'smallint unsigned')
+                && $this->columnTypeContains('ordem_servico_pagamentos', 'quantidade_parcelas', 'smallint unsigned'),
+            27 => $this->allColumns('documentos_fiscais', [
+                    'cnf', 'tentativas', 'processando_em', 'reconsulta_apos',
+                    'cancelamento_protocolo', 'cancelamento_xml_path', 'cancelamento_xml_sha256',
+                ])
+                && $this->allIndexes([
+                    ['documentos_fiscais', 'uq_documento_fiscal_origem_normal'],
+                    ['documentos_fiscais', 'uq_documento_fiscal_chave'],
+                    ['documentos_fiscais', 'idx_documento_fiscal_reconsulta'],
+                ]),
             default => null,
         };
     }
@@ -438,7 +452,10 @@ final class MigrationRunner
     {
         if (!$this->allColumns('ordens_servico', ['excluida_em', 'excluida_por', 'motivo_exclusao'])
             || !$this->allColumns('ordem_servico_finalizacoes', ['status_origem', 'estornado_por', 'estornado_em', 'motivo_estorno', 'finalizacao_ativa_chave'])
-            || !$this->allColumns('recibos', ['cliente_nome', 'cliente_documento', 'os_numero', 'pagamento_recebido_em', 'empresa_nome', 'empresa_logo'])
+            || !$this->allColumns('recibos', [
+                    'cliente_nome', 'cliente_documento', 'os_numero', 'pagamento_recebido_em', 'empresa_nome',
+                    'empresa_documento', 'empresa_telefone', 'empresa_endereco', 'empresa_logo',
+                ])
             || !$this->allForeignKeys([
                 'fk_os_exclusao_usuario', 'fk_os_finalizacoes_estorno_usuario', 'fk_os_execucao_finalizacao',
                 'fk_estoque_estornado_de', 'fk_recibos_pagamento',

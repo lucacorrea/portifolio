@@ -260,9 +260,9 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
             <?php if ($logo !== null): ?><img class="logo" src="<?= receipt_print_h($logo) ?>" alt="Logotipo da empresa"><?php endif; ?>
             <div>
                 <h1><?= receipt_print_h($receipt['empresa_nome'] ?: 'Empresa não configurada') ?></h1>
-                <?php if ($receipt['empresa_documento']): ?><p>Documento: <?= receipt_print_h($receipt['empresa_documento']) ?></p><?php endif; ?>
-                <?php if ($receipt['empresa_telefone']): ?><p>Telefone: <?= receipt_print_h($receipt['empresa_telefone']) ?></p><?php endif; ?>
-                <?php if ($receipt['empresa_endereco']): ?><p><?= receipt_print_h($receipt['empresa_endereco']) ?></p><?php endif; ?>
+                <?php if (!empty($receipt['empresa_documento'])): ?><p>Documento: <?= receipt_print_h($receipt['empresa_documento'] ?? '') ?></p><?php endif; ?>
+                <?php if (!empty($receipt['empresa_telefone'])): ?><p>Telefone: <?= receipt_print_h($receipt['empresa_telefone'] ?? '') ?></p><?php endif; ?>
+                <?php if (!empty($receipt['empresa_endereco'])): ?><p><?= receipt_print_h($receipt['empresa_endereco'] ?? '') ?></p><?php endif; ?>
             </div>
         </div>
         <div class="meta">

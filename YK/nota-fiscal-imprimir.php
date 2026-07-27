@@ -18,7 +18,7 @@ header('X-Content-Type-Options: nosniff');
 
 try {
     $authorization = $application->authorization();
-    $authorization->requireLogin();
+    $user = $authorization->requireLogin();
     $authorization->requirePermission('nota_fiscal.visualizar');
 } catch (AuthenticationException) {
     header('Location: login.php', true, 303);
@@ -36,6 +36,7 @@ if (!is_int($id)) {
 
 try {
     $document = $application->fiscalDocumentPrinter()->renderAuthorized($id);
+    $application->fiscalDocuments()->recordAccess($id, 'reimpressao', $user->id());
     header('Content-Type: application/pdf');
     header('Content-Disposition: inline; filename="' . $document['filename'] . '"');
     header('Content-Length: ' . strlen($document['pdf']));

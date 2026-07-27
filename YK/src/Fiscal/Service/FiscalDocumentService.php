@@ -53,7 +53,7 @@ final class FiscalDocumentService
             ];
         }
 
-        $existingByOrigin = $this->documents->findByOrderModel($orderId, $environment, $model);
+        $existingByOrigin = $this->documents->findNormalByOrder($orderId, $environment);
         if ($existingByOrigin !== null) {
             return [
                 'id' => (int) $existingByOrigin['id'],
@@ -92,7 +92,7 @@ final class FiscalDocumentService
                 ];
             }
 
-            $existingByOrigin = $this->documents->findByOrderModel($orderId, $environment, $model, true);
+            $existingByOrigin = $this->documents->findNormalByOrder($orderId, $environment, true);
             if ($existingByOrigin !== null) {
                 return [
                     'id' => (int) $existingByOrigin['id'],
@@ -104,6 +104,8 @@ final class FiscalDocumentService
             $order = $this->documents->lockServiceOrderSnapshot($orderId);
             $this->assertOrderEligible($order);
             $items = $this->documents->fiscalProductItems($orderId);
+            $services = $this->documents->fiscalServiceItems($orderId);
+            $payments = $this->documents->activePayments($orderId);
             if ($items === []) {
                 throw new InvalidArgumentException(
                     'Esta OS não possui peças/produtos para NF-e ou NFC-e. '
@@ -123,6 +125,9 @@ final class FiscalDocumentService
                 throw new InvalidArgumentException('A numeração da série fiscal é inválida.');
             }
             $this->documents->reserveSeriesNumber((int) $series['id'], $number, $userId);
+            do {
+                $cnf = str_pad((string) random_int(1, 99999999), 8, '0', STR_PAD_LEFT);
+            } while ((int) $cnf === $number);
 
             $productsValue = $this->sumItemCents($items);
             if ($productsValue <= 0) {
@@ -144,6 +149,8 @@ final class FiscalDocumentService
                     'balance' => $order['saldo'],
                 ],
                 'items' => array_map(fn(array $item): array => $this->sanitizeSnapshot($item), $items),
+                'services' => array_map(fn(array $item): array => $this->sanitizeSnapshot($item), $services),
+                'payments' => array_map(fn(array $payment): array => $this->sanitizeSnapshot($payment), $payments),
                 'totals' => [
                     'products' => $this->formatCents($productsValue),
                     'invoice' => $this->formatCents($productsValue),
@@ -156,19 +163,21 @@ final class FiscalDocumentService
                     'series_id' => (int) $series['id'],
                     'series' => (int) $series['serie'],
                     'number' => $number,
+                    'cnf' => $cnf,
                 ],
             ];
 
             $documentId = $this->documents->insertPrepared([
                 'order_id' => $orderId,
                 'receivable_id' => $order['conta_receber_id'],
-                'payment_id' => null,
+                'payment_id' => count($payments) === 1 ? (int) $payments[0]['id'] : null,
                 'environment' => $environment,
                 'model' => $model,
                 'configuration_id' => $configuration['id'],
                 'series_id' => $series['id'],
                 'series' => (string) $series['serie'],
                 'number' => $number,
+                'cnf' => $cnf,
                 'idempotency_key' => $idempotencyKey,
                 'products_value' => $this->formatCents($productsValue),
                 'invoice_value' => $this->formatCents($productsValue),
@@ -205,6 +214,20 @@ final class FiscalDocumentService
         return $this->documents->getById($id);
     }
 
+    public function recordAccess(int $documentId, string $type, int $userId): void
+    {
+        if (!in_array($type, ['download_xml', 'reimpressao'], true) || $documentId <= 0 || $userId <= 0) {
+            throw new InvalidArgumentException('Auditoria de acesso fiscal inválida.');
+        }
+        $document = $this->documents->getById($documentId);
+        $this->documents->addEvent(
+            $documentId,
+            $type,
+            (string) $document['processamento_status'],
+            (string) $document['processamento_status'],
+            $userId
+        );
+    }
     /** @param array<string,mixed> $document */
     private function assertSameRequest(array $document, int $orderId, string $model, string $environment): void
     {
@@ -258,10 +281,14 @@ final class FiscalDocumentService
     private function assertItems(array $items, int $crt): void
     {
         foreach ($items as $item) {
-            foreach (['ncm', 'origem_mercadoria', 'cfop_padrao', 'cst_pis', 'cst_cofins', 'unidade_tributavel'] as $field) {
-                if ($item[$field] === null || trim((string) $item[$field]) === '') {
-                    throw new InvalidArgumentException('Complete o cadastro tributário de todas as peças utilizadas na OS.');
-                }
+            if (preg_match('/^\d{8}$/', (string) ($item['ncm'] ?? '')) !== 1
+                || preg_match('/^\d{4}$/', (string) ($item['cfop_padrao'] ?? '')) !== 1
+                || preg_match('/^[0-8]$/', (string) ($item['origem_mercadoria'] ?? '')) !== 1
+                || preg_match('/^\d{2}$/', (string) ($item['cst_pis'] ?? '')) !== 1
+                || preg_match('/^\d{2}$/', (string) ($item['cst_cofins'] ?? '')) !== 1
+                || trim((string) ($item['unidade_tributavel'] ?? '')) === ''
+            ) {
+                throw new InvalidArgumentException('Complete NCM, CFOP, origem, PIS, COFINS e unidade tributável de todas as peças.');
             }
             $icmsField = in_array($crt, [1, 2, 4], true) ? 'csosn' : 'cst_icms';
             if (trim((string) ($item[$icmsField] ?? '')) === '') {

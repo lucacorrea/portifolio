@@ -146,7 +146,12 @@ financialFlowAssert(str_contains((string) $receivableScriptSource, "closest?.('.
 financialFlowAssert(str_contains((string) $standaloneReceiptAction, "os_action_context('recibo.emitir')"), 'Recibo avulso deve exigir autorização própria.');
 financialFlowAssert(str_contains((string) $lifecycleSource, 'total_origem'), 'Estorno deve restaurar o total anterior da OS quando houver snapshot.');
 financialFlowAssert(str_contains((string) $lifecycleSource, 'reversePaymentsAndCash'), 'Estorno deve preservar a compensação financeira e de Caixa.');
+financialFlowAssert(str_contains((string) $receiptSource, 'INFORMATION_SCHEMA.COLUMNS'), 'Listagens devem normalizar parcelas legadas sem executar DDL na requisição.');
+financialFlowAssert(!str_contains((string) $receiptSource, "columnExists('recibos', \$column)"), 'Emissão não pode omitir silenciosamente snapshots ausentes no schema.');
+financialFlowAssert(str_contains((string) $receiptSource, 'insertReceipt(['), 'Emissões vinculada e avulsa devem usar o mesmo INSERT compatível.');
+financialFlowAssert(!str_contains((string) $receiptSource, '"emitido"'), 'Status do recibo não pode depender de aspas incompatíveis com ANSI_QUOTES.');
 financialFlowAssert(!str_contains((string) $receiptSource, 'LIKE :search OR'), 'Busca de recibos não pode reutilizar placeholders com prepared statements nativos.');
+financialFlowAssert(!str_contains((string) $accountsSource, '"ativo"'), 'Pagamento que gera recibo não pode depender de aspas incompatíveis com ANSI_QUOTES.');
 financialFlowAssert(!str_contains((string) $accountsSource, 'LIKE :search OR'), 'Busca de contas a receber não pode reutilizar placeholders com prepared statements nativos.');
 financialFlowAssert(
     str_contains((string) $orderRepositorySource, '$this->bindForm($statement, $data, $totals, false);'),

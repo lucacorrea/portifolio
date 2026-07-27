@@ -18,7 +18,7 @@ header('X-Content-Type-Options: nosniff');
 
 try {
     $authorization = $application->authorization();
-    $authorization->requireLogin();
+    $user = $authorization->requireLogin();
     $authorization->requirePermission('nota_fiscal.baixar_xml');
 } catch (AuthenticationException) {
     header('Location: login.php', true, 303);
@@ -36,6 +36,7 @@ if (!is_int($id)) {
 
 try {
     $document = $application->fiscalDocumentPrinter()->authorizedXml($id);
+    $application->fiscalDocuments()->recordAccess($id, 'download_xml', $user->id());
     header('Content-Type: application/xml; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $document['filename'] . '"');
     header('Content-Length: ' . strlen($document['xml']));

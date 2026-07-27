@@ -29,17 +29,17 @@ final class FiscalDocumentRepository
     }
 
     /** @return array<string,mixed>|null */
-    public function findByOrderModel(int $orderId, string $environment, string $model, bool $lock = false): ?array
+    public function findNormalByOrder(int $orderId, string $environment, bool $lock = false): ?array
     {
         $sql = 'SELECT * FROM documentos_fiscais
                  WHERE ordem_servico_id = :order_id AND ambiente = :environment
-                   AND modelo = :model AND finalidade = \'normal\'
+                   AND finalidade = \'normal\'
                  LIMIT 1';
         if ($lock) {
             $sql .= ' FOR UPDATE';
         }
         $statement = $this->connection->prepare($sql);
-        $statement->execute(['order_id' => $orderId, 'environment' => $environment, 'model' => $model]);
+        $statement->execute(['order_id' => $orderId, 'environment' => $environment]);
         $row = $statement->fetch();
 
         return $row === false ? null : $row;
@@ -201,6 +201,35 @@ final class FiscalDocumentRepository
         return $statement->fetchAll();
     }
 
+    /** @return array<int,array<string,mixed>> */
+    public function fiscalServiceItems(int $orderId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT item.id, item.referencia_id AS servico_id, item.descricao,
+                    item.unidade, item.quantidade, item.valor_unitario,
+                    item.desconto, item.subtotal, service.codigo, service.nome
+               FROM ordem_servico_itens item
+          LEFT JOIN servicos service ON service.id = item.referencia_id
+              WHERE item.ordem_servico_id = :order_id
+                AND item.tipo = \'servico\' AND item.subtotal > 0
+              ORDER BY item.ordem, item.id'
+        );
+        $statement->execute(['order_id' => $orderId]);
+        return $statement->fetchAll();
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public function activePayments(int $orderId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT id, valor, forma_pagamento, quantidade_parcelas, recebido_em
+               FROM ordem_servico_pagamentos
+              WHERE ordem_servico_id = :order_id AND status = \'ativo\'
+              ORDER BY recebido_em, id'
+        );
+        $statement->execute(['order_id' => $orderId]);
+        return $statement->fetchAll();
+    }
     /** @return array<string,mixed> */
     public function companySnapshot(): array
     {
@@ -278,12 +307,12 @@ final class FiscalDocumentRepository
         $statement = $this->connection->prepare(
             'INSERT INTO documentos_fiscais
                 (origem_tipo, origem_id, ordem_servico_id, conta_receber_id, pagamento_id,
-                 ambiente, modelo, configuracao_id, serie_id, serie, numero, finalidade,
+                 ambiente, modelo, configuracao_id, serie_id, serie, numero, cnf, finalidade,
                  idempotency_key, status, processamento_status, valor_produtos, valor_nota,
                  snapshot_json, emitido_por)
              VALUES
                 (\'ordem_servico\', :order_id, :order_id, :receivable_id, :payment_id,
-                 :environment, :model, :configuration_id, :series_id, :series, :number, \'normal\',
+                 :environment, :model, :configuration_id, :series_id, :series, :number, :cnf, \'normal\',
                  :idempotency_key, \'rascunho\', \'preparado\', :products_value, :invoice_value,
                  :snapshot_json, :user_id)'
         );
@@ -316,6 +345,133 @@ final class FiscalDocumentRepository
         ]);
     }
 
+    /** @return array<string,mixed> */
+    public function lockDocument(int $id): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT * FROM documentos_fiscais WHERE id = :id LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute(['id' => $id]);
+        $row = $statement->fetch();
+        if ($row === false) {
+            throw new InvalidArgumentException('Documento fiscal não encontrado.');
+        }
+        return $row;
+    }
+
+    /** @param array{reference:string,sha256:string} $artifact */
+    public function markSignedForTransmission(
+        int $id,
+        string $key,
+        string $batchId,
+        array $artifact,
+        string $expectedStatus = 'preparado'
+    ): void {
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET chave = :access_key, lote_id = :batch_id,
+                    xml_assinado_path = :path, xml_assinado_sha256 = :hash,
+                    status = \'emitida\', processamento_status = \'processando\',
+                    tentativas = tentativas + 1, processando_em = CURRENT_TIMESTAMP,
+                    reconsulta_apos = NULL, xmotivo = NULL
+              WHERE id = :id AND processamento_status = :expected_status'
+        );
+        $statement->execute([
+            'id' => $id, 'access_key' => $key, 'batch_id' => $batchId,
+            'path' => $artifact['reference'], 'hash' => $artifact['sha256'],
+            'expected_status' => $expectedStatus,
+        ]);
+        if ($statement->rowCount() !== 1) {
+            throw new InvalidArgumentException('O documento fiscal já está sendo processado.');
+        }
+    }
+
+    /** @param array{reference:string,sha256:string} $artifact */
+    public function storeResponse(int $id, array $artifact, ?string $receipt, string $cstat, string $reason): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET ultima_resposta_path = :path, ultima_resposta_sha256 = :hash,
+                    recibo_sefaz = COALESCE(:receipt, recibo_sefaz),
+                    cstat = :cstat, xmotivo = :reason
+              WHERE id = :id'
+        );
+        $statement->execute([
+            'id' => $id, 'path' => $artifact['reference'], 'hash' => $artifact['sha256'],
+            'receipt' => $receipt, 'cstat' => $cstat, 'reason' => substr($reason, 0, 255),
+        ]);
+    }
+
+    public function markPendingReconciliation(int $id, string $reason): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET processamento_status = \'pendente_reconsulta\', status = \'emitida\',
+                    xmotivo = :reason, reconsulta_apos = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 2 MINUTE)
+              WHERE id = :id AND processamento_status IN (\'processando\', \'pendente_reconsulta\')'
+        );
+        $statement->execute(['id' => $id, 'reason' => substr($reason, 0, 255)]);
+    }
+
+    /** @param array{reference:string,sha256:string} $artifact */
+    public function markAuthorized(
+        int $id,
+        string $protocol,
+        string $cstat,
+        string $reason,
+        array $artifact
+    ): void {
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET status = \'autorizada\', processamento_status = \'autorizado\',
+                    protocolo = :protocol, cstat = :cstat, xmotivo = :reason,
+                    xml_autorizado_path = :path, xml_autorizado_sha256 = :hash,
+                    autorizado_em = CURRENT_TIMESTAMP, reconsulta_apos = NULL
+              WHERE id = :id AND processamento_status IN (\'processando\', \'pendente_reconsulta\', \'autorizado\')'
+        );
+        $statement->execute([
+            'id' => $id, 'protocol' => $protocol, 'cstat' => $cstat,
+            'reason' => substr($reason, 0, 255), 'path' => $artifact['reference'],
+            'hash' => $artifact['sha256'],
+        ]);
+    }
+
+    /** @param array{reference:string,sha256:string} $artifact */
+    public function markCancelled(int $id, string $protocol, string $cstat, string $reason, array $artifact): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET status = \'cancelada\', processamento_status = \'cancelado\',
+                    cstat = :cstat, xmotivo = :reason, cancelado_em = CURRENT_TIMESTAMP,
+                    cancelamento_protocolo = :protocol,
+                    cancelamento_xml_path = :path, cancelamento_xml_sha256 = :hash
+              WHERE id = :id AND processamento_status = \'autorizado\''
+        );
+        $statement->execute([
+            'id'=>$id, 'protocol'=>$protocol, 'cstat'=>$cstat,
+            'reason'=>substr($reason, 0, 255), 'path'=>$artifact['reference'], 'hash'=>$artifact['sha256'],
+        ]);
+        if ($statement->rowCount() !== 1) {
+            throw new InvalidArgumentException('O documento fiscal não está autorizado para cancelamento.');
+        }
+    }
+    public function markRejected(int $id, string $status, string $cstat, string $reason): void
+    {
+        if (!in_array($status, ['rejeitado', 'denegado', 'erro_tecnico'], true)) {
+            throw new InvalidArgumentException('Estado fiscal de falha inválido.');
+        }
+        $localStatus = $status === 'denegado' ? 'rejeitada' : 'rejeitada';
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET status = :local_status, processamento_status = :processing_status,
+                    cstat = :cstat, xmotivo = :reason, reconsulta_apos = NULL
+              WHERE id = :id AND processamento_status IN (\'processando\', \'pendente_reconsulta\')'
+        );
+        $statement->execute([
+            'id' => $id, 'local_status' => $localStatus, 'processing_status' => $status,
+            'cstat' => $cstat, 'reason' => substr($reason, 0, 255),
+        ]);
+    }
     public function transaction(callable $callback): mixed
     {
         $ownsTransaction = !$this->connection->inTransaction();

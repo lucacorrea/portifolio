@@ -85,7 +85,7 @@ final class FiscalDocumentPrintService
         }
         $xml = $this->storage->read($reference, $hash);
         $protocol = $this->protocolData($xml);
-        if ($protocol['status'] !== '100'
+        if (!in_array($protocol['status'], ['100', '150'], true)
             || !hash_equals((string) ($document['chave'] ?? ''), $protocol['key'])
             || !hash_equals((string) ($document['protocolo'] ?? ''), $protocol['protocol'])
         ) {

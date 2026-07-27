@@ -125,7 +125,7 @@ function cr_payment_label(array $payment): string
                     <?php endforeach; ?>
                     <?php if ($canIssueFiscal): ?>
                         <?php foreach (['55' => 'NF-e de peças', '65' => 'NFC-e de peças'] as $fiscalModel => $fiscalLabel): ?>
-                            <?php if (!in_array($fiscalModel, $accountFiscalModels, true)): ?><li><form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $account['ordem_servico_id']) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-file-earmark-check"></i> Preparar <?= h($fiscalLabel) ?> em homologação</button></form></li><?php endif; ?>
+                            <?php if ($accountFiscalDocuments === []): ?><li><form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $account['ordem_servico_id']) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-file-earmark-check"></i> Emitir <?= h($fiscalLabel) ?> em homologação</button></form></li><?php endif; ?>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 <?php endif; ?>
