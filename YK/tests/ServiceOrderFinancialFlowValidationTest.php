@@ -133,6 +133,8 @@ financialFlowAssert(str_contains((string) $receiptPrintSource, '$hasInitialPrint
 financialFlowAssert(str_contains((string) $receiptPrintSource, 'Cache-Control: private, no-store'), 'Recibo com dados pessoais não deve ser armazenado em cache compartilhado.');
 financialFlowAssert(str_contains((string) $receiptPrintSource, '@page { size: 80mm auto;'), 'Recibo térmico deve possuir largura real de 80 mm.');
 financialFlowAssert(str_contains((string) $receiptPrintSource, '@page { size: A4 portrait;'), 'Recibo para impressora comum deve usar A4 retrato.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, '.format-a4 .receipt { width: 210mm; min-height: 148.5mm;'), 'Recibo A4 deve ocupar meia folha, como a impressão da OS.');
+financialFlowAssert(!str_contains((string) $receiptPrintSource, 'min-height: 257mm'), 'Recibo A4 não pode voltar a ocupar a folha inteira.');
 financialFlowAssert(str_contains((string) $receiptPrintSource, 'Térmica 80 mm'), 'Seletor deve explicar a impressão térmica.');
 financialFlowAssert(str_contains((string) $receiptPrintSource, 'A4 — impressora comum'), 'Seletor deve explicar a impressão em impressora comum.');
 financialFlowAssert(str_contains((string) $receiptPrintSource, 'DOCUMENTO NÃO FISCAL'), 'Ambos os formatos devem identificar claramente que o recibo não é fiscal.');

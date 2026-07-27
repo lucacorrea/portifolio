@@ -163,7 +163,7 @@ $isA4 = $format === 'a4';
 <?php if ($isThermal): ?>
 @page { size: 80mm auto; margin: 3mm; }
 <?php elseif ($isA4): ?>
-@page { size: A4 portrait; margin: 15mm; }
+@page { size: A4 portrait; margin: 0; }
 <?php endif; ?>
 * { box-sizing: border-box; }
 body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-serif; }
@@ -197,9 +197,19 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
 .cancel-note { margin-top: 12px; padding: 8px; border: 1px solid #dc2626; color: #991b1b; font-size: 11px; }
 .print-actions { width: min(calc(100% - 24px), 180mm); margin: 0 auto 14px; text-align: right; }
 .print-actions button { border: 0; border-radius: 6px; padding: 9px 15px; background: #1d4ed8; color: white; cursor: pointer; }
-.format-a4 .receipt { width: 180mm; min-height: 257mm; padding: 16mm; }
-.format-a4 .description { min-height: 70mm; font-size: 15px; }
-.format-a4 .signature { margin-top: 35mm; }
+.format-a4 { font-size: 10px; }
+.format-a4 .receipt { width: 210mm; min-height: 148.5mm; padding: 6mm 7mm 5mm; }
+.format-a4 .header { gap: 12px; padding-bottom: 7px; }
+.format-a4 .logo { width: 34mm; max-height: 18mm; }
+.format-a4 .company h1 { margin-bottom: 2px; font-size: 17px; }
+.format-a4 .company p, .format-a4 .meta p { margin: 1px 0; font-size: 9px; line-height: 1.25; }
+.format-a4 .title { margin: 8px 0 6px; font-size: 17px; }
+.format-a4 .amount { margin: 6px 0; padding: 7px; font-size: 18px; }
+.format-a4 .description { min-height: 25mm; font-size: 11px; line-height: 1.45; }
+.format-a4 .description p { margin: 6px 0; }
+.format-a4 .details { padding-top: 6px; font-size: 10px; line-height: 1.45; }
+.format-a4 .signature { margin-top: 12mm; font-size: 10px; }
+.format-a4 .non-fiscal { margin-top: 7px; font-size: 8px; }
 .format-termica { font-family: "Arial Narrow", Arial, sans-serif; }
 .format-termica .receipt { width: 80mm; min-height: 0; padding: 4mm; }
 .format-termica .header { display: block; border-bottom: 1px dashed #111827; padding-bottom: 3mm; text-align: center; }
@@ -220,7 +230,7 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
 @media print {
     body { background: #fff; }
     .receipt { min-height: 0; margin: 0; padding: 0; border: 0; }
-    .format-a4 .receipt { width: auto; }
+    .format-a4 .receipt { width: 210mm; min-height: 148.5mm; padding: 6mm 7mm 5mm; }
     .format-termica .receipt { width: 74mm; }
     .print-actions { display: none; }
 }
@@ -243,7 +253,7 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
             <label class="format-option">
                 <input type="radio" name="formato" value="a4" required>
                 <strong>A4 — impressora comum</strong>
-                <span>Layout maior para impressoras convencionais, em papel A4 retrato.</span>
+                <span>Layout compacto em meia folha A4 retrato, no mesmo padrão da ordem de serviço.</span>
             </label>
         </fieldset>
         <p class="format-help">Depois da escolha, a janela de impressão do navegador será aberta para você selecionar a impressora física.</p>
