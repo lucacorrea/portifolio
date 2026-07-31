@@ -47,6 +47,16 @@ use App\Sales\Repository\BudgetRepository;
 use App\Sales\Service\BudgetManagementService;
 use App\Workforce\Repository\EmployeeRepository;
 use App\Workforce\Service\EmployeeManagementService;
+use App\Admin\Service\AdminCompanyService;
+use App\Admin\Service\AdminAccessService;
+use App\Admin\Service\AdminDashboardService;
+use App\Admin\Service\PlatformAdminPolicy;
+use App\Admin\Repository\AdminCompanyRepository;
+use App\Admin\Repository\AdminAccessRepository;
+use App\Admin\Repository\AdminDashboardRepository;
+use App\Company\Service\ActiveCompanyContext;
+use App\Integration\SO\Service\SoSupplierService;
+use App\Integration\SO\SoDatabase;
 
 final class Application
 {
@@ -93,6 +103,12 @@ final class Application
     private ?DashboardService $dashboardService = null;
     private ?ProductionReportService $productionReportService = null;
     private ?SafeRedirect $redirect = null;
+    private ?AdminCompanyService $adminCompanyService = null;
+    private ?AdminAccessService $adminAccessService = null;
+    private ?AdminDashboardService $adminDashboardService = null;
+    private ?SoSupplierService $soSupplierService = null;
+    private ?ActiveCompanyContext $activeCompanyContext = null;
+    private ?PlatformAdminPolicy $platformAdminPolicy = null;
 
     public function __construct(
         private readonly Database $database,
@@ -481,9 +497,16 @@ final class Application
     public function redirect(): SafeRedirect
     {
         if ($this->redirect === null) {
-            $this->redirect = new SafeRedirect();
+            $this->redirect = new SafeRedirect((string) ($this->settings['app_base_path'] ?? '/fluxEmpresa'));
         }
 
         return $this->redirect;
     }
+
+    public function platformAdminPolicy(): PlatformAdminPolicy { return $this->platformAdminPolicy ??= new PlatformAdminPolicy(); }
+    public function adminCompanies(): AdminCompanyService { return $this->adminCompanyService ??= new AdminCompanyService($this->database->connection(), new AdminCompanyRepository($this->database->connection())); }
+    public function adminAccesses(): AdminAccessService { return $this->adminAccessService ??= new AdminAccessService($this->database->connection(), new AdminAccessRepository($this->database->connection())); }
+    public function adminDashboard(): AdminDashboardService { return $this->adminDashboardService ??= new AdminDashboardService(new AdminDashboardRepository($this->database->connection()), $this->adminCompanies()); }
+    public function soSuppliers(): SoSupplierService { return $this->soSupplierService ??= new SoSupplierService(new SoDatabase((string) ($this->settings['project_root'] ?? ''))); }
+    public function activeCompanyContext(): ActiveCompanyContext { return $this->activeCompanyContext ??= new ActiveCompanyContext($this->session()); }
 }

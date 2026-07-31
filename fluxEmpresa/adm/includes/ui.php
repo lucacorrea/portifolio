@@ -1,0 +1,4 @@
+<?php declare(strict_types=1);
+function admin_badge(string $status): string { $labels=['ativo'=>'Ativa','pendente'=>'Pendente','inativo'=>'Inativa','bloqueado'=>'Bloqueada']; return '<span class="admin-badge admin-badge-'.admin_h($status).'">'.admin_h($labels[$status]??$status).'</span>'; }
+function admin_empty(string $title,string $text): void { echo '<div class="admin-empty"><i class="bi bi-inbox"></i><strong>'.admin_h($title).'</strong><p>'.admin_h($text).'</p></div>'; }
+function admin_pagination(int $page,int $total,int $perPage,string $path,array $query=[]): void { $pages=max(1,(int)ceil($total/$perPage)); if($pages<2)return; echo '<nav class="admin-pagination" aria-label="Paginação">'; for($i=1;$i<=$pages;$i++){ $query['page']=$i; echo '<a class="'.($i===$page?'active':'').'" href="'.admin_url($path.'?'.http_build_query($query)).'">'.$i.'</a>'; } echo '</nav>'; }

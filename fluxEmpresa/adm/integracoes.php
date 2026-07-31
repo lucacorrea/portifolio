@@ -1,0 +1,1 @@
+<?php declare(strict_types=1); require __DIR__.'/includes/admin-guard.php'; $pageTitle='Integrações';$pageSubtitle='Situação das conexões administrativas';$activePage='integrations';require __DIR__.'/pages/integracoes.php';require __DIR__.'/includes/shell.php';

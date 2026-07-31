@@ -11,6 +11,12 @@ final class SafeRedirect
     private const ALLOWED_TARGETS = [
         'dashboard.php',
         'adm/index.php',
+        'adm/empresas.php',
+        'adm/empresas-so.php',
+        'adm/minhas-aprovacoes.php',
+        'adm/empresa.php',
+        'adm/acessos.php',
+        'adm/integracoes.php',
         'acesso-negado.php',
         'ordens-servico.php',
         'orcamentos.php',
@@ -42,6 +48,10 @@ final class SafeRedirect
         'orcamento-imprimir.php',
         'recibo-imprimir.php',
     ];
+
+    public function __construct(private readonly string $basePath = self::BASE_PATH)
+    {
+    }
 
     public function sanitize(?string $next): string
     {
@@ -77,11 +87,11 @@ final class SafeRedirect
     {
         $safeTarget = $this->sanitize($target);
 
-        return self::BASE_PATH . ltrim($safeTarget, '/');
+        return rtrim($this->basePath, '/') . '/' . ltrim($safeTarget, '/');
     }
 
     public function loginUrl(): string
     {
-        return self::BASE_PATH . 'login.php';
+        return rtrim($this->basePath, '/') . '/login.php';
     }
 }

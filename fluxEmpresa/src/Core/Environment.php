@@ -12,6 +12,7 @@ final class Environment
         'APP_ENV',
         'APP_DEBUG',
         'APP_TIMEZONE',
+        'APP_BASE_PATH',
 
         'DB_HOST',
         'DB_PORT',
@@ -34,6 +35,12 @@ final class Environment
 
         'LOGIN_MAX_ATTEMPTS',
         'LOGIN_LOCK_MINUTES',
+
+        'SO_INTEGRATION_ENABLED',
+        'SO_API_BASE_URL',
+        'SO_API_ACQUISITION_PATH',
+        'SO_API_CLIENT_ID',
+        'SO_API_VERIFY_TLS',
     ];
 
     public function __construct(

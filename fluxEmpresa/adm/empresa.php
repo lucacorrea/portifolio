@@ -1,0 +1,1 @@
+<?php declare(strict_types=1); require __DIR__.'/includes/admin-guard.php'; $pageTitle='Detalhes da empresa';$pageSubtitle='Dados, status e acesso administrativo';$activePage='companies';require __DIR__.'/pages/empresa.php';require __DIR__.'/includes/shell.php';

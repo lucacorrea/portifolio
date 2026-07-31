@@ -124,6 +124,31 @@ final class SessionManager
         $this->started = false;
     }
 
+    public function get(string $key): mixed
+    {
+        $this->start();
+        return $_SESSION[$key] ?? null;
+    }
+
+    public function set(string $key, mixed $value): void
+    {
+        $this->start();
+        $_SESSION[$key] = $value;
+    }
+
+    public function remove(string $key): void
+    {
+        $this->start();
+        unset($_SESSION[$key]);
+    }
+
+    public function regenerateId(): void
+    {
+        $this->start();
+        session_regenerate_id(true);
+        $_SESSION['last_regenerated_at'] = time();
+    }
+
     public function flash(string $type, string $message): void
     {
         $this->start();

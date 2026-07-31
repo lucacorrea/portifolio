@@ -1,0 +1,1 @@
+<?php declare(strict_types=1); require __DIR__.'/includes/admin-guard.php'; $pageTitle='Histórico de acessos';$pageSubtitle='Auditoria dos acessos de suporte';$activePage='accesses';require __DIR__.'/pages/acessos.php';require __DIR__.'/includes/shell.php';

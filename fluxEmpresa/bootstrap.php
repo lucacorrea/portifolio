@@ -120,6 +120,7 @@ try {
     $settings = [
         'app_env' => $appEnv,
         'app_debug' => $appDebug,
+        'app_base_path' => $environment->get('APP_BASE_PATH', '/fluxEmpresa'),
         'project_root' => __DIR__,
         'fiscal_integration_enabled' => $fiscalIntegrationEnabled,
         'fiscal_production_enabled' => $fiscalProductionEnabled,
@@ -130,6 +131,11 @@ try {
         'session_cookie_path' => $environment->get('SESSION_COOKIE_PATH', '/fluxEmpresa'),
         'login_max_attempts' => (int) $environment->get('LOGIN_MAX_ATTEMPTS', '5'),
         'login_lock_minutes' => (int) $environment->get('LOGIN_LOCK_MINUTES', '15'),
+        'so_integration_enabled' => filter_var($environment->get('SO_INTEGRATION_ENABLED', 'false'), FILTER_VALIDATE_BOOLEAN),
+        'so_api_base_url' => $environment->get('SO_API_BASE_URL', ''),
+        'so_api_acquisition_path' => $environment->get('SO_API_ACQUISITION_PATH', ''),
+        'so_api_client_id' => $environment->get('SO_API_CLIENT_ID', ''),
+        'so_api_verify_tls' => filter_var($environment->get('SO_API_VERIFY_TLS', 'true'), FILTER_VALIDATE_BOOLEAN),
     ];
 
     $database = new Database(
