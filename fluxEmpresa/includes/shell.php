@@ -11,6 +11,7 @@ $application = $app['application'];
 $session = $application->session();
 $session->start();
 $csrf = $application->csrf();
+$documentBaseHref = ($documentBaseHref ?? '') === '../' ? '../' : '';
 
 try {
   $authorization = $application->authorization();
@@ -18,11 +19,11 @@ try {
 } catch (AuthenticationException $exception) {
   $session->flash('warning', 'Sua sessão expirou. Entre novamente.');
   $currentPage = basename(parse_url($_SERVER['REQUEST_URI'] ?? 'dashboard.php', PHP_URL_PATH) ?: 'dashboard.php');
-  header('Location: login.php?next=' . rawurlencode($application->redirect()->sanitize($currentPage)), true, 303);
+  header('Location: ' . $application->redirect()->loginUrl() . '?next=' . rawurlencode($application->redirect()->sanitize($currentPage)), true, 303);
   exit;
 } catch (Throwable $exception) {
   $session->flash('danger', 'Não foi possível manter o acesso ao sistema. Entre em contato com o administrador.');
-  header('Location: login.php', true, 303);
+  header('Location: ' . $application->redirect()->loginUrl(), true, 303);
   exit;
 }
 
@@ -40,7 +41,12 @@ try {
     throw new AuthorizationException('Acesso negado.');
   }
 } catch (AuthorizationException $exception) {
-  header('Location: acesso-negado.php', true, 303);
+  header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
+  exit;
+}
+
+if (($platformAdminOnly ?? false) === true && !$currentUser->isPlatformAdministrator()) {
+  header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
   exit;
 }
 
@@ -58,6 +64,7 @@ if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpReque
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <?php if ($documentBaseHref !== ''): ?><base href="<?= htmlspecialchars($documentBaseHref, ENT_QUOTES, 'UTF-8') ?>"><?php endif; ?>
   <title>Flux Empresas — <?= htmlspecialchars($pageTitle ?? 'Sistema', ENT_QUOTES, 'UTF-8') ?></title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
