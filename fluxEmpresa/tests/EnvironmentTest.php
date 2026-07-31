@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/src/Core/Environment.php';
+require dirname(__DIR__) . '/src/Integration/SO/SoIntegrationException.php';
+require dirname(__DIR__) . '/src/Integration/SO/SoEnvironment.php';
 
 use App\Core\Environment;
+use App\Integration\SO\SoEnvironment;
 
 function environmentAssertSame(mixed $expected, mixed $actual, string $message): void
 {
@@ -22,6 +25,9 @@ function environmentAssertSame(mixed $expected, mixed $actual, string $message):
 $previousValue = getenv('DB_AUTO_MIGRATE');
 $previousWebValue = getenv('DB_WEB_MIGRATIONS');
 $previousEnvPath = getenv('FLUXEMPRESA_ENV_PATH');
+$previousSoEnvPath = getenv('SO_ENV_PATH');
+$previousServerSoEnvPath = $_SERVER['SO_ENV_PATH'] ?? null;
+$soEnvironmentFile = tempnam(sys_get_temp_dir(), 'flux-so-env-');
 
 try {
     putenv('DB_AUTO_MIGRATE');
@@ -70,6 +76,28 @@ try {
         'O .env padrão deve ser procurado dentro de configuracoes/fluxempresa.'
     );
 
+    if ($soEnvironmentFile === false) {
+        throw new RuntimeException('Não foi possível criar o ambiente temporário do SO.');
+    }
+    file_put_contents($soEnvironmentFile, implode(PHP_EOL, [
+        'SO_DB_HOST=so-db.internal',
+        'SO_DB_PORT=3307',
+        'SO_DB_DATABASE=sistema_so',
+        'SO_DB_USERNAME=consulta_flux',
+        'SO_DB_PASSWORD=segredo-de-teste',
+        'SO_DB_CHARSET=utf8mb4',
+    ]));
+    putenv('SO_ENV_PATH=' . $soEnvironmentFile);
+    unset($_SERVER['SO_ENV_PATH']);
+    $soEnvironment = new SoEnvironment(dirname(__DIR__));
+    environmentAssertSame(
+        'so-db.internal',
+        $soEnvironment->get('DB_HOST'),
+        'A integração do SO deve aceitar caminho explícito e credenciais isoladas.'
+    );
+    environmentAssertSame('3307', $soEnvironment->get('DB_PORT'), 'A porta isolada do SO deve ser lida.');
+    environmentAssertSame('sistema_so', $soEnvironment->get('DB_DATABASE'), 'O banco isolado do SO deve ser lido.');
+
     $bootstrapSource = file_get_contents(dirname(__DIR__) . '/bootstrap.php');
     environmentAssertSame(
         true,
@@ -99,6 +127,19 @@ try {
         putenv('FLUXEMPRESA_ENV_PATH');
     } else {
         putenv('FLUXEMPRESA_ENV_PATH=' . $previousEnvPath);
+    }
+    if ($previousSoEnvPath === false) {
+        putenv('SO_ENV_PATH');
+    } else {
+        putenv('SO_ENV_PATH=' . $previousSoEnvPath);
+    }
+    if ($previousServerSoEnvPath === null) {
+        unset($_SERVER['SO_ENV_PATH']);
+    } else {
+        $_SERVER['SO_ENV_PATH'] = $previousServerSoEnvPath;
+    }
+    if (is_string($soEnvironmentFile) && is_file($soEnvironmentFile)) {
+        unlink($soEnvironmentFile);
     }
 }
 
