@@ -141,6 +141,18 @@ try {
         'O diagnóstico do SO deve ser protegido e usar somente causas seguras.'
     );
 
+    $soRepositorySource = file_get_contents(dirname(__DIR__) . '/src/Integration/SO/Repository/SoSupplierRepository.php');
+    environmentAssertSame(
+        true,
+        is_string($soRepositorySource)
+            && str_contains($soRepositorySource, ':search_name')
+            && str_contains($soRepositorySource, ':search_document')
+            && str_contains($soRepositorySource, ':search_contact')
+            && str_contains($soRepositorySource, ':search_phone')
+            && !str_contains($soRepositorySource, 'LIKE :search OR'),
+        'Consultas nativas do MySQL não devem reutilizar o mesmo parâmetro nomeado.'
+    );
+
     $bootstrapSource = file_get_contents(dirname(__DIR__) . '/bootstrap.php');
     environmentAssertSame(
         true,

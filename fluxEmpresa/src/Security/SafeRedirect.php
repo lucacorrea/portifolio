@@ -17,6 +17,7 @@ final class SafeRedirect
         'adm/empresa.php',
         'adm/acessos.php',
         'adm/integracoes.php',
+        'adm/teste-conexao-so.php',
         'acesso-negado.php',
         'ordens-servico.php',
         'orcamentos.php',
