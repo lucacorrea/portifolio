@@ -36,11 +36,21 @@ final class Environment
         'LOGIN_MAX_ATTEMPTS',
         'LOGIN_LOCK_MINUTES',
 
-        'SO_INTEGRATION_ENABLED',
+        /*
+         * Leitura direta e somente leitura do banco do SO.
+         */
         'SO_ENV_PATH',
+
+        /*
+         * Comunicação HTTPS Flux Empresas → API do SO.
+         */
+        'SO_INTEGRATION_ENABLED',
         'SO_API_BASE_URL',
         'SO_API_ACQUISITION_PATH',
         'SO_API_CLIENT_ID',
+        'SO_API_SECRET',
+        'SO_API_CONNECT_TIMEOUT',
+        'SO_API_TIMEOUT',
         'SO_API_VERIFY_TLS',
     ];
 
@@ -50,9 +60,9 @@ final class Environment
     }
 
     /**
-     * Resolve o caminho do arquivo .env.
+     * Resolve o caminho do arquivo .env principal do Flux Empresas.
      *
-     * Estrutura esperada:
+     * Estrutura recomendada:
      *
      * /home/usuario/
      * ├── configuracoes/
@@ -60,22 +70,21 @@ final class Environment
      * │       └── .env
      * └── public_html/
      *     └── fluxEmpresa/
-     *
-     * Quando $projectRoot for:
-     * /home/usuario/public_html/fluxEmpresa
-     *
-     * O resultado será:
-     * /home/usuario/configuracoes/fluxempresa/.env
      */
-    public static function resolveFilePath(string $projectRoot): string
-    {
-        $configuredPath = getenv('FLUXEMPRESA_ENV_PATH');
+    public static function resolveFilePath(
+        string $projectRoot
+    ): string {
+        $configuredPath = getenv(
+            'FLUXEMPRESA_ENV_PATH'
+        );
 
         if (
             is_string($configuredPath)
             && trim($configuredPath) !== ''
         ) {
-            return self::normalizePath($configuredPath);
+            return self::normalizePath(
+                $configuredPath
+            );
         }
 
         $projectRoot = rtrim(
@@ -84,15 +93,16 @@ final class Environment
         );
 
         /*
-         * Sobe dois níveis:
+         * Exemplo:
          *
          * /home/usuario/public_html/fluxEmpresa
-         *              ↓ 1
-         * /home/usuario/public_html
-         *              ↓ 2
+         *                    ↓
          * /home/usuario
          */
-        $accountRoot = dirname($projectRoot, 2);
+        $accountRoot = dirname(
+            $projectRoot,
+            2
+        );
 
         return $accountRoot
             . DIRECTORY_SEPARATOR
@@ -103,6 +113,12 @@ final class Environment
             . '.env';
     }
 
+    /**
+     * Carrega somente chaves permitidas.
+     *
+     * Variáveis definidas diretamente no servidor possuem prioridade
+     * sobre o conteúdo do arquivo.
+     */
     public function load(): void
     {
         if (
@@ -125,39 +141,62 @@ final class Environment
             );
         }
 
-        foreach ($lines as $line) {
-            $line = trim($line);
+        foreach ($lines as $index => $line) {
+            if ($index === 0) {
+                $line = preg_replace(
+                    '/^\xEF\xBB\xBF/',
+                    '',
+                    (string) $line
+                ) ?? (string) $line;
+            }
+
+            $line = trim(
+                (string) $line
+            );
 
             if (
                 $line === ''
                 || str_starts_with($line, '#')
+                || !str_contains($line, '=')
             ) {
                 continue;
             }
 
-            if (!str_contains($line, '=')) {
-                continue;
-            }
+            [$key, $value] = explode(
+                '=',
+                $line,
+                2
+            );
 
-            [$key, $value] = explode('=', $line, 2);
+            $key = trim(
+                $key
+            );
 
-            $key = trim($key);
-
-            if (!in_array($key, self::ALLOWED_KEYS, true)) {
+            if (
+                !in_array(
+                    $key,
+                    self::ALLOWED_KEYS,
+                    true
+                )
+            ) {
                 continue;
             }
 
             /*
              * Variáveis configuradas diretamente no servidor
-             * têm prioridade sobre o conteúdo do arquivo .env.
+             * têm prioridade.
              */
             if (getenv($key) !== false) {
                 continue;
             }
 
-            $value = $this->normalizeValue($value);
+            $value = $this->normalizeValue(
+                $value
+            );
 
-            putenv($key . '=' . $value);
+            putenv(
+                $key . '=' . $value
+            );
 
             $_ENV[$key] = $value;
             $_SERVER[$key] = $value;
@@ -168,18 +207,25 @@ final class Environment
         string $key,
         ?string $default = null
     ): ?string {
-        $this->assertAllowedKey($key);
+        $this->assertAllowedKey(
+            $key
+        );
 
-        $value = getenv($key);
+        $value = getenv(
+            $key
+        );
 
         return $value === false
             ? $default
             : (string) $value;
     }
 
-    public function require(string $key): string
-    {
-        $value = $this->get($key);
+    public function require(
+        string $key
+    ): string {
+        $value = $this->get(
+            $key
+        );
 
         if (
             $value === null
@@ -198,41 +244,73 @@ final class Environment
         return $this->filePath;
     }
 
-    private function normalizeValue(string $value): string
-    {
-        $value = trim($value);
+    private function normalizeValue(
+        string $value
+    ): string {
+        $value = trim(
+            $value
+        );
 
         if ($value === '') {
             return '';
         }
 
+        if (str_contains($value, "\0")) {
+            throw new RuntimeException(
+                'Valor inválido no arquivo de ambiente.'
+            );
+        }
+
         $firstCharacter = $value[0];
-        $lastCharacter = substr($value, -1);
+        $lastCharacter = substr(
+            $value,
+            -1
+        );
 
         if (
-            ($firstCharacter === '"' || $firstCharacter === "'")
+            (
+                $firstCharacter === '"'
+                || $firstCharacter === "'"
+            )
             && $lastCharacter === $firstCharacter
         ) {
-            return substr($value, 1, -1);
+            return substr(
+                $value,
+                1,
+                -1
+            );
         }
 
         return $value;
     }
 
-    private function assertAllowedKey(string $key): void
-    {
-        if (!in_array($key, self::ALLOWED_KEYS, true)) {
+    private function assertAllowedKey(
+        string $key
+    ): void {
+        if (
+            !in_array(
+                $key,
+                self::ALLOWED_KEYS,
+                true
+            )
+        ) {
             throw new RuntimeException(
                 'Variável de ambiente não permitida.'
             );
         }
     }
 
-    private static function normalizePath(string $path): string
-    {
-        $path = trim($path);
+    private static function normalizePath(
+        string $path
+    ): string {
+        $path = trim(
+            $path
+        );
 
-        if (str_contains($path, "\0")) {
+        if (
+            $path === ''
+            || str_contains($path, "\0")
+        ) {
             throw new RuntimeException(
                 'Caminho do arquivo de ambiente inválido.'
             );
