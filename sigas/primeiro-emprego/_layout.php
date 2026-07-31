@@ -15,18 +15,6 @@ function primeiro_emprego_page(string $page, string $title, string $description,
     $context['module'] = 'primeiroEmprego';
     $context['page'] = $page;
     $context['modules'] = ['primeiroEmprego' => ['allowed' => true]];
-    $context['moduleMenu'] = [
-        ['label' => 'Painel', 'icon' => 'speedometer2', 'href' => 'index.php', 'page' => 'primeiro-emprego-painel'],
-        ['label' => 'Candidatos', 'icon' => 'people', 'href' => 'candidatos.php', 'page' => 'primeiro-emprego-candidatos'],
-        ['label' => 'Novo candidato', 'icon' => 'person-plus', 'href' => 'cadastro-candidato.php', 'page' => 'primeiro-emprego-cadastro'],
-        ['label' => 'Vagas', 'icon' => 'briefcase', 'href' => 'vagas.php', 'page' => 'primeiro-emprego-vagas'],
-        ['label' => 'Empresas', 'icon' => 'buildings', 'href' => 'empresas.php', 'page' => 'primeiro-emprego-empresas'],
-        ['label' => 'Encaminhamentos', 'icon' => 'send-check', 'href' => 'encaminhamentos.php', 'page' => 'primeiro-emprego-encaminhamentos'],
-        ['label' => 'Entrevistas', 'icon' => 'calendar2-check', 'href' => 'entrevistas.php', 'page' => 'primeiro-emprego-entrevistas'],
-        ['label' => 'Contratações', 'icon' => 'person-check', 'href' => 'contratacoes.php', 'page' => 'primeiro-emprego-contratacoes'],
-        ['label' => 'Capacitações', 'icon' => 'mortarboard', 'href' => 'capacitacoes.php', 'page' => 'primeiro-emprego-capacitacoes'],
-        ['label' => 'Relatórios', 'icon' => 'bar-chart', 'href' => 'relatorios.php', 'page' => 'primeiro-emprego-relatorios'],
-    ];
     $context['moduleExtra'] = $extra;
     ?>
 <!doctype html>
@@ -49,12 +37,12 @@ function primeiro_emprego_page(string $page, string $title, string $description,
     <div id="moduleRoot">
         <div class="pe-page-content">
                 <header class="page-header pe-page-header">
-                    <div><div class="eyebrow"><i class="bi bi-briefcase-fill"></i>Primeiro Emprego</div><h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1><p><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></p></div>
+                    <div><div class="eyebrow"><i class="bi bi-briefcase-fill"></i>Coari Meu Primeiro Emprego</div><h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1><p><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></p></div>
                     <div class="page-actions"><a class="btn btn-light" href="../portal.php"><i class="bi bi-grid-1x2"></i><span class="optional">Trocar módulo</span></a></div>
                 </header>
                 <div class="pe-demo-notice" role="status"><i class="bi bi-info-circle"></i><span>Ambiente visual demonstrativo. Ações e dados ainda não são persistidos.</span></div>
                 <?= $body ?>
-            <footer class="app-footer"><span>Dados demonstrativos para prototipação.</span><span>SIGAS Coari — Primeiro Emprego</span></footer>
+            <footer class="app-footer"><span>Dados demonstrativos para prototipação.</span><span>SIGAS Coari — Coari Meu Primeiro Emprego</span></footer>
         </div>
     </div>
     <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>

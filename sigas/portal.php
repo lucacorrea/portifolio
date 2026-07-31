@@ -38,16 +38,11 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
         </header>
 
         <section class="portal-welcome" aria-labelledby="portalTitle">
-            <div><span class="eyebrow"><i class="bi bi-grid-1x2"></i>Ambiente de trabalho</span><h1 id="portalTitle">Escolha um módulo para continuar</h1><p data-portal-sector>Os módulos disponíveis são definidos conforme o seu perfil e setor.</p></div>
+            <div><span class="eyebrow"><i class="bi bi-grid-1x2"></i>Ambiente de trabalho</span><h1 id="portalTitle">Escolha um setor ou módulo para continuar</h1><p data-portal-sector>Os ambientes disponíveis são definidos conforme o seu perfil e vínculos institucionais.</p></div>
             <div class="portal-version"><i class="bi bi-shield-check"></i><span>Ambiente institucional<br><strong>SIGAS Coari v1.1</strong></span></div>
         </section>
 
-        <section id="modulos" aria-labelledby="modulesTitle"><div class="portal-section-heading"><div><h2 id="modulesTitle">Módulos disponíveis</h2><p>Selecione o ambiente que deseja acessar.</p></div><span class="status-badge status-info"><i class="bi bi-info-circle"></i>Acesso visual</span></div><div class="module-card-grid" id="moduleCards" aria-live="polite"></div></section>
-
-        <div class="portal-lower-grid">
-            <section class="portal-panel" aria-labelledby="recentTitle"><div class="card-heading"><div><div class="card-kicker">Continuidade</div><h2 id="recentTitle">Acessos recentes</h2></div></div><div class="portal-recent-list"><a href="modulo.php"><i class="bi bi-basket2"></i><span><strong>Coari Comida na Mesa</strong><small>Beneficiários e competências</small></span><i class="bi bi-arrow-up-right"></i></a><a href="pessoas.php"><i class="bi bi-people"></i><span><strong>Assistência Social</strong><small>Pessoas e prontuários</small></span><i class="bi bi-arrow-up-right"></i></a></div></section>
-            <section class="portal-panel" aria-labelledby="noticeTitle"><div class="card-heading"><div><div class="card-kicker">Comunicados</div><h2 id="noticeTitle">Avisos do sistema</h2></div></div><div class="portal-notices"><div><i class="bi bi-info-circle"></i><span><strong>Novo ambiente Primeiro Emprego</strong><small>Layout disponível para validação e evolução.</small></span></div><div><i class="bi bi-shield-lock"></i><span><strong>Permissões em evolução</strong><small>A validação definitiva será feita no servidor.</small></span></div></div></section>
-        </div>
+        <section id="modulos" aria-labelledby="modulesTitle"><div class="portal-section-heading"><div><h2 id="modulesTitle">Setores e módulos disponíveis</h2><p>Os quatro primeiros cards são setores organizadores da SEMAS; os dois últimos são módulos independentes.</p></div><span class="status-badge status-info"><i class="bi bi-info-circle"></i>Estrutura visual</span></div><div class="module-card-grid" id="moduleCards" aria-live="polite"></div></section>
     </main>
     <script><?= PageContext::script($frontendContext) ?></script>
     <script src="assets/js/module-portal.js"></script>

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Config\ModuleRegistry;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Integrations\Anexo\AnexoIntegrationService;
@@ -63,6 +64,7 @@ $frontendContext = [
     'csrf' => [
         'logout' => Csrf::token('logout'),
     ],
+    'navigation' => ModuleRegistry::all(),
 ];
 ?>
 <!doctype html>

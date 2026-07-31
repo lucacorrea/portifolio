@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Config\ModuleRegistry;
 use App\Repositories\AccessLevelRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\SectorRepository;
@@ -15,7 +16,7 @@ use App\Services\AuthService;
 final class PageContext
 {
     /**
-     * @return array{user: array{name: string, initials: string, jobTitle: string, sector: string}, urls: array{dashboard: string, logout: string}, csrf: array{logout: string}}
+     * @return array<string, mixed>
      */
     public static function requireAuthenticatedFrontendContext(): array
     {
@@ -43,6 +44,8 @@ final class PageContext
             'csrf' => [
                 'logout' => Csrf::token('logout'),
             ],
+            // Estrutura visual única; não substitui a autorização de cada rota.
+            'navigation' => ModuleRegistry::all(),
         ];
     }
 

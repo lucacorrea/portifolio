@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Config\ModuleRegistry;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Repositories\AccessLevelRepository;
@@ -98,6 +99,7 @@ $frontendContext = [
         'registrarEntrega' => Csrf::token('comida_mesa_registrar_entrega'),
         'cancelarEntrega' => Csrf::token('comida_mesa_cancelar_entrega'),
     ],
+    'navigation' => ModuleRegistry::all(),
     'consultaDocumento' => [
         'permissions' => [
             'create' => $authorization->can($user, 'comida_mesa.cadastrar'),

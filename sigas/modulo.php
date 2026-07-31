@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Config\ModuleRegistry;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\Logger;
@@ -227,6 +228,7 @@ $frontendContext = [
         'cancelarEntrega' => Csrf::token('comida_mesa_cancelar_entrega'),
         'enviarDocumento' => Csrf::token('comida_mesa_enviar_documento'),
     ],
+    'navigation' => ModuleRegistry::all(),
     'comidaMesa' => [
         'competenciaId' => $currentCompetenceId,
         'competenceLabel' => $competenceLabel,
